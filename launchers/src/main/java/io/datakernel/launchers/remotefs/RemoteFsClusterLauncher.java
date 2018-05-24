@@ -1,0 +1,134 @@
+package io.datakernel.launchers.remotefs;
+
+import com.google.inject.*;
+import com.google.inject.name.Named;
+import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.config.Config;
+import io.datakernel.config.ConfigModule;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.jmx.JmxModule;
+import io.datakernel.launcher.Launcher;
+import io.datakernel.remotefs.*;
+import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.util.guice.OptionalDependency;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static com.google.inject.util.Modules.override;
+import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.launchers.Initializers.*;
+import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
+import static java.lang.Boolean.parseBoolean;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+
+public abstract class RemoteFsClusterLauncher extends Launcher {
+	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
+	public static final String PROPERTIES_FILE = "remotefs-cluster.properties";
+
+	@Inject
+	RemoteFsRepartitionController controller;
+
+	@Inject
+	@Named("repartition")
+	EventloopTaskScheduler repartitionScheduler;
+
+	@Inject
+	@Named("clusterDeadCheck")
+	EventloopTaskScheduler clusterDeadCheckScheduler;
+
+	@Override
+	protected final Collection<Module> getModules() {
+		return singletonList(override(getBaseModules()).with(getOverrideModules()));
+	}
+
+	private Collection<Module> getBaseModules() {
+		return asList(
+				ServiceGraphModule.defaultInstance(),
+				JmxModule.create(),
+				ConfigModule.create(() ->
+						Config.create()
+								.override(Config.ofProperties(PROPERTIES_FILE, true))
+								.override(Config.ofProperties(System.getProperties()).getChild("config")))
+						.printEffectiveConfig(),
+				new AbstractModule() {
+					@Provides
+					@Singleton
+					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
+						return Eventloop.create()
+								.initialize(ofEventloop(config.getChild("eventloop")))
+								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
+					}
+
+					@Provides
+					@Singleton
+					@Named("repartition")
+					EventloopTaskScheduler repartitionScheduler(Config config, Eventloop eventloop, RemoteFsRepartitionController controller) {
+						return EventloopTaskScheduler.create(eventloop, controller::repartition)
+								.initialize(ofEventloopTaskScheduler(config.getChild("scheduler.repartition")));
+					}
+
+					@Provides
+					@Singleton
+					@Named("clusterDeadCheck")
+					EventloopTaskScheduler deadCheckScheduler(Config config, Eventloop eventloop, RemoteFsClusterClient cluster) {
+						return EventloopTaskScheduler.create(eventloop, cluster::checkDeadPartitions)
+								.initialize(ofEventloopTaskScheduler(config.getChild("scheduler.cluster.deadCheck")));
+					}
+
+					@Provides
+					@Singleton
+					RemoteFsRepartitionController repartitionController(Config config,
+							RemoteFsServer localServer, RemoteFsClusterClient cluster) {
+						return RemoteFsRepartitionController.create(config.get("remotefs.repartition.localPartitionId"), cluster)
+								.initialize(ofRepartitionController(config.getChild("remotefs.repartition")));
+					}
+
+					@Provides
+					@Singleton
+					RemoteFsClusterClient remoteFsClusterClient(Config config,
+							RemoteFsServer localServer, Eventloop eventloop,
+							OptionalDependency<ServerSelector> maybeServerSelector) {
+						HashMap<Object, FsClient> clients = new HashMap<>();
+						clients.put(config.get("remotefs.repartition.localPartitionId"), localServer.getClient());
+						return RemoteFsClusterClient.create(eventloop, clients)
+								.withServerSelector(maybeServerSelector.orElse(RENDEZVOUS_HASH_SHARDER))
+								.initialize(ofRemoteFsCluster(eventloop, config.getChild("remotefs.cluster")));
+					}
+
+					@Provides
+					@Singleton
+					RemoteFsServer remoteFsServer(Config config, Eventloop eventloop, ExecutorService executor) {
+						return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.server.path"))
+								.initialize(ofRemoteFsServer(config.getChild("remotefs.server")));
+					}
+
+					@Provides
+					@Singleton
+					public ExecutorService executorService() {
+						return Executors.newSingleThreadExecutor();
+					}
+				}
+		);
+	}
+
+	protected Collection<Module> getOverrideModules() {
+		return emptyList();
+	}
+
+	@Override
+	protected void run() throws Exception {
+		awaitShutdown();
+	}
+
+	public static void main(String[] args) throws Exception {
+		Launcher launcher = new RemoteFsClusterLauncher() {
+		};
+		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+	}
+}

@@ -16,6 +16,8 @@
 
 package io.datakernel.util;
 
+import io.datakernel.annotation.Nullable;
+
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -48,28 +50,28 @@ public final class Preconditions {
 		}
 	}
 
-	public static <T> T checkNotNull(T reference) {
+	public static <T> T checkNotNull(@Nullable T reference) {
 		if (reference != null) {
 			return reference;
 		}
 		throw new NullPointerException();
 	}
 
-	public static <T> T checkNotNull(T reference, Object message) {
+	public static <T> T checkNotNull(@Nullable T reference, Object message) {
 		if (reference != null) {
 			return reference;
 		}
 		throw new NullPointerException(String.valueOf(message));
 	}
 
-	public static <T> T checkNotNull(T reference, Supplier<String> message) {
+	public static <T> T checkNotNull(@Nullable T reference, Supplier<String> message) {
 		if (reference != null) {
 			return reference;
 		}
 		throw new NullPointerException(message.get());
 	}
 
-	public static <T> T checkNotNull(T reference, String template, Object... args) {
+	public static <T> T checkNotNull(@Nullable T reference, String template, Object... args) {
 		if (reference != null) {
 			return reference;
 		}

@@ -22,6 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
+import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
+import static java.util.stream.Collectors.toList;
 
 public final class RemoteLogFileSystem extends AbstractLogFileSystem implements EventloopJmxMBeanEx {
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
@@ -65,30 +67,32 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 
 	@Override
 	public Stage<List<LogFile>> list(String logPartition) {
-		return client.list().thenApply(files -> getLogFiles(files, logPartition)).whenComplete(stageList.recordStats());
+		return client.list()
+			.thenApply(files -> getLogFiles(files.stream().map(FileMetadata::getName).collect(toList()), logPartition))
+			.whenComplete(stageList.recordStats());
 	}
 
 	@Override
 	public Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		return client.download(path(logPartition, logFile), startPosition)
-				.thenApply(stream -> stream
-						.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
-						.with(streamReadStats)
-						.withLateBinding()
-				)
-				.whenComplete(stageRead.recordStats());
+			.thenApply(stream -> stream
+				.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
+				.with(streamReadStats)
+				.withLateBinding()
+			)
+			.whenComplete(stageRead.recordStats());
 	}
 
 	@Override
 	public Stage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 		String fileName = path(logPartition, logFile);
 		return client.upload(fileName)
-				.thenApply(stream -> stream
-						.with(streamWrites.newEntry(logPartition + ":" + logFile))
-						.with(streamWriteStats)
-						.withLateBinding()
-				)
-				.whenComplete(stageWrite.recordStats());
+			.thenApply(stream -> stream
+				.with(streamWrites.newEntry(logPartition + ":" + logFile))
+				.with(streamWriteStats)
+				.withLateBinding()
+			)
+			.whenComplete(stageWrite.recordStats());
 	}
 
 	private String path(String logPartition, LogFile logFile) {

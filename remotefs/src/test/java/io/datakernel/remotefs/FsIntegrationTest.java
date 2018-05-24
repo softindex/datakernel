@@ -16,27 +16,22 @@
 
 package io.datakernel.remotefs;
 
-import ch.qos.logback.classic.Level;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.hamcrest.BaseMatcher;
-import org.hamcrest.Description;
+import io.datakernel.test.TestUtils;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -44,12 +39,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.IntStream;
 
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
@@ -57,155 +51,163 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.nio.file.Files.readAllBytes;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
 public class FsIntegrationTest {
+	private static final InetSocketAddress address = new InetSocketAddress("localhost", 5560);
+	private static final byte[] BIG_FILE = new byte[2 * 1024 * 1024]; // 2 MB
+
 	static {
-		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-		logger.setLevel(Level.TRACE);
+		TestUtils.enableLogging();
+
+		Random rand = new Random(1L);
+		for (int i = 0; i < BIG_FILE.length; i++) {
+			BIG_FILE[i] = (byte) (rand.nextInt(256) - 128);
+		}
 	}
+
+	private static final byte[] CONTENT = "content".getBytes(UTF_8);
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
-	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	private static final InetSocketAddress address = new InetSocketAddress("localhost", 5560);
-
-	private static Path storage;
-	private static final byte[] BIG_FILE = createBigByteArray();
-	private static final byte[] CONTENT = "content".getBytes(UTF_8);
+	private Path storage;
+	private RemoteFsServer server;
+	private FsClient client;
+	private Eventloop eventloop;
+	private ExecutorService executor;
 
 	@Before
-	public void before() throws IOException {
+	public void setup() throws IOException {
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		executor = newCachedThreadPool();
 		storage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
+		server = RemoteFsServer.create(eventloop, executor, storage).withListenAddress(address);
+		server.listen();
+		client = RemoteFsClient.create(eventloop, address);
+
+//		eventloop.delayBackground(2000, () -> Assert.fail("Timeout"));
+	}
+
+	@After
+	public void tearDown() {
+		server.close();
+		executor.shutdownNow();
 	}
 
 	@Test
 	public void testUpload() throws IOException {
 		String resultFile = "file_uploaded.txt";
-		byte[] bytes = "content".getBytes(UTF_8);
 
-		upload(resultFile, bytes);
+		upload(resultFile, CONTENT)
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertComplete());
+		eventloop.run();
 
-		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), bytes);
+		assertArrayEquals(Files.readAllBytes(storage.resolve(resultFile)), CONTENT);
 	}
 
 	@Test
 	public void testUploadMultiple() throws IOException {
 		int files = 10;
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = newCachedThreadPool();
-		RemoteFsServer server = createServer(eventloop, executor);
-		RemoteFsClient client = createClient(eventloop);
 
-		server.listen();
-		List<Stage<Void>> tasks = new ArrayList<>();
-		for (int i = 0; i < files; i++) {
-			tasks.add(
-				StreamProducer.of(ByteBuf.wrapForReading(CONTENT))
-					.streamTo(
-						client.uploadStream("file" + i))
-					.getConsumerResult());
-		}
-		Stages.all(tasks).whenComplete(assertComplete($ -> server.close()));
+		Stages.all(IntStream.range(0, 10)
+				.mapToObj(i -> StreamProducer.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploadStream("file" + i))
+						.getConsumerResult()))
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertComplete());
 
 		eventloop.run();
-		executor.shutdown();
 
 		for (int i = 0; i < files; i++) {
-			assertArrayEquals(CONTENT, readAllBytes(storage.resolve("file" + i)));
+			assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
 		}
 	}
 
 	@Test
 	public void testUploadBigFile() throws IOException {
 		String resultFile = "big file_uploaded.txt";
-		Random rand = new Random(1L);
-		for (int i = 0; i < BIG_FILE.length; i++) {
-			BIG_FILE[i] = (byte) (rand.nextInt(256) - 128);
-		}
 
-		upload(resultFile, BIG_FILE);
+		upload(resultFile, BIG_FILE)
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertComplete());
+		eventloop.run();
 
-		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), BIG_FILE);
+		assertArrayEquals(Files.readAllBytes(storage.resolve(resultFile)), BIG_FILE);
 	}
 
 	@Test
 	public void testUploadLong() throws IOException {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
-		upload(resultFile, CONTENT);
+		upload(resultFile, CONTENT)
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertComplete());
+		eventloop.run();
 
-		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), CONTENT);
+		assertArrayEquals(Files.readAllBytes(storage.resolve(resultFile)), CONTENT);
 	}
 
 	@Test
 	public void testUploadExistingFile() throws IOException {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
-		Throwable es[] = new Throwable[1];
+		upload(resultFile, CONTENT)
+				.thenCompose($ -> upload(resultFile, CONTENT))
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertFailure(RemoteFsException.class, "FileAlreadyExistsException"));
 
-		upload(resultFile, CONTENT);
-		upload(resultFile, CONTENT).whenComplete(($, throwable) -> {
-			if (throwable != null) es[0] = throwable;
-		});
+		eventloop.run();
 
-		assertNotNull(es[0]);
-		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), CONTENT);
+		assertArrayEquals(Files.readAllBytes(storage.resolve(resultFile)), CONTENT);
 	}
 
 	@Test
-	public void testOnClientExceptionWhileUploading() throws IOException, ExecutionException, InterruptedException {
-		String resultFile = "upload_with_exceptions.txt";
+	public void testUploadServerFail() {
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = newCachedThreadPool();
-		RemoteFsServer server = createServer(eventloop, executor);
-		RemoteFsClient client = createClient(eventloop);
-
-		server.listen();
-
-		CompletableFuture<Void> future = StreamProducer.concat(
-			StreamProducer.of(
-				wrapUtf8("Test1"),
-				wrapUtf8(" Test2"),
-				wrapUtf8(" Test3")),
-			StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE)),
-			StreamProducer.closingWithError(new StacklessException("Test exception")),
-			StreamProducer.of(wrapUtf8("Test4")))
-			.streamTo(
-				client.uploadStream(resultFile))
-			.getConsumerResult()
-			.whenComplete(($, throwable) -> server.close())
-			.toCompletableFuture();
+		upload("../../nonlocal/../file.txt", CONTENT)
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertFailure(RemoteFsException.class, "File .*? goes outside of the storage directory"));
 
 		eventloop.run();
-		executor.shutdownNow();
+	}
 
-		byteBufRule.enable(false);
-		thrown.expect(ExecutionException.class);
-		thrown.expectCause(new BaseMatcher<Throwable>() {
-			@Override
-			public boolean matches(Object item) {
-				return item instanceof StacklessException && ((StacklessException) item).getMessage().equals("Test exception");
-			}
+	@Test
+	public void testOnClientExceptionWhileUploading() {
+		String resultFile = "upload_with_exceptions.txt";
 
-			@Override
-			public void describeTo(Description description) {
-				// empty
-			}
-		});
-		future.get();
+		ByteBuf test4 = wrapUtf8("Test4");
+
+		StreamProducer.concat(
+				StreamProducer.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")),
+				StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE)),
+				StreamProducer.closingWithError(new StacklessException("Test exception")),
+				StreamProducer.of(test4)
+		).streamTo(client.uploadStream(resultFile))
+				.getConsumerResult()
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertFailure(StacklessException.class, "Test exception"));
+
+		eventloop.run();
+		test4.recycle();
 
 		assertTrue(Files.exists(storage.resolve(resultFile)));
+	}
+
+	private ByteBuf download(String file) {
+		ByteBufQueue queue = ByteBufQueue.create();
+
+		client.downloadStream(file).streamTo(StreamConsumer.ofConsumer(queue::add)).getProducerResult()
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertComplete());
+
+		eventloop.run();
+		return queue.takeRemaining();
 	}
 
 	@Test
@@ -213,29 +215,9 @@ public class FsIntegrationTest {
 		String file = "file1_downloaded.txt";
 		Files.write(storage.resolve(file), CONTENT);
 
-		List<ByteBuf> expected = download(file, 0);
-
-		assertTrue(equalsLowerCaseAscii(CONTENT, expected.get(0).array(), 0, 7));
-
-		// created in 'toList' stream consumer
-		for (ByteBuf buf : expected) {
-			buf.recycle();
-		}
-	}
-
-	@Test
-	public void testDownloadWithPositions() throws Exception {
-		String file = "file1_downloaded.txt";
-		Files.write(storage.resolve(file), CONTENT);
-
-		List<ByteBuf> expected = download(file, 2);
-
-		assertTrue(equalsLowerCaseAscii("ntent".getBytes(UTF_8), expected.get(0).array(), 0, 5));
-
-		// created in 'toList' stream consumer
-		for (ByteBuf buf : expected) {
-			buf.recycle();
-		}
+		ByteBuf expected = download(file);
+		assertTrue(equalsLowerCaseAscii(CONTENT, expected.array(), 0, 7));
+		expected.recycle();
 	}
 
 	@Test
@@ -244,29 +226,18 @@ public class FsIntegrationTest {
 		Files.createDirectories(storage.resolve("this/is/not/empty/directory"));
 		Files.write(storage.resolve(file), CONTENT);
 
-		List<ByteBuf> expected = download(file, 0);
-
-		assertTrue(equalsLowerCaseAscii(CONTENT, expected.get(0).array(), 0, 7));
-
-		// created in 'toList' stream consumer
-		for (ByteBuf buf : expected) {
-			buf.recycle();
-		}
+		ByteBuf expected = download(file);
+		assertTrue(equalsLowerCaseAscii(CONTENT, expected.array(), 0, 7));
+		expected.recycle();
 	}
 
 	@Test
-	public void testDownloadNotExist() throws Exception {
+	public void testDownloadNotExist() {
 		String file = "file_not_exist_downloaded.txt";
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = newCachedThreadPool();
-		RemoteFsClient client = createClient(eventloop);
-		RemoteFsServer server = createServer(eventloop, executor);
-
-		server.listen();
-		client.downloadStream(file, 0).streamTo(StreamConsumer.idle())
-			.getProducerResult()
-			.whenComplete(($, throwable) -> server.close())
-			.whenComplete(assertFailure(RemoteFsException.class, "File not found"));
+		client.downloadStream(file).streamTo(StreamConsumer.idle())
+				.getProducerResult()
+				.whenComplete(($, e) -> server.close())
+				.whenComplete(assertFailure(RemoteFsException.class, "File not found"));
 		eventloop.run();
 	}
 
@@ -274,28 +245,21 @@ public class FsIntegrationTest {
 	public void testManySimultaneousDownloads() throws IOException {
 		String file = "some_file.txt";
 		Files.write(storage.resolve(file), CONTENT);
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = newCachedThreadPool();
-		RemoteFsClient client = createClient(eventloop);
-		RemoteFsServer server = createServer(eventloop, executor);
-		int files = 10;
-
-		server.listen();
 
 		List<Stage<Void>> tasks = new ArrayList<>();
-		for (int i = 0; i < files; i++) {
-			tasks.add(client.downloadStream(file, 0)
-				.streamTo(
-					StreamFileWriter.create(executor, storage.resolve("file" + i)))
-				.getProducerResult());
+
+		for (int i = 0; i < 10; i++) {
+			tasks.add(client.downloadStream(file, 0).streamTo(StreamFileWriter.create(executor, storage.resolve("file" + i))).getProducerResult());
 		}
-		Stages.all(tasks).whenComplete(assertComplete($ -> server.close()));
+
+		Stages.all(tasks)
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertComplete());
 
 		eventloop.run();
-		executor.shutdown();
 
-		for (int i = 0; i < files; i++) {
-			assertArrayEquals(CONTENT, readAllBytes(storage.resolve("file" + i)));
+		for (int i = 0; i < tasks.size(); i++) {
+			assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
 		}
 	}
 
@@ -303,58 +267,35 @@ public class FsIntegrationTest {
 	public void testDeleteFile() throws Exception {
 		String file = "file.txt";
 		Files.write(storage.resolve(file), CONTENT);
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = newCachedThreadPool();
-		RemoteFsClient client = createClient(eventloop);
-		RemoteFsServer server = createServer(eventloop, executor);
-		server.listen();
 
-		client.delete(file).whenComplete(($, throwable) -> server.close());
+		client.delete(file)
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertComplete());
 
 		eventloop.run();
-		executor.shutdown();
 
 		assertFalse(Files.exists(storage.resolve(file)));
 	}
 
 	@Test
-	public void testDeleteMissingFile() throws Exception {
+	public void testDeleteMissingFile() {
 		String file = "no_file.txt";
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = newCachedThreadPool();
-		RemoteFsClient client = createClient(eventloop);
-		RemoteFsServer server = createServer(eventloop, executor);
-		server.listen();
 
-		CompletableFuture<Void> future = client.delete(file)
-			.whenComplete(($, throwable) -> server.close()).toCompletableFuture();
+		client.delete(file)
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertComplete());
 
 		eventloop.run();
-		executor.shutdown();
-
-		thrown.expect(ExecutionException.class);
-		thrown.expectCause(new BaseMatcher<Throwable>() {
-			@Override
-			public boolean matches(Object item) {
-				return item instanceof Exception && ((Exception) item)
-					.getMessage().endsWith(storage.resolve(file).toAbsolutePath().toString());
-			}
-
-			@Override
-			public void describeTo(Description description) {
-				// empty
-			}
-		});
-		future.get();
 	}
 
 	@Test
 	public void testFileList() throws Exception {
-		ExecutorService executor = newCachedThreadPool();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		List<String> actual = new ArrayList<>();
-		List<String> expected = asList("this/is/not/empty/directory/file1.txt", "file1.txt", "first file.txt");
+		List<FileMetadata> actual = new ArrayList<>();
+		List<FileMetadata> expected = asList(
+				new FileMetadata("this/is/not/empty/directory/file1.txt", 7, 0),
+				new FileMetadata("file1.txt", 7, 0),
+				new FileMetadata("first file.txt", 7, 0)
+		);
 
 		Files.createDirectories(storage.resolve("this/is/not/empty/directory/"));
 		Files.write(storage.resolve("this/is/not/empty/directory/file1.txt"), CONTENT);
@@ -362,81 +303,75 @@ public class FsIntegrationTest {
 		Files.write(storage.resolve("file1.txt"), CONTENT);
 		Files.write(storage.resolve("first file.txt"), CONTENT);
 
-		RemoteFsServer server = createServer(eventloop, executor);
-		RemoteFsClient client = createClient(eventloop);
-
-		server.listen();
-
-		client.list().whenComplete((strings, throwable) -> {
-			if (throwable == null) actual.addAll(strings);
-			server.close();
-		});
-
-		eventloop.run();
-		executor.shutdownNow();
-
-		Collections.sort(actual);
-		Collections.sort(expected);
-		assertEquals(expected, actual);
-	}
-
-	private CompletableFuture<Void> upload(String resultFile, byte[] bytes) throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = newCachedThreadPool();
-		RemoteFsServer server = createServer(eventloop, executor);
-		RemoteFsClient client = createClient(eventloop);
-
-		server.listen();
-
-		CompletableFuture<Void> future =
-			StreamProducer.of(ByteBuf.wrapForReading(bytes))
-				.streamTo(
-					client.uploadStream(resultFile))
-				.getConsumerResult()
-				.whenComplete(($, throwable) -> server.close())
-				.toCompletableFuture();
+		client.list()
+				.whenComplete((list, throwable) -> {
+					if (throwable == null) {
+						assert list != null;
+						actual.addAll(list);
+					}
+					server.close();
+				});
 
 		eventloop.run();
-		executor.shutdown();
-		return future;
-	}
 
-	private List<ByteBuf> download(String file, long startPosition) throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = newCachedThreadPool();
-		RemoteFsClient client = createClient(eventloop);
-		RemoteFsServer server = createServer(eventloop, executor);
-		List<ByteBuf> expected = new ArrayList<>();
+		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getName);
+		actual.sort(comparator);
+		expected.sort(comparator);
 
-		server.listen();
-
-		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, startPosition);
-		producer.streamTo(StreamConsumerToList.create(expected))
-			.getProducerResult()
-			.whenComplete(($, throwable) -> server.close());
-
-		eventloop.run();
-		executor.shutdown();
-		return expected;
-	}
-
-	private RemoteFsClient createClient(Eventloop eventloop) {
-		return RemoteFsClient.create(eventloop, address);
-	}
-
-	private RemoteFsServer createServer(Eventloop eventloop, ExecutorService executor) {
-		return RemoteFsServer.create(eventloop, executor, storage)
-			.withListenAddress(address);
-	}
-
-	static byte[] createBigByteArray() {
-		byte[] bytes = new byte[2 * 1024 * 1024];
-		Random rand = new Random(1L);
-		for (int i = 0; i < bytes.length; i++) {
-			bytes[i] = (byte) (rand.nextInt(256) - 128);
+		assertEquals(expected.size(), actual.size());
+		for (int i = 0; i < expected.size(); i++) {
+			assertTrue(expected.get(i).equalsIgnoringTimestamp(actual.get(i)));
 		}
-		return bytes;
-
 	}
 
+	@Test
+	public void testSubfolderClient() throws IOException {
+		Files.createDirectories(storage.resolve("this/is/not/empty/directory/"));
+		Files.createDirectories(storage.resolve("subfolder1/"));
+		Files.createDirectories(storage.resolve("subfolder2/subsubfolder"));
+		Files.write(storage.resolve("this/is/not/empty/directory/file1.txt"), CONTENT);
+		Files.write(storage.resolve("this/is/not/empty/directory/file1.txt"), CONTENT);
+		Files.write(storage.resolve("file1.txt"), CONTENT);
+		Files.write(storage.resolve("first file.txt"), CONTENT);
+		Files.write(storage.resolve("subfolder1/file1.txt"), CONTENT);
+		Files.write(storage.resolve("subfolder1/first file.txt"), CONTENT);
+		Files.write(storage.resolve("subfolder2/file1.txt"), CONTENT);
+		Files.write(storage.resolve("subfolder2/first file.txt"), CONTENT);
+		Files.write(storage.resolve("subfolder2/subsubfolder/file1.txt"), CONTENT);
+		Files.write(storage.resolve("subfolder2/subsubfolder/first file.txt"), CONTENT);
+
+		List<FileMetadata> expected = new ArrayList<>();
+		expected.add(new FileMetadata("file1.txt", 7, 0));
+		expected.add(new FileMetadata("first file.txt", 7, 0));
+
+		List<FileMetadata> expected2 = new ArrayList<>(expected);
+		expected2.add(new FileMetadata("subsubfolder/file1.txt", 7, 0));
+		expected2.add(new FileMetadata("subsubfolder/first file.txt", 7, 0));
+
+		List<FileMetadata> actual = new ArrayList<>();
+		List<FileMetadata> actual2 = new ArrayList<>();
+
+		Stages.all(client.subfolder("subfolder1").list().whenResult(actual::addAll),
+				client.subfolder("subfolder2").list().whenResult(actual2::addAll)).whenComplete(($, err) -> server.close());
+
+		eventloop.run();
+
+
+		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getName);
+		actual.sort(comparator);
+		expected.sort(comparator);
+		actual2.sort(comparator);
+		expected2.sort(comparator);
+
+		for (int i = 0; i < expected.size(); i++) {
+			assertTrue(expected.get(i).toString(), expected.get(i).equalsIgnoringTimestamp(actual.get(i)));
+		}
+		for (int i = 0; i < expected2.size(); i++) {
+			assertTrue(expected2.get(i).toString(), expected2.get(i).equalsIgnoringTimestamp(actual2.get(i)));
+		}
+	}
+
+	private Stage<Void> upload(String resultFile, byte[] bytes) {
+		return StreamProducer.of(ByteBuf.wrapForReading(bytes)).streamTo(client.uploadStream(resultFile)).getConsumerResult();
+	}
 }

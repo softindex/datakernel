@@ -22,39 +22,48 @@ import io.datakernel.util.gson.TypeAdapterObjectSubtype;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static io.datakernel.util.gson.GsonAdapters.*;
 
-@SuppressWarnings("WeakerAccess")
 public final class RemoteFsResponses {
+	static final TypeAdapter<FileMetadata> FILE_META_JSON = transform(
+		ofHeterogeneousArray(new TypeAdapter[]{STRING_JSON, LONG_JSON, LONG_JSON}),
+		data -> new FileMetadata((String) data[0], (long) data[1], (long) data[2]),
+		meta -> new Object[]{meta.getName(), meta.getSize(), meta.getTimestamp()}
+	);
+
 	static final TypeAdapter<FsResponse> ADAPTER = TypeAdapterObjectSubtype.<FsResponse>create()
-		.withSubtype(Err.class, "Error", TypeAdapterObject.create(Err::new)
-			.with("msg", STRING_JSON, Err::getMsg, Err::setMsg))
-		.withSubtype(ListOfFiles.class, "FileList", TypeAdapterObject.create(ListOfFiles::new)
-			.with("files", ofList(STRING_JSON), ListOfFiles::getFiles, ListOfFiles::setFiles))
-		.withSubtype(Ready.class, "ReadyBytes", TypeAdapterObject.create(Ready::new)
-			.with("size", LONG_JSON, Ready::getSize, Ready::setSize))
-		.withStatelessSubtype(Ok::new, "ResponseOk")
-		.withStatelessSubtype(Acknowledge::new, "Acknowledge");
+		.withSubtype(UploadFinished.class, TypeAdapterObject.create(UploadFinished::new))
+		.withSubtype(DownloadSize.class, TypeAdapterObject.create(DownloadSize::new)
+			.with("size", LONG_JSON, DownloadSize::getSize, DownloadSize::setSize))
+		.withSubtype(MoveFinished.class, TypeAdapterObject.create(MoveFinished::new)
+			.with("moved", ofSet(STRING_JSON), MoveFinished::getMoved, MoveFinished::setMoved))
+		.withSubtype(CopyFinished.class, TypeAdapterObject.create(CopyFinished::new)
+			.with("copied", ofSet(STRING_JSON), CopyFinished::getCopied, CopyFinished::setCopied))
+		.withSubtype(ListFinished.class, TypeAdapterObject.create(ListFinished::new)
+			.with("files", ofList(FILE_META_JSON), ListFinished::getFiles, ListFinished::setFiles))
+		.withSubtype(DeleteFinished.class, TypeAdapterObject.create(DeleteFinished::new))
+		.withSubtype(ServerError.class, TypeAdapterObject.create(ServerError::new)
+			.with("message", STRING_JSON, ServerError::getMessage, ServerError::setMessage));
 
 	public static abstract class FsResponse {
-
 	}
 
-	public static class Acknowledge extends FsResponse {
+	public static class UploadFinished extends FsResponse {
 		@Override
 		public String toString() {
-			return "Done{OK}";
+			return "UploadFinished{}";
 		}
 	}
 
-	public static class Ready extends FsResponse {
+	public static class DownloadSize extends FsResponse {
 		private long size;
 
-		public Ready() {
+		public DownloadSize() {
 		}
 
-		public Ready(long size) {
+		public DownloadSize(long size) {
 			this.size = size;
 		}
 
@@ -68,62 +77,116 @@ public final class RemoteFsResponses {
 
 		@Override
 		public String toString() {
-			return "Ready{" + size + "}";
+			return "DownloadSize{size=" + size + '}';
 		}
 	}
 
-	public static class Ok extends FsResponse {
-		@Override
-		public String toString() {
-			return "Operation{OK}";
-		}
-	}
+	public static class MoveFinished extends FsResponse {
+		private Set<String> moved;
 
-	public static class Err extends FsResponse {
-		private String msg;
-
-		public Err() {
+		public MoveFinished() {
 		}
 
-		public Err(String msg) {
-			this.msg = msg;
+		public MoveFinished(Set<String> moved) {
+			this.moved = moved;
 		}
 
-		public String getMsg() {
-			return msg;
+		public Set<String> getMoved() {
+			return moved;
 		}
 
-		public void setMsg(String msg) {
-			this.msg = msg;
+		public void setMoved(Set<String> moved) {
+			this.moved = moved;
 		}
 
 		@Override
 		public String toString() {
-			return "Error{" + msg + "}";
+			return "MoveFinished{moved=" + moved + '}';
 		}
 	}
 
-	public static class ListOfFiles extends FsResponse {
-		private List<String> files;
+	public static class CopyFinished extends FsResponse {
+		private Set<String> copied;
 
-		public ListOfFiles() {
+		public CopyFinished() {
 		}
 
-		public ListOfFiles(List<String> files) {
+		public CopyFinished(Set<String> copied) {
+			this.copied = copied;
+		}
+
+		public Set<String> getCopied() {
+			return copied;
+		}
+
+		public void setCopied(Set<String> copied) {
+			this.copied = copied;
+		}
+
+		@Override
+		public String toString() {
+			return "CopyFinished{copied=" + copied + '}';
+		}
+	}
+
+	public static class ListFinished extends FsResponse {
+		private List<FileMetadata> files;
+
+		public ListFinished() {
+		}
+
+		public ListFinished(List<FileMetadata> files) {
 			this.files = Collections.unmodifiableList(files);
 		}
 
-		public List<String> getFiles() {
+		public List<FileMetadata> getFiles() {
 			return files;
 		}
 
-		public void setFiles(List<String> files) {
+		public void setFiles(List<FileMetadata> files) {
 			this.files = files;
 		}
 
 		@Override
 		public String toString() {
-			return "Listed{" + files.size() + "}";
+			return "ListFinished{files=" + files.size() + '}';
+		}
+	}
+
+	public static class DeleteFinished extends FsResponse {
+		public DeleteFinished() {
+		}
+
+		public DeleteFinished(Void $) { // so we can use lambda-constructor
+		}
+
+		@Override
+		public String toString() {
+			return "DeleteFinished{}";
+		}
+	}
+
+	public static class ServerError extends FsResponse {
+		private String message;
+
+		public ServerError() {
+		}
+
+		public ServerError(String message) {
+			this.message = message;
+		}
+
+		public String getMessage() {
+			return message;
+		}
+
+		public void setMessage(String message) {
+			this.message = message;
+		}
+
+		@Override
+		public String toString() {
+			return "ServerError{message=" + message + '}';
 		}
 	}
 }

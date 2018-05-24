@@ -29,11 +29,14 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	private long lastStartTime;
 	private long lastCompleteTime;
+	@Nullable
 	private Throwable lastException;
 	private long firstRetryTime;
 	private int errorCount;
 
+	@Nullable
 	private Duration period;
+	@Nullable
 	private Duration interval;
 	private boolean enabled = true;
 
@@ -90,6 +93,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		}
 	}
 
+	@Nullable
 	private ScheduledRunnable scheduledTask;
 
 	private EventloopTaskScheduler(Eventloop eventloop, AsyncSupplier<?> task) {
@@ -97,7 +101,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		this.task = task;
 	}
 
-	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncSupplier<?> task) {
+	public static <T> EventloopTaskScheduler create(Eventloop eventloop, AsyncSupplier<T> task) {
 		return new EventloopTaskScheduler(eventloop, task);
 	}
 
@@ -145,7 +149,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	}
 
 	private void scheduleTask() {
-		if (scheduledTask != null && scheduledTask.isCancelled())
+		if (schedule == null || scheduledTask != null && scheduledTask.isCancelled())
 			return;
 
 		if (!enabled) return;
@@ -186,7 +190,9 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 						errorCount++;
 						logger.error("Retry attempt " + errorCount, throwable);
 						if (abortOnError) {
-							scheduledTask.cancel();
+							if (scheduledTask != null) {
+								scheduledTask.cancel();
+							}
 							throw new RuntimeException(throwable);
 						} else {
 							scheduleTask();
@@ -255,6 +261,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	}
 
 	@JmxAttribute
+	@Nullable
 	public Throwable getLastException() {
 		return lastException;
 	}

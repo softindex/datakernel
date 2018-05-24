@@ -198,7 +198,7 @@ public class AsyncHttpClientTest {
 
 		AsyncServlet slowloris = AsyncServlet.of(request -> {
 			request.recycleBufs();
-			return SettableStage.create();
+			return new SettableStage<>();
 		});
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, slowloris)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));

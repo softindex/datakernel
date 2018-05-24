@@ -185,6 +185,14 @@ public final class AsyncFile {
 					.whenException($2 -> buf.recycle())));
 	}
 
+	public Stage<Long> size() {
+		return AsyncFile.size(executor, path);
+	}
+
+	public Stage<Void> seek(long position) {
+		return Stage.ofThrowingRunnable(executor, () -> channel.position(position));
+	}
+
 	/**
 	 * Asynchronously writes all bytes of the buffer into this file at its internal position.
 	 *

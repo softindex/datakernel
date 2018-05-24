@@ -27,100 +27,100 @@ import static io.datakernel.util.gson.GsonAdapters.*;
 @SuppressWarnings("WeakerAccess")
 public final class RemoteFsCommands {
 	static final TypeAdapter<FsCommand> ADAPTER = TypeAdapterObjectSubtype.<FsCommand>create()
-		.withSubtype(Upload.class, "Upload", TypeAdapterObject.create(Upload::new)
-			.with("filePath", STRING_JSON, Upload::getFilePath, Upload::setFilePath))
-		.withSubtype(Download.class, "Download", TypeAdapterObject.create(Download::new)
-			.with("filePath", STRING_JSON, Download::getFilePath, Download::setFilePath)
-			.with("startPosition", LONG_JSON, Download::getStartPosition, Download::setStartPosition))
-		.withSubtype(Delete.class, "Delete", TypeAdapterObject.create(Delete::new)
-			.with("filePath", STRING_JSON, Delete::getFilePath, Delete::setFilePath))
-		.withStatelessSubtype(ListFiles::new, "List")
-		.withSubtype(Move.class, "Move", TypeAdapterObject.create(Move::new)
-			.with("changes", ofMap(STRING_JSON), Move::getChanges, Move::setChanges));
+		.withSubtype(Upload.class, TypeAdapterObject.create(Upload::new)
+			.with("fileName", STRING_JSON, Upload::getFileName, Upload::setFileName)
+			.with("offset", LONG_JSON, Upload::getOffset, Upload::setOffset))
+		.withSubtype(Download.class, TypeAdapterObject.create(Download::new)
+			.with("filePath", STRING_JSON, Download::getFileName, Download::setFileName)
+			.with("offset", LONG_JSON, Download::getOffset, Download::setOffset)
+			.with("length", LONG_JSON, Download::getLength, Download::setLength))
+		.withSubtype(Move.class, TypeAdapterObject.create(Move::new)
+			.with("changes", ofMap(STRING_JSON), Move::getChanges, Move::setChanges))
+		.withSubtype(Copy.class, TypeAdapterObject.create(Copy::new)
+			.with("changes", ofMap(STRING_JSON), Copy::getChanges, Copy::setChanges))
+		.withSubtype(List.class, TypeAdapterObject.create(List::new)
+			.with("glob", STRING_JSON, List::getGlob, List::setGlob))
+		.withSubtype(Delete.class, TypeAdapterObject.create(Delete::new)
+			.with("glob", STRING_JSON, Delete::getGlob, Delete::setGlob));
 
 	public static abstract class FsCommand {
-
 	}
 
 	public static final class Upload extends FsCommand {
-		private String filePath;
+		private String fileName;
+		private long offset;
 
 		public Upload() {
 		}
 
-		public Upload(String filePath) {
-			this.filePath = filePath;
+		public Upload(String fileName, long offset) {
+			this.fileName = fileName;
+			this.offset = offset;
 		}
 
-		public String getFilePath() {
-			return filePath;
+		public String getFileName() {
+			return fileName;
 		}
 
-		public void setFilePath(String filePath) {
-			this.filePath = filePath;
+		public void setFileName(String fileName) {
+			this.fileName = fileName;
 		}
 
-		@Override
-		public String toString() {
-			return "Upload{filepath=\'" + getFilePath() + "\'}";
-		}
-	}
-
-	public static final class Delete extends FsCommand {
-		private String filePath;
-
-		public Delete() {
+		public long getOffset() {
+			return offset;
 		}
 
-		public Delete(String filePath) {
-			this.filePath = filePath;
-		}
-
-		public String getFilePath() {
-			return filePath;
-		}
-
-		public void setFilePath(String filePath) {
-			this.filePath = filePath;
+		public void setOffset(long offset) {
+			this.offset = offset;
 		}
 
 		@Override
 		public String toString() {
-			return "Delete{filepath=\'" + getFilePath() + "\'}";
+			return "Upload{fileName='" + fileName + "'}";
 		}
 	}
 
 	public static final class Download extends FsCommand {
-		private String filePath;
-		private long startPosition;
+		private String fileName;
+		private long offset;
+		private long length;
 
 		public Download() {
 		}
 
-		public Download(String filePath, long startPosition) {
-			this.filePath = filePath;
-			this.startPosition = startPosition;
+		public Download(String fileName, long offset, long length) {
+			this.fileName = fileName;
+			this.offset = offset;
+			this.length = length;
 		}
 
-		public String getFilePath() {
-			return filePath;
+		public String getFileName() {
+			return fileName;
 		}
 
-		public void setFilePath(String filePath) {
-			this.filePath = filePath;
+		public void setFileName(String fileName) {
+			this.fileName = fileName;
 		}
 
-		public long getStartPosition() {
-			return startPosition;
+		public long getOffset() {
+			return offset;
 		}
 
-		public void setStartPosition(long startPosition) {
-			this.startPosition = startPosition;
+		public void setOffset(long offset) {
+			this.offset = offset;
+		}
+
+		public long getLength() {
+			return length;
+		}
+
+		public void setLength(long length) {
+			this.length = length;
 		}
 
 		@Override
 		public String toString() {
-			return "Download{filepath=\'" + filePath + "\',startPosition=" + startPosition + "}";
+			return "Download{fileName='" + fileName + "', offset=" + offset + ", length=" + length + '}';
 		}
 	}
 
@@ -148,10 +148,75 @@ public final class RemoteFsCommands {
 		}
 	}
 
-	public static final class ListFiles extends FsCommand {
+	public static final class Copy extends FsCommand {
+		private Map<String, String> changes;
+
+		public Copy() {
+		}
+
+		public Copy(Map<String, String> changes) {
+			this.changes = changes;
+		}
+
+		public Map<String, String> getChanges() {
+			return changes;
+		}
+
+		public void setChanges(Map<String, String> changes) {
+			this.changes = changes;
+		}
+
 		@Override
 		public String toString() {
-			return "List{all files}";
+			return "Copy{changes=" + changes + '}';
+		}
+	}
+
+	public static final class List extends FsCommand {
+		private String glob;
+
+		public List() {
+		}
+
+		public List(String glob) {
+			this.glob = glob;
+		}
+
+		public String getGlob() {
+			return glob;
+		}
+
+		public void setGlob(String glob) {
+			this.glob = glob;
+		}
+
+		@Override
+		public String toString() {
+			return "List{glob='" + glob + "'}";
+		}
+	}
+
+	public static final class Delete extends FsCommand {
+		private String glob;
+
+		public Delete() {
+		}
+
+		public Delete(String glob) {
+			this.glob = glob;
+		}
+
+		public String getGlob() {
+			return glob;
+		}
+
+		public void setGlob(String glob) {
+			this.glob = glob;
+		}
+
+		@Override
+		public String toString() {
+			return "Delete{glob='" + glob + "'}";
 		}
 	}
 }

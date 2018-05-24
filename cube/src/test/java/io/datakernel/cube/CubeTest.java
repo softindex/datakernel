@@ -25,6 +25,8 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.remotefs.LocalFsClient;
+import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
@@ -98,7 +100,7 @@ public class CubeTest {
 	public void testQuery1() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, newCachedThreadPool(), temporaryFolder.newFolder().toPath()));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -157,7 +159,7 @@ public class CubeTest {
 		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
 		RemoteFsServer remoteFsServer1 = prepareServer(eventloop, serverStorage);
 
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), new InetSocketAddress("localhost", LISTEN_PORT));
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), RemoteFsClient.create(eventloop, new InetSocketAddress("localhost", LISTEN_PORT)));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		List<Stage<?>> tasks = new ArrayList<>();
@@ -210,7 +212,7 @@ public class CubeTest {
 	public void testOrdering() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, newCachedThreadPool(), temporaryFolder.newFolder().toPath()));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -258,7 +260,7 @@ public class CubeTest {
 	public void testMultipleOrdering() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, newCachedThreadPool(), temporaryFolder.newFolder().toPath()));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -311,7 +313,7 @@ public class CubeTest {
 	public void testBetweenPredicate() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, newCachedThreadPool(), temporaryFolder.newFolder().toPath()));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -368,7 +370,7 @@ public class CubeTest {
 	public void testBetweenTransformation() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, newCachedThreadPool(), temporaryFolder.newFolder().toPath()));
 		Cube cube = newSophisticatedCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem3> producer3 = StreamProducer.of(
@@ -422,7 +424,7 @@ public class CubeTest {
 	public void testGrouping() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, newCachedThreadPool(), temporaryFolder.newFolder().toPath()));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -474,7 +476,7 @@ public class CubeTest {
 	public void testQuery2() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, newCachedThreadPool(), temporaryFolder.newFolder().toPath()));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -534,7 +536,7 @@ public class CubeTest {
 	public void testConsolidate() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, newCachedThreadPool(), temporaryFolder.newFolder().toPath()));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -607,82 +609,82 @@ public class CubeTest {
 		aggregationPredicate = AggregationPredicates.alwaysTrue();
 		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertTrue(intersection.equals(query));
+		assertEquals(intersection, query);
 
 		aggregationPredicate = AggregationPredicates.eq("dimensionA", 1);
 		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertTrue(intersection.equals(query));
+		assertEquals(intersection, query);
 
 		aggregationPredicate = AggregationPredicates.eq("dimensionA", 1);
 		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 2), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertFalse(intersection.equals(query));
+		assertNotEquals(intersection, query);
 
 		aggregationPredicate = AggregationPredicates.eq("dimensionA", 1);
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionA"), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertFalse(intersection.equals(query));
+		assertNotEquals(intersection, query);
 
 		aggregationPredicate = AggregationPredicates.has("dimensionX");
 		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertFalse(intersection.equals(query));
+		assertNotEquals(intersection, query);
 
 		aggregationPredicate = AggregationPredicates.has("dimensionX");
 		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionX", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertTrue(intersection.equals(query));
+		assertEquals(intersection, query);
 
 		aggregationPredicate = AggregationPredicates.has("dimensionX");
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.and(AggregationPredicates.eq("dimensionX", 1), AggregationPredicates.eq("dimensionB", 2))).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertTrue(intersection.equals(query));
+		assertEquals(intersection, query);
 
 		aggregationPredicate = AggregationPredicates.has("dimensionX");
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("dimensionX", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertTrue(intersection.equals(query));
+		assertEquals(intersection, query);
 
 		// betweens
 
 		aggregationPredicate = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 100, 200));
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("date", 1)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertFalse(intersection.equals(query));
+		assertNotEquals(intersection, query);
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("date", 150)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertTrue(intersection.equals(query));
+		assertEquals(intersection, query);
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("date", 250)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertFalse(intersection.equals(query));
+		assertNotEquals(intersection, query);
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 110, 190)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertTrue(intersection.equals(query));
+		assertEquals(intersection, query);
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 10, 90)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertFalse(intersection.equals(query));
-		assertTrue(intersection.equals(AggregationPredicates.alwaysFalse()));
+		assertNotEquals(intersection, query);
+		assertEquals(intersection, AggregationPredicates.alwaysFalse());
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 210, 290)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertFalse(intersection.equals(query));
-		assertTrue(intersection.equals(AggregationPredicates.alwaysFalse()));
+		assertNotEquals(intersection, query);
+		assertEquals(intersection, AggregationPredicates.alwaysFalse());
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 10, 290)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertFalse(intersection.equals(query));
+		assertNotEquals(intersection, query);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownDimensions() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(),
-				new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(),
+				new IdGeneratorStub(), LocalFsClient.create(eventloop, newCachedThreadPool(), temporaryFolder.newFolder().toPath()));
 
 		Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
 
@@ -695,8 +697,8 @@ public class CubeTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownMeasure() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(),
-				new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(),
+				new IdGeneratorStub(), LocalFsClient.create(eventloop, newCachedThreadPool(), temporaryFolder.newFolder().toPath()));
 
 		Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
 

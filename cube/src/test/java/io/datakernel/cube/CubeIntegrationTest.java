@@ -18,7 +18,7 @@ package io.datakernel.cube;
 
 import io.datakernel.aggregation.Aggregation;
 import io.datakernel.aggregation.ChunkIdScheme;
-import io.datakernel.aggregation.LocalFsChunkStorage;
+import io.datakernel.aggregation.RemoteFsChunkStorage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffJson;
@@ -29,6 +29,7 @@ import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
 import io.datakernel.logfs.ot.*;
 import io.datakernel.ot.*;
+import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Rule;
@@ -58,6 +59,7 @@ import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeIntegrationTest {
@@ -74,7 +76,7 @@ public class CubeIntegrationTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		LocalFsChunkStorage<Long> aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), executor, new IdGeneratorStub(), aggregationsDir);
+		RemoteFsChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", ofLocalDate())
 				.withDimension("advertiser", ofInt())
@@ -216,7 +218,7 @@ public class CubeIntegrationTest {
 		CompletableFuture<CubeDiff> future1 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
 		eventloop.run();
 		CubeDiff consolidatingCubeDiff = future1.get();
-		assertEquals(false, consolidatingCubeDiff.isEmpty());
+		assertFalse(consolidatingCubeDiff.isEmpty());
 
 		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
 		future = logCubeStateManager.commitAndPush().toCompletableFuture();

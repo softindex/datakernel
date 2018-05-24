@@ -232,11 +232,11 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<Timer> forTimer() {
 		return new SimpleServiceAdapter<Timer>(false, false) {
 			@Override
-			protected void start(Timer instance) throws Exception {
+			protected void start(Timer instance) {
 			}
 
 			@Override
-			protected void stop(Timer instance) throws Exception {
+			protected void stop(Timer instance) {
 				instance.cancel();
 			}
 		};
@@ -248,7 +248,7 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<ExecutorService> forExecutorService() {
 		return new SimpleServiceAdapter<ExecutorService>(false, true) {
 			@Override
-			protected void start(ExecutorService instance) throws Exception {
+			protected void start(ExecutorService instance) {
 			}
 
 			@Override
@@ -271,7 +271,7 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<Closeable> forCloseable() {
 		return new SimpleServiceAdapter<Closeable>(false, true) {
 			@Override
-			protected void start(Closeable instance) throws Exception {
+			protected void start(Closeable instance) {
 			}
 
 			@Override
@@ -293,7 +293,7 @@ public final class ServiceAdapters {
 			}
 
 			@Override
-			protected void stop(DataSource instance) throws Exception {
+			protected void stop(DataSource instance) {
 			}
 		};
 	}
@@ -301,11 +301,11 @@ public final class ServiceAdapters {
 	public static <T> ServiceAdapter<T> immediateServiceAdapter() {
 		return new SimpleServiceAdapter<T>(false, false) {
 			@Override
-			protected void start(T instance) throws Exception {
+			protected void start(T instance) {
 			}
 
 			@Override
-			protected void stop(T instance) throws Exception {
+			protected void stop(T instance) {
 			}
 		};
 	}

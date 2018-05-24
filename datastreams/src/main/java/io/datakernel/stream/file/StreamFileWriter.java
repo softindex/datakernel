@@ -54,9 +54,11 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	private boolean forceMetadata = false;
 	private long maxBufferedBytes = 0;
 	private int maxBuffers = 1;
+	private long startingOffset = 0;
 
 	private long bufferedBytes = 0;
 
+	// region creators
 	private StreamFileWriter(AsyncFile asyncFile) {
 		this.asyncFile = asyncFile;
 	}
@@ -88,6 +90,12 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		maxBuffers = buffers;
 		return this;
 	}
+
+	public StreamFileWriter withOffset(long offset) {
+		startingOffset = offset;
+		return this;
+	}
+	// endregion
 
 	public Stage<Void> getFlushStage() {
 		return flushStage;
@@ -160,7 +168,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onStarted() {
-		getProducer().produce(this);
+		asyncFile.seek(startingOffset).thenRun(() -> getProducer().produce(this));
 	}
 
 	@Override

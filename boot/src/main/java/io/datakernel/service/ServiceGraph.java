@@ -237,7 +237,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 
 	private static Throwable getRootCause(Throwable throwable) {
 		Throwable cause;
-		while ((cause = throwable.getCause()) != null) throwable = cause;
+		while ((cause = throwable.getCause()) != null) {
+			throwable = cause;
+		}
 		return throwable;
 	}
 
@@ -266,7 +268,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	private CompletionStage<?> processNode(Key<?> node, boolean start,
-										   Map<Key<?>, CompletionStage<?>> cache, Executor executor) {
+			Map<Key<?>, CompletionStage<?>> cache, Executor executor) {
 		List<CompletionStage<?>> dependencies = new ArrayList<>();
 		for (Key<?> dependency : (start ? forwards : backwards).getOrDefault(node, emptySet())) {
 			dependencies.add(processNode(dependency, start, cache, executor));
@@ -404,12 +406,6 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 				.whenCompleteAsync(($, throwable) -> executor.shutdown(), executor);
 	}
 
-	private static String repeat(String str, int count) {
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < count; i++) sb.append(str);
-		return sb.toString();
-	}
-
 	private static void removeValue(Map<Key<?>, Set<Key<?>>> map, Key<?> key, Key<?> value) {
 		Set<Key<?>> objects = map.get(key);
 		objects.remove(value);
@@ -454,6 +450,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		}
 	}
 
+	@Nullable
 	private List<Key<?>> findCircularDependencies() {
 		Set<Key<?>> visited = new LinkedHashSet<>();
 		List<Key<?>> path = new ArrayList<>();
@@ -489,7 +486,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 			this.sum = sum;
 		}
 
-		static SlowestChain concat(Key<?> key, long keyValue, @Nullable SlowestChain prefix) {
+		static SlowestChain concat(Key<?> key, long keyValue, SlowestChain prefix) {
 			return new SlowestChain(CollectionUtils.concat(prefix.path, singletonList(key)), prefix.sum + keyValue);
 		}
 
@@ -499,6 +496,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	private SlowestChain findSlowestChain(Collection<Key<?>> nodes, Map<Key<?>, SlowestChain> memo) {
+		assert !nodes.isEmpty();
 		return nodes.stream()
 				.map(node -> {
 					SlowestChain slowestChain = memo.get(node);
@@ -623,6 +621,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	@JmxAttribute
+	@Nullable
 	public String getSlowestNode() {
 		return union(services.keySet(), union(backwards.keySet(), forwards.keySet())).stream()
 				.filter(key -> {
@@ -637,6 +636,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	@JmxAttribute
+	@Nullable
 	public String getSlowestChain() {
 		if (slowestChain == null) return null;
 		return slowestChain.path.stream()
@@ -647,6 +647,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	@JmxAttribute
+	@Nullable
 	public Duration getStartDuration() {
 		if (startBegin == 0) return null;
 		return Duration.ofMillis((startEnd != 0 ? startEnd : currentTimeMillis()) - startBegin);
@@ -658,6 +659,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	@JmxAttribute
+	@Nullable
 	public Duration getStopDuration() {
 		if (stopBegin == 0) return null;
 		return Duration.ofMillis((stopEnd != 0 ? stopEnd : currentTimeMillis()) - stopBegin);

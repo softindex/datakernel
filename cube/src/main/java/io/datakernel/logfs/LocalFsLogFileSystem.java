@@ -145,11 +145,11 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long offset) {
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
 			.whenComplete(stageRead.recordStats())
-			.thenApply(file -> StreamFileReader.readFile(file).withBufferSize(readBlockSize).withOffset(offset)
-				.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + offset))
+			.thenApply(file -> StreamFileReader.readFile(file).withBufferSize(readBlockSize).withOffset(startPosition)
+				.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
 				.with(streamReadStats)
 				.withEndOfStreamAsResult()
 				.withLateBinding());

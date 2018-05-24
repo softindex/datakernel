@@ -1,6 +1,6 @@
 package io.datakernel.cube.service;
 
-import io.datakernel.aggregation.LocalFsChunkStorage;
+import io.datakernel.aggregation.RemoteFsChunkStorage;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
@@ -46,7 +46,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 
 	private final OTAlgorithms<K, D> algorithms;
 	private final OTRemoteEx<K, D> remote;
-	private final LocalFsChunkStorage<C> chunksStorage;
+	private final RemoteFsChunkStorage<C> chunksStorage;
 
 	private final CubeDiffScheme<D> cubeDiffScheme;
 
@@ -64,7 +64,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 			CubeDiffScheme<D> cubeDiffScheme,
 			OTAlgorithms<K, D> algorithms,
 			OTRemoteEx<K, D> remote,
-			LocalFsChunkStorage<C> chunksStorage) {
+			RemoteFsChunkStorage<C> chunksStorage) {
 		this.eventloop = eventloop;
 		this.cubeDiffScheme = cubeDiffScheme;
 		this.algorithms = algorithms;
@@ -75,7 +75,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	public static <K, D, C> CubeCleanerController<K, D, C> create(Eventloop eventloop,
 			CubeDiffScheme<D> cubeDiffScheme,
 			OTAlgorithms<K, D> algorithms,
-			LocalFsChunkStorage<C> storage) {
+			RemoteFsChunkStorage<C> storage) {
 		return new CubeCleanerController<>(eventloop, cubeDiffScheme, algorithms, (OTRemoteEx<K, D>) algorithms.getRemote(), storage);
 	}
 

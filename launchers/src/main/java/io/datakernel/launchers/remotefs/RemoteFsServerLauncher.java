@@ -15,12 +15,10 @@ import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 
-import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.inject.util.Modules.override;
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.launchers.Initializers.ofEventloop;
 import static io.datakernel.launchers.Initializers.ofRemoteFsServer;
@@ -45,9 +43,9 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
+
 				ConfigModule.create(() ->
 						Config.create()
-								.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
@@ -56,6 +54,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 					@Singleton
 					public Eventloop provide(Config config,
 							OptionalDependency<ThrottlingController> maybeThrottlingController) {
+
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
@@ -63,9 +62,11 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 
 					@Provides
 					@Singleton
-					RemoteFsServer remoteFsServer(Eventloop eventloop, ExecutorService executor, Config config) {
+					RemoteFsServer remoteFsServer(Eventloop eventloop, ExecutorService executor,
+							Config config) {
 						return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.path"))
 								.initialize(ofRemoteFsServer(config.getChild("remotefs")));
+
 					}
 
 					@Provides

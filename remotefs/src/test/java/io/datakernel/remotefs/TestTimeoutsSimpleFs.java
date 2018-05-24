@@ -35,20 +35,29 @@ import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.remotefs.FsIntegrationTest.createBigByteArray;
 
 public class TestTimeoutsSimpleFs {
 	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	private Path storagePath;
-	private byte[] BIG_FILE = createBigByteArray();
+	private byte[] BIG_FILE;
+
+	{
+		byte[] bytes = new byte[2 * 1024 * 1024];
+		Random rand = new Random(1L);
+		for (int i = 0; i < bytes.length; i++) {
+			bytes[i] = (byte) (rand.nextInt(256) - 128);
+		}
+		BIG_FILE = bytes;
+	}
 
 	@Before
 	public void setUp() throws IOException {
@@ -69,18 +78,18 @@ public class TestTimeoutsSimpleFs {
 
 		ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
 		RemoteFsServer server = RemoteFsServer.create(eventloop, serverExecutor, storagePath)
-				.withSocketSettings(SocketSettings.create().withImplReadTimeout(Duration.ofMillis(1)))
-				.withAcceptOnce()
-				.withListenAddress(new InetSocketAddress("localhost", 7010));
+			.withSocketSettings(SocketSettings.create().withImplReadTimeout(Duration.ofMillis(1)))
+			.withAcceptOnce()
+			.withListenAddress(new InetSocketAddress("localhost", 7010));
 
 		server.listen();
 
 		CompletableFuture<Void> future =
-				StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE))
-						.streamTo(
-								client.uploadStream("fileName.txt"))
-						.getConsumerResult()
-						.toCompletableFuture();
+			StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE))
+				.streamTo(
+					client.uploadStream("fileName.txt"))
+				.getConsumerResult()
+				.toCompletableFuture();
 
 		eventloop.run();
 

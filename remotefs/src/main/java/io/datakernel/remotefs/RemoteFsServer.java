@@ -17,187 +17,195 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
-import io.datakernel.remotefs.RemoteFsResponses.FsResponse;
+import io.datakernel.remotefs.RemoteFsResponses.*;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 
+/**
+ * An implementation of {@link AbstractServer} for RemoteFs.
+ * It exposes some given {@link FsClient} to the Internet in pair with {@link RemoteFsClient}
+ */
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
-	protected final FileManager fileManager;
-	private final MessagingSerializer<FsCommand, FsResponse> serializer = ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
+	private static final MessagingSerializer<FsCommand, FsResponse> SERIALIZER =
+		ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
 
-	private final Map<Class, MessagingHandler> handlers;
+	private final Map<Class, MessagingHandler<FsCommand>> handlers = new HashMap<>();
+	private final FsClient client;
 
-	// region creators & builder methods
-	private RemoteFsServer(Eventloop eventloop, FileManager fileManager) {
+	// region JMX
+	private final StageStats handleRequestStage = StageStats.create(Duration.ofMinutes(5));
+	private final StageStats uploadStage = StageStats.create(Duration.ofMinutes(5));
+	private final StageStats downloadStage = StageStats.create(Duration.ofMinutes(5));
+	private final StageStats moveStage = StageStats.create(Duration.ofMinutes(5));
+	private final StageStats copyStage = StageStats.create(Duration.ofMinutes(5));
+	private final StageStats listStage = StageStats.create(Duration.ofMinutes(5));
+	private final StageStats deleteStage = StageStats.create(Duration.ofMinutes(5));
+	// endregion
+
+	private RemoteFsServer(Eventloop eventloop, FsClient client) {
 		super(eventloop);
-		this.fileManager = fileManager;
-		this.handlers = createHandlers();
+		this.client = client;
+		addHandlers();
 	}
 
 	public static RemoteFsServer create(Eventloop eventloop, ExecutorService executor, Path storage) {
-		return new RemoteFsServer(eventloop, FileManager.create(eventloop, executor, storage));
+		return new RemoteFsServer(eventloop, LocalFsClient.create(eventloop, executor, storage));
 	}
-	// endregion
 
-	// set up connection
+	public static RemoteFsServer create(Eventloop eventloop, FsClient client) {
+		return new RemoteFsServer(eventloop, client);
+	}
+
+	public FsClient getClient() {
+		return client;
+	}
+
 	@Override
-	protected final EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging =
-			MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
-		messaging.setTag(this);
+	protected EventHandler createSocketHandler(AsyncTcpSocket socket) {
+		MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging = MessagingWithBinaryStreaming.create(socket, SERIALIZER);
 		messaging.receive()
-			.whenResult(msg -> {
-				if (msg != null) {
-					logger.trace("received {}", msg);
-					doRead(messaging, msg);
-				} else {
-					logger.warn("unexpected end of stream");
+			.thenCompose(msg -> {
+				if (msg == null) {
+					logger.warn("unexpected end of stream: {}", this);
 					messaging.close();
+					return Stage.of(null);
 				}
+				MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
+				if (handler == null) {
+					return Stage.ofException(new Exception("no handler for " + msg + " " + this));
+				}
+				return handler.onMessage(messaging, msg);
 			})
-			.whenException(e -> {
-				logger.error("received error while reading", e);
-				messaging.close();
+			.whenComplete(handleRequestStage.recordStats())
+			.thenComposeEx(($, err) -> {
+				if (err == null) {
+					return Stage.of(null);
+				}
+				logger.warn("got an error while handling message (" + err + ") : " + this);
+				String prefix = err.getClass() != RemoteFsException.class ? err.getClass().getSimpleName() + ": " : "";
+				return messaging.send(new ServerError(prefix + err.getMessage()))
+					.thenCompose($2 -> messaging.sendEndOfStream())
+					.thenRun(messaging::close);
 			});
 		return messaging;
 	}
 
-	private void doRead(Messaging<FsCommand, FsResponse> messaging, FsCommand item) {
-		MessagingHandler handler = handlers.get(item.getClass());
-		if (handler == null) {
-			messaging.close();
-			logger.error("missing handler for " + item);
-		} else {
-			//noinspection unchecked
-			handler.onMessage(messaging, item);
-		}
-	}
-
-	protected interface MessagingHandler<I, O> {
-		void onMessage(Messaging<I, O> messaging, I item);
-	}
-
-	private Map<Class, MessagingHandler> createHandlers() {
-		Map<Class, MessagingHandler> map = new HashMap<>();
-		map.put(Upload.class, new UploadMessagingHandler());
-		map.put(Download.class, new DownloadMessagingHandler());
-		map.put(Delete.class, new DeleteMessagingHandler());
-		map.put(ListFiles.class, new ListFilesMessagingHandler());
-		map.put(Move.class, new MoveMessagingHandler());
-		return map;
-	}
-
-	// handler classes
-	private class UploadMessagingHandler implements MessagingHandler<Upload, FsResponse> {
-		@Override
-		public void onMessage(Messaging<Upload, FsResponse> messaging, Upload item) {
-			logger.trace("uploading {}", item.getFilePath());
-			fileManager.save(item.getFilePath())
-				.whenResult(fileWriter -> messaging.receiveBinaryStream()
-					.streamTo(
-						fileWriter
-							.thenRun(() -> {
-								logger.trace("read all bytes for {}", item.getFilePath());
-								messaging.send(new RemoteFsResponses.Acknowledge());
-								messaging.sendEndOfStream();
-							}))
-					.getResult()
-					.whenException(throwable -> messaging.close()))
-				.whenException(throwable -> messaging.close());
-		}
-	}
-
-	private class DownloadMessagingHandler implements MessagingHandler<Download, FsResponse> {
-
-		private Consumer<Throwable> errorSender(Messaging<Download, FsResponse> messaging) {
-			return throwable -> {
-				messaging.send(new RemoteFsResponses.Err(throwable.getMessage()));
-				messaging.sendEndOfStream();
-			};
-		}
-
-		@Override
-		public void onMessage(Messaging<Download, FsResponse> messaging, Download item) {
-			fileManager.size(item.getFilePath())
-				.whenException(errorSender(messaging))
-				.whenResult(size -> {
-					if (size == null) {
-						errorSender(messaging).accept(new Throwable("File not found"));
-						return;
+	private void addHandlers() {
+		onMessage(Upload.class, (messaging, msg) -> {
+			String file = msg.getFileName();
+			logger.trace("receiving data for {}: {}", file, this);
+			return messaging.receiveBinaryStream().streamTo(client.uploadStream(file, msg.getOffset())).getConsumerResult()
+				.thenCompose($ -> messaging.send(new UploadFinished()))
+				.thenCompose($ -> messaging.sendEndOfStream())
+				.thenRun(messaging::close)
+				.whenComplete(uploadStage.recordStats())
+				.thenRun(() -> logger.trace("finished receiving data for {}: {}", file, this))
+				.toVoid();
+		});
+		onMessage(Download.class, (messaging, msg) -> {
+			String fileName = msg.getFileName();
+			return client.list(fileName)
+				.thenCompose(list -> {
+					if (list.isEmpty()) {
+						return Stage.ofException(new RemoteFsException("File not found: " + fileName));
 					}
-					messaging.send(new RemoteFsResponses.Ready(size))
-						.whenException(errorSender(messaging))
-						.thenRun(() ->
-							fileManager.get(item.getFilePath(), item.getStartPosition())
-								.whenException(errorSender(messaging))
-								.whenResult(fileReader ->
-									fileReader.streamTo(messaging.sendBinaryStream())
-										.getResult()
-										.whenComplete(($, throwable) -> messaging.close())));
-				});
-		}
+					long size = list.get(0).getSize();
+					long length = msg.getLength();
+					long offset = msg.getOffset();
+
+					String repr = fileName + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "");
+					logger.trace("requested file {}: {}", repr, this);
+
+					if (offset > size) {
+						return Stage.ofException(new RemoteFsException("Offset exceeds file size for " + repr));
+					}
+					if (length != -1 && offset + length > size) {
+						return Stage.ofException(new RemoteFsException("Boundaries exceed file size for " + repr));
+					}
+
+					long fixedLength = length == -1 ? size - offset : length;
+
+					return messaging.send(new DownloadSize(fixedLength))
+						.thenCompose($ -> {
+							logger.trace("sending data for {}: {}", repr, this);
+							return client.downloadStream(fileName, offset, fixedLength).streamTo(messaging.sendBinaryStream())
+								.getConsumerResult()
+								.thenRun(() -> logger.trace("finished sending data for {}: {}", repr, this));
+						});
+				})
+				.whenComplete(downloadStage.recordStats());
+		});
+		onMessage(Move.class, (messaging, msg) -> client.move(msg.getChanges()).thenCompose(simple(messaging, MoveFinished::new)).whenComplete(moveStage.recordStats()));
+		onMessage(Copy.class, (messaging, msg) -> client.copy(msg.getChanges()).thenCompose(simple(messaging, CopyFinished::new)).whenComplete(copyStage.recordStats()));
+		onMessage(List.class, (messaging, msg) -> client.list(msg.getGlob()).thenCompose(simple(messaging, ListFinished::new)).whenComplete(listStage.recordStats()));
+		onMessage(Delete.class, (messaging, msg) -> client.delete(msg.getGlob()).thenCompose(simple(messaging, DeleteFinished::new)).whenComplete(deleteStage.recordStats()));
 	}
 
-	private class DeleteMessagingHandler implements MessagingHandler<Delete, FsResponse> {
-		@Override
-		public void onMessage(Messaging<Delete, FsResponse> messaging, Delete item) {
-			fileManager.delete(item.getFilePath()).whenComplete(($, throwable) -> {
-				messaging.send(throwable == null ? new RemoteFsResponses.Ok() : new RemoteFsResponses.Err(throwable.getMessage()));
-				messaging.sendEndOfStream();
-			});
-		}
+	private static <T> Function<T, Stage<Void>> simple(Messaging<?, FsResponse> messaging, Function<T, FsResponse> res) {
+		return item -> messaging.send(res.apply(item)).thenCompose($ -> messaging.sendEndOfStream());
 	}
 
-	private class ListFilesMessagingHandler implements MessagingHandler<ListFiles, FsResponse> {
-		@Override
-		public void onMessage(Messaging<ListFiles, FsResponse> messaging, ListFiles item) {
-			fileManager.scanAsync()
-					.whenComplete((strings, throwable) -> {
-						assert strings != null;
-						messaging.send(throwable == null ? new RemoteFsResponses.ListOfFiles(strings) : new RemoteFsResponses.Err(throwable.getMessage()));
-						messaging.sendEndOfStream();
-					});
-		}
+	@FunctionalInterface
+	private interface MessagingHandler<R extends FsCommand> {
+		Stage<Void> onMessage(Messaging<FsCommand, FsResponse> messaging, R item);
 	}
 
-	private class MoveMessagingHandler implements MessagingHandler<Move, FsResponse> {
-		@Override
-		public void onMessage(Messaging<Move, FsResponse> messaging, Move item) {
-			List<Stage<Void>> tasks = item.getChanges().entrySet().stream()
-				.map(e -> fileManager.move(e.getKey(), e.getValue()))
-				.collect(Collectors.toList());
-
-			Stages.all(tasks).whenComplete((aVoid, throwable) -> {
-				messaging.send(throwable == null ? new RemoteFsResponses.Ok() : new RemoteFsResponses.Err(throwable.getMessage()));
-				messaging.sendEndOfStream();
-			});
-		}
+	@SuppressWarnings("unchecked")
+	private <R extends FsCommand> void onMessage(Class<R> type, MessagingHandler<R> handler) {
+		handlers.put(type, (MessagingHandler<FsCommand>) handler);
 	}
 
 	@Override
 	public String toString() {
-		return "RemoteFsServer{" +
-				"fileManager=" + fileManager +
-				(listenAddresses.isEmpty() ? "" : ", listenAddresses=" + listenAddresses) +
-				(sslListenAddresses.isEmpty() ? "" : ", sslListenAddresses=" + sslListenAddresses) +
-				(acceptOnce ? ", acceptOnce" : "") +
-				'}';
+		return "RemoteFsServer(" + client + ')';
 	}
+
+	// region JMX
+	@JmxAttribute
+	public StageStats getUploadStage() {
+		return uploadStage;
+	}
+
+	@JmxAttribute
+	public StageStats getDownloadStage() {
+		return downloadStage;
+	}
+
+	@JmxAttribute
+	public StageStats getMoveStage() {
+		return moveStage;
+	}
+
+	@JmxAttribute
+	public StageStats getListStage() {
+		return listStage;
+	}
+
+	@JmxAttribute
+	public StageStats getDeleteStage() {
+		return deleteStage;
+	}
+
+	@JmxAttribute
+	public StageStats getHandleRequestStage() {
+		return handleRequestStage;
+	}
+	// endregion
 }

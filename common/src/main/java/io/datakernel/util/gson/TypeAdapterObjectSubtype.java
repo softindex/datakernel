@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+import static java.lang.Math.max;
+
 public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> implements Initializable<TypeAdapterObjectSubtype<T>> {
 
 	private final Map<Type, TypeAdapter<? extends T>> classesToAdapters = new HashMap<>();
@@ -36,6 +38,12 @@ public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> implements Initi
 		subtypesToNames.put(type, name);
 		classesToAdapters.put(type, adapter);
 		return this;
+	}
+
+	public TypeAdapterObjectSubtype<T> withSubtype(Type type, TypeAdapter<? extends T> adapter) {
+		String name = type.getTypeName();
+		name = name.substring(max(name.lastIndexOf('.'), name.lastIndexOf('$')) + 1);
+		return withSubtype(type, name, adapter);
 	}
 
 	@SuppressWarnings("unchecked")

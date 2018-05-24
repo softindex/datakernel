@@ -26,7 +26,7 @@ public final class Try<T> {
 	}
 
 	public static <T> Try<T> of(@Nullable T result, @Nullable Throwable throwable) {
-		assert !(result != null && throwable != null);
+		assert result == null || throwable == null;
 		return new Try<>(result, throwable);
 	}
 
