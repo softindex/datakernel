@@ -20,7 +20,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,11 +31,10 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
-import static java.lang.Math.min;
 import static java.nio.file.StandardOpenOption.READ;
 
 /**
- * This producer allows you to read data from a file in a non-blocking fashion.
+ * This producer allows you to asynchronously read binary data from a file.
  */
 public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
@@ -47,11 +45,9 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	private final AsyncFile asyncFile;
 
-	private boolean reading = false;
-
 	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
 	private long position = 0;
-	private long length = Long.MAX_VALUE;
+	private long limit = Long.MAX_VALUE;
 
 	private StreamFileReader(AsyncFile asyncFile) {
 		this.asyncFile = asyncFile;
@@ -66,24 +62,23 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	public StreamFileReader withBufferSize(MemSize bufferSize) {
-
 		checkArgument(bufferSize.toInt() > 0, "Buffer size cannot be less than or equal to zero");
 
 		this.bufferSize = bufferSize.toInt();
 		return this;
 	}
 
-	public StreamFileReader withStartingPosition(long position) {
-		checkState(getConsumer() == null, "Cannot set position after binding the reader");
-		checkArgument(position >= 0, "Position cannot be less than zero");
-		this.position = position;
+	public StreamFileReader withOffset(long offset) {
+		checkState(getConsumer() == null, "Cannot set offset after binding the reader");
+		checkArgument(offset >= 0, "Position cannot be less than zero");
+		position = offset;
 		return this;
 	}
 
-	public StreamFileReader withReadingLength(long length) {
-		checkState(getConsumer() == null, "Cannot set reading length after binding the reader");
-		checkArgument(length >= -1, "Reading length cannot be less than -1");
-		this.length = length == -1 ? Long.MAX_VALUE : length;
+	public StreamFileReader withLength(long length) {
+		checkState(getConsumer() == null, "Cannot set length after binding the reader");
+		checkArgument(length >= 0, "Length cannot be less than zero");
+		this.limit = length;
 		return this;
 	}
 
@@ -91,52 +86,43 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		return position;
 	}
 
-	private void process() {
+	@Override
+	protected void produce() {
 		if (!isReceiverReady()) {
-			reading = false;
 			return;
 		}
-		ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
-		asyncFile.read(buf, position)
-				.whenComplete((bytesRead, e) -> {
-					if (e != null) {
-						buf.recycle();
-						closeWithError(e);
-					} else if (bytesRead == -1) {
-						buf.recycle();
-						sendEndOfStream();
-					} else {
-						send(buf);
-						position += bytesRead;
-						if (length != Long.MAX_VALUE) {
-							length -= bytesRead;
-						}
-						if (length == 0L) {
-							sendEndOfStream();
-						}
-					}
-					process();
-				});
-	}
-
-	@Override
-	protected void onProduce(StreamDataReceiver<ByteBuf> receiver) {
-		if (!reading) {
-			reading = true;
-			process();
-		}
+		int bufSize = (int) Math.min(bufferSize, limit);
+		ByteBuf buf = ByteBufPool.allocateExact(bufSize);
+		asyncFile.read(buf, position) // reads are synchronized at least on asyncFile, so if produce() is called twise, position wont be broken (i hope)
+			.whenComplete(($, e) -> {
+				if (e != null) {
+					buf.recycle();
+					closeWithError(e);
+					return;
+				}
+				int bytesRead = buf.readRemaining(); // bytes written (as they were read from file, thus the name) to be read by a consumer (thus the method)
+				send(buf);
+				position += bytesRead;
+				if (limit != Long.MAX_VALUE) {
+					limit -= bytesRead; // bytesRead is always <= the limit (^ see the min call)
+				}
+				if (limit == 0L || bytesRead < bufSize) { // AsynFile#read finishes either if file is done or buffer is filled
+					sendEndOfStream();
+				}
+				produce();
+			});
 	}
 
 	@Override
 	protected void cleanup() {
 		asyncFile.close()
-				.whenComplete(($, e) -> {
-					if (e == null) {
-						logger.trace(this + ": closed file");
-					} else {
-						logger.error(this + ": failed to close file", e);
-					}
-				});
+			.whenComplete(($, e) -> {
+				if (e == null) {
+					logger.trace(this + ": closed file");
+				} else {
+					logger.error(this + ": failed to close file", e);
+				}
+			});
 	}
 
 	@Override
@@ -146,9 +132,8 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	@Override
 	public String toString() {
 		return "StreamFileReader{" + asyncFile +
-				", pos=" + position +
-				(length == Long.MAX_VALUE ? "" : ", len=" + length) +
-				(reading ? ", reading" : "") +
-				'}';
+			", pos=" + position +
+			(limit == Long.MAX_VALUE ? "" : ", len=" + limit) +
+			'}';
 	}
 }

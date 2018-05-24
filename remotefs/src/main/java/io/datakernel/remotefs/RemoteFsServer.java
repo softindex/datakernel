@@ -138,7 +138,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 			fileManager.size(item.getFilePath())
 				.whenException(errorSender(messaging))
 				.whenResult(size -> {
-					if (size == -1) {
+					if (size == null) {
 						errorSender(messaging).accept(new Throwable("File not found"));
 						return;
 					}

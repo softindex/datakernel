@@ -73,7 +73,7 @@ public final class FileManager {
 		return AsyncFile.openAsync(executor, storagePath.resolve(fileName), new OpenOption[]{READ})
 			.thenApply(result -> {
 				logger.trace("{} opened", result);
-				return StreamFileReader.readFile(result).withBufferSize(readerBufferSize).withStartingPosition(offset)
+				return StreamFileReader.readFile(result).withBufferSize(readerBufferSize).withOffset(offset)
 					.withEndOfStreamAsResult()
 					.withLateBinding();
 			});
@@ -126,7 +126,7 @@ public final class FileManager {
 			try {
 				Path source = storagePath.resolve(fileName);
 				Files.setLastModifiedTime(source, FileTime.fromMillis(eventloop.currentTimeMillis()));
-				return AsyncFile.move(eventloop, executor, source, target, options);
+				return AsyncFile.move(executor, source, target, options);
 			} catch (IOException e) {
 				return Stage.ofException(e);
 			}

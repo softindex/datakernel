@@ -36,12 +36,12 @@ import java.util.concurrent.ExecutorService;
 import static java.nio.file.StandardOpenOption.*;
 
 /**
- * This consumer allows you to write data to file in a non-blocking fashion.
+ * This consumer allows you to asynchronously write binary data to a file.
  */
 public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileWriter.class);
 
-	public static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE, TRUNCATE_EXISTING};
+	public static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW, APPEND};
 
 	private final Deque<ByteBuf> bufs = new ArrayDeque<>();
 	private final SettableStage<Void> flushStage = SettableStage.create();
@@ -56,7 +56,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	private int maxBuffers = 1;
 
 	private long bufferedBytes = 0;
-	private long position = 0;
 
 	private StreamFileWriter(AsyncFile asyncFile) {
 		this.asyncFile = asyncFile;
@@ -95,8 +94,8 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void process() {
-		ByteBuf data = bufs.poll();
-		if (data == null) {
+		ByteBuf buf = bufs.poll();
+		if (buf == null) {
 			if (getStatus().isClosed()) {
 				close();
 				return;
@@ -105,20 +104,19 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			getProducer().produce(this);
 			return;
 		}
-		int length = data.readRemaining();
-		asyncFile.writeFully(data, position)
-				.whenComplete(($, e) -> {
-					if (e != null) {
-						closeWithError(e);
-						return;
-					}
-					position += length;
-					bufferedBytes -= length;
-					if (bufs.size() <= maxBuffers || bufferedBytes <= 0) {
-						getProducer().produce(this);
-					}
-					process();
-				});
+		int length = buf.readRemaining();
+		asyncFile.write(buf)
+			.whenComplete(($, e) -> {
+				if (e != null) {
+					closeWithError(e);
+					return;
+				}
+				bufferedBytes -= length;
+				if (bufs.size() <= maxBuffers || bufferedBytes <= 0) {
+					getProducer().produce(this);
+				}
+				process();
+			});
 	}
 
 	private void step() {
@@ -148,16 +146,16 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		}
 		bufs.clear();
 		(forceOnClose ?
-				asyncFile.forceAndClose(forceMetadata) :
-				asyncFile.close())
-				.whenComplete(flushStage::trySet)
-				.whenComplete(($, e) -> {
-					if (e == null) {
-						logger.info(this + ": closed file");
-					} else {
-						logger.error(this + ": failed to close file", e);
-					}
-				});
+			asyncFile.forceAndClose(forceMetadata) :
+			asyncFile.close())
+			.whenComplete(flushStage::trySet)
+			.whenComplete(($, e) -> {
+				if (e == null) {
+					logger.trace(this + ": closed file");
+				} else {
+					logger.error(this + ": failed to close file", e);
+				}
+			});
 	}
 
 	@Override
@@ -179,9 +177,8 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	@Override
 	public String toString() {
 		return "StreamFileWriter{" +
-				"asyncFile=" + asyncFile +
-				", position=" + position +
-				(writing ? ", writing" : "") +
-				'}';
+			"asyncFile=" + asyncFile +
+			(writing ? ", writing" : "") +
+			'}';
 	}
 }

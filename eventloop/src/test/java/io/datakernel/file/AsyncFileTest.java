@@ -54,13 +54,13 @@ public class AsyncFileTest {
 		Path srcPath = Paths.get("test_data/hello.html");
 		AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}).whenComplete(assertComplete(asyncFile -> {
 			logger.info("Opened file.");
-			asyncFile.readFully().whenComplete(assertComplete(byteBuf -> {
+			asyncFile.read().whenComplete(assertComplete(byteBuf -> {
 				Path destPath = Paths.get(tempFile.getAbsolutePath());
 
 				AsyncFile.openAsync(Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}).whenComplete(assertComplete(file -> {
 					logger.info("Finished reading file.");
 
-					file.writeFully(byteBuf, 0).whenComplete(assertComplete($ -> {
+					file.write(byteBuf).whenComplete(assertComplete($ -> {
 						logger.info("Finished writing file");
 						try {
 							assertArrayEquals(Files.readAllBytes(srcPath), Files.readAllBytes(destPath));

@@ -17,16 +17,13 @@
 package io.datakernel.file;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousFileChannel;
-import java.nio.channels.CompletionHandler;
+import java.nio.channels.FileChannel;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
@@ -40,126 +37,137 @@ import static java.nio.file.StandardOpenOption.*;
 import static java.util.Arrays.asList;
 
 /**
- * An representation of file with non-blocking operations.
+ * This class represents a file with asynchronous capabilities.
  */
 public final class AsyncFile {
-	private final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final ExecutorService executor;
-	private final AsynchronousFileChannel channel;
+	private final FileChannel channel;
 
 	private final Path path;
+	private final Object mutexLock;
 
-	/**
-	 * Creates a new instance of AsyncFile
-	 *
-	 * @param executor executor for running tasks in other thread
-	 * @param channel  an asynchronous channel for reading, writing, and manipulating a file.
-	 * @param path     path of the file
-	 */
-	private AsyncFile(ExecutorService executor, AsynchronousFileChannel channel, Path path) {
+	private AsyncFile(ExecutorService executor, FileChannel channel, Path path, @Nullable Object mutexLock) {
 		this.executor = checkNotNull(executor);
 		this.channel = checkNotNull(channel);
 		this.path = checkNotNull(path);
+		this.mutexLock = mutexLock != null ? mutexLock : this;
 	}
 
 	/**
-	 * Opens file in a blocking manner
+	 * Synchronously opens file
 	 *
 	 * @param executor    executor for running tasks in other thread
 	 * @param path        the path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
 	 */
 	public static AsyncFile open(ExecutorService executor, Path path, OpenOption[] openOptions) throws IOException {
-		AsynchronousFileChannel channel = doOpenChannel(executor, path, openOptions);
-		return new AsyncFile(executor, channel, path);
+		FileChannel channel = doOpenChannel(path, openOptions);
+		return new AsyncFile(executor, channel, path, null);
+	}
+
+	public static AsyncFile open(ExecutorService executor, Path path, OpenOption[] openOptions, Object mutexLock) throws IOException {
+		FileChannel channel = doOpenChannel(path, openOptions);
+		return new AsyncFile(executor, channel, path, mutexLock);
 	}
 
 	/**
-	 * Asynchronous opens file
+	 * Asynchronously opens file
 	 *
 	 * @param executor    executor for running tasks in other thread
 	 * @param path        the path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
 	 */
 	public static Stage<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions) {
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		return Stage.ofCallable(executor, () -> doOpenChannel(executor, path, openOptions))
-				.thenApply(channel -> new AsyncFile(executor, channel, path));
+		return Stage.ofCallable(executor, () -> doOpenChannel(path, openOptions))
+			.thenApply(channel -> new AsyncFile(executor, channel, path, null));
 	}
 
-	private static AsynchronousFileChannel doOpenChannel(ExecutorService executor, Path path, OpenOption[] openOptions) throws IOException {
-		return AsynchronousFileChannel.open(path, new HashSet<>(asList(openOptions)), executor);
+	public static Stage<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions, Object mutexLock) {
+		return Stage.ofCallable(executor, () -> doOpenChannel(path, openOptions))
+			.thenApply(channel -> new AsyncFile(executor, channel, path, mutexLock));
+	}
+
+	private static FileChannel doOpenChannel(Path path, OpenOption[] openOptions) throws IOException {
+		return FileChannel.open(path, new HashSet<>(asList(openOptions)));
 	}
 
 	/**
-	 * Deletes the file in new thread
+	 * Concurrently deletes the file.
 	 *
 	 * @param path the path of the file to open or create
 	 */
 	public static Stage<Void> delete(ExecutorService executor, Path path) {
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		return Stage.ofCallable(executor, () -> {
-			Files.delete(path);
-			return null;
-		});
+		return Stage.ofThrowingRunnable(executor, () -> Files.delete(path));
 	}
 
+	/**
+	 * Checks the file size. For non-regular or non-existing files returns <code>null</code>
+	 *
+	 * @param executor executor for running tasks in other thread
+	 * @param path     the path of the file to check
+	 * @return file size if given path is a regular file and <code>null</code> if it is a directory or it does not exist
+	 */
 	public static Stage<Long> size(ExecutorService executor, Path path) {
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		return Stage.ofCallable(executor, () -> Files.isRegularFile(path) ? Files.size(path) : -1L);
+		return Stage.ofCallable(executor, () -> Files.isRegularFile(path) ? Files.size(path) : null);
 	}
 
 	/**
 	 * Moves or renames a file to a target file.
 	 *
-	 * @param eventloop event loop in which a file will be used
-	 * @param source    the path to the file to move
-	 * @param target    the path to the target file (may be associated with a different provider to the source path)
-	 * @param options   options specifying how the move should be done
+	 * @param executor executor for running tasks in other thread
+	 * @param source   the path to the file to move
+	 * @param target   the path to the target file (may be associated with a different provider to the source path)
+	 * @param options  options specifying how the move should be done
 	 */
-	public static Stage<Void> move(Eventloop eventloop, ExecutorService executor, Path source, Path target, CopyOption... options) {
-		return Stage.ofCallable(executor, () -> {
-			Files.move(source, target, options);
-			return null;
-		});
+	public static Stage<Void> move(ExecutorService executor, Path source, Path target, CopyOption... options) {
+		return Stage.ofThrowingRunnable(executor, () -> Files.move(source, target, options));
+	}
+
+	/**
+	 * Copies a file to a target file.
+	 *
+	 * @param executor executor for running tasks in other thread
+	 * @param source   the path to the file to copy
+	 * @param target   the path to the target file (may be associated with a different provider to the source path)
+	 * @param options  options specifying how the move should be done
+	 */
+	public static Stage<Void> copy(ExecutorService executor, Path source, Path target, CopyOption... options) {
+		return Stage.ofThrowingRunnable(executor, () -> Files.copy(source, target, options));
 	}
 
 	/**
 	 * Creates a new directory.
 	 *
-	 * @param eventloop event loop in which a file will be used
-	 * @param dir       the directory to create
-	 * @param attrs     an optional list of file attributes to set atomically when creating the directory
+	 * @param executor executor for running tasks in other thread
+	 * @param dir      the directory to create
+	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
-	public static Stage<Void> createDirectory(Eventloop eventloop, ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
-		return Stage.ofCallable(executor, () -> {
-			Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
-			return null;
-		});
+	public static Stage<Void> createDirectory(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
+		return Stage.ofThrowingRunnable(executor, () -> Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs));
 	}
 
 	/**
 	 * Creates a directory by creating all nonexistent parent directories first.
 	 *
-	 * @param eventloop event loop in which a file will be used
-	 * @param dir       the directory to create
-	 * @param attrs     an optional list of file attributes to set atomically when creating the directory
+	 * @param executor executor for running tasks in other thread
+	 * @param dir      the directory to create
+	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
-	public static Stage<Void> createDirectories(Eventloop eventloop, ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
-		return Stage.ofCallable(executor, () -> {
-			Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
-			return null;
-		});
+	public static Stage<Void> createDirectories(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
+		return Stage.ofThrowingRunnable(executor, () -> Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs));
 	}
 
 	/**
-	 * Reads all sequence of bytes from this channel into the given buffer.
+	 * Reads all bytes from this channel into the given buffer.
 	 *
 	 * @param path the path of the file to read
 	 */
 	public static Stage<ByteBuf> readFile(ExecutorService executor, Path path) {
 		return openAsync(executor, path, new OpenOption[]{READ})
-				.thenCompose(file -> file.readFully().whenComplete(($, e) -> file.close()));
+			.thenCompose(file -> file.read()
+				.thenCompose(buf -> file.close()
+					.whenException($ -> buf.recycle())
+					.thenApply($ -> buf)));
 	}
 
 	/**
@@ -172,122 +180,70 @@ public final class AsyncFile {
 	 */
 	public static Stage<Void> writeNewFile(ExecutorService executor, Path path, ByteBuf buf) {
 		return openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW})
-				.thenCompose(file -> file.writeFully(buf, 0L)
-						.whenComplete(($, throwable) -> buf.recycle()));
+			.thenCompose(file -> file.write(buf)
+				.thenCompose($ -> file.close()
+					.whenException($2 -> buf.recycle())));
 	}
 
 	/**
-	 * Writes a sequence of bytes to this file from the given buffer, starting at the given file
-	 * position.
+	 * Asynchronously writes all bytes of the buffer into this file at its internal position.
 	 *
-	 * @param buf      the buffer from which bytes are to be transferred
-	 * @param position the file position at which the transfer is to begin; must be non-negative
+	 * @param buf byte buffer to be written
 	 */
-	public Stage<Integer> write(ByteBuf buf, long position) {
-		eventloop.startExternalTask();
-		ByteBuffer byteBuffer = buf.toReadByteBuffer();
-		SettableStage<Integer> stage = SettableStage.create();
-		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
-			@Override
-			public void completed(Integer result, Object $) {
-				buf.ofReadByteBuffer(byteBuffer);
-				eventloop.execute(() -> {
-					eventloop.completeExternalTask();
-					stage.set(result);
-				});
-			}
-
-			@Override
-			public void failed(Throwable exc, Object $) {
-				eventloop.execute(() -> {
-					eventloop.completeExternalTask();
-					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
-				});
-			}
-		});
-		return stage;
-	}
-
-	/**
-	 * Reads a sequence of bytes from this channel into the given buffer, starting at the given file position.
-	 *
-	 * @param buf      the  buffer into which bytes are to be transferred
-	 * @param position the file position at which the transfer is to begin; must be non-negative
-	 */
-	public Stage<Integer> read(ByteBuf buf, long position) {
-		eventloop.startExternalTask();
-		ByteBuffer byteBuffer = buf.toWriteByteBuffer();
-		SettableStage<Integer> stage = SettableStage.create();
-		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
-			@Override
-			public void completed(Integer bytesRead, Object $) {
-				buf.ofWriteByteBuffer(byteBuffer);
-				eventloop.execute(() -> {
-					eventloop.completeExternalTask();
-					stage.set(bytesRead);
-				});
-			}
-
-			@Override
-			public void failed(Throwable exc, Object $) {
-				eventloop.execute(() -> {
-					eventloop.completeExternalTask();
-					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
-				});
-			}
-		});
-		return stage;
-	}
-
-	/**
-	 * Writes a sequence of bytes to this file from the given buffer, starting at the given file
-	 * position. Writes in other thread.
-	 *
-	 * @param buf      the  buffer from which bytes are to be transferred
-	 * @param position the  file position at which the transfer is to begin; must be non-negative
-	 */
-	public Stage<Void> writeFully(ByteBuf buf, long position) {
-		ByteBuffer byteBuffer = buf.toReadByteBuffer();
-		SettableStage<Void> stage = SettableStage.create();
-		eventloop.startExternalTask();
-		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
-			@Override
-			public void completed(Integer writtenBytes, Object $) {
-				buf.ofReadByteBuffer(byteBuffer);
-				if (buf.readRemaining() == 0) {
-					eventloop.execute(() -> {
-						eventloop.completeExternalTask();
-						buf.recycle();
-						stage.set(null);
-					});
-					return;
-				}
-				writeFully(buf, position + writtenBytes).whenComplete(stage::set);
-			}
-
-			@Override
-			public void failed(Throwable e, Object $) {
-				eventloop.execute(() -> {
+	public Stage<Void> write(ByteBuf buf) {
+		return Stage.ofThrowingRunnable(executor, () -> {
+			synchronized (mutexLock) {
+				int writtenBytes;
+				try {
+					do {
+						ByteBuffer byteBuffer = buf.toReadByteBuffer();
+						writtenBytes = channel.write(byteBuffer);
+						buf.ofReadByteBuffer(byteBuffer);
+					} while (writtenBytes != -1 && buf.canRead());
+				} finally {
 					buf.recycle();
-					eventloop.completeExternalTask();
-					stage.setException(e instanceof Exception ? (Exception) e : new Exception(e));
-				});
+				}
 			}
 		});
-		return stage;
 	}
 
 	/**
-	 * Asynchronously reads all bytes from this channel into a buffer.
+	 * Asynchronously writes all bytes of the buffer into this file starting at given position.
+	 *
+	 * @param position offset from which bytes will be written to the file
+	 * @param buf      byte buffer to be written
 	 */
-	public Stage<ByteBuf> readFully() {
-		return readFully(0);
+	public Stage<Void> write(ByteBuf buf, long position) {
+		return Stage.ofThrowingRunnable(executor, () -> {
+			synchronized (mutexLock) {
+				int writtenBytes = 0;
+				long pos = position;
+				try {
+					do {
+						ByteBuffer byteBuffer = buf.toReadByteBuffer();
+						writtenBytes = channel.write(byteBuffer, pos += writtenBytes);
+						buf.ofReadByteBuffer(byteBuffer);
+					} while (writtenBytes != -1 && buf.canRead());
+				} finally {
+					buf.recycle();
+				}
+			}
+		});
 	}
 
 	/**
-	 * Asynchronously reads all bytes from this channel into a buffer.
+	 * Asynchronously reads all bytes from this file into a buffer.
 	 */
-	public Stage<ByteBuf> readFully(long position) {
+	public Stage<ByteBuf> read() {
+		return read(0);
+	}
+
+	/**
+	 * Asynchronously reads all bytes from this file into a buffer starting at given position.
+	 *
+	 * @param position offset from which bytes of the file will be read
+	 */
+	public Stage<ByteBuf> read(long position) {
 		long size;
 
 		try {
@@ -297,72 +253,31 @@ public final class AsyncFile {
 		}
 
 		ByteBuf buf = ByteBufPool.allocate((int) (size - position));
-		return readFully(buf, position, size)
-				.whenComplete(($, e) -> {
-					if (e != null) {
-						buf.recycle();
-					}
-				})
-				.thenApply($ -> buf);
+		return read(buf, position)
+			.whenException($ -> buf.recycle())
+			.thenApply($ -> buf);
 	}
 
 	/**
 	 * Asynchronously reads a sequence of bytes from this channel into the given buffer,
-	 * starting at the given file position.
+	 * starting at the given position.
 	 * Reads are happenning in other thread(s).
 	 *
 	 * @param buf      the buffer into which bytes are to be transferred
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 */
-	public Stage<Void> readFully(ByteBuf buf, long position) {
-		long size;
-
-		try {
-			size = channel.size();
-		} catch (IOException e) {
-			return Stage.ofException(e);
-		}
-		return readFully(buf, position, size);
-	}
-
-	private Stage<Void> readFully(ByteBuf buf, long position, long size) {
-		SettableStage<Void> stage = SettableStage.create();
-		ByteBuffer byteBuffer = buf.toWriteByteBuffer();
-		eventloop.startExternalTask();
-		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
-			@Override
-			public void completed(Integer result, Object $) {
-				buf.ofWriteByteBuffer(byteBuffer);
-				if (buf.readRemaining() == size || result == -1) {
-					eventloop.execute(() -> {
-						eventloop.completeExternalTask();
-						try {
-							channel.close();
-							stage.set(null);
-						} catch (IOException e) {
-							stage.setException(e);
-						}
-
-					});
-					return;
-				}
-				readFully(buf, position + result, size - result).whenComplete(stage::set);
-			}
-
-			@Override
-			public void failed(Throwable e, Object $) {
-				eventloop.execute(() -> {
-					try {
-						channel.close();
-					} catch (IOException ignore) {
-					}
-					eventloop.completeExternalTask();
-					stage.setException(e instanceof Exception ? (Exception) e : new Exception(e));
-				});
+	public Stage<Void> read(ByteBuf buf, long position) {
+		return Stage.ofThrowingRunnable(executor, () -> {
+			synchronized (mutexLock) {
+				int readBytes = 0;
+				long pos = position;
+				do {
+					ByteBuffer byteBuffer = buf.toWriteByteBuffer();
+					readBytes = channel.read(byteBuffer, pos += readBytes);
+					buf.ofWriteByteBuffer(byteBuffer);
+				} while (readBytes != -1 && buf.canWrite());
 			}
 		});
-
-		return stage;
 	}
 
 	/**
@@ -371,10 +286,9 @@ public final class AsyncFile {
 	 * @param forceMetadata whether or not to force metadata writes too
 	 */
 	public Stage<Void> forceAndClose(boolean forceMetadata) {
-		return Stage.ofCallable(executor, () -> {
+		return Stage.ofThrowingRunnable(executor, () -> {
 			channel.force(forceMetadata);
 			channel.close();
-			return null;
 		});
 	}
 
@@ -382,10 +296,7 @@ public final class AsyncFile {
 	 * Closes the channel
 	 */
 	public Stage<Void> close() {
-		return Stage.ofCallable(executor, () -> {
-			channel.close();
-			return null;
-		});
+		return Stage.ofThrowingRunnable(executor, channel::close);
 	}
 
 	/**
@@ -394,10 +305,7 @@ public final class AsyncFile {
 	 * @param size the new size, a non-negative byte count
 	 */
 	public Stage<Void> truncate(long size) {
-		return Stage.ofCallable(executor, () -> {
-			channel.truncate(size);
-			return null;
-		});
+		return Stage.ofThrowingRunnable(executor, () -> channel.truncate(size));
 	}
 
 	/**
@@ -408,17 +316,14 @@ public final class AsyncFile {
 	 *                 otherwise, it need only force content changes to be written
 	 */
 	public Stage<Void> force(boolean metaData) {
-		return Stage.ofCallable(executor, () -> {
-			channel.force(metaData);
-			return null;
-		});
+		return Stage.ofThrowingRunnable(executor, () -> channel.force(metaData));
 	}
 
 	public ExecutorService getExecutor() {
 		return executor;
 	}
 
-	public AsynchronousFileChannel getChannel() {
+	public FileChannel getChannel() {
 		return channel;
 	}
 
