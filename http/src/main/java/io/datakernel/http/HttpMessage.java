@@ -56,12 +56,7 @@ public abstract class HttpMessage {
 		for (HttpHeaders.Value headerValue : headers) {
 			HttpHeader header = headerValue.getKey();
 			String headerString = headerValue.toString();
-			List<String> strings = map.get(header);
-			if (strings == null) {
-				strings = new ArrayList<>();
-				map.put(header, strings);
-			}
-			strings.add(headerString);
+			map.computeIfAbsent(header, k -> new ArrayList<>()).add(headerString);
 		}
 		return map;
 	}

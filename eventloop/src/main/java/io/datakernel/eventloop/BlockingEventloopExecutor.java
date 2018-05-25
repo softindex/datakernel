@@ -82,14 +82,11 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	@Override
 	public void execute(Runnable runnable) {
 		try {
-			post(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						runnable.run();
-					} finally {
-						complete();
-					}
+			post(() -> {
+				try {
+					runnable.run();
+				} finally {
+					complete();
 				}
 			});
 		} catch (InterruptedException ignored) {

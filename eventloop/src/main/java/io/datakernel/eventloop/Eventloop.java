@@ -68,7 +68,7 @@ import static java.util.Collections.emptyIterator;
  * tasks are empty.
  */
 public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, Initializable<Eventloop>, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
 	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException("Connection timed out");
@@ -110,6 +110,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	/**
 	 * The NIO selector which selects a set of keys whose corresponding channels
 	 */
+	@Nullable
 	private Selector selector;
 
 	private SelectorProvider selectorProvider;
@@ -117,6 +118,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	/**
 	 * The thread where eventloop is running
 	 */
+	@Nullable
 	private Thread eventloopThread;
 
 	private static final ThreadLocal<Eventloop> CURRENT_EVENTLOOP = new ThreadLocal<>();
@@ -131,7 +133,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private volatile boolean keepAlive;
 	private volatile boolean breakEventloop;
 
-	private long tick;
+	private int loop;
+	private int tick;
 
 	/**
 	 * Current time, cached to avoid System.currentTimeMillis() system calls, and to facilitate unit testing.
@@ -141,6 +144,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	private Duration idleInterval = DEFAULT_IDLE_INTERVAL;
 
+	@Nullable
 	private ThrottlingController throttlingController;
 	private int throttlingKeys;
 
@@ -238,11 +242,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	private static final String NO_CURRENT_EVENTLOOP_ERROR = "Trying to start async operations prior eventloop.run(), or from outside of eventloop.run() \n" +
-			"Possible solutions: " +
-			"1) Eventloop.create().withCurrentThread() ... {your code block} ... eventloop.run() \n" +
-			"2) try_with_resources Eventloop.useCurrentThread() ... {your code block} \n" +
-			"3) refactor application so it starts async operations within eventloop.run(), \n" +
-			"   i.e. by implementing EventloopService::start() {your code block} and using ServiceGraphModule";
+		"Possible solutions: " +
+		"1) Eventloop.create().withCurrentThread() ... {your code block} ... eventloop.run() \n" +
+		"2) try_with_resources Eventloop.useCurrentThread() ... {your code block} \n" +
+		"3) refactor application so it starts async operations within eventloop.run(), \n" +
+		"   i.e. by implementing EventloopService::start() {your code block} and using ServiceGraphModule";
 
 	public static Eventloop getCurrentEventloop() {
 		Eventloop eventloop = CURRENT_EVENTLOOP.get();
@@ -252,6 +256,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		throw new IllegalStateException(NO_CURRENT_EVENTLOOP_ERROR);
 	}
 
+	@Nullable
 	public ThrottlingController getThrottlingController() {
 		return throttlingController;
 	}
@@ -340,10 +345,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			return false;
 		lastExternalTasksCount = externalTasksCount.get();
 		return !localTasks.isEmpty() || !scheduledTasks.isEmpty() || !concurrentTasks.isEmpty()
-				|| lastExternalTasksCount > 0
-				|| keepAlive || (selector.keys().size() - cancelledKeys > 0);
+			|| lastExternalTasksCount > 0
+			|| keepAlive || (selector != null && selector.keys().size() - cancelledKeys > 0);
 	}
 
+	@Nullable
 	public Thread getEventloopThread() {
 		return eventloopThread;
 	}
@@ -365,7 +371,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		timeAfterBusinessLogic = timeAfterSelectorSelect = 0;
 		while (true) {
 			if (!isAlive()) {
-				logger.info("Eventloop {} is complete, exiting...", this);
+				logger.info("{} is complete, exiting...", this);
 				break;
 			}
 			try {
@@ -393,15 +399,16 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 			updateBusinessLogicStats(keys + concurrentTasks + scheduledTasks + backgroundTasks + localTasks);
 
-			tick = (tick + (1L << 32)) & ~0xFFFFFFFFL;
+			loop++;
+			tick = 0;
 		}
-		logger.info("Eventloop {} finished", this);
+		logger.info("{} finished", this);
 		eventloopThread = null;
-		if (selector.keys().stream().noneMatch(SelectionKey::isValid)) {
-			closeSelector();
-		} else {
+		if (selector.keys().stream().anyMatch(SelectionKey::isValid)) {
 			logger.warn("Selector is still open, because event loop {} has {} keys", this, selector.keys());
+			return;
 		}
+		closeSelector();
 	}
 
 	private void updateSelectorSelectStats() {
@@ -497,7 +504,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
 		stats.updateSelectedKeysStats(lastSelectedKeys,
-				invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
+			invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
 
 		return acceptKeys + connectKeys + readKeys + writeKeys + invalidKeys;
 	}
@@ -773,8 +780,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @throws IOException if an I/O error occurs on opening DatagramChannel
 	 */
 	public static DatagramChannel createDatagramChannel(DatagramSocketSettings datagramSocketSettings,
-	                                                    @Nullable InetSocketAddress bindAddress,
-	                                                    @Nullable InetSocketAddress connectAddress) throws IOException {
+														@Nullable InetSocketAddress bindAddress,
+														@Nullable InetSocketAddress connectAddress) throws IOException {
 		DatagramChannel datagramChannel = null;
 		try {
 			datagramChannel = DatagramChannel.open();
@@ -846,7 +853,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	public long tick() {
 		assert inEventloopThread();
-		return tick;
+		return (long) loop << 32 | tick;
 	}
 
 	/**
@@ -972,6 +979,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	/**
 	 * Submits {@code Runnable} to eventloop for execution
 	 * <p>{@code Runnable} is executed in the eventloop thread</p>
+	 *
 	 * @param runnable to be executed
 	 * @return {@code CompletableFuture} that completes when runnable completes
 	 */
@@ -1039,22 +1047,22 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	// JMX
 	@JmxOperation(description = "enable monitoring " +
-			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
-			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
+		"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+		"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
 	public void startExtendedMonitoring() {
 		this.monitoring = true;
 	}
 
 	@JmxOperation(description = "disable monitoring " +
-			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
-			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
+		"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+		"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
 	public void stopExtendedMonitoring() {
 		this.monitoring = false;
 	}
 
 	@JmxAttribute(
-			description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
-					"(for example, most of the durationStats are collected only when monitoring is enabled)")
+		description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, most of the durationStats are collected only when monitoring is enabled)")
 	public boolean isExtendedMonitoring() {
 		return monitoring;
 	}
@@ -1110,10 +1118,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 	}
 
+	@JmxAttribute
 	public int getLoop() {
-		return (int) (tick >>> 32);
+		return loop;
 	}
 
+	@JmxAttribute
 	public long getTick() {
 		return tick;
 	}
@@ -1166,6 +1176,37 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	@Override
 	public String toString() {
-		return threadName != null ? threadName : super.toString();
+		StringBuilder sb = new StringBuilder("Eventloop");
+		if (threadName != null) {
+			sb.append('(').append(threadName).append(')');
+		}
+		sb.append("{loop=").append(loop);
+
+		if (tick != 0) {
+			sb.append(", tick=").append(tick);
+		}
+		if (selector != null) {
+			int selectorKeys = selector.keys().size() - cancelledKeys;
+			if (selectorKeys != 0) {
+				sb.append(", selectorKeys=").append(selectorKeys);
+			}
+		}
+		if (!localTasks.isEmpty()) {
+			sb.append(", localTasks=").append(localTasks.size());
+		}
+		if (!scheduledTasks.isEmpty()) {
+			sb.append(", scheduledTasks=").append(scheduledTasks.size());
+		}
+		if (!backgroundTasks.isEmpty()) {
+			sb.append(", backgroundTasks=").append(backgroundTasks.size());
+		}
+		if (!concurrentTasks.isEmpty()) {
+			sb.append(", concurrentTasks=").append(concurrentTasks.size());
+		}
+		int externalTasks = externalTasksCount.get();
+		if (externalTasks != 0) {
+			sb.append(", externalTasks=").append(externalTasks);
+		}
+		return sb.append('}').toString();
 	}
 }

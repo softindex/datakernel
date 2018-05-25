@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.AsyncTimeoutException;
@@ -53,6 +54,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
 	private boolean writeEndOfStream;
 	private EventHandler socketEventHandler;
+
+	@Nullable
 	private SelectionKey key;
 
 	private int ops = 0;
@@ -64,7 +67,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	protected MemSize readMaxSize = DEFAULT_READ_BUF_SIZE;
 	protected MemSize writeMaxSize = MAX_MERGE_SIZE;
 
+	@Nullable
 	private ScheduledRunnable checkReadTimeout;
+
+	@Nullable
 	private ScheduledRunnable checkWriteTimeout;
 
 	public interface Inspector {
@@ -177,7 +183,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	// region builders
 	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel,
-	                                             SocketSettings socketSettings) {
+												 SocketSettings socketSettings) {
 		try {
 			socketSettings.applySettings(socketChannel);
 		} catch (IOException e) {
@@ -510,13 +516,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			keyOps = "Key throwed exception: " + e.toString();
 		}
 		return "AsyncTcpSocketImpl{" +
-				"channel=" + (channel == null ? "" : channel.toString()) +
-				", writeQueueSize=" + writeQueue.size() +
-				", writeEndOfStream=" + writeEndOfStream +
-				", key.ops=" + keyOps +
-				", ops=" + opsToString(ops) +
-				", writing=" + (writeTimestamp != 0L) +
-				'}';
+			"channel=" + (channel == null ? "" : channel.toString()) +
+			", writeQueueSize=" + writeQueue.size() +
+			", writeEndOfStream=" + writeEndOfStream +
+			", key.ops=" + keyOps +
+			", ops=" + opsToString(ops) +
+			", writing=" + (writeTimestamp != 0L) +
+			'}';
 	}
 
 	private String opsToString(int ops) {

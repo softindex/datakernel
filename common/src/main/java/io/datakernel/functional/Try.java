@@ -1,8 +1,12 @@
 package io.datakernel.functional;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.util.ThrowingRunnable;
+import io.datakernel.util.ThrowingSupplier;
 
 import java.util.function.Function;
+
+import static io.datakernel.util.Preconditions.checkState;
 
 public final class Try<T> {
 	@Nullable
@@ -26,6 +30,15 @@ public final class Try<T> {
 	public static <T> Try<T> wrap(ThrowingSupplier<T> computation) {
 		try {
 			return new Try<>(computation.get(), null);
+		} catch (Throwable t) {
+			return new Try<>(null, t);
+		}
+	}
+
+	public static <T> Try<T> wrap(ThrowingRunnable computation) {
+		try {
+			computation.run();
+			return new Try<>(null, null);
 		} catch (Throwable t) {
 			return new Try<>(null, t);
 		}
@@ -58,11 +71,11 @@ public final class Try<T> {
 
 	@SuppressWarnings("unchecked")
 	private <U> Try<U> mold() {
-		assert throwable != null : "Trying to mold a successful Try!";
+		checkState(throwable != null, "Trying to mold a successful Try!");
 		return (Try<U>) this;
 	}
 
-	public <U> Try<U> map(ThrowingFunction<T, U> function) {
+	public <U> Try<U> map(Function<T, U> function) {
 		if (throwable == null) {
 			try {
 				return new Try<>(function.apply(result), null);
@@ -92,18 +105,5 @@ public final class Try<T> {
 			return Either.right(result);
 		}
 		return Either.left(throwable);
-	}
-
-	@FunctionalInterface
-	public interface ThrowingSupplier<T> {
-		@Nullable
-		T get() throws Throwable;
-	}
-
-	@FunctionalInterface
-	interface ThrowingFunction<T, R> {
-
-		@Nullable
-		R apply(@Nullable T arg) throws Throwable;
 	}
 }

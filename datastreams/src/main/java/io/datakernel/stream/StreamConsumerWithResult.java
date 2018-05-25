@@ -18,10 +18,10 @@ package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
-import io.datakernel.async.StageConsumer;
 import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -50,6 +50,7 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		StreamLateBinder<T> binder = StreamLateBinder.create();
 		consumerStage.whenComplete((consumer, throwable) -> {
 			if (throwable == null) {
+				assert consumer != null;
 				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, consumer);
 				bind(binder.getOutput(), consumer);
@@ -88,7 +89,7 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return withResult(getResult().post().thenComposeEx(fn));
 	}
 
-	default StreamConsumerWithResult<T, X> whenComplete(StageConsumer<? super X> consumer) {
+	default StreamConsumerWithResult<T, X> whenComplete(BiConsumer<? super X, Throwable> consumer) {
 		getResult().post().whenComplete(consumer);
 		return this;
 	}

@@ -87,7 +87,7 @@ public class CollectionUtils {
 		return collection.stream()
 				.limit(limit)
 				.map(Object::toString)
-				.collect(joining(",", "[", collection.size() <= limit ? "]" : ",..]"));
+				.collect(joining(",", "[", collection.size() <= limit ? "]" : ", ..and " + (collection.size() - limit) + " more]"));
 	}
 
 }

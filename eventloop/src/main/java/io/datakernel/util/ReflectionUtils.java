@@ -16,6 +16,7 @@
 
 package io.datakernel.util;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.*;
 
 import java.lang.reflect.Constructor;
@@ -194,6 +195,7 @@ public final class ReflectionUtils {
 		});
 	}
 
+	@Nullable
 	public static Duration getSmoothingWindow(Object instance) {
 		Set<Duration> result = new HashSet<>();
 		visitFields(instance, item -> {

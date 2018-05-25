@@ -145,24 +145,24 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long offset) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
-				.whenComplete(stageRead.recordStats())
-				.thenApply(file -> StreamFileReader.readFile(file).withBufferSize(readBlockSize).withStartingPosition(startPosition)
-						.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
-						.with(streamReadStats)
-						.withEndOfStreamAsResult()
-						.withLateBinding());
+			.whenComplete(stageRead.recordStats())
+			.thenApply(file -> StreamFileReader.readFile(file).withBufferSize(readBlockSize).withStartingPosition(offset)
+				.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + offset))
+				.with(streamReadStats)
+				.withEndOfStreamAsResult()
+				.withLateBinding());
 	}
 
 	@Override
 	public Stage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS)
-				.whenComplete(stageWrite.recordStats())
-				.thenApply(file -> StreamFileWriter.create(file).withForceOnClose(true).withFlushAsResult()
-						.with(streamWrites.newEntry(logPartition + ":" + logFile))
-						.with(streamWriteStats)
-						.withLateBinding());
+			.whenComplete(stageWrite.recordStats())
+			.thenApply(file -> StreamFileWriter.create(file).withForceOnClose(true).withFlushAsResult()
+				.with(streamWrites.newEntry(logPartition + ":" + logFile))
+				.with(streamWriteStats)
+				.withLateBinding());
 	}
 
 	@Override

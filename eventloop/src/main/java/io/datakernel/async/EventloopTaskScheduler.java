@@ -204,7 +204,9 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	@Override
 	public Stage<Void> stop() {
-		scheduledTask.cancel();
+		if (scheduledTask != null) {
+			scheduledTask.cancel();
+		}
 		return Stage.of(null);
 	}
 

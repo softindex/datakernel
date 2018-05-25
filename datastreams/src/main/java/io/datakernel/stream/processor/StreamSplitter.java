@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.datakernel.util.Preconditions.checkState;
+
 @SuppressWarnings("unchecked")
 public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamDataReceiver<T> {
 	private final Input input;
@@ -31,7 +33,7 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 	private int suspended = 0;
 
 	private StreamSplitter() {
-		this.input = new Input();
+		input = new Input();
 	}
 
 	public static <T> StreamSplitter<T> create() {
@@ -58,6 +60,7 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 
 	@Override
 	public void onData(T item) {
+		//noinspection ForLoopReplaceableByForEach
 		for (int i = 0; i < dataReceivers.length; i++) {
 			dataReceivers[i].onData(item);
 		}
@@ -66,7 +69,7 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
 		protected void onStarted() {
-			if (outputs.isEmpty()) throw new IllegalStateException("Empty outputs");
+			checkState(!outputs.isEmpty(), "Splitter has no outputs");
 		}
 
 		@Override
@@ -88,8 +91,14 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 		}
 
 		@Override
+		protected void onStarted() {
+			checkState(input.getProducer() != null, "Splitter has no input");
+		}
+
+		@Override
 		protected void onSuspended() {
 			suspended++;
+			assert input.getProducer() != null;
 			input.getProducer().suspend();
 		}
 
@@ -97,6 +106,7 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
 			dataReceivers[index] = dataReceiver;
 			if (--suspended == 0) {
+				assert input.getProducer() != null;
 				input.getProducer().produce(StreamSplitter.this);
 			}
 		}
@@ -106,5 +116,4 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 			input.closeWithError(t);
 		}
 	}
-
 }

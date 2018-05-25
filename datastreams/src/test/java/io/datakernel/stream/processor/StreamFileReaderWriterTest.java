@@ -27,9 +27,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -127,17 +127,17 @@ public class StreamFileReaderWriterTest {
 	public void testStreamFileWriter() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
-		File tempFile = tempFolder.newFile("out.dat");
+		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
 		StreamProducer<ByteBuf> producer = StreamProducer.of(ByteBuf.wrapForReading(bytes));
 
-		StreamFileWriter writer = StreamFileWriter.create(executor, Paths.get(tempFile.getAbsolutePath()));
+		StreamFileWriter writer = StreamFileWriter.create(executor, tempPath);
 
 		stream(producer, writer);
 		eventloop.run();
 
-		byte[] fileBytes = Files.readAllBytes(tempFile.toPath());
+		byte[] fileBytes = Files.readAllBytes(tempPath);
 		assertArrayEquals(bytes, fileBytes);
 	}
 
@@ -145,17 +145,16 @@ public class StreamFileReaderWriterTest {
 	public void testStreamFileWriterRecycle() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
-		File tempFile = tempFolder.newFile("out.dat");
+		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
 		StreamProducer<ByteBuf> producer = StreamProducer.concat(
 				StreamProducer.of(ByteBuf.wrapForReading(bytes)),
 				StreamProducer.closingWithError(new Exception("Test Exception")));
 
-		StreamFileWriter writer = StreamFileWriter.create(executor, Paths.get(tempFile.getAbsolutePath()));
+		StreamFileWriter writer = StreamFileWriter.create(executor, tempPath);
 
 		stream(producer, writer);
 		eventloop.run();
 	}
-
 }

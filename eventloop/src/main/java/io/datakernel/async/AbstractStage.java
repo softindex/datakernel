@@ -6,6 +6,7 @@ import io.datakernel.functional.Try;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -15,11 +16,11 @@ import static io.datakernel.util.Preconditions.checkArgument;
 
 abstract class AbstractStage<T> implements Stage<T> {
 
-	private static final StageConsumer<Object> COMPLETED_STAGE = (t, throwable) -> {
+	private static final BiConsumer<Object, Throwable> COMPLETED_STAGE = (t, throwable) -> {
 		throw new UnsupportedOperationException();
 	};
 
-	protected StageConsumer<? super T> next;
+	protected BiConsumer<? super T, Throwable> next;
 
 	public boolean isComplete() {
 		return next == COMPLETED_STAGE;
@@ -60,7 +61,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 		}
 	}
 
-	protected void tryComplete(T value) {
+	protected void tryComplete(@Nullable T value) {
 		if (!isComplete()) {
 			complete(value);
 		}
@@ -73,13 +74,13 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public <U, S extends StageConsumer<? super T> & Stage<U>> Stage<U> then(S stage) {
+	public <U, S extends BiConsumer<? super T, Throwable> & Stage<U>> Stage<U> then(S stage) {
 		subscribe(stage);
 		return stage;
 	}
 
 	@SuppressWarnings("unchecked")
-	protected void subscribe(StageConsumer<? super T> consumer) {
+	protected void subscribe(BiConsumer<? super T, Throwable> consumer) {
 		if (next == null) {
 			next = consumer;
 		} else {
@@ -90,8 +91,8 @@ abstract class AbstractStage<T> implements Stage<T> {
 				nextStage.prev = next;
 				next = consumer;
 			} else {
-				final StageConsumer<? super T> finalNext = this.next;
-				next = (StageConsumer<T>) (result, error) -> {
+				final BiConsumer<? super T, Throwable> finalNext = this.next;
+				next = (BiConsumer<T, Throwable>) (result, error) -> {
 					finalNext.accept(result, error);
 					consumer.accept(result, error);
 				};
@@ -147,9 +148,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 	@Override
 	public Stage<T> thenRunEx(Runnable action) {
-		return whenComplete((result, throwable) -> {
-			action.run();
-		});
+		return whenComplete((result, throwable) -> action.run());
 	}
 
 	@Override
@@ -177,7 +176,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 	@Override
 	public <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
 		return then(new NextStage<T, U>() {
-			private void handleComplete(T value, Throwable throwable) {
+			private void handleComplete(@Nullable T value, @Nullable Throwable throwable) {
 				Stage<U> stage = fn.apply(value, throwable);
 				if (stage instanceof SettableStage) {
 					SettableStage<U> settableStage = (SettableStage<U>) stage;
@@ -206,7 +205,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> whenComplete(StageConsumer<? super T> action) {
+	public Stage<T> whenComplete(BiConsumer<? super T, Throwable> action) {
 		subscribe(action);
 		return this;
 	}
@@ -225,7 +224,9 @@ abstract class AbstractStage<T> implements Stage<T> {
 	@SuppressWarnings("unchecked")
 	private static class StageCombine<T, V, U> extends NextStage<T, V> {
 		final BiFunction<? super T, ? super U, ? extends V> fn;
+		@Nullable
 		T thisResult = (T) NO_RESULT;
+		@Nullable
 		U otherResult = (U) NO_RESULT;
 
 		StageCombine(BiFunction<? super T, ? super U, ? extends V> fn) {
@@ -233,7 +234,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 		}
 
 		@Override
-		protected void onComplete(T thisResult) {
+		protected void onComplete(@Nullable T thisResult) {
 			if (otherResult != NO_RESULT) {
 				onBothResults(thisResult, otherResult);
 			} else {
@@ -241,7 +242,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 			}
 		}
 
-		protected void onOtherComplete(U otherResult) {
+		protected void onOtherComplete(@Nullable U otherResult) {
 			if (thisResult != NO_RESULT) {
 				onBothResults(thisResult, otherResult);
 			} else {
@@ -249,7 +250,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 			}
 		}
 
-		void onBothResults(T thisResult, U otherResult) {
+		void onBothResults(@Nullable T thisResult, @Nullable U otherResult) {
 			this.thisResult = null;
 			this.otherResult = null;
 			if (!isComplete()) {
@@ -380,11 +381,11 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> timeout(Duration timeout) {
-		checkArgument(timeout.toMillis() >= 0, "Timeout cannot be less than zero");
-		if (timeout.equals(Duration.ZERO)) {
+	public Stage<T> timeout(@Nullable Duration timeout) {
+		if (timeout == null) {
 			return this;
 		}
+		checkArgument(timeout.toMillis() >= 0, "Timeout cannot be less than zero");
 		ScheduledRunnable schedule = getCurrentEventloop().delay(timeout, () -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
 		return then(new NextStage<T, T>() {
 

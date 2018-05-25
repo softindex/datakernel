@@ -1,5 +1,6 @@
 package io.datakernel.stream.processor;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.stream.*;
 
 import java.util.Set;
@@ -17,6 +18,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 	private final AbstractStreamConsumer<T> input = new Input();
 	private final AbstractStreamProducer<T> output = new Output();
 
+	@Nullable
 	private StreamDataReceiver<T> waitingReceiver;
 
 	// region creators

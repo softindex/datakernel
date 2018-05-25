@@ -16,7 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.StageConsumer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
@@ -29,6 +28,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.BiConsumer;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -42,7 +42,7 @@ public final class ServiceAdapters {
 	private ServiceAdapters() {
 	}
 
-	private static StageConsumer<Void> completeFuture(CompletableFuture<?> future) {
+	private static BiConsumer<Void, Throwable> completeFuture(CompletableFuture<?> future) {
 		return ($, throwable) -> {
 			if (throwable != null) {
 				future.completeExceptionally(throwable);
@@ -172,6 +172,7 @@ public final class ServiceAdapters {
 			public CompletableFuture<Void> stop(Eventloop eventloop, Executor executor) {
 				CompletableFuture<Void> future = new CompletableFuture<>();
 				Thread eventloopThread = eventloop.getEventloopThread();
+				assert eventloopThread != null;
 				eventloop.execute(() -> eventloop.keepAlive(false));
 				executor.execute(() -> {
 					try {
@@ -326,12 +327,12 @@ public final class ServiceAdapters {
 	}
 
 	public static <T> ServiceAdapter<T> combinedAdapter(List<? extends ServiceAdapter<? super T>> startOrder,
-	                                                    List<? extends ServiceAdapter<? super T>> stopOrder) {
+														List<? extends ServiceAdapter<? super T>> stopOrder) {
 		return new ServiceAdapter<T>() {
 			@SuppressWarnings("unchecked")
 			private void doAction(T instance, Executor executor,
-			                      Iterator<? extends ServiceAdapter<? super T>> iterator, CompletableFuture<Void> future,
-			                      Action<T> action) {
+								  Iterator<? extends ServiceAdapter<? super T>> iterator, CompletableFuture<Void> future,
+								  Action<T> action) {
 				if (iterator.hasNext()) {
 					action.doAction((ServiceAdapter<T>) iterator.next(), instance, executor).whenCompleteAsync((o, throwable) -> {
 						if (throwable == null) {
@@ -351,7 +352,7 @@ public final class ServiceAdapters {
 			public CompletableFuture<Void> start(T instance, Executor executor) {
 				CompletableFuture<Void> future = new CompletableFuture<>();
 				doAction(instance, executor, startOrder.iterator(), future,
-						ServiceAdapter::start);
+					ServiceAdapter::start);
 				return future;
 			}
 
@@ -359,7 +360,7 @@ public final class ServiceAdapters {
 			public CompletableFuture<Void> stop(T instance, Executor executor) {
 				CompletableFuture<Void> future = new CompletableFuture<>();
 				doAction(instance, executor, stopOrder.iterator(), future,
-						ServiceAdapter::stop);
+					ServiceAdapter::stop);
 				return future;
 			}
 		};

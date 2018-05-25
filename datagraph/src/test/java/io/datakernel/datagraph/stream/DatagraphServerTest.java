@@ -38,9 +38,9 @@ import java.util.Comparator;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -96,18 +96,18 @@ public class DatagraphServerTest {
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
-				.setInstance(DatagraphSerialization.class, serialization);
+			.setInstance(DatagraphSerialization.class, serialization);
 		DatagraphEnvironment environment1 = environment.extend()
-				.set("items", asList(new TestItem(1), new TestItem(3), new TestItem(5)))
-				.set("result", result1);
+			.set("items", asList(new TestItem(1), new TestItem(3), new TestItem(5)))
+			.set("result", result1);
 		DatagraphEnvironment environment2 = environment.extend()
-				.set("items", asList(new TestItem(2), new TestItem(4), new TestItem(6)))
-				.set("result", result2);
+			.set("items", asList(new TestItem(2), new TestItem(4), new TestItem(6)))
+			.set("result", result2);
 
 		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
-				.withListenAddress(address1);
+			.withListenAddress(address1);
 		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
-				.withListenAddress(address2);
+			.withListenAddress(address2);
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		Partition partition1 = new Partition(client, address1);
@@ -124,9 +124,13 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.getResult().whenComplete(assertComplete($ -> server1.close()));
+		result1.getResult()
+			.whenComplete(($, err) -> server1.close())
+			.whenComplete(assertComplete());
 
-		result2.getResult().whenComplete(assertComplete($ -> server2.close()));
+		result2.getResult()
+			.whenComplete(($, err) -> server2.close())
+			.whenComplete(assertComplete());
 
 		graph.execute();
 
@@ -149,31 +153,31 @@ public class DatagraphServerTest {
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
-				.setInstance(DatagraphSerialization.class, serialization)
-				.setInstance(DatagraphClient.class, client);
+			.setInstance(DatagraphSerialization.class, serialization)
+			.setInstance(DatagraphClient.class, client);
 		DatagraphEnvironment environment1 = environment.extend()
-				.set("items", asList(new TestItem(1), new TestItem(2), new TestItem(3), new TestItem(4), new TestItem(5), new TestItem(6)))
-				.set("result", result1);
+			.set("items", asList(new TestItem(1), new TestItem(2), new TestItem(3), new TestItem(4), new TestItem(5), new TestItem(6)))
+			.set("result", result1);
 		DatagraphEnvironment environment2 = environment.extend()
-				.set("items", asList(new TestItem(1), new TestItem(6)))
-				.set("result", result2);
+			.set("items", asList(new TestItem(1), new TestItem(6)))
+			.set("result", result2);
 		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
-				.withListenAddress(address1);
+			.withListenAddress(address1);
 		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
-				.withListenAddress(address2);
+			.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
 		DataGraph graph = new DataGraph(serialization,
-				asList(partition1, partition2));
+			asList(partition1, partition2));
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
-				TestItem.class, Long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
-					@Override
-					public int compare(Long o1, Long o2) {
-						return o1.compareTo(o2);
-					}
-				}));
+			TestItem.class, Long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+				@Override
+				public int compare(Long o1, Long o2) {
+					return o1.compareTo(o2);
+				}
+			}));
 
 		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
 		consumerNode.compileInto(graph);
@@ -183,9 +187,13 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.getResult().whenComplete(assertComplete($ -> server1.close()));
+		result1.getResult()
+			.whenComplete(($, err) -> server1.close())
+			.whenComplete(assertComplete());
 
-		result2.getResult().whenComplete(assertComplete($ -> server2.close()));
+		result2.getResult()
+			.whenComplete(($, err) -> server2.close())
+			.whenComplete(assertComplete());
 
 		graph.execute();
 
@@ -207,42 +215,42 @@ public class DatagraphServerTest {
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
-				.setInstance(DatagraphSerialization.class, serialization)
-				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+			.setInstance(DatagraphSerialization.class, serialization)
+			.setInstance(DatagraphClient.class, client)
+			.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
 		DatagraphEnvironment environment1 = environment.extend()
-				.set("items", asList(new TestItem(6), new TestItem(4), new TestItem(2),
-						new TestItem(3), new TestItem(1)))
-				.set("result", result1);
+			.set("items", asList(new TestItem(6), new TestItem(4), new TestItem(2),
+				new TestItem(3), new TestItem(1)))
+			.set("result", result1);
 		DatagraphEnvironment environment2 = environment.extend()
-				.set("items", asList(new TestItem(7), new TestItem(7), new TestItem(8),
-						new TestItem(2), new TestItem(5)))
-				.set("result", result2);
+			.set("items", asList(new TestItem(7), new TestItem(7), new TestItem(8),
+				new TestItem(2), new TestItem(5)))
+			.set("result", result2);
 
 		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
-				.withListenAddress(address1);
+			.withListenAddress(address1);
 		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
-				.withListenAddress(address2);
+			.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
 		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class),
-				new Predicate<TestItem>() {
-					@Override
-					public boolean test(TestItem input) {
-						return input.value % 2 == 0;
-					}
-				});
+			new Predicate<TestItem>() {
+				@Override
+				public boolean test(TestItem input) {
+					return input.value % 2 == 0;
+				}
+			});
 
 		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
-					@Override
-					public int compare(Long o1, Long o2) {
-						return o1.compareTo(o2);
-					}
-				});
+			localSort(filterDataset, long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+				@Override
+				public int compare(Long o1, Long o2) {
+					return o1.compareTo(o2);
+				}
+			});
 
 		DatasetListConsumer<?> consumerNode = listConsumer(sortedDataset, "result");
 
@@ -254,9 +262,13 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.getResult().whenComplete(assertComplete($ -> server1.close()));
+		result1.getResult()
+			.whenComplete(($, err) -> server1.close())
+			.whenComplete(assertComplete());
 
-		result2.getResult().whenComplete(assertComplete($ -> server2.close()));
+		result2.getResult()
+			.whenComplete(($, err) -> server2.close())
+			.whenComplete(assertComplete());
 
 		graph.execute();
 
@@ -277,40 +289,40 @@ public class DatagraphServerTest {
 		StreamConsumerToList<TestItem> resultConsumer = StreamConsumerToList.create();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
-				.setInstance(DatagraphSerialization.class, serialization)
-				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+			.setInstance(DatagraphSerialization.class, serialization)
+			.setInstance(DatagraphClient.class, client)
+			.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
 		DatagraphEnvironment environment1 = environment.extend()
-				.set("items", asList(new TestItem(1), new TestItem(2), new TestItem(3),
-						new TestItem(4), new TestItem(5)));
+			.set("items", asList(new TestItem(1), new TestItem(2), new TestItem(3),
+				new TestItem(4), new TestItem(5)));
 		DatagraphEnvironment environment2 = environment.extend()
-				.set("items", asList(new TestItem(6), new TestItem(7), new TestItem(8),
-						new TestItem(9), new TestItem(10)));
+			.set("items", asList(new TestItem(6), new TestItem(7), new TestItem(8),
+				new TestItem(9), new TestItem(10)));
 
 		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
-				.withListenAddress(address1);
+			.withListenAddress(address1);
 		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
-				.withListenAddress(address2);
+			.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
 		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class),
-				new Predicate<TestItem>() {
-					@Override
-					public boolean test(TestItem input) {
-						return input.value % 2 == 0;
-					}
-				});
+			new Predicate<TestItem>() {
+				@Override
+				public boolean test(TestItem input) {
+					return input.value % 2 == 0;
+				}
+			});
 
 		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
-					@Override
-					public int compare(Long o1, Long o2) {
-						return o1.compareTo(o2);
-					}
-				});
+			localSort(filterDataset, long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+				@Override
+				public int compare(Long o1, Long o2) {
+					return o1.compareTo(o2);
+				}
+			});
 
 		server1.listen();
 		server2.listen();
@@ -322,17 +334,18 @@ public class DatagraphServerTest {
 		System.out.println(graph);
 
 		resultProducer.streamTo(resultConsumer)
-				.getConsumerResult()
-				.whenComplete(assertComplete($ -> {
-					server1.close();
-					server2.close();
-				}));
+			.getConsumerResult()
+			.whenComplete(($, err) -> {
+				server1.close();
+				server2.close();
+			})
+			.whenComplete(assertComplete());
 
 		graph.execute();
 
 		eventloop.run();
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(8), new TestItem(10)),
-				resultConsumer.getList());
+			resultConsumer.getList());
 	}
 }

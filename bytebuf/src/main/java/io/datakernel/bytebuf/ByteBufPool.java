@@ -51,6 +51,13 @@ public final class ByteBufPool {
 	private ByteBufPool() {
 	}
 
+	/**
+	 * Allocates byte buffer from the pool with size of
+	 * <code>ceil(log<sub>2</sub>(size))<sup>2</sup></code> (rounds up to nearest power of 2) bytes.
+	 *
+	 * @param size returned byte buffer size is guaranteed to be bigger or equal to requested size.
+	 * @return byte buffer from this pool
+	 */
 	public static ByteBuf allocate(int size) {
 		if (size < minSize || size >= maxSize) {
 			// not willing to register in pool
@@ -69,12 +76,35 @@ public final class ByteBufPool {
 		return buf;
 	}
 
+	/**
+	 * Allocates byte buffer in same way as {@link #allocate(int)} does, but sets its positions such that
+	 * write-remaining is equal to requested size.
+	 * <p>
+	 * For example for size 21 byte buffer of size 32 is allocated                  (|______|)<br>
+	 * But its read/write positions are set to 11 so that only last 21 are writable (|__####|)
+	 *
+	 * @param size requested size
+	 * @return byte buffer from this pool with appropriate positions set
+	 */
+	public static ByteBuf allocateExact(int size) {
+		ByteBuf buf = allocate(size);
+		int d = buf.writeRemaining() - size;
+		buf.writePosition(d);
+		buf.readPosition(d);
+		return buf;
+	}
+
 	public static ByteBuf allocate(MemSize size) {
 		return allocate(size.toInt());
 	}
 
+	public static ByteBuf allocateExact(MemSize size) {
+		return allocateExact(size.toInt());
+	}
+
 	public static void recycle(ByteBuf buf) {
-		ConcurrentStack<ByteBuf> stack = slabs[32 - numberOfLeadingZeros(buf.array.length - 1)];
+		int slab = 32 - numberOfLeadingZeros(buf.array.length - 1);
+		ConcurrentStack<ByteBuf> stack = slabs[slab];
 		stack.push(buf);
 	}
 
@@ -172,8 +202,8 @@ public final class ByteBufPool {
 			int poolItems = ByteBufPool.getPoolItems(i);
 			if (createdItems != poolItems) {
 				sb.append(String.format("Slab %d (%d) ", i, (1 << i)))
-						.append(" created: ").append(createdItems)
-						.append(" pool: ").append(poolItems).append("\n");
+					.append(" created: ").append(createdItems)
+					.append(" pool: ").append(poolItems).append("\n");
 			}
 		}
 		return sb.toString();

@@ -16,6 +16,8 @@
 
 package io.datakernel.aggregation.measure;
 
+import io.datakernel.util.HashUtils;
+
 import static java.lang.Math.exp;
 import static java.lang.Math.log;
 
@@ -69,21 +71,12 @@ public final class HyperLogLog implements Comparable<HyperLogLog> {
 		addInt(item.hashCode());
 	}
 
-	private static long rehash(long k) {
-		k ^= k >>> 33;
-		k *= 0xff51afd7ed558ccdL;
-		k ^= k >>> 33;
-		k *= 0xc4ceb9fe1a85ec53L;
-		k ^= k >>> 33;
-		return k;
-	}
-
 	public void addLong(long value) {
-		addLongHash(rehash(value));
+		addLongHash(HashUtils.murmur3hash(value));
 	}
 
 	public void addInt(int value) {
-		addLongHash(rehash(value));
+		addLongHash(HashUtils.murmur3hash(value));
 	}
 
 	private static final double ALPHA_16 = 0.673 * 16 * 16;

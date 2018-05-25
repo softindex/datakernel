@@ -42,13 +42,15 @@ public final class ServerSocketSettings {
 	private final byte reuseAddress;
 
 	// region builders
-	private ServerSocketSettings(int backlog, MemSize receiveBufferSize, byte reuseAddress) {
+	private ServerSocketSettings(int backlog, @Nullable MemSize receiveBufferSize, byte reuseAddress) {
 		this.backlog = backlog;
 		this.receiveBufferSize = receiveBufferSize;
 		this.reuseAddress = reuseAddress;
 	}
 
-	public static ServerSocketSettings create(int backlog) {return new ServerSocketSettings(backlog, null, DEF_BOOL);}
+	public static ServerSocketSettings create(int backlog) {
+		return new ServerSocketSettings(backlog, null, DEF_BOOL);
+	}
 
 	public ServerSocketSettings withBacklog(int backlog) {
 		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
@@ -80,6 +82,7 @@ public final class ServerSocketSettings {
 		return receiveBufferSize != null;
 	}
 
+	@Nullable
 	public MemSize getReceiveBufferSize() {
 		check(hasReceiveBufferSize());
 		return receiveBufferSize;

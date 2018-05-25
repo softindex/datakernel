@@ -16,6 +16,11 @@
 
 package io.datakernel.exception;
 
+/**
+ * This exception (as well as its subtypes) is used in asynchronous contexts
+ * where the default Java call stacktrace has no useful meaning and is redundant
+ * to fetch, store or print.
+ */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public class StacklessException extends Exception {
 

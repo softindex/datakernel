@@ -38,6 +38,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.lang.Math.min;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class AsyncHttpServerTest {
@@ -130,7 +131,7 @@ public class AsyncHttpServerTest {
 		writeByRandomParts(socket, "GET /abc HTTP1.1\r\nHost: localhost\r\n\r\n");
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\n/abc"); // ?
 
-		assertTrue(toByteArray(socket.getInputStream()).length == 0);
+		assertEquals(0, toByteArray(socket.getInputStream()).length);
 		assertTrue(socket.isClosed());
 		socket.close();
 
@@ -166,7 +167,7 @@ public class AsyncHttpServerTest {
 		writeByRandomParts(socket, "GET /abc HTTP1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\n/abc"); // ?
 
-		assertTrue(toByteArray(socket.getInputStream()).length == 0);
+		assertEquals(0, toByteArray(socket.getInputStream()).length);
 		assertTrue(socket.isClosed());
 		socket.close();
 
@@ -210,7 +211,7 @@ public class AsyncHttpServerTest {
 		socket.connect(new InetSocketAddress("localhost", port));
 		writeByRandomParts(socket, "GET /abc HTTP/1.0\r\nHost: localhost\r\n\r\n");
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\n/abc");
-		assertTrue(toByteArray(socket.getInputStream()).length == 0);
+		assertEquals(0, toByteArray(socket.getInputStream()).length);
 		socket.close();
 
 		server.closeFuture().get();
@@ -233,7 +234,7 @@ public class AsyncHttpServerTest {
 		socket.connect(new InetSocketAddress("localhost", port));
 		writeByRandomParts(socket, "GET /abc HTTP/1.1\r\nConnection: close\r\nHost: localhost\r\n\r\n");
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\n/abc");
-		assertTrue(toByteArray(socket.getInputStream()).length == 0);
+		assertEquals(0, toByteArray(socket.getInputStream()).length);
 		socket.close();
 
 		server.closeFuture().get();
@@ -336,7 +337,7 @@ public class AsyncHttpServerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ByteBuf buf =
 				HttpRequest.post("http://127.0.0.1:" + port)
-						.withBody(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body")))
+						.withBody(encodeAscii("Test big HTTP message body"))
 						.toByteBuf();
 
 		AsyncServlet servlet = new AsyncServlet() {
@@ -396,7 +397,7 @@ public class AsyncHttpServerTest {
 		writeByRandomParts(socket, "abcde");
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 5\r\n\r\nabcde");
 
-		assertTrue(toByteArray(socket.getInputStream()).length == 0);
+		assertEquals(0, toByteArray(socket.getInputStream()).length);
 		assertTrue(socket.isClosed());
 		socket.close();
 

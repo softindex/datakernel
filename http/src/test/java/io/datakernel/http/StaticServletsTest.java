@@ -52,251 +52,251 @@ import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("ThrowableResultOfMethodCallIgnored")
 public class StaticServletsTest {
-    public static final String EXPECTED_CONTENT = "Test";
+	public static final String EXPECTED_CONTENT = "Test";
 
-    @Rule
-    public ByteBufRule byteBufRule = new ByteBufRule();
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
-    @Rule
-    public ExpectedException exception = ExpectedException.none();
+	@Rule
+	public ExpectedException exception = ExpectedException.none();
 
-    @ClassRule
-    public static final TemporaryFolder tmpFolder = new TemporaryFolder();
+	@ClassRule
+	public static final TemporaryFolder tmpFolder = new TemporaryFolder();
 
-    private static Path resourcesPath;
-    private static File resourcesFile;
+	private static Path resourcesPath;
+	private static File resourcesFile;
 
 
-    @BeforeClass
-    public static void setup() throws IOException {
-        resourcesPath = tmpFolder.newFolder("static").toPath();
-        resourcesFile = resourcesPath.toFile();
+	@BeforeClass
+	public static void setup() throws IOException {
+		resourcesPath = tmpFolder.newFolder("static").toPath();
+		resourcesFile = resourcesPath.toFile();
 
-        Files.write(resourcesPath.resolve("index.html"), encodeAscii(EXPECTED_CONTENT));
-    }
+		Files.write(resourcesPath.resolve("index.html"), encodeAscii(EXPECTED_CONTENT));
+	}
 
-    @Test
-    public void testPathLoader() throws ExecutionException, InterruptedException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-        ExecutorService executor = Executors.newCachedThreadPool();
+	@Test
+	public void testPathLoader() throws ExecutionException, InterruptedException {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-        StaticLoader resourceLoader = StaticLoaders.ofPath(eventloop, executor, resourcesPath);
-        StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(eventloop, executor, resourcesPath);
+		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
-        HttpRequest request = get("http://test.com:8080/index.html");
-        CompletableFuture<String> future = servlet.serve(request)
-                .thenApply(httpResponse -> {
-                    String body = decodeAscii(httpResponse.getBody());
-                    httpResponse.recycleBufs();
-                    return body;
-                })
-                .toCompletableFuture();
+		HttpRequest request = get("http://test.com:8080/index.html");
+		CompletableFuture<String> future = servlet.serve(request)
+				.thenApply(httpResponse -> {
+					String body = decodeAscii(httpResponse.getBody());
+					httpResponse.recycleBufs();
+					return body;
+				})
+				.toCompletableFuture();
 
-        eventloop.run();
+		eventloop.run();
 
-        assertEquals(EXPECTED_CONTENT, future.get());
-    }
+		assertEquals(EXPECTED_CONTENT, future.get());
+	}
 
-    @Test
-    public void testFileNotFoundPathLoader() throws Throwable {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-        ExecutorService executor = Executors.newCachedThreadPool();
+	@Test
+	public void testFileNotFoundPathLoader() throws Throwable {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-        StaticLoader resourceLoader = StaticLoaders.ofPath(eventloop, executor, resourcesPath);
-        StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(eventloop, executor, resourcesPath);
+		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
-        HttpRequest request = get("http://test.com:8080/anknownFile.txt");
-        CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
+		HttpRequest request = get("http://test.com:8080/anknownFile.txt");
+		CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
 
-        eventloop.run();
+		eventloop.run();
 
-        exception.expectCause(instanceOf(HttpException.class));
-        exception.expectCause(hasProperty("code", is(404)));
+		exception.expectCause(instanceOf(HttpException.class));
+		exception.expectCause(hasProperty("code", is(404)));
 
-        future.get();
-    }
+		future.get();
+	}
 
-    @Test
-    public void testFileLoader() throws ExecutionException, InterruptedException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-        ExecutorService executor = Executors.newCachedThreadPool();
+	@Test
+	public void testFileLoader() throws ExecutionException, InterruptedException {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-        StaticLoader resourceLoader = StaticLoaders.ofFile(eventloop, executor, resourcesFile);
-        StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticLoader resourceLoader = StaticLoaders.ofFile(eventloop, executor, resourcesFile);
+		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
-        HttpRequest request = get("http://test.com:8080/index.html");
-        CompletableFuture<String> future = servlet.serve(request)
-                .thenApply(httpResponse -> {
-                    String body = decodeAscii(httpResponse.getBody());
-                    httpResponse.recycleBufs();
-                    return body;
-                })
-                .toCompletableFuture();
+		HttpRequest request = get("http://test.com:8080/index.html");
+		CompletableFuture<String> future = servlet.serve(request)
+				.thenApply(httpResponse -> {
+					String body = decodeAscii(httpResponse.getBody());
+					httpResponse.recycleBufs();
+					return body;
+				})
+				.toCompletableFuture();
 
-        eventloop.run();
+		eventloop.run();
 
-        assertEquals(EXPECTED_CONTENT, future.get());
-    }
+		assertEquals(EXPECTED_CONTENT, future.get());
+	}
 
-    @Test
-    public void testFileNotFoundCachedFileLoader() throws Throwable {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-        ExecutorService executor = Executors.newCachedThreadPool();
+	@Test
+	public void testFileNotFoundCachedFileLoader() throws Throwable {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-        StaticLoader resourceLoader = StaticLoaders.ofFile(eventloop, executor, resourcesFile);
-        StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticLoader resourceLoader = StaticLoaders.ofFile(eventloop, executor, resourcesFile);
+		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
-        HttpRequest request = get("http://test.com:8080/testFile.txt");
-        CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
+		HttpRequest request = get("http://test.com:8080/testFile.txt");
+		CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
 
-        eventloop.run();
+		eventloop.run();
 
-        exception.expectCause(instanceOf(HttpException.class));
-        exception.expectCause(hasProperty("code", is(404)));
+		exception.expectCause(instanceOf(HttpException.class));
+		exception.expectCause(hasProperty("code", is(404)));
 
-        future.get();
-    }
+		future.get();
+	}
 
-    @Test
-    public void testClassPath() throws ExecutionException, InterruptedException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-        ExecutorService executor = Executors.newCachedThreadPool();
+	@Test
+	public void testClassPath() throws ExecutionException, InterruptedException {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-        StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor);
-        StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor);
+		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
-        HttpRequest request = get("http://test.com:8080/testFile.txt");
-        CompletableFuture<String> future = servlet.serve(request)
-                .thenApply(httpResponse -> {
-                    String body = decodeAscii(httpResponse.getBody());
-                    httpResponse.recycleBufs();
-                    return body;
-                })
-                .toCompletableFuture();
+		HttpRequest request = get("http://test.com:8080/testFile.txt");
+		CompletableFuture<String> future = servlet.serve(request)
+				.thenApply(httpResponse -> {
+					String body = decodeAscii(httpResponse.getBody());
+					httpResponse.recycleBufs();
+					return body;
+				})
+				.toCompletableFuture();
 
-        eventloop.run();
+		eventloop.run();
 
-        assertEquals(EXPECTED_CONTENT, future.get());
-    }
+		assertEquals(EXPECTED_CONTENT, future.get());
+	}
 
-    @Test
-    public void testFileNotFoundClassPath() throws Throwable {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-        ExecutorService executor = Executors.newCachedThreadPool();
+	@Test
+	public void testFileNotFoundClassPath() throws Throwable {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-        StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor);
-        StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor);
+		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
-        HttpRequest request = get("http://test.com:8080/index.html");
-        CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
+		HttpRequest request = get("http://test.com:8080/index.html");
+		CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
 
-        eventloop.run();
+		eventloop.run();
 
-        exception.expectCause(instanceOf(HttpException.class));
-        exception.expectCause(hasProperty("code", is(404)));
+		exception.expectCause(instanceOf(HttpException.class));
+		exception.expectCause(hasProperty("code", is(404)));
 
-        future.get();
-    }
+		future.get();
+	}
 
-    @Test
-    public void testRelativeClassPath() throws ExecutionException, InterruptedException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-        ExecutorService executor = Executors.newCachedThreadPool();
+	@Test
+	public void testRelativeClassPath() throws ExecutionException, InterruptedException {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-        StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor, this.getClass());
-        StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor, this.getClass());
+		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
-        HttpRequest request = get("http://test.com:8080/testFile.txt");
-        CompletableFuture<String> future = servlet.serve(request)
-                .thenApply(httpResponse -> {
-                    String body = decodeAscii(httpResponse.getBody());
-                    httpResponse.recycleBufs();
-                    return body;
-                })
-                .toCompletableFuture();
+		HttpRequest request = get("http://test.com:8080/testFile.txt");
+		CompletableFuture<String> future = servlet.serve(request)
+				.thenApply(httpResponse -> {
+					String body = decodeAscii(httpResponse.getBody());
+					httpResponse.recycleBufs();
+					return body;
+				})
+				.toCompletableFuture();
 
-        eventloop.run();
+		eventloop.run();
 
-        assertEquals(EXPECTED_CONTENT, future.get());
-    }
+		assertEquals(EXPECTED_CONTENT, future.get());
+	}
 
-    @Test
-    public void testFileNotFoundRelativeClassPath() throws Throwable {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-        ExecutorService executor = Executors.newCachedThreadPool();
+	@Test
+	public void testFileNotFoundRelativeClassPath() throws Throwable {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-        StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor, StaticServlet.class);
-        StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor, StaticServlet.class);
+		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
-        HttpRequest request = get("http://test.com:8080/unknownFile.txt");
-        CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
+		HttpRequest request = get("http://test.com:8080/unknownFile.txt");
+		CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
 
-        eventloop.run();
+		eventloop.run();
 
-        exception.expectCause(instanceOf(HttpException.class));
-        exception.expectCause(hasProperty("code", is(404)));
+		exception.expectCause(instanceOf(HttpException.class));
+		exception.expectCause(hasProperty("code", is(404)));
 
-        future.get();
-    }
+		future.get();
+	}
 
-    @Test
-    public void testResourcesNameLoadingService() throws InterruptedException, ExecutionException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-        ExecutorService executor = Executors.newCachedThreadPool();
+	@Test
+	public void testResourcesNameLoadingService() throws InterruptedException, ExecutionException {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        ResourcesNameLoadingService preDownloadResources = ResourcesNameLoadingService.create(eventloop,
-                executor, classLoader, "dir2");
-        preDownloadResources.start();
+		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+		ResourcesNameLoadingService preDownloadResources = ResourcesNameLoadingService.create(eventloop,
+				executor, classLoader, "dir2");
+		preDownloadResources.start();
 
-        eventloop.run();
+		eventloop.run();
 
-        StaticLoader testLoader = name -> name.equals("dir2/testFile.txt")
-                ? Stage.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
-                : Stage.ofException(new NoSuchFileException(name));
+		StaticLoader testLoader = name -> name.equals("dir2/testFile.txt")
+				? Stage.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
+				: Stage.ofException(new NoSuchFileException(name));
 
-        StaticLoader resourceLoader = StaticLoaders.ofPredicate(testLoader, preDownloadResources::contains);
-        StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticLoader resourceLoader = StaticLoaders.ofPredicate(testLoader, preDownloadResources::contains);
+		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
-        HttpRequest request = get("http://test.com:8080/dir2/testFile.txt");
-        CompletableFuture<String> future = servlet.serve(request)
-                .thenApply(httpResponse -> {
-                    String body = decodeAscii(httpResponse.getBody());
-                    httpResponse.recycleBufs();
-                    return body;
-                })
-                .toCompletableFuture();
+		HttpRequest request = get("http://test.com:8080/dir2/testFile.txt");
+		CompletableFuture<String> future = servlet.serve(request)
+				.thenApply(httpResponse -> {
+					String body = decodeAscii(httpResponse.getBody());
+					httpResponse.recycleBufs();
+					return body;
+				})
+				.toCompletableFuture();
 
-        eventloop.run();
+		eventloop.run();
 
-        assertEquals(EXPECTED_CONTENT, future.get());
-    }
+		assertEquals(EXPECTED_CONTENT, future.get());
+	}
 
-    @Test
-    public void testFileNamesLoadingService() throws InterruptedException, ExecutionException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-        ExecutorService executor = Executors.newCachedThreadPool();
+	@Test
+	public void testFileNamesLoadingService() throws InterruptedException, ExecutionException {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-        FileNamesLoadingService fileService = FileNamesLoadingService.create(eventloop, executor, resourcesPath);
-        fileService.start();
-        eventloop.run();
+		FileNamesLoadingService fileService = FileNamesLoadingService.create(eventloop, executor, resourcesPath);
+		fileService.start();
+		eventloop.run();
 
-        StaticLoader testLoader = name -> name.equals("index.html")
-                ? Stage.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
-                : Stage.ofException(new NoSuchFileException(name));
+		StaticLoader testLoader = name -> name.equals("index.html")
+				? Stage.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
+				: Stage.ofException(new NoSuchFileException(name));
 
-        StaticLoader resourceLoader = StaticLoaders.ofPredicate(testLoader, fileService::contains);
-        StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
+		StaticLoader resourceLoader = StaticLoaders.ofPredicate(testLoader, fileService::contains);
+		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
-        CompletableFuture<String> future = servlet.serve(get("http://test.com:8080/index.html"))
-                .thenApply(httpResponse -> {
-                    String body = decodeAscii(httpResponse.getBody());
-                    httpResponse.recycleBufs();
-                    return body;
-                })
-                .toCompletableFuture();
+		CompletableFuture<String> future = servlet.serve(get("http://test.com:8080/index.html"))
+				.thenApply(httpResponse -> {
+					String body = decodeAscii(httpResponse.getBody());
+					httpResponse.recycleBufs();
+					return body;
+				})
+				.toCompletableFuture();
 
-        eventloop.run();
-        assertEquals(EXPECTED_CONTENT, future.get());
-    }
+		eventloop.run();
+		assertEquals(EXPECTED_CONTENT, future.get());
+	}
 }

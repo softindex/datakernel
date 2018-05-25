@@ -17,6 +17,8 @@
 package io.datakernel.config;
 
 import com.zaxxer.hikari.HikariConfig;
+import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.FatalErrorHandler;
 import io.datakernel.eventloop.InetAddressRange;
 import io.datakernel.eventloop.ThrottlingController;
@@ -586,6 +588,78 @@ public final class ConfigConverters {
 
 			@Override
 			public FatalErrorHandler get(Config config, FatalErrorHandler defaultValue) {
+				if (config.isEmpty()) {
+					return defaultValue;
+				}
+				return get(config);
+			}
+		};
+	}
+
+	public static ConfigConverter<EventloopTaskScheduler.Schedule> ofEventloopTaskSchedule() {
+		return new ConfigConverter<EventloopTaskScheduler.Schedule>() {
+			@Override
+			public EventloopTaskScheduler.Schedule get(Config config) {
+				switch (config.get("type")) {
+					case "immediate":
+						return EventloopTaskScheduler.Schedule.immediate();
+					case "delay":
+						return EventloopTaskScheduler.Schedule.ofDelay(config.get(ofDuration(), "value"));
+					case "interval":
+						return EventloopTaskScheduler.Schedule.ofInterval(config.get(ofDuration(), "value"));
+					case "period":
+						return EventloopTaskScheduler.Schedule.ofPeriod(config.get(ofDuration(), "value"));
+					default:
+						throw new IllegalArgumentException("No eventloop task schedule type named " + config.getValue() + " exists!");
+				}
+			}
+
+			@Override
+			public EventloopTaskScheduler.Schedule get(Config config, EventloopTaskScheduler.Schedule defaultValue) {
+				if (config.isEmpty()) {
+					return defaultValue;
+				}
+				return get(config);
+			}
+		};
+	}
+
+	public static ConfigConverter<RetryPolicy> ofRetryPolicy() {
+		return new ConfigConverter<RetryPolicy>() {
+			@Override
+			public RetryPolicy get(Config config) {
+				if (!config.hasValue() || config.getValue().equals("no")) {
+					return RetryPolicy.noRetry();
+				}
+				RetryPolicy retryPolicy;
+				switch (config.getValue()) {
+					case "immediate":
+						retryPolicy = RetryPolicy.immediateRetry();
+						break;
+					case "fixedDelay":
+						retryPolicy = RetryPolicy.fixedDelay(config.get(ofDuration(), "delay").toMillis());
+						break;
+					case "exponentialBackoff":
+						retryPolicy = RetryPolicy.exponentialBackoff(config.get(ofDuration(), "initialDelay").toMillis(),
+								config.get(ofDuration(), "maxDelay").toMillis(), config.get(ofDouble(), "exponent", 2.0));
+						break;
+					default:
+						throw new IllegalArgumentException("No retry policy named " + config.getValue() + " exists!");
+				}
+				int maxRetryCount = config.get(ofInteger(), "maxRetryCount", Integer.MAX_VALUE);
+				if (maxRetryCount != Integer.MAX_VALUE) {
+					retryPolicy = retryPolicy.withMaxTotalRetryCount(maxRetryCount);
+				}
+				Duration max = Duration.ofSeconds(Long.MAX_VALUE);
+				Duration maxRetryTimeout = config.get(ofDuration(), "maxRetryTimeout", max);
+				if (!maxRetryTimeout.equals(max)) {
+					retryPolicy = retryPolicy.withMaxTotalRetryTimeout(maxRetryTimeout);
+				}
+				return retryPolicy;
+			}
+
+			@Override
+			public RetryPolicy get(Config config, RetryPolicy defaultValue) {
 				if (config.isEmpty()) {
 					return defaultValue;
 				}

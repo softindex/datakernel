@@ -51,10 +51,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
 import static java.util.Arrays.asList;
@@ -109,10 +110,10 @@ public class FsIntegrationTest {
 		List<Stage<Void>> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
 			tasks.add(
-					StreamProducer.of(ByteBuf.wrapForReading(CONTENT))
-							.streamTo(
-									client.uploadStream("file" + i))
-							.getConsumerResult());
+				StreamProducer.of(ByteBuf.wrapForReading(CONTENT))
+					.streamTo(
+						client.uploadStream("file" + i))
+					.getConsumerResult());
 		}
 		Stages.all(tasks).whenComplete(assertComplete($ -> server.close()));
 
@@ -173,18 +174,18 @@ public class FsIntegrationTest {
 		server.listen();
 
 		CompletableFuture<Void> future = StreamProducer.concat(
-				StreamProducer.of(
-						wrapUtf8("Test1"),
-						wrapUtf8(" Test2"),
-						wrapUtf8(" Test3")),
-				StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE)),
-				StreamProducer.closingWithError(new StacklessException("Test exception")),
-				StreamProducer.of(wrapUtf8("Test4")))
-				.streamTo(
-						client.uploadStream(resultFile))
-				.getConsumerResult()
-				.whenComplete(($, throwable) -> server.close())
-				.toCompletableFuture();
+			StreamProducer.of(
+				wrapUtf8("Test1"),
+				wrapUtf8(" Test2"),
+				wrapUtf8(" Test3")),
+			StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE)),
+			StreamProducer.closingWithError(new StacklessException("Test exception")),
+			StreamProducer.of(wrapUtf8("Test4")))
+			.streamTo(
+				client.uploadStream(resultFile))
+			.getConsumerResult()
+			.whenComplete(($, throwable) -> server.close())
+			.toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdownNow();
@@ -260,21 +261,13 @@ public class FsIntegrationTest {
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsClient client = createClient(eventloop);
 		RemoteFsServer server = createServer(eventloop, executor);
-		List<Throwable> expected = new ArrayList<>();
 
 		server.listen();
 		client.downloadStream(file, 0).streamTo(StreamConsumer.idle())
-				.getProducerResult()
-				.whenComplete(($, throwable) -> {
-					if (throwable != null) expected.add(throwable);
-					server.close();
-				});
+			.getProducerResult()
+			.whenComplete(($, throwable) -> server.close())
+			.whenComplete(assertFailure(RemoteFsException.class, "File not found"));
 		eventloop.run();
-		executor.shutdown();
-
-		assertEquals(1, expected.size());
-		//noinspection ThrowableResultOfMethodCallIgnored
-		assertEquals(expected.get(0).getMessage(), "File not found");
 	}
 
 	@Test
@@ -292,9 +285,9 @@ public class FsIntegrationTest {
 		List<Stage<Void>> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
 			tasks.add(client.downloadStream(file, 0)
-					.streamTo(
-							StreamFileWriter.create(executor, storage.resolve("file" + i)))
-					.getProducerResult());
+				.streamTo(
+					StreamFileWriter.create(executor, storage.resolve("file" + i)))
+				.getProducerResult());
 		}
 		Stages.all(tasks).whenComplete(assertComplete($ -> server.close()));
 
@@ -334,7 +327,7 @@ public class FsIntegrationTest {
 		server.listen();
 
 		CompletableFuture<Void> future = client.delete(file)
-				.whenComplete(($, throwable) -> server.close()).toCompletableFuture();
+			.whenComplete(($, throwable) -> server.close()).toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdown();
@@ -344,7 +337,7 @@ public class FsIntegrationTest {
 			@Override
 			public boolean matches(Object item) {
 				return item instanceof Exception && ((Exception) item)
-						.getMessage().endsWith(storage.resolve(file).toAbsolutePath().toString());
+					.getMessage().endsWith(storage.resolve(file).toAbsolutePath().toString());
 			}
 
 			@Override
@@ -396,12 +389,12 @@ public class FsIntegrationTest {
 		server.listen();
 
 		CompletableFuture<Void> future =
-				StreamProducer.of(ByteBuf.wrapForReading(bytes))
-						.streamTo(
-								client.uploadStream(resultFile))
-						.getConsumerResult()
-						.whenComplete(($, throwable) -> server.close())
-						.toCompletableFuture();
+			StreamProducer.of(ByteBuf.wrapForReading(bytes))
+				.streamTo(
+					client.uploadStream(resultFile))
+				.getConsumerResult()
+				.whenComplete(($, throwable) -> server.close())
+				.toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdown();
@@ -419,8 +412,8 @@ public class FsIntegrationTest {
 
 		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, startPosition);
 		producer.streamTo(StreamConsumerToList.create(expected))
-				.getProducerResult()
-				.whenComplete(($, throwable) -> server.close());
+			.getProducerResult()
+			.whenComplete(($, throwable) -> server.close());
 
 		eventloop.run();
 		executor.shutdown();
@@ -433,7 +426,7 @@ public class FsIntegrationTest {
 
 	private RemoteFsServer createServer(Eventloop eventloop, ExecutorService executor) {
 		return RemoteFsServer.create(eventloop, executor, storage)
-				.withListenAddress(address);
+			.withListenAddress(address);
 	}
 
 	static byte[] createBigByteArray() {

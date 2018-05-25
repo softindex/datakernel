@@ -45,9 +45,9 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.function.Function;
 
-import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -76,9 +76,9 @@ public class PageRankTest {
 		@Override
 		public String toString() {
 			return "Page{" +
-					"pageId=" + pageId +
-					", links=" + Arrays.toString(links) +
-					'}';
+				"pageId=" + pageId +
+				", links=" + Arrays.toString(links) +
+				'}';
 		}
 	}
 
@@ -98,9 +98,9 @@ public class PageRankTest {
 		@Override
 		public String toString() {
 			return "Rank{" +
-					"pageId=" + pageId +
-					", value=" + value +
-					'}';
+				"pageId=" + pageId +
+				", value=" + value +
+				'}';
 		}
 
 		@SuppressWarnings({"SimplifiableIfStatement", "EqualsWhichDoesntCheckParameterClass"})
@@ -131,9 +131,9 @@ public class PageRankTest {
 		@Override
 		public String toString() {
 			return "RankAccumulator{" +
-					"pageId=" + pageId +
-					", accumulatedRank=" + accumulatedRank +
-					'}';
+				"pageId=" + pageId +
+				", accumulatedRank=" + accumulatedRank +
+				'}';
 		}
 	}
 
@@ -163,31 +163,31 @@ public class PageRankTest {
 
 	public static SortedDataset<Long, Rank> pageRankIteration(SortedDataset<Long, Page> pages, SortedDataset<Long, Rank> ranks) {
 		Dataset<Rank> updates = join(pages, ranks,
-				new StreamJoin.InnerJoiner<Long, Page, Rank, Rank>() {
-					@Override
-					public void onInnerJoin(Long key, Page page, Rank rank, StreamDataReceiver<Rank> output) {
-						page.disperse(rank, output);
-					}
-				},
-				Rank.class, Rank.KEY_FUNCTION);
+			new StreamJoin.InnerJoiner<Long, Page, Rank, Rank>() {
+				@Override
+				public void onInnerJoin(Long key, Page page, Rank rank, StreamDataReceiver<Rank> output) {
+					page.disperse(rank, output);
+				}
+			},
+			Rank.class, Rank.KEY_FUNCTION);
 
 		Dataset<Rank> newRanks = sort_Reduce_Repartition_Reduce(updates, new RankAccumulatorReducer(),
-				Long.class, Rank.KEY_FUNCTION, Long::compareTo,
-				RankAccumulator.class, RankAccumulator.KEY_FUNCTION,
-				Rank.class);
+			Long.class, Rank.KEY_FUNCTION, Long::compareTo,
+			RankAccumulator.class, RankAccumulator.KEY_FUNCTION,
+			Rank.class);
 
 		return castToSorted(newRanks, Long.class, Rank.KEY_FUNCTION, Long::compareTo);
 	}
 
 	public static SortedDataset<Long, Rank> pageRank(SortedDataset<Long, Page> pages) {
 		SortedDataset<Long, Rank> ranks = castToSorted(map(pages,
-				new StreamMap.MapperProjection<Page, Rank>() {
-					@Override
-					public Rank apply(Page page) {
-						return new Rank(page.pageId, 1.0);
-					}
-				},
-				Rank.class), Long.class, Rank.KEY_FUNCTION, Comparator.naturalOrder());
+			new StreamMap.MapperProjection<Page, Rank>() {
+				@Override
+				public Rank apply(Page page) {
+					return new Rank(page.pageId, 1.0);
+				}
+			},
+			Rank.class), Long.class, Rank.KEY_FUNCTION, Comparator.naturalOrder());
 
 		for (int i = 0; i < 10; i++) {
 			ranks = pageRankIteration(pages, ranks);
@@ -210,15 +210,15 @@ public class PageRankTest {
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
-				.setInstance(DatagraphSerialization.class, serialization)
-				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+			.setInstance(DatagraphSerialization.class, serialization)
+			.setInstance(DatagraphClient.class, client)
+			.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
 		DatagraphEnvironment environment1 = environment.extend()
-				.set("items", asList(new Page(1, new long[]{1, 2, 3}), new Page(3, new long[]{1})))
-				.set("result", result1);
+			.set("items", asList(new Page(1, new long[]{1, 2, 3}), new Page(3, new long[]{1})))
+			.set("result", result1);
 		DatagraphEnvironment environment2 = environment.extend()
-				.set("items", asList(new Page(2, new long[]{1})))
-				.set("result", result2);
+			.set("items", asList(new Page(2, new long[]{1})))
+			.set("result", result2);
 
 		DatagraphServer server1 = new DatagraphServer(eventloop, environment1).withListenAddress(address1);
 		DatagraphServer server2 = new DatagraphServer(eventloop, environment2).withListenAddress(address2);
@@ -227,10 +227,10 @@ public class PageRankTest {
 		Partition partition2 = new Partition(client, address2);
 
 		DataGraph graph = new DataGraph(serialization,
-				asList(partition1, partition2));
+			asList(partition1, partition2));
 
 		SortedDataset<Long, Page> pages = repartition_Sort(sortedDatasetOfList("items",
-				Page.class, Long.class, Page.KEY_FUNCTION, Comparator.naturalOrder()));
+			Page.class, Long.class, Page.KEY_FUNCTION, Comparator.naturalOrder()));
 
 		SortedDataset<Long, Rank> pageRanks = pageRank(pages);
 
@@ -241,10 +241,11 @@ public class PageRankTest {
 		server2.listen();
 
 		Stages.all(result1.getResult(), result2.getResult())
-				.whenComplete(assertComplete($ -> {
-					server1.close();
-					server2.close();
-				}));
+			.whenComplete(($, err) -> {
+				server1.close();
+				server2.close();
+			})
+			.whenComplete(assertComplete());
 
 		graph.execute();
 

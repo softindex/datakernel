@@ -1,7 +1,11 @@
 package io.datakernel.test;
 
+import ch.qos.logback.classic.Level;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import io.datakernel.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.*;
@@ -12,6 +16,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 public class TestUtils {
 
@@ -64,4 +71,73 @@ public class TestUtils {
 		}
 	}
 
+	public static void enableLogging(String name, Level level) {
+		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(name);
+		logger.setLevel(level);
+	}
+
+	public static void enableLogging(Level level) {
+		enableLogging(Logger.ROOT_LOGGER_NAME, level);
+	}
+
+	public static void enableLogging(String name) {
+		enableLogging(name, Level.TRACE);
+	}
+
+	public static void enableLogging() {
+		enableLogging(Logger.ROOT_LOGGER_NAME, Level.TRACE);
+	}
+
+	public static <T> BiConsumer<T, Throwable> assertComplete(Consumer<T> consumer) {
+		return (t, error) -> {
+			if (error != null) {
+				throw new AssertionError(error);
+			}
+			consumer.accept(t);
+		};
+	}
+
+	public static <T> BiConsumer<T, Throwable> assertComplete() {
+		return assertComplete($ -> {});
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, @Nullable String messagePattern, Consumer<E> consumer) {
+		return (t, error) -> {
+			if (error == null && errorClass == Throwable.class) {
+				throw new AssertionError("Expected an error");
+			}
+			if (error == null || !errorClass.isAssignableFrom(error.getClass())) {
+				throw new AssertionError("Expected an error of type " + errorClass.getName() + " got " + (error == null ? "none" : error.getClass().getSimpleName()));
+			}
+			if (messagePattern != null && !Pattern.compile(messagePattern).matcher(error.getMessage()).find()) {
+				throw new AssertionError("Expected error message to match pattern `" + messagePattern + "`, but got message '" + error.getMessage() + "'");
+			}
+			consumer.accept((E) error);
+		};
+	}
+
+	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, Consumer<E> consumer) {
+		return assertFailure(errorClass, null, consumer);
+	}
+
+	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, String messagePattern) {
+		return assertFailure(errorClass, messagePattern, $ -> {});
+	}
+
+	public static <T> BiConsumer<T, Throwable> assertFailure(Class<? extends Throwable> errorClass) {
+		return assertFailure(errorClass, $ -> {});
+	}
+
+	public static <T> BiConsumer<T, Throwable> assertFailure(String messagePattern) {
+		return assertFailure(Throwable.class, messagePattern);
+	}
+
+	public static <T> BiConsumer<T, Throwable> assertFailure(Consumer<Throwable> consumer) {
+		return assertFailure(Throwable.class, consumer);
+	}
+
+	public static <T> BiConsumer<T, Throwable> assertFailure() {
+		return assertFailure($ -> {});
+	}
 }

@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.util.ReflectionUtils;
 
 import java.time.Duration;
@@ -29,6 +30,7 @@ public interface EventloopJmxMBeanEx extends EventloopJmxMBean {
 	}
 
 	@JmxAttribute
+	@Nullable
 	default Duration getSmoothingWindow() {
 		return ReflectionUtils.getSmoothingWindow(this);
 	}

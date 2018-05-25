@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.jmx.EventStats;
@@ -67,7 +68,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	protected ServerSocketSettings serverSocketSettings = DEFAULT_SERVER_SOCKET_SETTINGS;
 	protected SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
 
-	private boolean acceptOnce;
+	protected boolean acceptOnce;
 
 	public interface AcceptFilter {
 		boolean filterAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl);
@@ -75,12 +76,12 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	private AcceptFilter acceptFilter;
 
-	private List<InetSocketAddress> listenAddresses = new ArrayList<>();
+	protected List<InetSocketAddress> listenAddresses = new ArrayList<>();
 
 	// ssl
 	private SSLContext sslContext;
 	private ExecutorService sslExecutor;
-	private List<InetSocketAddress> sslListenAddresses = new ArrayList<>();
+	protected List<InetSocketAddress> sslListenAddresses = new ArrayList<>();
 
 	private boolean running = false;
 	private List<ServerSocketChannel> serverSocketChannels;
@@ -99,21 +100,25 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		this.eventloop = eventloop;
 	}
 
+	@SuppressWarnings("unchecked")
 	public final S withAcceptFilter(AcceptFilter acceptFilter) {
 		this.acceptFilter = acceptFilter;
 		return (S) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public final S withServerSocketSettings(ServerSocketSettings serverSocketSettings) {
 		this.serverSocketSettings = serverSocketSettings;
 		return (S) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public final S withSocketSettings(SocketSettings socketSettings) {
 		this.socketSettings = socketSettings;
 		return (S) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public final S withListenAddresses(List<InetSocketAddress> addresses) {
 		this.listenAddresses = addresses;
 		return (S) this;
@@ -131,6 +136,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return withListenAddress(new InetSocketAddress(port));
 	}
 
+	@SuppressWarnings("unchecked")
 	public final S withSslListenAddresses(SSLContext sslContext, ExecutorService sslExecutor, List<InetSocketAddress> addresses) {
 		this.sslContext = sslContext;
 		this.sslExecutor = sslExecutor;
@@ -154,11 +160,13 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return withAcceptOnce(true);
 	}
 
+	@SuppressWarnings("unchecked")
 	public final S withAcceptOnce(boolean acceptOnce) {
 		this.acceptOnce = acceptOnce;
 		return (S) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public final S withLogger(Logger logger) {
 		this.logger = logger;
 		return (S) this;
@@ -189,11 +197,11 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		serverSocketChannels = new ArrayList<>();
 		if (listenAddresses != null && !listenAddresses.isEmpty()) {
 			listenAddresses(listenAddresses, false);
-			logger.info("Listening on {}", listenAddresses);
+			logger.info("Listening on {}: {}", listenAddresses, this);
 		}
 		if (sslListenAddresses != null && !sslListenAddresses.isEmpty()) {
 			listenAddresses(sslListenAddresses, true);
-			logger.info("Listening SSL on {}", sslListenAddresses);
+			logger.info("Listening with SSL on {}: {}", sslListenAddresses, this);
 		}
 	}
 
@@ -204,7 +212,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 						chan -> AbstractServer.this.doAccept(chan, address, ssl));
 				serverSocketChannels.add(serverSocketChannel);
 			} catch (IOException e) {
-				logger.error("Can't listen on {}", this, address);
+				logger.error("Can't listen on [" + address + "]: " + this, e);
 				close();
 				throw e;
 			}
@@ -216,12 +224,19 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@Override
 	public final Stage<Void> close() {
-		check(eventloop.inEventloopThread());
+		check(eventloop.inEventloopThread(), "Cannot close server from different thread");
 		if (!running) return Stage.of(null);
 		running = false;
 		closeServerSocketChannels();
 		SettableStage<Void> stage = SettableStage.create();
 		onClose(stage);
+		stage.whenComplete(($, e) -> {
+			if (e == null) {
+				logger.info("Server closed: {}", this);
+			} else {
+				logger.error("Server closed exceptionally: " + this, e);
+			}
+		});
 		return stage;
 	}
 
@@ -304,7 +319,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@Override
 	public void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress,
-	                     boolean ssl, SocketSettings socketSettings) {
+						 boolean ssl, SocketSettings socketSettings) {
 		assert eventloop.inEventloopThread();
 		onAccept(socketChannel, localAddress, remoteAddress, ssl);
 		AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
@@ -320,27 +335,41 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return listenAddress.getAddress().isAnyLocalAddress();
 	}
 
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + '{' +
+				(listenAddresses.isEmpty() ? "" : ", listenAddresses=" + listenAddresses) +
+				(sslListenAddresses.isEmpty() ? "" : ", sslListenAddresses=" + sslListenAddresses) +
+				(acceptOnce ? ", acceptOnce" : "") +
+				'}';
+	}
+
 	@JmxAttribute(extraSubAttributes = "totalCount")
+	@Nullable
 	public final EventStats getAccepts() {
 		return acceptServer.listenAddresses.isEmpty() ? null : accepts;
 	}
 
 	@JmxAttribute
+	@Nullable
 	public EventStats getAcceptsSsl() {
 		return acceptServer.sslListenAddresses.isEmpty() ? null : acceptsSsl;
 	}
 
 	@JmxAttribute
+	@Nullable
 	public EventStats getFilteredAccepts() {
 		return acceptFilter == null ? null : filteredAccepts;
 	}
 
 	@JmxAttribute
+	@Nullable
 	public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
 		return this instanceof PrimaryServer || acceptServer.listenAddresses.isEmpty() ? null : socketStats;
 	}
 
 	@JmxAttribute
+	@Nullable
 	public AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
 		return this instanceof PrimaryServer || acceptServer.sslListenAddresses.isEmpty() ? null : socketStatsSsl;
 	}

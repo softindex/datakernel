@@ -74,24 +74,25 @@ public final class DatagraphClient {
 			asyncTcpSocket.register();
 
 			return messaging.send(commandDownload)
-					.thenApply($ -> messaging.receiveBinaryStream()
-							.with(StreamBinaryDeserializer.create(serialization.getSerializer(type)))
-							.thenRunEx(messaging::close)
-							.withLateBinding());
+				.thenApply($ -> messaging.receiveBinaryStream()
+					.with(StreamBinaryDeserializer.create(serialization.getSerializer(type)))
+					.thenRunEx(messaging::close)
+					.withLateBinding());
 		});
 	}
 
 	public Stage<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
-		return eventloop.connect(address).thenCompose(socketChannel -> {
-			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
-			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		return eventloop.connect(address)
+			.thenCompose(socketChannel -> {
+				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
+				MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
-			asyncTcpSocket.setEventHandler(messaging);
-			asyncTcpSocket.register();
+				asyncTcpSocket.setEventHandler(messaging);
+				asyncTcpSocket.register();
 
-			DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));
-			return messaging.send(commandExecute)
-					.thenRun(messaging::sendEndOfStream);
-		});
+				DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));
+				return messaging.send(commandExecute)
+					.thenCompose($ -> messaging.sendEndOfStream());
+			});
 	}
 }

@@ -40,7 +40,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.StandardOpenOption.*;
 
 public final class FileManager {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(FileManager.class);
 
 	private static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW};
 
@@ -68,15 +68,15 @@ public final class FileManager {
 		return new FileManager(eventloop, executor, storagePath);
 	}
 
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> get(String fileName, long startPosition) {
-		logger.trace("downloading file: {}, position: {}", fileName, startPosition);
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> get(String fileName, long offset) {
+		logger.trace("downloading file: {}, position: {}", fileName, offset);
 		return AsyncFile.openAsync(executor, storagePath.resolve(fileName), new OpenOption[]{READ})
-				.thenApply(result -> {
-					logger.trace("{} opened", result);
-					return StreamFileReader.readFile(result).withBufferSize(readerBufferSize).withStartingPosition(startPosition)
-							.withEndOfStreamAsResult()
-							.withLateBinding();
-				});
+			.thenApply(result -> {
+				logger.trace("{} opened", result);
+				return StreamFileReader.readFile(result).withBufferSize(readerBufferSize).withStartingPosition(offset)
+					.withEndOfStreamAsResult()
+					.withLateBinding();
+			});
 	}
 
 	public Stage<StreamConsumerWithResult<ByteBuf, Void>> save(String fileName) {
@@ -84,13 +84,13 @@ public final class FileManager {
 		return ensureDirectoryAsync(storagePath, fileName).thenCompose(path -> {
 			logger.trace("ensured directory: {}", storagePath);
 			return AsyncFile.openAsync(executor, path, CREATE_OPTIONS)
-					.thenApply(file -> {
-						logger.trace("{} opened", file);
-						return StreamFileWriter.create(file)
-								.withForceOnClose(true)
-								.withFlushAsResult()
-								.withLateBinding();
-					});
+				.thenApply(file -> {
+					logger.trace("{} opened", file);
+					return StreamFileWriter.create(file)
+						.withForceOnClose(true)
+						.withFlushAsResult()
+						.withLateBinding();
+				});
 		});
 	}
 
@@ -171,5 +171,10 @@ public final class FileManager {
 		Path destinationDirectory = container.resolve(filePath);
 		Files.createDirectories(destinationDirectory);
 		return destinationDirectory.resolve(file);
+	}
+
+	@Override
+	public String toString() {
+		return "FileManager{storage=" + storagePath + '}';
 	}
 }

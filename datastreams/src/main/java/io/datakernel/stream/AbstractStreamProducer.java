@@ -39,11 +39,12 @@ import static java.util.Collections.emptySet;
  * @param <T> type of received item
  */
 public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
-	private final long createTick = eventloop.getTick();
+	private final long createTick = eventloop.tick();
 
+	@Nullable
 	private StreamConsumer<T> consumer;
 
 	private StreamStatus status = OPEN;
@@ -51,8 +52,12 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 	private final SettableStage<Void> endOfStream = SettableStage.create();
 
+	@Nullable
 	private StreamDataReceiver<T> currentDataReceiver;
-	private StreamDataReceiver<T> lastDataReceiver;
+
+	private StreamDataReceiver<T> lastDataReceiver = $ -> {
+		throw new IllegalStateException("Uninitialized data receiver");
+	};
 	private boolean producing;
 	private boolean posted;
 
@@ -68,13 +73,14 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	public final void setConsumer(StreamConsumer<T> consumer) {
 		checkNotNull(consumer);
 		checkState(this.consumer == null);
-		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.getTick() == createTick,
-				LATE_BINDING_ERROR_MESSAGE, this);
+
+		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
+			LATE_BINDING_ERROR_MESSAGE, this);
 		this.consumer = consumer;
 		onWired();
 		consumer.getEndOfStream()
 //				.thenRun(this::endOfStream)
-				.whenException(this::closeWithError);
+			.whenException(this::closeWithError);
 	}
 
 	protected void onWired() {
@@ -92,6 +98,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	public final StreamConsumer<T> getConsumer() {
 		return consumer;
 	}
+
 
 	public final boolean isReceiverReady() {
 		return currentDataReceiver != null;
@@ -134,6 +141,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	public final void produce(StreamDataReceiver<T> dataReceiver) {
 		if (logger.isTraceEnabled()) logger.trace("Start producing: {}", this);
 		assert dataReceiver != null;
+
 		if (currentDataReceiver == dataReceiver)
 			return;
 		if (status.isClosed())
@@ -191,6 +199,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		return status;
 	}
 
+	@Nullable
 	public final Throwable getException() {
 		return exception;
 	}
@@ -202,7 +211,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 	/** This method is useful for stream transformers that might add some capability to the stream */
 	protected static Set<StreamCapability> addCapabilities(@Nullable StreamProducer<?> producer,
-	                                                       StreamCapability capability, StreamCapability... capabilities) {
+														   StreamCapability capability, StreamCapability... capabilities) {
 		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
 		if (producer != null) {
 			result.addAll(producer.getCapabilities());
@@ -227,5 +236,4 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	public String toString() {
 		return tag != null ? tag.toString() : super.toString();
 	}
-
 }

@@ -16,6 +16,7 @@
 
 package io.datakernel.remotefs;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
@@ -48,7 +49,7 @@ import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 
 public final class RemoteFsClient implements IRemoteFsClient {
-	protected final Logger logger = LoggerFactory.getLogger(getClass());
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClient.class);
 
 	protected final Eventloop eventloop;
 	protected final SocketSettings socketSettings = SocketSettings.create();
@@ -64,7 +65,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 
 	// creators & builders
 	protected RemoteFsClient(Eventloop eventloop, InetSocketAddress address,
-	                         SSLContext sslContext, ExecutorService sslExecutor) {
+							 @Nullable SSLContext sslContext, @Nullable ExecutorService sslExecutor) {
 		this.eventloop = eventloop;
 		this.address = address;
 		this.sslContext = sslContext;
@@ -264,14 +265,20 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	private Stage<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
 		return eventloop.connect(address).thenApply(socketChannel -> {
 			AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
-			AsyncTcpSocket asyncTcpSocket = sslContext != null ?
+			AsyncTcpSocket asyncTcpSocket = sslContext != null && sslExecutor != null ?
 					wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) :
 					asyncTcpSocketImpl;
 			MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging =
 					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+			messaging.setTag(this);
 			asyncTcpSocket.setEventHandler(messaging);
 			asyncTcpSocketImpl.register();
 			return messaging;
 		});
+	}
+
+	@Override
+	public String toString() {
+		return "RemoteFsClient{address=" + address + '}';
 	}
 }

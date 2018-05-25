@@ -56,6 +56,13 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	@Override
+	protected void cleanup() {
+		while (readQueue.hasRemaining()) {
+			readQueue.take().recycle();
+		}
+	}
+
+	@Override
 	protected void onError(Throwable t) {
 	}
 
@@ -72,5 +79,4 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	public boolean isClosed() {
 		return !isWired() || getStatus().isClosed();
 	}
-
 }

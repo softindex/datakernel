@@ -3,11 +3,11 @@ package io.datakernel.jmx;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stage;
-import io.datakernel.async.StageConsumer;
 import io.datakernel.eventloop.Eventloop;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
@@ -58,7 +58,7 @@ public class StageStats {
 		return stage.whenComplete(recordStats());
 	}
 
-	public <T> StageConsumer<T> recordStats() {
+	public <T> BiConsumer<T, Throwable> recordStats() {
 		this.activeStages++;
 		long before = currentTimeMillis();
 		this.lastStartTimestamp = before;

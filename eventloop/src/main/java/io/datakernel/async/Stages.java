@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -207,6 +208,10 @@ public final class Stages {
 		protected void onCompleteExceptionally(Throwable throwable) {
 			tryCompleteExceptionally(throwable);
 		}
+	}
+
+	public static <A, T, R> Stage<R> collect(List<? extends Stage<? extends T>> stages, Collector<T, A, R> collector) {
+		return collect(stages, IndexedCollector.ofCollector(collector));
 	}
 
 	/**
@@ -582,9 +587,17 @@ public final class Stages {
 	 * @see Stages#first(Iterator, BiPredicate)
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stage<T> first(AsyncCallable<? extends T>... stages) {
+	public static <T> Stage<T> firstSuccessful(AsyncCallable<? extends T>... stages) {
 		checkArgument(stages.length != 0);
-		return first(asList(stages));
+		return firstSuccessful(asList(stages));
+	}
+
+	public static <T> Stage<T> firstSuccessful(Stream<? extends AsyncCallable<? extends T>> stages) {
+		return firstSuccessful(stages.iterator());
+	}
+
+	public static <T> Stage<T> first(Stream<? extends AsyncCallable<? extends T>> stages) {
+		return first(stages.iterator(), ($, err) -> err != null);
 	}
 
 	/**
@@ -592,8 +605,8 @@ public final class Stages {
 	 *
 	 * @see Stages#first(Iterator, BiPredicate)
 	 */
-	public static <T> Stage<T> first(Iterable<? extends AsyncCallable<? extends T>> stages) {
-		return first(stages.iterator());
+	public static <T> Stage<T> firstSuccessful(Iterable<? extends AsyncCallable<? extends T>> stages) {
+		return firstSuccessful(stages.iterator());
 	}
 
 	/**
@@ -601,8 +614,13 @@ public final class Stages {
 	 *
 	 * @see Stages#first(Iterator, BiPredicate)
 	 */
-	public static <T> Stage<T> first(Iterator<? extends AsyncCallable<? extends T>> stages) {
+	public static <T> Stage<T> firstSuccessful(Iterator<? extends AsyncCallable<? extends T>> stages) {
 		return first(stages, (t, throwable) -> throwable == null);
+	}
+
+	public static <T> Stage<T> first(Stream<? extends AsyncCallable<? extends T>> stages,
+									 BiPredicate<? super T, ? super Throwable> predicate) {
+		return first(stages.iterator(), predicate);
 	}
 
 	/**
@@ -669,18 +687,5 @@ public final class Stages {
 	 */
 	public static <T> Iterable<Stage<T>> iterable(Iterable<AsyncCallable<T>> callables) {
 		return () -> iterator(callables.iterator());
-	}
-
-	public static <T> StageConsumer<T> assertComplete(Consumer<T> consumer) {
-		return (t, error) -> {
-			if (error != null) {
-				throw new AssertionError(error);
-			}
-			consumer.accept(t);
-		};
-	}
-
-	public static <T> StageConsumer<T> assertComplete() {
-		return assertComplete($ -> {});
 	}
 }

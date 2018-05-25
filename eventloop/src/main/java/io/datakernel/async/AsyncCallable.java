@@ -19,10 +19,7 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayDeque;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
 
 public interface AsyncCallable<T> {
 	Stage<T> call();
@@ -183,7 +180,7 @@ public interface AsyncCallable<T> {
 		return () -> call().thenApply(function);
 	}
 
-	default AsyncCallable<T> whenComplete(StageConsumer<? super T> action) {
+	default AsyncCallable<T> whenComplete(BiConsumer<? super T, Throwable> action) {
 		return () -> call().whenComplete(action);
 	}
 }

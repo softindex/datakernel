@@ -21,6 +21,7 @@ import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashBucketFunction;
 import io.datakernel.rpc.hash.HashFunction;
+import io.datakernel.util.HashUtils;
 
 import java.net.InetSocketAddress;
 import java.util.*;
@@ -161,14 +162,7 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 	static final class DefaultHashBucketFunction implements HashBucketFunction {
 		@Override
 		public int hash(Object shardId, int bucket) {
-			int shardIdHash = shardId.hashCode();
-			long k = (((long) shardIdHash) << 32) | (bucket & 0xFFFFFFFFL);
-			k ^= k >>> 33;
-			k *= 0xff51afd7ed558ccdL;
-			k ^= k >>> 33;
-			k *= 0xc4ceb9fe1a85ec53L;
-			k ^= k >>> 33;
-			return (int) k;
+			return HashUtils.murmur3hash(shardId.hashCode(), bucket);
 		}
 	}
 }

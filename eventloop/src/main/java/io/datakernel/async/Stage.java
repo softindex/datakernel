@@ -4,9 +4,11 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.functional.Try;
+import io.datakernel.util.ThrowingRunnable;
 
 import java.time.Duration;
 import java.util.concurrent.*;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -42,6 +44,17 @@ public interface Stage<T> {
 	}
 
 	/**
+	 * Creates a completed stage from value and throwable variables.
+	 * Useful for {@link #thenComposeEx(BiFunction)} passthroughs (eg. when mapping specific exceptions).
+	 *
+	 * @param value     value to wrap when exception is null
+	 * @param throwable possibly-null exception, determines type of stage completion
+	 */
+	static <T> Stage<T> of(@Nullable T value, @Nullable Throwable throwable) {
+		return throwable != null ? ofException(throwable) : of(value);
+	}
+
+	/**
 	 * Creates a {@code Stage} wrapper around default java {@code CompletableFuture} and runs it immediately.
 	 *
 	 * @return result of the given future wrapped in a {@code Stage}
@@ -51,8 +64,9 @@ public interface Stage<T> {
 	}
 
 	/**
-	 * Creates a {@code Stage} wrapper around default java {@code CompletionStage} and runs it immediately.
+	 * Wraps Java {@code CompletionStage} in a {@code Stage}, running it in current eventloop.
 	 *
+	 * @param completionStage completion stage itself
 	 * @return result of the given completionStage wrapped in a {@code Stage}
 	 */
 	static <T> Stage<T> ofCompletionStage(CompletionStage<? extends T> completionStage) {
@@ -67,9 +81,11 @@ public interface Stage<T> {
 	}
 
 	/**
-	 * Creates a {@code Stage} wrapper around default java {@code Future} and runs it immediately.
+	 * Wraps Java {@code Future} in a {@code Stage} running it with given executor.
 	 *
-	 * @return result of the given future wrapped in a {@code Stage}
+	 * @param executor executor to execute the future concurrently
+	 * @param future   the future itself
+	 * @return result of the future wrapped in a {@code Stage}
 	 */
 	static <T> Stage<T> ofFuture(Executor executor, Future<? extends T> future) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
@@ -98,9 +114,12 @@ public interface Stage<T> {
 	}
 
 	/**
-	 * Creates a {@code Stage} wrapper around default java {@code Callable} and runs it immediately.
+	 * Runs some task in other thread (executed by a given {@code Executor}) and returns a {@code Stage} for it.
+	 * Also manages external task count for current eventloop, so it wont shut down until the task is complete.
 	 *
-	 * @return result of the given callable wrapped in a {@code Stage}
+	 * @param executor executor to execute the task concurrently
+	 * @param callable the task itself
+	 * @return {@code Stage} for the given task
 	 */
 	static <T> Stage<T> ofCallable(Executor executor, Callable<? extends T> callable) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
@@ -131,11 +150,9 @@ public interface Stage<T> {
 	}
 
 	/**
-	 * Creates a {@code Stage} wrapper around default java {@code Runnable} and runs it immediately.
-	 *
-	 * @return result of the given runnable wrapped in a {@code Stage}
+	 * Same as {@link #ofCallable(Executor, Callable)}, but without a result (returned stage is only a marker of completion).
 	 */
-	static Stage<Void> ofRunnable(Executor executor, Runnable runnable) {
+	static Stage<Void> ofThrowingRunnable(Executor executor, ThrowingRunnable runnable) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
 		SettableStage<Void> stage = SettableStage.create();
@@ -149,7 +166,6 @@ public interface Stage<T> {
 				} catch (RuntimeException e) {
 					eventloop.execute(() -> eventloop.recordFatalError(e, runnable));
 				} catch (Exception e) {
-					// checked exception should never happen in Runnables, but added for consistency
 					eventloop.execute(() -> stage.setException(e));
 				} catch (Throwable e) {
 					eventloop.execute(() -> eventloop.recordFatalError(e, runnable));
@@ -164,6 +180,11 @@ public interface Stage<T> {
 		return stage;
 	}
 
+	/** Adapter for {@link #ofThrowingRunnable(Executor, ThrowingRunnable)} */
+	static Stage<Void> ofRunnable(Executor executor, Runnable runnable) {
+		return ofThrowingRunnable(executor, runnable::run);
+	}
+
 	/**
 	 * Executes given stage after execution of this stage completes
 	 *
@@ -171,7 +192,7 @@ public interface Stage<T> {
 	 * @param <U>   type of result
 	 * @return subscribed {@code Stage}
 	 */
-	<U, S extends StageConsumer<? super T> & Stage<U>> Stage<U> then(S stage);
+	<U, S extends BiConsumer<? super T, Throwable> & Stage<U>> Stage<U> then(S stage);
 
 	/**
 	 * Applies fn to the result of this {@code Stage}
@@ -228,7 +249,7 @@ public interface Stage<T> {
 	 * @param action to be executed
 	 * @return this {@code Stage}
 	 */
-	Stage<T> whenComplete(StageConsumer<? super T> action);
+	Stage<T> whenComplete(BiConsumer<? super T, Throwable> action);
 
 	/**
 	 * Subscribes given action to be executed after this stage completes successfully
@@ -280,10 +301,11 @@ public interface Stage<T> {
 	/**
 	 * Returns stage that completes successfully if this stage completes before timeout.
 	 * Otherwise it completes with timeout exception.
+	 * If <code>null</code> is given, no timeout is applied.
 	 *
 	 * @param timeout timeout in milliseconds
 	 */
-	Stage<T> timeout(Duration timeout);
+	Stage<T> timeout(@Nullable Duration timeout);
 
 	/**
 	 * When this stage is completed it's completion will be postponed to the next eventloop tick.

@@ -1,14 +1,16 @@
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
 public interface Callback<T> {
-	void set(T result);
+	void set(@Nullable T result);
 
 	void setException(Throwable t);
 
-	default void set(T result, Throwable throwable) {
+	default void set(@Nullable T result, @Nullable Throwable throwable) {
 		if (throwable == null) {
 			set(result);
 		} else {

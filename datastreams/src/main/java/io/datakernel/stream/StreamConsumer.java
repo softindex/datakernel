@@ -152,5 +152,4 @@ public interface StreamConsumer<T> {
 			}
 		};
 	}
-
 }

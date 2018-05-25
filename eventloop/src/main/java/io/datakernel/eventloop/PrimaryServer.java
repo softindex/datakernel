@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.util.Initializable;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -60,5 +61,16 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> implement
 	protected WorkerServer getWorkerServer() {
 		currentAcceptor = (currentAcceptor + 1) % workerServers.length;
 		return workerServers[currentAcceptor];
+	}
+
+	@Override
+	public String toString() {
+		return "PrimaryServer{" +
+				"numOfWorkerServers=" + workerServers.length +
+				(listenAddresses.isEmpty() ? "" : ", listenAddresses=" + listenAddresses) +
+				(sslListenAddresses.isEmpty() ? "" : ", sslListenAddresses=" + sslListenAddresses) +
+				(acceptOnce ? ", acceptOnce" : "") +
+				", workerServers=" + Arrays.toString(workerServers) +
+				'}';
 	}
 }

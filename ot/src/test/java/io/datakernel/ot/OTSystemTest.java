@@ -12,9 +12,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.utils.Utils.*;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "WeakerAccess"})

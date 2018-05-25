@@ -42,7 +42,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
-	private final long createTick = eventloop.getTick();
+	private final long createTick = eventloop.tick();
 
 	private StreamProducer<T> producer;
 
@@ -63,7 +63,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	public final void setProducer(StreamProducer<T> producer) {
 		checkNotNull(producer);
 		checkState(this.producer == null);
-		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.getTick() == createTick,
+		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
 				LATE_BINDING_ERROR_MESSAGE, this);
 		this.producer = producer;
 		onWired();
@@ -135,7 +135,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	/** This method is useful for stream transformers that might add some capability to the stream */
 	protected static Set<StreamCapability> addCapabilities(@Nullable StreamConsumer<?> consumer,
-	                                                       StreamCapability capability, StreamCapability... capabilities) {
+														   StreamCapability capability, StreamCapability... capabilities) {
 		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
 		if (consumer != null) {
 			result.addAll(consumer.getCapabilities());

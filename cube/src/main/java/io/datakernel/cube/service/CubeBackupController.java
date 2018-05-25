@@ -58,22 +58,22 @@ public final class CubeBackupController implements EventloopJmxMBeanEx {
 
 	public Stage<Void> backupHead() {
 		return algorithms.getRemote().getHeads()
-				.thenCompose(heads -> {
-					if (heads.isEmpty()) {
-						return Stage.ofException(new IllegalArgumentException("heads is empty"));
-					}
-					return backup(max(heads));
-				})
-				.whenComplete(stageBackup.recordStats())
-				.whenComplete(toLogger(logger, thisMethod()));
+			.thenCompose(heads -> {
+				if (heads.isEmpty()) {
+					return Stage.ofException(new IllegalArgumentException("heads is empty"));
+				}
+				return backup(max(heads));
+			})
+			.whenComplete(stageBackup.recordStats())
+			.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	public Stage<Void> backup(Integer commitId) {
 		return algorithms.checkout(commitId)
-				.thenCompose(logDiffs -> Stages.runSequence(
-						(AsyncCallable<Void>) () -> backupChunks(commitId, collectChunkIds(logDiffs)),
-						(AsyncCallable<Void>) () -> backupDb(commitId, logDiffs)))
-				.whenComplete(toLogger(logger, thisMethod(), commitId));
+			.thenCompose(logDiffs -> Stages.runSequence(
+				(AsyncCallable<Void>) () -> backupChunks(commitId, collectChunkIds(logDiffs)),
+				(AsyncCallable<Void>) () -> backupDb(commitId, logDiffs)))
+			.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 
 	private static Set<Long> collectChunkIds(List<LogDiff<CubeDiff>> logDiffs) {
@@ -82,16 +82,16 @@ public final class CubeBackupController implements EventloopJmxMBeanEx {
 
 	private Stage<Void> backupChunks(Integer commitId, Set<Long> chunkIds) {
 		return storage.backup(String.valueOf(commitId), chunkIds)
-				.whenComplete(stageBackupChunks.recordStats())
-				.whenComplete(logger.isTraceEnabled() ?
-						toLogger(logger, TRACE, thisMethod(), chunkIds) :
-						toLogger(logger, thisMethod(), toLimitedString(chunkIds, 6)));
+			.whenComplete(stageBackupChunks.recordStats())
+			.whenComplete(logger.isTraceEnabled() ?
+				toLogger(logger, TRACE, thisMethod(), chunkIds) :
+				toLogger(logger, thisMethod(), toLimitedString(chunkIds, 6)));
 	}
 
 	private Stage<Void> backupDb(Integer commitId, List<LogDiff<CubeDiff>> diffs) {
 		return algorithms.getRemote().backup(commitId, diffs)
-				.whenComplete(stageBackupDb.recordStats())
-				.whenComplete(toLogger(logger, thisMethod(), commitId, diffs));
+			.whenComplete(stageBackupDb.recordStats())
+			.whenComplete(toLogger(logger, thisMethod(), commitId, diffs));
 	}
 
 	@Override

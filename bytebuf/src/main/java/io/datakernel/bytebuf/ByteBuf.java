@@ -329,7 +329,7 @@ public class ByteBuf {
 		ByteBuf buf = (ByteBuf) o;
 
 		return readRemaining() == buf.readRemaining() &&
-				arraysEquals(this.array, this.readPosition, this.writePosition, buf.array, buf.readPosition);
+			arraysEquals(this.array, this.readPosition, this.writePosition, buf.array, buf.readPosition);
 	}
 
 	private boolean arraysEquals(byte[] array, int offset, int limit, byte[] arr, int off) {
@@ -415,9 +415,9 @@ public class ByteBuf {
 		assert readRemaining() >= 4;
 
 		int result = ((array[readPosition] & 0xFF) << 24)
-				| ((array[readPosition + 1] & 0xFF) << 16)
-				| ((array[readPosition + 2] & 0xFF) << 8)
-				| (array[readPosition + 3] & 0xFF);
+			| ((array[readPosition + 1] & 0xFF) << 16)
+			| ((array[readPosition + 2] & 0xFF) << 8)
+			| (array[readPosition + 3] & 0xFF);
 		readPosition += 4;
 		return result;
 	}
@@ -469,13 +469,13 @@ public class ByteBuf {
 		assert readRemaining() >= 8;
 
 		long result = ((long) array[readPosition] << 56)
-				| ((long) (array[readPosition + 1] & 0xFF) << 48)
-				| ((long) (array[readPosition + 2] & 0xFF) << 40)
-				| ((long) (array[readPosition + 3] & 0xFF) << 32)
-				| ((long) (array[readPosition + 4] & 0xFF) << 24)
-				| ((array[readPosition + 5] & 0xFF) << 16)
-				| ((array[readPosition + 6] & 0xFF) << 8)
-				| ((array[readPosition + 7] & 0xFF));
+			| ((long) (array[readPosition + 1] & 0xFF) << 48)
+			| ((long) (array[readPosition + 2] & 0xFF) << 40)
+			| ((long) (array[readPosition + 3] & 0xFF) << 32)
+			| ((long) (array[readPosition + 4] & 0xFF) << 24)
+			| ((array[readPosition + 5] & 0xFF) << 16)
+			| ((array[readPosition + 6] & 0xFF) << 8)
+			| ((array[readPosition + 7] & 0xFF));
 
 		readPosition += 8;
 		return result;
@@ -486,7 +486,7 @@ public class ByteBuf {
 		assert readRemaining() >= 2;
 
 		short result = (short) (((array[readPosition] & 0xFF) << 8)
-				| ((array[readPosition + 1] & 0xFF)));
+			| ((array[readPosition + 1] & 0xFF)));
 		readPosition += 2;
 		return result;
 	}
