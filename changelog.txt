@@ -1,4 +1,13 @@
-v 2.5.10
+v2.5.11
+
+* Simplify MemSize.toString format
+* Remove SimpleModule
+* Provide explicit default TriggersModule initializer
+* Make ServiceGraph as optional dependency for JmxModule, TriggersModule, ConfigModule
+* Implement lazy config adapter
+* Fix ServiceGraph cached services and simplify its color scheme, improve exception formatting
+
+v2.5.10
 
 * Public API now use Duration and MemSize for corresponding values.
 
