@@ -45,6 +45,7 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.http.AbstractHttpConnection.*;
+import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
@@ -351,7 +352,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	private void doSend(HttpRequest request, InetAddress[] inetAddresses,
-	                    Callback<HttpResponse> callback) {
+			Callback<HttpResponse> callback) {
 		InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
 		InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
@@ -479,18 +480,18 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return poolWritingExpired;
 	}
 
-	@JmxAttribute(description = "number of connections per address")
-	public List<String> getAddressConnections() {
+	@JmxOperation(description = "number of connections per address")
+	public String getAddressConnections() {
 		if (addresses.isEmpty())
-			return null;
+			return "";
 		List<String> result = new ArrayList<>();
 		result.add("SocketAddress,ConnectionsCount");
 		for (Entry<InetSocketAddress, AddressLinkedList> entry : addresses.entrySet()) {
 			InetSocketAddress address = entry.getKey();
 			AddressLinkedList connections = entry.getValue();
-			result.add(address + "," + connections.size());
+			result.add(address + ", " + connections.size());
 		}
-		return result;
+		return formatListAsMultilineString(result);
 	}
 
 	@JmxAttribute(name = "")

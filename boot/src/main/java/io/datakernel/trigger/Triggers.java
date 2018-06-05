@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.util.CollectionUtils.difference;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.joining;
@@ -76,9 +77,15 @@ public final class Triggers implements ConcurrentJmxMBean, Initializable<Trigger
 		long now = System.currentTimeMillis();
 		if (cachedTimestamp + CACHE_TIMEOUT.toMillis() < now) {
 			cachedTimestamp = now;
+
 			Map<Trigger, TriggerResult> newResults = new HashMap<>();
 			for (Trigger trigger : triggers) {
-				TriggerResult newResult = trigger.getTriggerFunction().get();
+				TriggerResult newResult = null;
+				try {
+					newResult = trigger.getTriggerFunction().get();
+				} catch (Exception e) {
+					newResult = TriggerResult.ofError(e);
+				}
 				if (newResult != null && newResult.isPresent()) {
 					newResults.put(trigger, newResult);
 				}
@@ -122,6 +129,7 @@ public final class Triggers implements ConcurrentJmxMBean, Initializable<Trigger
 									oldTriggerWithResult.getTriggerResult().getCount())));
 				}
 			}
+
 		}
 	}
 
@@ -193,6 +201,42 @@ public final class Triggers implements ConcurrentJmxMBean, Initializable<Trigger
 				.sorted(Comparator.<TriggerWithResult, Severity>comparing(item -> item.getTrigger().getSeverity())
 						.thenComparing(item -> item.getTriggerResult().getTimestamp()))
 				.collect(Collectors.toList());
+	}
+
+	@JmxAttribute
+	public String getMultilineResultsDebug() {
+		return formatListAsMultilineString(getResultsBySeverity(Severity.DEBUG));
+	}
+
+	@JmxAttribute
+	public String getMultilineResultsInformation() {
+		return formatListAsMultilineString(getResultsBySeverity(Severity.INFORMATION));
+	}
+
+	@JmxAttribute
+	public String getMultilineResultsWarning() {
+		return formatListAsMultilineString(getResultsBySeverity(Severity.WARNING));
+	}
+
+	@JmxAttribute
+	public String getMultilineResultsAverage() {
+		return formatListAsMultilineString(getResultsBySeverity(Severity.AVERAGE));
+	}
+
+	@JmxAttribute
+	public String getMultilineResultsHigh() {
+		return formatListAsMultilineString(getResultsBySeverity(Severity.HIGH));
+	}
+
+	@JmxAttribute
+	public String getMultilineResultsDisaster() {
+		return formatListAsMultilineString(getResultsBySeverity(Severity.DISASTER));
+	}
+
+	@JmxAttribute
+	@Nullable
+	public String getMultilineResults() {
+		return formatListAsMultilineString(getResults());
 	}
 
 	@JmxAttribute

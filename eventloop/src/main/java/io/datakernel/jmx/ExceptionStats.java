@@ -21,8 +21,8 @@ import io.datakernel.annotation.Nullable;
 import java.time.Instant;
 import java.util.List;
 
+import static io.datakernel.jmx.MBeanFormat.*;
 import static java.lang.System.currentTimeMillis;
-import static java.util.Arrays.asList;
 
 public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsWithReset {
 	private static final long DETAILS_REFRESH_TIMEOUT = 1000L;
@@ -104,39 +104,28 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 		return throwable != null ? throwable.getMessage() : null;
 	}
 
-	@JmxAttribute(optional = true)
-	@Nullable
-	public String getLastContext() {
-		return context != null ? context.toString() : null;
-	}
-
-	@JmxAttribute(optional = true)
-	public List<String> getLastStackTrace() {
-		if (throwable != null) {
-			return asList(MBeanFormat.formatException(throwable));
-		} else {
-			return null;
-		}
-	}
-
 	@JmxAttribute
-	public String getSummary() {
+	public String getMultilineError() {
 		if (count == 0) return "";
 
-		StringBuilder summary = new StringBuilder("Count: " + count +
-				" " + MBeanFormat.formatTimestamp(lastExceptionTimestamp));
+		StringBuilder summary = new StringBuilder("Count: " + count + " " + formatTimestamp(lastExceptionTimestamp));
 
 		if (throwable != null) {
-			summary.append("\n\nStack Trace: ");
-			summary.append(MBeanFormat.formatExceptionLine(throwable).trim());
+			summary.append("\nStack Trace: ");
+			summary.append(formatExceptionMultiline(throwable).trim());
 		}
 
 		if (context != null) {
-			summary.append("\n\nContext: ");
+			summary.append("\nContext: ");
 			summary.append(context.toString());
 		}
 
 		return summary.toString();
+	}
+
+	@JmxAttribute
+	public List<String> getError() {
+		return formatMultilineStringAsList(getMultilineError());
 	}
 
 	@Override
@@ -144,7 +133,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 		String last = "";
 		if (exceptionClass != null) {
 			last = "; " + exceptionClass.getSimpleName();
-			last += " @ " + MBeanFormat.formatTimestamp(lastExceptionTimestamp);
+			last += " @" + formatTimestamp(lastExceptionTimestamp);
 		}
 		return Integer.toString(count) + last;
 	}

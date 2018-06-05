@@ -145,19 +145,19 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		checkNotNull(messageTypes, "Message types should not be null");
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
 		this.messageTypes = messageTypes;
-		return (io.datakernel.rpc.server.RpcServer) this;
+		return this;
 	}
 
 	public RpcServer withSerializerBuilder(SerializerBuilder serializerBuilder) {
 		this.serializerBuilder = serializerBuilder;
-		return (io.datakernel.rpc.server.RpcServer) this;
+		return this;
 	}
 
 	public RpcServer withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
 		this.initialBufferSize = defaultPacketSize;
 		this.maxMessageSize = maxPacketSize;
 		this.compression = compression;
-		return (io.datakernel.rpc.server.RpcServer) this;
+		return this;
 	}
 
 	public RpcServer withAutoFlushInterval(Duration autoFlushInterval) {

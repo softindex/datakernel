@@ -203,15 +203,15 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return MemSize.of(maxHttpMessageSize);
 	}
 
-	public Duration getKeepAliveTimeoutMillis() {
+	public Duration getKeepAliveTimeout() {
 		return Duration.ofMillis(keepAliveTimeoutMillis);
 	}
 
-	public Duration getReadTimeoutMillis() {
+	public Duration getReadTimeout() {
 		return Duration.ofMillis(readTimeoutMillis);
 	}
 
-	public Duration getWriteTimeoutMillis() {
+	public Duration getWriteTimeout() {
 		return Duration.ofMillis(writeTimeoutMillis);
 	}
 

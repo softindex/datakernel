@@ -1118,6 +1118,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return tick;
 	}
 
+	public FatalErrorHandler getFatalErrorHandler() {
+		return fatalErrorHandler;
+	}
+
+	public int getThreadPriority() {
+		return threadPriority;
+	}
+
 	@JmxAttribute
 	public boolean getKeepAlive() {
 		return keepAlive;

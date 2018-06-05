@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import static io.datakernel.jmx.MBeanFormat.formatExceptionMultiline;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class TriggerResult {
@@ -206,9 +207,9 @@ public final class TriggerResult {
 
 	@Override
 	public String toString() {
-		return MBeanFormat.formatTimestamp(timestamp) +
+		return "@" + MBeanFormat.formatTimestamp(timestamp) +
 				(count != 1 ? " #" + count : "") +
 				(value != null ? " : " + value : "") +
-				(throwable != null ? "\n" + MBeanFormat.formatExceptionLine(throwable) : "");
+				(throwable != null ? "\n" + formatExceptionMultiline(throwable) : "");
 	}
 }

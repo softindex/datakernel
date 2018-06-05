@@ -39,7 +39,7 @@ public final class EventloopStats {
 	private final Tasks tasks;
 	private final Keys keys;
 	private final ExceptionStats fatalErrors;
-	private final Map<StackTrace, ExceptionStats> fatalErrorsMap;
+	private final Map<Class<? extends Throwable>, ExceptionStats> fatalErrorsMap;
 	private final EventStats idleLoops;
 	private final EventStats idleLoopsWaitingExternalTask;
 	private final EventStats selectOverdues;
@@ -146,14 +146,13 @@ public final class EventloopStats {
 	}
 
 	public void recordFatalError(Throwable throwable, Object causedObject) {
-		StackTrace stackTrace = new StackTrace(throwable.getStackTrace());
-
 		fatalErrors.recordException(throwable, causedObject);
 
-		ExceptionStats stats = fatalErrorsMap.get(stackTrace);
+		Class<? extends Throwable> type = throwable.getClass();
+		ExceptionStats stats = fatalErrorsMap.get(type);
 		if (stats == null) {
 			stats = ExceptionStats.create();
-			fatalErrorsMap.put(stackTrace, stats);
+			fatalErrorsMap.put(type, stats);
 		}
 		stats.recordException(throwable, causedObject);
 	}
@@ -205,7 +204,7 @@ public final class EventloopStats {
 	}
 
 	@JmxAttribute
-	public Map<StackTrace, ExceptionStats> getFatalErrorsMap() {
+	public Map<Class<? extends Throwable>, ExceptionStats> getFatalErrorsMap() {
 		return fatalErrorsMap;
 	}
 

@@ -6,6 +6,7 @@ v2.5.11
 * Make ServiceGraph as optional dependency for JmxModule, TriggersModule, ConfigModule
 * Implement lazy config adapter
 * Fix ServiceGraph cached services and simplify its color scheme, improve exception formatting
+* Add exceptions multiline formatting in TriggersModule and ExceptionStats
 
 v2.5.10
 

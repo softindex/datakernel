@@ -23,14 +23,18 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 
 import static java.lang.System.currentTimeMillis;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 public final class MBeanFormat {
 	private MBeanFormat() {
 	}
 
-	public static String formatExceptionLine(Throwable exception) {
+	public static String formatExceptionMultiline(@Nullable Throwable exception) {
 		if (exception == null)
 			return "";
 		StringWriter stringWriter = new StringWriter();
@@ -39,11 +43,11 @@ public final class MBeanFormat {
 	}
 
 	public static String[] formatException(Throwable exception) {
-		return exception == null ? new String[0] : formatExceptionLine(exception).split("\n");
+		return exception == null ? new String[0] : formatExceptionMultiline(exception).split("\n");
 	}
 
 	public static String formatInstant(@Nullable Instant instant) {
-		if (instant == null) return "null";
+		if (instant == null) return "";
 		Duration ago = Duration.between(instant, Instant.ofEpochMilli(currentTimeMillis())).withNanos(0);
 		return StringFormatUtils.formatInstant(instant) +
 				" (" + StringFormatUtils.formatDuration(ago) + " ago)";
@@ -51,5 +55,23 @@ public final class MBeanFormat {
 
 	public static String formatTimestamp(long timestamp) {
 		return formatInstant(timestamp != 0L ? Instant.ofEpochMilli(timestamp) : null);
+	}
+
+	@Nullable
+	public static String formatListAsMultilineString(@Nullable List<?> list) {
+		if (list == null || list.isEmpty()) return "";
+		List<String> strings = list.stream().map(Object::toString).collect(toList());
+		return (strings.stream().anyMatch(s -> s.contains("\n")) ?
+				strings.stream().map(s -> s + "\n") :
+				strings.stream())
+				.collect(joining("\n")).trim();
+	}
+
+	@Nullable
+	public static List<String> formatMultilineStringAsList(@Nullable String multiline) {
+		if (multiline == null) return null;
+		return multiline.isEmpty() ?
+				null :
+				Arrays.asList(multiline.split("\n"));
 	}
 }

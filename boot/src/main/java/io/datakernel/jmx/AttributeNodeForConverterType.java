@@ -21,8 +21,8 @@ public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstra
 	private Function<String, T> from;
 
 	public AttributeNodeForConverterType(String name, String description, ValueFetcher fetcher,
-										 boolean visible, Method setter,
-										 Function<T, String> to, Function<String, T> from) {
+			boolean visible, Method setter,
+			Function<T, String> to, Function<String, T> from) {
 		super(name, description, fetcher, visible);
 		this.setter = setter;
 		this.to = to;
@@ -30,31 +30,29 @@ public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstra
 	}
 
 	public AttributeNodeForConverterType(String name, String description, boolean visible,
-										 ValueFetcher fetcher,
-										 Method setter,
-										 Function<T, String> to, Function<String, T> from) {
+			ValueFetcher fetcher, Method setter,
+			Function<T, String> to, Function<String, T> from) {
 		this(name, description, fetcher, visible, setter, to, from);
 	}
 
 	public AttributeNodeForConverterType(String name, String description, boolean visible,
-										 ValueFetcher fetcher,
-										 Method setter,
-										 Function<T, String> to) {
+			ValueFetcher fetcher, Method setter,
+			Function<T, String> to) {
 		this(name, description, fetcher, visible, setter, to, null);
 	}
 
 	@Override
 	protected Object aggregateAttribute(String attrName, List<?> sources) {
 		Object firstPojo = sources.get(0);
-		Object firstValue = (fetcher.fetchFrom(firstPojo));
+		Object firstValue = fetcher.fetchFrom(firstPojo);
 		if (firstValue == null) {
 			return null;
 		}
 
 		for (int i = 1; i < sources.size(); i++) {
 			Object currentPojo = sources.get(i);
-			Object currentValue = Objects.toString(fetcher.fetchFrom(currentPojo));
-			if (!Objects.equals(firstPojo, currentValue)) {
+			Object currentValue = fetcher.fetchFrom(currentPojo);
+			if (!Objects.equals(firstValue, currentValue)) {
 				return null;
 			}
 		}
@@ -78,19 +76,16 @@ public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstra
 
 	@Override
 	public void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
-		Object source = targets.get(0);
-		T result;
-
-		if (isSettable("")) {
-			result = from.apply((String) value);
-		} else {
+		if (!isSettable("")) {
 			throw new SetterException(new IllegalAccessException("Cannot set non writable attribute " + name));
 		}
-
-		try {
-			setter.invoke(source, result);
-		} catch (Exception exception) {
-			logger.error("Can't set attribute " + attrName, exception);
+		T result = from.apply((String) value);
+		for (Object target : targets) {
+			try {
+				setter.invoke(target, result);
+			} catch (Exception exception) {
+				logger.error("Can't set attribute " + attrName, exception);
+			}
 		}
 	}
 }
