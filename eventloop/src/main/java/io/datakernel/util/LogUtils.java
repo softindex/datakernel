@@ -14,11 +14,71 @@ import static io.datakernel.util.LogUtils.Level.TRACE;
 import static java.util.stream.Collectors.joining;
 
 public class LogUtils {
-	public enum Level {
-		OFF, TRACE, DEBUG, INFO, WARN, ERROR
-	}
-
 	private static final int LIST_LIMIT = 100;
+
+	public enum Level {
+		OFF(null) {
+			@Override
+			protected boolean isEnabled(Logger logger) {
+				return false;
+			}
+		},
+
+		TRACE(Logger::trace) {
+			@Override
+			protected boolean isEnabled(Logger logger) {
+				return logger.isTraceEnabled();
+			}
+		},
+
+		DEBUG(Logger::debug) {
+			@Override
+			protected boolean isEnabled(Logger logger) {
+				return logger.isDebugEnabled();
+			}
+		},
+
+		INFO(Logger::info) {
+			@Override
+			protected boolean isEnabled(Logger logger) {
+				return logger.isInfoEnabled();
+			}
+		},
+
+		WARN(Logger::warn) {
+			@Override
+			protected boolean isEnabled(Logger logger) {
+				return logger.isWarnEnabled();
+			}
+		},
+
+		ERROR(Logger::error) {
+			@Override
+			protected boolean isEnabled(Logger logger) {
+				return logger.isErrorEnabled();
+			}
+		};
+
+		private final BiConsumer<Logger, String> logConsumer;
+
+		Level(BiConsumer<Logger, String> logConsumer) {
+			this.logConsumer = logConsumer;
+		}
+
+		protected abstract boolean isEnabled(Logger logger);
+
+		public final void log(Logger logger, Supplier<String> messageSupplier) {
+			if (isEnabled(logger)) {
+				logConsumer.accept(logger, messageSupplier.get());
+			}
+		}
+
+		public final void log(Logger logger, String message) {
+			if (isEnabled(logger)) {
+				logConsumer.accept(logger, message);
+			}
+		}
+	}
 
 	public static String thisMethod() {
 		try {
@@ -30,28 +90,29 @@ public class LogUtils {
 	}
 
 	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
-														Level callLevel, Supplier<String> callMsg,
-														Level resultLevel, Function<T, String> resultMsg,
-														@Nullable Level errorLevel, Function<Throwable, String> errorMsg) {
-		log(logger, callLevel, callMsg);
+	                                                    Level callLevel, Supplier<String> callMsg,
+	                                                    Level resultLevel, Function<T, String> resultMsg,
+	                                                    @Nullable Level errorLevel, Function<Throwable, String> errorMsg) {
+		if (!logger.isErrorEnabled()) return ($, e) -> {};
+		callLevel.log(logger, callMsg);
 		return (result, throwable) -> {
 			if (throwable == null) {
-				log(logger, resultLevel, () -> resultMsg.apply(result));
+				resultLevel.log(logger, () -> resultMsg.apply(result));
 			} else {
 				if (errorLevel == null) {
 					if (logger.isErrorEnabled()) {
 						logger.error(errorMsg.apply(throwable), throwable);
 					}
 				} else {
-					log(logger, errorLevel, () -> errorMsg.apply(throwable));
+					errorLevel.log(logger, () -> errorMsg.apply(throwable));
 				}
 			}
 		};
 	}
 
 	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
-												Level callLevel, Supplier<String> callMsg,
-												Level resultLevel, Function<T, String> resultMsg) {
+	                                                    Level callLevel, Supplier<String> callMsg,
+	                                                    Level resultLevel, Function<T, String> resultMsg) {
 		return toLogger(logger,
 			callLevel, callMsg,
 			resultLevel, resultMsg,
@@ -59,8 +120,8 @@ public class LogUtils {
 	}
 
 	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
-														Level callLevel, Level resultLevel, @Nullable Level errorLevel,
-														String methodName, Object... parameters) {
+	                                                    Level callLevel, Level resultLevel, Level errorLevel,
+	                                                    String methodName, Object... parameters) {
 		return toLogger(logger,
 			callLevel, () -> formatCall(methodName, parameters),
 			resultLevel, result -> formatResult(methodName, result, parameters),
@@ -70,49 +131,19 @@ public class LogUtils {
 	}
 
 	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
-												Level callLevel, Level resultLevel,
-												String methodName, Object... parameters) {
+	                                                    Level callLevel, Level resultLevel,
+	                                                    String methodName, Object... parameters) {
 		return toLogger(logger, callLevel, resultLevel, null, methodName, parameters);
 	}
 
 	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
-												Level level,
-												String methodName, Object... parameters) {
+	                                                    Level level,
+	                                                    String methodName, Object... parameters) {
 		return toLogger(logger, level, level, methodName, parameters);
 	}
 
 	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger, String methodName, Object... parameters) {
 		return toLogger(logger, TRACE, INFO, methodName, parameters);
-	}
-
-	public static void log(Logger logger, Level level, Supplier<String> messageSupplier) {
-		switch (level) {
-			case TRACE:
-				if (logger.isTraceEnabled()) {
-					logger.trace(messageSupplier.get());
-				}
-				break;
-			case DEBUG:
-				if (logger.isDebugEnabled()) {
-					logger.debug(messageSupplier.get());
-				}
-				break;
-			case INFO:
-				if (logger.isInfoEnabled()) {
-					logger.info(messageSupplier.get());
-				}
-				break;
-			case WARN:
-				if (logger.isWarnEnabled()) {
-					logger.warn(messageSupplier.get());
-				}
-				break;
-			case ERROR:
-				if (logger.isErrorEnabled()) {
-					logger.error(messageSupplier.get());
-				}
-				break;
-		}
 	}
 
 	private static String toString(Object object) {
@@ -140,4 +171,5 @@ public class LogUtils {
 				.collect(joining(", ")) : "") +
 			" -> " + toString(result);
 	}
+
 }

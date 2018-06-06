@@ -51,7 +51,11 @@ public interface Stage<T> {
 	 * @param throwable possibly-null exception, determines type of stage completion
 	 */
 	static <T> Stage<T> of(@Nullable T value, @Nullable Throwable throwable) {
-		return throwable != null ? ofException(throwable) : of(value);
+		assert !(value != null && throwable != null);
+		SettableStage<T> stage = new SettableStage<>();
+		stage.result = value;
+		stage.exception = throwable;
+		return stage;
 	}
 
 	/**
@@ -267,6 +271,23 @@ public interface Stage<T> {
 	 */
 	Stage<T> whenException(Consumer<Throwable> action);
 
+	Stage<T> thenException(Function<? super T, Throwable> fn);
+
+	@FunctionalInterface
+	interface ThrowingFunction<T, R> {
+		R apply(T t) throws Exception;
+	}
+
+	default <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
+		return thenCompose(result -> {
+			try {
+				return Stage.of(fn.apply(result));
+			} catch (Throwable throwable) {
+				return Stage.ofException(throwable);
+			}
+		});
+	}
+
 	/**
 	 * Combines two {@code Stage} in one using fn.
 	 *
@@ -292,6 +313,13 @@ public interface Stage<T> {
 	Stage<T> either(Stage<? extends T> other);
 
 	/**
+	 * Returns stage that always completes successfully with result or exception wrapped in Try
+	 *
+	 * @see Try
+	 */
+	Stage<Try<T>> toTry();
+
+	/**
 	 * Waits for result and discard it.
 	 */
 	Stage<Void> toVoid();
@@ -312,12 +340,7 @@ public interface Stage<T> {
 	 */
 	Stage<T> post();
 
-	/**
-	 * Returns stage that always completes successfully with result or exception wrapped in Try
-	 *
-	 * @see Try
-	 */
-	Stage<Try<T>> toTry();
+	Stage<T> postTo(Eventloop eventloop);
 
 	/**
 	 * Wraps {@code Stage} into {@code CompletableFuture}

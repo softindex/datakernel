@@ -16,6 +16,8 @@
 
 package io.datakernel.time;
 
+import java.time.Instant;
+
 /**
  * Gives access to current time in milliseconds
  */
@@ -24,4 +26,8 @@ public interface CurrentTimeProvider {
 	 * @return current time in milliseconds
 	 */
 	long currentTimeMillis();
+
+	default Instant currentInstant() {
+		return Instant.ofEpochMilli(currentTimeMillis());
+	}
 }

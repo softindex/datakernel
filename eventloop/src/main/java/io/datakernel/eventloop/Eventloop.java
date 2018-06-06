@@ -904,14 +904,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return addScheduledTask(timestamp, runnable, false);
 	}
 
-	public ScheduledRunnable delay(long delayMillis, Runnable runnable) {
-		return schedule(timestamp + delayMillis, runnable);
-	}
-
-	public ScheduledRunnable delay(Duration delay, Runnable runnable) {
-		return delay(delay.toMillis(), runnable);
-	}
-
 	/**
 	 * Schedules new background task. Returns {@link ScheduledRunnable} with this runnable.
 	 * <p>
@@ -925,10 +917,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	public ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable) {
 		assert inEventloopThread();
 		return addScheduledTask(timestamp, runnable, true);
-	}
-
-	public ScheduledRunnable delayBackground(long delayMillis, Runnable runnable) {
-		return scheduleBackground(timestamp + delayMillis, runnable);
 	}
 
 	private ScheduledRunnable addScheduledTask(long timestamp, Runnable runnable, boolean background) {

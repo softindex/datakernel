@@ -4,7 +4,9 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.util.ThrowingRunnable;
 import io.datakernel.util.ThrowingSupplier;
 
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static io.datakernel.util.Preconditions.checkState;
 
@@ -23,7 +25,13 @@ public final class Try<T> {
 		return new Try<>(result, null);
 	}
 
-	public static <T> Try<T> ofFailure(Throwable throwable) {
+	public static <T> Try<T> of(@Nullable T result, @Nullable Throwable throwable) {
+		assert !(result != null && throwable != null);
+		return new Try<>(result, throwable);
+	}
+
+	public static <T> Try<T> ofException(Throwable throwable) {
+		assert throwable != null;
 		return new Try<>(null, throwable);
 	}
 
@@ -57,15 +65,28 @@ public final class Try<T> {
 	}
 
 	@Nullable
-	public T getOrNull() {
+	public T getOr(@Nullable T defaultValue) {
 		if (throwable == null) {
 			return result;
 		}
-		return null;
+		return defaultValue;
 	}
 
 	@Nullable
-	public Throwable getThrowable() {
+	public T getOrSupply(Supplier<? extends T> defaultValueSupplier) {
+		if (throwable == null) {
+			return result;
+		}
+		return defaultValueSupplier.get();
+	}
+
+	@Nullable
+	public T getOrNull() {
+		return result;
+	}
+
+	@Nullable
+	public Throwable getExceptionOrNull() {
 		return throwable;
 	}
 
@@ -73,6 +94,17 @@ public final class Try<T> {
 	private <U> Try<U> mold() {
 		checkState(throwable != null, "Trying to mold a successful Try!");
 		return (Try<U>) this;
+	}
+
+	public <U> U reduce(Function<? super T, ? extends U> function, Function<Throwable, ? extends U> exceptionFunction) {
+		if (throwable == null) {
+			return function.apply(result);
+		}
+		return exceptionFunction.apply(throwable);
+	}
+
+	public <U> U reduce(BiFunction<? super T, Throwable, ? extends U> fn) {
+		return fn.apply(result, throwable);
 	}
 
 	public <U> Try<U> map(Function<T, U> function) {

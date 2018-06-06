@@ -1,6 +1,7 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.functional.Try;
 
@@ -219,6 +220,34 @@ abstract class AbstractStage<T> implements Stage<T> {
 		});
 	}
 
+	@Override
+	public Stage<T> thenException(Function<? super T, Throwable> fn) {
+		return then(new NextStage<T, T>() {
+			@Override
+			protected void onComplete(T result) {
+				Throwable e = fn.apply(result);
+				if (e == null) complete(result);
+				completeExceptionally(e);
+			}
+		});
+	}
+
+	@Override
+	public <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
+		return then(new NextStage<T, U>() {
+			@Override
+			protected void onComplete(T result) {
+				try {
+					complete(fn.apply(result));
+				} catch (RuntimeException e) {
+					throw e;
+				} catch (Exception e) {
+					completeExceptionally(e);
+				}
+			}
+		});
+	}
+
 	private static final Object NO_RESULT = new Object();
 
 	@SuppressWarnings("unchecked")
@@ -360,6 +389,21 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
+	public Stage<T> postTo(Eventloop eventloop) {
+		return then(new NextStage<T, T>() {
+			@Override
+			protected void onComplete(T result) {
+				eventloop.submit(() -> complete(result));
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				eventloop.submit(() -> completeExceptionally(throwable));
+			}
+		});
+	}
+
+	@Override
 	public Stage<Try<T>> toTry() {
 		return then(new NextStage<T, Try<T>>() {
 			@Override
@@ -369,7 +413,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 			@Override
 			protected void onCompleteExceptionally(Throwable throwable) {
-				complete(Try.ofFailure(throwable));
+				complete(Try.ofException(throwable));
 			}
 		});
 	}

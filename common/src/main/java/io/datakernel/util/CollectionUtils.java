@@ -83,11 +83,95 @@ public class CollectionUtils {
 		return asList(items);
 	}
 
+	@SuppressWarnings("unchecked")
+	public static <T> boolean isShallowEquals(Iterable<? extends T> iterable1, Iterable<? extends T> iterable2) {
+		if (iterable1 instanceof Collection && iterable2 instanceof Collection &&
+				((Collection<T>) iterable1).size() != ((Collection<T>) iterable2).size()) {
+			return false;
+		}
+		Iterator<? extends T> it1 = iterable1.iterator();
+		Iterator<? extends T> it2 = iterable2.iterator();
+		while (it1.hasNext() && it2.hasNext()) {
+			if (it1.next() != it2.next()) {
+				return false;
+			}
+		}
+		assert !it1.hasNext() && !it2.hasNext();
+		return true;
+	}
+
 	public static <T> String toLimitedString(Collection<T> collection, int limit) {
 		return collection.stream()
 				.limit(limit)
 				.map(Object::toString)
 				.collect(joining(",", "[", collection.size() <= limit ? "]" : ", ..and " + (collection.size() - limit) + " more]"));
+	}
+
+	public static <T> Iterator<T> asIterator() {
+		return new Iterator<T>() {
+			@Override
+			public boolean hasNext() {
+				return false;
+			}
+
+			@Override
+			public T next() {
+				throw new NoSuchElementException();
+			}
+		};
+	}
+
+	public static <T> Iterator<T> asIterator(T item) {
+		return new Iterator<T>() {
+			boolean hasNext = true;
+
+			@Override
+			public boolean hasNext() {
+				return hasNext;
+			}
+
+			@Override
+			public T next() {
+				if (!hasNext()) throw new NoSuchElementException();
+				hasNext = false;
+				return item;
+			}
+		};
+	}
+
+	public static <T> Iterator<T> asIterator(T item1, T item2) {
+		return new Iterator<T>() {
+			int i = 0;
+
+			@Override
+			public boolean hasNext() {
+				return i < 2;
+			}
+
+			@Override
+			public T next() {
+				if (!hasNext()) throw new NoSuchElementException();
+				return i++ == 0 ? item1 : item2;
+			}
+		};
+	}
+
+	@SafeVarargs
+	public static <T> Iterator<T> asIterator(T... items) {
+		return new Iterator<T>() {
+			int i = 0;
+
+			@Override
+			public boolean hasNext() {
+				return i < items.length;
+			}
+
+			@Override
+			public T next() {
+				if (!hasNext()) throw new NoSuchElementException();
+				return items[i++];
+			}
+		};
 	}
 
 }

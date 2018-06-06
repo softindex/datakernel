@@ -156,10 +156,7 @@ public final class StreamProducers {
 
 		@Override
 		protected void produce() {
-			for (; ; ) {
-				if (!iterator.hasNext()) {
-					break;
-				}
+			while (iterator.hasNext()) {
 				StreamDataReceiver<T> dataReceiver = getCurrentDataReceiver();
 				if (dataReceiver == null) {
 					return;

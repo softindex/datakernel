@@ -4,6 +4,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -18,7 +19,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.Predicate;
 
-import static io.datakernel.async.Stages.collectToList;
 import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.check;
@@ -268,7 +268,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 						.whenComplete(findCutLoadCommit.recordStats()))
 				.collect(toList());
 
-		collectToList(loadStages)
+		Stages.toList(loadStages)
 				.whenResult(otCommits -> {
 					for (OTCommit<K, D> otCommit : otCommits) {
 						queueMap.put(otCommit.getId(), otCommit);

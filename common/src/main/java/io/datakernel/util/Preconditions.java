@@ -16,6 +16,10 @@
 
 package io.datakernel.util;
 
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+
 public final class Preconditions {
 	private Preconditions() {
 	}
@@ -29,6 +33,12 @@ public final class Preconditions {
 	public static void check(boolean expression, Object message) {
 		if (!expression) {
 			throw new RuntimeException(String.valueOf(message));
+		}
+	}
+
+	public static void check(boolean expression, Supplier<String> message) {
+		if (!expression) {
+			throw new RuntimeException(message.get());
 		}
 	}
 
@@ -52,6 +62,13 @@ public final class Preconditions {
 		throw new NullPointerException(String.valueOf(message));
 	}
 
+	public static <T> T checkNotNull(T reference, Supplier<String> message) {
+		if (reference != null) {
+			return reference;
+		}
+		throw new NullPointerException(message.get());
+	}
+
 	public static <T> T checkNotNull(T reference, String template, Object... args) {
 		if (reference != null) {
 			return reference;
@@ -68,6 +85,12 @@ public final class Preconditions {
 	public static void checkState(boolean expression, Object message) {
 		if (!expression) {
 			throw new IllegalStateException(String.valueOf(message));
+		}
+	}
+
+	public static void checkState(boolean expression, Supplier<String> message) {
+		if (!expression) {
+			throw new IllegalStateException(message.get());
 		}
 	}
 
@@ -89,9 +112,50 @@ public final class Preconditions {
 		}
 	}
 
+	public static void checkArgument(boolean expression, Supplier<String> message) {
+		if (!expression) {
+			throw new IllegalArgumentException(message.get());
+		}
+	}
+
 	public static void checkArgument(boolean expression, String template, Object... args) {
 		if (!expression) {
 			throw new IllegalArgumentException(String.format(template, args));
 		}
+	}
+
+	public static <T> T checkArgument(T argument, Predicate<T> predicate) {
+		if (predicate.test(argument)) {
+			return argument;
+		}
+		throw new IllegalArgumentException();
+	}
+
+	public static <T> T checkArgument(T argument, Predicate<T> predicate, Object message) {
+		if (predicate.test(argument)) {
+			return argument;
+		}
+		throw new IllegalArgumentException(String.valueOf(message));
+	}
+
+	public static <T> T checkArgument(T argument, Predicate<T> predicate, Supplier<String> message) {
+		if (predicate.test(argument)) {
+			return argument;
+		}
+		throw new IllegalArgumentException(message.get());
+	}
+
+	public static <T> T checkArgument(T argument, Predicate<T> predicate, Function<T, String> message) {
+		if (predicate.test(argument)) {
+			return argument;
+		}
+		throw new IllegalArgumentException(message.apply(argument));
+	}
+
+	public static <T> T checkArgument(T argument, Predicate<T> predicate, String template, Object... args) {
+		if (predicate.test(argument)) {
+			return argument;
+		}
+		throw new IllegalArgumentException(String.format(template, args));
 	}
 }

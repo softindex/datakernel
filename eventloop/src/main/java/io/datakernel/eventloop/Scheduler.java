@@ -18,9 +18,37 @@ package io.datakernel.eventloop;
 
 import io.datakernel.time.CurrentTimeProvider;
 
+import java.time.Duration;
+import java.time.Instant;
+
 public interface Scheduler extends CurrentTimeProvider {
 
 	ScheduledRunnable schedule(long timestamp, Runnable runnable);
 
+	default ScheduledRunnable schedule(Instant instant, Runnable runnable) {
+		return schedule(instant.toEpochMilli(), runnable);
+	}
+
+	default ScheduledRunnable delay(long delayMillis, Runnable runnable) {
+		return schedule(currentTimeMillis() + delayMillis, runnable);
+	}
+
+	default ScheduledRunnable delay(Duration delay, Runnable runnable) {
+		return delay(delay.toMillis(), runnable);
+	}
+
 	ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable);
+
+	default ScheduledRunnable scheduleBackground(Instant instant, Runnable runnable) {
+		return scheduleBackground(instant.toEpochMilli(), runnable);
+	}
+
+	default ScheduledRunnable delayBackground(long delayMillis, Runnable runnable) {
+		return scheduleBackground(currentTimeMillis() + delayMillis, runnable);
+	}
+
+	default ScheduledRunnable delayBackground(Duration delay, Runnable runnable) {
+		return delayBackground(delay.toMillis(), runnable);
+	}
+
 }
