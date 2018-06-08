@@ -235,7 +235,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 	@Override
 	public void close() {
-		logger.info("closing: {}", this);
+		logger.trace("closing: {}", this);
 		socket.close();
 		if (readBuf != null) {
 			readBuf.recycle();
@@ -273,7 +273,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 	@Override
 	public void onReadEndOfStream() {
-		logger.trace("onShutdownInput", this);
+		logger.trace("onShutdownInput: {}", this);
 		readEndOfStream = true;
 		if (socketReader == null) {
 			tryReadMessage();

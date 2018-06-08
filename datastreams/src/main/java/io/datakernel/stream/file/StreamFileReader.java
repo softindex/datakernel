@@ -70,7 +70,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	public StreamFileReader withOffset(long offset) {
 		checkState(getConsumer() == null, "Cannot set offset after binding the reader");
-		checkArgument(offset >= 0, "Position cannot be less than zero");
+		checkArgument(offset >= 0, "Offset cannot be negative");
 		position = offset;
 		return this;
 	}
