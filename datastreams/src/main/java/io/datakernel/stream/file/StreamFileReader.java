@@ -87,13 +87,11 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	@Override
-	protected void produce() {
-		if (!isReceiverReady()) {
-			return;
-		}
+	protected void produce(AsyncProduceController async) {
+		async.begin();
 		int bufSize = (int) Math.min(bufferSize, limit);
 		ByteBuf buf = ByteBufPool.allocateExact(bufSize);
-		asyncFile.read(buf, position) // reads are synchronized at least on asyncFile, so if produce() is called twise, position wont be broken (i hope)
+		asyncFile.read(buf, position) // reads are synchronized at least on asyncFile, so if produce() is called twice, position wont be broken (i hope)
 			.whenComplete(($, e) -> {
 				if (e != null) {
 					buf.recycle();
@@ -106,10 +104,10 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 				if (limit != Long.MAX_VALUE) {
 					limit -= bytesRead; // bytesRead is always <= the limit (^ see the min call)
 				}
-				if (limit == 0L || bytesRead < bufSize) { // AsynFile#read finishes either if file is done or buffer is filled
+				if (limit == 0L || bytesRead < bufSize) { // AsyncFile#read finishes either if file is done or buffer is filled
 					sendEndOfStream();
 				}
-				produce();
+				async.resume();
 			});
 	}
 

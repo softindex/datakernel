@@ -16,9 +16,7 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.*;
 
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -155,7 +153,7 @@ public final class StreamProducers {
 		}
 
 		@Override
-		protected void produce() {
+		protected void produce(AsyncProduceController async) {
 			while (iterator.hasNext()) {
 				StreamDataReceiver<T> dataReceiver = getCurrentDataReceiver();
 				if (dataReceiver == null) {
@@ -165,6 +163,46 @@ public final class StreamProducers {
 				dataReceiver.onData(item);
 			}
 			sendEndOfStream();
+		}
+
+		@Override
+		protected void onError(Throwable t) {
+		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			return EnumSet.of(LATE_BINDING);
+		}
+	}
+
+	static class OfAsyncCallableImpl<T> extends AbstractStreamProducer<T> {
+		private final AsyncCallable<T> asyncCallable;
+
+		/**
+		 * Creates a new instance of  StreamProducerOfIterator
+		 *
+		 * @param asyncCallable iterator with object which need to send
+		 */
+		public OfAsyncCallableImpl(AsyncCallable<T> asyncCallable) {
+			this.asyncCallable = checkNotNull(asyncCallable);
+		}
+
+		@Override
+		protected void produce(AsyncProduceController async) {
+			async.begin();
+			asyncCallable.call()
+					.whenComplete((value, e) -> {
+						if (e == null) {
+							if (value != null) {
+								send(value);
+								async.resume();
+							} else {
+								sendEndOfStream();
+							}
+						} else {
+							closeWithError(e);
+						}
+					});
 		}
 
 		@Override

@@ -73,7 +73,7 @@ public final class StreamByteChunker implements StreamTransformer<ByteBuf, ByteB
 		}
 
 		@Override
-		protected void produce() {
+		protected void produce(AsyncProduceController async) {
 			tryFlushAndClose(); // chunk and send out any remaining data in internalBuf
 			if (isReceiverReady()) { // if more data is needed
 				input.getProducer().produce(this);

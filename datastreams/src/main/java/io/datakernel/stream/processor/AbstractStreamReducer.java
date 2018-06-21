@@ -164,7 +164,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 		}
 
 		@Override
-		protected void produce() {
+		protected void produce(AsyncProduceController async) {
 			AbstractStreamReducer.this.produce();
 		}
 	}

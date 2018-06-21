@@ -72,7 +72,7 @@ public class StreamSuspendBuffer<T> implements StreamTransformer<T, T>, StreamDa
 
 	protected final class Output extends AbstractStreamProducer<T> {
 		@Override
-		protected void produce() {
+		protected void produce(AsyncProduceController async) {
 			while (!buffer.isEmpty()) {
 				if (!output.isReceiverReady()) {
 					return;

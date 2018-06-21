@@ -97,7 +97,7 @@ public final class StreamLZ4Compressor implements StreamTransformer<ByteBuf, Byt
 		}
 
 		@Override
-		protected void produce() {
+		protected void produce(AsyncProduceController async) {
 			if (input.getStatus() != END_OF_STREAM) {
 				input.getProducer().produce(this);
 			} else {

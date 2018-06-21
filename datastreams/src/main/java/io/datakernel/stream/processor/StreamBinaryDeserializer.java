@@ -72,7 +72,7 @@ public final class StreamBinaryDeserializer<T> implements StreamTransformer<Byte
 	private final class Input extends AbstractStreamConsumer<ByteBuf> {
 		@Override
 		protected void onEndOfStream() {
-			output.produce();
+			output.tryProduce();
 		}
 
 		@Override
@@ -93,7 +93,7 @@ public final class StreamBinaryDeserializer<T> implements StreamTransformer<Byte
 		@Override
 		public void onData(ByteBuf buf) {
 			queue.add(buf);
-			produce();
+			tryProduce();
 		}
 
 		@Override
@@ -107,7 +107,7 @@ public final class StreamBinaryDeserializer<T> implements StreamTransformer<Byte
 		}
 
 		@Override
-		protected void produce() {
+		protected void produce(AsyncProduceController async) {
 			try {
 				while (isReceiverReady() && queue.hasRemaining()) {
 					int dataSize = tryPeekSize(queue);

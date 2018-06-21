@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.util.CollectionUtils.asIterator;
-import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 
 public final class Stages {
 	private Stages() {
@@ -32,8 +32,8 @@ public final class Stages {
 	/**
 	 * @see Stages#all(List)
 	 */
-	public static Stage<Void> all(Stage<?> stage) {
-		return stage.toVoid();
+	public static Stage<Void> all(Stage<?> stage1) {
+		return stage1.toVoid();
 	}
 
 	/**
@@ -81,7 +81,7 @@ public final class Stages {
 	 * @return {@code Stage} that completes when all stages are completed
 	 */
 	public static Stage<Void> all(Iterator<? extends Stage<?>> stages) {
-		checkArgument(stages.hasNext());
+		if (!stages.hasNext()) return all();
 		StageAll<Object> resultStage = new StageAll<>(1);
 		stages.next().then(resultStage);
 		while (stages.hasNext()) {
@@ -119,12 +119,16 @@ public final class Stages {
 		}
 	}
 
+	public static <T> Stage<T> any() {
+		return Stage.ofException(new NoSuchElementException());
+	}
+
 	/**
 	 * @see Stages#any(List)
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stage<T> any(Stage<? extends T> stage) {
-		return (Stage<T>) stage;
+	public static <T> Stage<T> any(Stage<? extends T> stage1) {
+		return (Stage<T>) stage1;
 	}
 
 	/**
@@ -160,14 +164,13 @@ public final class Stages {
 	@SuppressWarnings("unchecked")
 	public static <T> Stage<T> any(List<? extends Stage<? extends T>> stages) {
 		int size = stages.size();
-		checkArgument(size != 0);
 		if (size == 1) return (Stage<T>) stages.get(0);
 		if (size == 2) return ((Stage<T>) stages.get(0)).either(stages.get(1));
 		return any(stages.iterator());
 	}
 
 	public static <T> Stage<T> any(Iterator<? extends Stage<? extends T>> stages) {
-		checkArgument(stages.hasNext());
+		if (!stages.hasNext()) return any();
 		Stage<? extends T> first = stages.next();
 		StageAny<T> resultStage = new StageAny<>(1);
 		first.then(resultStage);
@@ -253,12 +256,12 @@ public final class Stages {
 	}
 
 	private static final class StageCollect<T, A, R> extends NextStage<T, R> {
-		final IndexedCollector<T, A, R> reducer;
+		final IndexedCollector<T, A, R> collector;
 		A accumulator;
 		int stages;
 
-		private StageCollect(IndexedCollector<T, A, R> reducer, A accumulator, int stages) {
-			this.reducer = reducer;
+		private StageCollect(IndexedCollector<T, A, R> collector, A accumulator, int stages) {
+			this.collector = collector;
 			this.accumulator = accumulator;
 			this.stages = stages;
 		}
@@ -267,9 +270,9 @@ public final class Stages {
 			if (isComplete()) {
 				return;
 			}
-			reducer.accumulate(accumulator, i, result);
+			collector.accumulate(accumulator, i, result);
 			if (--stages == 0) {
-				R reducerResult = reducer.finish(accumulator);
+				R reducerResult = collector.finish(accumulator);
 				accumulator = null;
 				complete(reducerResult);
 			}
@@ -320,13 +323,13 @@ public final class Stages {
 	}
 
 	private static final class StageCollectorEx<T, A, R> extends NextStage<T, R> implements CollectListener.CollectCanceller {
-		final IndexedCollector<T, A, R> reducer;
+		final IndexedCollector<T, A, R> collector;
 		final CollectListener<T, A, R> listener;
 		A accumulator;
 		int stages;
 
-		private StageCollectorEx(IndexedCollector<T, A, R> reducer, CollectListener<T, A, R> listener, A accumulator, int stages) {
-			this.reducer = reducer;
+		private StageCollectorEx(IndexedCollector<T, A, R> collector, CollectListener<T, A, R> listener, A accumulator, int stages) {
+			this.collector = collector;
 			this.listener = listener;
 			this.accumulator = accumulator;
 			this.stages = stages;
@@ -341,7 +344,7 @@ public final class Stages {
 			if (isComplete()) {
 				return;
 			}
-			reducer.accumulate(accumulator, index, stageResult);
+			collector.accumulate(accumulator, index, stageResult);
 			listener.onResult(stageResult, index);
 			if (--stages == 0) {
 				finish();
@@ -353,7 +356,7 @@ public final class Stages {
 			if (isComplete()) {
 				return;
 			}
-			R finished = reducer.finish(accumulator);
+			R finished = collector.finish(accumulator);
 			accumulator = null;
 			listener.onCollectResult(finished);
 			if (isComplete()) {
@@ -417,21 +420,22 @@ public final class Stages {
 		}
 	}
 
-	/**
-	 * Prepared version of reduce that reduces stages into Stage&lt;List&gt;
-	 *
-	 * @see Stages#collect(List, IndexedCollector)
-	 */
-	public static <T> Stage<List<T>> toList(List<? extends Stage<? extends T>> stages) {
-		return collect(stages, IndexedCollector.toList());
+	public static <T> Stage<List<T>> toList() {
+		return Stage.of(emptyList());
 	}
 
 	/**
 	 * @see Stages#toList(Stage[])
 	 */
-	public static <T> Stage<List<T>> toList(Stream<? extends Stage<? extends T>> stages) {
-		List<Stage<? extends T>> list = stages.collect(Collectors.toList());
-		return toList(list);
+	public static <T> Stage<List<T>> toList(Stage<? extends T> stage1) {
+		return stage1.thenApply(Collections::singletonList);
+	}
+
+	/**
+	 * @see Stages#toList(Stage[])
+	 */
+	public static <T> Stage<List<T>> toList(Stage<? extends T> stage1, Stage<? extends T> stage2) {
+		return stage1.combine(stage2, (value1, value2) -> asList(value1, value2));
 	}
 
 	/**
@@ -445,40 +449,31 @@ public final class Stages {
 	/**
 	 * @see Stages#toList(Stage[])
 	 */
-	public static <T> Stage<List<T>> toList(Stage<? extends T> stage1, Stage<? extends T> stage2) {
-		return stage1.combine(stage2, (value1, value2) -> asList(value1, value2));
+	public static <T> Stage<List<T>> toList(Stream<? extends Stage<? extends T>> stages) {
+		List<Stage<? extends T>> list = stages.collect(Collectors.toList());
+		return toList(list);
 	}
 
 	/**
-	 * @see Stages#toList(Stage[])
-	 */
-	public static <T> Stage<List<T>> toList(Stage<? extends T> stage1) {
-		return stage1.thenApply(Collections::singletonList);
-	}
-
-	/**
-	 * Prepared version of reduce that reduces stages into Stage&lt;Array&gt;
+	 * Prepared version of reduce that reduces stages into Stage&lt;List&gt;
 	 *
 	 * @see Stages#collect(List, IndexedCollector)
 	 */
-	public static <T> Stage<T[]> toArray(List<? extends Stage<? extends T>> stages) {
-		return collect(stages, IndexedCollector.toArray());
+	public static <T> Stage<List<T>> toList(List<? extends Stage<? extends T>> stages) {
+		return collect(stages, IndexedCollector.toList());
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> Stage<T[]> toArray() {
+		return Stage.of((T[]) new Object[0]);
 	}
 
 	/**
 	 * @see Stages#toArray(List)
 	 */
-	public static <T> Stage<T[]> toArray(Stream<? extends Stage<? extends T>> stages) {
-		List<Stage<? extends T>> list = stages.collect(Collectors.toList());
-		return toArray(list);
-	}
-
-	/**
-	 * @see Stages#toArray(List)
-	 */
-	@SafeVarargs
-	public static <T> Stage<T[]> toArray(Stage<? extends T>... stages) {
-		return toArray(asList(stages));
+	@SuppressWarnings("unchecked")
+	public static <T> Stage<T[]> toArray(Stage<? extends T> stage1) {
+		return stage1.thenApply(value -> (T[]) new Object[]{value});
 	}
 
 	/**
@@ -492,9 +487,26 @@ public final class Stages {
 	/**
 	 * @see Stages#toArray(List)
 	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Stage<T[]> toArray(Stage<? extends T> stage1) {
-		return stage1.thenApply(value -> (T[]) new Object[]{value});
+	@SafeVarargs
+	public static <T> Stage<T[]> toArray(Stage<? extends T>... stages) {
+		return toArray(asList(stages));
+	}
+
+	/**
+	 * @see Stages#toArray(List)
+	 */
+	public static <T> Stage<T[]> toArray(Stream<? extends Stage<? extends T>> stages) {
+		List<Stage<? extends T>> list = stages.collect(Collectors.toList());
+		return toArray(list);
+	}
+
+	/**
+	 * Prepared version of reduce that reduces stages into Stage&lt;Array&gt;
+	 *
+	 * @see Stages#collect(List, IndexedCollector)
+	 */
+	public static <T> Stage<T[]> toArray(List<? extends Stage<? extends T>> stages) {
+		return collect(stages, IndexedCollector.toArray());
 	}
 
 	public static <T1, R> Stage<R> toTuple(TupleConstructor1<T1, R> constructor, Stage<? extends T1> stage1) {
@@ -726,7 +738,7 @@ public final class Stages {
 	 *
 	 * @see Stages#first(Iterator, BiPredicate)
 	 */
-	@SuppressWarnings("unchecked")
+	@SafeVarargs
 	public static <T> Stage<T> firstSuccessful(AsyncCallable<? extends T>... stages) {
 		return firstSuccessful(asList(stages));
 	}

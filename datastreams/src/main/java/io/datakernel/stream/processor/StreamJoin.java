@@ -190,17 +190,17 @@ public final class StreamJoin<K, L, R, V> implements HasOutput<V>, HasInputs {
 		@Override
 		public void onData(I item) {
 			deque.add(item);
-			output.produce();
+			output.tryProduce();
 		}
 
 		@Override
 		protected void onStarted() {
-			output.produce();
+			output.tryProduce();
 		}
 
 		@Override
 		protected void onEndOfStream() {
-			output.produce();
+			output.tryProduce();
 		}
 
 		@Override
@@ -223,7 +223,7 @@ public final class StreamJoin<K, L, R, V> implements HasOutput<V>, HasInputs {
 		}
 
 		@Override
-		protected void produce() {
+		protected void produce(AsyncProduceController async) {
 			if (isReceiverReady() && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
 				L leftValue = leftDeque.peek();
 				K leftKey = leftKeyFunction.apply(leftValue);

@@ -43,6 +43,12 @@ public interface Stage<T> {
 		return stage;
 	}
 
+	static <T> Stage<T> ofCallback(Consumer<SettableStage<T>> callbackConsumer) {
+		SettableStage<T> cb = SettableStage.create();
+		callbackConsumer.accept(cb);
+		return cb;
+	}
+
 	/**
 	 * Creates a completed stage from value and throwable variables.
 	 * Useful for {@link #thenComposeEx(BiFunction)} passthroughs (eg. when mapping specific exceptions).
@@ -184,7 +190,9 @@ public interface Stage<T> {
 		return stage;
 	}
 
-	/** Adapter for {@link #ofThrowingRunnable(Executor, ThrowingRunnable)} */
+	/**
+	 * Adapter for {@link #ofThrowingRunnable(Executor, ThrowingRunnable)}
+	 */
 	static Stage<Void> ofRunnable(Executor executor, Runnable runnable) {
 		return ofThrowingRunnable(executor, runnable::run);
 	}
@@ -246,6 +254,14 @@ public interface Stage<T> {
 	 * @return this stage
 	 */
 	<U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn);
+
+	default <U> Stage<U> thenCallback(BiConsumer<? super T, SettableStage<U>> fn) {
+		return thenCompose(value -> {
+			SettableStage<U> cb = SettableStage.create();
+			fn.accept(value, cb);
+			return cb;
+		});
+	}
 
 	/**
 	 * Subscribes given action to be executed after this stage completes

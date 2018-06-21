@@ -18,6 +18,8 @@ package io.datakernel.time;
 
 import java.time.Instant;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
+
 /**
  * Gives access to current time in milliseconds
  */
@@ -30,4 +32,28 @@ public interface CurrentTimeProvider {
 	default Instant currentInstant() {
 		return Instant.ofEpochMilli(currentTimeMillis());
 	}
+
+	static CurrentTimeProvider ofSystem() {
+		return System::currentTimeMillis;
+	}
+
+	ThreadLocal<CurrentTimeProvider> THREAD_LOCAL_TIME_PROVIDER = new ThreadLocal<>();
+
+	static CurrentTimeProvider ofThreadLocal() {
+		return checkNotNull(THREAD_LOCAL_TIME_PROVIDER.get());
+	}
+
+	static CurrentTimeProvider ofTimeSequence(long start, long increment) {
+		return new CurrentTimeProvider() {
+			long time = start;
+
+			@Override
+			public long currentTimeMillis() {
+				long time = this.time;
+				this.time += increment;
+				return time;
+			}
+		};
+	}
+
 }

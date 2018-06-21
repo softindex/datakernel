@@ -58,8 +58,16 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	private StreamDataReceiver<T> lastDataReceiver = $ -> {
 		throw new IllegalStateException("Uninitialized data receiver");
 	};
-	private boolean producing;
-	private boolean posted;
+
+	private final AsyncProduceController controller = new AsyncProduceController();
+
+	private enum ProduceStatus {
+		POSTED,
+		STARTED,
+		STARTED_ASYNC
+	}
+
+	private ProduceStatus produceStatus;
 
 	private Object tag;
 
@@ -75,12 +83,12 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		checkState(this.consumer == null);
 
 		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
-			LATE_BINDING_ERROR_MESSAGE, this);
+				LATE_BINDING_ERROR_MESSAGE, this);
 		this.consumer = consumer;
 		onWired();
 		consumer.getEndOfStream()
 //				.thenRun(this::endOfStream)
-			.whenException(this::closeWithError);
+				.whenException(this::closeWithError);
 	}
 
 	protected void onWired() {
@@ -98,7 +106,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	public final StreamConsumer<T> getConsumer() {
 		return consumer;
 	}
-
 
 	public final boolean isReceiverReady() {
 		return currentDataReceiver != null;
@@ -118,22 +125,49 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		return lastDataReceiver;
 	}
 
-	protected void produce() {
+	protected final class AsyncProduceController {
+		private AsyncProduceController() {
+		}
+
+		public void begin() {
+			produceStatus = ProduceStatus.STARTED_ASYNC;
+		}
+
+		public void end() {
+			produceStatus = null;
+		}
+
+		public void resume() {
+			if (isReceiverReady()) {
+				produce(this);
+			} else {
+				end();
+			}
+		}
+	}
+
+	protected void produce(AsyncProduceController async) {
+	}
+
+	public final void tryProduce() {
+		if (!isReceiverReady())
+			return;
+		if (produceStatus != null)
+			return;
+		produceStatus = ProduceStatus.STARTED;
+		produce(controller);
+		if (produceStatus == ProduceStatus.STARTED) {
+			produceStatus = null;
+		}
 	}
 
 	protected void onProduce(StreamDataReceiver<T> dataReceiver) {
-		if (producing)
+		if (produceStatus != null)
 			return; // recursive call from downstream - just hot-switch to another receiver
-		if (posted)
-			return;
-		posted = true;
+		produceStatus = ProduceStatus.POSTED;
 		eventloop.post(() -> {
-			posted = false;
-			if (!isReceiverReady())
-				return;
-			producing = true;
-			produce();
-			producing = false;
+			produceStatus = null;
+			tryProduce();
 		});
 	}
 
@@ -209,9 +243,11 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		return endOfStream;
 	}
 
-	/** This method is useful for stream transformers that might add some capability to the stream */
+	/**
+	 * This method is useful for stream transformers that might add some capability to the stream
+	 */
 	protected static Set<StreamCapability> addCapabilities(@Nullable StreamProducer<?> producer,
-														   StreamCapability capability, StreamCapability... capabilities) {
+			StreamCapability capability, StreamCapability... capabilities) {
 		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
 		if (producer != null) {
 			result.addAll(producer.getCapabilities());

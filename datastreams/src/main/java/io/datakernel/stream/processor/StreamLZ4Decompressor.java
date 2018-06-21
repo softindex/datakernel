@@ -92,7 +92,7 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 	private final class Input extends AbstractStreamConsumer<ByteBuf> {
 		@Override
 		protected void onEndOfStream() {
-			output.produce();
+			output.tryProduce();
 		}
 
 		@Override
@@ -135,14 +135,14 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 					throw new ParseException(format("Unexpected byteBuf after LZ4 EOS packet %s : %s", this, buf));
 				}
 				queue.add(buf);
-				output.produce();
+				output.tryProduce();
 			} catch (ParseException e) {
 				input.closeWithError(e);
 			}
 		}
 
 		@Override
-		protected void produce() {
+		protected void produce(AsyncProduceController async) {
 			try {
 				while (isReceiverReady()) {
 					if (!queue.hasRemainingBytes(headerBuf.writeRemaining())) {

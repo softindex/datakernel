@@ -16,6 +16,7 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
@@ -209,6 +210,11 @@ public interface StreamProducer<T> {
 			}
 		});
 	}
+
+	static <T> StreamProducer<T> ofAsyncCallable(AsyncCallable<T> supplier) {
+		return new StreamProducers.OfAsyncCallableImpl<>(supplier);
+	}
+
 
 	String LATE_BINDING_ERROR_MESSAGE = "" +
 			"StreamProducer %s does not have LATE_BINDING capabilities, " +

@@ -37,7 +37,7 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	// endregion
 
 	@Override
-	protected void produce() {
+	protected void produce(AsyncProduceController async) {
 		while (isReceiverReady() && readQueue.hasRemaining()) {
 			ByteBuf buf = readQueue.take();
 			send(buf);
@@ -68,12 +68,12 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 
 	public void onRead(ByteBuf buf) {
 		readQueue.add(buf);
-		produce();
+		tryProduce();
 	}
 
 	public void onReadEndOfStream() {
 		this.readEndOfStream = true;
-		produce();
+		tryProduce();
 	}
 
 	public boolean isClosed() {
