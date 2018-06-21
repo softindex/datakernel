@@ -23,7 +23,6 @@ import io.datakernel.eventloop.Eventloop;
 import java.util.ArrayList;
 import java.util.Set;
 
-import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Collections.emptySet;
@@ -70,19 +69,19 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 				currentInternalProducer.sendError(getException());
 			}
 			currentInternalProducer = new InternalProducer(eventloop, StreamConsumer.idle());
-			bind(StreamProducer.closingWithError(getException()), newConsumer);
+			StreamProducer.<T>closingWithError(getException()).streamTo(newConsumer);
 		} else if (getStatus() == END_OF_STREAM) {
 			if (currentInternalProducer != null) {
 				currentInternalProducer.sendEndOfStream();
 			}
 			currentInternalProducer = new InternalProducer(eventloop, StreamConsumer.idle());
-			bind(StreamProducer.of(), newConsumer);
+			StreamProducer.<T>of().streamTo(newConsumer);
 		} else {
 			if (currentInternalProducer != null) {
 				currentInternalProducer.sendEndOfStream();
 			}
 			currentInternalProducer = new InternalProducer(eventloop, newConsumer);
-			bind(currentInternalProducer, newConsumer);
+			currentInternalProducer.streamTo(newConsumer);
 		}
 	}
 

@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
@@ -67,7 +66,7 @@ public class ConsumerToListTest {
 		testList2.add(6);
 
 		StreamProducer<Integer> producer = StreamProducer.ofIterable(testList2);
-		stream(producer, consumer);
+		producer.streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());

@@ -12,7 +12,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.errorDecorator;
 import static io.datakernel.stream.StreamConsumers.suspendDecorator;
 import static java.util.stream.Collectors.toList;
@@ -77,8 +76,8 @@ public class StreamConsumersTest {
 						context -> eventloop.delay(10, context::resume)
 				));
 
-		stream(producer, transformer.getInput());
-		stream(transformer.getOutput(), errorConsumer);
+		producer.streamTo(transformer.getInput());
+		transformer.getOutput().streamTo(errorConsumer);
 		eventloop.run();
 
 		assertEquals(values, consumer.getList());
@@ -113,7 +112,7 @@ public class StreamConsumersTest {
 		List<Integer> actual = new ArrayList<>();
 		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
 		StreamConsumer<Integer> consumer = StreamConsumer.ofConsumer(actual::add);
-		stream(producer, consumer);
+		producer.streamTo(consumer);
 		eventloop.run();
 		assertEquals(values, actual);
 	}

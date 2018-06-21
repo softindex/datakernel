@@ -12,7 +12,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamProducers.errorDecorator;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
@@ -66,12 +65,14 @@ public class StreamProducersTest {
 	public void testSupplierProducer() {
 		List<Integer> actual = new ArrayList<>();
 		int[] i = {0};
-		stream(StreamProducer.ofSupplier(() -> {
-			if (i[0] == 10) {
-				return null;
-			}
-			return i[0]++;
-		}), StreamConsumerToList.create(actual));
+		StreamProducer.ofSupplier(
+				() -> {
+					if (i[0] == 10) {
+						return null;
+					}
+					return i[0]++;
+				})
+				.streamTo(StreamConsumerToList.create(actual));
 		eventloop.run();
 		assertEquals(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9), actual);
 	}

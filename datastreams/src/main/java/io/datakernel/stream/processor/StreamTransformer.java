@@ -20,8 +20,6 @@ import io.datakernel.stream.*;
 
 import java.util.function.Function;
 
-import static io.datakernel.stream.DataStreams.bind;
-
 public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, StreamModifier<I, O> {
 
 	static <X> StreamTransformer<X, X> idenity() {
@@ -62,13 +60,13 @@ public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, Stre
 
 	@Override
 	default StreamConsumer<I> applyTo(StreamConsumer<O> consumer) {
-		bind(getOutput(), consumer);
+		getOutput().streamTo(consumer);
 		return getInput();
 	}
 
 	@Override
 	default StreamProducer<O> applyTo(StreamProducer<I> producer) {
-		bind(producer, getInput());
+		producer.streamTo(getInput());
 		return getOutput();
 	}
 

@@ -28,7 +28,6 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
-import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 
@@ -53,10 +52,10 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 				assert consumer != null;
 				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, consumer);
-				bind(binder.getOutput(), consumer);
+				binder.getOutput().streamTo(consumer);
 				consumer.getResult().whenComplete(result::set);
 			} else {
-				bind(binder.getOutput(), StreamConsumer.closingWithError(throwable));
+				binder.getOutput().streamTo(StreamConsumer.closingWithError(throwable));
 				result.setException(throwable);
 			}
 		});

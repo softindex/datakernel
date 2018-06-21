@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.decorator;
 import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -54,8 +53,8 @@ public class StreamReducerTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(source, streamReducer.newInput(Function.identity(), reducer));
-		stream(streamReducer.getOutput(), consumer.with(randomlySuspending()));
+		source.streamTo(streamReducer.newInput(Function.identity(), reducer));
+		streamReducer.getOutput().streamTo(consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
@@ -84,15 +83,15 @@ public class StreamReducerTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(source0, streamReducer.newInput(keyFunction, reducer));
-		stream(source1, streamReducer.newInput(keyFunction, reducer));
-		stream(source2, streamReducer.newInput(keyFunction, reducer));
-		stream(source3, streamReducer.newInput(keyFunction, reducer));
-		stream(source4, streamReducer.newInput(keyFunction, reducer));
-		stream(source5, streamReducer.newInput(keyFunction, reducer));
-		stream(source6, streamReducer.newInput(keyFunction, reducer));
-		stream(source7, streamReducer.newInput(keyFunction, reducer));
-		stream(streamReducer.getOutput(), consumer.with(randomlySuspending()));
+		source0.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source1.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source2.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source3.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source4.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source5.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source6.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
+		streamReducer.getOutput().streamTo(consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
@@ -129,11 +128,11 @@ public class StreamReducerTest {
 		List<KeyValueResult> list = new ArrayList<>();
 		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create(list);
 
-		stream(source1, streamReducer.newInput(input -> input.key, KeyValue1.REDUCER));
-		stream(source2, streamReducer.newInput(input -> input.key, KeyValue2.REDUCER));
-		stream(source3, streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
+		source1.streamTo(streamReducer.newInput(input -> input.key, KeyValue1.REDUCER));
+		source2.streamTo(streamReducer.newInput(input -> input.key, KeyValue2.REDUCER));
+		source3.streamTo(streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
 
-		stream(streamReducer.getOutput(),
+		streamReducer.getOutput().streamTo(
 				consumer.with(decorator((context, dataReceiver) ->
 						item -> {
 							list.add(item);
@@ -171,11 +170,11 @@ public class StreamReducerTest {
 		List<KeyValueResult> list = new ArrayList<>();
 		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create(list);
 
-		stream(source1, streamReducer.newInput(input -> input.key, KeyValue1.REDUCER));
-		stream(source2, streamReducer.newInput(input -> input.key, KeyValue2.REDUCER));
-		stream(source3, streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
+		source1.streamTo(streamReducer.newInput(input -> input.key, KeyValue1.REDUCER));
+		source2.streamTo(streamReducer.newInput(input -> input.key, KeyValue2.REDUCER));
+		source3.streamTo(streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
 
-		stream(streamReducer.getOutput(), consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertTrue(list.size() == 0);

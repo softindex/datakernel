@@ -2,8 +2,6 @@ package io.datakernel.stream;
 
 import java.util.Iterator;
 
-import static io.datakernel.stream.DataStreams.bind;
-
 /**
  * Represents {@link AbstractStreamTransformer_1_1}, which created with iterator with {@link AbstractStreamProducer}
  * which will stream to this
@@ -47,7 +45,7 @@ class StreamProducerConcat<T> extends AbstractStreamProducer<T> {
 			}
 			producer = iterator.next();
 			internalConsumer = new InternalConsumer();
-			bind(producer, internalConsumer);
+			producer.streamTo(internalConsumer);
 		}
 		producer.produce(dataReceiver);
 	}

@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -144,8 +143,8 @@ public class StreamJoinTest {
 
 		StreamConsumerToList<DataItemMasterDetail> consumer = StreamConsumerToList.create();
 
-		stream(source1, streamJoin.getLeft());
-		stream(source2, streamJoin.getRight());
+		source1.streamTo(streamJoin.getLeft());
+		source2.streamTo(streamJoin.getRight());
 
 		streamJoin.getOutput().streamTo(
 				consumer.with(randomlySuspending()));
@@ -199,8 +198,8 @@ public class StreamJoinTest {
 
 		StreamConsumerToList<DataItemMasterDetail> consumer = StreamConsumerToList.create(list);
 
-		stream(source1, streamJoin.getLeft());
-		stream(source2, streamJoin.getRight());
+		source1.streamTo(streamJoin.getLeft());
+		source2.streamTo(streamJoin.getRight());
 
 		streamJoin.getOutput().streamTo(
 				consumer.with(decorator((context, dataReceiver) ->
@@ -255,10 +254,10 @@ public class StreamJoinTest {
 		List<DataItemMasterDetail> list = new ArrayList<>();
 		StreamConsumer<DataItemMasterDetail> consumer = StreamConsumerToList.create(list);
 
-		stream(source1, streamJoin.getLeft());
-		stream(source2, streamJoin.getRight());
+		source1.streamTo(streamJoin.getLeft());
+		source2.streamTo(streamJoin.getRight());
 
-		stream(streamJoin.getOutput(), consumer.with(oneByOne()));
+		streamJoin.getOutput().streamTo(consumer.with(oneByOne()));
 
 		eventloop.run();
 		assertTrue(list.size() == 0);

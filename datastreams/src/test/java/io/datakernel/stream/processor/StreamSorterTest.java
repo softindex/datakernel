@@ -37,7 +37,6 @@ import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -66,8 +65,8 @@ public class StreamSorterTest {
 
 		StreamConsumerWithResult<Integer, Integer> writer1 = storage.writeStream();
 		StreamConsumerWithResult<Integer, Integer> writer2 = storage.writeStream();
-		stream(source1, writer1);
-		stream(source2, writer2);
+		source1.streamTo(writer1);
+		source2.streamTo(writer2);
 
 		CompletableFuture<Integer> chunk1 = writer1.getResult().toCompletableFuture();
 		CompletableFuture<Integer> chunk2 = writer2.getResult().toCompletableFuture();
@@ -79,8 +78,8 @@ public class StreamSorterTest {
 
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
 		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
-		stream(storage.readStream(chunk1.get()), consumer1.with(oneByOne()));
-		stream(storage.readStream(chunk2.get()), consumer2.with(randomlySuspending()));
+		storage.readStream(chunk1.get()).streamTo(consumer1.with(oneByOne()));
+		storage.readStream(chunk2.get()).streamTo(consumer2.with(randomlySuspending()));
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer1.getList());
 		assertEquals(asList(111), consumer2.getList());
@@ -102,8 +101,8 @@ public class StreamSorterTest {
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
-		stream(source, sorter.getInput());
-		stream(sorter.getOutput(), consumerToList.with(randomlySuspending()));
+		source.streamTo(sorter.getInput());
+		sorter.getOutput().streamTo(consumerToList.with(randomlySuspending()));
 
 		eventloop.run();
 
@@ -127,8 +126,8 @@ public class StreamSorterTest {
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		stream(source, sorter.getInput());
-		stream(sorter.getOutput(),
+		source.streamTo(sorter.getInput());
+		sorter.getOutput().streamTo(
 				consumer.with(decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
@@ -162,8 +161,8 @@ public class StreamSorterTest {
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
-		stream(source, sorter.getInput());
-		stream(sorter.getOutput(), consumerToList);
+		source.streamTo(sorter.getInput());
+		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
 

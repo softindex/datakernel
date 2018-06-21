@@ -30,8 +30,6 @@ import io.datakernel.util.MemSize;
 
 import java.time.Duration;
 
-import static io.datakernel.stream.DataStreams.stream;
-
 @SuppressWarnings("unchecked")
 public final class RpcStream {
 	public interface Listener extends StreamDataReceiver<RpcMessage> {
@@ -125,18 +123,18 @@ public final class RpcStream {
 		if (compression) {
 			compressor = StreamLZ4Compressor.fastCompressor();
 			decompressor = StreamLZ4Decompressor.create();
-			stream(connection.getSocketReader(), decompressor.getInput());
-			stream(decompressor.getOutput(), deserializer.getInput());
+			connection.getSocketReader().streamTo(decompressor.getInput());
+			decompressor.getOutput().streamTo(deserializer.getInput());
 
-			stream(serializer.getOutput(), compressor.getInput());
-			stream(compressor.getOutput(), connection.getSocketWriter());
+			serializer.getOutput().streamTo(compressor.getInput());
+			compressor.getOutput().streamTo(connection.getSocketWriter());
 		} else {
-			stream(connection.getSocketReader(), deserializer.getInput());
-			stream(serializer.getOutput(), connection.getSocketWriter());
+			connection.getSocketReader().streamTo(deserializer.getInput());
+			serializer.getOutput().streamTo(connection.getSocketWriter());
 		}
 
-		stream(deserializer.getOutput(), receiver);
-		stream(sender, serializer.getInput());
+		deserializer.getOutput().streamTo(receiver);
+		sender.streamTo(serializer.getInput());
 	}
 
 	public void setListener(Listener listener) {

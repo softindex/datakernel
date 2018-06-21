@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -56,14 +55,14 @@ public class StreamUnionTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(source0, streamUnion.newInput());
-		stream(source1, streamUnion.newInput());
-		stream(source2, streamUnion.newInput());
-		stream(source3, streamUnion.newInput());
-		stream(source4, streamUnion.newInput());
-		stream(source5, streamUnion.newInput());
-		stream(source6, streamUnion.newInput());
-		stream(streamUnion.getOutput(), consumer.with(randomlySuspending()));
+		source0.streamTo(streamUnion.newInput());
+		source1.streamTo(streamUnion.newInput());
+		source2.streamTo(streamUnion.newInput());
+		source3.streamTo(streamUnion.newInput());
+		source4.streamTo(streamUnion.newInput());
+		source5.streamTo(streamUnion.newInput());
+		source6.streamTo(streamUnion.newInput());
+		streamUnion.getOutput().streamTo(consumer.with(randomlySuspending()));
 		eventloop.run();
 
 		List<Integer> result = consumer.getList();
@@ -95,12 +94,11 @@ public class StreamUnionTest {
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		stream(source0, streamUnion.newInput());
-		stream(source1, streamUnion.newInput());
-		stream(source2, streamUnion.newInput());
+		source0.streamTo(streamUnion.newInput());
+		source1.streamTo(streamUnion.newInput());
+		source2.streamTo(streamUnion.newInput());
 
-		stream(streamUnion.getOutput(),
-				consumer.with(decorator((context, dataReceiver) ->
+		streamUnion.getOutput().streamTo(consumer.with(decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (item == 1) {
@@ -138,10 +136,10 @@ public class StreamUnionTest {
 		List<Integer> list = new ArrayList<>();
 		StreamConsumer<Integer> consumer = StreamConsumerToList.create(list);
 
-		stream(source0, streamUnion.newInput());
-		stream(source1, streamUnion.newInput());
+		source0.streamTo(streamUnion.newInput());
+		source1.streamTo(streamUnion.newInput());
 
-		stream(streamUnion.getOutput(), consumer.with(oneByOne()));
+		streamUnion.getOutput().streamTo(consumer.with(oneByOne()));
 		eventloop.run();
 
 		assertTrue(list.size() == 3);

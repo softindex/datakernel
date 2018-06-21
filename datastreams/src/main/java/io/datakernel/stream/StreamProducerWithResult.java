@@ -27,7 +27,6 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 
@@ -38,7 +37,8 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 	@Override
 	default StreamProducerResult<X> streamTo(StreamConsumer<T> consumer) {
 		StreamProducerWithResult<T, X> producer = this;
-		bind(producer, consumer);
+		producer.setConsumer(consumer);
+		consumer.setProducer(producer);
 		Stage<Void> producerEndOfStream = producer.getEndOfStream();
 		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
 		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
@@ -70,7 +70,8 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 	@Override
 	default <Y> StreamResult<X, Y> streamTo(StreamConsumerWithResult<T, Y> consumer) {
 		StreamProducerWithResult<T, X> producer = this;
-		bind(producer, consumer);
+		producer.setConsumer(consumer);
+		consumer.setProducer(producer);
 		Stage<Void> producerEndOfStream = producer.getEndOfStream();
 		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
 		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
@@ -115,10 +116,10 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 			if (throwable == null) {
 				checkArgument(producer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, producer);
-				bind(producer, binder.getInput());
+				producer.streamTo(binder.getInput());
 				producer.getResult().whenComplete(result::set);
 			} else {
-				bind(StreamProducer.closingWithError(throwable), binder.getInput());
+				StreamProducer.<T>closingWithError(throwable).streamTo(binder.getInput());
 				result.setException(throwable);
 			}
 		});

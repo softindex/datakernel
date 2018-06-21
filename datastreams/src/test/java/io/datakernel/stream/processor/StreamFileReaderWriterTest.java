@@ -37,7 +37,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static org.junit.Assert.assertArrayEquals;
 
 public class StreamFileReaderWriterTest {
@@ -109,7 +108,7 @@ public class StreamFileReaderWriterTest {
 
 		StreamConsumer<ByteBuf> consumer = new MockConsumer();
 
-		stream(reader, consumer);
+		reader.streamTo(consumer);
 		eventloop.run();
 
 		ByteBufQueue byteQueue = ByteBufQueue.create();
@@ -134,7 +133,7 @@ public class StreamFileReaderWriterTest {
 
 		StreamFileWriter writer = StreamFileWriter.create(executor, tempPath);
 
-		stream(producer, writer);
+		producer.streamTo(writer);
 		eventloop.run();
 
 		byte[] fileBytes = Files.readAllBytes(tempPath);
@@ -154,7 +153,7 @@ public class StreamFileReaderWriterTest {
 
 		StreamFileWriter writer = StreamFileWriter.create(executor, tempPath);
 
-		stream(producer, writer);
+		producer.streamTo(writer);
 		eventloop.run();
 	}
 }

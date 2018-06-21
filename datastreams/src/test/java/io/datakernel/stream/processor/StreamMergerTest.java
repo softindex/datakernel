@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -49,12 +48,11 @@ public class StreamMergerTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(source0, merger.newInput());
-		stream(source1, merger.newInput());
-		stream(source2, merger.newInput());
+		source0.streamTo(merger.newInput());
+		source1.streamTo(merger.newInput());
+		source2.streamTo(merger.newInput());
 
-		stream(merger.getOutput(),
-				consumer.with(randomlySuspending()));
+		merger.getOutput().streamTo(consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(3, 4, 6, 7), consumer.getList());
@@ -78,12 +76,11 @@ public class StreamMergerTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(source0, merger.newInput());
-		stream(source1, merger.newInput());
-		stream(source2, merger.newInput());
+		source0.streamTo(merger.newInput());
+		source1.streamTo(merger.newInput());
+		source2.streamTo(merger.newInput());
 
-		stream(merger.getOutput(),
-				consumer.with(randomlySuspending()));
+		merger.getOutput().streamTo(consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(3, 3, 4, 6, 7), consumer.getList());
@@ -120,11 +117,10 @@ public class StreamMergerTest {
 
 		StreamConsumerToList<DataItem1> consumer = StreamConsumerToList.create();
 
-		stream(source1, merger.newInput());
-		stream(source2, merger.newInput());
+		source1.streamTo(merger.newInput());
+		source2.streamTo(merger.newInput());
 
-		stream(merger.getOutput(),
-				consumer.with(randomlySuspending()));
+		merger.getOutput().streamTo(consumer.with(randomlySuspending()));
 
 		eventloop.run();
 
@@ -153,10 +149,10 @@ public class StreamMergerTest {
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		stream(source1, merger.newInput());
-		stream(source2, merger.newInput());
+		source1.streamTo(merger.newInput());
+		source2.streamTo(merger.newInput());
 
-		stream(merger.getOutput(),
+		merger.getOutput().streamTo(
 				consumer.with(decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
@@ -199,10 +195,10 @@ public class StreamMergerTest {
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		stream(source1, merger.newInput());
-		stream(source2, merger.newInput());
+		source1.streamTo(merger.newInput());
+		source2.streamTo(merger.newInput());
 
-		stream(merger.getOutput(),
+		merger.getOutput().streamTo(
 				consumer.with(oneByOne()));
 
 		eventloop.run();

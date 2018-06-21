@@ -40,7 +40,6 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 
 /**
@@ -91,7 +90,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				pendingStreams.put(streamId, forwarder);
 			}
 			StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
-			bind(forwarder.getOutput(), consumer);
+			forwarder.getOutput().streamTo(consumer);
 			consumer.getResult().whenComplete(($, throwable) -> {
 				if (throwable != null) {
 					logger.warn("Exception occurred while trying to send data");
@@ -128,7 +127,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		} else {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 		}
-		bind(streamSerializer.getOutput(), forwarder.getInput());
+		streamSerializer.getOutput().streamTo(forwarder.getInput());
 		return streamSerializer.getInput();
 	}
 

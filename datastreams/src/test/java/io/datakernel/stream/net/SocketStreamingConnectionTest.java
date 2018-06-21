@@ -37,7 +37,6 @@ import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
-import static io.datakernel.stream.DataStreams.stream;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("unchecked")
@@ -131,11 +130,11 @@ public final class SocketStreamingConnectionTest {
 
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 			SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
-			stream(streamSerializer.getOutput(), connection.getSocketWriter());
-			stream(connection.getSocketReader(), streamDeserializer.getInput());
+			streamSerializer.getOutput().streamTo(connection.getSocketWriter());
+			connection.getSocketReader().streamTo(streamDeserializer.getInput());
 
-			stream(StreamProducer.ofIterable(source), streamSerializer.getInput());
-			stream(streamDeserializer.getOutput(), consumerToList);
+			StreamProducer.ofIterable(source).streamTo(streamSerializer.getInput());
+			streamDeserializer.getOutput().streamTo(consumerToList);
 
 			asyncTcpSocket.setEventHandler(connection);
 			asyncTcpSocket.register();

@@ -38,7 +38,6 @@ import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static io.datakernel.stream.DataStreams.stream;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static org.junit.Assert.assertEquals;
 
@@ -158,17 +157,17 @@ public class RpcBinaryProtocolTest {
 
 		StreamConsumerToList<RpcMessage> results = StreamConsumerToList.create();
 
-		stream(client, serializerClient.getInput());
-		stream(serializerClient.getOutput(), compressorClient.getInput());
-		stream(compressorClient.getOutput(), decompressorServer.getInput());
-		stream(decompressorServer.getOutput(), deserializerServer.getInput());
+		client.streamTo(serializerClient.getInput());
+		serializerClient.getOutput().streamTo(compressorClient.getInput());
+		compressorClient.getOutput().streamTo(decompressorServer.getInput());
+		decompressorServer.getOutput().streamTo(deserializerServer.getInput());
 
-		stream(deserializerServer.getOutput(), serializerServer.getInput());
+		deserializerServer.getOutput().streamTo(serializerServer.getInput());
 
-		stream(serializerServer.getOutput(), compressorServer.getInput());
-		stream(compressorServer.getOutput(), decompressorClient.getInput());
-		stream(decompressorClient.getOutput(), deserializerClient.getInput());
-		stream(deserializerClient.getOutput(), results);
+		serializerServer.getOutput().streamTo(compressorServer.getInput());
+		compressorServer.getOutput().streamTo(decompressorClient.getInput());
+		decompressorClient.getOutput().streamTo(deserializerClient.getInput());
+		deserializerClient.getOutput().streamTo(results);
 
 		eventloop.run();
 

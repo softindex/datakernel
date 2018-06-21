@@ -24,7 +24,6 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Collections.emptySet;
@@ -84,9 +83,9 @@ public interface StreamConsumer<T> {
 			if (throwable == null) {
 				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, consumer);
-				bind(lateBounder.getOutput(), consumer);
+				lateBounder.getOutput().streamTo(consumer);
 			} else {
-				bind(lateBounder.getOutput(), closingWithError(throwable));
+				lateBounder.getOutput().streamTo(closingWithError(throwable));
 			}
 		});
 		return lateBounder.getInput();

@@ -46,7 +46,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 
 class StressClient {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -116,7 +115,7 @@ class StressClient {
 
 					client.download(fileName, 0).whenComplete((producer, throwable) -> {
 						if (throwable == null) {
-							stream(producer, consumer);
+							producer.streamTo(consumer);
 						} else {
 							logger.info("can't download: {}", throwable.getMessage());
 						}

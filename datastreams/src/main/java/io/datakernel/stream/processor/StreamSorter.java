@@ -25,7 +25,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -47,8 +46,8 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 	// region creators
 	private StreamSorter(StreamSorterStorage<T> storage,
-	                     Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate,
-	                     int itemsInMemory) {
+			Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate,
+			int itemsInMemory) {
 		checkArgument(itemsInMemory > 0, "itemsInMemorySize must be positive value, got %s", itemsInMemory);
 		checkNotNull(keyComparator);
 		checkNotNull(keyFunction);
@@ -73,8 +72,10 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 						return listProducer;
 					} else {
 						StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, deduplicate);
-						bind(listProducer, streamMerger.newInput());
-						streamIds.forEach(streamId -> bind(StreamProducerWithResult.ofStage(storage.read(streamId)), streamMerger.newInput()));
+						listProducer.streamTo(streamMerger.newInput());
+						streamIds.forEach(streamId ->
+								StreamProducerWithResult.ofStage(storage.read(streamId))
+										.streamTo(streamMerger.newInput()));
 						return streamMerger.getOutput().withLateBinding();
 					}
 				});
@@ -91,8 +92,8 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	 * @param itemsInMemorySize size of elements which can be saved in RAM before sorting
 	 */
 	public static <K, T> StreamSorter<K, T> create(StreamSorterStorage<T> storage,
-	                                               Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate,
-	                                               int itemsInMemorySize) {
+			Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate,
+			int itemsInMemorySize) {
 		return new StreamSorter<>(storage, keyFunction, keyComparator, deduplicate, itemsInMemorySize);
 	}
 	// endregion

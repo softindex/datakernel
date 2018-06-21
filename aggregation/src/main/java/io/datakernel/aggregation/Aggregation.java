@@ -47,7 +47,6 @@ import java.util.stream.Collectors;
 import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.codegen.Expressions.arg;
 import static io.datakernel.codegen.Expressions.cast;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.min;
@@ -430,7 +429,9 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(structure, sequence.type, resultClass,
 					queryKeys, collect, classLoader);
 
-			stream(sequence.stream, streamReducer.newInput(extractKeyFunction, reducer).with(stats.mergeReducerInput));
+			sequence.stream.streamTo(
+					streamReducer.newInput(extractKeyFunction, reducer)
+							.with(stats.mergeReducerInput));
 		}
 
 		return streamReducer.getOutput().with(stats.mergeReducerOutput);

@@ -31,8 +31,6 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.datakernel.stream.DataStreams.bind;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
@@ -72,7 +70,8 @@ public interface StreamProducer<T> {
 	@SuppressWarnings("unchecked")
 	default StreamCompletion streamTo(StreamConsumer<T> consumer) {
 		StreamProducer<T> producer = this;
-		bind(producer, consumer);
+		producer.setConsumer(consumer);
+		consumer.setProducer(producer);
 		Stage<Void> producerEndOfStream = producer.getEndOfStream();
 		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
 		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
@@ -97,7 +96,8 @@ public interface StreamProducer<T> {
 	@SuppressWarnings("unchecked")
 	default <Y> StreamConsumerResult<Y> streamTo(StreamConsumerWithResult<T, Y> consumer) {
 		StreamProducer<T> producer = this;
-		bind(producer, consumer);
+		producer.setConsumer(consumer);
+		consumer.setProducer(producer);
 		Stage<Void> producerEndOfStream = producer.getEndOfStream();
 		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
 		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
@@ -227,9 +227,9 @@ public interface StreamProducer<T> {
 			if (throwable == null) {
 				checkArgument(producer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, producer);
-				bind(producer, binder.getInput());
+				producer.streamTo(binder.getInput());
 			} else {
-				bind(StreamProducer.closingWithError(throwable), binder.getInput());
+				StreamProducer.<T>closingWithError(throwable).streamTo(binder.getInput());
 			}
 		});
 		return binder.getOutput();
@@ -346,7 +346,7 @@ public interface StreamProducer<T> {
 	}
 
 	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {
-		return stream(this, StreamConsumerWithResult.toCollector(collector)).getConsumerResult();
+		return streamTo(StreamConsumerWithResult.toCollector(collector)).getConsumerResult();
 	}
 
 }
