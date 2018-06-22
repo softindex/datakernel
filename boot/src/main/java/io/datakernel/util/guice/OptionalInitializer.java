@@ -13,6 +13,10 @@ public final class OptionalInitializer<T extends Initializable<T>> implements In
 	@Inject(optional = true)
 	private Set<Initializer<T>> initializers;
 
+	public boolean isPresent() {
+		return initializer != null || (initializers != null && !initializers.isEmpty());
+	}
+
 	@Override
 	public void accept(T value) {
 		if (initializer != null) {
