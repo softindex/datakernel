@@ -77,11 +77,6 @@ public final class RecordScheme {
 		rawIndices[rawIndices.length - 1] = rawIndex;
 	}
 
-	public RecordScheme withFields(Map<String, Class<?>> types) {
-		addFields(types);
-		return this;
-	}
-
 	public void addFields(Map<String, Class<?>> types) {
 		for (String field : types.keySet()) {
 			withField(field, types.get(field));

@@ -17,7 +17,10 @@
 package io.datakernel.cube.http;
 
 import com.zaxxer.hikari.HikariDataSource;
-import io.datakernel.aggregation.*;
+import io.datakernel.aggregation.Aggregation;
+import io.datakernel.aggregation.AggregationChunk;
+import io.datakernel.aggregation.AggregationChunkStorage;
+import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
@@ -67,6 +70,7 @@ import static io.datakernel.cube.http.ReportingTest.LogItem.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.concat;
+import static io.datakernel.util.CollectionUtils.entriesToMap;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
@@ -91,7 +95,7 @@ public class ReportingTest {
 
 	private static final int SERVER_PORT = 50001;
 
-	private static final Map<String, FieldType> DIMENSIONS_CUBE = AggregationUtils.valuesToLinkedMap(Stream.of(
+	private static final Map<String, FieldType> DIMENSIONS_CUBE = entriesToMap(Stream.of(
 			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
 			new AbstractMap.SimpleEntry<>("advertiser", ofInt()),
 			new AbstractMap.SimpleEntry<>("campaign", ofInt()),
@@ -102,18 +106,18 @@ public class ReportingTest {
 	private static final Map<String, FieldType> DIMENSIONS_DATE_AGGREGATION =
 			singletonMap("date", ofLocalDate(LocalDate.parse("2000-01-01")));
 
-	private static final Map<String, FieldType> DIMENSIONS_ADVERTISERS_AGGREGATION = AggregationUtils.valuesToLinkedMap(Stream.of(
+	private static final Map<String, FieldType> DIMENSIONS_ADVERTISERS_AGGREGATION = entriesToMap(Stream.of(
 			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
 			new AbstractMap.SimpleEntry<>("advertiser", ofInt()),
 			new AbstractMap.SimpleEntry<>("campaign", ofInt()),
 			new AbstractMap.SimpleEntry<>("banner", ofInt())));
 
-	private static final Map<String, FieldType> DIMENSIONS_AFFILIATES_AGGREGATION = AggregationUtils.valuesToLinkedMap(Stream.of(
+	private static final Map<String, FieldType> DIMENSIONS_AFFILIATES_AGGREGATION = entriesToMap(Stream.of(
 			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
 			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
 			new AbstractMap.SimpleEntry<>("site", ofString())));
 
-	private static final Map<String, Measure> MEASURES = AggregationUtils.valuesToLinkedMap(Stream.of(
+	private static final Map<String, Measure> MEASURES = entriesToMap(Stream.of(
 			new AbstractMap.SimpleEntry<>("impressions", sum(ofLong())),
 			new AbstractMap.SimpleEntry<>("clicks", sum(ofLong())),
 			new AbstractMap.SimpleEntry<>("conversions", sum(ofLong())),
@@ -193,15 +197,15 @@ public class ReportingTest {
 		@Serialize(order = 11)
 		public String site;
 
-		@io.datakernel.aggregation.annotation.Measure
+		@Measures
 		@Serialize(order = 4)
 		public long impressions;
 
-		@io.datakernel.aggregation.annotation.Measure
+		@Measures
 		@Serialize(order = 5)
 		public long clicks;
 
-		@io.datakernel.aggregation.annotation.Measure
+		@Measures
 		@Serialize(order = 6)
 		public long conversions;
 
@@ -209,11 +213,11 @@ public class ReportingTest {
 		@Serialize(order = 7)
 		public double revenue;
 
-		@io.datakernel.aggregation.annotation.Measure("uniqueUserIdsCount")
+		@Measures("uniqueUserIdsCount")
 		@Serialize(order = 8)
 		public int userId;
 
-		@io.datakernel.aggregation.annotation.Measure
+		@Measures
 		@Serialize(order = 9)
 		public int errors;
 
@@ -221,7 +225,7 @@ public class ReportingTest {
 		}
 
 		public LogItem(int date, int advertiser, int campaign, int banner, long impressions, long clicks,
-		               long conversions, double revenue, int userId, int errors, int affiliate, String site) {
+				long conversions, double revenue, int userId, int errors, int affiliate, String site) {
 			this.date = date;
 			this.advertiser = advertiser;
 			this.campaign = campaign;
@@ -713,10 +717,11 @@ public class ReportingTest {
 
 	@Test
 	public void testQueryWithInPredicate() throws Exception {
-		String[] attributes = {"advertiser"};
 		CubeQuery queryWithPredicateIn = CubeQuery.create()
-				.withAttributes(attributes)
-				.withWhere(and(in("advertiser", new LinkedHashSet(asList(1, 2))), notEq("advertiser", EXCLUDE_ADVERTISER),
+				.withAttributes("advertiser")
+				.withWhere(and(
+						in("advertiser", asList(1, 2)),
+						notEq("advertiser", EXCLUDE_ADVERTISER),
 						notEq("banner", EXCLUDE_BANNER),
 						notEq("campaign", EXCLUDE_CAMPAIGN)))
 				.withMeasures("clicks", "ctr", "conversions")

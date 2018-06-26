@@ -13,9 +13,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static io.datakernel.aggregation.AggregationUtils.transformValuesToLinkedMap;
-import static io.datakernel.util.CollectionUtils.concat;
-import static io.datakernel.util.CollectionUtils.intersection;
+import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.singletonList;
 
@@ -65,7 +63,7 @@ public class LogOT {
 					return LogDiff.of(positions, otSystem.squash(ops));
 				})
 				.withInvertFunction(LogDiff.class, commit -> singletonList(LogDiff.of(
-						transformValuesToLinkedMap(commit.getPositions().entrySet().stream(), LogPositionDiff::inverse),
+						transformMapValues(commit.getPositions(), LogPositionDiff::inverse),
 						otSystem.invert(commit.getDiffs()))))
 				;
 

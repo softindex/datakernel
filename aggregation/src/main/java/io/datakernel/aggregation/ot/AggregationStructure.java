@@ -6,7 +6,6 @@ import io.datakernel.util.Initializable;
 
 import java.util.*;
 
-import static io.datakernel.util.CollectionUtils.intersection;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AggregationStructure implements Initializable<AggregationStructure> {
@@ -54,11 +53,6 @@ public final class AggregationStructure implements Initializable<AggregationStru
 		return this;
 	}
 
-	public AggregationStructure withKeys(Map<String, FieldType> keyTypes) {
-		this.keyTypes.putAll(keyTypes);
-		return this;
-	}
-
 	public AggregationStructure withMeasure(String measureId, Measure aggregateFunction) {
 		checkArgument(!measureTypes.containsKey(measureId));
 		measureTypes.put(measureId, aggregateFunction.getFieldType());
@@ -66,22 +60,9 @@ public final class AggregationStructure implements Initializable<AggregationStru
 		return this;
 	}
 
-	public AggregationStructure withMeasures(Map<String, Measure> measures) {
-		for (String measureId : measures.keySet()) {
-			withMeasure(measureId, measures.get(measureId));
-		}
-		return this;
-	}
-
 	public AggregationStructure withIgnoredMeasure(String measureId, FieldType measureType) {
 		checkArgument(!measureTypes.containsKey(measureId));
 		measureTypes.put(measureId, measureType);
-		return this;
-	}
-
-	public AggregationStructure withIgnoredMeasures(Map<String, FieldType> measureTypes) {
-		checkArgument(intersection(this.measureTypes.keySet(), measureTypes.keySet()).isEmpty());
-		this.measureTypes.putAll(measureTypes);
 		return this;
 	}
 

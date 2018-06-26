@@ -37,14 +37,14 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.CollectionUtils.difference;
+import static io.datakernel.util.CollectionUtils.concat;
+import static io.datakernel.util.CollectionUtils.keysToMap;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.ReflectionUtils.extractFieldNameFromGetter;
 
 /**
  * Defines a structure of an aggregation.
@@ -59,42 +59,12 @@ public class AggregationUtils {
 	private AggregationUtils() {
 	}
 
-	public static Map<String, FieldType> projectKeys(Map<String, FieldType> keyTypes, Collection<String> keys) {
-		return projectMap(keyTypes, keys);
-	}
-
-	public static Map<String, FieldType> projectFields(Map<String, FieldType> fieldTypes, Collection<String> fields) {
-		return projectMap(fieldTypes, fields);
-	}
-
-	public static Map<String, Measure> projectMeasures(Map<String, Measure> measures, Collection<String> fields) {
-		return projectMap(measures, fields);
-	}
-
-	public static Map<String, FieldType> measuresAsFields(Map<String, Measure> measures) {
-		return transformValuesToLinkedMap(measures.entrySet().stream(), Measure::getFieldType);
-	}
-
-	private static <K, V> Map<K, V> projectMap(Map<K, V> map, Collection<K> keys) {
-		keys = new HashSet<>(keys);
-		checkArgument(map.keySet().containsAll(keys), "Unknown fields: " + difference(new LinkedHashSet<>(keys), map.keySet()));
-		LinkedHashMap<K, V> result = new LinkedHashMap<>();
-		for (Entry<K, V> entry : map.entrySet()) {
-			if (keys.contains(entry.getKey())) {
-				result.put(entry.getKey(), entry.getValue());
-			}
-		}
-		return result;
-	}
-
-	public static Class<?> createKeyClass(AggregationStructure aggregation, List<String> keys, DefiningClassLoader classLoader) {
-		return createKeyClass(projectKeys(aggregation.getKeyTypes(), keys), classLoader);
-	}
-
 	public static Class<?> createKeyClass(Map<String, FieldType> keys, DefiningClassLoader classLoader) {
 		List<String> keyList = new ArrayList<>(keys.keySet());
 		return ClassBuilder.create(classLoader, Comparable.class)
-				.withFields(transformValuesToLinkedMap(keys.entrySet().stream(), FieldType::getInternalDataType))
+				.initialize(cb ->
+						keys.forEach((key, value) ->
+								cb.withField(key, value.getInternalDataType())))
 				.withMethod("compareTo", compareTo(keyList))
 				.withMethod("equals", asEquals(keyList))
 				.withMethod("hashCode", hashCodeOfThis(keyList))
@@ -108,10 +78,10 @@ public class AggregationUtils {
 	}
 
 	public static StreamMap.MapperProjection createMapper(Class<?> recordClass, Class<?> resultClass,
-	                                                      List<String> keys, List<String> fields,
-	                                                      DefiningClassLoader classLoader) {
+			List<String> keys, List<String> fields,
+			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, StreamMap.MapperProjection.class)
-				.withMethod("apply", ((Supplier<Expression>) () -> {
+				.withMethod("apply", () -> {
 					Expression result1 = let(constructor(resultClass));
 					ExpressionSequence sequence = ExpressionSequence.create();
 					for (String fieldName : (Iterable<String>) Stream.concat(keys.stream(), fields.stream())::iterator) {
@@ -120,15 +90,15 @@ public class AggregationUtils {
 								field(cast(arg(0), recordClass), fieldName)));
 					}
 					return sequence.add(result1);
-				}).get())
+				})
 				.buildClassAndCreateNewInstance();
 	}
 
 	public static Function createKeyFunction(Class<?> recordClass, Class<?> keyClass,
-	                                         List<String> keys,
-	                                         DefiningClassLoader classLoader) {
+			List<String> keys,
+			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
-				.withMethod("apply", ((Supplier<Expression>) () -> {
+				.withMethod("apply", () -> {
 					Expression key = let(constructor(keyClass));
 					ExpressionSequence sequence = ExpressionSequence.create();
 					for (String keyString : keys) {
@@ -137,44 +107,44 @@ public class AggregationUtils {
 								field(cast(arg(0), recordClass), keyString)));
 					}
 					return sequence.add(key);
-				}).get())
+				})
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static Class<?> createRecordClass(AggregationStructure aggregation,
-	                                         Collection<String> keys, Collection<String> fields,
-	                                         DefiningClassLoader classLoader) {
+	public static <T> Class<T> createRecordClass(AggregationStructure aggregation,
+			Collection<String> keys, Collection<String> fields,
+			DefiningClassLoader classLoader) {
 		return createRecordClass(
-				projectKeys(aggregation.getKeyTypes(), keys),
-				projectFields(aggregation.getMeasureTypes(), fields),
+				keysToMap(keys.stream(), aggregation.getKeyTypes()::get),
+				keysToMap(fields.stream(), aggregation.getMeasureTypes()::get),
 				classLoader);
 	}
 
-	public static Class<?> createRecordClass(Map<String, FieldType> keys, Map<String, FieldType> fields,
-	                                         DefiningClassLoader classLoader) {
-		ArrayList list = new ArrayList<>();
-		list.addAll(keys.keySet());
-		list.addAll(fields.keySet());
-
-		return ClassBuilder.create(classLoader, Object.class)
-				.withFields(transformValuesToLinkedMap(keys.entrySet().stream(), FieldType::getInternalDataType))
-				.withFields(transformValuesToLinkedMap(fields.entrySet().stream(), FieldType::getInternalDataType))
-				.withMethod("toString", asString(list))
+	public static <T> Class<T> createRecordClass(Map<String, FieldType> keys, Map<String, FieldType> fields,
+			DefiningClassLoader classLoader) {
+		return ClassBuilder.create(classLoader, (Class<T>) Object.class)
+				.initialize(cb ->
+						keys.forEach((key, value) ->
+								cb.withField(key, value.getInternalDataType())))
+				.initialize(cb ->
+						fields.forEach((key, value) ->
+								cb.withField(key, value.getInternalDataType())))
+				.withMethod("toString", asString(concat(keys.keySet(), fields.keySet())))
 				.build();
 	}
 
 	public static <T> BufferSerializer<T> createBufferSerializer(AggregationStructure aggregation, Class<T> recordClass,
-	                                                             List<String> keys, List<String> fields,
-	                                                             DefiningClassLoader classLoader) {
+			List<String> keys, List<String> fields,
+			DefiningClassLoader classLoader) {
 		return createBufferSerializer(recordClass,
-				streamToLinkedMap(keys.stream(), aggregation.getKeyTypes()::get),
-				streamToLinkedMap(fields.stream(), aggregation.getMeasureTypes()::get),
+				keysToMap(keys.stream(), aggregation.getKeyTypes()::get),
+				keysToMap(fields.stream(), aggregation.getMeasureTypes()::get),
 				classLoader);
 	}
 
 	private static <T> BufferSerializer<T> createBufferSerializer(Class<T> recordClass,
-	                                                              Map<String, FieldType> keys, Map<String, FieldType> fields,
-	                                                              DefiningClassLoader classLoader) {
+			Map<String, FieldType> keys, Map<String, FieldType> fields,
+			DefiningClassLoader classLoader) {
 		SerializerGenClass serializerGenClass = new SerializerGenClass(recordClass);
 		for (String key : keys.keySet()) {
 			FieldType keyType = keys.get(key);
@@ -197,8 +167,8 @@ public class AggregationUtils {
 	}
 
 	public static StreamReducers.Reducer aggregationReducer(AggregationStructure aggregation, Class<?> inputClass, Class<?> outputClass,
-	                                                        List<String> keys, List<String> fields,
-	                                                        DefiningClassLoader classLoader) {
+			List<String> keys, List<String> fields,
+			DefiningClassLoader classLoader) {
 
 		Expression accumulator = let(constructor(outputClass));
 		ExpressionSequence onFirstItem = ExpressionSequence.create();
@@ -233,8 +203,8 @@ public class AggregationUtils {
 	}
 
 	public static Aggregate createPreaggregator(AggregationStructure aggregation, Class<?> inputClass, Class<?> outputClass,
-	                                            Map<String, String> keyFields, Map<String, String> measureFields,
-	                                            DefiningClassLoader classLoader) {
+			Map<String, String> keyFields, Map<String, String> measureFields,
+			DefiningClassLoader classLoader) {
 
 		Expression accumulator = let(constructor(outputClass));
 		ExpressionSequence createAccumulator = ExpressionSequence.create();
@@ -274,7 +244,7 @@ public class AggregationUtils {
 	}
 
 	public static PartitionPredicate createPartitionPredicate(Class recordClass, List<String> partitioningKey,
-	                                                          DefiningClassLoader classLoader) {
+			DefiningClassLoader classLoader) {
 		if (partitioningKey.isEmpty())
 			return singlePartition();
 
@@ -325,24 +295,17 @@ public class AggregationUtils {
 			for (Annotation annotation : field.getAnnotations()) {
 				if (annotation.annotationType() == Measures.class) {
 					for (String measure : ((Measures) annotation).value()) {
-						measureFields.put(measure, field.getName());
+						measureFields.put(measure.equals("") ? field.getName() : measure, field.getName());
 					}
-				}
-			}
-		}
-		for (Field field : inputClass.getFields()) {
-			for (Annotation annotation : field.getAnnotations()) {
-				if (annotation.annotationType() == io.datakernel.aggregation.annotation.Measure.class) {
-					String value = ((io.datakernel.aggregation.annotation.Measure) annotation).value();
-					measureFields.put("".equals(value) ? field.getName() : value, field.getName());
 				}
 			}
 		}
 		for (Method method : inputClass.getMethods()) {
 			for (Annotation annotation : method.getAnnotations()) {
-				if (annotation.annotationType() == io.datakernel.aggregation.annotation.Measure.class) {
-					String value = ((io.datakernel.aggregation.annotation.Measure) annotation).value();
-					measureFields.put("".equals(value) ? method.getName() : value, method.getName());
+				if (annotation.annotationType() == Measures.class) {
+					for (String measure : ((Measures) annotation).value()) {
+						measureFields.put(measure.equals("") ? extractFieldNameFromGetter(method) : measure, method.getName());
+					}
 				}
 			}
 		}
@@ -361,21 +324,4 @@ public class AggregationUtils {
 		return GsonAdapters.transform(typeAdapter, PrimaryKey::ofArray, PrimaryKey::getArray);
 	}
 
-	public static <K, V> Map<K, V> streamToLinkedMap(Stream<K> collection, Function<K, V> function) {
-		LinkedHashMap<K, V> map = new LinkedHashMap<>();
-		collection.forEach(k -> map.put(k, function.apply(k)));
-		return map;
-	}
-
-	public static <K, V, T> Map<K, V> transformValuesToLinkedMap(Stream<Entry<K, T>> stream, Function<T, V> function) {
-		LinkedHashMap<K, V> map = new LinkedHashMap<>();
-		stream.forEach(entry -> map.put(entry.getKey(), function.apply(entry.getValue())));
-		return map;
-	}
-
-	public static <K, V> Map<K, V> valuesToLinkedMap(Stream<Entry<K, V>> stream) {
-		LinkedHashMap<K, V> map = new LinkedHashMap<>();
-		stream.forEach(entry -> map.put(entry.getKey(), entry.getValue()));
-		return map;
-	}
 }

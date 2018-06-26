@@ -17,7 +17,7 @@
 package io.datakernel.cube.bean;
 
 import io.datakernel.aggregation.annotation.Key;
-import io.datakernel.aggregation.annotation.Measure;
+import io.datakernel.aggregation.annotation.Measures;
 
 import java.util.List;
 
@@ -29,9 +29,9 @@ public class DataItem2 {
 	@Key
 	public int key2;
 
-	@Measure
+	@Measures
 	public long metric2;
-	@Measure
+	@Measures
 	public long metric3;
 
 	public DataItem2() {

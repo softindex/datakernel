@@ -16,7 +16,6 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation.AggregationUtils;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.logfs.ot.LogDataConsumerSplitter;
@@ -26,7 +25,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static io.datakernel.util.CollectionUtils.keysToMap;
 import static java.util.Collections.singleton;
+import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toSet;
 
 @SuppressWarnings("unchecked")
@@ -73,13 +74,13 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 
 			private final StreamDataReceiver<AggregationItem> pubAggregator = addOutput(
 					cube.logStreamConsumer(AggregationItem.class,
-							AggregationUtils.streamToLinkedMap(PUB_DIMENSIONS.stream(), o -> o),
-							AggregationUtils.streamToLinkedMap(PUB_METRICS.stream(), o -> o)));
+							keysToMap(PUB_DIMENSIONS.stream(), identity()),
+							keysToMap(PUB_METRICS.stream(), identity())));
 
 			private final StreamDataReceiver<AggregationItem> advAggregator = addOutput(
 					cube.logStreamConsumer(AggregationItem.class,
-							AggregationUtils.streamToLinkedMap(ADV_DIMENSIONS.stream(), o -> o),
-							AggregationUtils.streamToLinkedMap(ADV_METRICS.stream(), o -> o)));
+							keysToMap(ADV_DIMENSIONS.stream(), identity()),
+							keysToMap(ADV_METRICS.stream(), identity())));
 
 			@Override
 			public void onData(TestPubRequest pubRequest) {

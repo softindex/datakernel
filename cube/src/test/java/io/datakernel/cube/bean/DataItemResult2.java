@@ -16,7 +16,6 @@
 
 package io.datakernel.cube.bean;
 
-import io.datakernel.aggregation.AggregationUtils;
 import io.datakernel.aggregation.measure.Measure;
 
 import java.util.Map;
@@ -24,6 +23,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
+import static io.datakernel.util.CollectionUtils.keysToMap;
 
 public class DataItemResult2 {
 	public int key2;
@@ -42,11 +42,11 @@ public class DataItemResult2 {
 		this.metric3 = metric3;
 	}
 
-	public static final Map<String, Class<?>> DIMENSIONS = AggregationUtils
-			.streamToLinkedMap(Stream.of("key2"), o -> int.class);
+	public static final Map<String, Class<?>> DIMENSIONS =
+			keysToMap(Stream.of("key2"), k -> int.class);
 
-	public static final Map<String, Measure> METRICS = AggregationUtils
-			.streamToLinkedMap(Stream.of("metric1", "metric2", "metric3"), o -> sum(ofLong()));
+	public static final Map<String, Measure> METRICS =
+			keysToMap(Stream.of("metric1", "metric2", "metric3"), k -> sum(ofLong()));
 
 	@Override
 	public boolean equals(Object o) {

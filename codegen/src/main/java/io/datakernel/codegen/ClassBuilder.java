@@ -32,6 +32,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static io.datakernel.codegen.Utils.loadAndCast;
 import static java.util.Arrays.asList;
@@ -74,7 +75,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		private final Map<Method, Expression> expressionStaticMap;
 
 		public AsmClassKey(Class<T> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> fields,
-		                   Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
+				Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
 			this.mainClass = mainClass;
 			this.otherClasses = otherClasses;
 			this.fields = fields;
@@ -162,9 +163,8 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		return this;
 	}
 
-	public ClassBuilder<T> withFields(Map<String, Class<?>> fieldsClasses) {
-		fields.putAll(fieldsClasses);
-		return this;
+	public ClassBuilder<T> withMethod(Method method, Supplier<Expression> expression) {
+		return withMethod(method, expression.get());
 	}
 
 	/**
@@ -179,18 +179,12 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		return this;
 	}
 
-	public ClassBuilder<T> withMethods(Map<Method, Expression> methods) {
-		this.methods.putAll(methods);
-		return this;
+	public ClassBuilder<T> withStaticMethod(Method method, Supplier<? extends Expression> expression) {
+		return withStaticMethod(method, expression.get());
 	}
 
 	public ClassBuilder<T> withStaticMethod(Method method, Expression expression) {
 		this.staticMethods.put(method, expression);
-		return this;
-	}
-
-	public ClassBuilder<T> withStaticMethods(Map<Method, Expression> staticMethods) {
-		this.staticMethods.putAll(staticMethods);
 		return this;
 	}
 
@@ -223,6 +217,10 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		this.staticFields.put(fieldName, type);
 		this.staticConstants.put(fieldName, value);
 		return this;
+	}
+
+	public ClassBuilder<T> withMethod(String methodName, Supplier<? extends Expression> expression) {
+		return withMethod(methodName, expression.get());
 	}
 
 	/**
@@ -260,14 +258,6 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		}
 		Preconditions.check(foundMethod != null, "Could not find method '" + methodName + "'");
 		return withMethod(foundMethod, expression);
-	}
-
-	public ClassBuilder<T> withMethod(Map<String, Expression> expressions) {
-		ClassBuilder<T> self = this;
-		for (String methodName : expressions.keySet()) {
-			self = self.withMethod(methodName, expressions.get(methodName));
-		}
-		return self;
 	}
 
 	public ClassBuilder<T> withClassName(String name) {

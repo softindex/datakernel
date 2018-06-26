@@ -389,7 +389,7 @@ public final class Expressions {
 	/**
 	 * Returns sum of arguments
 	 *
-	 * @param left  first argument whick will be added
+	 * @param left  first argument which will be added
 	 * @param right second argument which will be added
 	 * @return new instance of the ExpressionArithmeticOp
 	 */

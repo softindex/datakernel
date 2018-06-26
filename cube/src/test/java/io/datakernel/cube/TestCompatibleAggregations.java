@@ -28,16 +28,16 @@ import java.time.LocalDate;
 import java.util.*;
 
 import static io.datakernel.aggregation.AggregationPredicates.*;
-import static io.datakernel.aggregation.AggregationUtils.valuesToLinkedMap;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.*;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
+import static io.datakernel.util.CollectionUtils.entriesToMap;
 import static java.util.Arrays.asList;
 import static java.util.stream.Stream.of;
 import static org.junit.Assert.*;
 
 public class TestCompatibleAggregations {
-	private static final Map<String, String> DATA_ITEM_DIMENSIONS = valuesToLinkedMap(of(
+	private static final Map<String, String> DATA_ITEM_DIMENSIONS = entriesToMap(of(
 			new AbstractMap.SimpleEntry<>("date", "date"),
 			new AbstractMap.SimpleEntry<>("advertiser", "advertiser"),
 			new AbstractMap.SimpleEntry<>("campaign", "campaign"),
@@ -46,7 +46,7 @@ public class TestCompatibleAggregations {
 			new AbstractMap.SimpleEntry<>("site", "site"),
 			new AbstractMap.SimpleEntry<>("placement", "placement")));
 
-	private static final Map<String, String> DATA_ITEM_MEASURES = valuesToLinkedMap(of(
+	private static final Map<String, String> DATA_ITEM_MEASURES = entriesToMap(of(
 			new AbstractMap.SimpleEntry<>("eventCount", "null"),
 			new AbstractMap.SimpleEntry<>("minRevenue", "revenue"),
 			new AbstractMap.SimpleEntry<>("maxRevenue", "revenue"),
@@ -57,27 +57,27 @@ public class TestCompatibleAggregations {
 			new AbstractMap.SimpleEntry<>("uniqueUserIdsCount", "userId"),
 			new AbstractMap.SimpleEntry<>("errors", "errors")));
 
-	private static final Map<String, FieldType> DIMENSIONS_DAILY_AGGREGATION = valuesToLinkedMap(of(
+	private static final Map<String, FieldType> DIMENSIONS_DAILY_AGGREGATION = entriesToMap(of(
 			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01")))));
 
-	private static final Map<String, FieldType> DIMENSIONS_ADVERTISERS_AGGREGATION = valuesToLinkedMap(of(
+	private static final Map<String, FieldType> DIMENSIONS_ADVERTISERS_AGGREGATION = entriesToMap(of(
 			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
 			new AbstractMap.SimpleEntry<>("advertiser", ofInt()),
 			new AbstractMap.SimpleEntry<>("campaign", ofInt()),
 			new AbstractMap.SimpleEntry<>("banner", ofInt())));
 
-	private static final Map<String, FieldType> DIMENSIONS_AFFILIATES_AGGREGATION = valuesToLinkedMap(of(
+	private static final Map<String, FieldType> DIMENSIONS_AFFILIATES_AGGREGATION = entriesToMap(of(
 			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
 			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
 			new AbstractMap.SimpleEntry<>("site", ofString())));
 
-	private static final Map<String, FieldType> DIMENSIONS_DETAILED_AFFILIATES_AGGREGATION = valuesToLinkedMap(of(
+	private static final Map<String, FieldType> DIMENSIONS_DETAILED_AFFILIATES_AGGREGATION = entriesToMap(of(
 			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
 			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
 			new AbstractMap.SimpleEntry<>("site", ofString()),
 			new AbstractMap.SimpleEntry<>("placement", ofInt())));
 
-	private static final Map<String, Measure> MEASURES = valuesToLinkedMap(of(
+	private static final Map<String, Measure> MEASURES = entriesToMap(of(
 			new AbstractMap.SimpleEntry<>("impressions", sum(ofLong())),
 			new AbstractMap.SimpleEntry<>("clicks", sum(ofLong())),
 			new AbstractMap.SimpleEntry<>("conversions", sum(ofLong())),

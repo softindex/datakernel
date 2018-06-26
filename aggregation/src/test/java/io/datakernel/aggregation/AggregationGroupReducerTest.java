@@ -33,10 +33,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
+import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.assertStatus;
+import static io.datakernel.util.CollectionUtils.keysToMap;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 import static org.junit.Assert.assertEquals;
@@ -84,13 +86,15 @@ public class AggregationGroupReducerTest {
 		};
 
 		Class<InvertedIndexRecord> inputClass = InvertedIndexRecord.class;
-		Class<?> keyClass = AggregationUtils.createKeyClass(structure, asList("word"), classLoader);
-		Class<?> aggregationClass = AggregationUtils.createRecordClass(structure, asList("word"), asList("documents"), classLoader);
+		Class<?> keyClass = createKeyClass(
+				keysToMap(asList("word").stream(), structure.getKeyTypes()::get),
+				classLoader);
+		Class<?> aggregationClass = createRecordClass(structure, asList("word"), asList("documents"), classLoader);
 
-		Function<InvertedIndexRecord, Comparable<?>> keyFunction = AggregationUtils.createKeyFunction(inputClass, keyClass,
+		Function<InvertedIndexRecord, Comparable<?>> keyFunction = createKeyFunction(inputClass, keyClass,
 				asList("word"), classLoader);
 
-		Aggregate aggregate = AggregationUtils.createPreaggregator(structure, inputClass, aggregationClass,
+		Aggregate aggregate = createPreaggregator(structure, inputClass, aggregationClass,
 				singletonMap("word", "word"), singletonMap("documents", "documentId"), classLoader);
 
 		int aggregationChunkSize = 2;
@@ -103,7 +107,7 @@ public class AggregationGroupReducerTest {
 
 		AggregationGroupReducer<InvertedIndexRecord> groupReducer = new AggregationGroupReducer<>(aggregationChunkStorage,
 				structure, asList("documents"),
-				aggregationClass, AggregationUtils.singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader);
+				aggregationClass, singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader);
 
 		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(groupReducer)
 				.getConsumerResult()

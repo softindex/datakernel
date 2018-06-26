@@ -3,10 +3,16 @@ package io.datakernel.util;
 import io.datakernel.annotation.Nullable;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
@@ -14,7 +20,7 @@ public class CollectionUtils {
 	private CollectionUtils() {
 	}
 
-	public static <D> List<D> concat(List<D> list1, List<D> list2) {
+	public static <D> List<D> concat(Collection<D> list1, Collection<D> list2) {
 		List<D> result = new ArrayList<>(list1.size() + list2.size());
 		result.addAll(list1);
 		result.addAll(list2);
@@ -81,6 +87,35 @@ public class CollectionUtils {
 	@SuppressWarnings("unchecked")
 	public static <T> List<T> list(T... items) {
 		return asList(items);
+	}
+
+	public static <T> Stream<T> iterate(Supplier<T> supplier, Predicate<T> hasNext) {
+		return iterate(supplier.get(), hasNext, $ -> supplier.get());
+	}
+
+	public static <T> Stream<T> iterate(T seed, Predicate<T> hasNext, UnaryOperator<T> f) {
+		requireNonNull(f);
+		return iterate(
+				new Iterator<T>() {
+					T item = seed;
+
+					@Override
+					public boolean hasNext() {
+						return hasNext.test(item);
+					}
+
+					@Override
+					public T next() {
+						T next = this.item;
+						this.item = f.apply(this.item);
+						return next;
+					}
+				});
+	}
+
+	public static <T> Stream<T> iterate(Iterator<T> iterator) {
+		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator,
+				Spliterator.ORDERED | Spliterator.IMMUTABLE), false);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -174,4 +209,21 @@ public class CollectionUtils {
 		};
 	}
 
+	public static <K, V> Map<K, V> keysToMap(Stream<K> stream, Function<K, V> function) {
+		LinkedHashMap<K, V> result = new LinkedHashMap<>();
+		stream.forEach(key -> result.put(key, function.apply(key)));
+		return result;
+	}
+
+	public static <K, V> Map<K, V> entriesToMap(Stream<Map.Entry<K, V>> stream) {
+		LinkedHashMap<K, V> result = new LinkedHashMap<>();
+		stream.forEach(entry -> result.put(entry.getKey(), entry.getValue()));
+		return result;
+	}
+
+	public static <K, V, T> Map<K, V> transformMapValues(Map<K, T> map, Function<T, V> function) {
+		LinkedHashMap<K, V> result = new LinkedHashMap<>(map.size());
+		map.forEach((key, value) -> result.put(key, function.apply(value)));
+		return result;
+	}
 }

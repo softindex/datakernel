@@ -100,11 +100,10 @@ public class InvertedIndexTest {
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
 				.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
-		StreamProducer<InvertedIndexRecord> producer = StreamProducer.ofIterable(
-				asList(
-						new InvertedIndexRecord("fox", 1),
-						new InvertedIndexRecord("brown", 2),
-						new InvertedIndexRecord("fox", 3)));
+		StreamProducer<InvertedIndexRecord> producer = StreamProducer.of(
+				new InvertedIndexRecord("fox", 1),
+				new InvertedIndexRecord("brown", 2),
+				new InvertedIndexRecord("fox", 3));
 		CompletableFuture<AggregationDiff> future = aggregation.consume(producer, InvertedIndexRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregation.getState().apply(future.get());
@@ -112,11 +111,10 @@ public class InvertedIndexTest {
 		aggregationChunkStorage.finish(getAddedChunks(future.get()));
 		eventloop.run();
 
-		producer = StreamProducer.ofIterable(
-				asList(
-						new InvertedIndexRecord("brown", 3),
-						new InvertedIndexRecord("lazy", 4),
-						new InvertedIndexRecord("dog", 1)));
+		producer = StreamProducer.of(
+				new InvertedIndexRecord("brown", 3),
+				new InvertedIndexRecord("lazy", 4),
+				new InvertedIndexRecord("dog", 1));
 		future = aggregation.consume(producer, InvertedIndexRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregation.getState().apply(future.get());
@@ -145,9 +143,12 @@ public class InvertedIndexTest {
 
 		eventloop.run();
 
-		List<InvertedIndexQueryResult> expectedResult = asList(new InvertedIndexQueryResult("brown", set(2, 3, 10)),
-				new InvertedIndexQueryResult("dog", set(1)), new InvertedIndexQueryResult("fox", set(1, 3, 4)),
-				new InvertedIndexQueryResult("lazy", set(4)), new InvertedIndexQueryResult("quick", set(1)));
+		List<InvertedIndexQueryResult> expectedResult = asList(
+				new InvertedIndexQueryResult("brown", set(2, 3, 10)),
+				new InvertedIndexQueryResult("dog", set(1)),
+				new InvertedIndexQueryResult("fox", set(1, 3, 4)),
+				new InvertedIndexQueryResult("lazy", set(4)),
+				new InvertedIndexQueryResult("quick", set(1)));
 		List<InvertedIndexQueryResult> actualResult = future1.get();
 
 		assertEquals(expectedResult, actualResult);

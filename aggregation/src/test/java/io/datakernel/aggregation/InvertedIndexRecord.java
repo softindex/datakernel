@@ -17,7 +17,7 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.annotation.Key;
-import io.datakernel.aggregation.annotation.Measure;
+import io.datakernel.aggregation.annotation.Measures;
 
 /**
  * First we define the structure of the input record which represents the word and id of the document that contains this word.
@@ -31,7 +31,7 @@ public class InvertedIndexRecord {
 		return word;
 	}
 
-	@Measure("documents")
+	@Measures("documents")
 	public Integer getDocumentId() {
 		return documentId;
 	}

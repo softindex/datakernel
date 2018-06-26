@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 import static io.datakernel.codegen.Expressions.*;
 
@@ -36,7 +35,7 @@ class Utils {
 	}
 
 	public static Class<?> createResultClass(Collection<String> attributes, Collection<String> measures,
-	                                         Cube cube, DefiningClassLoader classLoader) {
+			Cube cube, DefiningClassLoader classLoader) {
 		ClassBuilder<Object> builder = ClassBuilder.create(classLoader, Object.class);
 		for (String attribute : attributes) {
 			builder = builder.withField(attribute.replace('.', '$'), cube.getAttributeInternalType(attribute));
@@ -61,9 +60,9 @@ class Utils {
 
 	@SuppressWarnings("unchecked")
 	public static <R> Stage<Void> resolveAttributes(List<R> results, AttributeResolver attributeResolver,
-	                                                List<String> recordDimensions, List<String> recordAttributes,
-	                                                Map<String, Object> fullySpecifiedDimensions,
-	                                                Class<R> recordClass, DefiningClassLoader classLoader) {
+			List<String> recordDimensions, List<String> recordAttributes,
+			Map<String, Object> fullySpecifiedDimensions,
+			Class<R> recordClass, DefiningClassLoader classLoader) {
 		Object[] fullySpecifiedDimensionsArray = new Object[recordDimensions.size()];
 		for (int i = 0; i < recordDimensions.size(); i++) {
 			String dimension = recordDimensions.get(i);
@@ -72,7 +71,7 @@ class Utils {
 			}
 		}
 		AttributeResolver.KeyFunction keyFunction = ClassBuilder.create(classLoader, AttributeResolver.KeyFunction.class)
-				.withMethod("extractKey", ((Supplier<Expression>) () -> {
+				.withMethod("extractKey", () -> {
 					ExpressionSequence extractKey = ExpressionSequence.create();
 					Expression key = let(newArray(Object.class, value(recordDimensions.size())));
 					for (int i = 0; i < recordDimensions.size(); i++) {
@@ -83,12 +82,12 @@ class Utils {
 										cast(field(cast(arg(0), recordClass), dimension), Object.class)));
 					}
 					return extractKey.add(key);
-				}).get())
+				})
 				.buildClassAndCreateNewInstance();
 
 		ArrayList<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
 		AttributeResolver.AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributeResolver.AttributesFunction.class)
-				.withMethod("applyAttributes", ((Supplier<Expression>) () -> {
+				.withMethod("applyAttributes", () -> {
 					ExpressionSequence applyAttributes = ExpressionSequence.create();
 					for (String attribute : recordAttributes) {
 						String attributeName = attribute.substring(attribute.indexOf('.') + 1);
@@ -98,7 +97,7 @@ class Utils {
 								getArrayItem(arg(1), value(resolverAttributeIndex))));
 					}
 					return applyAttributes;
-				}).get())
+				})
 				.buildClassAndCreateNewInstance();
 
 		return attributeResolver.resolveAttributes((List) results, keyFunction, attributesFunction);

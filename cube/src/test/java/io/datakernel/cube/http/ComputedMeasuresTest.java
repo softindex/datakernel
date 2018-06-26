@@ -16,7 +16,6 @@
 
 package io.datakernel.cube.http;
 
-import io.datakernel.aggregation.AggregationUtils;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -37,6 +36,7 @@ import static io.datakernel.cube.ComputedMeasures.div;
 import static io.datakernel.cube.ComputedMeasures.*;
 import static io.datakernel.cube.ComputedMeasures.mul;
 import static io.datakernel.cube.ComputedMeasures.sub;
+import static io.datakernel.util.CollectionUtils.keysToMap;
 import static org.junit.Assert.assertEquals;
 
 public class ComputedMeasuresTest {
@@ -49,8 +49,8 @@ public class ComputedMeasuresTest {
 		Object getResult();
 	}
 
-	private static final Map<String, Measure> MEASURES = AggregationUtils
-			.streamToLinkedMap(Stream.of("a", "b", "c", "d"), o -> sum(ofDouble()));
+	private static final Map<String, Measure> MEASURES =
+			keysToMap(Stream.of("a", "b", "c", "d"), k -> sum(ofDouble()));
 
 	@Test
 	public void test() throws Exception {

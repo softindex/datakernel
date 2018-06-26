@@ -17,7 +17,7 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.annotation.Key;
-import io.datakernel.aggregation.annotation.Measure;
+import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.serializer.annotations.Serialize;
 
 import java.util.ArrayList;
@@ -48,19 +48,19 @@ public class LogItem {
 	@Serialize(order = 3)
 	public int banner = randomInt(0, 10);
 
-	@Measure
+	@Measures
 	@Serialize(order = 4)
 	public long impressions;
 
-	@Measure
+	@Measures
 	@Serialize(order = 5)
 	public long clicks;
 
-	@Measure
+	@Measures
 	@Serialize(order = 6)
 	public long conversions;
 
-	@Measure
+	@Measures
 	@Serialize(order = 7)
 	public double revenue;
 
@@ -68,7 +68,7 @@ public class LogItem {
 	}
 
 	public LogItem(int date, int advertiser, int campaign, int banner,
-	               long impressions, long clicks, long conversions, double revenue) {
+			long impressions, long clicks, long conversions, double revenue) {
 		this.date = date;
 		this.advertiser = advertiser;
 		this.campaign = campaign;
