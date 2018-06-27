@@ -22,6 +22,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.VOID_TYPE;
 
 /**
@@ -43,7 +44,7 @@ public final class ExpressionSequence implements Expression {
 	}
 
 	public ExpressionSequence add(Expression expression) {
-		expressions.add(expression);
+		expressions.add(checkNotNull(expression));
 		return this;
 	}
 
@@ -82,7 +83,6 @@ public final class ExpressionSequence implements Expression {
 		if (o == null || getClass() != o.getClass()) return false;
 
 		ExpressionSequence that = (ExpressionSequence) o;
-
 		return expressions.equals(that.expressions);
 	}
 

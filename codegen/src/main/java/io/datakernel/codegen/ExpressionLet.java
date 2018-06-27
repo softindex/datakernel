@@ -19,13 +19,14 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Utils.newLocal;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionLet implements Variable {
 	private final Expression field;
 	private VarLocal var;
 
 	ExpressionLet(Expression field) {
-		this.field = field;
+		this.field = checkNotNull(field);
 	}
 
 	@Override
@@ -66,13 +67,11 @@ final class ExpressionLet implements Variable {
 		if (o == null || getClass() != o.getClass()) return false;
 
 		ExpressionLet that = (ExpressionLet) o;
-
-		return !(field != null ? !field.equals(that.field) : that.field != null);
-
+		return field.equals(that.field);
 	}
 
 	@Override
 	public int hashCode() {
-		return field != null ? field.hashCode() : 0;
+		return field.hashCode();
 	}
 }

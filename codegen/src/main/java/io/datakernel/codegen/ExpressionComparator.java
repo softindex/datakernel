@@ -182,10 +182,7 @@ public final class ExpressionComparator implements Expression {
 		if (o == null || getClass() != o.getClass()) return false;
 
 		ExpressionComparator that = (ExpressionComparator) o;
-
-		if (!pairs.equals(that.pairs)) return false;
-
-		return true;
+		return pairs.equals(that.pairs);
 	}
 
 	@Override

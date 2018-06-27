@@ -19,6 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionNull implements Expression {
@@ -29,23 +30,7 @@ final class ExpressionNull implements Expression {
 	}
 
 	ExpressionNull(Type type) {
-		this.type = type;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionNull that = (ExpressionNull) o;
-
-		return !(type != null ? !type.equals(that.type) : that.type != null);
-
-	}
-
-	@Override
-	public int hashCode() {
-		return type != null ? type.hashCode() : 0;
+		this.type = checkNotNull(type);
 	}
 
 	@Override
@@ -58,5 +43,19 @@ final class ExpressionNull implements Expression {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		g.push((String) null);
 		return type;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		ExpressionNull that = (ExpressionNull) o;
+		return type.equals(that.type);
+	}
+
+	@Override
+	public int hashCode() {
+		return type.hashCode();
 	}
 }

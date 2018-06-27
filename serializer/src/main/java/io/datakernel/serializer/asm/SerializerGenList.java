@@ -17,7 +17,10 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.bytebuf.SerializationUtils;
-import io.datakernel.codegen.*;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Expressions;
+import io.datakernel.codegen.StoreDef;
+import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
@@ -66,13 +69,9 @@ public final class SerializerGenList implements SerializerGen, NullableOptimizat
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = length(value);
-		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
-		Expression forEach = forEach(value, valueSerializer.getRawType(), new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return set(off, valueSerializer.serialize(byteArray, off, it, version, staticMethods, compatibilityLevel));
-			}
-		});
+		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, !nullable ? length : inc(length)));
+		Expression forEach = forEach(value, valueSerializer.getRawType(),
+				it -> set(off, valueSerializer.serialize(byteArray, off, it, version, staticMethods, compatibilityLevel)));
 		if (!nullable) {
 			return sequence(writeLength, forEach, off);
 		} else {
@@ -91,12 +90,8 @@ public final class SerializerGenList implements SerializerGen, NullableOptimizat
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression len = let(call(arg(0), "readVarInt"));
 		Expression array = let(Expressions.newArray(Object[].class, (!nullable ? len : dec(len))));
-		Expression forEach = expressionFor((!nullable ? len : dec(len)), new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return setArrayItem(array, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel));
-			}
-		});
+		Expression forEach = expressionFor(value(0), !nullable ? len : dec(len),
+				it -> setArrayItem(array, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel)));
 		Expression asList = set((StoreDef) array, callStatic(Arrays.class, "asList", array));
 
 		if (!nullable) {

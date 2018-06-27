@@ -252,10 +252,6 @@ final class Utils {
 			g.invokeVirtual(getType(owner), method);
 	}
 
-	public static Expression thisVar() {
-		return new VarThis();
-	}
-
 	public static VarLocal newLocal(Context ctx, Type type) {
 		int local = ctx.getGeneratorAdapter().newLocal(type);
 		return new VarLocal(local);

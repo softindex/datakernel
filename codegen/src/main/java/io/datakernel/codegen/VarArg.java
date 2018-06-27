@@ -40,21 +40,6 @@ public final class VarArg implements Variable {
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		VarArg varArg = (VarArg) o;
-
-		return argument == varArg.argument;
-	}
-
-	@Override
-	public int hashCode() {
-		return argument;
-	}
-
-	@Override
 	public Object beginStore(Context ctx) {
 		return null;
 	}
@@ -62,5 +47,19 @@ public final class VarArg implements Variable {
 	@Override
 	public void store(Context ctx, Object storeContext, Type type) {
 		ctx.getGeneratorAdapter().storeArg(argument);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		VarArg varArg = (VarArg) o;
+		return argument == varArg.argument;
+	}
+
+	@Override
+	public int hashCode() {
+		return argument;
 	}
 }

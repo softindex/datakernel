@@ -17,8 +17,11 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.Primitives;
+import io.datakernel.util.CollectionUtils;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
+
+import java.util.Objects;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
@@ -27,13 +30,11 @@ import static org.objectweb.asm.Type.getType;
  * Defines methods to create a constant value
  */
 final class ExpressionConstant implements Expression {
-
 	private final Object value;
 	private String staticConstantField;
 
 	ExpressionConstant(Object value) {
-		checkNotNull(value);
-		this.value = value;
+		this.value = checkNotNull(value);
 	}
 
 	public Object getValue() {
@@ -93,14 +94,11 @@ final class ExpressionConstant implements Expression {
 		if (o == null || getClass() != o.getClass()) return false;
 
 		ExpressionConstant that = (ExpressionConstant) o;
-
-		if (value != null ? !value.equals(that.value) : that.value != null) return false;
-
-		return true;
+		return Objects.deepEquals(value, that.value);
 	}
 
 	@Override
 	public int hashCode() {
-		return value != null ? value.hashCode() : 0;
+		return CollectionUtils.deepHashCode(value);
 	}
 }

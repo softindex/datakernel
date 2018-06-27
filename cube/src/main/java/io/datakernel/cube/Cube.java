@@ -585,7 +585,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 		sort(containerWithScores);
 
-		Class resultKeyClass = createKeyClass(
+		Class<?> resultKeyClass = createKeyClass(
 				keysToMap(dimensions.stream(), dimensionTypes::get),
 				queryClassLoader);
 

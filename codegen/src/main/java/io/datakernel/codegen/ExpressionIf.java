@@ -20,15 +20,17 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
+
 final class ExpressionIf implements Expression {
 	private final PredicateDef condition;
 	private final Expression left;
 	private final Expression right;
 
 	ExpressionIf(PredicateDef condition, Expression left, Expression right) {
-		this.condition = condition;
-		this.left = left;
-		this.right = right;
+		this.condition = checkNotNull(condition);
+		this.left = checkNotNull(left);
+		this.right = checkNotNull(right);
 	}
 
 	@Override
@@ -67,17 +69,19 @@ final class ExpressionIf implements Expression {
 
 		ExpressionIf that = (ExpressionIf) o;
 
-		if (condition != null ? !condition.equals(that.condition) : that.condition != null) return false;
-		if (left != null ? !left.equals(that.left) : that.left != null) return false;
-		return !(right != null ? !right.equals(that.right) : that.right != null);
+		if (!condition.equals(that.condition)) return false;
+		if (!left.equals(that.left)) return false;
+		if (!right.equals(that.right)) return false;
+
+		return true;
 
 	}
 
 	@Override
 	public int hashCode() {
-		int result = condition != null ? condition.hashCode() : 0;
-		result = 31 * result + (left != null ? left.hashCode() : 0);
-		result = 31 * result + (right != null ? right.hashCode() : 0);
+		int result = condition.hashCode();
+		result = 31 * result + left.hashCode();
+		result = 31 * result + right.hashCode();
 		return result;
 	}
 }

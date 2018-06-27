@@ -26,16 +26,17 @@ import java.util.Map;
 import static io.datakernel.codegen.Expressions.call;
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.codegen.Utils.newLocal;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionMapForEach implements Expression {
-	private final Expression field;
-	private final ForVar forKey;
-	private final ForVar forValue;
+	private final Expression collection;
+	private final Expression forKey;
+	private final Expression forValue;
 
-	ExpressionMapForEach(Expression field, ForVar forKey, ForVar forValue) {
-		this.field = field;
-		this.forKey = forKey;
-		this.forValue = forValue;
+	ExpressionMapForEach(Expression collection, Expression forKey, Expression forValue) {
+		this.collection = checkNotNull(collection);
+		this.forKey = checkNotNull(forKey);
+		this.forValue = checkNotNull(forValue);
 	}
 
 	@Override
@@ -49,7 +50,7 @@ final class ExpressionMapForEach implements Expression {
 		Label labelLoop = new Label();
 		Label labelExit = new Label();
 
-		call(call(field, "entrySet"), "iterator").load(ctx);
+		call(call(collection, "entrySet"), "iterator").load(ctx);
 		VarLocal varIter = newLocal(ctx, Type.getType(Iterator.class));
 		varIter.store(ctx);
 
@@ -64,8 +65,11 @@ final class ExpressionMapForEach implements Expression {
 
 		varEntry.store(ctx);
 
-		forKey.forVar(call(varEntry, "getKey")).load(ctx);
-		forValue.forVar(call(varEntry, "getValue")).load(ctx);
+		ctx.addParameter("key", call(varEntry, "getKey"));
+		forKey.load(ctx);
+
+		ctx.addParameter("value", call(varEntry, "getValue"));
+		forValue.load(ctx);
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);
@@ -79,12 +83,18 @@ final class ExpressionMapForEach implements Expression {
 
 		ExpressionMapForEach that = (ExpressionMapForEach) o;
 
-		return !(field != null ? !field.equals(that.field) : that.field != null);
+		if (!collection.equals(that.collection)) return false;
+		if (!forKey.equals(that.forKey)) return false;
+		if (!forValue.equals(that.forValue)) return false;
 
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		return field != null ? field.hashCode() : 0;
+		int result = collection.hashCode();
+		result = 31 * result + forKey.hashCode();
+		result = 31 * result + forValue.hashCode();
+		return result;
 	}
 }

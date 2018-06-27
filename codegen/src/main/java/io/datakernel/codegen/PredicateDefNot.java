@@ -20,11 +20,13 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-public class PredicateDefNot implements PredicateDef {
+import static io.datakernel.util.Preconditions.checkNotNull;
+
+class PredicateDefNot implements PredicateDef {
 	private final PredicateDef predicateDef;
 
 	public PredicateDefNot(PredicateDef predicateDef) {
-		this.predicateDef = predicateDef;
+		this.predicateDef = checkNotNull(predicateDef);
 	}
 
 	@Override
@@ -45,5 +47,18 @@ public class PredicateDefNot implements PredicateDef {
 		g.push(true);
 		g.visitLabel(labelExit);
 		return Type.BOOLEAN_TYPE;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		PredicateDefNot that = (PredicateDefNot) o;
+		return predicateDef.equals(that.predicateDef);
+	}
+
+	@Override
+	public int hashCode() {
+		return predicateDef.hashCode();
 	}
 }

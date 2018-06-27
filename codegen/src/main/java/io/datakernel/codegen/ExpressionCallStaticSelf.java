@@ -21,44 +21,21 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.self;
 import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 
 final class ExpressionCallStaticSelf implements Expression {
-	private final Expression owner;
 	private final String methodName;
-	private final List<Expression> arguments = new ArrayList<>();
+	private final List<Expression> arguments;
 
-	public ExpressionCallStaticSelf(String methodName, Expression... expressions) {
-		this.owner = self();
-		this.methodName = methodName;
-		this.arguments.addAll(Arrays.asList(expressions));
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionCallStaticSelf that = (ExpressionCallStaticSelf) o;
-
-		if (owner != null ? !owner.equals(that.owner) : that.owner != null) return false;
-		if (methodName != null ? !methodName.equals(that.methodName) : that.methodName != null) return false;
-		return !(arguments != null ? !arguments.equals(that.arguments) : that.arguments != null);
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = owner != null ? owner.hashCode() : 0;
-		result = 31 * result + (methodName != null ? methodName.hashCode() : 0);
-		result = 31 * result + (arguments != null ? arguments.hashCode() : 0);
-		return result;
+	public ExpressionCallStaticSelf(String methodName, List<Expression> expressions) {
+		this.methodName = checkNotNull(methodName);
+		this.arguments = checkNotNull(expressions);
 	}
 
 	@Override
@@ -87,7 +64,7 @@ final class ExpressionCallStaticSelf implements Expression {
 			}
 		}
 		throw new RuntimeException(format("No method %s.%s(%s). %s",
-				owner.type(ctx).getClassName(),
+				self().type(ctx).getClassName(),
 				methodName,
 				(!argumentTypes.isEmpty() ? argsToString(argumentClasses(ctx, arguments)) : ""),
 				exceptionInGeneratedClass(ctx)));
@@ -104,7 +81,7 @@ final class ExpressionCallStaticSelf implements Expression {
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Type ownerType = owner.type(ctx);
+		Type ownerType = self().type(ctx);
 
 		List<Type> argumentTypes = new ArrayList<>();
 		for (Expression argument : arguments) {
@@ -115,5 +92,25 @@ final class ExpressionCallStaticSelf implements Expression {
 		Type returnType = type(ctx);
 		g.invokeStatic(ownerType, new Method(methodName, returnType, argumentTypes.toArray(new Type[]{})));
 		return returnType;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		ExpressionCallStaticSelf that = (ExpressionCallStaticSelf) o;
+
+		if (!methodName.equals(that.methodName)) return false;
+		if (!arguments.equals(that.arguments)) return false;
+
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = methodName.hashCode();
+		result = 31 * result + arguments.hashCode();
+		return result;
 	}
 }

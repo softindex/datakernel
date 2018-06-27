@@ -226,4 +226,19 @@ public class CollectionUtils {
 		map.forEach((key, value) -> result.put(key, function.apply(value)));
 		return result;
 	}
+
+	public static int deepHashCode(@Nullable Object value) {
+		if (value == null) return 0;
+		if (!value.getClass().isArray()) return value.hashCode();
+		if (value instanceof Object[]) return Arrays.deepHashCode((Object[]) value);
+		if (value instanceof byte[]) return Arrays.hashCode((byte[]) value);
+		if (value instanceof short[]) return Arrays.hashCode((short[]) value);
+		if (value instanceof int[]) return Arrays.hashCode((int[]) value);
+		if (value instanceof long[]) return Arrays.hashCode((long[]) value);
+		if (value instanceof float[]) return Arrays.hashCode((float[]) value);
+		if (value instanceof double[]) return Arrays.hashCode((double[]) value);
+		if (value instanceof boolean[]) return Arrays.hashCode((boolean[]) value);
+		if (value instanceof char[]) return Arrays.hashCode((char[]) value);
+		throw new AssertionError();
+	}
 }

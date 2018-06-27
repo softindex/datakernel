@@ -20,43 +20,19 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.Utils.*;
-import static org.objectweb.asm.Opcodes.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
-/**
- * Defines arithmetic operations for the functions
- */
 final class ExpressionArithmeticOp implements Expression {
-	ExpressionArithmeticOp(Operation op, Expression left, Expression right) {
-		this.op = op;
-		this.left = left;
-		this.right = right;
-	}
-
-	public enum Operation {
-		ADD(IADD, "+"), SUB(ISUB, "-"), MUL(IMUL, "*"), DIV(IDIV, "/"), REM(IREM, "%");
-
-		private final int opCode;
-		private final String symbol;
-
-		Operation(int opCode, String symbol) {
-			this.opCode = opCode;
-			this.symbol = symbol;
-		}
-
-		public static Operation operation(String symbol) {
-			for (Operation operation : Operation.values()) {
-				if (operation.symbol.equals(symbol)) {
-					return operation;
-				}
-			}
-			throw new IllegalArgumentException();
-		}
-	}
-
-	private final Operation op;
+	private final ArithmeticOperation op;
 	private final Expression left;
 	private final Expression right;
+
+	ExpressionArithmeticOp(ArithmeticOperation op, Expression left, Expression right) {
+		this.op = checkNotNull(op);
+		this.left = checkNotNull(left);
+		this.right = checkNotNull(right);
+	}
 
 	public static Class<?> unifyArithmeticTypes(Class<?>... dataTypes) {
 		Class<?> resultType = null;
@@ -152,18 +128,18 @@ final class ExpressionArithmeticOp implements Expression {
 
 		ExpressionArithmeticOp that = (ExpressionArithmeticOp) o;
 
-		if (left != null ? !left.equals(that.left) : that.left != null) return false;
 		if (op != that.op) return false;
-		if (right != null ? !right.equals(that.right) : that.right != null) return false;
+		if (!left.equals(that.left)) return false;
+		if (!right.equals(that.right)) return false;
 
 		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = op != null ? op.hashCode() : 0;
-		result = 31 * result + (left != null ? left.hashCode() : 0);
-		result = 31 * result + (right != null ? right.hashCode() : 0);
+		int result = op.hashCode();
+		result = 31 * result + left.hashCode();
+		result = 31 * result + right.hashCode();
 		return result;
 	}
 

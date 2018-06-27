@@ -70,7 +70,6 @@ public final class VarLocal implements Variable {
 		if (o == null || getClass() != o.getClass()) return false;
 
 		VarLocal varLocal = (VarLocal) o;
-
 		return local == varLocal.local;
 	}
 

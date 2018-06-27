@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Character.toUpperCase;
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.isPublic;
@@ -40,8 +41,8 @@ public final class VarField implements Variable {
 	private final String field;
 
 	VarField(Expression owner, String field) {
-		this.owner = owner;
-		this.field = field;
+		this.owner = checkNotNull(owner);
+		this.field = checkNotNull(field);
 	}
 
 	@Override
@@ -234,16 +235,16 @@ public final class VarField implements Variable {
 
 		VarField that = (VarField) o;
 
-		if (owner != null ? !owner.equals(that.owner) : that.owner != null) return false;
-		if (field != null ? !field.equals(that.field) : that.field != null) return false;
+		if (!owner.equals(that.owner)) return false;
+		if (!field.equals(that.field)) return false;
 
 		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = owner != null ? owner.hashCode() : 0;
-		result = 31 * result + (field != null ? field.hashCode() : 0);
+		int result = owner.hashCode();
+		result = 31 * result + field.hashCode();
 		return result;
 	}
 }

@@ -24,37 +24,19 @@ import java.util.Iterator;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.newLocal;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
 final class ForEachHppcSet implements Expression {
 	private final Class<?> iteratorType;
-	private final Expression value;
-	private final ForVar forVar;
+	private final Expression collection;
+	private final Expression forEach;
 
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ForEachHppcSet that = (ForEachHppcSet) o;
-
-		if (iteratorType != null ? !iteratorType.equals(that.iteratorType) : that.iteratorType != null) return false;
-		return !(value != null ? !value.equals(that.value) : that.value != null);
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = iteratorType != null ? iteratorType.hashCode() : 0;
-		result = 31 * result + (value != null ? value.hashCode() : 0);
-		return result;
-	}
-
-	ForEachHppcSet(Class<?> iteratorType, Expression field, ForVar forVar) {
-		this.iteratorType = iteratorType;
-		this.value = field;
-		this.forVar = forVar;
+	ForEachHppcSet(Class<?> iteratorType, Expression field, Expression forEach) {
+		this.iteratorType = checkNotNull(iteratorType);
+		this.collection = checkNotNull(field);
+		this.forEach = checkNotNull(forEach);
 	}
 
 	@Override
@@ -69,7 +51,7 @@ final class ForEachHppcSet implements Expression {
 		Label labelExit = new Label();
 
 		VarLocal iterator = newLocal(ctx, getType(Iterator.class));
-		call(value, "iterator").load(ctx);
+		call(collection, "iterator").load(ctx);
 		iterator.store(ctx);
 
 		g.mark(labelLoop);
@@ -83,7 +65,8 @@ final class ForEachHppcSet implements Expression {
 		cast(call(iterator, "next"), iteratorType).load(ctx);
 		item.store(ctx);
 
-		forVar.forVar(field(item, "value")).load(ctx);
+		ctx.addParameter("it", field(item, "value"));
+		forEach.load(ctx);
 
 		g.goTo(labelLoop);
 
@@ -91,4 +74,27 @@ final class ForEachHppcSet implements Expression {
 
 		return Type.VOID_TYPE;
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		ForEachHppcSet that = (ForEachHppcSet) o;
+
+		if (!iteratorType.equals(that.iteratorType)) return false;
+		if (!collection.equals(that.collection)) return false;
+		if (!forEach.equals(that.forEach)) return false;
+
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = iteratorType.hashCode();
+		result = 31 * result + collection.hashCode();
+		result = 31 * result + forEach.hashCode();
+		return result;
+	}
+
 }

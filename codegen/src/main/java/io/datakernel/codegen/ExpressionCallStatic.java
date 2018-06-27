@@ -21,22 +21,22 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionCallStatic implements Expression {
 	private final Class<?> owner;
 	private final String name;
-	private final List<Expression> arguments = new ArrayList<>();
+	private final List<Expression> arguments;
 
-	ExpressionCallStatic(Class<?> owner, String name, Expression... arguments) {
-		this.owner = owner;
-		this.name = name;
-		this.arguments.addAll(Arrays.asList(arguments));
+	ExpressionCallStatic(Class<?> owner, String name, List<Expression> arguments) {
+		this.owner = checkNotNull(owner);
+		this.name = checkNotNull(name);
+		this.arguments = checkNotNull(arguments);
 	}
 
 	@Override
@@ -108,17 +108,18 @@ final class ExpressionCallStatic implements Expression {
 
 		ExpressionCallStatic that = (ExpressionCallStatic) o;
 
-		if (owner != null ? !owner.equals(that.owner) : that.owner != null) return false;
-		if (name != null ? !name.equals(that.name) : that.name != null) return false;
-		return !(arguments != null ? !arguments.equals(that.arguments) : that.arguments != null);
+		if (!owner.equals(that.owner)) return false;
+		if (!name.equals(that.name)) return false;
+		if (!arguments.equals(that.arguments)) return false;
 
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = owner != null ? owner.hashCode() : 0;
-		result = 31 * result + (name != null ? name.hashCode() : 0);
-		result = 31 * result + (arguments != null ? arguments.hashCode() : 0);
+		int result = owner.hashCode();
+		result = 31 * result + name.hashCode();
+		result = 31 * result + arguments.hashCode();
 		return result;
 	}
 }

@@ -22,26 +22,22 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.Iterator;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Expressions.call;
+import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.codegen.Utils.newLocal;
 import static io.datakernel.codegen.Utils.tryGetJavaType;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionIteratorForEach implements Expression {
 	private final Expression collection;
-	private final ForVar forCollection;
 	private final Class<?> type;
+	private final Expression forEach;
 
-	public ExpressionIteratorForEach(Expression collection, ForVar forCollection) {
-		this.collection = collection;
-		this.forCollection = forCollection;
-		this.type = Object.class;
-	}
-
-	public ExpressionIteratorForEach(Expression collection, Class<?> type, ForVar forCollection) {
-		this.collection = collection;
-		this.type = type;
-		this.forCollection = forCollection;
+	ExpressionIteratorForEach(Expression collection, Class<?> type, Expression forEach) {
+		this.collection = checkNotNull(collection);
+		this.type = checkNotNull(type);
+		this.forEach = checkNotNull(forEach);
 	}
 
 	@Override
@@ -56,12 +52,40 @@ final class ExpressionIteratorForEach implements Expression {
 		Label labelExit = new Label();
 
 		if (collection.type(ctx).getSort() == Type.ARRAY) {
-			expressionFor(length(collection), new ForVar() {
-				@Override
-				public Expression forVar(Expression it) {
-					return forCollection.forVar(getArrayItem(collection, it));
-				}
-			}).load(ctx);
+			VarLocal len = newLocal(ctx, Type.INT_TYPE);
+			collection.load(ctx);
+			g.arrayLength();
+			len.store(ctx);
+
+			g.push(0);
+			VarLocal varPosition = newLocal(ctx, Type.INT_TYPE);
+			varPosition.store(ctx);
+
+			g.mark(labelLoop);
+
+			varPosition.load(ctx);
+			len.load(ctx);
+
+			g.ifCmp(Type.INT_TYPE, GeneratorAdapter.GE, labelExit);
+
+			collection.load(ctx);
+			varPosition.load(ctx);
+			g.arrayLoad(getType(type));
+
+			VarLocal varIt = newLocal(ctx, getType(type));
+			varIt.store(ctx);
+
+			ctx.addParameter("it", varIt);
+			forEach.load(ctx);
+
+			varPosition.load(ctx);
+			g.push(1);
+			g.math(GeneratorAdapter.ADD, Type.INT_TYPE);
+			varPosition.store(ctx);
+
+			g.goTo(labelLoop);
+			g.mark(labelExit);
+
 			return Type.VOID_TYPE;
 		}
 
@@ -74,7 +98,6 @@ final class ExpressionIteratorForEach implements Expression {
 		} else {
 			call(collection, "iterator").load(ctx);
 			varIter.store(ctx);
-
 		}
 
 		g.mark(labelLoop);
@@ -84,10 +107,11 @@ final class ExpressionIteratorForEach implements Expression {
 		g.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.EQ, labelExit);
 
 		cast(call(varIter, "next"), type).load(ctx);
-		VarLocal varKey = newLocal(ctx, getType(type));
-		varKey.store(ctx);
+		VarLocal varIt = newLocal(ctx, getType(type));
+		varIt.store(ctx);
 
-		forCollection.forVar(varKey).load(ctx);
+		ctx.addParameter("it", varIt);
+		forEach.load(ctx);
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);
@@ -101,15 +125,18 @@ final class ExpressionIteratorForEach implements Expression {
 
 		ExpressionIteratorForEach that = (ExpressionIteratorForEach) o;
 
-		if (collection != null ? !collection.equals(that.collection) : that.collection != null) return false;
-		return !(type != null ? !type.equals(that.type) : that.type != null);
+		if (!collection.equals(that.collection)) return false;
+		if (!type.equals(that.type)) return false;
+		if (!forEach.equals(that.forEach)) return false;
 
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = collection != null ? collection.hashCode() : 0;
-		result = 31 * result + (type != null ? type.hashCode() : 0);
+		int result = collection.hashCode();
+		result = 31 * result + type.hashCode();
+		result = 31 * result + forEach.hashCode();
 		return result;
 	}
 }

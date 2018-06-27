@@ -20,11 +20,13 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-final class ExpressionCmpNotNull implements PredicateDef {
-	private final Expression field;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
-	ExpressionCmpNotNull(Expression field) {
-		this.field = field;
+final class ExpressionCmpNotNull implements PredicateDef {
+	private final Expression value;
+
+	ExpressionCmpNotNull(Expression value) {
+		this.value = checkNotNull(value);
 	}
 
 	@Override
@@ -39,7 +41,7 @@ final class ExpressionCmpNotNull implements PredicateDef {
 		Label labelNotNull = new Label();
 		Label labelExit = new Label();
 
-		field.load(ctx);
+		value.load(ctx);
 		g.ifNonNull(labelNotNull);
 		g.push(false);
 		g.goTo(labelExit);
@@ -58,14 +60,12 @@ final class ExpressionCmpNotNull implements PredicateDef {
 		if (o == null || getClass() != o.getClass()) return false;
 
 		ExpressionCmpNotNull that = (ExpressionCmpNotNull) o;
-
-		return !(field != null ? !field.equals(that.field) : that.field != null);
-
+		return value.equals(that.value);
 	}
 
 	@Override
 	public int hashCode() {
-		return field != null ? field.hashCode() : 0;
+		return value.hashCode();
 	}
 }
 

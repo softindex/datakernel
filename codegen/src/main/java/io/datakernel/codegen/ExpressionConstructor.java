@@ -20,10 +20,10 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.lang.reflect.Constructor;
-import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 import static org.objectweb.asm.commons.Method.getMethod;
@@ -35,14 +35,9 @@ final class ExpressionConstructor implements Expression {
 	private final Class<?> type;
 	private final List<Expression> fields;
 
-	ExpressionConstructor(Class<?> type, Expression... fields) {
-		this.type = type;
-		this.fields = Arrays.asList(fields);
-	}
-
 	ExpressionConstructor(Class<?> type, List<Expression> fields) {
-		this.type = type;
-		this.fields = fields;
+		this.type = checkNotNull(type);
+		this.fields = checkNotNull(fields);
 	}
 
 	@Override
@@ -85,16 +80,16 @@ final class ExpressionConstructor implements Expression {
 
 		ExpressionConstructor that = (ExpressionConstructor) o;
 
-		if (fields != null ? !fields.equals(that.fields) : that.fields != null) return false;
-		if (type != null ? !type.equals(that.type) : that.type != null) return false;
+		if (!fields.equals(that.fields)) return false;
+		if (!type.equals(that.type)) return false;
 
 		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = type != null ? type.hashCode() : 0;
-		result = 31 * result + (fields != null ? fields.hashCode() : 0);
+		int result = type.hashCode();
+		result = 31 * result + fields.hashCode();
 		return result;
 	}
 }

@@ -19,6 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Utils.loadAndCast;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 /**
@@ -31,8 +32,8 @@ final class ExpressionCast implements Expression {
 	private final Type targetType;
 
 	ExpressionCast(Expression expression, Type type) {
-		this.expression = expression;
-		this.targetType = type;
+		this.expression = checkNotNull(expression);
+		this.targetType = checkNotNull(type);
 	}
 
 	@Override
@@ -54,16 +55,16 @@ final class ExpressionCast implements Expression {
 
 		ExpressionCast that = (ExpressionCast) o;
 
-		if (expression != null ? !expression.equals(that.expression) : that.expression != null) return false;
-		if (targetType != null ? !targetType.equals(that.targetType) : that.targetType != null) return false;
+		if (!expression.equals(that.expression)) return false;
+		if (!targetType.equals(that.targetType)) return false;
 
 		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = expression != null ? expression.hashCode() : 0;
-		result = 31 * result + (targetType != null ? targetType.hashCode() : 0);
+		int result = expression.hashCode();
+		result = 31 * result + targetType.hashCode();
 		return result;
 	}
 }

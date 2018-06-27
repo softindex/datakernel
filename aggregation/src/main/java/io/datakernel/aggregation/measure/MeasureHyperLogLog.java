@@ -99,24 +99,54 @@ public final class MeasureHyperLogLog extends Measure {
 	}
 
 	private static Expression add(Expression accumulator, Expression value) {
-		return new Expression() {
-			@Override
-			public Type type(Context ctx) {
-				return Type.VOID_TYPE;
-			}
+		return new ExpressionHyperLogLog(value, accumulator);
+	}
 
-			@Override
-			public Type load(Context ctx) {
-				Type valueType = value.type(ctx);
-				if (valueType == Type.LONG_TYPE || valueType.getClassName().equals(Long.class.getName())) {
-					call(accumulator, "addLong", value).load(ctx);
-				} else if (valueType == Type.INT_TYPE || valueType.getClassName().equals(Integer.class.getName())) {
-					call(accumulator, "addInt", value).load(ctx);
-				} else {
-					call(accumulator, "addObject", value).load(ctx);
-				}
-				return Type.VOID_TYPE;
+	private static class ExpressionHyperLogLog implements Expression {
+		private final Expression value;
+		private final Expression accumulator;
+
+		public ExpressionHyperLogLog(Expression value, Expression accumulator) {
+			this.value = value;
+			this.accumulator = accumulator;
+		}
+
+		@Override
+		public Type type(Context ctx) {
+			return Type.VOID_TYPE;
+		}
+
+		@Override
+		public Type load(Context ctx) {
+			Type valueType = value.type(ctx);
+			if (valueType == Type.LONG_TYPE || valueType.getClassName().equals(Long.class.getName())) {
+				call(accumulator, "addLong", value).load(ctx);
+			} else if (valueType == Type.INT_TYPE || valueType.getClassName().equals(Integer.class.getName())) {
+				call(accumulator, "addInt", value).load(ctx);
+			} else {
+				call(accumulator, "addObject", value).load(ctx);
 			}
-		};
+			return Type.VOID_TYPE;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			ExpressionHyperLogLog that = (ExpressionHyperLogLog) o;
+
+			if (!value.equals(that.value)) return false;
+			if (!accumulator.equals(that.accumulator)) return false;
+
+			return true;
+		}
+
+		@Override
+		public int hashCode() {
+			int result = value.hashCode();
+			result = 31 * result + accumulator.hashCode();
+			return result;
+		}
 	}
 }

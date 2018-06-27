@@ -19,7 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-public class PredicateDefConst implements PredicateDef {
+final class PredicateDefConst implements PredicateDef {
 	private final boolean value;
 
 	public PredicateDefConst(boolean value) {
@@ -36,5 +36,19 @@ public class PredicateDefConst implements PredicateDef {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		g.push(value);
 		return Type.BOOLEAN_TYPE;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		PredicateDefConst that = (PredicateDefConst) o;
+		return value == that.value;
+	}
+
+	@Override
+	public int hashCode() {
+		return Boolean.hashCode(value);
 	}
 }

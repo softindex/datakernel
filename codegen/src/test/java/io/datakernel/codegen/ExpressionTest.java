@@ -215,7 +215,7 @@ public class ExpressionTest {
 				.withMethod("getPojoField1",
 						call(arg(0), "getField1"))
 				.withMethod("toString",
-						asString()
+						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
 								.withArgument(field(self(), "x"))
 								.withArgument("labelY: ", field(self(), "y")))
@@ -366,13 +366,13 @@ public class ExpressionTest {
 		double d = Double.MAX_VALUE;
 
 		TestOperation testClass = ClassBuilder.create(DefiningClassLoader.create(), TestOperation.class)
-				.withMethod("remB", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(b), value(20)))
-				.withMethod("remS", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(s), value(20)))
-				.withMethod("remC", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(c), value(20)))
-				.withMethod("remI", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(i), value(20)))
-				.withMethod("remL", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(l), value(20)))
-				.withMethod("remF", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(f), value(20)))
-				.withMethod("remD", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(d), value(20)))
+				.withMethod("remB", arithmeticOp(ArithmeticOperation.REM, value(b), value(20)))
+				.withMethod("remS", arithmeticOp(ArithmeticOperation.REM, value(s), value(20)))
+				.withMethod("remC", arithmeticOp(ArithmeticOperation.REM, value(c), value(20)))
+				.withMethod("remI", arithmeticOp(ArithmeticOperation.REM, value(i), value(20)))
+				.withMethod("remL", arithmeticOp(ArithmeticOperation.REM, value(l), value(20)))
+				.withMethod("remF", arithmeticOp(ArithmeticOperation.REM, value(f), value(20)))
+				.withMethod("remD", arithmeticOp(ArithmeticOperation.REM, value(d), value(20)))
 				.buildClassAndCreateNewInstance();
 
 		assertTrue(testClass.remB() == (b % (20)));
@@ -403,11 +403,11 @@ public class ExpressionTest {
 		long l = 4;
 
 		TestSH testClass = ClassBuilder.create(DefiningClassLoader.create(), TestSH.class)
-				.withMethod("shlInt", bitOp(ExpressionBitOp.Operation.SHL, value(b), value(i)))
-				.withMethod("shlLong", bitOp(ExpressionBitOp.Operation.SHL, value(l), value(b)))
-				.withMethod("shrInt", bitOp(ExpressionBitOp.Operation.SHR, value(b), value(i)))
-				.withMethod("shrLong", bitOp(ExpressionBitOp.Operation.SHR, value(l), value(i)))
-				.withMethod("ushrInt", bitOp(ExpressionBitOp.Operation.USHR, value(b), value(i)))
+				.withMethod("shlInt", bitOp(BitOperation.SHL, value(b), value(i)))
+				.withMethod("shlLong", bitOp(BitOperation.SHL, value(l), value(b)))
+				.withMethod("shrInt", bitOp(BitOperation.SHR, value(b), value(i)))
+				.withMethod("shrLong", bitOp(BitOperation.SHR, value(l), value(i)))
+				.withMethod("ushrInt", bitOp(BitOperation.USHR, value(b), value(i)))
 				.buildClassAndCreateNewInstance();
 
 		assertTrue(testClass.shlInt() == (b << i));
@@ -434,12 +434,12 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testBitMask() {
 		TestBitMask testClass = ClassBuilder.create(DefiningClassLoader.create(), TestBitMask.class)
-				.withMethod("andInt", bitOp(ExpressionBitOp.Operation.AND, value(2), value(4)))
-				.withMethod("orInt", bitOp(ExpressionBitOp.Operation.OR, value(2), value(4)))
-				.withMethod("xorInt", bitOp(ExpressionBitOp.Operation.XOR, value(2), value(4)))
-				.withMethod("andLong", bitOp(ExpressionBitOp.Operation.AND, value(2), value(4L)))
-				.withMethod("orLong", bitOp(ExpressionBitOp.Operation.OR, value((byte) 2), value(4L)))
-				.withMethod("xorLong", bitOp(ExpressionBitOp.Operation.XOR, value(2L), value(4L)))
+				.withMethod("andInt", bitOp(BitOperation.AND, value(2), value(4)))
+				.withMethod("orInt", bitOp(BitOperation.OR, value(2), value(4)))
+				.withMethod("xorInt", bitOp(BitOperation.XOR, value(2), value(4)))
+				.withMethod("andLong", bitOp(BitOperation.AND, value(2), value(4L)))
+				.withMethod("orLong", bitOp(BitOperation.OR, value((byte) 2), value(4L)))
+				.withMethod("xorLong", bitOp(BitOperation.XOR, value(2L), value(4L)))
 				.buildClassAndCreateNewInstance();
 
 		assertTrue(testClass.andInt() == (2 & 4));
@@ -520,18 +520,10 @@ public class ExpressionTest {
 		List<Integer> listTo2 = new ArrayList<>();
 
 		WriteAllListElement testClass = ClassBuilder.create(DefiningClassLoader.create(), WriteAllListElement.class)
-				.withMethod("write", forEach(arg(0), new ForVar() {
-					@Override
-					public Expression forVar(Expression it) {
-						return sequence(addListItem(arg(1), it), voidExp());
-					}
-				}))
-				.withMethod("writeIter", forEach(arg(0), new ForVar() {
-					@Override
-					public Expression forVar(Expression it) {
-						return sequence(addListItem(arg(1), it), voidExp());
-					}
-				}))
+				.withMethod("write", forEach(arg(0),
+						it -> sequence(addListItem(arg(1), it), voidExp())))
+				.withMethod("writeIter", forEach(arg(0),
+						it -> sequence(addListItem(arg(1), it), voidExp())))
 				.buildClassAndCreateNewInstance();
 
 		testClass.write(listFrom, listTo1);
@@ -558,12 +550,8 @@ public class ExpressionTest {
 		List<Long> list = new ArrayList<>();
 
 		WriteArrayElements testClass = ClassBuilder.create(DefiningClassLoader.create(), WriteArrayElements.class)
-				.withMethod("write", forEach(arg(0), new ForVar() {
-					@Override
-					public Expression forVar(Expression it) {
-						return sequence(addListItem(arg(1), cast(it, Object.class)), voidExp());
-					}
-				}))
+				.withMethod("write", forEach(arg(0),
+						it -> sequence(addListItem(arg(1), cast(it, Object.class)), voidExp())))
 				.buildClassAndCreateNewInstance();
 
 		testClass.write(intsFrom, list);
@@ -653,7 +641,7 @@ public class ExpressionTest {
 				.withMethod("getPojoField1",
 						call(arg(0), "getField1"))
 				.withMethod("toString",
-						asString()
+						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
 								.withArgument(field(self(), "x"))
 								.withArgument("labelY: ", field(self(), "y")))
@@ -698,7 +686,7 @@ public class ExpressionTest {
 				.withMethod("getPojoField1",
 						call(arg(0), "getField1"))
 				.withMethod("toString",
-						asString()
+						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
 								.withArgument(field(self(), "x"))
 								.withArgument("labelY: ", field(self(), "y")))
@@ -722,10 +710,10 @@ public class ExpressionTest {
 	public void testCompare() throws IllegalAccessException, InstantiationException {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 		Class<TestCompare> test1 = ClassBuilder.create(definingClassLoader, TestCompare.class)
-				.withMethod("compareObjectLE", cmp(PredicateDefCmp.Operation.LE, arg(0), arg(1)))
-				.withMethod("comparePrimitiveLE", cmp(PredicateDefCmp.Operation.LE, arg(0), arg(1)))
-				.withMethod("compareObjectEQ", cmp(PredicateDefCmp.Operation.EQ, arg(0), arg(1)))
-				.withMethod("compareObjectNE", cmp(PredicateDefCmp.Operation.NE, arg(0), arg(1)))
+				.withMethod("compareObjectLE", cmp(CompareOperation.LE, arg(0), arg(1)))
+				.withMethod("comparePrimitiveLE", cmp(CompareOperation.LE, arg(0), arg(1)))
+				.withMethod("compareObjectEQ", cmp(CompareOperation.EQ, arg(0), arg(1)))
+				.withMethod("compareObjectNE", cmp(CompareOperation.NE, arg(0), arg(1)))
 				.build();
 
 		TestCompare testCompare = test1.newInstance();
@@ -898,7 +886,7 @@ public class ExpressionTest {
 		B instance = ClassBuilder.create(definingClassLoader, B.class)
 				.withMethod("b", nullRef(Integer.class))
 				.withMethod("toString",
-						asString()
+						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
 								.withArgument(call(self(), "b")))
 				.buildClassAndCreateNewInstance();
@@ -915,7 +903,7 @@ public class ExpressionTest {
 				.withBytecodeSaveDir(folder.toPath())
 				.withMethod("b", nullRef(Integer.class))
 				.withMethod("toString",
-						asString()
+						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
 								.withArgument(call(self(), "b")))
 				.buildClassAndCreateNewInstance();

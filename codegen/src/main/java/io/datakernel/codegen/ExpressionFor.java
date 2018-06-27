@@ -20,25 +20,18 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.codegen.Expressions.add;
-import static io.datakernel.codegen.Expressions.value;
 import static io.datakernel.codegen.Utils.newLocal;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionFor implements Expression {
-	private final Expression length;
-	private final Expression start;
-	private final ForVar forVar;
+	private final Expression from;
+	private final Expression to;
+	private final Expression forVar;
 
-	ExpressionFor(Expression length, ForVar forVar) {
-		this.length = length;
-		this.forVar = forVar;
-		this.start = value(0);
-	}
-
-	ExpressionFor(Expression start, Expression length, ForVar forVar) {
-		this.length = length;
-		this.start = start;
-		this.forVar = forVar;
+	ExpressionFor(Expression from, Expression to, Expression forVar) {
+		this.from = checkNotNull(from);
+		this.to = checkNotNull(to);
+		this.forVar = checkNotNull(forVar);
 	}
 
 	@Override
@@ -52,27 +45,28 @@ final class ExpressionFor implements Expression {
 		Label labelLoop = new Label();
 		Label labelExit = new Label();
 
-		VarLocal len = newLocal(ctx, Type.INT_TYPE);
-		add(length, start).load(ctx);
-		len.store(ctx);
+		VarLocal to = newLocal(ctx, Type.INT_TYPE);
+		this.to.load(ctx);
+		to.store(ctx);
 
-		start.load(ctx);
-		VarLocal varPosition = newLocal(ctx, Type.INT_TYPE);
-		varPosition.store(ctx);
+		from.load(ctx);
+		VarLocal varIt = newLocal(ctx, Type.INT_TYPE);
+		varIt.store(ctx);
 
 		g.mark(labelLoop);
 
-		varPosition.load(ctx);
-		len.load(ctx);
+		varIt.load(ctx);
+		to.load(ctx);
 
 		g.ifCmp(Type.INT_TYPE, GeneratorAdapter.GE, labelExit);
 
-		this.forVar.forVar(varPosition).load(ctx);
+		ctx.addParameter("it", varIt);
+		forVar.load(ctx);
 
-		varPosition.load(ctx);
+		varIt.load(ctx);
 		g.push(1);
 		g.math(GeneratorAdapter.ADD, Type.INT_TYPE);
-		varPosition.store(ctx);
+		varIt.store(ctx);
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);
@@ -87,15 +81,19 @@ final class ExpressionFor implements Expression {
 
 		ExpressionFor that = (ExpressionFor) o;
 
-		if (length != null ? !length.equals(that.length) : that.length != null) return false;
-		return !(start != null ? !start.equals(that.start) : that.start != null);
+		if (!to.equals(that.to)) return false;
+		if (!from.equals(that.from)) return false;
+		if (!forVar.equals(that.forVar)) return false;
+
+		return true;
 
 	}
 
 	@Override
 	public int hashCode() {
-		int result = length != null ? length.hashCode() : 0;
-		result = 31 * result + (start != null ? start.hashCode() : 0);
+		int result = to.hashCode();
+		result = 31 * result + from.hashCode();
+		result = 31 * result + forVar.hashCode();
 		return result;
 	}
 }

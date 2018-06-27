@@ -19,18 +19,30 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
+
 final class ExpressionArrayGet implements Expression {
 	private final Expression array;
-	private final Expression nom;
+	private final Expression index;
 
-	ExpressionArrayGet(Expression array, Expression nom) {
-		this.array = array;
-		this.nom = nom;
+	ExpressionArrayGet(Expression array, Expression index) {
+		this.array = checkNotNull(array);
+		this.index = checkNotNull(index);
 	}
 
 	@Override
 	public Type type(Context ctx) {
 		return Type.getType(array.type(ctx).getDescriptor().substring(1));
+	}
+
+	@Override
+	public Type load(Context ctx) {
+		Type type = Type.getType(array.type(ctx).getDescriptor().substring(1));
+		GeneratorAdapter g = ctx.getGeneratorAdapter();
+		array.load(ctx);
+		index.load(ctx);
+		g.arrayLoad(type);
+		return type;
 	}
 
 	@Override
@@ -40,25 +52,16 @@ final class ExpressionArrayGet implements Expression {
 
 		ExpressionArrayGet that = (ExpressionArrayGet) o;
 
-		if (array != null ? !array.equals(that.array) : that.array != null) return false;
-		return !(nom != null ? !nom.equals(that.nom) : that.nom != null);
+		if (!array.equals(that.array)) return false;
+		if (!index.equals(that.index)) return false;
 
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = array != null ? array.hashCode() : 0;
-		result = 31 * result + (nom != null ? nom.hashCode() : 0);
+		int result = array.hashCode();
+		result = 31 * result + index.hashCode();
 		return result;
-	}
-
-	@Override
-	public Type load(Context ctx) {
-		Type type = Type.getType(array.type(ctx).getDescriptor().substring(1));
-		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		array.load(ctx);
-		nom.load(ctx);
-		g.arrayLoad(type);
-		return type;
 	}
 }

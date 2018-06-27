@@ -37,4 +37,11 @@ public interface Expression {
 	 * @return type of the processes data
 	 */
 	Type load(Context ctx);
+
+	@Override
+	boolean equals(Object o);
+
+	@Override
+	int hashCode();
+
 }

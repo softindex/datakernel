@@ -26,6 +26,7 @@ import java.util.Map;
 
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static io.datakernel.codegen.Utils.wrap;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 import static org.objectweb.asm.commons.Method.getMethod;
 
@@ -39,38 +40,38 @@ public final class ExpressionToString implements Expression {
 	private String separator = " ";
 	private final Map<Object, Expression> arguments = new LinkedHashMap<>();
 
-	ExpressionToString(Map<String, Expression> arguments) {
-		this.arguments.putAll(arguments);
-	}
-
 	ExpressionToString() {
 	}
 
+	public static ExpressionToString create() {
+		return new ExpressionToString();
+	}
+
 	public ExpressionToString withArgument(String label, Expression expression) {
-		this.arguments.put(label, expression);
+		this.arguments.put(checkNotNull(label), checkNotNull(expression));
 		return this;
 	}
 
 	public ExpressionToString withArgument(Expression expression) {
-		this.arguments.put(arguments.size() + 1, expression);
+		this.arguments.put(arguments.size() + 1, checkNotNull(expression));
 		return this;
 	}
 
 	public ExpressionToString withSeparator(String separator) {
-		this.separator = separator;
+		this.separator = checkNotNull(separator);
 		return this;
 	}
 
 	public ExpressionToString withQuotes(String begin, String end) {
-		this.begin = begin;
-		this.end = end;
+		this.begin = checkNotNull(begin);
+		this.end = checkNotNull(end);
 		return this;
 	}
 
 	public ExpressionToString withQuotes(String begin, String end, String separator) {
-		this.begin = begin;
-		this.end = end;
-		this.separator = separator;
+		this.begin = checkNotNull(begin);
+		this.end = checkNotNull(end);
+		this.separator = checkNotNull(separator);
 		return this;
 	}
 
@@ -141,13 +142,20 @@ public final class ExpressionToString implements Expression {
 
 		ExpressionToString that = (ExpressionToString) o;
 
-		if (arguments != null ? !arguments.equals(that.arguments) : that.arguments != null) return false;
+		if (!begin.equals(that.begin)) return false;
+		if (!end.equals(that.end)) return false;
+		if (!separator.equals(that.separator)) return false;
+		if (!arguments.equals(that.arguments)) return false;
 
 		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		return (arguments != null ? arguments.hashCode() : 0);
+		int result = begin.hashCode();
+		result = 31 * result + end.hashCode();
+		result = 31 * result + separator.hashCode();
+		result = 31 * result + arguments.hashCode();
+		return result;
 	}
 }

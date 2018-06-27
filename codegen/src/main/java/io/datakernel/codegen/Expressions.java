@@ -19,7 +19,10 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static io.datakernel.codegen.ExpressionComparator.*;
 import static java.util.Arrays.asList;
@@ -54,6 +57,14 @@ public final class Expressions {
 	 */
 	public static Variable let(Expression expression) {
 		return new ExpressionLet(expression);
+	}
+
+	public static Expression let(Expression expression, Function<Variable, Expression> fn) {
+		return fn.apply(new ExpressionLet(expression));
+	}
+
+	public static Expression let(Expression expression1, Expression expression2, BiFunction<Variable, Variable, Expression> fn) {
+		return fn.apply(new ExpressionLet(expression1), new ExpressionLet(expression2));
 	}
 
 	/**
@@ -151,8 +162,12 @@ public final class Expressions {
 	 * @param right second argument which will be compared
 	 * @return new instance of the PredicateDefCmp
 	 */
-	public static PredicateDefCmp cmp(PredicateDefCmp.Operation eq, Expression left, Expression right) {
-		return PredicateDefCmp.create(eq, left, right);
+	public static PredicateDef cmp(CompareOperation eq, Expression left, Expression right) {
+		return new PredicateDefCmp(eq, left, right);
+	}
+
+	public static PredicateDef cmp(String eq, Expression left, Expression right) {
+		return new PredicateDefCmp(CompareOperation.operation(eq), left, right);
 	}
 
 	/**
@@ -162,28 +177,28 @@ public final class Expressions {
 	 * @param right second argument which will be compared
 	 * @return new instance of the PredicateDefCmp
 	 */
-	public static PredicateDefCmp cmpEq(Expression left, Expression right) {
-		return cmp(PredicateDefCmp.Operation.EQ, left, right);
+	public static PredicateDef cmpEq(Expression left, Expression right) {
+		return cmp(CompareOperation.EQ, left, right);
 	}
 
-	public static PredicateDefCmp cmpGe(Expression left, Expression right) {
-		return cmp(PredicateDefCmp.Operation.GE, left, right);
+	public static PredicateDef cmpGe(Expression left, Expression right) {
+		return cmp(CompareOperation.GE, left, right);
 	}
 
-	public static PredicateDefCmp cmpLe(Expression left, Expression right) {
-		return cmp(PredicateDefCmp.Operation.LE, left, right);
+	public static PredicateDef cmpLe(Expression left, Expression right) {
+		return cmp(CompareOperation.LE, left, right);
 	}
 
-	public static PredicateDefCmp cmpLt(Expression left, Expression right) {
-		return cmp(PredicateDefCmp.Operation.LT, left, right);
+	public static PredicateDef cmpLt(Expression left, Expression right) {
+		return cmp(CompareOperation.LT, left, right);
 	}
 
-	public static PredicateDefCmp cmpGt(Expression left, Expression right) {
-		return cmp(PredicateDefCmp.Operation.GT, left, right);
+	public static PredicateDef cmpGt(Expression left, Expression right) {
+		return cmp(CompareOperation.GT, left, right);
 	}
 
-	public static PredicateDefCmp cmpNe(Expression left, Expression right) {
-		return cmp(PredicateDefCmp.Operation.NE, left, right);
+	public static PredicateDef cmpNe(Expression left, Expression right) {
+		return cmp(CompareOperation.NE, left, right);
 	}
 
 	/**
@@ -192,7 +207,7 @@ public final class Expressions {
 	 * @param predicateDefs list of the predicate
 	 * @return new instance of the PredicateDefAnd
 	 */
-	public static PredicateDefAnd and(List<PredicateDef> predicateDefs) {
+	public static PredicateDef and(List<PredicateDef> predicateDefs) {
 		return PredicateDefAnd.create(predicateDefs);
 	}
 
@@ -202,7 +217,7 @@ public final class Expressions {
 	 * @param predicateDefs list of the predicate
 	 * @return new instance of the PredicateDefAnd
 	 */
-	public static PredicateDefAnd and(PredicateDef... predicateDefs) {
+	public static PredicateDef and(PredicateDef... predicateDefs) {
 		return and(asList(predicateDefs));
 	}
 
@@ -233,7 +248,7 @@ public final class Expressions {
 	 * @return new instance of the Expression
 	 */
 	public static Expression asEquals(List<String> fields) {
-		PredicateDefAnd predicate = and();
+		PredicateDefAnd predicate = PredicateDefAnd.create();
 		for (String field : fields) {
 			predicate.add(cmpEq(
 					field(self(), field),
@@ -248,7 +263,7 @@ public final class Expressions {
 	 * @param fields list of the fields
 	 * @return new instance of the ExpressionToString
 	 */
-	public static ExpressionToString asString(List<String> fields) {
+	public static Expression asString(List<String> fields) {
 		ExpressionToString toString = new ExpressionToString();
 		for (String field : fields) {
 			toString.withArgument(field + "=", field(self(), field));
@@ -262,7 +277,7 @@ public final class Expressions {
 	 * @param fields list of the fields
 	 * @return new instance of the ExpressionToString
 	 */
-	public static ExpressionToString asString(String... fields) {
+	public static Expression asString(String... fields) {
 		return asString(asList(fields));
 	}
 
@@ -382,8 +397,12 @@ public final class Expressions {
 		return ExpressionArithmeticOp.unifyArithmeticTypes(types.toArray(new Class[types.size()]));
 	}
 
-	public static ExpressionArithmeticOp arithmeticOp(ExpressionArithmeticOp.Operation op, Expression left, Expression right) {
+	public static ExpressionArithmeticOp arithmeticOp(ArithmeticOperation op, Expression left, Expression right) {
 		return new ExpressionArithmeticOp(op, left, right);
+	}
+
+	public static ExpressionArithmeticOp arithmeticOp(String op, Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ArithmeticOperation.operation(op), left, right);
 	}
 
 	/**
@@ -394,31 +413,31 @@ public final class Expressions {
 	 * @return new instance of the ExpressionArithmeticOp
 	 */
 	public static ExpressionArithmeticOp add(Expression left, Expression right) {
-		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.ADD, left, right);
+		return new ExpressionArithmeticOp(ArithmeticOperation.ADD, left, right);
 	}
 
 	public static ExpressionArithmeticOp inc(Expression value) {
-		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.ADD, value, value(1));
+		return new ExpressionArithmeticOp(ArithmeticOperation.ADD, value, value(1));
 	}
 
 	public static ExpressionArithmeticOp sub(Expression left, Expression right) {
-		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.SUB, left, right);
+		return new ExpressionArithmeticOp(ArithmeticOperation.SUB, left, right);
 	}
 
 	public static ExpressionArithmeticOp dec(Expression value) {
-		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.SUB, value, value(1));
+		return new ExpressionArithmeticOp(ArithmeticOperation.SUB, value, value(1));
 	}
 
 	public static ExpressionArithmeticOp mul(Expression left, Expression right) {
-		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.MUL, left, right);
+		return new ExpressionArithmeticOp(ArithmeticOperation.MUL, left, right);
 	}
 
 	public static ExpressionArithmeticOp div(Expression left, Expression right) {
-		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.DIV, left, right);
+		return new ExpressionArithmeticOp(ArithmeticOperation.DIV, left, right);
 	}
 
 	public static ExpressionArithmeticOp rem(Expression left, Expression right) {
-		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.REM, left, right);
+		return new ExpressionArithmeticOp(ArithmeticOperation.REM, left, right);
 	}
 
 	/**
@@ -429,7 +448,7 @@ public final class Expressions {
 	 * @return new instance of the ExpressionConstructor
 	 */
 	public static ExpressionConstructor constructor(Class<?> type, Expression... fields) {
-		return new ExpressionConstructor(type, fields);
+		return new ExpressionConstructor(type, asList(fields));
 	}
 
 	/**
@@ -441,7 +460,7 @@ public final class Expressions {
 	 * @return new instance of the ExpressionCall
 	 */
 	public static Expression call(Expression owner, String methodName, Expression... arguments) {
-		return new ExpressionCall(owner, methodName, arguments);
+		return new ExpressionCall(owner, methodName, Arrays.asList(arguments));
 	}
 
 	public static Expression ifThenElse(PredicateDef condition, Expression left, Expression right) {
@@ -457,11 +476,11 @@ public final class Expressions {
 	}
 
 	public static Expression callStatic(Class<?> owner, String method, Expression... arguments) {
-		return new ExpressionCallStatic(owner, method, arguments);
+		return new ExpressionCallStatic(owner, method, asList(arguments));
 	}
 
 	public static Expression callStaticSelf(String method, Expression... arguments) {
-		return new ExpressionCallStaticSelf(method, arguments);
+		return new ExpressionCallStaticSelf(method, asList(arguments));
 	}
 
 	public static Expression getArrayItem(Expression array, Expression nom) {
@@ -485,15 +504,15 @@ public final class Expressions {
 	}
 
 	public static Expression voidExp() {
-		return ExpressionVoid.instance;
+		return ExpressionVoid.INSTANCE;
 	}
 
 	public static Expression switchForPosition(Expression position, List<Expression> list) {
-		return new ExpressionSwitch(position, list);
+		return new ExpressionSwitch(position, null, list);
 	}
 
 	public static Expression switchForPosition(Expression position, Expression... expressions) {
-		return new ExpressionSwitch(position, asList(expressions));
+		return new ExpressionSwitch(position, null, asList(expressions));
 	}
 
 	public static Expression switchForPosition(Expression position, Expression defaultExp, List<Expression> list) {
@@ -505,63 +524,71 @@ public final class Expressions {
 	}
 
 	public static Expression switchForKey(Expression key, List<Expression> listKey, List<Expression> listValue) {
-		return new ExpressionSwitchForKey(key, listKey, listValue);
+		return new ExpressionSwitchForKey(key, null, listKey, listValue);
 	}
 
 	public static Expression switchForKey(Expression key, Expression defaultExp, List<Expression> listKey, List<Expression> listValue) {
-		return new ExpressionSwitchForKey(key, listKey, listValue);
+		return new ExpressionSwitchForKey(key, defaultExp, listKey, listValue);
 	}
 
 	public static Expression setArrayItem(Expression array, Expression position, Expression newElement) {
 		return new ExpressionArraySet(array, position, newElement);
 	}
 
-	public static Expression expressionFor(Expression start, Expression length, ForVar forVar) {
-		return new ExpressionFor(start, length, forVar);
+	public static Expression forEach(Expression collection, Function<ExpressionParameter, Expression> it) {
+		return forEach(collection, Object.class, it);
 	}
 
-	public static Expression expressionFor(Expression length, ForVar forVar) {
-		return new ExpressionFor(length, forVar);
+	public static Expression forEach(Expression collection, Class<?> type, Function<ExpressionParameter, Expression> it) {
+		return new ExpressionIteratorForEach(collection, type,
+				ExpressionParameter.bind("it", it));
 	}
 
-	public static Expression mapForEach(Expression field, ForVar forKey, ForVar forValue) {
-		return new ExpressionMapForEach(field, forKey, forValue);
+	public static Expression expressionFor(Expression from, Expression to, Function<ExpressionParameter, Expression> it) {
+		return new ExpressionFor(from, to,
+				ExpressionParameter.bind("it", it));
 	}
 
-	public static Expression hppcMapForEach(Class<?> iteratorType, Expression value, ForVar forKey, ForVar forValue) {
-		return new ForEachHppcMap(iteratorType, value, forKey, forValue);
+	public static Expression mapForEach(Expression collection,
+			Function<ExpressionParameter, Expression> key, Function<ExpressionParameter, Expression> value) {
+		return new ExpressionMapForEach(collection,
+				ExpressionParameter.bind("key", key), ExpressionParameter.bind("value", value));
 	}
 
-	public static Expression hppcSetForEach(Class<?> iteratorType, Expression field, ForVar forVar) {
-		return new ForEachHppcSet(iteratorType, field, forVar);
+	public static Expression hppcMapForEach(Class<?> iteratorType, Expression collection,
+			Function<ExpressionParameter, Expression> key, Function<ExpressionParameter, Expression> value) {
+		return new ForEachHppcMap(iteratorType, collection,
+				ExpressionParameter.bind("key", key), ExpressionParameter.bind("value", value));
+	}
+
+	public static Expression hppcSetForEach(Class<?> iteratorType, Expression field,
+			Function<ExpressionParameter, Expression> forVar) {
+		return new ForEachHppcSet(iteratorType, field,
+				ExpressionParameter.bind("it", forVar));
 	}
 
 	public static Expression neg(Expression arg) {
 		return new ExpressionNeg(arg);
 	}
 
-	public static Expression bitOp(ExpressionBitOp.Operation op, Expression value, Expression shift) {
+	public static Expression bitOp(BitOperation op, Expression value, Expression shift) {
 		return new ExpressionBitOp(op, value, shift);
 	}
 
-	public static Expression setListItem(Expression list, Expression position, Expression value) {
-		return call(list, "set", position, value);
+	public static Expression bitOp(String op, Expression value, Expression shift) {
+		return new ExpressionBitOp(BitOperation.operation(op), value, shift);
 	}
 
-	public static Expression getListItem(Expression list, Expression position) {
-		return call(list, "get", position);
+	public static Expression setListItem(Expression list, Expression index, Expression value) {
+		return call(list, "set", index, value);
+	}
+
+	public static Expression getListItem(Expression list, Expression index) {
+		return call(cast(list, List.class), "get", index);
 	}
 
 	public static Expression addListItem(Expression list, Expression value) {
 		return call(list, "add", value);
-	}
-
-	public static Expression forEach(Expression collection, ForVar forCollection) {
-		return new ExpressionIteratorForEach(collection, forCollection);
-	}
-
-	public static Expression forEach(Expression collection, Class<?> type, ForVar forCollection) {
-		return new ExpressionIteratorForEach(collection, type, forCollection);
 	}
 
 }

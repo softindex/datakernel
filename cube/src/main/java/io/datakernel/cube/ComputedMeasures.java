@@ -176,8 +176,8 @@ public final class ComputedMeasures {
 
 			@Override
 			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
-				Expression value = let(cast(measure.getExpression(record, storedMeasures), double.class));
-				return Expressions.mul(value, value);
+				return let(cast(measure.getExpression(record, storedMeasures), double.class), value ->
+						Expressions.mul(value, value));
 			}
 		};
 	}

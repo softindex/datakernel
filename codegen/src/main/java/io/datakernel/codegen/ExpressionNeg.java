@@ -22,28 +22,15 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.getJavaType;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.*;
 
 final class ExpressionNeg implements Expression {
 	private final Expression arg;
 
-	ExpressionNeg(Expression arg) {this.arg = arg;}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionNeg that = (ExpressionNeg) o;
-
-		return !(arg != null ? !arg.equals(that.arg) : that.arg != null);
-
-	}
-
-	@Override
-	public int hashCode() {
-		return arg != null ? arg.hashCode() : 0;
+	ExpressionNeg(Expression arg) {
+		this.arg = checkNotNull(arg);
 	}
 
 	@Override
@@ -105,5 +92,19 @@ final class ExpressionNeg implements Expression {
 				getJavaType(ctx.getClassLoader(), arg.type(ctx)),
 				exceptionInGeneratedClass(ctx))
 		);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		ExpressionNeg that = (ExpressionNeg) o;
+		return arg.equals(that.arg);
+	}
+
+	@Override
+	public int hashCode() {
+		return arg.hashCode();
 	}
 }

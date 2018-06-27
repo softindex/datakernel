@@ -18,7 +18,6 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
@@ -74,14 +73,8 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 		Expression length = length(value);
 		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
 		Expression mapSerializer = mapForEach(value,
-				new ForVar() {
-					@Override
-					public Expression forVar(Expression it) {return set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods, compatibilityLevel));}
-				},
-				new ForVar() {
-					@Override
-					public Expression forVar(Expression it) {return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel));}
-				});
+				k -> set(off, keySerializer.serialize(byteArray, off, cast(k, keySerializer.getRawType()), version, staticMethods, compatibilityLevel)),
+				v -> set(off, valueSerializer.serialize(byteArray, off, cast(v, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel)));
 
 		if (!nullable) {
 			return sequence(writeLength, mapSerializer, off);
@@ -111,17 +104,14 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 
 	public Expression deserializeSimple(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
-		Expression local = let(constructor(LinkedHashMap.class, (!nullable ? length : dec(length))));
-		Expression forEach = expressionFor((!nullable ? length : dec(length)), new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return sequence(call(local, "put",
-						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class),
-						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)
-				), voidExp());
-			}
-		});
-
+		Expression local = let(constructor(LinkedHashMap.class, !nullable ? length : dec(length)));
+		Expression forEach = expressionFor(value(0), !nullable ? length : dec(length),
+				it -> sequence(
+						call(local, "put",
+								cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class),
+								cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)
+						),
+						voidExp()));
 		if (!nullable) {
 			return sequence(length, local, forEach, local);
 		} else {
@@ -136,16 +126,13 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 		Expression length = let(call(arg(0), "readVarInt"));
 
 		Expression local = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
-		Expression forEach = expressionFor((!nullable ? length : dec(length)), new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return sequence(call(local, "put",
-						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class),
-						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)
-				), voidExp());
-			}
-		});
-
+		Expression forEach = expressionFor(value(0), !nullable ? length : dec(length),
+				it -> sequence(
+						call(local, "put",
+								cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class),
+								cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)
+						),
+						voidExp()));
 		if (!nullable) {
 			return sequence(length, local, forEach, local);
 		} else {
@@ -162,17 +149,18 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 
 		SerializerGenMap that = (SerializerGenMap) o;
 
+		if (!keySerializer.equals(that.keySerializer)) return false;
+		if (!valueSerializer.equals(that.valueSerializer)) return false;
 		if (nullable != that.nullable) return false;
-		if (keySerializer != null ? !keySerializer.equals(that.keySerializer) : that.keySerializer != null)
-			return false;
-		return !(valueSerializer != null ? !valueSerializer.equals(that.valueSerializer) : that.valueSerializer != null);
+
+		return true;
 
 	}
 
 	@Override
 	public int hashCode() {
-		int result = keySerializer != null ? keySerializer.hashCode() : 0;
-		result = 31 * result + (valueSerializer != null ? valueSerializer.hashCode() : 0);
+		int result = keySerializer.hashCode();
+		result = 31 * result + valueSerializer.hashCode();
 		result = 31 * result + (nullable ? 1 : 0);
 		return result;
 	}

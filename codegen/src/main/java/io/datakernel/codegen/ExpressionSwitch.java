@@ -20,29 +20,24 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.newLocal;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionSwitch implements Expression {
-	private final Expression nom;
+	private final Expression index;
+	private final List<Expression> list;
 	private final Expression defaultExp;
-	private final List<Expression> list = new ArrayList<>();
 
-	ExpressionSwitch(Expression nom, List<Expression> list) {
-		this.nom = nom;
-		this.defaultExp = null;
-		this.list.addAll(list);
-	}
-
-	ExpressionSwitch(Expression nom, Expression defaultExp, List<Expression> list) {
-		this.nom = nom;
+	ExpressionSwitch(Expression index, Expression defaultExp, List<Expression> list) {
+		this.index = checkNotNull(index);
+		this.list = checkNotNull(list);
 		this.defaultExp = defaultExp;
-		this.list.addAll(list);
 	}
 
 	@Override
@@ -56,8 +51,8 @@ final class ExpressionSwitch implements Expression {
 
 	@Override
 	public Type load(Context ctx) {
-		VarLocal varReadedSubClass = newLocal(ctx, nom.type(ctx));
-		nom.load(ctx);
+		VarLocal varReadedSubClass = newLocal(ctx, index.type(ctx));
+		index.load(ctx);
 		varReadedSubClass.store(ctx);
 
 		Label labelExit = new Label();
@@ -98,15 +93,17 @@ final class ExpressionSwitch implements Expression {
 
 		ExpressionSwitch that = (ExpressionSwitch) o;
 
-		if (nom != null ? !nom.equals(that.nom) : that.nom != null) return false;
-		return !(list != null ? !list.equals(that.list) : that.list != null);
+		if (!index.equals(that.index)) return false;
+		if (!list.equals(that.list)) return false;
+		return Objects.equals(defaultExp, that.defaultExp);
 
 	}
 
 	@Override
 	public int hashCode() {
-		int result = nom != null ? nom.hashCode() : 0;
-		result = 31 * result + (list != null ? list.hashCode() : 0);
+		int result = index.hashCode();
+		result = 31 * result + list.hashCode();
+		result = 31 * result + (defaultExp == null ? 0 : list.hashCode());
 		return result;
 	}
 }

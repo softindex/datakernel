@@ -20,59 +20,17 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.Utils.newLocal;
-import static org.objectweb.asm.Opcodes.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionBitOp implements Expression {
-	private final Operation op;
+	private final BitOperation op;
 	private final Expression left;
 	private final Expression right;
 
-	ExpressionBitOp(Operation op, Expression left, Expression right) {
-		this.op = op;
-		this.left = left;
-		this.right = right;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionBitOp that = (ExpressionBitOp) o;
-
-		if (op != that.op) return false;
-		if (left != null ? !left.equals(that.left) : that.left != null) return false;
-		return !(right != null ? !right.equals(that.right) : that.right != null);
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = op != null ? op.hashCode() : 0;
-		result = 31 * result + (left != null ? left.hashCode() : 0);
-		result = 31 * result + (right != null ? right.hashCode() : 0);
-		return result;
-	}
-
-	public enum Operation {
-		SHL(ISHL, "<<"), SHR(ISHR, ">>"), USHR(IUSHR, ">>>"), AND(IAND, "&"), OR(IOR, "|"), XOR(IXOR, "^");
-
-		private final int opCode;
-		private final String symbol;
-
-		Operation(int opCode, String symbol) {
-			this.opCode = opCode;
-			this.symbol = symbol;
-		}
-
-		public static Operation operation(String symbol) {
-			for (Operation operation : Operation.values()) {
-				if (operation.symbol.equals(symbol)) {
-					return operation;
-				}
-			}
-			throw new IllegalArgumentException();
-		}
+	ExpressionBitOp(BitOperation op, Expression left, Expression right) {
+		this.op = checkNotNull(op);
+		this.left = checkNotNull(left);
+		this.right = checkNotNull(right);
 	}
 
 	@Override
@@ -80,7 +38,7 @@ final class ExpressionBitOp implements Expression {
 		int leftSort = left.type(ctx).getSort();
 		int rightSort = right.type(ctx).getSort();
 
-		if (op == Operation.AND || op == Operation.OR || op == Operation.XOR) {
+		if (op == BitOperation.AND || op == BitOperation.OR || op == BitOperation.XOR) {
 			if (leftSort == Type.LONG || rightSort == Type.LONG) return Type.LONG_TYPE;
 			if (leftSort == Type.VOID || rightSort == Type.VOID) throw new IllegalArgumentException();
 			if (leftSort <= Type.INT && rightSort <= Type.INT) return Type.INT_TYPE;
@@ -95,7 +53,7 @@ final class ExpressionBitOp implements Expression {
 
 	@Override
 	public Type load(Context ctx) {
-		if (op == Operation.AND || op == Operation.OR || op == Operation.XOR) {
+		if (op == BitOperation.AND || op == BitOperation.OR || op == BitOperation.XOR) {
 			return loadOther(ctx);
 		} else {
 			return loadShift(ctx);
@@ -163,5 +121,27 @@ final class ExpressionBitOp implements Expression {
 		}
 
 		throw new IllegalArgumentException();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		ExpressionBitOp that = (ExpressionBitOp) o;
+
+		if (op != that.op) return false;
+		if (!left.equals(that.left)) return false;
+		if (!right.equals(that.right)) return false;
+
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = op.hashCode();
+		result = 31 * result + left.hashCode();
+		result = 31 * result + right.hashCode();
+		return result;
 	}
 }

@@ -21,10 +21,9 @@ import org.objectweb.asm.Type;
 import static org.objectweb.asm.Type.VOID_TYPE;
 
 final class ExpressionVoid implements Expression {
-	public static final ExpressionVoid instance = new ExpressionVoid();
+	public static final ExpressionVoid INSTANCE = new ExpressionVoid();
 
 	private ExpressionVoid() {
-
 	}
 
 	@Override
@@ -35,6 +34,18 @@ final class ExpressionVoid implements Expression {
 	@Override
 	public Type load(Context ctx) {
 		return VOID_TYPE;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		return 0;
 	}
 
 }

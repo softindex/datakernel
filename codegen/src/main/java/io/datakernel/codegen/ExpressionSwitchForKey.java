@@ -23,29 +23,44 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.newLocal;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
-final class ExpressionSwitchForKey implements Expression {
+public final class ExpressionSwitchForKey implements Expression {
 	private final Expression key;
-	private final Expression defaultExp;
+	private Expression defaultExp;
 	private final List<Expression> listKey = new ArrayList<>();
 	private final List<Expression> listValue = new ArrayList<>();
 
-	ExpressionSwitchForKey(Expression key, List<Expression> listKey, List<Expression> listValue) {
-		this.key = key;
-		this.defaultExp = null;
+	ExpressionSwitchForKey(Expression key, Expression defaultExp,
+			List<Expression> listKey, List<Expression> listValue) {
+		this.key = checkNotNull(key);
+		this.defaultExp = defaultExp;
 		this.listKey.addAll(listKey);
 		this.listValue.addAll(listValue);
 	}
 
-	ExpressionSwitchForKey(Expression key, Expression defalultExp, List<Expression> listKey, List<Expression> listValue) {
-		this.key = key;
-		this.defaultExp = defalultExp;
-		this.listKey.addAll(listKey);
-		this.listValue.addAll(listValue);
+	ExpressionSwitchForKey(Expression key) {
+		this.key = checkNotNull(key);
+	}
+
+	public static ExpressionSwitchForKey create(Expression key) {
+		return new ExpressionSwitchForKey(key);
+	}
+
+	public ExpressionSwitchForKey with(Expression key, Expression value) {
+		listKey.add(key);
+		listValue.add(value);
+		return this;
+	}
+
+	public ExpressionSwitchForKey withDefault(Expression defaultExp) {
+		this.defaultExp = defaultExp;
+		return this;
 	}
 
 	@Override
@@ -118,17 +133,20 @@ final class ExpressionSwitchForKey implements Expression {
 
 		ExpressionSwitchForKey that = (ExpressionSwitchForKey) o;
 
-		if (key != null ? !key.equals(that.key) : that.key != null) return false;
-		if (listKey != null ? !listKey.equals(that.listKey) : that.listKey != null) return false;
-		return !(listValue != null ? !listValue.equals(that.listValue) : that.listValue != null);
+		if (!key.equals(that.key)) return false;
+		if (!Objects.equals(defaultExp, that.defaultExp)) return false;
+		if (!listKey.equals(that.listKey)) return false;
+		if (!listValue.equals(that.listValue)) return false;
 
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = key != null ? key.hashCode() : 0;
-		result = 31 * result + (listKey != null ? listKey.hashCode() : 0);
-		result = 31 * result + (listValue != null ? listValue.hashCode() : 0);
+		int result = key.hashCode();
+		result = 31 * result + (defaultExp == null ? 0 : defaultExp.hashCode());
+		result = 31 * result + listKey.hashCode();
+		result = 31 * result + listValue.hashCode();
 		return result;
 	}
 }

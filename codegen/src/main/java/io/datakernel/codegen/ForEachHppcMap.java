@@ -24,44 +24,26 @@ import java.util.Iterator;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.newLocal;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
 final class ForEachHppcMap implements Expression {
 	private final Class<?> iteratorType;
-	private final Expression value;
-	private final ForVar forKey;
-	private final ForVar forValue;
+	private final Expression collection;
+	private final Expression forKey;
+	private final Expression forValue;
 
-	ForEachHppcMap(Class<?> iteratorType, Expression value, ForVar forKey, ForVar forValue) {
-		this.iteratorType = iteratorType;
-		this.value = value;
-		this.forKey = forKey;
-		this.forValue = forValue;
+	ForEachHppcMap(Class<?> iteratorType, Expression collection, Expression forKey, Expression forValue) {
+		this.iteratorType = checkNotNull(iteratorType);
+		this.collection = checkNotNull(collection);
+		this.forKey = checkNotNull(forKey);
+		this.forValue = checkNotNull(forValue);
 	}
 
 	@Override
 	public Type type(Context ctx) {
 		return Type.VOID_TYPE;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ForEachHppcMap that = (ForEachHppcMap) o;
-
-		if (iteratorType != null ? !iteratorType.equals(that.iteratorType) : that.iteratorType != null) return false;
-		return !(value != null ? !value.equals(that.value) : that.value != null);
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = iteratorType != null ? iteratorType.hashCode() : 0;
-		result = 31 * result + (value != null ? value.hashCode() : 0);
-		return result;
 	}
 
 	@Override
@@ -71,7 +53,7 @@ final class ForEachHppcMap implements Expression {
 		Label labelExit = new Label();
 
 		VarLocal iterator = newLocal(ctx, getType(Iterator.class));
-		call(value, "iterator").load(ctx);
+		call(collection, "iterator").load(ctx);
 		iterator.store(ctx);
 
 		g.mark(labelLoop);
@@ -85,8 +67,11 @@ final class ForEachHppcMap implements Expression {
 		cast(call(iterator, "next"), iteratorType).load(ctx);
 		item.store(ctx);
 
-		forKey.forVar(field(item, "key")).load(ctx);
-		forValue.forVar(field(item, "value")).load(ctx);
+		ctx.addParameter("key", field(item, "key"));
+		forKey.load(ctx);
+
+		ctx.addParameter("value", field(item, "value"));
+		forValue.load(ctx);
 
 		g.goTo(labelLoop);
 
@@ -94,4 +79,29 @@ final class ForEachHppcMap implements Expression {
 
 		return Type.VOID_TYPE;
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		ForEachHppcMap that = (ForEachHppcMap) o;
+
+		if (!iteratorType.equals(that.iteratorType)) return false;
+		if (!collection.equals(that.collection)) return false;
+		if (!forKey.equals(that.forKey)) return false;
+		if (!forValue.equals(that.forValue)) return false;
+
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = iteratorType.hashCode();
+		result = 31 * result + collection.hashCode();
+		result = 31 * result + forKey.hashCode();
+		result = 31 * result + forValue.hashCode();
+		return result;
+	}
+
 }

@@ -18,7 +18,6 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
@@ -117,12 +116,8 @@ public class SerializerGenHppcSet implements SerializerGen, NullableOptimization
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = call(value, "size");
 		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
-		Expression hppcSetForEach = hppcSetForEach(iteratorType, value, new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel));
-			}
-		});
+		Expression hppcSetForEach = hppcSetForEach(iteratorType, value,
+				it -> set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel)));
 		if (!nullable) {
 			return sequence(writeLength, hppcSetForEach, off);
 		} else {
@@ -142,16 +137,10 @@ public class SerializerGenHppcSet implements SerializerGen, NullableOptimization
 		Class<?> valueType = valueSerializer.getRawType();
 		Expression length = let(call(arg(0), "readVarInt"));
 		Expression set = let(constructor(hashSetType));
-		Expression expressionFor = expressionFor((!nullable ? length : dec(length)), new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return sequence(
-						call(set, "add", cast(valueSerializer.deserialize(valueType, version, staticMethods, compatibilityLevel), SerializerGenHppcSet.this.valueType)),
-						voidExp()
-				);
-			}
-		});
-
+		Expression expressionFor = expressionFor(value(0), !nullable ? length : dec(length),
+				it -> sequence(
+						call(set, "add", cast(valueSerializer.deserialize(valueType, version, staticMethods, compatibilityLevel), this.valueType)),
+						voidExp()));
 		if (!nullable) {
 			return sequence(set, expressionFor, set);
 		} else {

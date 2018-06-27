@@ -20,12 +20,13 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.Expressions.call;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionLength implements Expression {
 	private final Expression field;
 
 	ExpressionLength(Expression field) {
-		this.field = field;
+		this.field = checkNotNull(field);
 	}
 
 	@Override
@@ -52,13 +53,11 @@ final class ExpressionLength implements Expression {
 		if (o == null || getClass() != o.getClass()) return false;
 
 		ExpressionLength that = (ExpressionLength) o;
-
-		return !(field != null ? !field.equals(that.field) : that.field != null);
-
+		return field.equals(that.field);
 	}
 
 	@Override
 	public int hashCode() {
-		return field != null ? field.hashCode() : 0;
+		return field.hashCode();
 	}
 }

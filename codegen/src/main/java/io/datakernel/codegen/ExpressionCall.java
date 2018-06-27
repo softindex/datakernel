@@ -21,10 +21,10 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
@@ -34,12 +34,12 @@ import static org.objectweb.asm.Type.getType;
 final class ExpressionCall implements Expression {
 	private final Expression owner;
 	private final String methodName;
-	private final List<Expression> arguments = new ArrayList<>();
+	private final List<Expression> arguments;
 
-	ExpressionCall(Expression owner, String methodName, Expression... arguments) {
-		this.owner = owner;
-		this.methodName = methodName;
-		this.arguments.addAll(Arrays.asList(arguments));
+	ExpressionCall(Expression owner, String methodName, List<Expression> arguments) {
+		this.owner = checkNotNull(owner);
+		this.methodName = checkNotNull(methodName);
+		this.arguments = checkNotNull(arguments);
 	}
 
 	@Override
@@ -157,18 +157,18 @@ final class ExpressionCall implements Expression {
 
 		ExpressionCall that = (ExpressionCall) o;
 
-		if (arguments != null ? !arguments.equals(that.arguments) : that.arguments != null) return false;
-		if (methodName != null ? !methodName.equals(that.methodName) : that.methodName != null) return false;
-		if (owner != null ? !owner.equals(that.owner) : that.owner != null) return false;
+		if (!owner.equals(that.owner)) return false;
+		if (!methodName.equals(that.methodName)) return false;
+		if (!arguments.equals(that.arguments)) return false;
 
 		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = owner != null ? owner.hashCode() : 0;
-		result = 31 * result + (methodName != null ? methodName.hashCode() : 0);
-		result = 31 * result + (arguments != null ? arguments.hashCode() : 0);
+		int result = owner.hashCode();
+		result = 31 * result + methodName.hashCode();
+		result = 31 * result + arguments.hashCode();
 		return result;
 	}
 }

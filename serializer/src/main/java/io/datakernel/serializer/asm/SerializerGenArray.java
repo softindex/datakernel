@@ -19,7 +19,6 @@ package io.datakernel.serializer.asm;
 import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
-import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
@@ -79,22 +78,18 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version,
-	                            SerializerBuilder.StaticMethods staticMethods,
-	                            CompatibilityLevel compatibilityLevel) {
+			SerializerBuilder.StaticMethods staticMethods,
+			CompatibilityLevel compatibilityLevel) {
 		Expression castedValue = cast(value, type);
-		Expression length = (fixedSize != -1
-				? value(fixedSize)
-				: length(castedValue));
+		Expression length = fixedSize != -1 ?
+				value(fixedSize) :
+				length(castedValue);
 
 		Expression writeBytes = callStatic(SerializationUtils.class, "write", byteArray, off, castedValue);
 		Expression writeZero = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0)));
 		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
-		Expression expressionFor = expressionFor(length, new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return set(off, valueSerializer.serialize(byteArray, off, getArrayItem(castedValue, it), version, staticMethods, compatibilityLevel));
-			}
-		});
+		Expression expressionFor = expressionFor(value(0), length,
+				it -> set(off, valueSerializer.serialize(byteArray, off, getArrayItem(castedValue, it), version, staticMethods, compatibilityLevel)));
 
 		if (!nullable) {
 			if (type.getComponentType() == Byte.TYPE) {
@@ -124,14 +119,9 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression len = let(call(arg(0), "readVarInt"));
-		Expression array = let(Expressions.newArray(type, (!nullable ? len : dec(len))));
-		Expression expressionFor = expressionFor((!nullable ? len : dec(len)), new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return setArrayItem(array, it, cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType()));
-			}
-		});
-
+		Expression array = let(Expressions.newArray(type, !nullable ? len : dec(len)));
+		Expression expressionFor = expressionFor(value(0), !nullable ? len : dec(len),
+				it -> setArrayItem(array, it, cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType())));
 		if (!nullable) {
 			if (type.getComponentType() == Byte.TYPE) {
 				return sequence(call(arg(0), "read", array), array);

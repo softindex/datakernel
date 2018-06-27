@@ -22,54 +22,25 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
-import static io.datakernel.codegen.PredicateDefCmp.Operation.*;
+import static io.datakernel.codegen.CompareOperation.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.INT_TYPE;
 
 /**
  * Defines methods for comparing functions
  */
-public final class PredicateDefCmp implements PredicateDef {
-	private Expression left;
-	private Expression right;
-	private Operation operation = EQ;
-
-	public enum Operation {
-		EQ(GeneratorAdapter.EQ, "=="),
-		NE(GeneratorAdapter.NE, "!="),
-		LT(GeneratorAdapter.LT, "<"),
-		GT(GeneratorAdapter.GT, ">"),
-		LE(GeneratorAdapter.LE, "<="),
-		GE(GeneratorAdapter.GE, ">=");
-
-		private final int opCode;
-		private final String symbol;
-
-		Operation(int opCode, String symbol) {
-			this.opCode = opCode;
-			this.symbol = symbol;
-		}
-
-		public static Operation operation(String symbol) {
-			for (Operation operation : values()) {
-				if (operation.symbol.equals(symbol)) {
-					return operation;
-				}
-			}
-			throw new IllegalArgumentException();
-		}
-	}
+final class PredicateDefCmp implements PredicateDef {
+	private final Expression left;
+	private final Expression right;
+	private final CompareOperation operation;
 
 	// region builders
-	private PredicateDefCmp(Operation operation, Expression left, Expression right) {
-		this.left = left;
-		this.right = right;
-		this.operation = operation;
-	}
-
-	static PredicateDefCmp create(Operation operation, Expression left, Expression right) {
-		return new PredicateDefCmp(operation, left, right);
+	PredicateDefCmp(CompareOperation operation, Expression left, Expression right) {
+		this.left = checkNotNull(left);
+		this.right = checkNotNull(right);
+		this.operation = checkNotNull(operation);
 	}
 	// endregion
 
@@ -121,6 +92,10 @@ public final class PredicateDefCmp implements PredicateDef {
 		return BOOLEAN_TYPE;
 	}
 
+	public int getOperationOpCode() {
+		return operation.opCode;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -128,22 +103,18 @@ public final class PredicateDefCmp implements PredicateDef {
 
 		PredicateDefCmp that = (PredicateDefCmp) o;
 
-		if (left != null ? !left.equals(that.left) : that.left != null) return false;
+		if (!left.equals(that.left)) return false;
+		if (!right.equals(that.right)) return false;
 		if (operation != that.operation) return false;
-		if (right != null ? !right.equals(that.right) : that.right != null) return false;
 
 		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = left != null ? left.hashCode() : 0;
-		result = 31 * result + (right != null ? right.hashCode() : 0);
-		result = 31 * result + (operation != null ? operation.hashCode() : 0);
+		int result = left.hashCode();
+		result = 31 * result + right.hashCode();
+		result = 31 * result + operation.hashCode();
 		return result;
-	}
-
-	public int getOperationOpCode() {
-		return operation.opCode;
 	}
 }

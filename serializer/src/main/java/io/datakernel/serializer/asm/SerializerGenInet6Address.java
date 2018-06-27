@@ -62,8 +62,10 @@ public class SerializerGenInet6Address implements SerializerGen {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		Expression local = let(Expressions.newArray(byte[].class, value(16)));
-		return sequence(call(arg(0), "read", local), callStatic(getRawType(), "getByAddress", local));
+		return let(Expressions.newArray(byte[].class, value(16)), local ->
+				sequence(
+						call(arg(0), "read", local),
+						callStatic(getRawType(), "getByAddress", local)));
 	}
 
 	public static SerializerGen instance() {

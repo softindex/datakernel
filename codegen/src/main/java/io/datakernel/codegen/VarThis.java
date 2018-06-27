@@ -21,7 +21,7 @@ import org.objectweb.asm.Type;
 /**
  * Defines method which allow to take current instance
  */
-public final class VarThis implements Expression {
+final class VarThis implements Expression {
 	@Override
 	public Type type(Context ctx) {
 		return ctx.getThisType();
@@ -37,7 +37,6 @@ public final class VarThis implements Expression {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
 		return true;
 	}
 

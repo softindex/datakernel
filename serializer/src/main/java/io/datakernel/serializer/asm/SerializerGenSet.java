@@ -18,7 +18,6 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
@@ -65,12 +64,8 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		Expression serializeEach = forEach(value, valueSerializer.getRawType(), new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return set(off, valueSerializer.serialize(arg(0), arg(1), it, version, staticMethods, compatibilityLevel));
-			}
-		});
+		Expression serializeEach = forEach(value, valueSerializer.getRawType(),
+				it -> set(off, valueSerializer.serialize(arg(0), arg(1), it, version, staticMethods, compatibilityLevel)));
 
 		if (!nullable) {
 			return sequence(
@@ -103,16 +98,12 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 	}
 
 	private Expression deserializeEnumSet(int version,
-	                                      SerializerBuilder.StaticMethods staticMethods,
-	                                      CompatibilityLevel compatibilityLevel) {
+			SerializerBuilder.StaticMethods staticMethods,
+			CompatibilityLevel compatibilityLevel) {
 		Expression len = let(call(arg(0), "readVarInt"));
 		Expression container = let(newArray(Object[].class, (!nullable ? len : dec(len))));
-		Expression array = expressionFor((!nullable ? len : dec(len)), new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return setArrayItem(container, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel));
-			}
-		});
+		Expression array = expressionFor(value(0), !nullable ? len : dec(len),
+				it -> setArrayItem(container, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel)));
 		Expression list = let(cast(callStatic(Arrays.class, "asList", container), Collection.class));
 		Expression enumSet = callStatic(EnumSet.class, "copyOf", list);
 
@@ -126,20 +117,14 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 	}
 
 	private Expression deserializeSimpleSet(int version,
-	                                        SerializerBuilder.StaticMethods staticMethods,
-	                                        CompatibilityLevel compatibilityLevel) {
+			SerializerBuilder.StaticMethods staticMethods,
+			CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
-
 		Expression container = let(constructor(LinkedHashSet.class, (!nullable ? length : dec(length))));
-		Expression deserializeEach = expressionFor((!nullable ? length : dec(length)), new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return sequence(
+		Expression deserializeEach = expressionFor(value(0), !nullable ? length : dec(length),
+				it -> sequence(
 						call(container, "add", cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)),
-						voidExp()
-				);
-			}
-		});
+						voidExp()));
 		if (!nullable) {
 			return sequence(length, container, deserializeEach, container);
 		} else {

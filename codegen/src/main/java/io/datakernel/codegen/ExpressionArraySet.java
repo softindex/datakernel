@@ -19,6 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionArraySet implements Expression {
@@ -27,9 +28,9 @@ final class ExpressionArraySet implements Expression {
 	private final Expression newElement;
 
 	ExpressionArraySet(Expression array, Expression position, Expression newElement) {
-		this.array = array;
-		this.position = position;
-		this.newElement = newElement;
+		this.array = checkNotNull(array);
+		this.position = checkNotNull(position);
+		this.newElement = checkNotNull(newElement);
 	}
 
 	@Override
@@ -55,17 +56,19 @@ final class ExpressionArraySet implements Expression {
 
 		ExpressionArraySet that = (ExpressionArraySet) o;
 
-		if (array != null ? !array.equals(that.array) : that.array != null) return false;
-		if (position != null ? !position.equals(that.position) : that.position != null) return false;
-		return !(newElement != null ? !newElement.equals(that.newElement) : that.newElement != null);
+		if (!array.equals(that.array)) return false;
+		if (!position.equals(that.position)) return false;
+		if (!newElement.equals(that.newElement)) return false;
+
+		return true;
 
 	}
 
 	@Override
 	public int hashCode() {
-		int result = array != null ? array.hashCode() : 0;
-		result = 31 * result + (position != null ? position.hashCode() : 0);
-		result = 31 * result + (newElement != null ? newElement.hashCode() : 0);
+		int result = array.hashCode();
+		result = 31 * result + position.hashCode();
+		result = 31 * result + newElement.hashCode();
 		return result;
 	}
 }

@@ -23,6 +23,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.List;
 
 import static io.datakernel.codegen.Utils.isPrimitiveType;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Opcodes.*;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.Type.getType;
@@ -36,7 +37,7 @@ final class ExpressionHash implements Expression {
 	private final List<Expression> arguments;
 
 	ExpressionHash(List<Expression> arguments) {
-		this.arguments = arguments;
+		this.arguments = checkNotNull(arguments);
 	}
 
 	@Override
@@ -114,14 +115,11 @@ final class ExpressionHash implements Expression {
 		if (o == null || getClass() != o.getClass()) return false;
 
 		ExpressionHash that = (ExpressionHash) o;
-
-		if (arguments != null ? !arguments.equals(that.arguments) : that.arguments != null) return false;
-
-		return true;
+		return arguments.equals(that.arguments);
 	}
 
 	@Override
 	public int hashCode() {
-		return (arguments != null ? arguments.hashCode() : 0);
+		return arguments.hashCode();
 	}
 }

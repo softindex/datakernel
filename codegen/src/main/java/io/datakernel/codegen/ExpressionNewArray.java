@@ -19,6 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionNewArray implements Expression {
@@ -26,8 +27,8 @@ final class ExpressionNewArray implements Expression {
 	private final Expression length;
 
 	ExpressionNewArray(Class<?> type, Expression length) {
-		this.type = type;
-		this.length = length;
+		this.type = checkNotNull(type);
+		this.length = checkNotNull(length);
 	}
 
 	@Override
@@ -59,15 +60,16 @@ final class ExpressionNewArray implements Expression {
 
 		ExpressionNewArray that = (ExpressionNewArray) o;
 
-		if (type != null ? !type.equals(that.type) : that.type != null) return false;
-		return !(length != null ? !length.equals(that.length) : that.length != null);
+		if (!type.equals(that.type)) return false;
+		if (!length.equals(that.length)) return false;
 
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = type != null ? type.hashCode() : 0;
-		result = 31 * result + (length != null ? length.hashCode() : 0);
+		int result = type.hashCode();
+		result = 31 * result + length.hashCode();
 		return result;
 	}
 }

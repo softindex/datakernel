@@ -18,7 +18,6 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
@@ -136,16 +135,8 @@ public final class SerializerGenHppcMap implements SerializerGen, NullableOptimi
 		Expression size = call(value, "size");
 		Expression length = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? size : inc(size))));
 		Expression hppcMapForEach = hppcMapForEach(iteratorType, value,
-				new ForVar() {
-					@Override
-					public Expression forVar(Expression it) { return set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods, compatibilityLevel)); }
-				},
-				new ForVar() {
-					@Override
-					public Expression forVar(Expression it) {
-						return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel));
-					}
-				});
+				it -> set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods, compatibilityLevel)),
+				it -> set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel)));
 
 		if (!nullable) {
 			return sequence(length, hppcMapForEach, off);
@@ -169,16 +160,13 @@ public final class SerializerGenHppcMap implements SerializerGen, NullableOptimi
 		Expression map = let(constructor(hashMapType));
 		Class<?> valueType = valueSerializer.getRawType();
 		Class<?> keyType = keySerializer.getRawType();
-		Expression expressionFor = expressionFor((!nullable ? length : dec(length)), new ForVar() {
-			@Override
-			public Expression forVar(Expression it) {
-				return sequence(call(map, "put",
-								cast(keySerializer.deserialize(keyType, version, staticMethods, compatibilityLevel), SerializerGenHppcMap.this.keyType),
-								cast(valueSerializer.deserialize(valueType, version, staticMethods, compatibilityLevel), SerializerGenHppcMap.this.valueType)
-						), voidExp()
-				);
-			}
-		});
+		Expression expressionFor = expressionFor(value(0), !nullable ? length : dec(length),
+				it -> sequence(
+						call(map, "put",
+								cast(keySerializer.deserialize(keyType, version, staticMethods, compatibilityLevel), this.keyType),
+								cast(valueSerializer.deserialize(valueType, version, staticMethods, compatibilityLevel), this.valueType)
+						),
+						voidExp()));
 		if (!nullable) {
 			return sequence(length, map, expressionFor, map);
 		} else {

@@ -20,8 +20,12 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 
 /**
  * Contains information about a dynamic class
@@ -38,11 +42,12 @@ public final class Context {
 	private final Type[] argumentTypes;
 	private final Map<Method, Expression> methods;
 	private final Map<Method, Expression> staticMethods;
+	private final Map<String, Expression> parameters = new HashMap<>();
 
 	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> mainClass,
-	               List<Class<?>> otherClasses, Map<String, Class<?>> fields, Map<String, Object> staticConstants,
-	               Type[] argumentTypes, Method method, Map<Method, Expression> methods,
-	               Map<Method, Expression> staticMethods) {
+			List<Class<?>> otherClasses, Map<String, Class<?>> fields, Map<String, Object> staticConstants,
+			Type[] argumentTypes, Method method, Map<Method, Expression> methods,
+			Map<Method, Expression> staticMethods) {
 		this.classLoader = classLoader;
 		this.g = g;
 		this.method = method;
@@ -106,5 +111,14 @@ public final class Context {
 
 	public Method getMethod() {
 		return method;
+	}
+
+	public void addParameter(String name, Expression expression) {
+		Expression prev = parameters.put(name, checkNotNull(expression));
+		checkState(prev == null);
+	}
+
+	public Expression removeParameter(String key) {
+		return checkNotNull(parameters.remove(key));
 	}
 }
