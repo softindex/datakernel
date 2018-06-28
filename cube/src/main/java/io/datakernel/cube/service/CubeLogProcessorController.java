@@ -31,7 +31,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
+public final class CubeLogProcessorController<K, C> implements EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CubeLogProcessorController.class);
 
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
@@ -39,9 +39,9 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 	private final Eventloop eventloop;
 	private final List<LogOTProcessor<?, CubeDiff>> logProcessors;
 	private final OTSystem<LogDiff<CubeDiff>> otSystem;
-	private final AggregationChunkStorage chunkStorage;
-	private final OTStateManager<Integer, LogDiff<CubeDiff>> stateManager;
-	private final AsyncPredicate<Integer> predicate;
+	private final AggregationChunkStorage<C> chunkStorage;
+	private final OTStateManager<K, LogDiff<CubeDiff>> stateManager;
+	private final AsyncPredicate<K> predicate;
 
 	private boolean parallelRunner;
 
@@ -50,7 +50,12 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 	private ValueStats addedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private ValueStats addedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withRate();
 
-	CubeLogProcessorController(Eventloop eventloop, List<LogOTProcessor<?, CubeDiff>> logProcessors, OTSystem<LogDiff<CubeDiff>> otSystem, AggregationChunkStorage chunkStorage, OTStateManager<Integer, LogDiff<CubeDiff>> stateManager, AsyncPredicate<Integer> predicate) {
+	CubeLogProcessorController(Eventloop eventloop,
+			List<LogOTProcessor<?, CubeDiff>> logProcessors,
+			OTSystem<LogDiff<CubeDiff>> otSystem,
+			AggregationChunkStorage<C> chunkStorage,
+			OTStateManager<K, LogDiff<CubeDiff>> stateManager,
+			AsyncPredicate<K> predicate) {
 		this.eventloop = eventloop;
 		this.logProcessors = logProcessors;
 		this.otSystem = otSystem;
@@ -59,22 +64,22 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 		this.predicate = predicate;
 	}
 
-	public static CubeLogProcessorController create(Eventloop eventloop,
-	                                                OTStateManager<Integer, LogDiff<CubeDiff>> stateManager,
-	                                                AggregationChunkStorage chunkStorage,
-	                                                List<LogOTProcessor<?, CubeDiff>> logProcessors) {
-		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = stateManager.getAlgorithms();
+	public static <K, C> CubeLogProcessorController create(Eventloop eventloop,
+			OTStateManager<K, LogDiff<CubeDiff>> stateManager,
+			AggregationChunkStorage<C> chunkStorage,
+			List<LogOTProcessor<?, CubeDiff>> logProcessors) {
+		OTAlgorithms<K, LogDiff<CubeDiff>> algorithms = stateManager.getAlgorithms();
 		OTSystem<LogDiff<CubeDiff>> system = algorithms.getOtSystem();
 		LogOTState<CubeDiff> logState = (LogOTState<CubeDiff>) stateManager.getState();
 		Cube cube = (Cube) logState.getDataState();
-		AsyncPredicate<Integer> predicate = AsyncPredicate.of(commitId -> {
+		AsyncPredicate<K> predicate = AsyncPredicate.of(commitId -> {
 			if (cube.containsExcessiveNumberOfOverlappingChunks()) {
 				logger.info("Cube contains excessive number of overlapping chunks");
 				return false;
 			}
 			return true;
 		});
-		return new CubeLogProcessorController(eventloop, logProcessors, system, chunkStorage, stateManager, predicate);
+		return new CubeLogProcessorController<>(eventloop, logProcessors, system, chunkStorage, stateManager, predicate);
 	}
 
 	public CubeLogProcessorController withParallelRunner(boolean parallelRunner) {
@@ -149,10 +154,12 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 		addedChunksRecords.recordValue(curAddedChunksRecords);
 	}
 
-	private Set<Long> addedChunks(List<LogDiff<CubeDiff>> diffs) {
+	@SuppressWarnings("unchecked")
+	private Set<C> addedChunks(List<LogDiff<CubeDiff>> diffs) {
 		return diffs.stream()
 				.flatMap(LogDiff::diffs)
 				.flatMap(CubeDiff::addedChunks)
+				.map(id -> (C) id)
 				.collect(toSet());
 	}
 

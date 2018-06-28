@@ -20,6 +20,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.util.CollectionUtils.toLimitedString;
+
 public final class QueryResult {
 	private final RecordScheme recordScheme;
 	private final List<String> attributes;
@@ -115,7 +117,7 @@ public final class QueryResult {
 		return "QueryResult{" +
 				"attributes=" + attributes +
 				", measures=" + measures +
-				", records=" + records +
+				", records=" + toLimitedString(records, 5) +
 				", totals=" + totals +
 				", count=" + totalCount +
 				", sortedBy=" + sortedBy +

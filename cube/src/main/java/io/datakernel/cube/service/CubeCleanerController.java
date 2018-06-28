@@ -1,34 +1,41 @@
 package io.datakernel.cube.service;
 
-import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stage;
-import io.datakernel.cube.ot.CubeDiff;
+import io.datakernel.async.Stages;
+import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.*;
-import io.datakernel.logfs.ot.LogDiff;
-import io.datakernel.ot.*;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.StageStats;
+import io.datakernel.ot.DiffsReducer;
+import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTRemoteEx;
 import io.datakernel.util.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
-import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.cube.Utils.chunksInDiffs;
+import static io.datakernel.util.CollectionUtils.toLimitedString;
+import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
-import static java.util.stream.Stream.concat;
 
-public final class CubeCleanerController implements EventloopJmxMBeanEx {
+public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
 
 	public static final Duration DEFAULT_CHUNKS_CLEANUP_DELAY = Duration.ofMinutes(1);
@@ -37,36 +44,39 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	private final Eventloop eventloop;
 
-	private final OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms;
-	private final OTRemote<Integer, LogDiff<CubeDiff>> remote;
-	private final LocalFsChunkStorage chunksStorage;
+	private final OTAlgorithms<K, D> algorithms;
+	private final OTRemoteEx<K, D> remote;
+	private final LocalFsChunkStorage<C> chunksStorage;
+
+	private final CubeDiffScheme<D> cubeDiffScheme;
 
 	private Duration freezeTimeout;
 
 	private Duration chunksCleanupDelay = DEFAULT_CHUNKS_CLEANUP_DELAY;
 	private int extraSnapshotsCount = DEFAULT_SNAPSHOTS_COUNT;
 
-	private final ValueStats chunksCount = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageCleanup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageCleanupCollectRequiredChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageCleanupCheckRequiredChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageCleanupRemote = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageCleanupChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	CubeCleanerController(Eventloop eventloop,
-						  OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms,
-						  OTRemoteSql<LogDiff<CubeDiff>> remote,
-						  LocalFsChunkStorage chunksStorage) {
+			CubeDiffScheme<D> cubeDiffScheme,
+			OTAlgorithms<K, D> algorithms,
+			OTRemoteEx<K, D> remote,
+			LocalFsChunkStorage<C> chunksStorage) {
 		this.eventloop = eventloop;
+		this.cubeDiffScheme = cubeDiffScheme;
 		this.algorithms = algorithms;
 		this.remote = remote;
 		this.chunksStorage = chunksStorage;
 	}
 
-	public static CubeCleanerController create(Eventloop eventloop,
-											   OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms,
-											   LocalFsChunkStorage storage) {
-		return new CubeCleanerController(eventloop, algorithms, (OTRemoteSql<LogDiff<CubeDiff>>) algorithms.getRemote(), storage);
+	public static <K, D, C> CubeCleanerController<K, D, C> create(Eventloop eventloop,
+			CubeDiffScheme<D> cubeDiffScheme,
+			OTAlgorithms<K, D> algorithms,
+			LocalFsChunkStorage<C> storage) {
+		return new CubeCleanerController<>(eventloop, cubeDiffScheme, algorithms, (OTRemoteEx<K, D>) algorithms.getRemote(), storage);
 	}
 
 	public CubeCleanerController withChunksCleanupDelay(Duration chunksCleanupDelay) {
@@ -84,15 +94,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 		return this;
 	}
 
-	private static Set<Long> chunks(List<LogDiff<CubeDiff>> item) {
-		return item.stream().flatMap(LogDiff::diffs)
-			.flatMap(cubeDiff -> cubeDiff.keySet().stream().map(cubeDiff::get))
-			.flatMap(diff -> concat(diff.getAddedChunks().stream(), diff.getRemovedChunks().stream()))
-			.map(AggregationChunk::getChunkId)
-			.collect(toSet());
-	}
-
-	private static Stream<LogDiff<CubeDiff>> commitToDiffs(OTCommit<Integer, LogDiff<CubeDiff>> commit) {
+	private static <K, D> Stream<D> commitToDiffs(OTCommit<K, D> commit) {
 		return commit.getParents().values().stream().flatMap(Collection::stream);
 	}
 
@@ -104,107 +106,93 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	Stage<Void> doCleanup() {
 		return remote.getHeads()
-			.thenCompose(heads -> findFrozenCut(heads, eventloop.currentTimeMillis() - freezeTimeout.toMillis()))
-			.thenCompose(this::cleanupFrozenCut)
-			.whenComplete(stageCleanup.recordStats())
-			.whenComplete(toLogger(logger, thisMethod()));
+				.thenCompose(algorithms::excludeParents)
+				.thenCompose(heads -> findFrozenCut(heads, eventloop.currentInstant().minus(freezeTimeout)))
+				.thenCompose(this::cleanupFrozenCut)
+				.whenComplete(stageCleanup.recordStats())
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
-	Stage<Set<Integer>> findFrozenCut(Set<Integer> heads, long freezeTimestamp) {
+	Stage<Set<K>> findFrozenCut(Set<K> heads, Instant freezeTimestamp) {
 		return algorithms.findCut(heads,
-			commits -> commits.stream().allMatch(commit -> commit.getTimestamp() < freezeTimestamp))
-			.whenComplete(toLogger(logger, thisMethod(), heads, freezeTimestamp));
+				commits -> commits.stream().allMatch(commit -> commit.getInstant().compareTo(freezeTimestamp) < 0))
+				.whenComplete(toLogger(logger, thisMethod(), heads, freezeTimestamp));
 	}
 
-	Stage<Void> cleanupFrozenCut(Set<Integer> frozenCut) {
-		logger.info("Frozen cut: {}", frozenCut);
-		return findBottomNodes(frozenCut)
-			.thenCompose(bottomNodes -> bottomNodes.isPresent() ?
-				algorithms.findFirstCommonParent(bottomNodes.get())
-					.thenCompose(checkpointNode -> checkpointNode.isPresent() ?
-						trySaveSnapshotAndCleanupChunks(checkpointNode.get()) :
-						Stage.of(null)) :
-				Stage.of(null))
-			.whenComplete(toLogger(logger, thisMethod(), frozenCut));
+	Stage<Void> cleanupFrozenCut(Set<K> frozenCut) {
+		return Stage.of(frozenCut)
+				.thenCompose(algorithms::findAllCommonParents)
+				.thenCompose(algorithms::findAnyCommonParent)
+				.thenCompose(this::trySaveSnapshotAndCleanupChunks)
+				.whenComplete(toLogger(logger, thisMethod(), frozenCut));
 	}
 
-	Stage<Optional<Set<Integer>>> findBottomNodes(Set<Integer> parentCandidates) {
-		return algorithms.findCommonParents(parentCandidates)
-			.thenApply(rootNodes -> rootNodes.isEmpty() ? Optional.<Set<Integer>>empty() : Optional.of(rootNodes))
-			.whenComplete(toLogger(logger, thisMethod(), parentCandidates));
+	static class Tuple<K, D, C> {
+		final Set<C> collectedChunks;
+		final OTCommit<K, D> lastSnapshot;
+
+		Tuple(Set<C> collectedChunks, OTCommit<K, D> lastSnapshot) {
+			this.collectedChunks = collectedChunks;
+			this.lastSnapshot = lastSnapshot;
+		}
 	}
 
-	Stage<Void> trySaveSnapshotAndCleanupChunks(Integer checkpointNode) {
-		return algorithms.checkout(checkpointNode)
-			.thenCompose(checkpointDiffs ->
-				remote.saveSnapshot(checkpointNode, checkpointDiffs)
-					.thenCompose($ -> findSnapshot(singleton(checkpointNode), extraSnapshotsCount))
-					.thenCompose(lastSnapshot -> lastSnapshot.isPresent() ?
-						collectRequiredChunks(lastSnapshot.get())
-							.thenApply(extractedChunks -> union(chunks(checkpointDiffs), extractedChunks))
-							.thenCompose(chunks ->
-								remote.loadCommit(lastSnapshot.get())
-									.thenApply(commit -> commit.getTimestamp() - chunksCleanupDelay.toMillis())
-									.thenCompose(timestamp ->
-										cleanup(lastSnapshot.get(), chunks, timestamp))
-							) :
-						notEnoughSnapshots()))
-			.whenComplete(toLogger(logger, thisMethod(), checkpointNode));
+	Stage<Void> trySaveSnapshotAndCleanupChunks(K checkpointNode) {
+		return Stage.of(checkpointNode)
+				.thenCompose(algorithms::checkout)
+				.thenCompose(checkpointDiffs -> remote.saveSnapshot(checkpointNode, checkpointDiffs)
+						.thenCompose($ -> findSnapshot(singleton(checkpointNode), extraSnapshotsCount))
+						.thenCompose(lastSnapshot -> {
+							if (lastSnapshot.isPresent())
+								return Stages.toTuple(Tuple::new,
+										collectRequiredChunks(checkpointNode),
+										remote.loadCommit(lastSnapshot.get()))
+										.thenCompose(tuple ->
+												cleanup(lastSnapshot.get(),
+														union(chunksInDiffs(cubeDiffScheme, checkpointDiffs), tuple.collectedChunks),
+														tuple.lastSnapshot.getInstant().minus(chunksCleanupDelay)));
+							else {
+								logger.info("Not enough snapshots, skip cleanup");
+								return Stage.of(null);
+							}
+						}))
+				.whenComplete(toLogger(logger, thisMethod(), checkpointNode));
 	}
 
-	Stage<Optional<Integer>> findSnapshot(Set<Integer> heads, int skipSnapshots) {
-		return algorithms.findParent(heads, DiffsReducer.toVoid(), OTCommit::isSnapshot, null)
-			.post()
-			.thenCompose(findResult -> {
-				if (!findResult.isFound()) return Stage.of(Optional.empty());
-				else if (skipSnapshots <= 0) return Stage.of(Optional.of(findResult.getCommit()));
-				else return findSnapshot(findResult.getCommitParents(), skipSnapshots - 1);
-			});
+	Stage<Optional<K>> findSnapshot(Set<K> heads, int skipSnapshots) {
+		return algorithms.findParent(heads, DiffsReducer.toVoid(), OTCommit::isSnapshot)
+				.post()
+				.thenCompose(findResult -> {
+					if (!findResult.isFound()) return Stage.of(Optional.empty());
+					else if (skipSnapshots <= 0) return Stage.of(Optional.of(findResult.getCommit()));
+					else return findSnapshot(findResult.getCommitParents(), skipSnapshots - 1);
+				});
 	}
 
-	private Stage<Void> notEnoughSnapshots() {
-		logger.info("Not enough snapshots, skip cleanup");
-		return Stage.of(null);
-	}
-
-	private static <T, R> BiConsumer<R, Throwable> transform(Function<? super R, ? extends T> fn, BiConsumer<? super T, Throwable> toConsumer) {
-		return (value, throwable) -> toConsumer.accept(value != null ? fn.apply(value) : null, throwable);
-	}
-
-	private Stage<Set<Long>> collectRequiredChunks(Integer checkpointNode) {
+	private Stage<Set<C>> collectRequiredChunks(K checkpointNode) {
 		return remote.getHeads()
-			.thenCompose(heads -> algorithms.reduceEdges(heads, checkpointNode,
-				DiffsReducer.of(
-					new HashSet<>(),
-					(Set<Long> accumulatedChunks, List<LogDiff<CubeDiff>> diffs) ->
-						union(accumulatedChunks, chunks(diffs)),
-					CollectionUtils::union))
-				.whenComplete(stageCleanupCollectRequiredChunks.recordStats()))
-			.thenApply(accumulators -> accumulators.values().stream().flatMap(Collection::stream).collect(toSet()))
-			.whenComplete(transform(Set::size,
-				toLogger(logger, thisMethod(), checkpointNode)));
+				.thenCompose(heads ->
+						algorithms.reduceEdges(heads, checkpointNode,
+								DiffsReducer.of(
+										new HashSet<>(),
+										(Set<C> accumulatedChunks, List<D> diffs) ->
+												union(accumulatedChunks, chunksInDiffs(cubeDiffScheme, diffs)),
+										CollectionUtils::union))
+								.whenComplete(stageCleanupCollectRequiredChunks.recordStats()))
+				.thenApply(accumulators -> accumulators.values().stream().flatMap(Collection::stream).collect(toSet()))
+				.whenComplete(transform(Set::size,
+						toLogger(logger, thisMethod(), checkpointNode)));
 	}
 
-	private Stage<Void> cleanup(Integer checkpointNode, Set<Long> requiredChunks, long chunksCleanupTimestamp) {
-		return checkRequiredChunks(requiredChunks)
-			.thenCompose($ -> remote.cleanup(checkpointNode)
-				.whenComplete(stageCleanupRemote.recordStats()))
-			.thenCompose($ -> chunksStorage.cleanupBeforeTimestamp(requiredChunks, chunksCleanupTimestamp)
-				.whenComplete(stageCleanupChunks.recordStats()))
-			.whenComplete(logger.isTraceEnabled() ?
-				toLogger(logger, TRACE, thisMethod(), checkpointNode, chunksCleanupTimestamp, requiredChunks) :
-				toLogger(logger, thisMethod(), checkpointNode, chunksCleanupTimestamp, toLimitedString(requiredChunks, 6)));
-	}
-
-	private Stage<Void> checkRequiredChunks(Set<Long> requiredChunks) {
-		return chunksStorage.list(s -> true, timestamp -> true)
-			.whenResult(actualChunks -> chunksCount.recordValue(actualChunks.size()))
-			.thenCompose(actualChunks -> actualChunks.containsAll(requiredChunks) ?
-				Stage.of((Void) null) :
-				Stage.ofException(new IllegalStateException("Missed chunks from storage: " +
-					toLimitedString(difference(requiredChunks, actualChunks), 100))))
-			.whenComplete(stageCleanupCheckRequiredChunks.recordStats())
-			.whenComplete(toLogger(logger, thisMethod(), toLimitedString(requiredChunks, 6)));
+	private Stage<Void> cleanup(K checkpointNode, Set<C> requiredChunks, Instant chunksCleanupTimestamp) {
+		return chunksStorage.checkRequiredChunks(requiredChunks)
+				.thenCompose($ -> remote.cleanup(checkpointNode)
+						.whenComplete(stageCleanupRemote.recordStats()))
+				.thenCompose($ -> chunksStorage.cleanup(requiredChunks, chunksCleanupTimestamp)
+						.whenComplete(stageCleanupChunks.recordStats()))
+				.whenComplete(logger.isTraceEnabled() ?
+						toLogger(logger, TRACE, thisMethod(), checkpointNode, chunksCleanupTimestamp, requiredChunks) :
+						toLogger(logger, thisMethod(), checkpointNode, chunksCleanupTimestamp, toLimitedString(requiredChunks, 6)));
 	}
 
 	@JmxAttribute
@@ -238,11 +226,6 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	}
 
 	@JmxAttribute
-	public ValueStats getChunksCount() {
-		return chunksCount;
-	}
-
-	@JmxAttribute
 	public StageStats getStageCleanup() {
 		return stageCleanup;
 	}
@@ -250,11 +233,6 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	@JmxAttribute
 	public StageStats getStageCleanupCollectRequiredChunks() {
 		return stageCleanupCollectRequiredChunks;
-	}
-
-	@JmxAttribute
-	public StageStats getStageCleanupCheckRequiredChunks() {
-		return stageCleanupCheckRequiredChunks;
 	}
 
 	@JmxAttribute
@@ -275,5 +253,9 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
+	}
+
+	private static <T, R> BiConsumer<R, Throwable> transform(Function<? super R, ? extends T> fn, BiConsumer<? super T, Throwable> toConsumer) {
+		return (value, throwable) -> toConsumer.accept(value != null ? fn.apply(value) : null, throwable);
 	}
 }

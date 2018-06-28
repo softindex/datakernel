@@ -27,7 +27,7 @@ import io.datakernel.stream.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>> {
+public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>> {
 	private final StreamConsumerSwitcher<T> switcher;
 	private final SettableStage<List<AggregationChunk>> result = SettableStage.create();
 
@@ -35,18 +35,18 @@ public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> imp
 	private final List<String> fields;
 	private final Class<T> recordClass;
 	private final PartitionPredicate<T> partitionPredicate;
-	private final AggregationChunkStorage storage;
+	private final AggregationChunkStorage<C> storage;
 	private final StagesAccumulator<List<AggregationChunk>> chunksAccumulator;
 	private final DefiningClassLoader classLoader;
 
 	private final int chunkSize;
 
 	private AggregationChunker(StreamConsumerSwitcher<T> switcher,
-	                           AggregationStructure aggregation, List<String> fields,
-	                           Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
-	                           AggregationChunkStorage storage,
-	                           DefiningClassLoader classLoader,
-	                           int chunkSize) {
+			AggregationStructure aggregation, List<String> fields,
+			Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
+			AggregationChunkStorage<C> storage,
+			DefiningClassLoader classLoader,
+			int chunkSize) {
 		super(switcher);
 		this.switcher = switcher;
 		this.aggregation = aggregation;
@@ -62,13 +62,14 @@ public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> imp
 		getEndOfStream().whenException(result::trySetException);
 	}
 
-	public static <T> AggregationChunker<T> create(AggregationStructure aggregation, List<String> fields,
-	                                               Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
-	                                               AggregationChunkStorage storage,
-	                                               DefiningClassLoader classLoader,
-	                                               int chunkSize) {
+	public static <C, T> AggregationChunker<C, T> create(AggregationStructure aggregation, List<String> fields,
+			Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
+			AggregationChunkStorage<C> storage,
+			DefiningClassLoader classLoader,
+			int chunkSize) {
+
 		StreamConsumerSwitcher<T> switcher = StreamConsumerSwitcher.create();
-		AggregationChunker<T> chunker = new AggregationChunker<>(switcher, aggregation, fields, recordClass, partitionPredicate, storage, classLoader, chunkSize);
+		AggregationChunker<C, T> chunker = new AggregationChunker<>(switcher, aggregation, fields, recordClass, partitionPredicate, storage, classLoader, chunkSize);
 		chunker.startNewChunk();
 		return chunker;
 	}
@@ -80,7 +81,7 @@ public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> imp
 
 	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, AggregationChunk>, StreamDataReceiver<T> {
 		private final SettableStage<AggregationChunk> result = SettableStage.create();
-		private final long chunkId;
+		private final C chunkId;
 		private final int chunkSize;
 		private final PartitionPredicate<T> partitionPredicate;
 		private StreamDataReceiver<T> dataReceiver;
@@ -92,13 +93,14 @@ public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> imp
 		boolean switched;
 
 		public ChunkWriter(StreamConsumerWithResult<T, Void> actualConsumer,
-		                   long chunkId, int chunkSize, PartitionPredicate<T> partitionPredicate) {
+				C chunkId, int chunkSize, PartitionPredicate<T> partitionPredicate) {
 			super(actualConsumer);
 			this.chunkId = chunkId;
 			this.chunkSize = chunkSize;
 			this.partitionPredicate = partitionPredicate;
 			actualConsumer.getResult()
-					.thenApply($ -> count == 0 ? null :
+					.thenApply($ -> count == 0 ?
+							null :
 							AggregationChunk.create(chunkId,
 									fields,
 									PrimaryKey.ofObject(first, aggregation.getKeys()),

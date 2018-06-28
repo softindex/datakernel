@@ -17,10 +17,7 @@
 package io.datakernel.cube.http;
 
 import com.zaxxer.hikari.HikariDataSource;
-import io.datakernel.aggregation.Aggregation;
-import io.datakernel.aggregation.AggregationChunk;
-import io.datakernel.aggregation.AggregationChunkStorage;
-import io.datakernel.aggregation.LocalFsChunkStorage;
+import io.datakernel.aggregation.*;
 import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
@@ -61,6 +58,8 @@ import java.util.stream.Stream;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.*;
+import static io.datakernel.aggregation.measure.Measures.max;
+import static io.datakernel.aggregation.measure.Measures.min;
 import static io.datakernel.cube.ComputedMeasures.*;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeQuery.Ordering.asc;
@@ -72,8 +71,7 @@ import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.CollectionUtils.entriesToMap;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -279,7 +277,7 @@ public class ReportingTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
+		AggregationChunkStorage<Long> aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), executor, new IdGeneratorStub(), aggregationsDir);
 		cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withClassLoaderCache(CubeClassLoaderCache.create(classLoader, 5))
 				.initialize(cube -> DIMENSIONS_CUBE.forEach(cube::addDimension))
@@ -308,14 +306,14 @@ public class ReportingTest {
 
 		dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
-		otSourceSql.truncateTables();
-		otSourceSql.createCommitId().thenCompose(integer -> otSourceSql.push(OTCommit.ofRoot(integer)));
+		OTRemoteSql<LogDiff<CubeDiff>> remote = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
+		remote.truncateTables();
+		remote.createCommitId().thenCompose(id -> remote.push(OTCommit.ofRoot(id)).thenCompose($ -> remote.saveSnapshot(id, emptyList())));
 		eventloop.run();
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, otSourceSql, Integer::compare);
-		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
+		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, remote);
+		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
 				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
@@ -359,7 +357,7 @@ public class ReportingTest {
 
 		future = logOTProcessor.processLog()
 				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
+						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.whenResult(logCubeStateManager::add)
 				.thenApply(u -> logCubeStateManager)
@@ -902,7 +900,7 @@ public class ReportingTest {
 
 	private static int getAggregationItemsCount(Aggregation aggregation) {
 		int count = 0;
-		for (Map.Entry<Long, AggregationChunk> chunk : aggregation.getState().getChunks().entrySet()) {
+		for (Map.Entry<Object, AggregationChunk> chunk : aggregation.getState().getChunks().entrySet()) {
 			count += chunk.getValue().getCount();
 		}
 		return count;

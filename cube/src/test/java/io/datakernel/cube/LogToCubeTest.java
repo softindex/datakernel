@@ -17,8 +17,8 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.AggregationChunkStorage;
+import io.datakernel.aggregation.ChunkIdScheme;
 import io.datakernel.aggregation.LocalFsChunkStorage;
-import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.cube.ot.CubeDiff;
@@ -47,12 +47,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
+import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.dataSource;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
@@ -79,10 +81,10 @@ public class LogToCubeTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
+		AggregationChunkStorage<Long> aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), executor, new IdGeneratorStub(), aggregationsDir);
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
-				.withDimension("pub", FieldTypes.ofInt())
-				.withDimension("adv", FieldTypes.ofInt())
+				.withDimension("pub", ofInt())
+				.withDimension("adv", ofInt())
 				.withMeasure("pubRequests", sum(ofLong()))
 				.withMeasure("advRequests", sum(ofLong()))
 				.withAggregation(id("pub").withDimensions("pub").withMeasures("pubRequests"))
@@ -90,13 +92,13 @@ public class LogToCubeTest {
 
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
-		otSourceSql.truncateTables();
-		otSourceSql.push(OTCommit.ofRoot(1));
+		OTRemoteSql<LogDiff<CubeDiff>> remote = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
+		remote.truncateTables();
+		remote.createCommitId().thenCompose(id -> remote.push(OTCommit.ofRoot(id)).thenCompose($ -> remote.saveSnapshot(id, emptyList())));
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, otSourceSql, Integer::compare);
-		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
+		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, remote);
+		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop,
 				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
@@ -125,7 +127,7 @@ public class LogToCubeTest {
 
 		future = logOTProcessor.processLog()
 				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
+						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.thenApply(addFunction(logCubeStateManager))
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();

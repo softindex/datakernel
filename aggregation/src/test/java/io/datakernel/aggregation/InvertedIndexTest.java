@@ -31,7 +31,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofString;
@@ -39,6 +38,7 @@ import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
 public class InvertedIndexTest {
@@ -91,9 +91,9 @@ public class InvertedIndexTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Path path = temporaryFolder.newFolder().toPath();
-		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executorService, new IdGeneratorStub(), path);
+		AggregationChunkStorage<Long> aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), executorService, new IdGeneratorStub(), path);
 
-		AggregationStructure structure = new AggregationStructure()
+		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
 				.withKey("word", ofString())
 				.withMeasure("documents", union(ofInt()));
 
@@ -154,8 +154,9 @@ public class InvertedIndexTest {
 		assertEquals(expectedResult, actualResult);
 	}
 
+	@SuppressWarnings("unchecked")
 	private Set<Long> getAddedChunks(AggregationDiff aggregationDiff) {
-		return aggregationDiff.getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet());
+		return aggregationDiff.getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(toSet());
 	}
 
 }

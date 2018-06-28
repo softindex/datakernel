@@ -8,11 +8,10 @@ import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncFunction;
 import io.datakernel.async.Stage;
 import io.datakernel.cube.Cube;
+import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
-import io.datakernel.logfs.ot.LogDiff;
-import io.datakernel.logfs.ot.LogOTState;
 import io.datakernel.ot.OTStateManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +25,7 @@ import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toSet;
 
-public final class CubeConsolidationController implements EventloopJmxMBeanEx {
+public final class CubeConsolidationController<K, D, C> implements EventloopJmxMBeanEx {
 	public static final Supplier<AsyncFunction<Aggregation, AggregationDiff>> DEFAULT_STRATEGY = new Supplier<AsyncFunction<Aggregation, AggregationDiff>>() {
 		private boolean hotSegment = false;
 
@@ -39,9 +38,10 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 
 	private final Logger logger = LoggerFactory.getLogger(CubeConsolidationController.class);
 	private final Eventloop eventloop;
+	private final CubeDiffScheme<D> cubeDiffScheme;
 	private final Cube cube;
-	private final OTStateManager<Integer, LogDiff<CubeDiff>> stateManager;
-	private final AggregationChunkStorage aggregationChunkStorage;
+	private final OTStateManager<K, D> stateManager;
+	private final AggregationChunkStorage<C> aggregationChunkStorage;
 
 	private final Supplier<AsyncFunction<Aggregation, AggregationDiff>> strategy;
 
@@ -53,26 +53,29 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 	private final ValueStats addedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final ValueStats addedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withRate();
 
-	CubeConsolidationController(Eventloop eventloop, Cube cube, OTStateManager<Integer, LogDiff<CubeDiff>> stateManager,
-	                            AggregationChunkStorage aggregationChunkStorage,
-	                            Supplier<AsyncFunction<Aggregation, AggregationDiff>> strategy) {
+	CubeConsolidationController(Eventloop eventloop,
+			CubeDiffScheme<D> cubeDiffScheme, Cube cube,
+			OTStateManager<K, D> stateManager,
+			AggregationChunkStorage<C> aggregationChunkStorage,
+			Supplier<AsyncFunction<Aggregation, AggregationDiff>> strategy) {
 		this.eventloop = eventloop;
+		this.cubeDiffScheme = cubeDiffScheme;
 		this.cube = cube;
 		this.stateManager = stateManager;
 		this.aggregationChunkStorage = aggregationChunkStorage;
 		this.strategy = strategy;
 	}
 
-	public static CubeConsolidationController create(Eventloop eventloop,
-	                                                 OTStateManager<Integer, LogDiff<CubeDiff>> stateManager,
-	                                                 AggregationChunkStorage aggregationChunkStorage) {
-		LogOTState<CubeDiff> logState = (LogOTState<CubeDiff>) stateManager.getState();
-		Cube cube = (Cube) logState.getDataState();
-		return new CubeConsolidationController(eventloop, cube, stateManager, aggregationChunkStorage, DEFAULT_STRATEGY);
+	public static <K, D, C> CubeConsolidationController create(Eventloop eventloop,
+			CubeDiffScheme<D> cubeDiffScheme,
+			Cube cube,
+			OTStateManager<K, D> stateManager,
+			AggregationChunkStorage<C> aggregationChunkStorage) {
+		return new CubeConsolidationController<>(eventloop, cubeDiffScheme, cube, stateManager, aggregationChunkStorage, DEFAULT_STRATEGY);
 	}
 
-	public CubeConsolidationController withStrategy(Supplier<AsyncFunction<Aggregation, AggregationDiff>> strategy) {
-		return new CubeConsolidationController(eventloop, cube, stateManager, aggregationChunkStorage, strategy);
+	public CubeConsolidationController<K, D, C> withStrategy(Supplier<AsyncFunction<Aggregation, AggregationDiff>> strategy) {
+		return new CubeConsolidationController<>(eventloop, cubeDiffScheme, cube, stateManager, aggregationChunkStorage, strategy);
 	}
 
 	private final AsyncCallable<Void> consolidate = sharedCall(this::doConsolidate);
@@ -122,7 +125,7 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 	private Stage<Void> tryPushConsolidation(CubeDiff cubeDiff) {
 		if (cubeDiff.isEmpty()) return Stage.of(null);
 
-		stateManager.add(LogDiff.forCurrentPosition(cubeDiff));
+		stateManager.add(cubeDiffScheme.wrap(cubeDiff));
 		return stateManager.pull()
 				.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
 				.thenCompose(stateManager::pull)
@@ -133,8 +136,9 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 				.whenComplete(toLogger(logger, thisMethod(), cubeDiff));
 	}
 
-	private static Set<Long> addedChunks(CubeDiff cubeDiff) {
-		return cubeDiff.addedChunks().collect(toSet());
+	@SuppressWarnings("unchecked")
+	private static <C> Set<C> addedChunks(CubeDiff cubeDiff) {
+		return cubeDiff.addedChunks().map(id -> (C) id).collect(toSet());
 	}
 
 	private void logCubeDiff(CubeDiff cubeDiff, Throwable throwable) {

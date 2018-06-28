@@ -53,22 +53,22 @@ public class AggregationGroupReducerTest {
 	public void test() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		AggregationStructure structure = new AggregationStructure()
+		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
 				.withKey("word", FieldTypes.ofString())
 				.withMeasure("documents", union(ofInt()));
 
 		List<StreamConsumer> listConsumers = new ArrayList<>();
 		List items = new ArrayList();
-		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
+		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage<Long>() {
 			long chunkId;
 
 			@Override
-			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				return Stage.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
 			}
 
 			@Override
-			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
 				return Stage.of(consumer.withEndOfStreamAsResult());
@@ -105,7 +105,7 @@ public class AggregationGroupReducerTest {
 				new InvertedIndexRecord("dog", 1), new InvertedIndexRecord("quick", 1),
 				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10));
 
-		AggregationGroupReducer<InvertedIndexRecord> groupReducer = new AggregationGroupReducer<>(aggregationChunkStorage,
+		AggregationGroupReducer groupReducer = new AggregationGroupReducer(aggregationChunkStorage,
 				structure, asList("documents"),
 				aggregationClass, singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader);
 

@@ -45,22 +45,21 @@ import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.stream.Collectors.toMap;
 
-public final class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJmxMBeanEx {
+public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>, EventloopJmxMBeanEx {
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 	public static final String LOG = ".log";
 	public static final String TEMP_LOG = ".temp";
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
+	private final ChunkIdScheme<C> chunkIdScheme;
 	private final IRemoteFsClient client;
-	private final IdGenerator<Long> idGenerator;
+	private final IdGenerator<C> idGenerator;
 
 	private MemSize bufferSize = DEFAULT_BUFFER_SIZE;
 
 	private final StageStats stageIdGenerator = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageOpenR1 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageOpenR2 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageOpenR3 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageOpenR = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageOpenW = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageFinishChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
@@ -77,28 +76,38 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 	private final StreamStatsDetailed<ByteBuf> writeChunker = StreamStats.detailed(forByteBufs());
 	private final StreamStatsDetailed<ByteBuf> writeRemoteFS = StreamStats.detailed(forByteBufs());
 
-	private RemoteFsChunkStorage(Eventloop eventloop, IdGenerator<Long> idGenerator, InetSocketAddress serverAddress) {
+	private RemoteFsChunkStorage(Eventloop eventloop, ChunkIdScheme<C> chunkIdScheme, IdGenerator<C> idGenerator, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
+		this.chunkIdScheme = chunkIdScheme;
 		this.idGenerator = idGenerator;
 		this.client = RemoteFsClient.create(eventloop, serverAddress);
 	}
 
-	public static RemoteFsChunkStorage create(Eventloop eventloop, IdGenerator<Long> idGenerator, InetSocketAddress serverAddress) {
-		return new RemoteFsChunkStorage(eventloop, idGenerator, serverAddress);
+	public static <C> RemoteFsChunkStorage<C> create(Eventloop eventloop,
+			ChunkIdScheme<C> chunkIdScheme,
+			IdGenerator<C> idGenerator, InetSocketAddress serverAddress) {
+		return new RemoteFsChunkStorage<>(eventloop, chunkIdScheme, idGenerator, serverAddress);
 	}
 
-	public RemoteFsChunkStorage withBufferSize(MemSize bufferSize) {
+	public RemoteFsChunkStorage<C> withBufferSize(MemSize bufferSize) {
 		this.bufferSize = bufferSize;
 		return this;
+	}
+
+	private String path(C chunkId) {
+		return chunkIdScheme.toFileName(chunkId) + LOG;
+	}
+
+	private String tempPath(C chunkId) {
+		return chunkIdScheme.toFileName(chunkId) + TEMP_LOG;
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
-	                                                         Class<T> recordClass, long chunkId,
-	                                                         DefiningClassLoader classLoader) {
+			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
 		return client.download(path(chunkId), 0)
-				.whenComplete(stageOpenR1.recordStats())
+				.whenComplete(stageOpenR.recordStats())
 				.thenApply(producer -> producer
 						.with(readRemoteFS)
 						.with(StreamLZ4Decompressor.create())
@@ -110,15 +119,10 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 						.withLateBinding());
 	}
 
-	private String path(long chunkId) {
-		return chunkId + LOG;
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
-	                                                          Class<T> recordClass, long chunkId,
-	                                                          DefiningClassLoader classLoader) {
+			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
 		return client.upload(tempPath(chunkId))
 				.whenComplete(stageOpenW.recordStats())
 				.thenApply(consumer -> StreamTransformer.<T>idenity()
@@ -136,18 +140,14 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 						.applyTo(consumer));
 	}
 
-	private String tempPath(long chunkId) {
-		return chunkId + TEMP_LOG;
-	}
-
 	@Override
-	public Stage<Void> finish(Set<Long> chunkIds) {
+	public Stage<Void> finish(Set<C> chunkIds) {
 		return client.move(chunkIds.stream().collect(toMap(this::tempPath, this::path)))
 				.whenComplete(stageFinishChunks.recordStats());
 	}
 
 	@Override
-	public Stage<Long> createId() {
+	public Stage<C> createId() {
 		return idGenerator.createId().whenComplete(stageIdGenerator.recordStats());
 	}
 
@@ -162,18 +162,8 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 	}
 
 	@JmxAttribute
-	public StageStats getStageOpenR1() {
-		return stageOpenR1;
-	}
-
-	@JmxAttribute
-	public StageStats getStageOpenR2() {
-		return stageOpenR2;
-	}
-
-	@JmxAttribute
-	public StageStats getStageOpenR3() {
-		return stageOpenR3;
+	public StageStats getStageOpenR() {
+		return stageOpenR;
 	}
 
 	@JmxAttribute

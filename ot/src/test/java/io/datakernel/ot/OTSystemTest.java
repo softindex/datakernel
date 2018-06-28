@@ -2,13 +2,11 @@ package io.datakernel.ot;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.utils.OTRemoteStub;
-import io.datakernel.ot.utils.OTRemoteStub.TestSequence;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import org.junit.Test;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -59,20 +57,19 @@ public class OTSystemTest {
 	@Test
 	public void testOtSource2() throws Exception {
 		OTSystem<TestOp> system = createTestOp();
-		Comparator<String> comparator = (o1, o2) -> reverse(o1).compareTo(reverse(o2));
-		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(TestSequence.of("m", "x", "y", "m2"), comparator);
-
-		otSource.push(OTCommit.ofRoot("*"));
-		otSource.add("*", "a1", asList(add(1)));
-		otSource.add("a1", "a2", asList(add(2)));
-		otSource.add("a2", "a3", asList(add(4)));
-		otSource.add("*", "b1", asList(add(10)));
-		otSource.add("b1", "b2", asList(add(100)));
+		OTRemoteStub<String, TestOp> remote = OTRemoteStub.create(asList("m", "x", "y", "m2"));
+		remote.setGraph(g -> {
+			g.add("*", "a1", add(1));
+			g.add("a1", "a2", add(2));
+			g.add("a2", "a3", add(4));
+			g.add("*", "b1", add(10));
+			g.add("b1", "b2", add(100));
+		});
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, otSource, comparator);
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, state);
 
 		stateManager.start().thenCompose($ -> stateManager.pull()).whenComplete(assertComplete());
 		eventloop.run();
@@ -80,7 +77,7 @@ public class OTSystemTest {
 		System.out.println();
 
 //		ResultCallbackFuture<Map<String, List<TestOp>>> future = ResultCallbackFuture.create();
-//		OTUtils.doMerge(eventloop, system, otSource, comparator,
+//		OTUtils.doMerge(eventloop, system, remote, comparator,
 //				new HashSet<>(asList("*", "a1", "a2", "a3")),
 //				new HashSet<>(Arrays.<String>asList()), "*",
 //				future);
@@ -89,10 +86,10 @@ public class OTSystemTest {
 
 		CompletableFuture<?> future;
 
-		future = otAlgorithms.mergeHeadsAndPush().toCompletableFuture();
+		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
-		System.out.println(otSource.loadCommit("m"));
+		System.out.println(remote.loadCommit("m"));
 		System.out.println(stateManager);
 		System.out.println();
 
@@ -119,18 +116,18 @@ public class OTSystemTest {
 		System.out.println(stateManager);
 		System.out.println();
 
-		System.out.println(otSource);
+		System.out.println(remote);
 		System.out.println(stateManager);
 		future = stateManager.push().toCompletableFuture();
 		eventloop.run();
 		future.get();
-		System.out.println(otSource.loadCommit("x"));
-		System.out.println(otSource.loadCommit("y"));
+		System.out.println(remote.loadCommit("x"));
+		System.out.println(remote.loadCommit("y"));
 		System.out.println(stateManager);
 		System.out.println();
 
-		System.out.println(otSource);
-		future = otAlgorithms.mergeHeadsAndPush().toCompletableFuture();
+		System.out.println(remote);
+		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
 		System.out.println(stateManager);
@@ -141,19 +138,19 @@ public class OTSystemTest {
 	@Test
 	public void testOtSource3() throws Exception {
 		OTSystem<TestOp> system = createTestOp();
-		Comparator<String> comparator = (o1, o2) -> reverse(o1).compareTo(reverse(o2));
-		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(TestSequence.of("m"), comparator);
 
-		otSource.push(OTCommit.ofRoot("*"));
-		otSource.add("*", "a1", asList(add(1)));
-		otSource.add("a1", "a2", asList(add(2)));
-		otSource.add("a2", "a3", asList(add(4)));
-		otSource.add("a2", "b1", asList(add(10)));
+		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(asList("m"));
+		otSource.setGraph(g -> {
+			g.add("*", "a1", add(1));
+			g.add("a1", "a2", add(2));
+			g.add("a2", "a3", add(4));
+			g.add("a2", "b1", add(10));
+		});
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, otSource, comparator);
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, otSource);
+		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, state);
 
 		stateManager.start().thenCompose($ -> stateManager.pull()).whenComplete(assertComplete());
 		eventloop.run();
@@ -162,7 +159,7 @@ public class OTSystemTest {
 
 		CompletableFuture<?> future;
 
-		future = otAlgorithms.mergeHeadsAndPush().toCompletableFuture();
+		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
 		System.out.println(otSource);
@@ -172,21 +169,20 @@ public class OTSystemTest {
 	@Test
 	public void testOtSource4() throws Exception {
 		OTSystem<TestOp> system = createTestOp();
-		Comparator<String> comparator = (o1, o2) -> reverse(o1).compareTo(reverse(o2));
-		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(TestSequence.of("m"), comparator);
-
-		otSource.push(OTCommit.ofRoot("*"));
-		otSource.add("*", "a1", asList(add(1)));
-		otSource.add("*", "b1", asList(add(10)));
-		otSource.add("a1", "a2", asList(add(10)));
-		otSource.add("b1", "a2", asList(add(1)));
-		otSource.add("a1", "b2", asList(add(10)));
-		otSource.add("b1", "b2", asList(add(1)));
+		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(asList("m"));
+		otSource.setGraph(g -> {
+			g.add("*", "a1", add(1));
+			g.add("*", "b1", add(10));
+			g.add("a1", "a2", add(10));
+			g.add("b1", "a2", add(1));
+			g.add("a1", "b2", add(10));
+			g.add("b1", "b2", add(1));
+		});
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, otSource, comparator);
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, otSource);
+		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, state);
 
 		stateManager.start().thenCompose($ -> stateManager.pull()).whenComplete(assertComplete());
 		eventloop.run();
@@ -195,7 +191,7 @@ public class OTSystemTest {
 
 		CompletableFuture<?> future;
 
-		future = otAlgorithms.mergeHeadsAndPush().toCompletableFuture();
+		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
 		System.out.println(otSource);

@@ -17,6 +17,7 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -42,6 +43,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -52,13 +54,17 @@ import java.util.stream.StreamSupport;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
+import static io.datakernel.util.CollectionUtils.difference;
+import static io.datakernel.util.CollectionUtils.toLimitedString;
+import static io.datakernel.util.LogUtils.thisMethod;
+import static io.datakernel.util.LogUtils.toLogger;
 import static java.nio.file.StandardOpenOption.READ;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Stores aggregation chunks in local file system.
  */
-public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, Initializable<LocalFsChunkStorage>, EventloopJmxMBeanEx {
+public class LocalFsChunkStorage<C> implements AggregationChunkStorage<C>, EventloopService, Initializable<LocalFsChunkStorage<C>>, EventloopJmxMBeanEx {
 	private final Logger logger = getLogger(this.getClass());
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 
@@ -68,23 +74,24 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	public static final String TEMP_LOG = ".temp";
 
 	private final Eventloop eventloop;
+	private final ChunkIdScheme<C> chunkIdScheme;
 	private final ExecutorService executorService;
-	private final IdGenerator<Long> idGenerator;
+	private final IdGenerator<C> idGenerator;
 
 	private final Path dir;
 	private Path backupPath;
 
 	private MemSize bufferSize = DEFAULT_BUFFER_SIZE;
 
+	private final ValueStats chunksCount = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageIdGenerator = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageOpenR1 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageOpenR2 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageOpenR3 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageOpenR = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageOpenW = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageFinishChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageList = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageBackup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageCleanup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageCleanupCheckRequiredChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private boolean detailed;
 
@@ -103,8 +110,6 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	private int cleanupPreservedFiles;
 	private int cleanupDeletedFiles;
 	private int cleanupDeletedFilesTotal;
-	private long cleanupSkipTimeMin;
-	private long cleanupSkipTimeMax;
 	private int cleanupSkippedFiles;
 	private int cleanupSkippedFilesTotal;
 
@@ -115,38 +120,65 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	 * serializes records according to specified aggregation structure and stores data in the given directory.
 	 *
 	 * @param eventloop       event loop, in which aggregation storage is to run
+	 * @param chunkIdScheme
 	 * @param executorService executor, where blocking IO operations are to be run
 	 * @param idGenerator
 	 * @param dir             directory where data is saved
 	 */
-	private LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, IdGenerator<Long> idGenerator, Path dir, Path backUpPath) {
+	private LocalFsChunkStorage(Eventloop eventloop,
+			ChunkIdScheme<C> chunkIdScheme,
+			ExecutorService executorService,
+			IdGenerator<C> idGenerator,
+			Path dir,
+			Path backUpPath) {
 		this.eventloop = eventloop;
+		this.chunkIdScheme = chunkIdScheme;
 		this.executorService = executorService;
 		this.dir = dir;
 		this.idGenerator = idGenerator;
 		this.backupPath = backUpPath;
 	}
 
-	public static LocalFsChunkStorage create(Eventloop eventloop, ExecutorService executorService, IdGenerator<Long> idGenerator, Path dir) {
-		return new LocalFsChunkStorage(eventloop, executorService, idGenerator, dir, dir.resolve(DEFAULT_BACKUP_FOLDER_NAME + "/"));
+	public static <C> LocalFsChunkStorage<C> create(Eventloop eventloop,
+			ChunkIdScheme<C> chunkIdScheme,
+			ExecutorService executorService,
+			IdGenerator<C> idGenerator,
+			Path dir) {
+		return new LocalFsChunkStorage<>(eventloop, chunkIdScheme, executorService, idGenerator, dir, dir.resolve(DEFAULT_BACKUP_FOLDER_NAME + "/"));
 	}
 
-	public LocalFsChunkStorage withBufferSize(MemSize bufferSize) {
+	public LocalFsChunkStorage<C> withBufferSize(MemSize bufferSize) {
 		this.bufferSize = bufferSize;
 		return this;
 	}
 
-	public LocalFsChunkStorage withBackupPath(Path backupPath) {
+	public LocalFsChunkStorage<C> withBackupPath(Path backupPath) {
 		this.backupPath = backupPath;
 		return this;
+	}
+
+	private Path getPath(C chunkId) {
+		return dir.resolve(toFileName(chunkId) + LOG);
+	}
+
+	private Path getTempPath(C chunkId) {
+		return dir.resolve(toFileName(chunkId) + TEMP_LOG);
+	}
+
+	private String toFileName(C chunkId) {
+		return chunkIdScheme.toFileName(chunkId);
+	}
+
+	private C fromFileName(String fileName) {
+		return chunkIdScheme.fromFileName(fileName);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
-	                                                         Class<T> recordClass, long chunkId,
-	                                                         DefiningClassLoader classLoader) {
-		return AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ}).whenComplete(stageOpenR1.recordStats())
+			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
+		return AsyncFile.openAsync(executorService, getPath(chunkId), new OpenOption[]{READ})
+				.whenComplete(stageOpenR.recordStats())
 				.thenApply(file -> StreamFileReader.readFile(file).withBufferSize(bufferSize)
 						.with(readFile)
 						.with(StreamLZ4Decompressor.create())
@@ -161,9 +193,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
-	                                                          Class<T> recordClass, long id,
-	                                                          DefiningClassLoader classLoader) {
-		return AsyncFile.openAsync(executorService, dir.resolve(id + TEMP_LOG), StreamFileWriter.CREATE_OPTIONS)
+			Class<T> recordClass, C id, DefiningClassLoader classLoader) {
+		return AsyncFile.openAsync(executorService, getTempPath(id), StreamFileWriter.CREATE_OPTIONS)
 				.whenComplete(stageOpenW.recordStats())
 				.thenApply(file -> StreamTransformer.<T>idenity()
 						.with((StreamProducerModifier<T, T>) (detailed ? writeSerializeDetailed : writeSerialize))
@@ -181,32 +212,32 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	@Override
-	public Stage<Long> createId() {
+	public Stage<C> createId() {
 		return idGenerator.createId().whenComplete(stageIdGenerator.recordStats());
 	}
 
 	@Override
-	public Stage<Void> finish(Set<Long> chunkIds) {
+	public Stage<Void> finish(Set<C> chunkIds) {
 		finishChunks = chunkIds.size();
 		return Stage.ofCallable(executorService, () -> {
-			for (Long chunkId : chunkIds) {
-				Path tempLog = dir.resolve(chunkId + TEMP_LOG);
-				Path log = dir.resolve(chunkId + LOG);
-				Files.setLastModifiedTime(tempLog, FileTime.fromMillis(System.currentTimeMillis()));
-				Files.move(tempLog, log, StandardCopyOption.ATOMIC_MOVE);
+			for (C chunkId : chunkIds) {
+				Path path = getPath(chunkId);
+				Path tempPath = getTempPath(chunkId);
+				Files.setLastModifiedTime(tempPath, FileTime.fromMillis(System.currentTimeMillis()));
+				Files.move(tempPath, path, StandardCopyOption.ATOMIC_MOVE);
 			}
 			return (Void) null;
 		}).whenComplete(stageFinishChunks.recordStats());
 	}
 
-	public Stage<Void> backup(String backupId, Set<Long> chunkIds) {
+	public Stage<Void> backup(String backupId, Set<C> chunkIds) {
 		return Stage.ofCallable(executorService, () -> {
 			Path tempBackupDir = backupPath.resolve(backupId + "_tmp/");
 			Files.createDirectories(tempBackupDir);
-			for (long chunkId : chunkIds) {
-				Path target = dir.resolve(chunkId + LOG).toAbsolutePath();
-				Path link = tempBackupDir.resolve(chunkId + LOG).toAbsolutePath();
-				Files.createLink(link, target);
+			for (C chunkId : chunkIds) {
+				Path path = getPath(chunkId).toAbsolutePath();
+				Path linkPath = tempBackupDir.resolve(toFileName(chunkId) + LOG).toAbsolutePath();
+				Files.createLink(linkPath, path);
 			}
 
 			Path backupDir = backupPath.resolve(backupId + "/");
@@ -215,11 +246,12 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		}).whenComplete(stageBackup.recordStats());
 	}
 
-	public Stage<Void> cleanup(Set<Long> saveChunks) {
-		return cleanupBeforeTimestamp(saveChunks, -1);
+	public Stage<Void> cleanup(Set<C> saveChunks) {
+		return cleanup(saveChunks, null);
 	}
 
-	public Stage<Void> cleanupBeforeTimestamp(Set<Long> preserveChunks, long timestamp) {
+	public Stage<Void> cleanup(Set<C> preserveChunks, @Nullable Instant instant) {
+		long timestamp = instant != null ? instant.toEpochMilli() : -1;
 		return Stage.ofCallable(executorService, () -> {
 			logger.trace("Cleanup before timestamp, save chunks size: {}, timestamp {}", preserveChunks.size(), timestamp);
 			int skipped = 0;
@@ -230,10 +262,10 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 					if (!file.toString().endsWith(LOG)) {
 						continue;
 					}
-					long id;
+					C id;
 					try {
 						String filename = file.getFileName().toString();
-						id = Long.parseLong((filename.substring(0, filename.length() - LOG.length())));
+						id = fromFileName(filename.substring(0, filename.length() - LOG.length()));
 					} catch (NumberFormatException e) {
 						cleanupWarnings.recordException(e);
 						logger.warn("Invalid chunk filename: " + file);
@@ -244,13 +276,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 					if (timestamp != -1 && lastModifiedTime.toMillis() > timestamp) {
 						long difference = lastModifiedTime.toMillis() - timestamp;
 						assert difference > 0;
-						if (cleanupSkipTimeMin == 0 || difference < cleanupSkipTimeMin) {
-							cleanupSkipTimeMin = difference;
-						}
-						if (cleanupSkipTimeMax == 0 || difference > cleanupSkipTimeMax) {
-							cleanupSkipTimeMax = difference;
-						}
-						logger.warn("File {} timestamp {} > {}",
+						logger.trace("File {} timestamp {} > {}",
 								file, lastModifiedTime.toMillis(), timestamp);
 						skipped++;
 						continue;
@@ -283,14 +309,15 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		}).whenComplete(stageCleanup.recordStats());
 	}
 
-	public Stage<Set<Long>> list(Predicate<String> filter, Predicate<Long> lastModified) {
+	public Stage<Set<C>> list(Predicate<String> filter, Predicate<Long> lastModified) {
 		return Stage.ofCallable(executorService, () -> {
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
 				return StreamSupport.stream(stream.spliterator(), false)
 						.filter(file -> lastModifiedFilter(lastModified, file))
 						.map(file -> file.getFileName().toString())
 						.filter(name -> name.endsWith(LOG) && filter.test(name))
-						.map(name -> Long.parseLong(name.substring(0, name.length() - LOG.length())))
+						.map(name -> name.substring(0, name.length() - LOG.length()))
+						.map(this::fromFileName)
 						.collect(Collectors.toSet());
 			}
 		}).whenComplete(stageList.recordStats());
@@ -302,6 +329,17 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		} catch (IOException e) {
 			return false;
 		}
+	}
+
+	public Stage<Void> checkRequiredChunks(Set<C> requiredChunks) {
+		return list(s -> true, timestamp -> true)
+				.whenResult(actualChunks -> chunksCount.recordValue(actualChunks.size()))
+				.thenCompose(actualChunks -> actualChunks.containsAll(requiredChunks) ?
+						Stage.of((Void) null) :
+						Stage.ofException(new IllegalStateException("Missed chunks from storage: " +
+								toLimitedString(difference(requiredChunks, actualChunks), 100))))
+				.whenComplete(stageCleanupCheckRequiredChunks.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), toLimitedString(requiredChunks, 6)));
 	}
 
 	@Override
@@ -345,18 +383,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	@JmxAttribute
-	public StageStats getStageOpenR1() {
-		return stageOpenR1;
-	}
-
-	@JmxAttribute
-	public StageStats getStageOpenR2() {
-		return stageOpenR2;
-	}
-
-	@JmxAttribute
-	public StageStats getStageOpenR3() {
-		return stageOpenR3;
+	public StageStats getStageOpenR() {
+		return stageOpenR;
 	}
 
 	@JmxAttribute
@@ -445,13 +473,13 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	@JmxAttribute
-	public long getCleanupSkipTimeMin() {
-		return cleanupSkipTimeMin;
+	public ValueStats getChunksCount() {
+		return chunksCount;
 	}
 
 	@JmxAttribute
-	public long getCleanupSkipTimeMax() {
-		return cleanupSkipTimeMax;
+	public StageStats getStageCleanupCheckRequiredChunks() {
+		return stageCleanupCheckRequiredChunks;
 	}
 
 	@JmxOperation
@@ -471,8 +499,6 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		cleanupDeletedFilesTotal = 0;
 		cleanupSkippedFiles = 0;
 		cleanupSkippedFilesTotal = 0;
-		cleanupSkipTimeMin = 0;
-		cleanupSkipTimeMax = 0;
 		ReflectionUtils.resetStats(this);
 	}
 }

@@ -16,13 +16,13 @@
 
 package io.datakernel.aggregation;
 
-import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import org.junit.Test;
 
 import java.util.*;
 
+import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
 import static org.junit.Assert.assertEquals;
@@ -31,7 +31,7 @@ import static org.junit.Assert.assertNull;
 public class ConsolidationChunkSelectionTest {
 	@Test
 	public void testRangeExpansion() throws Exception {
-		AggregationStructure structure = new AggregationStructure().withKey("key", FieldTypes.ofInt());
+		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
 		Set<AggregationChunk> chunks = new HashSet<>();
@@ -64,7 +64,7 @@ public class ConsolidationChunkSelectionTest {
 
 	@Test
 	public void testMinKeyStrategy() throws Exception {
-		AggregationStructure structure = new AggregationStructure().withKey("key", FieldTypes.ofInt());
+		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
 		Set<AggregationChunk> chunks1 = new HashSet<>();
@@ -88,7 +88,7 @@ public class ConsolidationChunkSelectionTest {
 
 	@Test
 	public void testSizeFixStrategy() throws Exception {
-		AggregationStructure structure = new AggregationStructure().withKey("key", FieldTypes.ofInt());
+		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
 		int optimalChunkSize = 5;
@@ -117,7 +117,7 @@ public class ConsolidationChunkSelectionTest {
 
 	@Test
 	public void testGroupingByPartition() throws Exception {
-		AggregationStructure structure = new AggregationStructure().withKey("key", FieldTypes.ofInt());
+		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
 		Set<AggregationChunk> chunks1 = new HashSet<>();

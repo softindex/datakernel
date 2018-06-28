@@ -34,10 +34,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>>, StreamDataReceiver<T> {
+public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>>, StreamDataReceiver<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private final AggregationChunkStorage storage;
+	private final AggregationChunkStorage<C> storage;
 	private final AggregationStructure aggregation;
 	private final List<String> measures;
 	private final PartitionPredicate<T> partitionPredicate;
@@ -50,15 +50,15 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
 
-	public AggregationGroupReducer(AggregationChunkStorage storage,
-	                               AggregationStructure aggregation, List<String> measures,
-	                               Class<?> recordClass, PartitionPredicate<T> partitionPredicate,
-	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
-	                               int chunkSize, DefiningClassLoader classLoader) {
+	public AggregationGroupReducer(AggregationChunkStorage<C> storage,
+			AggregationStructure aggregation, List<String> measures,
+			Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
+			Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
+			int chunkSize, DefiningClassLoader classLoader) {
 		this.storage = storage;
 		this.measures = measures;
 		this.partitionPredicate = partitionPredicate;
-		this.recordClass = (Class<T>) recordClass;
+		this.recordClass = recordClass;
 		this.keyFunction = keyFunction;
 		this.aggregate = aggregate;
 		this.chunkSize = chunkSize;
@@ -116,7 +116,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		}
 
 		StreamProducer<T> producer = StreamProducer.ofIterable(list);
-		AggregationChunker<T> chunker = AggregationChunker.create(aggregation, measures, recordClass,
+		AggregationChunker<C, T> chunker = AggregationChunker.create(aggregation, measures, recordClass,
 				partitionPredicate, storage, classLoader, chunkSize);
 
 		resultsTracker.addStage(producer.streamTo(chunker).getConsumerResult(), List::addAll)

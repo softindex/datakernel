@@ -1,6 +1,5 @@
 package io.datakernel.cube.ot;
 
-import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.ot.AggregationDiff;
 
 import java.util.HashMap;
@@ -55,10 +54,10 @@ public class CubeDiff {
 		return diffs.isEmpty();
 	}
 
-	public Stream<Long> addedChunks() {
+	public <C> Stream<C> addedChunks() {
 		return diffs.values().stream()
 				.flatMap(aggregationDiff -> aggregationDiff.getAddedChunks().stream())
-				.map(AggregationChunk::getChunkId);
+				.map(aggregationChunk -> (C) aggregationChunk.getChunkId());
 	}
 
 	@Override

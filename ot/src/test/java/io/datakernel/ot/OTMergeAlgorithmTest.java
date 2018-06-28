@@ -1,16 +1,16 @@
 package io.datakernel.ot;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.ot.utils.OTGraphBuilder;
 import io.datakernel.ot.utils.OTRemoteStub;
 import io.datakernel.ot.utils.TestOp;
+import io.datakernel.ot.utils.Utils;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.utils.Utils.add;
@@ -18,87 +18,66 @@ import static io.datakernel.ot.utils.Utils.createTestOp;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static java.util.Arrays.asList;
+import static io.datakernel.util.Utils.coalesce;
 import static org.junit.Assert.assertEquals;
 
-@SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
+@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "CodeBlock2Expr"})
 public class OTMergeAlgorithmTest {
 	Eventloop eventloop;
 	OTSystem<TestOp> system = createTestOp();
-	Comparator<String> keyComparator = String::compareTo;
 
 	@Before
 	public void before() {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
-	public interface OTGraphAdapter<K, D> {
-		void add(K parent, K child, List<D> diffs);
-
-		default void add(K parent, K child, D diff) {
-			add(parent, child, asList(diff));
+	static <K, D> OTLoadedGraph<K, D> buildGraph(Consumer<OTGraphBuilder<K, D>> consumer, OTSystem<D> system) {
+		OTLoadedGraph<K, D> graph = new OTLoadedGraph<>(system);
+		consumer.accept((parent, child, diffs) -> {
+			checkArgument(graph.getParents(child) == null || graph.getParents(child).get(parent) == null);
+			graph.addEdge(parent, child, diffs);
+		});
+		HashMap<K, Long> levels = new HashMap<>();
+		for (K commitId : graph.getTips()) {
+			Utils.calcLevels(commitId, levels,
+					parentId -> coalesce(graph.getParents(parentId), Collections.<K, List<D>>emptyMap()).keySet());
 		}
-	}
+		levels.forEach(graph::setNodeTimestamp);
 
-	public interface OTGraphBuilder<K, D> {
-		void build(OTGraphAdapter<K, D> graph);
-	}
-
-	static <K, D> OTLoadedGraph<K, D> buildGraph(OTGraphBuilder<K, D> builder) {
-		OTLoadedGraph<K, D> graph = new OTLoadedGraph<>();
-		builder.build(new OTGraphAdapter<K, D>() {
-			@Override
-			public void add(K parent, K child, List<D> diffs) {
-				checkArgument(graph.getParents(child) == null || graph.getParents(child).get(parent) == null);
-				graph.add(parent, child, diffs);
-			}
-		});
 		return graph;
-	}
-
-	static <K, D> OTRemote<K, D> buildRemote(OTGraphBuilder<K, D> builder, Comparator<K> comparator) {
-		OTRemoteStub<K, D> remote = OTRemoteStub.create(comparator);
-		builder.build(new OTGraphAdapter<K, D>() {
-			@Override
-			public void add(K parent, K child, List<D> diffs) {
-				remote.add(parent, child, diffs);
-			}
-		});
-		return remote;
 	}
 
 	private interface TestAcceptor {
 		void accept(OTLoadedGraph<String, TestOp> graph, Map<String, List<TestOp>> merge) throws Exception;
 	}
 
-	private void doTest(Set<String> heads, OTGraphBuilder<String, TestOp> graphBuilder, TestAcceptor testAcceptor) throws Exception {
-		doTestMerge(heads, graphBuilder, testAcceptor, keyComparator);
-		doTestMerge(heads, graphBuilder, testAcceptor, keyComparator.reversed());
-		doTestLoadAndMerge(heads, graphBuilder, testAcceptor, keyComparator);
+	private void doTest(Set<String> heads, Consumer<OTGraphBuilder<String, TestOp>> graphBuilder, TestAcceptor testAcceptor) throws Exception {
+		doTestMerge(heads, graphBuilder, testAcceptor);
+		doTestLoadAndMerge(heads, graphBuilder, testAcceptor);
 	}
 
-	private void doTestMerge(Set<String> heads, OTGraphBuilder<String, TestOp> graphBuilder, TestAcceptor testAcceptor, Comparator<String> keyComparator) throws Exception {
-		OTLoadedGraph<String, TestOp> graph = buildGraph(graphBuilder);
-		OTMergeAlgorithm<String, TestOp> mergeAlgorithm = new OTMergeAlgorithm<>(system, null, keyComparator);
+	private void doTestMerge(Set<String> heads, Consumer<OTGraphBuilder<String, TestOp>> graphBuilder, TestAcceptor testAcceptor) throws Exception {
+		OTLoadedGraph<String, TestOp> graph = buildGraph(graphBuilder, system);
 		Map<String, List<TestOp>> merge;
 		try {
-			merge = mergeAlgorithm.merge(graph, heads);
+			merge = graph.merge(heads);
 		} finally {
 			System.out.println(graph.toGraphViz());
 		}
 		testAcceptor.accept(graph, merge);
 	}
 
-	private void doTestLoadAndMerge(Set<String> heads, OTGraphBuilder<String, TestOp> graphBuilder, TestAcceptor testAcceptor, Comparator<String> keyComparator) throws Exception {
-		OTRemote<String, TestOp> otRemote = buildRemote(graphBuilder, keyComparator);
-		OTMergeAlgorithm<String, TestOp> mergeAlgorithm = new OTMergeAlgorithm<>(system, otRemote, keyComparator);
+	private void doTestLoadAndMerge(Set<String> heads, Consumer<OTGraphBuilder<String, TestOp>> graphBuilder, TestAcceptor testAcceptor) throws Exception {
+		OTRemoteStub<String, TestOp> remote = OTRemoteStub.create();
+		remote.setGraph(graphBuilder);
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		CompletableFuture<OTLoadedGraph<String, TestOp>> future =
-				mergeAlgorithm.loadGraph(heads).toCompletableFuture();
+				algorithms.loadGraph(heads).toCompletableFuture();
 		eventloop.run();
 		OTLoadedGraph<String, TestOp> graph = future.get();
 		Map<String, List<TestOp>> merge;
 		try {
-			merge = mergeAlgorithm.merge(graph, heads);
+			merge = graph.merge(heads);
 		} finally {
 			System.out.println(graph.toGraphViz());
 		}

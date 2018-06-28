@@ -3,16 +3,29 @@ package io.datakernel.ot.utils;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 
 import java.io.IOException;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static io.datakernel.ot.TransformResult.*;
+import static io.datakernel.util.CollectionUtils.difference;
+import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.check;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 public class Utils {
+
+	private static final Object INVALID_KEY = new Object();
+
 	private Utils() {
 
 	}
@@ -81,4 +94,57 @@ public class Utils {
 			return testOp;
 		}
 	};
+
+	public static <K> long calcLevels(K commitId, Map<K, Long> levels, Function<K, Collection<K>> getParents) {
+		return levels.computeIfAbsent(commitId,
+				k -> 1L + getParents.apply(k).stream()
+						.mapToLong(parentId -> calcLevels(parentId, levels, getParents))
+						.max()
+						.orElse(0L));
+	}
+
+	public static <D> Consumer<OTGraphBuilder<Long, D>> asLong(Consumer<OTGraphBuilder<Integer, D>> intGraphConsumer) {
+		return longGraphBuilder ->
+				intGraphConsumer.accept((parent, child, diffs) ->
+						longGraphBuilder.add((long) parent, (long) child, diffs));
+	}
+
+	public static <K, D> List<OTCommit<K, D>> commits(Consumer<OTGraphBuilder<K, D>> graphBuilder) {
+		return commits(graphBuilder, true, 1L);
+	}
+
+	public static <K, D> List<OTCommit<K, D>> commits(Consumer<OTGraphBuilder<K, D>> graphBuilder, boolean withRoots, long initialLevel) {
+		Map<K, Map<K, List<D>>> graph = new HashMap<>();
+		graphBuilder.accept((parent, child, diffs) -> graph
+				.computeIfAbsent(child, $ -> new HashMap<>())
+				.computeIfAbsent(parent, $ -> new ArrayList<>())
+				.addAll(diffs));
+		Set<K> heads = difference(
+				graph.keySet(),
+				graph.values().stream()
+						.flatMap(t -> t.keySet().stream())
+						.collect(toSet()));
+		Set<K> roots = difference(
+				graph.values().stream()
+						.flatMap(t -> t.keySet().stream())
+						.collect(toSet()),
+				graph.keySet());
+		HashMap<K, Long> levels = new HashMap<>();
+		for (K head : heads) {
+			calcLevels(head, levels, id -> graph.getOrDefault(id, emptyMap()).keySet());
+		}
+		if (withRoots) {
+			if (roots.size() == 1) {
+				graph.put(first(roots), emptyMap()); // true root
+			} else {
+				//noinspection unchecked
+				roots.forEach(root -> graph.put(root, singletonMap((K) INVALID_KEY, null))); // intermediate node
+			}
+		}
+		return graph.entrySet().stream()
+				.map(entry -> OTCommit.of(entry.getKey(), entry.getValue(), initialLevel - 1L + levels.get(entry.getKey()))
+						.withCommitMetadata(initialLevel - 1L + levels.get(entry.getKey()), false))
+				.collect(toList());
+	}
+
 }

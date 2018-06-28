@@ -2,11 +2,11 @@ package io.datakernel.aggregation.ot;
 
 import io.datakernel.aggregation.AggregationChunk;
 
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static io.datakernel.util.CollectionUtils.union;
+import static java.util.Collections.emptySet;
 
 public final class AggregationDiff {
 	private final Set<AggregationChunk> addedChunks;
@@ -22,11 +22,11 @@ public final class AggregationDiff {
 	}
 
 	public static AggregationDiff of(Set<AggregationChunk> addedChunks) {
-		return new AggregationDiff(addedChunks, Collections.<AggregationChunk>emptySet());
+		return new AggregationDiff(addedChunks, emptySet());
 	}
 
 	public static AggregationDiff empty() {
-		return new AggregationDiff(Collections.<AggregationChunk>emptySet(), Collections.<AggregationChunk>emptySet());
+		return new AggregationDiff(emptySet(), emptySet());
 	}
 
 	public Set<AggregationChunk> getAddedChunks() {
@@ -58,7 +58,7 @@ public final class AggregationDiff {
 		removedChunks2.removeAll(commit1.addedChunks);
 		Set<AggregationChunk> removedChunks = union(removedChunks1, removedChunks2);
 
-		return of(addedChunks, removedChunks);
+		return AggregationDiff.of(addedChunks, removedChunks);
 	}
 
 	@Override

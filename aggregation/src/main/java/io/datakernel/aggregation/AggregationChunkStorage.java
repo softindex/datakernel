@@ -28,7 +28,7 @@ import java.util.Set;
 /**
  * Manages persistence of aggregations (chunks of data).
  */
-public interface AggregationChunkStorage extends IdGenerator<Long> {
+public interface AggregationChunkStorage<C> extends IdGenerator<C> {
 	/**
 	 * Creates a {@code StreamProducer} that streams records contained in the chunk.
 	 * The chunk to read is determined by {@code aggregationId} and {@code id}.
@@ -38,10 +38,10 @@ public interface AggregationChunkStorage extends IdGenerator<Long> {
 	 * @return StreamProducer, which will stream read records to its wired consumer.
 	 */
 	<T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
-	                                                  Class<T> recordClass, long chunkId, DefiningClassLoader classLoader);
+			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader);
 
 	default <T> StreamProducerWithResult<T, Void> readStream(AggregationStructure aggregation, List<String> fields,
-	                                                         Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
 		return StreamProducerWithResult.ofStage(read(aggregation, fields, recordClass, chunkId, classLoader));
 	}
 
@@ -54,14 +54,14 @@ public interface AggregationChunkStorage extends IdGenerator<Long> {
 	 * @param chunkId     id of chunk
 	 */
 	<T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
-	                                                   Class<T> recordClass, long chunkId, DefiningClassLoader classLoader);
+			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader);
 
 	default <T> StreamConsumerWithResult<T, Void> writeStream(AggregationStructure aggregation, List<String> fields,
-	                                                          Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
 		return StreamConsumerWithResult.ofStage(write(aggregation, fields, recordClass, chunkId, classLoader));
 	}
 
-	Stage<Void> finish(Set<Long> chunkIds);
+	Stage<Void> finish(Set<C> chunkIds);
 
 }
 

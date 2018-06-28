@@ -24,23 +24,23 @@ import static io.datakernel.aggregation.AggregationPredicates.*;
 import static java.util.Collections.unmodifiableList;
 
 public class AggregationChunk {
-	public static AggregationChunk create(long chunkId,
-	                                      List<String> fields,
-	                                      PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey,
-	                                      int count) {
+	public static AggregationChunk create(Object chunkId,
+			List<String> fields,
+			PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey,
+			int count) {
 		return new AggregationChunk(chunkId, fields, minPrimaryKey, maxPrimaryKey, count);
 	}
 
-	private final long chunkId;
+	private final Object chunkId;
 	private final List<String> measures;
 	private final PrimaryKey minPrimaryKey;
 	private final PrimaryKey maxPrimaryKey;
 	private final int count;
 
-	private AggregationChunk(long chunkId,
-	                         List<String> measures,
-	                         PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey,
-	                         int count) {
+	private AggregationChunk(Object chunkId,
+			List<String> measures,
+			PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey,
+			int count) {
 		this.chunkId = chunkId;
 		this.measures = measures;
 		this.minPrimaryKey = minPrimaryKey;
@@ -48,7 +48,7 @@ public class AggregationChunk {
 		this.count = count;
 	}
 
-	public long getChunkId() {
+	public Object getChunkId() {
 		return chunkId;
 	}
 
@@ -73,11 +73,7 @@ public class AggregationChunk {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		AggregationChunk chunk = (AggregationChunk) o;
-		return chunkId == chunk.chunkId &&
-				count == chunk.count &&
-				Objects.equals(measures, chunk.measures) &&
-				Objects.equals(minPrimaryKey, chunk.minPrimaryKey) &&
-				Objects.equals(maxPrimaryKey, chunk.maxPrimaryKey);
+		return Objects.equals(chunkId, chunk.chunkId);
 	}
 
 	@Override

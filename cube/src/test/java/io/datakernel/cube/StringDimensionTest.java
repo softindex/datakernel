@@ -17,8 +17,8 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.AggregationChunkStorage;
+import io.datakernel.aggregation.ChunkIdScheme;
 import io.datakernel.aggregation.LocalFsChunkStorage;
-import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.DataItemResultString;
 import io.datakernel.cube.bean.DataItemString1;
@@ -36,15 +36,15 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.AggregationPredicates.and;
 import static io.datakernel.aggregation.AggregationPredicates.eq;
-import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
+import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
 public class StringDimensionTest {
@@ -58,10 +58,10 @@ public class StringDimensionTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
+		AggregationChunkStorage<Long> aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), executor, new IdGeneratorStub(), aggregationsDir);
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
-				.withDimension("key1", FieldTypes.ofString())
-				.withDimension("key2", FieldTypes.ofInt())
+				.withDimension("key1", ofString())
+				.withDimension("key2", ofInt())
 				.withMeasure("metric1", sum(ofLong()))
 				.withMeasure("metric2", sum(ofLong()))
 				.withMeasure("metric3", sum(ofLong()))
@@ -87,8 +87,8 @@ public class StringDimensionTest {
 
 		eventloop.run();
 
-		aggregationChunkStorage.finish(future1.get().addedChunks().collect(Collectors.toSet()));
-		aggregationChunkStorage.finish(future2.get().addedChunks().collect(Collectors.toSet()));
+		aggregationChunkStorage.finish(future1.get().addedChunks().map(id -> (long) id).collect(toSet()));
+		aggregationChunkStorage.finish(future2.get().addedChunks().map(id -> (long) id).collect(toSet()));
 		eventloop.run();
 
 		cube.apply(future1.get());

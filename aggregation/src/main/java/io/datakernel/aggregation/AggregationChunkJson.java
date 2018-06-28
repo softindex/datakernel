@@ -20,18 +20,26 @@ public class AggregationChunkJson extends TypeAdapter<AggregationChunk> {
 	public static final String COUNT = "count";
 	public static final String MEASURES = "measures";
 
+	private final ChunkIdScheme<Object> chunkIdScheme;
 	private final TypeAdapter<PrimaryKey> primaryKeyTypeAdapter;
 	private final TypeAdapter<List<String>> stringListAdapter;
 	private final Set<String> allowedMeasures;
 
-	private AggregationChunkJson(TypeAdapter<PrimaryKey> primaryKeyTypeAdapter, TypeAdapter<List<String>> stringListAdapter, Set<String> allowedMeasures) {
+	@SuppressWarnings("unchecked")
+	private AggregationChunkJson(ChunkIdScheme<?> chunkIdScheme,
+			TypeAdapter<PrimaryKey> primaryKeyTypeAdapter,
+			TypeAdapter<List<String>> stringListAdapter,
+			Set<String> allowedMeasures) {
+		this.chunkIdScheme = (ChunkIdScheme<Object>) chunkIdScheme;
 		this.primaryKeyTypeAdapter = primaryKeyTypeAdapter;
 		this.stringListAdapter = stringListAdapter;
 		this.allowedMeasures = allowedMeasures;
 	}
 
-	public static AggregationChunkJson create(TypeAdapter<PrimaryKey> primaryKeyTypeAdapter, Set<String> allowedMeasures) {
-		return new AggregationChunkJson(primaryKeyTypeAdapter, ofList(STRING_JSON), allowedMeasures);
+	public static AggregationChunkJson create(ChunkIdScheme<?> chunkIdScheme,
+			TypeAdapter<PrimaryKey> primaryKeyTypeAdapter,
+			Set<String> allowedMeasures) {
+		return new AggregationChunkJson(chunkIdScheme, primaryKeyTypeAdapter, ofList(STRING_JSON), allowedMeasures);
 	}
 
 	@Override
@@ -39,7 +47,7 @@ public class AggregationChunkJson extends TypeAdapter<AggregationChunk> {
 		writer.beginObject();
 
 		writer.name(ID);
-		writer.value(chunk.getChunkId());
+		chunkIdScheme.toJson(writer, chunk.getChunkId());
 
 		writer.name(MIN);
 		primaryKeyTypeAdapter.write(writer, chunk.getMinPrimaryKey());
@@ -61,7 +69,7 @@ public class AggregationChunkJson extends TypeAdapter<AggregationChunk> {
 		reader.beginObject();
 
 		checkArgument(ID.equals(reader.nextName()));
-		int id = reader.nextInt();
+		Object id = chunkIdScheme.fromJson(reader);
 
 		checkArgument(MIN.equals(reader.nextName()));
 		PrimaryKey from = primaryKeyTypeAdapter.read(reader);

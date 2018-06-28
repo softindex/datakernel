@@ -29,7 +29,10 @@ import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.AggregationPredicates.toRangeScan;
 import static io.datakernel.util.CollectionUtils.intersection;
+import static io.datakernel.util.CollectionUtils.toLimitedString;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableMap;
 
 /**
  * Represents aggregation metadata. Stores chunks in an index (represented by an array of {@link RangeTree}) for efficient search.
@@ -40,7 +43,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 
 	private final AggregationStructure aggregation;
 
-	private final Map<Long, AggregationChunk> chunks = new LinkedHashMap<>();
+	private final Map<Object, AggregationChunk> chunks = new LinkedHashMap<>();
 	private RangeTree<PrimaryKey, AggregationChunk>[] prefixRanges;
 
 	private static final int EQUALS_QUERIES_THRESHOLD = 1_000;
@@ -57,12 +60,17 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		initIndex();
 	}
 
-	public Map<Long, AggregationChunk> getChunks() {
-		return Collections.unmodifiableMap(chunks);
+	public Map<Object, AggregationChunk> getChunks() {
+		return unmodifiableMap(chunks);
 	}
 
 	@Override
 	public void apply(AggregationDiff commit) {
+		checkArgument(intersection(commit.getAddedChunks(), commit.getRemovedChunks()), Set::isEmpty,
+				v -> "Non-empty intersection between added and removed chunks: " + v +
+						"\n Added chunks " + toLimitedString(commit.getAddedChunks(), 100) +
+						"\n Removed chunks intersection: " + toLimitedString(commit.getRemovedChunks(), 100));
+
 		for (AggregationChunk chunk : commit.getAddedChunks()) {
 			addToIndex(chunk);
 		}
@@ -73,6 +81,12 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	public void addToIndex(AggregationChunk chunk) {
+		checkArgument(chunks.put(chunk.getChunkId(), chunk) == null,
+				() -> "" +
+						"Trying to add existing chunk: " + chunk +
+						"\n this: " + this.toString() +
+						"\n chunks: " + toLimitedString(this.chunks.keySet(), 100));
+
 		for (int size = 0; size <= aggregation.getKeys().size(); size++) {
 			RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
 
@@ -80,10 +94,15 @@ public final class AggregationState implements OTState<AggregationDiff> {
 			PrimaryKey upper = chunk.getMaxPrimaryKey().prefix(size);
 			index.put(lower, upper, chunk);
 		}
-		chunks.put(chunk.getChunkId(), chunk);
 	}
 
 	public void removeFromIndex(AggregationChunk chunk) {
+		checkArgument(chunks.remove(chunk.getChunkId()) != null,
+				() -> "" +
+						"Trying to remove unknown chunk: " + chunk +
+						"\n this: " + this.toString() +
+						"\n chunks: " + toLimitedString(this.chunks.keySet(), 100));
+
 		for (int size = 0; size <= aggregation.getKeys().size(); size++) {
 			RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
 
@@ -91,7 +110,6 @@ public final class AggregationState implements OTState<AggregationDiff> {
 			PrimaryKey upper = chunk.getMaxPrimaryKey().prefix(size);
 			index.remove(lower, upper, chunk);
 		}
-		chunks.remove(chunk.getChunkId());
 	}
 
 	void initIndex() {
@@ -147,18 +165,18 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	private static PickedChunks findChunksWithMinKeyOrSizeFixStrategy(SortedMap<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree,
-	                                                                  int maxChunks, int optimalChunkSize) {
+			int maxChunks, int optimalChunkSize) {
 		int minChunks = 2;
 		for (Map.Entry<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> entry : partitioningKeyToTree.entrySet()) {
 			ChunksAndStrategy chunksAndStrategy = findChunksWithMinKeyOrSizeFixStrategy(entry.getValue(), maxChunks, optimalChunkSize);
 			if (chunksAndStrategy.chunks.size() >= minChunks)
 				return new PickedChunks(chunksAndStrategy.strategy, entry.getValue(), chunksAndStrategy.chunks);
 		}
-		return new PickedChunks(PickingStrategy.MIN_KEY, null, Collections.<AggregationChunk>emptyList());
+		return new PickedChunks(PickingStrategy.MIN_KEY, null, emptyList());
 	}
 
 	private static ChunksAndStrategy findChunksWithMinKeyOrSizeFixStrategy(RangeTree<PrimaryKey, AggregationChunk> tree,
-	                                                                       int maxChunks, int optimalChunkSize) {
+			int maxChunks, int optimalChunkSize) {
 		int minOverlaps = 2;
 		List<AggregationChunk> result = new ArrayList<>();
 		SortedMap<PrimaryKey, RangeTree.Segment<AggregationChunk>> tailMap = null;
@@ -185,7 +203,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		}
 
 		if (tailMap == null)
-			return new ChunksAndStrategy(PickingStrategy.SIZE_FIX, Collections.<AggregationChunk>emptyList());
+			return new ChunksAndStrategy(PickingStrategy.SIZE_FIX, emptyList());
 
 		Set<AggregationChunk> chunks = new HashSet<>();
 		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tailMap.entrySet()) {
@@ -202,7 +220,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 			if (result.get(0).getCount() > optimalChunkSize)
 				return new ChunksAndStrategy(PickingStrategy.SIZE_FIX, result);
 			else
-				return new ChunksAndStrategy(PickingStrategy.SIZE_FIX, Collections.<AggregationChunk>emptyList());
+				return new ChunksAndStrategy(PickingStrategy.SIZE_FIX, emptyList());
 		}
 
 		return new ChunksAndStrategy(PickingStrategy.SIZE_FIX, result);
@@ -221,7 +239,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		private final List<AggregationChunk> chunks;
 
 		public PickedChunks(PickingStrategy strategy, RangeTree<PrimaryKey, AggregationChunk> partitionTree,
-		                    List<AggregationChunk> chunks) {
+				List<AggregationChunk> chunks) {
 			this.strategy = strategy;
 			this.partitionTree = partitionTree;
 			this.chunks = chunks;
@@ -300,8 +318,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	private static List<AggregationChunk> processSelection(List<AggregationChunk> chunks, int maxChunks,
-	                                                       RangeTree<PrimaryKey, AggregationChunk> partitionTree,
-	                                                       PickingStrategy strategy) {
+			RangeTree<PrimaryKey, AggregationChunk> partitionTree,
+			PickingStrategy strategy) {
 		if (chunks.isEmpty() || chunks.size() == maxChunks) {
 			logChunksAndStrategy(chunks, strategy);
 			return chunks;
@@ -380,7 +398,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	private static List<AggregationChunk> expandRange(RangeTree<PrimaryKey, AggregationChunk> tree,
-	                                                  List<AggregationChunk> chunks, int maxChunks) {
+			List<AggregationChunk> chunks, int maxChunks) {
 		Set<AggregationChunk> chunkSet = new HashSet<>(chunks);
 		expandRange(tree, chunkSet, maxChunks);
 		return new ArrayList<>(chunkSet);
@@ -409,7 +427,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		public final int overlaps;
 
 		public ConsolidationDebugInfo(PrimaryKey key, Set<AggregationChunk> segmentSet,
-		                              Set<AggregationChunk> segmentClosingSet, int overlaps) {
+				Set<AggregationChunk> segmentClosingSet, int overlaps) {
 			this.key = key;
 			this.segmentSet = segmentSet;
 			this.segmentClosingSet = segmentClosingSet;
@@ -419,13 +437,13 @@ public final class AggregationState implements OTState<AggregationDiff> {
 
 	// visibleForTesting
 	public static boolean chunkMightContainQueryValues(PrimaryKey minQueryKey, PrimaryKey maxQueryKey,
-	                                                   PrimaryKey minChunkKey, PrimaryKey maxChunkKey) {
+			PrimaryKey minChunkKey, PrimaryKey maxChunkKey) {
 		return chunkMightContainQueryValues(minQueryKey.values(), maxQueryKey.values(),
 				minChunkKey.values(), maxChunkKey.values());
 	}
 
 	private Predicate<AggregationChunk> chunkMightContainQueryValuesPredicate(PrimaryKey minQueryKey,
-	                                                                          PrimaryKey maxQueryKey) {
+			PrimaryKey maxQueryKey) {
 		return chunk -> {
 			List<Object> queryMinValues = minQueryKey.values();
 			List<Object> queryMaxValues = maxQueryKey.values();
@@ -438,7 +456,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 
 	@SuppressWarnings("unchecked")
 	private static boolean chunkMightContainQueryValues(List<Object> queryMinValues, List<Object> queryMaxValues,
-	                                                    List<Object> chunkMinValues, List<Object> chunkMaxValues) {
+			List<Object> chunkMinValues, List<Object> chunkMaxValues) {
 		checkArgument(queryMinValues.size() == queryMaxValues.size());
 		checkArgument(chunkMinValues.size() == chunkMaxValues.size());
 

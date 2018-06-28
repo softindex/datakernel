@@ -1,21 +1,19 @@
 package io.datakernel.ot;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.utils.*;
+import io.datakernel.ot.utils.OTRemoteStub;
+import io.datakernel.ot.utils.TestOp;
+import io.datakernel.ot.utils.TestOpState;
+import io.datakernel.ot.utils.Utils;
 import org.junit.Test;
 
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.ot.utils.GraphBuilder.edge;
-import static io.datakernel.ot.utils.OTRemoteStub.TestSequence.of;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Arrays.asList;
@@ -28,24 +26,22 @@ public class OTAlgorithmsTest {
 	@Test
 	public void testLoadAllChangesFromRootWithSnapshot() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		Comparator<Integer> keyComparator = Integer::compareTo;
 		TestOpState opState = new TestOpState();
-		List<Integer> commitIds = IntStream.rangeClosed(0, 5).boxed().collect(Collectors.toList());
-		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), keyComparator);
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, TEST_OP, otRemote, keyComparator);
-
-		otRemote.createCommitId().thenCompose(id -> otRemote.push(asList(OTCommit.ofRoot(id))));
-		eventloop.run();
-		otRemote.saveSnapshot(0, asList(add(10)));
-		eventloop.run();
-
-		commitIds.subList(0, commitIds.size() - 1).forEach(prevId -> {
-			otRemote.createCommitId().thenCompose(id -> otRemote.push(asList(OTCommit.ofCommit(id, prevId, asList(add(1))))));
-			eventloop.run();
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		remote.setGraph(g -> {
+			g.add(0, 1, add(1));
+			g.add(1, 2, add(1));
+			g.add(2, 3, add(1));
+			g.add(3, 4, add(1));
+			g.add(4, 5, add(1));
 		});
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, remote);
 
-		CompletableFuture<List<TestOp>> changes = otRemote.getHeads().thenCompose(heads ->
-				otAlgorithms.checkout(getLast(heads)))
+		remote.saveSnapshot(0, asList(add(10)));
+		eventloop.run();
+
+		CompletableFuture<List<TestOp>> changes = remote.getHeads().thenCompose(heads ->
+				algorithms.checkout(getLast(heads)))
 				.toCompletableFuture();
 		eventloop.run();
 		changes.get().forEach(opState::apply);
@@ -56,26 +52,18 @@ public class OTAlgorithmsTest {
 	@Test
 	public void testReduceEdges() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		Comparator<Integer> keyComparator = Integer::compareTo;
-		List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
-		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), keyComparator);
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, TEST_OP, otRemote, keyComparator);
-
-		GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
-		CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(
-				edge(0, 1, add(1)),
-				edge(1, 2, add(1)),
-				edge(2, 3, add(1)),
-				edge(3, 4, add(-1)),
-				edge(4, 5, add(-1)),
-				edge(3, 6, add(1)),
-				edge(6, 7, add(1))))
-				.toCompletableFuture();
-
-		eventloop.run();
-		graphFuture.get();
-
-		CompletableFuture<Map<Integer, List<TestOp>>> future = otAlgorithms.reduceEdges(
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		remote.setGraph(g -> {
+			g.add(0, 1, add(1));
+			g.add(1, 2, add(1));
+			g.add(2, 3, add(1));
+			g.add(3, 4, add(-1));
+			g.add(4, 5, add(-1));
+			g.add(3, 6, add(1));
+			g.add(6, 7, add(1));
+		});
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, remote);
+		CompletableFuture<Map<Integer, List<TestOp>>> future = algorithms.reduceEdges(
 				set(5, 7),
 				0,
 				DiffsReducer.toList())
@@ -91,25 +79,18 @@ public class OTAlgorithmsTest {
 	@Test
 	public void testReduceEdges2() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		Comparator<Integer> keyComparator = Integer::compareTo;
-		List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
-		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), keyComparator);
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, TEST_OP, otRemote, keyComparator);
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		remote.setGraph(g -> {
+			g.add(0, 1, add(1));
+			g.add(0, 2, add(-1));
+			g.add(1, 3, add(1));
+			g.add(1, 4, add(-1));
+			g.add(2, 4, add(1));
+			g.add(2, 5, add(-1));
+		});
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, remote);
 
-		GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
-		CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(
-				edge(0, 1, add(1)),
-				edge(0, 2, add(-1)),
-				edge(1, 3, add(1)),
-				edge(1, 4, add(-1)),
-				edge(2, 4, add(1)),
-				edge(2, 5, add(-1))))
-				.toCompletableFuture();
-
-		eventloop.run();
-		graphFuture.get();
-
-		CompletableFuture<Map<Integer, List<TestOp>>> future = otAlgorithms.reduceEdges(
+		CompletableFuture<Map<Integer, List<TestOp>>> future = algorithms.reduceEdges(
 				set(3, 4, 5),
 				0,
 				DiffsReducer.toList())

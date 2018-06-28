@@ -2,34 +2,27 @@ package io.datakernel.ot;
 
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.exceptions.OTTransformException;
 import io.datakernel.ot.utils.OTRemoteStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
-import org.hamcrest.collection.IsEmptyCollection;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
-import static io.datakernel.ot.utils.OTRemoteStub.TestSequence.of;
-import static io.datakernel.ot.utils.OTRemoteStub.create;
 import static io.datakernel.ot.utils.Utils.*;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
-import static java.util.stream.Collectors.toList;
+import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class OTStateManagerTest {
@@ -44,24 +37,21 @@ public class OTStateManagerTest {
 		system = createTestOp();
 	}
 
-	private <K, D> void createRootAndStartManager(OTRemote<K, D> otRemote, OTStateManager<K, D> stateManager) {
-		otRemote.createCommitId().thenCompose(id -> otRemote.push(asList(ofRoot(id))))
-				.thenCompose($ -> stateManager.start());
-		eventloop.run();
-	}
-
 	@Test
 	public void testCommitBeforePushFinished() throws ExecutionException, InterruptedException {
-		OTRemote<Integer, TestOp> remote = new OTRemoteDecorator<Integer, TestOp>(create(of(1, 2, 3), comparator)) {
+		OTRemote<Integer, TestOp> remoteStub = OTRemoteStub.create(asList(2, 3));
+		OTRemote<Integer, TestOp> remote = new OTRemoteDecorator<Integer, TestOp>(remoteStub) {
 			@Override
 			public Stage<Void> push(Collection<OTCommit<Integer, TestOp>> otCommits) {
 				return super.push(otCommits).thenCompose($ -> scheduledResult(eventloop, 100, null));
 			}
 		};
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
-		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, new TestOpState());
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, new TestOpState());
 
-		createRootAndStartManager(remote, stateManager);
+		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+				.thenCompose($ -> stateManager.start());
+		eventloop.run();
 
 		stateManager.add(add(1));
 		stateManager.commit();
@@ -85,18 +75,18 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testPullFullHistory() {
-		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 5).boxed().collect(toList());
-		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		createRootAndStartManager(remote, stateManager);
+		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+				.thenCompose($ -> stateManager.start());
+		eventloop.run();
 
-		commitIdSequence.subList(0, commitIdSequence.size() - 1).forEach(prevId -> {
-			remote.createCommitId().thenCompose(id -> remote.push(asList(ofCommit(id, prevId, asList(add(1))))));
-			eventloop.run();
-		});
+		for (int i = 1; i <= 5; i++) {
+			remote.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+		}
 
 		assertEquals(0, testOpState.getValue());
 
@@ -107,20 +97,22 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testPullAfterFetch() {
-		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 10).boxed().collect(toList());
-		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		createRootAndStartManager(remote, stateManager);
+		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+				.thenCompose($ -> stateManager.start());
+		eventloop.run();
 
-		commitIdSequence.subList(0, commitIdSequence.size() - 1).forEach(prevId -> {
-			remote.createCommitId()
-					.thenCompose(id -> remote.push(asList(ofCommit(id, prevId, asList(add(1))))))
-					.thenCompose($ -> asList(3, 5, 7).contains(prevId) ? stateManager.fetch() : Stage.of(null));
-			eventloop.run();
-		});
+		for (int i = 1; i <= 10; i++) {
+			remote.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			if (i == 3 || i == 5 || i == 7) {
+				stateManager.fetch();
+				eventloop.run();
+			}
+		}
 
 		assertEquals(0, testOpState.getValue());
 
@@ -131,18 +123,18 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testApplyDiffBeforePull() {
-		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 10).boxed().collect(toList());
-		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		createRootAndStartManager(remote, stateManager);
+		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+				.thenCompose($ -> stateManager.start());
+		eventloop.run();
 
-		commitIdSequence.subList(0, commitIdSequence.size() - 1).forEach(prevId -> {
-			remote.createCommitId().thenCompose(id -> remote.push(asList(ofCommit(id, prevId, asList(add(1))))));
-			eventloop.run();
-		});
+		for (int i = 1; i <= 10; i++) {
+			remote.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+		}
 
 		assertEquals(0, testOpState.getValue());
 		stateManager.add(add(1));
@@ -156,63 +148,76 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testTwoFetchAndTwoPullOneAfterAnother() {
-		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 20).boxed().collect(toList());
-		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		createRootAndStartManager(remote, stateManager);
+		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+				.thenCompose($ -> stateManager.start());
+		eventloop.run();
 
-		commitIdSequence.subList(0, commitIdSequence.size() - 1).forEach(prevId -> {
-			remote.createCommitId()
-					.thenCompose(id -> remote.push(asList(ofCommit(id, prevId, asList(add(1))))))
-					.thenCompose($ -> asList(5, 15).contains(prevId) ? stateManager.fetch() : Stage.of(null))
-					.thenCompose($ -> asList(10, 19).contains(prevId) ? stateManager.pull() : Stage.of(null));
-			eventloop.run();
-		});
+		for (int i = 1; i <= 20; i++) {
+			remote.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			if (i == 5 || i == 15) {
+				stateManager.fetch();
+				eventloop.run();
+			}
+			if (i == 10 || i == 20) {
+				stateManager.pull();
+				eventloop.run();
+			}
+		}
 
 		assertEquals(20, testOpState.getValue());
 	}
 
 	@Test
 	public void testRebaseConflictResolving() throws OTTransformException {
-		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
-		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		createRootAndStartManager(remote, stateManager);
+		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+				.thenCompose($ -> stateManager.start());
+		eventloop.run();
 
-		remote.createCommitId()
-				.thenCompose(id -> remote.push(asList(ofCommit(id, 0, asList(set(0, 10))))))
-				.thenCompose($ -> stateManager.fetch());
+		assertEquals(0, testOpState.getValue());
+
+		remote.addGraph(g -> {
+			g.add(0, 1, asList(set(0, 10)));
+		});
+
+		stateManager.fetch();
 		eventloop.run();
 
 		assertEquals(0, testOpState.getValue());
 
 		stateManager.add(set(0, 15));
 		stateManager.rebase();
-
 		eventloop.run();
+
 		assertEquals(10, testOpState.getValue());
-		assertThat(stateManager.getWorkingDiffs(), IsEmptyCollection.empty());
+		assertEquals(emptyList(), stateManager.getWorkingDiffs());
 	}
 
 	@Test
 	public void testRebaseConflictResolving2() throws OTTransformException {
-		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
-		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, otRemote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		createRootAndStartManager(otRemote, stateManager);
+		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+				.thenCompose($ -> stateManager.start());
+		eventloop.run();
 
-		otRemote.createCommitId()
-				.thenCompose(id -> otRemote.push(asList(ofCommit(id, 0, asList(set(0, 15))))))
-				.thenCompose($ -> stateManager.fetch());
+		remote.addGraph(g -> {
+			g.add(0, 1, set(0, 15));
+		});
+		stateManager.fetch();
 		eventloop.run();
 
 		assertEquals(0, testOpState.getValue());
@@ -227,17 +232,21 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving3() throws OTTransformException {
-		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
-		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, otRemote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		createRootAndStartManager(otRemote, stateManager);
+		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+				.thenCompose($ -> stateManager.start());
+		eventloop.run();
 
-		otRemote.createCommitId()
-				.thenCompose(id -> otRemote.push(asList(ofCommit(id, 0, asList(set(0, 10))))))
-				.thenCompose($ -> stateManager.fetch());
+		assertEquals(0, testOpState.getValue());
+
+		remote.addGraph(g -> {
+			g.add(0, 1, set(0, 10));
+		});
+		stateManager.fetch();
 		eventloop.run();
 
 		assertEquals(0, testOpState.getValue());
@@ -247,22 +256,26 @@ public class OTStateManagerTest {
 
 		eventloop.run();
 		assertEquals(10, testOpState.getValue());
-		assertThat(stateManager.getWorkingDiffs(), IsEmptyCollection.empty());
+		assertEquals(emptyList(), stateManager.getWorkingDiffs());
 	}
 
 	@Test
 	public void testRebaseConflictResolving4() throws OTTransformException {
-		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
-		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, otRemote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		createRootAndStartManager(otRemote, stateManager);
+		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+				.thenCompose($ -> stateManager.start());
+		eventloop.run();
 
-		otRemote.createCommitId()
-				.thenCompose(id -> otRemote.push(asList(ofCommit(id, 0, asList(add(5))))))
-				.thenCompose($ -> stateManager.fetch());
+		assertEquals(0, testOpState.getValue());
+
+		remote.addGraph(g -> {
+			g.add(0, 1, add(5));
+		});
+		stateManager.fetch();
 		eventloop.run();
 
 		assertEquals(0, testOpState.getValue());
@@ -277,17 +290,21 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving5() throws OTTransformException {
-		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
-		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
+		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		createRootAndStartManager(remote, stateManager);
+		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+				.thenCompose($ -> stateManager.start());
+		eventloop.run();
 
-		remote.createCommitId()
-				.thenCompose(id -> remote.push(asList(ofCommit(id, 0, asList(add(10))))))
-				.thenCompose($ -> stateManager.fetch());
+		assertEquals(0, testOpState.getValue());
+
+		remote.addGraph(g -> {
+			g.add(0, 1, add(10));
+		});
+		stateManager.fetch();
 		eventloop.run();
 
 		assertEquals(0, testOpState.getValue());
@@ -301,15 +318,15 @@ public class OTStateManagerTest {
 	}
 
 	private class OTRemoteDecorator<K, D> implements OTRemote<K, D> {
-		private final OTRemoteStub<K, D> remote;
+		private final OTRemote<K, D> remote;
 
-		private OTRemoteDecorator(OTRemoteStub<K, D> remote) {
+		private OTRemoteDecorator(OTRemote<K, D> remote) {
 			this.remote = remote;
 		}
 
 		@Override
-		public Stage<K> createCommitId() {
-			return remote.createCommitId();
+		public Stage<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
+			return remote.createCommit(parentDiffs, level);
 		}
 
 		@Override
@@ -325,16 +342,6 @@ public class OTStateManagerTest {
 		@Override
 		public Stage<List<D>> loadSnapshot(K revisionId) {
 			return remote.loadSnapshot(revisionId);
-		}
-
-		@Override
-		public Stage<Void> cleanup(K revisionId) {
-			return remote.cleanup(revisionId);
-		}
-
-		@Override
-		public Stage<Void> backup(K revisionId, List<D> diffs) {
-			return remote.backup(revisionId, diffs);
 		}
 
 		@Override

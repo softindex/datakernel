@@ -41,7 +41,7 @@ public abstract class CubeHttpServerLauncher extends HttpServerLauncher {
 					@Singleton
 					@Named("CubePullScheduler")
 					EventloopTaskScheduler pullScheduler(Config config, Eventloop eventloop,
-					                                     OTStateManager<Integer, LogDiff<CubeDiff>> cubeStateManager) {
+							OTStateManager<Long, LogDiff<CubeDiff>> cubeStateManager) {
 						return EventloopTaskScheduler.create(eventloop, pullOrCheckoutTask(cubeStateManager))
 								.withPeriod(config.get(ofDuration(), "CubeHttpServer.metadataRefreshPeriod", Duration.ofMillis(10_000)));
 					}
@@ -54,7 +54,7 @@ public abstract class CubeHttpServerLauncher extends HttpServerLauncher {
 				});
 	}
 
-	private AsyncCallable<Void> pullOrCheckoutTask(OTStateManager<Integer, LogDiff<CubeDiff>> cubeStateManager) {
+	private AsyncCallable<Void> pullOrCheckoutTask(OTStateManager<Long, LogDiff<CubeDiff>> cubeStateManager) {
 		return () -> cubeStateManager.pull()
 				.thenComposeEx((revisionId, throwable) ->
 						throwable == null ?

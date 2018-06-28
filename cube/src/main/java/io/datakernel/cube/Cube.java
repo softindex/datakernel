@@ -337,7 +337,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	public Cube addAggregation(AggregationConfig config) {
 		checkArgument(!aggregations.containsKey(config.id), "Aggregation '%s' is already defined", config.id);
 
-		AggregationStructure structure = new AggregationStructure()
+		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
 				.initialize(s -> config.dimensions.forEach(dimensionId ->
 						s.withKey(dimensionId, dimensionTypes.get(dimensionId))))
 				.initialize(s -> config.measures.forEach(measureId ->
@@ -724,8 +724,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return chain;
 	}
 
-	public Set<Long> getAllChunks() {
-		Set<Long> chunks = new HashSet<>();
+	public Set<Object> getAllChunks() {
+		Set<Object> chunks = new HashSet<>();
 		for (AggregationContainer container : aggregations.values()) {
 			chunks.addAll(container.aggregation.getState().getChunks().keySet());
 		}

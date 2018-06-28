@@ -30,6 +30,8 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.util.gson.GsonAdapters.TypeAdapterMapping;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -39,8 +41,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static io.datakernel.cube.http.Utils.*;
+import static io.datakernel.util.LogUtils.toLogger;
 
 public final class CubeHttpClient implements ICube {
+	protected final Logger logger = LoggerFactory.getLogger(CubeHttpClient.class);
+
 	private final Eventloop eventloop;
 	private final String url;
 	private final IAsyncHttpClient httpClient;
@@ -101,27 +106,28 @@ public final class CubeHttpClient implements ICube {
 
 	@Override
 	public Stage<QueryResult> query(CubeQuery query) {
-		return httpClient.send(buildRequest(query)).thenCompose(httpResponse -> {
-			String response;
-			try {
-				response = ByteBufStrings.decodeUtf8(httpResponse.getBody()); // TODO getBodyAsString
-			} catch (ParseException e) {
-				return Stage.ofException(new ParseException("Cube HTTP query failed. Invalid data received", e));
-			}
+		return httpClient.send(buildRequest(query))
+				.thenCompose(httpResponse -> {
+					String response;
+					try {
+						response = ByteBufStrings.decodeUtf8(httpResponse.getBody()); // TODO getBodyAsString
+					} catch (ParseException e) {
+						return Stage.ofException(new ParseException("Cube HTTP query failed. Invalid data received", e));
+					}
 
-			if (httpResponse.getCode() != 200) {
-				return Stage.ofException(new ParseException("Cube HTTP query failed. Response code: " + httpResponse.getCode() + " Body: " + response));
-			}
+					if (httpResponse.getCode() != 200) {
+						return Stage.ofException(new ParseException("Cube HTTP query failed. Response code: " + httpResponse.getCode() + " Body: " + response));
+					}
 
-			QueryResult result;
-			try {
-				result = getQueryResultJson().fromJson(response);
-			} catch (IOException e) {
-				return Stage.ofException(new ParseException("Cube HTTP query failed. Invalid data received", e));
-			}
-
-			return Stage.of(result);
-		});
+					QueryResult result;
+					try {
+						result = getQueryResultJson().fromJson(response);
+					} catch (IOException e) {
+						return Stage.ofException(new ParseException("Cube HTTP query failed. Invalid data received", e));
+					}
+					return Stage.of(result);
+				})
+				.whenComplete(toLogger(logger, "query", query));
 	}
 
 	private HttpRequest buildRequest(CubeQuery query) {

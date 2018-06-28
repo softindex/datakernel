@@ -51,7 +51,7 @@ public class AggregationChunkerTest {
 	public void test() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		AggregationStructure structure = new AggregationStructure()
+		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
 				.withKey("key", ofInt())
 				.withMeasure("value", sum(ofInt()))
 				.withMeasure("timestamp", sum(ofLong()));
@@ -60,16 +60,16 @@ public class AggregationChunkerTest {
 		List<StreamConsumer> listConsumers = new ArrayList<>();
 
 		List items = new ArrayList();
-		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
+		AggregationChunkStorage<Long> aggregationChunkStorage = new AggregationChunkStorage<Long>() {
 			long chunkId;
 
 			@Override
-			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				return Stage.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
 			}
 
 			@Override
-			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
 				return Stage.of(consumer.withEndOfStreamAsResult());
@@ -103,7 +103,7 @@ public class AggregationChunkerTest {
 				new KeyValuePair(3, 4, 6),
 				new KeyValuePair(3, 6, 7),
 				new KeyValuePair(1, 2, 1));
-		AggregationChunker<KeyValuePair> chunker = AggregationChunker.create(
+		AggregationChunker chunker = AggregationChunker.create(
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
@@ -129,23 +129,23 @@ public class AggregationChunkerTest {
 	public void testProducerWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		AggregationStructure structure = new AggregationStructure()
+		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
 				.withKey("key", ofInt())
 				.withMeasure("value", sum(ofInt()))
 				.withMeasure("timestamp", sum(ofLong()));
 		AggregationState state = new AggregationState(structure);
 		List<StreamConsumer> listConsumers = new ArrayList<>();
-		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
+		AggregationChunkStorage<Long> aggregationChunkStorage = new AggregationChunkStorage<Long>() {
 			long chunkId;
 			final List items = new ArrayList();
 
 			@Override
-			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				return Stage.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
 			}
 
 			@Override
-			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
 				return Stage.of(consumer.withEndOfStreamAsResult());
@@ -176,17 +176,25 @@ public class AggregationChunkerTest {
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
 		StreamProducer<KeyValuePair> producer = StreamProducer.concat(
-				StreamProducer.of(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
+				StreamProducer.of(
+						new KeyValuePair(1, 1, 0),
+						new KeyValuePair(1, 2, 1),
 						new KeyValuePair(1, 1, 2)),
-				StreamProducer.of(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
+				StreamProducer.of(
+						new KeyValuePair(1, 1, 0),
+						new KeyValuePair(1, 2, 1),
 						new KeyValuePair(1, 1, 2)),
-				StreamProducer.of(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
+				StreamProducer.of(
+						new KeyValuePair(1, 1, 0),
+						new KeyValuePair(1, 2, 1),
 						new KeyValuePair(1, 1, 2)),
-				StreamProducer.of(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
+				StreamProducer.of(
+						new KeyValuePair(1, 1, 0),
+						new KeyValuePair(1, 2, 1),
 						new KeyValuePair(1, 1, 2)),
 				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
 		);
-		AggregationChunker<KeyValuePair> chunker = AggregationChunker.create(
+		AggregationChunker chunker = AggregationChunker.create(
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
@@ -211,23 +219,23 @@ public class AggregationChunkerTest {
 	public void testStorageConsumerWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		AggregationStructure structure = new AggregationStructure()
+		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
 				.withKey("key", ofInt())
 				.withMeasure("value", sum(ofInt()))
 				.withMeasure("timestamp", sum(ofLong()));
 		AggregationState metadata = new AggregationState(structure);
 		List<StreamConsumer> listConsumers = new ArrayList<>();
-		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
+		AggregationChunkStorage<Long> aggregationChunkStorage = new AggregationChunkStorage<Long>() {
 			long chunkId;
 			final List items = new ArrayList();
 
 			@Override
-			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				return Stage.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
 			}
 
 			@Override
-			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				if (chunkId == 1) {
 					StreamConsumerToList<T> toList = StreamConsumerToList.create(items);
 					listConsumers.add(toList);
@@ -263,10 +271,13 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
-		StreamProducer<KeyValuePair> producer = StreamProducer.of(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
-				new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2)
-		);
-		AggregationChunker<KeyValuePair> chunker = AggregationChunker.create(
+		StreamProducer<KeyValuePair> producer = StreamProducer.of(
+				new KeyValuePair(1, 1, 0),
+				new KeyValuePair(1, 2, 1),
+				new KeyValuePair(1, 1, 2),
+				new KeyValuePair(1, 1, 2),
+				new KeyValuePair(1, 1, 2));
+		AggregationChunker chunker = AggregationChunker.create(
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 

@@ -17,8 +17,8 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.Aggregation;
+import io.datakernel.aggregation.ChunkIdScheme;
 import io.datakernel.aggregation.LocalFsChunkStorage;
-import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffJson;
@@ -47,13 +47,13 @@ import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
-import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
-import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
+import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.dataSource;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
@@ -74,12 +74,12 @@ public class CubeIntegrationTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		LocalFsChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
+		LocalFsChunkStorage<Long> aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), executor, new IdGeneratorStub(), aggregationsDir);
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
-				.withDimension("date", FieldTypes.ofLocalDate())
-				.withDimension("advertiser", FieldTypes.ofInt())
-				.withDimension("campaign", FieldTypes.ofInt())
-				.withDimension("banner", FieldTypes.ofInt())
+				.withDimension("date", ofLocalDate())
+				.withDimension("advertiser", ofInt())
+				.withDimension("campaign", ofInt())
+				.withDimension("banner", ofInt())
 				.withRelation("campaign", "advertiser")
 				.withRelation("banner", "campaign")
 				.withMeasure("impressions", sum(ofLong()))
@@ -98,14 +98,14 @@ public class CubeIntegrationTest {
 
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
-		otSourceSql.truncateTables();
-		otSourceSql.createCommitId().thenCompose(integer -> otSourceSql.push(OTCommit.ofRoot(integer)));
+		OTRemoteSql<LogDiff<CubeDiff>> remote = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
+		remote.truncateTables();
+		remote.createCommitId().thenCompose(id -> remote.push(OTCommit.ofRoot(id)).thenCompose($ -> remote.saveSnapshot(id, emptyList())));
 		eventloop.run();
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, otSourceSql, Integer::compare);
-		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
+		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, remote);
+		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
 				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
@@ -141,7 +141,7 @@ public class CubeIntegrationTest {
 
 		future = logOTProcessor.processLog()
 				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
+						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
@@ -151,7 +151,7 @@ public class CubeIntegrationTest {
 
 		future = logOTProcessor.processLog()
 				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
+						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
@@ -167,7 +167,7 @@ public class CubeIntegrationTest {
 
 		future = logOTProcessor.processLog()
 				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
+						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
@@ -183,7 +183,7 @@ public class CubeIntegrationTest {
 
 		future = logOTProcessor.processLog()
 				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
+						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
@@ -191,7 +191,7 @@ public class CubeIntegrationTest {
 		eventloop.run();
 		future.get();
 
-		future = aggregationChunkStorage.backup("backup1", cube.getAllChunks()).toCompletableFuture();
+		future = aggregationChunkStorage.backup("backup1", (Set) cube.getAllChunks()).toCompletableFuture();
 		eventloop.run();
 		future.get();
 
@@ -209,7 +209,7 @@ public class CubeIntegrationTest {
 		assertEquals(map, futureResult.get().stream().collect(toMap(r -> r.date, r -> r.clicks)));
 
 		// checkout revision 3 and consolidate it:
-		future = logCubeStateManager.checkout(3).toCompletableFuture();
+		future = logCubeStateManager.checkout(3L).toCompletableFuture();
 		eventloop.run();
 		future.get();
 
@@ -223,7 +223,7 @@ public class CubeIntegrationTest {
 		eventloop.run();
 		future.get();
 
-		future = aggregationChunkStorage.finish(consolidatingCubeDiff.addedChunks().collect(toSet())).toCompletableFuture();
+		future = aggregationChunkStorage.finish(consolidatingCubeDiff.addedChunks().map(id -> (long) id).collect(toSet())).toCompletableFuture();
 		eventloop.run();
 		future.get();
 
@@ -235,11 +235,11 @@ public class CubeIntegrationTest {
 
 		// make a checkpoint and checkout it
 
-		future = logCubeStateManager.checkout(6).toCompletableFuture();
+		future = logCubeStateManager.checkout(6L).toCompletableFuture();
 		eventloop.run();
 		future.get();
 
-		future = aggregationChunkStorage.cleanup(cube.getAllChunks()).toCompletableFuture();
+		future = aggregationChunkStorage.cleanup((Set) cube.getAllChunks()).toCompletableFuture();
 		eventloop.run();
 		future.get();
 

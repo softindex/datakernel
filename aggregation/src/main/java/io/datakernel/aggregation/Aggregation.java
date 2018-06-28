@@ -234,7 +234,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 				keyFields, measureFields,
 				classLoader);
 
-		AggregationGroupReducer<T> groupReducer = new AggregationGroupReducer<>(aggregationChunkStorage,
+		AggregationGroupReducer<Object, T> groupReducer = new AggregationGroupReducer<>(aggregationChunkStorage,
 				structure, measures,
 				accumulatorClass,
 				createPartitionPredicate(accumulatorClass, getPartitioningKey(), classLoader),
@@ -311,7 +311,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		Class<Object> resultClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
 		StreamProducer<Object> consolidatedProducer = consolidatedProducer(getKeys(), measures, resultClass, AggregationPredicates.alwaysTrue(), chunksToConsolidate, classLoader);
-		AggregationChunker<Object> chunker = AggregationChunker.create(
+		AggregationChunker chunker = AggregationChunker.create(
 				structure, measures, resultClass,
 				createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
 				aggregationChunkStorage, classLoader, chunkSize);
@@ -516,7 +516,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	}
 
 	public static String getChunkIds(Iterable<AggregationChunk> chunks) {
-		List<Long> ids = new ArrayList<>();
+		List<Object> ids = new ArrayList<>();
 		for (AggregationChunk chunk : chunks) {
 			ids.add(chunk.getChunkId());
 		}

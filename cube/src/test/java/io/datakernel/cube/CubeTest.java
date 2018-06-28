@@ -19,7 +19,6 @@ package io.datakernel.cube;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.aggregation.*;
-import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -48,6 +47,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationPredicates.*;
+import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
@@ -73,8 +73,8 @@ public class CubeTest {
 
 	public static Cube newCube(Eventloop eventloop, ExecutorService executor, DefiningClassLoader classLoader, AggregationChunkStorage chunkStorage) {
 		return Cube.create(eventloop, executor, classLoader, chunkStorage)
-				.withDimension("key1", FieldTypes.ofInt())
-				.withDimension("key2", FieldTypes.ofInt())
+				.withDimension("key1", ofInt())
+				.withDimension("key2", ofInt())
 				.withMeasure("metric1", sum(ofLong()))
 				.withMeasure("metric2", sum(ofLong()))
 				.withMeasure("metric3", sum(ofLong()))
@@ -83,11 +83,11 @@ public class CubeTest {
 
 	public static Cube newSophisticatedCube(Eventloop eventloop, ExecutorService executor, DefiningClassLoader classLoader, AggregationChunkStorage chunkStorage) {
 		return Cube.create(eventloop, executor, classLoader, chunkStorage)
-				.withDimension("key1", FieldTypes.ofInt())
-				.withDimension("key2", FieldTypes.ofInt())
-				.withDimension("key3", FieldTypes.ofInt())
-				.withDimension("key4", FieldTypes.ofInt())
-				.withDimension("key5", FieldTypes.ofInt())
+				.withDimension("key1", ofInt())
+				.withDimension("key2", ofInt())
+				.withDimension("key3", ofInt())
+				.withDimension("key4", ofInt())
+				.withDimension("key5", ofInt())
 				.withMeasure("metric1", sum(ofLong()))
 				.withMeasure("metric2", sum(ofLong()))
 				.withMeasure("metric3", sum(ofLong()))
@@ -98,7 +98,7 @@ public class CubeTest {
 	public void testQuery1() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -115,8 +115,8 @@ public class CubeTest {
 		CompletableFuture<CubeDiff> future2 = consumer2.getResult().toCompletableFuture();
 		eventloop.run();
 
-		chunkStorage.finish(future1.get().addedChunks().collect(Collectors.toSet()));
-		chunkStorage.finish(future2.get().addedChunks().collect(Collectors.toSet()));
+		chunkStorage.finish(future1.get().addedChunks().map(id -> (long) id).collect(Collectors.toSet()));
+		chunkStorage.finish(future2.get().addedChunks().map(id -> (long) id).collect(Collectors.toSet()));
 		cube.apply(future1.get());
 		cube.apply(future2.get());
 
@@ -157,7 +157,7 @@ public class CubeTest {
 		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
 		RemoteFsServer remoteFsServer1 = prepareServer(eventloop, serverStorage);
 
-		AggregationChunkStorage chunkStorage = RemoteFsChunkStorage.create(eventloop, new IdGeneratorStub(), new InetSocketAddress("localhost", LISTEN_PORT));
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), new InetSocketAddress("localhost", LISTEN_PORT));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		List<Stage<?>> tasks = new ArrayList<>();
@@ -168,7 +168,7 @@ public class CubeTest {
 			StreamConsumerWithResult<DataItem1, CubeDiff> consumer = cube.consume(DataItem1.class);
 			tasks.add(producer.streamTo(consumer)
 					.getConsumerResult()
-					.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+					.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 							.thenApply($ -> cubeDiff))
 					.whenResult(cube::apply));
 		}
@@ -179,7 +179,7 @@ public class CubeTest {
 			StreamConsumerWithResult<DataItem2, CubeDiff> consumer = cube.consume(DataItem2.class);
 			tasks.add(producer.streamTo(consumer)
 					.getConsumerResult()
-					.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+					.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 							.thenApply($ -> cubeDiff))
 					.whenResult(cube::apply));
 		}
@@ -210,7 +210,7 @@ public class CubeTest {
 	public void testOrdering() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -221,7 +221,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducer.of(
@@ -232,7 +232,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		eventloop.run();
@@ -258,7 +258,7 @@ public class CubeTest {
 	public void testMultipleOrdering() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -269,7 +269,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducer.of(
@@ -280,7 +280,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		eventloop.run();
@@ -311,7 +311,7 @@ public class CubeTest {
 	public void testBetweenPredicate() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -326,7 +326,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducer.of(
@@ -341,7 +341,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		eventloop.run();
@@ -368,7 +368,7 @@ public class CubeTest {
 	public void testBetweenTransformation() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newSophisticatedCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem3> producer3 = StreamProducer.of(
@@ -383,7 +383,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem3, CubeDiff> consumer3 = cube.consume(DataItem3.class);
 		producer3.streamTo(consumer3)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem4> producer4 = StreamProducer.of(
@@ -398,7 +398,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem4, CubeDiff> consumer4 = cube.consume(DataItem4.class);
 		producer4.streamTo(consumer4)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		eventloop.run();
@@ -422,7 +422,7 @@ public class CubeTest {
 	public void testGrouping() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -435,7 +435,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducer.of(
@@ -445,7 +445,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		eventloop.run();
@@ -474,7 +474,7 @@ public class CubeTest {
 	public void testQuery2() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -483,7 +483,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducer.of(
@@ -492,7 +492,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem2> producer3 = StreamProducer.of(
@@ -501,7 +501,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer3 = cube.consume(DataItem2.class);
 		producer3.streamTo(consumer3)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem2> producer4 = StreamProducer.of(
@@ -510,7 +510,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer4 = cube.consume(DataItem2.class);
 		producer4.streamTo(consumer4)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		eventloop.run();
@@ -534,7 +534,7 @@ public class CubeTest {
 	public void testConsolidate() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		StreamProducer<DataItem1> producer1 = StreamProducer.of(
@@ -543,7 +543,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducer.of(
@@ -552,7 +552,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem2> producer3 = StreamProducer.of(
@@ -561,7 +561,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer3 = cube.consume(DataItem2.class);
 		producer3.streamTo(consumer3)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		StreamProducer<DataItem2> producer4 = StreamProducer.of(
@@ -570,7 +570,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer4 = cube.consume(DataItem2.class);
 		producer4.streamTo(consumer4)
 				.getConsumerResult()
-				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.whenResult(cube::apply);
 		eventloop.run();
@@ -607,81 +607,81 @@ public class CubeTest {
 		aggregationPredicate = AggregationPredicates.alwaysTrue();
 		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertEquals(intersection, query);
+		assertTrue(intersection.equals(query));
 
 		aggregationPredicate = AggregationPredicates.eq("dimensionA", 1);
 		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertEquals(intersection, query);
+		assertTrue(intersection.equals(query));
 
 		aggregationPredicate = AggregationPredicates.eq("dimensionA", 1);
 		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 2), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertNotEquals(intersection, query);
+		assertFalse(intersection.equals(query));
 
 		aggregationPredicate = AggregationPredicates.eq("dimensionA", 1);
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionA"), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertNotEquals(intersection, query);
+		assertFalse(intersection.equals(query));
 
 		aggregationPredicate = AggregationPredicates.has("dimensionX");
 		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertNotEquals(intersection, query);
+		assertFalse(intersection.equals(query));
 
 		aggregationPredicate = AggregationPredicates.has("dimensionX");
 		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionX", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertEquals(intersection, query);
+		assertTrue(intersection.equals(query));
 
 		aggregationPredicate = AggregationPredicates.has("dimensionX");
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.and(AggregationPredicates.eq("dimensionX", 1), AggregationPredicates.eq("dimensionB", 2))).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertEquals(intersection, query);
+		assertTrue(intersection.equals(query));
 
 		aggregationPredicate = AggregationPredicates.has("dimensionX");
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("dimensionX", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertEquals(intersection, query);
+		assertTrue(intersection.equals(query));
 
 		// betweens
 
 		aggregationPredicate = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 100, 200));
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("date", 1)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertNotEquals(intersection, query);
+		assertFalse(intersection.equals(query));
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("date", 150)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertEquals(intersection, query);
+		assertTrue(intersection.equals(query));
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("date", 250)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertNotEquals(intersection, query);
+		assertFalse(intersection.equals(query));
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 110, 190)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertEquals(intersection, query);
+		assertTrue(intersection.equals(query));
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 10, 90)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertNotEquals(intersection, query);
-		assertEquals(intersection, AggregationPredicates.alwaysFalse());
+		assertFalse(intersection.equals(query));
+		assertTrue(intersection.equals(AggregationPredicates.alwaysFalse()));
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 210, 290)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertNotEquals(intersection, query);
-		assertEquals(intersection, AggregationPredicates.alwaysFalse());
+		assertFalse(intersection.equals(query));
+		assertTrue(intersection.equals(AggregationPredicates.alwaysFalse()));
 
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 10, 290)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
-		assertNotEquals(intersection, query);
+		assertFalse(intersection.equals(query));
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownDimensions() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(),
+		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(),
 				new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 
 		Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
@@ -695,7 +695,7 @@ public class CubeTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownMeasure() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(),
+		AggregationChunkStorage<Long> chunkStorage = LocalFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), newCachedThreadPool(),
 				new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 
 		Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
