@@ -91,6 +91,9 @@ public class TestUtils {
 	public static <T> BiConsumer<T, Throwable> assertComplete(Consumer<T> consumer) {
 		return (t, error) -> {
 			if (error != null) {
+				if (error.getClass() == AssertionError.class) {
+					throw (AssertionError) error;
+				}
 				throw new AssertionError(error);
 			}
 			consumer.accept(t);

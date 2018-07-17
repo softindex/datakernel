@@ -37,7 +37,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.assertFailure;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamFileReaderWriterTest {
 
@@ -54,11 +57,13 @@ public class StreamFileReaderWriterTest {
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
 		StreamFileReader reader = StreamFileReader.readFile(executor, Paths.get("test_data/in.dat"))
-				.withBufferSize(MemSize.of(1));
+			.withBufferSize(MemSize.of(1));
 
 		List<ByteBuf> list = new ArrayList<>();
 
-		reader.streamTo(StreamConsumerToList.create(list));
+		reader.streamTo(StreamConsumerToList.create(list))
+			.getEndOfStream()
+			.whenComplete(assertComplete());
 		eventloop.run();
 
 		ByteBufQueue byteQueue = ByteBufQueue.create();
@@ -79,7 +84,7 @@ public class StreamFileReaderWriterTest {
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
 		StreamFileReader reader = StreamFileReader.readFile(executor, Paths.get("test_data/in.dat"))
-				.withBufferSize(MemSize.of(1));
+			.withBufferSize(MemSize.of(1));
 
 		List<ByteBuf> list = new ArrayList<>();
 
@@ -108,7 +113,9 @@ public class StreamFileReaderWriterTest {
 
 		StreamConsumer<ByteBuf> consumer = new MockConsumer();
 
-		reader.streamTo(consumer);
+		reader.streamTo(consumer)
+			.getEndOfStream()
+			.whenComplete(assertComplete());
 		eventloop.run();
 
 		ByteBufQueue byteQueue = ByteBufQueue.create();
@@ -133,7 +140,9 @@ public class StreamFileReaderWriterTest {
 
 		StreamFileWriter writer = StreamFileWriter.create(executor, tempPath);
 
-		producer.streamTo(writer);
+		producer.streamTo(writer)
+			.getEndOfStream()
+			.whenComplete(assertComplete());
 		eventloop.run();
 
 		byte[] fileBytes = Files.readAllBytes(tempPath);
@@ -148,12 +157,39 @@ public class StreamFileReaderWriterTest {
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
 		StreamProducer<ByteBuf> producer = StreamProducer.concat(
-				StreamProducer.of(ByteBuf.wrapForReading(bytes)),
-				StreamProducer.closingWithError(new Exception("Test Exception")));
+			StreamProducer.of(ByteBuf.wrapForReading(bytes)),
+			StreamProducer.closingWithError(new Exception("Test Exception")));
 
 		StreamFileWriter writer = StreamFileWriter.create(executor, tempPath);
 
-		producer.streamTo(writer);
+		producer.streamTo(writer)
+			.getEndOfStream()
+			.whenComplete(assertFailure(Exception.class, "Test Exception"));
 		eventloop.run();
+	}
+
+	@Test
+	public void testStreamFileReaderWhenFileMultipleOfBuffer() throws IOException {
+		Path folder = tempFolder.newFolder().toPath();
+		byte[] data = new byte[3 * StreamFileReader.DEFAULT_BUFFER_SIZE.toInt()];
+		for (int i = 0; i < data.length; i++) {
+			data[i] = (byte) (i % 256 - 127);
+		}
+		Path file = folder.resolve("test.bin");
+		Files.write(file, data);
+
+		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+
+		StreamFileReader.readFile(executor, file)
+			.streamTo(StreamConsumer.ofConsumer(buf -> {
+				assertTrue("Received byte buffer is empty", buf.canRead());
+				buf.recycle();
+			}))
+			.getEndOfStream()
+			.whenComplete(assertComplete());
+
+		eventloop.run();
+		executor.shutdown();
 	}
 }

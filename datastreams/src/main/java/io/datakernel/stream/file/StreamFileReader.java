@@ -99,6 +99,10 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 					return;
 				}
 				int bytesRead = buf.readRemaining(); // bytes written (as they were read from file, thus the name) to be read by a consumer (thus the method)
+				if (bytesRead == 0) { // this happens when file size is exact multiple of buffer size
+					buf.recycle();
+					sendEndOfStream();
+				}
 				send(buf);
 				position += bytesRead;
 				if (limit != Long.MAX_VALUE) {
