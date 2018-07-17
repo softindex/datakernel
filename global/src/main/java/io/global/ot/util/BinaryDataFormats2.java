@@ -17,13 +17,12 @@
 package io.global.ot.util;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.codec.*;
-import io.datakernel.codec.binary.BinaryStructuredInput;
-import io.datakernel.codec.binary.BinaryStructuredOutput;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredDecoder;
+import io.datakernel.codec.StructuredInput;
+import io.datakernel.codec.StructuredOutput;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.codec.registry.CodecRegistry;
-import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.util.TypeT;
@@ -42,7 +41,6 @@ import java.net.UnknownHostException;
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.record;
-import static io.datakernel.csp.binary.ByteBufsParser.ofVarIntSizePrefixedBytes;
 
 public final class BinaryDataFormats2 {
 	// region creators
@@ -208,59 +206,6 @@ public final class BinaryDataFormats2 {
 		}
 	}
 
-	public static <T> T decode(StructuredDecoder<T> decoder, byte[] bytes) throws ParseException {
-		return decode(decoder, ByteBuf.wrapForReading(bytes));
-	}
-
-	public static <T> T decode(StructuredDecoder<T> decoder, ByteBuf buf) throws ParseException {
-		try {
-			BinaryStructuredInput in = new BinaryStructuredInput(buf);
-			T result = decoder.decode(in);
-			if (buf.readRemaining() != 0) {
-				throw new ParseException();
-			}
-			return result;
-		} finally {
-			buf.recycle();
-		}
-	}
-
-	public static <T> ByteBuf encode(StructuredEncoder<T> encoder, T item) {
-		BinaryStructuredOutput out = new BinaryStructuredOutput();
-		encoder.encode(out, item);
-		return out.getBuf();
-	}
-
-	public static <T> ByteBuf encodeWithSizePrefix(StructuredEncoder<T> encoder, T item) {
-		BinaryStructuredOutput out = new BinaryStructuredOutput();
-		encoder.encode(out, item);
-		ByteBuf buf = ByteBufPool.allocate(out.getBuf().readRemaining() + 5);
-		buf.writeVarInt(out.getBuf().readRemaining());
-		buf.write(out.getBuf().array(), out.getBuf().readPosition(), out.getBuf().readRemaining());
-		out.getBuf().recycle();
-		return buf;
-	}
-
-	public static ByteBuf writeBytes(byte[] bytes) {
-		ByteBuf buf = ByteBufPool.allocate(bytes.length + 5);
-		buf.writeVarInt(bytes.length);
-		buf.put(bytes);
-		return buf;
-	}
-
-	public static byte[] readBytes(ByteBuf buf) throws ParseException {
-		int size;
-		try {
-			size = buf.readVarInt();
-		} catch (Exception e) {
-			throw new ParseException(e);
-		}
-		if (size <= 0 || size > buf.readRemaining()) throw new ParseException("Invalid chunk size");
-		byte[] bytes = new byte[size];
-		buf.read(bytes);
-		return bytes;
-	}
-
 	public static ByteBuf readBuf(ByteBuf buf) throws ParseException {
 		int size;
 		try {
@@ -272,9 +217,5 @@ public final class BinaryDataFormats2 {
 		ByteBuf slice = buf.slice(size);
 		buf.moveReadPosition(size);
 		return slice;
-	}
-
-	public static <T> ByteBufsParser<T> fromDecoder(StructuredDecoder<T> decoder) {
-		return ofVarIntSizePrefixedBytes().andThen(buf -> decode(decoder, buf));
 	}
 }

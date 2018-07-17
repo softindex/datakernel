@@ -33,7 +33,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
-import static io.global.ot.util.BinaryDataFormats2.*;
+import static io.datakernel.codec.binary.BinaryUtils.decode;
+import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.ot.util.BinaryDataFormats2.readBuf;
 
 public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsCheckpointStorage.class);

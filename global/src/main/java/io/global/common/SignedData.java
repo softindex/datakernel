@@ -21,8 +21,8 @@ import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.exception.ParseException;
 import org.spongycastle.crypto.params.ECPublicKeyParameters;
 
-import static io.global.ot.util.BinaryDataFormats2.decode;
-import static io.global.ot.util.BinaryDataFormats2.encode;
+import static io.datakernel.codec.binary.BinaryUtils.decode;
+import static io.datakernel.codec.binary.BinaryUtils.encode;
 
 public final class SignedData<T> {
 	private final T value;

@@ -27,7 +27,7 @@ import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.EventloopRule;
+import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -146,7 +146,7 @@ public final class FsIntegrationTest {
 	}
 
 	@Test
-	@EventloopRule.DontRun
+	@SkipEventloopRun
 	public void testOnClientExceptionWhileUploading() throws IOException {
 		String resultFile = "upload_with_exceptions.txt";
 

@@ -20,8 +20,6 @@ import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.ByteBufPoolAppendable;
 
@@ -66,26 +64,4 @@ public final class ByteBufSerializers {
 			}
 		};
 	}
-
-	public static <I, O> ByteBufSerializer<I, O> ofJsonCodec(StructuredCodec<I> in, StructuredCodec<O> out) {
-		return new ByteBufSerializer<I, O>() {
-			private final ByteBufsParser<I> parser = ByteBufsParser.ofNullTerminatedBytes()
-					.andThen(buf -> JsonUtils.fromJson(in, buf.asString(UTF_8)));
-
-			@Nullable
-			@Override
-			public I tryParse(ByteBufQueue bufs) throws ParseException {
-				return parser.tryParse(bufs);
-			}
-
-			@Override
-			public ByteBuf serialize(O item) {
-				ByteBufPoolAppendable appendable = new ByteBufPoolAppendable();
-				JsonUtils.toJson(out, item, appendable);
-				appendable.append("\0");
-				return appendable.get();
-			}
-		};
-	}
-
 }

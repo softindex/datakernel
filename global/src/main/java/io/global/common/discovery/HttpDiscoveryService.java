@@ -32,11 +32,11 @@ import io.global.common.api.DiscoveryService;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import static io.datakernel.codec.binary.BinaryUtils.decode;
+import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.common.discovery.DiscoveryServlet.*;
-import static io.global.ot.util.BinaryDataFormats2.decode;
-import static io.global.ot.util.BinaryDataFormats2.encode;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class HttpDiscoveryService implements DiscoveryService {

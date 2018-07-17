@@ -18,7 +18,6 @@ package io.datakernel.remotefs;
 
 import io.datakernel.async.Promise;
 import io.datakernel.csp.binary.ByteBufSerializer;
-import io.datakernel.csp.binary.ByteBufSerializers;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.eventloop.AbstractServer;
@@ -39,13 +38,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
+
 /**
  * An implementation of {@link AbstractServer} for RemoteFs.
  * It exposes some given {@link FsClient} to the Internet in pair with {@link RemoteFsClient}
  */
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private static final ByteBufSerializer<FsCommand, FsResponse> SERIALIZER =
-			ByteBufSerializers.ofJsonCodec(RemoteFsCommands.CODEC, RemoteFsResponses.CODEC);
+			ofJsonCodec(RemoteFsCommands.CODEC, RemoteFsResponses.CODEC);
 
 	private final Map<Class<?>, MessagingHandler<FsCommand>> handlers = new HashMap<>();
 	private final FsClient client;
@@ -104,7 +105,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
 					return messaging.send(new ServerError(prefix + e.getMessage()))
 							.thenCompose($1 -> messaging.sendEndOfStream())
-							.whenResult($1 -> messaging.close(e));
+							.whenResult($1 -> messaging.close());
 				});
 	}
 

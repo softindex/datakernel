@@ -28,8 +28,8 @@ import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
 
+import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
-import static io.global.ot.util.BinaryDataFormats2.decode;
 
 /**
  * Decodes a stream of byte bufs back into a stream of frames.

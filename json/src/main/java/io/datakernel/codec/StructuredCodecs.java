@@ -355,7 +355,7 @@ public final class StructuredCodecs {
 			Function<R, T1> getter1, StructuredCodec<T1> codec1) {
 		return ofListEx(codec1)
 				.transform(
-						list -> constructor.create((T1) list.get(0)),
+						list -> constructor.create(list.get(0)),
 						item -> singletonList(getter1.apply(item)));
 	}
 
@@ -418,7 +418,7 @@ public final class StructuredCodecs {
 			Function<R, T1> getter1, StructuredCodec<T1> codec1) {
 		return ofListEx(codec1)
 				.transform(
-						list -> constructor.create((T1) list.get(0)),
+						list -> constructor.create(list.get(0)),
 						item -> asList(getter1.apply(item)));
 	}
 
@@ -433,7 +433,7 @@ public final class StructuredCodecs {
 			String field1, Function<R, T1> getter1, StructuredCodec<T1> codec1) {
 		return ofMapEx(map(field1, codec1))
 				.transform(
-						map -> constructor.create((T1) map.get(field1)),
+						map -> constructor.create(map.get(field1)),
 						item -> map(field1, getter1.apply(item)));
 	}
 
@@ -490,5 +490,15 @@ public final class StructuredCodecs {
 				.transform(
 						map -> constructor.create((T1) map.get(field1), (T2) map.get(field2), (T3) map.get(field3), (T4) map.get(field4), (T5) map.get(field5), (T6) map.get(field6)),
 						item -> map(field1, getter1.apply(item), field2, getter2.apply(item), field3, getter3.apply(item), field4, getter4.apply(item), field5, getter5.apply(item), field6, getter6.apply(item)));
+	}
+
+	public static <E extends Enum<E>> StructuredCodec<E> enumAsString(Class<E> cls) {
+		return STRING_CODEC.transform(s -> {
+			try {
+				return Enum.valueOf(cls, s);
+			} catch (IllegalArgumentException e) {
+				throw new ParseException(StructuredCodecs.class, "No enum value '" + s + "' found", e);
+			}
+		}, Enum::name);
 	}
 }

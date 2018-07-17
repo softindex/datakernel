@@ -29,7 +29,7 @@ import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.EventloopRule;
+import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -388,7 +388,7 @@ public final class CubeTest {
 	}
 
 	@Test
-	@EventloopRule.DontRun
+	@SkipEventloopRun
 	public void testAggregationPredicate() {
 		AggregationPredicate aggregationPredicate;
 		AggregationPredicate query;

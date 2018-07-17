@@ -39,7 +39,6 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 	private boolean lenient = false;
 	private List<Throwable> lenientExceptions = new ArrayList<>();
 
-	//region creators
 	private ChannelSplitter() {
 	}
 
@@ -86,7 +85,6 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 		setLenient(true);
 		return this;
 	}
-	// endregion
 
 	@Override
 	protected void beforeProcess() {

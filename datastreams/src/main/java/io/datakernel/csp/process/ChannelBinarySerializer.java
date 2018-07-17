@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,12 +35,6 @@ import java.util.ArrayDeque;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Math.max;
 
-/**
- * Represent serializer which serializes data from some type to ByteBuffer.It is a {@link AbstractStreamTransformer}
- * which receives specified type and streams ByteBufs.
- *
- * @param <T> original type of data
- */
 public final class ChannelBinarySerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelBinarySerializer<T>, T, ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(ChannelBinarySerializer.class);
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();

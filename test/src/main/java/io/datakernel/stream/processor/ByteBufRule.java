@@ -41,13 +41,14 @@ public final class ByteBufRule implements TestRule {
 
 	@Override
 	public Statement apply(Statement base, Description description) {
+		if (description.getTestClass().getAnnotation(IgnoreLeaks.class) != null
+				|| description.getAnnotation(IgnoreLeaks.class) != null) {
+			return base;
+		}
 		return new LambdaStatement(() -> {
 			ByteBufPool.clear();
 			base.evaluate();
-			if (description.getTestClass().getAnnotation(IgnoreLeaks.class) == null
-					&& description.getAnnotation(IgnoreLeaks.class) == null) {
-				assertEquals(ByteBufPool.getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-			}
+			assertEquals(ByteBufPool.getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 		});
 	}
 

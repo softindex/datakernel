@@ -39,7 +39,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-import static io.global.ot.util.BinaryDataFormats2.*;
+import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.csp.binary.ByteBufsParser.ofDecoder;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
@@ -52,12 +54,12 @@ public final class RemoteFsDiscoveryService extends RuntimeDiscoveryService impl
 	private static final StructuredCodec<Tuple2<PubKey, SignedData<AnnounceData>>> ANNOUNCE_CODEC =
 			REGISTRY.get(new TypeT<Tuple2<PubKey, SignedData<AnnounceData>>>() {});
 
-	private static final ByteBufsParser<Tuple2<PubKey, SignedData<AnnounceData>>> ANNOUNCE_PARSER = fromDecoder(ANNOUNCE_CODEC);
+	private static final ByteBufsParser<Tuple2<PubKey, SignedData<AnnounceData>>> ANNOUNCE_PARSER = ofDecoder(ANNOUNCE_CODEC);
 
 	private static final StructuredCodec<Tuple2<PubKey, List<Tuple2<Hash, SignedData<SharedSimKey>>>>> SHARED_KEY_CODEC =
 			REGISTRY.get(new TypeT<Tuple2<PubKey, List<Tuple2<Hash, SignedData<SharedSimKey>>>>>() {});
 
-	private static final ByteBufsParser<Tuple2<PubKey, List<Tuple2<Hash, SignedData<SharedSimKey>>>>> SHARED_KEY_PARSER = fromDecoder(SHARED_KEY_CODEC);
+	private static final ByteBufsParser<Tuple2<PubKey, List<Tuple2<Hash, SignedData<SharedSimKey>>>>> SHARED_KEY_PARSER = ofDecoder(SHARED_KEY_CODEC);
 
 	private final Eventloop eventloop;
 	private final FsClient storage;

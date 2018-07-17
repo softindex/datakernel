@@ -43,10 +43,12 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.function.Function;
 
+import static io.datakernel.codec.binary.BinaryUtils.decode;
+import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.csp.binary.ByteBufsParser.ofVarIntSizePrefixedBytes;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.global.fs.http.GlobalFsNodeServlet.*;
-import static io.global.ot.util.BinaryDataFormats2.*;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {

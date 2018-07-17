@@ -44,6 +44,7 @@
 		<module>launchers</module>
 		<module>net</module>
 		<module>csp</module>
+		<module>crdt</module>
 	</modules>
 
 	<licenses>

@@ -26,8 +26,8 @@ import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
 
+import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
-import static io.global.ot.util.BinaryDataFormats2.encode;
 
 /**
  * Encodes stream of frames into a stream of bytebufs to transmit or store those frames.

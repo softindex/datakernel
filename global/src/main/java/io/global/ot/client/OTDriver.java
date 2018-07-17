@@ -32,9 +32,11 @@ import org.spongycastle.crypto.CryptoException;
 import java.io.IOException;
 import java.util.*;
 
+import static io.datakernel.codec.binary.BinaryUtils.decode;
+import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.global.common.CryptoUtils.*;
-import static io.global.ot.util.BinaryDataFormats2.*;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;

@@ -26,7 +26,7 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.EventloopRule;
+import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import io.datakernel.stream.processor.Manual;
 import io.datakernel.util.Stopwatch;
 import org.junit.Before;
@@ -47,7 +47,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(DatakernelRunner.class)
-@EventloopRule.DontRun
+@SkipEventloopRun
 public final class RpcHelloWorldTest {
 
 	private interface HelloService {

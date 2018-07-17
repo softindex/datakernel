@@ -28,7 +28,6 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.nio.file.StandardOpenOption.*;
 
 /**
@@ -81,11 +80,15 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 		return ensureOffset()
 				.thenComposeEx(($, e) -> {
 					if (isClosed()) {
-						tryRecycle(buf);
+						if (buf != null) {
+							buf.recycle();
+						}
 						return Promise.ofException(getException());
 					}
 					if (e != null) {
-						tryRecycle(buf);
+						if (buf != null) {
+							buf.recycle();
+						}
 						close(e);
 						return Promise.ofException(e);
 					}

@@ -20,7 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.EventloopRule;
+import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -43,7 +43,7 @@ import static org.junit.Assert.assertEquals;
 public final class HttpTolerantApplicationTest {
 
 	@Test
-	@EventloopRule.DontRun
+	@SkipEventloopRun
 	public void testTolerantServer() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 

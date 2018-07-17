@@ -27,7 +27,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.EventloopRule;
+import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import io.datakernel.util.MemSize;
 import org.junit.Before;
 import org.junit.Rule;
@@ -246,7 +246,7 @@ public final class TestLocalFsClient {
 	}
 
 	@Test
-	@EventloopRule.DontRun
+	@SkipEventloopRun
 	public void testDoDownload() throws IOException {
 		Path outputFile = clientPath.resolve("d.txt");
 		AsyncFile open = AsyncFile.open(executor, outputFile, CREATE_OPTIONS);

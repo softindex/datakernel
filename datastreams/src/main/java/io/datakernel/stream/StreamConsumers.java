@@ -85,7 +85,6 @@ public final class StreamConsumers {
 		@Override
 		protected Promise<Void> onEndOfStream() {
 			try {
-				consumer.accept(null);
 				return Promise.complete();
 			} catch (UncheckedException u) {
 				return Promise.ofException(u.getCause());

@@ -22,7 +22,10 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.stream.StreamSuppliers.*;
+import io.datakernel.stream.StreamSuppliers.ClosingImpl;
+import io.datakernel.stream.StreamSuppliers.ClosingWithErrorImpl;
+import io.datakernel.stream.StreamSuppliers.IdleImpl;
+import io.datakernel.stream.StreamSuppliers.OfIteratorImpl;
 import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.stream.processor.StreamTransformer;
 
@@ -163,7 +166,7 @@ public interface StreamSupplier<T> extends Cancellable {
 	}
 
 	static <T> StreamSupplier<T> ofChannelSupplier(ChannelSupplier<T> supplier) {
-		return new OfChannelSupplierImpl<>(supplier);
+		return new StreamSuppliers.OfChannelSupplierImpl<>(supplier);
 	}
 
 	default <R> R transformWith(StreamSupplierTransformer<T, R> fn) {

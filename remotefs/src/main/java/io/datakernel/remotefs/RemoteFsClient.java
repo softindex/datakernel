@@ -40,7 +40,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.csp.binary.ByteBufSerializers.ofJsonCodec;
+import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;

@@ -26,7 +26,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.EventloopRule;
+import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -122,7 +122,7 @@ public final class AggregationChunkerTest {
 	}
 
 	@Test
-	@EventloopRule.DontRun
+	@SkipEventloopRun
 	public void testSupplierWithError() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
@@ -210,7 +210,7 @@ public final class AggregationChunkerTest {
 	}
 
 	@Test
-	@EventloopRule.DontRun
+	@SkipEventloopRun
 	public void testStorageConsumerWithError() {
 
 		DefiningClassLoader classLoader = DefiningClassLoader.create();

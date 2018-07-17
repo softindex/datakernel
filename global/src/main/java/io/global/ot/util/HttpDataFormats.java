@@ -39,8 +39,10 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.codec.binary.BinaryUtils.decode;
+import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.http.HttpUtils.urlEncode;
-import static io.global.ot.util.BinaryDataFormats2.*;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 
 public class HttpDataFormats {
 	private HttpDataFormats() {}

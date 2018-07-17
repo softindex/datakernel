@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.stream.processor;
 
 import io.datakernel.async.Promise;
@@ -14,17 +30,18 @@ import static io.datakernel.util.Preconditions.checkState;
 public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs, StreamDataAcceptor<I> {
 	private final Input input;
 	private final List<Output<?>> outputs = new ArrayList<>();
-	private final BiConsumer<I, StreamDataAcceptor<?>[]> action;
+	private final BiConsumer<I, StreamDataAcceptor<Object>[]> action;
 
-	private StreamDataAcceptor<?>[] dataAcceptors = new StreamDataAcceptor[0];
+	@SuppressWarnings("unchecked")
+	private StreamDataAcceptor<Object>[] dataAcceptors = new StreamDataAcceptor[0];
 	private int suspended = 0;
 
-	private StreamMapSplitter(BiConsumer<I, StreamDataAcceptor<?>[]> action) {
+	private StreamMapSplitter(BiConsumer<I, StreamDataAcceptor<Object>[]> action) {
 		this.action = action;
 		this.input = new Input();
 	}
 
-	public static <I> StreamMapSplitter<I> create(BiConsumer<I, StreamDataAcceptor<?>[]> action) {
+	public static <I> StreamMapSplitter<I> create(BiConsumer<I, StreamDataAcceptor<Object>[]> action) {
 		return new StreamMapSplitter<>(action);
 	}
 
@@ -86,9 +103,10 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 			input.getSupplier().suspend();
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		protected void onProduce(StreamDataAcceptor<O> dataAcceptor) {
-			dataAcceptors[index] = dataAcceptor;
+			dataAcceptors[index] = (StreamDataAcceptor<Object>) dataAcceptor;
 			if (--suspended == 0) {
 				input.getSupplier().resume(StreamMapSplitter.this);
 			}

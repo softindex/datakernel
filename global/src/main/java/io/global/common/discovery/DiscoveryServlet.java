@@ -32,7 +32,9 @@ import io.global.common.api.DiscoveryService;
 
 import java.util.List;
 
-import static io.global.ot.util.BinaryDataFormats2.*;
+import static io.datakernel.codec.binary.BinaryUtils.decode;
+import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 
 public final class DiscoveryServlet implements AsyncServlet {
 	public static final String ANNOUNCE_ALL = "announceAll";

@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.eventloop.Eventloop;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runner.Runner;
@@ -23,18 +24,23 @@ import org.junit.runner.manipulation.Filter;
 import org.junit.runner.manipulation.NoTestsRemainException;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.BlockJUnit4ClassRunner;
+import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
+import org.junit.runners.model.Statement;
 import org.junit.runners.model.TestClass;
 import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
 import org.junit.runners.parameterized.ParametersRunnerFactory;
 import org.junit.runners.parameterized.TestWithParameters;
 
-import java.lang.annotation.Annotation;
+import java.lang.annotation.*;
 import java.util.List;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+
 /**
- * Runner that adds essential DataKernel test rules in appropriate order
- * (for example {@link EventloopRule} must apply before any other rules)
+ * Runner that adds essential DataKernel test rules and runs the eventloop.
+ * <p>
+ * Also handles the &#064;Manual annotation.
  */
 public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 	private boolean manualRun;
@@ -44,7 +50,6 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 	}
 
 	private static List<TestRule> addRules(List<TestRule> superRules) {
-		superRules.add(0, new EventloopRule());
 		superRules.add(new ActivePromisesRule());
 		superRules.add(new ByteBufRule());
 		superRules.add(new LoggingRule());
@@ -54,6 +59,17 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 	private static void removeEmptySuiteError(List<Throwable> errors) {
 		// allow empty test classes (e.g. when whole class is @Manual)
 		errors.removeIf(e -> e.getClass() == Exception.class && "No runnable methods".equals(e.getMessage()));
+	}
+
+	private static Statement addEventloop(FrameworkMethod method, Statement root) {
+		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+		return new LambdaStatement(() -> {
+			root.evaluate();
+			if (method.getClass().getAnnotation(SkipEventloopRun.class) == null
+					&& method.getAnnotation(SkipEventloopRun.class) == null) {
+				eventloop.run();
+			}
+		});
 	}
 
 	private static Description getModifiedDescription(TestClass testClass, Description superDescription, String name, Annotation[] runnerAnnotations) {
@@ -93,6 +109,11 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 	@Override
 	protected List<TestRule> getTestRules(Object target) {
 		return addRules(super.getTestRules(target));
+	}
+
+	@Override
+	protected Statement methodInvoker(FrameworkMethod method, Object test) {
+		return addEventloop(method, super.methodInvoker(method, test));
 	}
 
 	@Override
@@ -138,6 +159,11 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 				}
 
 				@Override
+				protected Statement methodInvoker(FrameworkMethod method, Object test) {
+					return addEventloop(method, super.methodInvoker(method, test));
+				}
+
+				@Override
 				protected void collectInitializationErrors(List<Throwable> errors) {
 					super.collectInitializationErrors(errors);
 					removeEmptySuiteError(errors);
@@ -166,5 +192,10 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 				}
 			};
 		}
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.METHOD, ElementType.TYPE})
+	public @interface SkipEventloopRun {
 	}
 }

@@ -22,7 +22,7 @@ import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.EventloopRule;
+import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -37,7 +37,7 @@ import static java.util.Arrays.asList;
 public final class OTSystemTest {
 
 	@Test
-	@EventloopRule.DontRun
+	@SkipEventloopRun
 	public void testTransform1() throws Exception {
 		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> left = asList(add(2), add(1));
@@ -48,7 +48,7 @@ public final class OTSystemTest {
 	}
 
 	@Test
-	@EventloopRule.DontRun
+	@SkipEventloopRun
 	public void testTransform2() throws Exception {
 		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> left = asList(add(2), set(2, 1), add(2), add(10));
@@ -59,7 +59,7 @@ public final class OTSystemTest {
 	}
 
 	@Test
-	@EventloopRule.DontRun
+	@SkipEventloopRun
 	public void testSimplify() {
 		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> arg = asList(add(2), set(2, 1), add(2), add(10));

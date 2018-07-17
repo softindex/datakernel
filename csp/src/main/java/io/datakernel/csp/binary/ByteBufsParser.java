@@ -19,6 +19,8 @@ package io.datakernel.csp.binary;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.codec.StructuredDecoder;
+import io.datakernel.codec.binary.BinaryUtils;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.ParserFunction;
@@ -157,7 +159,6 @@ public interface ByteBufsParser<T> {
 		return ofVarIntSizePrefixedBytes(Integer.MAX_VALUE);
 	}
 
-	// region creators
 	static ByteBufsParser<ByteBuf> ofVarIntSizePrefixedBytes(int maxSize) {
 		return bufs -> {
 			int size;
@@ -205,6 +206,8 @@ public interface ByteBufsParser<T> {
 			return bufs.takeExactSize(size);
 		};
 	}
-	// endregion
 
+	static <T> ByteBufsParser<T> ofDecoder(StructuredDecoder<T> decoder) {
+		return ofVarIntSizePrefixedBytes().andThen(buf -> BinaryUtils.decode(decoder, buf));
+	}
 }
