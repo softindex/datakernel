@@ -18,8 +18,9 @@ package io.datakernel.trigger;
 
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
+import com.google.inject.spi.DependencyAndSource;
 import com.google.inject.spi.ProvisionListener;
-import io.datakernel.annotation.Nullable;
+import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
@@ -79,46 +80,6 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		@Override
 		public int hashCode() {
 			return Objects.hash(severity, name);
-		}
-	}
-
-	private static final class KeyWithWorkerData {
-		private final Key<?> key;
-
-		@Nullable
-		private final WorkerPool pool;
-		private final int workerId;
-
-		private KeyWithWorkerData(Key<?> key) {
-			this(key, null, -1);
-		}
-
-		private KeyWithWorkerData(Key<?> key, @Nullable WorkerPool pool, int workerId) {
-			this.key = key;
-			this.pool = pool;
-			this.workerId = workerId;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-
-			KeyWithWorkerData that = (KeyWithWorkerData) o;
-
-			return workerId == that.workerId
-					&& key.equals(that.key)
-					&& (pool != null ? pool.equals(that.pool) : that.pool == null);
-		}
-
-		@Override
-		public int hashCode() {
-			return 31 * (31 * key.hashCode() + (pool != null ? pool.hashCode() : 0)) + workerId;
-		}
-
-		@Override
-		public String toString() {
-			return "KeyWithWorkerData{key=" + key + ", pool=" + pool + ", workerId=" + workerId + '}';
 		}
 	}
 
@@ -244,7 +205,6 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 				return binding.getKey().equals(Key.get(TriggerRegistry.class));
 			}
 		}, new ProvisionListener() {
-			@SuppressWarnings("deprecation")
 			@Override
 			public <T> void onProvision(ProvisionInvocation<T> provision) {
 				synchronized (TriggersModule.this) {
@@ -252,8 +212,10 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 					if (triggerRegistry == null) {
 						return;
 					}
-					for (int i = provision.getDependencyChain().size() - 1; i >= 0; i--) {
-						Key<?> key = provision.getDependencyChain().get(i).getDependency().getKey();
+					@SuppressWarnings("deprecation")
+					List<DependencyAndSource> dependencyChain = provision.getDependencyChain();
+					for (int i = dependencyChain.size() - 1; i >= 0; i--) {
+						Key<?> key = dependencyChain.get(i).getDependency().getKey();
 						if (currentlyProvidingSingletonKeys.contains(key)) {
 							singletonRegistryRecords.computeIfAbsent(key, $ -> new ArrayList<>()).add(triggerRegistry);
 							break;
@@ -336,7 +298,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 
 		for (KeyWithWorkerData keyWithWorkerData : triggersMap.keySet()) {
 			for (TriggerRegistryRecord registryRecord : triggersMap.getOrDefault(keyWithWorkerData, emptyList())) {
-				triggers.addTrigger(registryRecord.severity, prettyPrintSimpleKeyName(keyWithWorkerData.key), registryRecord.name, registryRecord.triggerFunction);
+				triggers.addTrigger(registryRecord.severity, prettyPrintSimpleKeyName(keyWithWorkerData.getKey()), registryRecord.name, registryRecord.triggerFunction);
 			}
 		}
 	}
@@ -346,12 +308,12 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 			((HasTriggers) instance).registerTriggers(new TriggerRegistry() {
 				@Override
 				public Key<?> getComponentKey() {
-					return internalKey.key;
+					return internalKey.getKey();
 				}
 
 				@Override
 				public String getComponentName() {
-					return keyToString.apply(internalKey.key);
+					return keyToString.apply(internalKey.getKey());
 				}
 
 				@Override
@@ -385,7 +347,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 
 	@SuppressWarnings("unchecked")
 	private void scanKeySettings(Map<KeyWithWorkerData, List<TriggerRegistryRecord>> triggers, KeyWithWorkerData internalKey, Object instance) {
-		Key<Object> key = (Key<Object>) internalKey.key;
+		Key<Object> key = (Key<Object>) internalKey.getKey();
 		for (TriggerConfig<?> config : keySettings.getOrDefault(key, emptySet())) {
 			triggers.computeIfAbsent(internalKey, $ -> new ArrayList<>())
 					.add(new TriggerRegistryRecord(config.severity, config.name, () ->

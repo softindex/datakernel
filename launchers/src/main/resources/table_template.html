@@ -1,0 +1,186 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>%1$s</title>
+  <style>
+    table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      font-family: monospace;
+      font-size: 14px;
+      padding-left: 5px;
+      padding-right: 5px;
+    }
+
+    table {
+      width: 100%%;
+      max-width: 100%%;
+    }
+
+    tr[data-managing] {
+      cursor: pointer;
+    }
+
+    td:first-child {
+      width: 500px;
+    }
+
+    td:nth-child(2) {
+      padding-left: 0.5%%;
+    }
+
+    caption {
+      font-size: 18px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .button {
+      cursor: pointer;
+    }
+
+    .panel > * {
+      display: inline-block;
+      margin: auto;
+    }
+
+    .button:hover {
+      text-decoration: underline;
+    }
+
+    pre {
+      display: inline;
+    }
+  </style>
+</head>
+<body>
+<script>
+  window.onload = () => {
+    let stateKey = 'expand_state_' + location.toString();
+    let autoreloadKey = 'autoreload_' + location.toString();
+
+    function saveState() {
+      sessionStorage.setItem(stateKey, Array.prototype.slice.call(document.querySelectorAll('tr[data-managing]'))
+        .filter(e => e.children[0].children[1].innerHTML === '-')
+        .map(e => e.dataset.managing)
+        .join(','));
+    }
+
+    function unfold(index) {
+      document.querySelectorAll('tr[data-folder=\'' + index + '\']')
+        .forEach(e => e.classList.remove('hidden'));
+      if (index !== '0') {
+        document.querySelector('tr[data-managing=\'' + index + '\']').children[0].children[1].innerHTML = '-';
+      }
+    }
+
+    document.querySelectorAll('tr[data-managing]')
+      .forEach(folder => {
+        folder.onmousedown = event => {
+          if (event.detail > 1) {
+            event.preventDefault();
+          }
+        };
+        let index = folder.dataset.managing;
+        let sign = folder.children[0].children[1];
+
+        folder.onclick = () => {
+          if (sign.innerHTML !== '+') {
+            document.querySelectorAll('tr[data-foldable~=\'' + index + '\']')
+              .forEach(e => {
+                e.classList.add('hidden');
+                if (e.matches("tr[data-managing]")) {
+                  e.children[0].children[1].innerHTML = '+'
+                }
+              });
+            sign.innerHTML = '+';
+            saveState();
+            return;
+          }
+          unfold(index);
+          saveState();
+        };
+      });
+
+    document.querySelectorAll('.button').forEach(e => {
+      e.onmousedown = event => {
+        if (event.detail > 1) {
+          event.preventDefault();
+        }
+      };
+    });
+
+    document.querySelector('#collapse').onclick = () => {
+      document.querySelectorAll('tr[data-foldable]')
+        .forEach(e => {
+          e.classList.add('hidden');
+          if (e.matches("tr[data-managing]")) {
+            e.children[0].children[1].innerHTML = '+'
+          }
+        });
+      unfold('0');
+      saveState();
+    };
+
+    document.querySelector('#expand').onclick = () => {
+      document.querySelectorAll('tr[data-foldable]')
+        .forEach(e => {
+          e.classList.remove('hidden');
+          if (e.matches("tr[data-managing]")) {
+            e.children[0].children[1].innerHTML = '-'
+          }
+        });
+      saveState();
+    };
+
+    let autoreloadHandle;
+    let autoreloadButton = document.querySelector("#autoreload");
+
+    autoreloadButton.onclick = () => {
+      let flag = sessionStorage.getItem(autoreloadKey) !== 'true';
+      if (flag) {
+        location.reload();
+      } else {
+        autoreloadButton.innerHTML = 'Autoreload';
+        clearTimeout(autoreloadHandle);
+      }
+      return sessionStorage.setItem(autoreloadKey, flag.toString());
+    };
+
+    if (sessionStorage.getItem(autoreloadKey) === 'true') {
+      autoreloadButton.innerHTML = 'Stop autoreload';
+      autoreloadHandle = setTimeout(() => location.reload(), 500);
+    }
+
+    unfold('0');
+    let expanded = sessionStorage.getItem(stateKey);
+    if (expanded) {
+      expanded.split(',').forEach(unfold);
+    }
+  }
+</script>
+<table>
+  <caption>%1$s</caption>
+  <tr>
+    <th>Property</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+    <td class="panel">
+      <div class="button" id="expand">Expand all</div>
+      *
+      <div class="button" id="collapse">Collapse all</div>
+      *
+      <div class="button" id="autoreload">Autoreload</div>
+    </td>
+    <td></td>
+  </tr>
+  %2$s
+</table>
+</body>
+</html>

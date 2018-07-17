@@ -74,22 +74,21 @@ public final class GuiceUtils {
 	public static String prettyPrintSimpleKeyName(Key<?> key) {
 		Type type = key.getTypeLiteral().getType();
 		return (key.getAnnotation() != null ?
-			prettyPrintAnnotation(key.getAnnotation()) + " " :
-			key.getAnnotationType() != null ?
-				"@" + SimpleType.of(key.getAnnotationType()).getSimpleName() + " " :
-				"") + SimpleType.ofType(type).getSimpleName();
+				prettyPrintAnnotation(key.getAnnotation()) + " " :
+				key.getAnnotationType() != null ?
+						"@" + SimpleType.of(key.getAnnotationType()).getSimpleName() + " " :
+						"") + SimpleType.ofType(type).getSimpleName();
 	}
 
 	public static String prettyPrintKeyName(Key<?> key) {
 		Type type = key.getTypeLiteral().getType();
 		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "") +
-			SimpleType.ofType(type).getName();
+				SimpleType.ofType(type).getName();
 	}
 
 	@Nullable
 	public static Integer extractWorkerId(Binding<?> binding) {
 		return binding.acceptScopingVisitor(new DefaultBindingScopingVisitor<Integer>() {
-			@Nullable
 			@Override
 			@Nullable
 			public Integer visitScope(Scope scope) {

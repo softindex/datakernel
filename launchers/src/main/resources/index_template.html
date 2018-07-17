@@ -1,0 +1,78 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>JMX index</title>
+  <style>
+    * {
+      font-family: monospace;
+      font-size: 14px;
+    }
+
+    a {
+      color: black;
+    }
+
+    input:not(:checked) + label + ul {
+      display: none;
+    }
+
+    input:checked + label + ul + br {
+      display: none;
+    }
+
+    input {
+      display: none;
+    }
+
+    input:checked + label:before {
+      content: '-';
+    }
+
+    input:not(:checked) + label:before {
+      content: '+';
+    }
+
+    input, label {
+      cursor: pointer;
+    }
+
+    input, ul, li {
+      padding: 0;
+      margin: 2px 0 2px 10px;
+      list-style: none;
+    }
+
+    ul {
+      border-left: solid 1px #555;
+    }
+
+    h2 {
+      margin: 2px;
+    }
+  </style>
+</head>
+<body>
+<script>
+  window.onload = () => {
+    document.querySelectorAll('label').forEach(label =>
+      label.onmousedown = event => {
+        if (event.detail > 1) {
+          event.preventDefault();
+        }
+      });
+    document.querySelectorAll('input').forEach(input =>
+      input.onchange = () => {
+        if (input.checked) {
+          return;
+        }
+        input
+          .nextSibling // label
+          .nextSibling // list
+          .querySelectorAll('input').forEach(sub => sub.checked = false);
+      });
+  };
+</script>
+<h2>Package index:</h2>
+%s
+</body>
+</html>
