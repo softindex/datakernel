@@ -41,7 +41,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.serializer.asm.BufferSerializers.longSerializer;
+import static io.datakernel.serializer.asm.BufferSerializers.LONG_SERIALIZER;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 import static io.datakernel.util.gson.GsonAdapters.INTEGER_JSON;
 import static io.datakernel.util.gson.GsonAdapters.STRING_JSON;
@@ -69,7 +69,7 @@ public class MessagingWithBinaryStreamingTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		MessagingSerializer<Integer, Integer> serializer =
-				ofJson(INTEGER_JSON, INTEGER_JSON);
+				ofJson(INTEGER_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 
@@ -160,7 +160,7 @@ public class MessagingWithBinaryStreamingTest {
 						if (msg != null) {
 							assertEquals("start", msg);
 							StreamProducer.ofIterable(source)
-									.with(StreamBinarySerializer.create(longSerializer())
+									.with(StreamBinarySerializer.create(LONG_SERIALIZER)
 											.withInitialBufferSize(MemSize.of(1)))
 									.streamTo(messaging.sendBinaryStream());
 						}
@@ -185,7 +185,7 @@ public class MessagingWithBinaryStreamingTest {
 				messaging.sendEndOfStream();
 
 				messaging.receiveBinaryStream()
-						.with(StreamBinaryDeserializer.create(longSerializer()))
+						.with(StreamBinaryDeserializer.create(LONG_SERIALIZER))
 						.streamTo(consumerToList);
 
 				asyncTcpSocket.setEventHandler(messaging);
@@ -224,7 +224,7 @@ public class MessagingWithBinaryStreamingTest {
 							assertEquals("start", msg);
 
 							messaging.receiveBinaryStream()
-									.with(StreamBinaryDeserializer.create(longSerializer()))
+									.with(StreamBinaryDeserializer.create(LONG_SERIALIZER))
 									.streamTo(consumerToList);
 
 							messaging.sendEndOfStream();
@@ -250,7 +250,7 @@ public class MessagingWithBinaryStreamingTest {
 						messaging.send("start");
 
 						StreamProducer.ofIterable(source)
-								.with(StreamBinarySerializer.create(longSerializer())
+								.with(StreamBinarySerializer.create(LONG_SERIALIZER)
 										.withInitialBufferSize(MemSize.of(1)))
 								.streamTo(messaging.sendBinaryStream());
 
@@ -292,7 +292,7 @@ public class MessagingWithBinaryStreamingTest {
 							assertEquals("start", msg);
 
 							messaging.receiveBinaryStream()
-									.with(StreamBinaryDeserializer.create(longSerializer()))
+									.with(StreamBinaryDeserializer.create(LONG_SERIALIZER))
 									.streamTo(consumerToList)
 									.getProducerResult()
 									.thenRun(() -> {
@@ -320,7 +320,7 @@ public class MessagingWithBinaryStreamingTest {
 				messaging.send("start");
 
 				StreamProducer.ofIterable(source)
-						.with(StreamBinarySerializer.create(longSerializer())
+						.with(StreamBinarySerializer.create(LONG_SERIALIZER)
 								.withInitialBufferSize(MemSize.of(1)))
 						.streamTo(messaging.sendBinaryStream());
 
@@ -373,7 +373,7 @@ public class MessagingWithBinaryStreamingTest {
 							messaging.sendEndOfStream();
 
 							messaging.receiveBinaryStream()
-									.with(StreamBinaryDeserializer.create(longSerializer()))
+									.with(StreamBinaryDeserializer.create(LONG_SERIALIZER))
 									.streamTo(consumerToList);
 						}
 					});
@@ -396,7 +396,7 @@ public class MessagingWithBinaryStreamingTest {
 				messaging.send("start");
 
 				StreamProducer.ofIterable(source)
-						.with(StreamBinarySerializer.create(longSerializer())
+						.with(StreamBinarySerializer.create(LONG_SERIALIZER)
 								.withInitialBufferSize(MemSize.of(1)))
 						.streamTo(messaging.sendBinaryStream());
 

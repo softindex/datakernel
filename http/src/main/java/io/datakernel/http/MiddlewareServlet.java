@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 
 import java.util.HashMap;
@@ -48,7 +49,7 @@ public class MiddlewareServlet implements AsyncServlet {
 		return with(null, path, servlet);
 	}
 
-	public MiddlewareServlet with(HttpMethod method, String path, AsyncServlet servlet) {
+	public MiddlewareServlet with(@Nullable HttpMethod method, String path, AsyncServlet servlet) {
 		if (servlet == null)
 			throw new NullPointerException();
 		if (!path.isEmpty() && !path.startsWith(ROOT))
@@ -165,14 +166,14 @@ public class MiddlewareServlet implements AsyncServlet {
 		return servlet;
 	}
 
-	private void apply(HttpMethod method, AsyncServlet servlet) {
+	private void apply(@Nullable HttpMethod method, AsyncServlet servlet) {
 		if (servlet instanceof MiddlewareServlet) {
 			merge(this, (MiddlewareServlet) servlet);
 		} else if (method == null && rootServlet == null) {
 			rootServlet = servlet;
 		} else if (rootServlets.get(method) == null) {
 			rootServlets.put(method, servlet);
-		} else if (this.rootServlets.get(method) != servlet) {
+		} else if (rootServlets.get(method) != servlet) {
 			throw new IllegalArgumentException("Can't map. Servlet already exists");
 		}
 	}

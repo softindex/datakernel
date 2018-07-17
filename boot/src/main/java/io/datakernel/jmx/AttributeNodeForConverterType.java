@@ -1,5 +1,6 @@
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,22 +17,24 @@ import java.util.function.Function;
 public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstract {
 	private static final Logger logger = LoggerFactory.getLogger(AttributeNodeForConverterType.class);
 
+	@Nullable
 	private Method setter;
 	private Function<T, String> to;
+	@Nullable
 	private Function<String, T> from;
 
-	public AttributeNodeForConverterType(String name, String description, ValueFetcher fetcher,
-			boolean visible, Method setter,
-			Function<T, String> to, Function<String, T> from) {
+	public AttributeNodeForConverterType(String name, @Nullable String description, ValueFetcher fetcher,
+			boolean visible, @Nullable Method setter,
+			Function<T, String> to, @Nullable Function<String, T> from) {
 		super(name, description, fetcher, visible);
 		this.setter = setter;
 		this.to = to;
 		this.from = from;
 	}
 
-	public AttributeNodeForConverterType(String name, String description, boolean visible,
-			ValueFetcher fetcher, Method setter,
-			Function<T, String> to, Function<String, T> from) {
+	public AttributeNodeForConverterType(String name, @Nullable String description, boolean visible,
+			ValueFetcher fetcher, @Nullable Method setter,
+			Function<T, String> to, @Nullable Function<String, T> from) {
 		this(name, description, fetcher, visible, setter, to, from);
 	}
 
@@ -42,6 +45,7 @@ public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstra
 	}
 
 	@Override
+	@Nullable
 	protected Object aggregateAttribute(String attrName, List<?> sources) {
 		Object firstPojo = sources.get(0);
 		Object firstValue = fetcher.fetchFrom(firstPojo);
@@ -79,6 +83,7 @@ public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstra
 		if (!isSettable("")) {
 			throw new SetterException(new IllegalAccessException("Cannot set non writable attribute " + name));
 		}
+		assert from != null && setter != null; // above settable check
 		T result = from.apply((String) value);
 		for (Object target : targets) {
 			try {

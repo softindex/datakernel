@@ -36,7 +36,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
+import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
 import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -60,7 +60,7 @@ public class StreamSorterTest {
 		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3, 4, 5, 6, 7);
 		StreamProducer<Integer> source2 = StreamProducer.of(111);
 
-		StreamSorterStorageImpl<Integer> storage = StreamSorterStorageImpl.create(executor, intSerializer(), tempFolder.getRoot().toPath())
+		StreamSorterStorageImpl<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.getRoot().toPath())
 				.withWriteBlockSize(MemSize.of(64));
 
 		StreamConsumerWithResult<Integer, Integer> writer1 = storage.writeStream();
@@ -95,7 +95,7 @@ public class StreamSorterTest {
 
 		StreamProducer<Integer> source = StreamProducer.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
 
-		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, intSerializer(), tempFolder.newFolder().toPath());
+		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
 				storage, Function.identity(), Integer::compareTo, true, 2);
 
@@ -119,7 +119,7 @@ public class StreamSorterTest {
 
 		StreamProducer<Integer> source = StreamProducer.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
 
-		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, intSerializer(), tempFolder.newFolder().toPath());
+		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
 				storage, Function.identity(), Integer::compareTo, true, 2);
 
@@ -155,7 +155,7 @@ public class StreamSorterTest {
 				StreamProducer.closingWithError(new ExpectedException())
 		);
 
-		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, intSerializer(), tempFolder.newFolder().toPath());
+		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
 				storage, Function.identity(), Integer::compareTo, true, 2);
 

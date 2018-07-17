@@ -2,7 +2,6 @@ package io.datakernel.loader;
 
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.http.HttpException;
 
@@ -14,7 +13,7 @@ class SimpleStaticLoaderAsync implements StaticLoader {
 	private final ExecutorService executorService;
 	private final Path root;
 
-	public SimpleStaticLoaderAsync(Eventloop eventloop, ExecutorService executorService, Path root) {
+	public SimpleStaticLoaderAsync(ExecutorService executorService, Path root) {
 		this.executorService = executorService;
 		this.root = root;
 	}

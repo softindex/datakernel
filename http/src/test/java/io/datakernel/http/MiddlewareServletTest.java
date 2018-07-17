@@ -108,14 +108,11 @@ public class MiddlewareServletTest {
 		HttpRequest request7 = HttpRequest.get(TEMPLATE + "/b/f");  // ok
 		HttpRequest request8 = HttpRequest.get(TEMPLATE + "/b/g");  // ok
 
-		AsyncServlet action = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.set(HttpResponse.ofCode(200).withBody(msg));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet action = AsyncServlet.of((request, callback) -> {
+			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
+			callback.set(HttpResponse.ofCode(200).withBody(msg));
+			request.recycleBufs();
+		});
 
 		MiddlewareServlet a = MiddlewareServlet.create()
 				.with(GET, "/c", action)
@@ -157,14 +154,11 @@ public class MiddlewareServletTest {
 		HttpRequest request7 = HttpRequest.get(TEMPLATE + "/b/f");  // ok
 		HttpRequest request8 = HttpRequest.get(TEMPLATE + "/b/g");  // ok
 
-		AsyncServlet action = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.set(HttpResponse.ofCode(200).withBody(msg));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet action = AsyncServlet.of((request, callback) -> {
+			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
+			callback.set(HttpResponse.ofCode(200).withBody(msg));
+			request.recycleBufs();
+		});
 
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/", action)
@@ -217,14 +211,11 @@ public class MiddlewareServletTest {
 		HttpRequest request6 = HttpRequest.get(TEMPLATE + "/a/e");      // ok
 		HttpRequest request7 = HttpRequest.get(TEMPLATE + "/a/c/f");    // ok
 
-		AsyncServlet action = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.set(HttpResponse.ofCode(200).withBody(msg));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet action = AsyncServlet.of((request, callback) -> {
+			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
+			callback.set(HttpResponse.ofCode(200).withBody(msg));
+			request.recycleBufs();
+		});
 
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/a", action)
@@ -251,23 +242,17 @@ public class MiddlewareServletTest {
 	public void testFailMerge() {
 		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/c/f");    // fail
 
-		AsyncServlet action = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.set(HttpResponse.ofCode(200).withBody(msg));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet action = AsyncServlet.of((req, callback) -> {
+			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + req.getPath());
+			callback.set(HttpResponse.ofCode(200).withBody(msg));
+			req.recycleBufs();
+		});
 
-		AsyncServlet anotherAction = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				ByteBuf msg = ByteBufStrings.wrapUtf8("Shall not be executed: " + request.getPath());
-				callback.set(HttpResponse.ofCode(200).withBody(msg));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet anotherAction = AsyncServlet.of((req, callback) -> {
+			ByteBuf msg = ByteBufStrings.wrapUtf8("Shall not be executed: " + req.getPath());
+			callback.set(HttpResponse.ofCode(200).withBody(msg));
+			req.recycleBufs();
+		});
 
 		MiddlewareServlet main;
 		try {
@@ -289,17 +274,14 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void testParameter() {
-		AsyncServlet printParameters = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				String body = request.getPathParameter("id")
-						+ " " + request.getPathParameter("uid")
-						+ " " + request.getPathParameter("eid");
-				ByteBuf bodyByteBuf = ByteBufStrings.wrapUtf8(body);
-				callback.set(HttpResponse.ofCode(200).withBody(bodyByteBuf));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet printParameters = AsyncServlet.of((request, callback) -> {
+			String body = request.getPathParameter("id")
+					+ " " + request.getPathParameter("uid")
+					+ " " + request.getPathParameter("eid");
+			ByteBuf bodyByteBuf = ByteBufStrings.wrapUtf8(body);
+			callback.set(HttpResponse.ofCode(200).withBody(bodyByteBuf));
+			request.recycleBufs();
+		});
 
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/:id/a/:uid/b/:eid", printParameters)
@@ -316,23 +298,17 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void testMultiParameters() {
-		AsyncServlet serveCar = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				ByteBuf body = ByteBufStrings.wrapUtf8("served car: " + request.getPathParameter("cid"));
-				callback.set(HttpResponse.ofCode(200).withBody(body));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet serveCar = AsyncServlet.of((request, callback) -> {
+			ByteBuf body = ByteBufStrings.wrapUtf8("served car: " + request.getPathParameter("cid"));
+			callback.set(HttpResponse.ofCode(200).withBody(body));
+			request.recycleBufs();
+		});
 
-		AsyncServlet serveMan = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				ByteBuf body = ByteBufStrings.wrapUtf8("served man: " + request.getPathParameter("mid"));
-				callback.set(HttpResponse.ofCode(200).withBody(body));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet serveMan = AsyncServlet.of((request, callback) -> {
+			ByteBuf body = ByteBufStrings.wrapUtf8("served man: " + request.getPathParameter("mid"));
+			callback.set(HttpResponse.ofCode(200).withBody(body));
+			request.recycleBufs();
+		});
 
 		MiddlewareServlet ms = MiddlewareServlet.create()
 				.with(GET, "/serve/:cid/wash", serveCar)
@@ -350,29 +326,20 @@ public class MiddlewareServletTest {
 		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
 		HttpRequest request3 = HttpRequest.of(CONNECT, TEMPLATE + "/a/b/c/action");
 
-		AsyncServlet post = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("POST")));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet post = AsyncServlet.of((request, callback) -> {
+			callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("POST")));
+			request.recycleBufs();
+		});
 
-		AsyncServlet get = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("GET")));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet get = AsyncServlet.of((request, callback) -> {
+			callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("GET")));
+			request.recycleBufs();
+		});
 
-		AsyncServlet wildcard = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("WILDCARD")));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet wildcard = AsyncServlet.of((request, callback) -> {
+			callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("WILDCARD")));
+			request.recycleBufs();
+		});
 
 		MiddlewareServlet servlet = MiddlewareServlet.create()
 				.with("/a/b/c/action", wildcard)
@@ -388,21 +355,15 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void testDefault() {
-		AsyncServlet def = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getPartialPath())));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet def = AsyncServlet.of((request, callback) -> {
+			callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getPartialPath())));
+			request.recycleBufs();
+		});
 
-		AsyncServlet action = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Action executed")));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet action = AsyncServlet.of((request, callback) -> {
+			callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Action executed")));
+			request.recycleBufs();
+		});
 
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/html/admin/action");
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/html/admin/action/ban");
@@ -419,13 +380,10 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void test404() {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet servlet = AsyncServlet.of((request, callback) -> {
+			callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
+			request.recycleBufs();
+		});
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with("/a/:id/b/d", servlet);
 
@@ -438,13 +396,10 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void test405() {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet servlet = AsyncServlet.of((request, callback) -> {
+			callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
+			request.recycleBufs();
+		});
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/a/:id/b/d", servlet);
 
@@ -455,20 +410,14 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void test405WithFallback() {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
-				request.recycleBufs();
-			}
-		};
-		AsyncServlet fallback = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
-				callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Fallback executed")));
-				request.recycleBufs();
-			}
-		};
+		AsyncServlet servlet = AsyncServlet.of((request, callback) -> {
+			callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
+			request.recycleBufs();
+		});
+		AsyncServlet fallback = AsyncServlet.of((request, callback) -> {
+			callback.set(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Fallback executed")));
+			request.recycleBufs();
+		});
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/a/:id/b/d", servlet)
 				.withFallback("/a/:id/b/d", fallback);

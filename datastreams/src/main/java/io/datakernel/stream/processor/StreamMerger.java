@@ -38,10 +38,10 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 
 	// region creators
 	private StreamMerger(Function<T, K> keyFunction, Comparator<K> keyComparator,
-	                     boolean deduplicate) {
+			boolean deduplicate) {
 		super(keyComparator);
 		this.keyFunction = checkNotNull(keyFunction);
-		this.reducer = deduplicate ? StreamReducers.<K, T>mergeDeduplicateReducer() : StreamReducers.<K, T>mergeSortReducer();
+		this.reducer = deduplicate ? StreamReducers.mergeDeduplicateReducer() : StreamReducers.mergeSortReducer();
 	}
 
 	/**
@@ -54,8 +54,8 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 	 * @param <T>           type of output data
 	 */
 	public static <K, T> StreamMerger<K, T> create(Function<T, K> keyFunction,
-	                                               Comparator<K> keyComparator,
-	                                               boolean deduplicate) {
+			Comparator<K> keyComparator,
+			boolean deduplicate) {
 		return new StreamMerger<>(keyFunction, keyComparator, deduplicate);
 	}
 

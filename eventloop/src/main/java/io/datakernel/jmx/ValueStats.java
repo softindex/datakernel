@@ -622,6 +622,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		return totalCount;
 	}
 
+	@Nullable
 	@JmxAttribute(optional = true)
 	public List<String> getHistogram() {
 		if (histogramLevels == null) {
@@ -717,7 +718,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		}
 		labels.add("[" + String.format(pattern, levels[right], posInf) + ")");
 
-		return labels.toArray(new String[labels.size()]);
+		return labels.toArray(new String[0]);
 	}
 
 	@JmxAttribute
@@ -728,7 +729,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	@Override
 	public String toString() {
 		if (totalCount == 0) {
-			return null;
+			return "no data";
 		}
 
 		double min = smoothedMin;

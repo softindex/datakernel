@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +34,7 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 	protected final ValueFetcher fetcher;
 	private boolean visible;
 
-	public AttributeNodeForLeafAbstract(String name, String description, ValueFetcher fetcher, boolean visible) {
+	public AttributeNodeForLeafAbstract(String name, @Nullable String description, ValueFetcher fetcher, boolean visible) {
 		this.name = name;
 		this.description = description;
 		this.fetcher = fetcher;
@@ -51,7 +53,7 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 
 	@Override
 	public final Set<String> getVisibleAttributes() {
-		return visible ? singleton(name) : Collections.<String>emptySet();
+		return visible ? singleton(name) : Collections.emptySet();
 	}
 
 	@Override
@@ -76,8 +78,9 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 
 	/**
 	 * It's guaranteed that list of sources is not empty and it doesn't contain null values
+	 *
 	 * @param attrName name of attribute whose value return
-	 * @param sources attributes
+	 * @param sources  attributes
 	 * @return value of attribute with name attrName
 	 */
 	protected abstract Object aggregateAttribute(String attrName, List<?> sources);
@@ -94,7 +97,8 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 	}
 
 	@Override
-	public final void hideNullPojos(List<?> sources) {}
+	public final void hideNullPojos(List<?> sources) {
+	}
 
 	@Override
 	public final void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {

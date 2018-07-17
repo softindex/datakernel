@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
+
 import javax.management.openmbean.*;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,7 +34,7 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 
 	private final CompositeType compositeType;
 
-	public AttributeNodeForThrowable(String name, String description, boolean visible, ValueFetcher fetcher) {
+	public AttributeNodeForThrowable(String name, @Nullable String description, boolean visible, ValueFetcher fetcher) {
 		super(name, description, fetcher, visible);
 		this.compositeType = compositeTypeForThrowable();
 	}

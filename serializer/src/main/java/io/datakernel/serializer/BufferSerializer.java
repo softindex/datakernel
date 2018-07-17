@@ -18,10 +18,25 @@ package io.datakernel.serializer;
 
 import io.datakernel.bytebuf.ByteBuf;
 
+import java.util.function.Function;
+
 public interface BufferSerializer<T> {
 
 	void serialize(ByteBuf output, T item);
 
 	T deserialize(ByteBuf input);
 
+	default <U> BufferSerializer<U> transform(Function<U, T> from, Function<T, U> into) {
+		return new BufferSerializer<U>() {
+			@Override
+			public void serialize(ByteBuf output, U item) {
+				BufferSerializer.this.serialize(output, from.apply(item));
+			}
+
+			@Override
+			public U deserialize(ByteBuf input) {
+				return into.apply(BufferSerializer.this.deserialize(input));
+			}
+		};
+	}
 }

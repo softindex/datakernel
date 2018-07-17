@@ -151,6 +151,14 @@ public class CollectionUtils {
 				.collect(joining(",", "[", collection.size() <= limit ? "]" : ", ..and " + (collection.size() - limit) + " more]"));
 	}
 
+	public static boolean allItemsHaveSameType(Collection<?> coll) {
+		if (coll.isEmpty()) {
+			return true;
+		}
+		Class<?> ref = coll.stream().findAny().get().getClass();
+		return coll.stream().allMatch(item -> item.getClass() == ref);
+	}
+
 	public static <T> Iterator<T> asIterator() {
 		return new Iterator<T>() {
 			@Override

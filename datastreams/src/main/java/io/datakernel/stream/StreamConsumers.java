@@ -21,6 +21,7 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers.Decorator.Context;
+import io.datakernel.util.ThrowingConsumer;
 
 import java.util.EnumSet;
 import java.util.Random;
@@ -61,15 +62,24 @@ public final class StreamConsumers {
 	}
 
 	static final class OfConsumerImpl<T> extends AbstractStreamConsumer<T> {
-		private final Consumer<T> consumer;
+		private final ThrowingConsumer<T> consumer;
 
-		OfConsumerImpl(Consumer<T> consumer) {
+		OfConsumerImpl(ThrowingConsumer<T> consumer) {
 			this.consumer = consumer;
 		}
 
 		@Override
 		protected void onStarted() {
-			getProducer().produce(consumer::accept);
+			assert getProducer() != null;
+			getProducer().produce(t -> {
+				try {
+					consumer.accept(t);
+				} catch (RuntimeException e) {
+					throw e;
+				} catch (Throwable e) {
+					closeWithError(e);
+				}
+			});
 		}
 
 		@Override

@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
+
 import javax.management.openmbean.OpenType;
 import java.util.*;
 
@@ -34,9 +36,9 @@ final class AttributeNodeForPojo implements AttributeNode {
 	private final List<? extends AttributeNode> subNodes;
 	private boolean visible;
 
-	public AttributeNodeForPojo(String name, String description, boolean visible,
-	                            ValueFetcher fetcher, JmxReducer reducer,
-	                            List<? extends AttributeNode> subNodes) {
+	public AttributeNodeForPojo(String name, @Nullable String description, boolean visible,
+			ValueFetcher fetcher, @Nullable JmxReducer reducer,
+			List<? extends AttributeNode> subNodes) {
 		this.name = name;
 		this.description = description;
 		this.visible = visible;
@@ -47,7 +49,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	private static Map<String, AttributeNode> createFullNameToNodeMapping(String name,
-	                                                                      List<? extends AttributeNode> subNodes) {
+			List<? extends AttributeNode> subNodes) {
 		Map<String, AttributeNode> fullNameToNodeMapping = new HashMap<>();
 		for (AttributeNode subNode : subNodes) {
 			Set<String> currentSubAttrNames = subNode.getAllAttributes();

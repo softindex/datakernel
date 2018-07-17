@@ -28,9 +28,9 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * It is {@link AbstractStreamReducer}.
  *
  * @param <K> type of key for mapping
+ * @param <I> type of input data
  * @param <O> type of output data
  * @param <A> type of accumulator
- * @param <I> type of input data
  */
 public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer<K, O, A> {
 
@@ -51,8 +51,8 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	 * @param keyFunction   function for counting key
 	 */
 	public static <K, I, O, A> StreamReducerSimple<K, I, O, A> create(Function<I, K> keyFunction,
-	                                                                  Comparator<K> keyComparator,
-	                                                                  StreamReducers.Reducer<K, I, O, A> reducer) {
+			Comparator<K> keyComparator,
+			StreamReducers.Reducer<K, I, O, A> reducer) {
 		return new StreamReducerSimple<>(keyFunction, keyComparator, reducer);
 	}
 

@@ -135,9 +135,9 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 			return stopEnd != 0;
 		}
 
-		boolean isStoppedSuccessfully() {
-			return stopEnd != 0 && stopException == null;
-		}
+//		boolean isStoppedSuccessfully() {
+//			return stopEnd != 0 && stopException == null;
+//		}
 
 		long getStartTime() {
 			checkState(startBegin != 0L && startEnd != 0L);
@@ -412,7 +412,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		if (objects.isEmpty()) map.remove(key);
 	}
 
-	private void removeIntermediate(Key<?> vertex) {
+	private void removeIntermediateOneWay(Key<?> vertex, Map<Key<?>, Set<Key<?>>> forwards, Map<Key<?>, Set<Key<?>>> backwards) {
 		for (Key<?> backward : backwards.getOrDefault(vertex, emptySet())) {
 			removeValue(forwards, backward, vertex);
 			for (Key<?> forward : forwards.getOrDefault(vertex, emptySet())) {
@@ -421,15 +421,11 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 				}
 			}
 		}
-		for (Key<?> forward : forwards.getOrDefault(vertex, emptySet())) {
-			removeValue(backwards, forward, vertex);
-			for (Key<?> backward : backwards.getOrDefault(vertex, emptySet())) {
-				if (!forward.equals(backward)) {
-					backwards.computeIfAbsent(forward, o -> new HashSet<>()).add(backward);
-				}
-			}
-		}
+	}
 
+	private void removeIntermediate(Key<?> vertex) {
+		removeIntermediateOneWay(vertex, forwards, backwards);
+		removeIntermediateOneWay(vertex, backwards, forwards);
 		forwards.remove(vertex);
 		backwards.remove(vertex);
 	}

@@ -780,8 +780,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @throws IOException if an I/O error occurs on opening DatagramChannel
 	 */
 	public static DatagramChannel createDatagramChannel(DatagramSocketSettings datagramSocketSettings,
-			@Nullable InetSocketAddress bindAddress,
-			@Nullable InetSocketAddress connectAddress) throws IOException {
+		@Nullable InetSocketAddress bindAddress,
+		@Nullable InetSocketAddress connectAddress) throws IOException {
 		DatagramChannel datagramChannel = null;
 		try {
 			datagramChannel = DatagramChannel.open();
@@ -1061,7 +1061,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	public void recordFatalError(Throwable e, Object context) {
 		if (e instanceof RethrowedError) {
-			propagate(e.getCause());
+			FatalErrorHandlers.propagate(e.getCause());
 		}
 		logger.error("Fatal Error in " + context, e);
 		if (fatalErrorHandler != null) {
@@ -1087,16 +1087,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 					throw new RethrowedError(handlerError);
 				});
 			}
-		}
-	}
-
-	private static void propagate(Throwable throwable) {
-		if (throwable instanceof Error) {
-			throw (Error) throwable;
-		} else if (throwable instanceof RuntimeException) {
-			throw (RuntimeException) throwable;
-		} else {
-			throw new RuntimeException(throwable);
 		}
 	}
 

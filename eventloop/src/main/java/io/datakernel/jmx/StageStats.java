@@ -107,4 +107,15 @@ public class StageStats {
 	public ExceptionStats getExceptions() {
 		return exceptions;
 	}
+
+	@Override
+	public String toString() {
+		return "StageStats{" +
+				"activeStages=" + activeStages +
+				", lastStartTimestamp=" + MBeanFormat.formatTimestamp(lastStartTimestamp) +
+				", lastCompleteTimestamp=" + MBeanFormat.formatTimestamp(lastCompleteTimestamp) +
+				", duration=" + duration +
+				", exceptions=" + exceptions +
+				'}';
+	}
 }

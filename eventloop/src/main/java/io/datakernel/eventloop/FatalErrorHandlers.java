@@ -63,7 +63,7 @@ public final class FatalErrorHandlers {
 		};
 	}
 
-	private static void propagate(Throwable error) {
+	public static void propagate(Throwable error) {
 		if (error instanceof Error) {
 			throw (Error) error;
 		} else if (error instanceof RuntimeException) {

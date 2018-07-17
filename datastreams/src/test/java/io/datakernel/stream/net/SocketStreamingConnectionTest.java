@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
+import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("unchecked")
@@ -72,7 +72,7 @@ public final class SocketStreamingConnectionTest {
 					SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
 
 					connection.getSocketReader()
-							.with(StreamBinaryDeserializer.create(intSerializer()))
+							.with(StreamBinaryDeserializer.create(INT_SERIALIZER))
 							.streamTo(consumerToList);
 
 					return connection;
@@ -86,7 +86,7 @@ public final class SocketStreamingConnectionTest {
 			SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
 
 			StreamProducer.ofIterable(list)
-					.with(StreamBinarySerializer.create(intSerializer())
+					.with(StreamBinarySerializer.create(INT_SERIALIZER)
 							.withInitialBufferSize(MemSize.of(1)))
 					.streamTo(connection.getSocketWriter());
 
@@ -124,9 +124,9 @@ public final class SocketStreamingConnectionTest {
 		server.listen();
 
 		future = eventloop.connect(address).whenResult(socketChannel -> {
-			StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(intSerializer())
+			StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(INT_SERIALIZER)
 					.withInitialBufferSize(MemSize.of(1));
-			StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(intSerializer());
+			StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(INT_SERIALIZER);
 
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 			SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);

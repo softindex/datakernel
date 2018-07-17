@@ -274,6 +274,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	protected void onAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl) {
+		logger.trace("received connection from [{}]{}: {}", remoteAddress, ssl ? " over SSL" : "", this);
 		accepts.recordEvent();
 		if (ssl) {
 			acceptsSsl.recordEvent();
@@ -337,7 +338,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	@Override
 	public String toString() {
 		return getClass().getSimpleName() + '{' +
-				(listenAddresses.isEmpty() ? "" : ", listenAddresses=" + listenAddresses) +
+				(listenAddresses.isEmpty() ? "" : "listenAddresses=" + listenAddresses) +
 				(sslListenAddresses.isEmpty() ? "" : ", sslListenAddresses=" + sslListenAddresses) +
 				(acceptOnce ? ", acceptOnce" : "") +
 				'}';

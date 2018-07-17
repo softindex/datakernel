@@ -47,15 +47,17 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 	private final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final AsyncTcpSocket socket;
+
+	@Nullable
 	private final MessagingSerializer<I, O> serializer;
 
 	@Nullable
 	private ByteBuf readBuf;
+	private boolean readEndOfStream;
 
 	@Nullable
 	private Callback<I> receiveMessageCallback;
 
-	private boolean readEndOfStream;
 	private List<SettableStage<Void>> writeCallbacks = new ArrayList<>();
 	private boolean writeEndOfStreamRequest;
 	private SocketStreamProducer socketReader;
@@ -70,13 +72,13 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	private Object tag;
 
 	// region creators
-	private MessagingWithBinaryStreaming(AsyncTcpSocket socket, MessagingSerializer<I, O> serializer) {
+	private MessagingWithBinaryStreaming(AsyncTcpSocket socket, @Nullable MessagingSerializer<I, O> serializer) {
 		this.socket = socket;
 		this.serializer = serializer;
 	}
 
 	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket asyncTcpSocket,
-			MessagingSerializer<I, O> serializer) {
+			@Nullable MessagingSerializer<I, O> serializer) {
 		return new MessagingWithBinaryStreaming<>(asyncTcpSocket, serializer);
 	}
 	// endregion
@@ -106,6 +108,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 	private void tryReadMessage() {
 		if (readBuf != null && receiveMessageCallback != null) {
+			checkState(serializer != null, "Cannot send or receive messages without messaging serializer");
 			try {
 				I message = serializer.tryDeserialize(readBuf);
 				if (message == null) {
@@ -147,6 +150,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	public Stage<Void> send(O msg) {
 		checkState(socketWriter == null, "Cannot send messages while sending raw binary data");
 		checkState(!writeEndOfStreamRequest, "Cannot send messages after end of stream was sent");
+		checkState(serializer != null, "Cannot send or receive messages without messaging serializer");
 
 		if (closedException != null) {
 			logger.warn("failed to send message " + msg + ": " + this, closedException);

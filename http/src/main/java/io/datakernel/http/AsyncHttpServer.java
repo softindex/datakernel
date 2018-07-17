@@ -34,6 +34,7 @@ import java.time.Duration;
 
 import static io.datakernel.http.AbstractHttpConnection.*;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final Duration DEFAULT_KEEP_ALIVE = Duration.ofSeconds(30);
@@ -41,7 +42,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = e -> {
 		if (e instanceof HttpException) {
 			HttpException httpException = (HttpException) e;
-			return HttpResponse.ofCode(httpException.getCode()).withNoCache();
+			HttpResponse response = HttpResponse.ofCode(httpException.getCode()).withNoCache();
+			String msg = e.getLocalizedMessage();
+			if (msg != null) {
+				response.withBody(msg.getBytes(UTF_8));
+			}
+			return response;
 		}
 		if (e instanceof ParseException) {
 			return HttpResponse.ofCode(400).withNoCache();

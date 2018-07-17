@@ -25,6 +25,7 @@ import io.datakernel.stream.processor.StreamSkip;
 import io.datakernel.stream.processor.StreamSkip.Dropper;
 import io.datakernel.stream.processor.StreamSkip.SizeCounter;
 import io.datakernel.stream.processor.StreamSkip.SkipStrategy;
+import io.datakernel.util.ThrowingConsumer;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -73,7 +74,7 @@ public interface StreamConsumer<T> {
 	/**
 	 * Creates a stream consumer which passes consumed items into a given lambda.
 	 */
-	static <T> StreamConsumer<T> ofConsumer(Consumer<T> consumer) {
+	static <T> StreamConsumer<T> ofConsumer(ThrowingConsumer<T> consumer) {
 		return new StreamConsumers.OfConsumerImpl<>(consumer);
 	}
 

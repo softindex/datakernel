@@ -19,11 +19,14 @@ package io.datakernel.serializer.asm;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serializer.BufferSerializer;
 
+import java.util.*;
+import java.util.function.Supplier;
+
 public final class BufferSerializers {
 	private BufferSerializers() {
 	}
 
-	private static final BufferSerializer<Byte> BYTE_SERIALIZER = new BufferSerializer<Byte>() {
+	public static final BufferSerializer<Byte> BYTE_SERIALIZER = new BufferSerializer<Byte>() {
 		@Override
 		public void serialize(ByteBuf output, Byte item) {
 			output.writeByte(item);
@@ -35,7 +38,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<byte[]> BYTES_SERIALIZER = new BufferSerializer<byte[]>() {
+	public static final BufferSerializer<byte[]> BYTES_SERIALIZER = new BufferSerializer<byte[]>() {
 		@Override
 		public void serialize(ByteBuf output, byte[] item) {
 			output.writeVarInt(item.length);
@@ -51,7 +54,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Short> SHORT_SERIALIZER = new BufferSerializer<Short>() {
+	public static final BufferSerializer<Short> SHORT_SERIALIZER = new BufferSerializer<Short>() {
 		@Override
 		public void serialize(ByteBuf output, Short item) {
 			output.writeShort(item);
@@ -63,7 +66,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Integer> INT_SERIALIZER = new BufferSerializer<Integer>() {
+	public static final BufferSerializer<Integer> INT_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
 		public void serialize(ByteBuf output, Integer item) {
 			output.writeInt(item);
@@ -75,7 +78,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Integer> VARINT_SERIALIZER = new BufferSerializer<Integer>() {
+	public static final BufferSerializer<Integer> VARINT_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
 		public void serialize(ByteBuf output, Integer item) {
 			output.writeVarInt(item);
@@ -87,7 +90,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Integer> VARINT_ZIGZAG_SERIALIZER = new BufferSerializer<Integer>() {
+	public static final BufferSerializer<Integer> VARINT_ZIGZAG_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
 		public void serialize(ByteBuf output, Integer item) {
 			output.writeVarInt((item << 1) ^ (item >> 31));
@@ -100,7 +103,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Long> LONG_SERIALIZER = new BufferSerializer<Long>() {
+	public static final BufferSerializer<Long> LONG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
 		public void serialize(ByteBuf output, Long item) {
 			output.writeLong(item);
@@ -112,7 +115,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Long> VARLONG_SERIALIZER = new BufferSerializer<Long>() {
+	public static final BufferSerializer<Long> VARLONG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
 		public void serialize(ByteBuf output, Long item) {
 			output.writeVarLong(item);
@@ -124,7 +127,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Long> VARLONG_ZIGZAG_SERIALIZER = new BufferSerializer<Long>() {
+	public static final BufferSerializer<Long> VARLONG_ZIGZAG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
 		public void serialize(ByteBuf output, Long item) {
 			output.writeVarLong((item << 1) ^ (item >> 63));
@@ -137,7 +140,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Float> FLOAT_SERIALIZER = new BufferSerializer<Float>() {
+	public static final BufferSerializer<Float> FLOAT_SERIALIZER = new BufferSerializer<Float>() {
 		@Override
 		public void serialize(ByteBuf output, Float item) {
 			output.writeFloat(item);
@@ -149,7 +152,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Double> DOUBLE_SERIALIZER = new BufferSerializer<Double>() {
+	public static final BufferSerializer<Double> DOUBLE_SERIALIZER = new BufferSerializer<Double>() {
 		@Override
 		public void serialize(ByteBuf output, Double item) {
 			output.writeDouble(item);
@@ -161,7 +164,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Character> CHAR_SERIALIZER = new BufferSerializer<Character>() {
+	public static final BufferSerializer<Character> CHAR_SERIALIZER = new BufferSerializer<Character>() {
 		@Override
 		public void serialize(ByteBuf output, Character item) {
 			output.writeChar(item);
@@ -173,7 +176,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<String> JAVA_UTF8_SERIALIZER = new BufferSerializer<String>() {
+	public static final BufferSerializer<String> JAVA_UTF8_SERIALIZER = new BufferSerializer<String>() {
 		@Override
 		public void serialize(ByteBuf output, String item) {
 			output.writeJavaUTF8(item);
@@ -185,7 +188,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<String> UTF16_SERIALIZER = new BufferSerializer<String>() {
+	public static final BufferSerializer<String> UTF16_SERIALIZER = new BufferSerializer<String>() {
 		@Override
 		public void serialize(ByteBuf output, String item) {
 			output.writeUTF16(item);
@@ -197,7 +200,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<Boolean> BOOLEAN_SERIALIZER = new BufferSerializer<Boolean>() {
+	public static final BufferSerializer<Boolean> BOOLEAN_SERIALIZER = new BufferSerializer<Boolean>() {
 		@Override
 		public void serialize(ByteBuf output, Boolean item) {
 			output.writeBoolean(item);
@@ -209,7 +212,7 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<String> ISO_8859_1_SERIALIZER = new BufferSerializer<String>() {
+	public static final BufferSerializer<String> ISO_8859_1_SERIALIZER = new BufferSerializer<String>() {
 		@Override
 		public void serialize(ByteBuf output, String item) {
 			output.writeIso88591(item);
@@ -221,54 +224,67 @@ public final class BufferSerializers {
 		}
 	};
 
-	public static BufferSerializer<Byte> byteSerializer() {
-		return BYTE_SERIALIZER;
-	}
-
-	public static BufferSerializer<byte[]> bytesSerializer() {
-		return BYTES_SERIALIZER;
-	}
-
-	public static BufferSerializer<Short> shortSerializer() {
-		return SHORT_SERIALIZER;
-	}
-
-	public static BufferSerializer<Integer> intSerializer() {
-		return INT_SERIALIZER;
-	}
-
 	public static BufferSerializer<Integer> varIntSerializer(boolean optimizePositive) {
 		return optimizePositive ? VARINT_SERIALIZER : VARINT_ZIGZAG_SERIALIZER;
-	}
-
-	public static BufferSerializer<Long> longSerializer() {
-		return LONG_SERIALIZER;
 	}
 
 	public static BufferSerializer<Long> varLongSerializer(boolean optimizePositive) {
 		return optimizePositive ? VARLONG_SERIALIZER : VARLONG_ZIGZAG_SERIALIZER;
 	}
 
-	public static BufferSerializer<Float> floatSerializer() {
-		return FLOAT_SERIALIZER;
+	private static <E, C extends Collection<E>> BufferSerializer<C> ofCollection(BufferSerializer<E> element, Supplier<C> constructor) {
+		return new BufferSerializer<C>() {
+			@Override
+			public void serialize(ByteBuf output, C item) {
+				output.writeInt(item.size());
+				item.forEach(elem -> element.serialize(output, elem));
+			}
+
+			@Override
+			public C deserialize(ByteBuf input) {
+				C coll = constructor.get();
+				int size = input.readInt();
+				for (int i = 0; i < size; i++) {
+					coll.add(element.deserialize(input));
+				}
+				return coll;
+			}
+		};
 	}
 
-	public static BufferSerializer<Double> doubleSerializer() {
-		return DOUBLE_SERIALIZER;
+	public static <E> BufferSerializer<List<E>> ofList(BufferSerializer<E> element) {
+		return ofCollection(element, ArrayList::new);
 	}
 
-	public static BufferSerializer<Character> charSerializer() {
-		return CHAR_SERIALIZER;
+	@SuppressWarnings("unchecked")
+	public static <E> BufferSerializer<E[]> ofArray(BufferSerializer<E> element) {
+		return ofList(element).transform(Arrays::asList, value -> (E[]) value.toArray());
 	}
 
-	@Deprecated
-	public static BufferSerializer<String> utf8Serializer() {
-		return JAVA_UTF8_SERIALIZER;
+	public static <E> BufferSerializer<Set<E>> ofSet(BufferSerializer<E> element) {
+		return ofCollection(element, LinkedHashSet::new);
 	}
 
-	public static BufferSerializer<String> utf16Serializer() {
-		return UTF16_SERIALIZER;
-	}
+	public static <K, V> BufferSerializer<Map<K, V>> ofMap(BufferSerializer<K> key, BufferSerializer<V> value) {
+		return new BufferSerializer<Map<K, V>>() {
+			@Override
+			public void serialize(ByteBuf output, Map<K, V> item) {
+				output.writeInt(item.size());
+				item.forEach((k, v) -> {
+					key.serialize(output, k);
+					value.serialize(output, v);
+				});
+			}
 
-	public static BufferSerializer<String> iso88591Serializer() { return ISO_8859_1_SERIALIZER; }
+			@Override
+			public Map<K, V> deserialize(ByteBuf input) {
+				Map<K, V> map = new LinkedHashMap<>();
+				int size = input.readInt();
+				for (int i = 0; i < size; i++) {
+					map.put(key.deserialize(input), value.deserialize(input));
+				}
+				return map;
+			}
+		};
+	}
 }

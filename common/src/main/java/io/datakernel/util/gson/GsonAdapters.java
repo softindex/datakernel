@@ -191,7 +191,8 @@ public final class GsonAdapters {
 
 		private final Map<Class<?>, AdapterSupplier> mapping = new HashMap<>();
 
-		private TypeAdapterMappingImpl() {}
+		private TypeAdapterMappingImpl() {
+		}
 
 		public static TypeAdapterMappingImpl create() {
 			return new TypeAdapterMappingImpl();
@@ -284,7 +285,7 @@ public final class GsonAdapters {
 			}
 			Constructor<?> ctor = cls.getDeclaredConstructor(enclosingClass);
 			ctor.setAccessible(true);
-			return (T) ctor.newInstance((Object) null);
+			return (T) ctor.newInstance(new Object[]{null});
 		} catch (Exception e) {
 			throw new AssertionError(e);
 		}

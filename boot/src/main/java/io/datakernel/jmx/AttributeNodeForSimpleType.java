@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
+
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import java.lang.reflect.InvocationTargetException;
@@ -35,9 +37,9 @@ final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 	private final Class<?> type;
 	private final JmxReducer reducer;
 
-	public AttributeNodeForSimpleType(String name, String description, boolean visible,
-	                                  ValueFetcher fetcher, Method setter,
-	                                  Class<?> attributeType, JmxReducer reducer) {
+	public AttributeNodeForSimpleType(String name, @Nullable String description, boolean visible,
+			ValueFetcher fetcher, @Nullable Method setter,
+			Class<?> attributeType, JmxReducer reducer) {
 		super(name, description, fetcher, visible);
 		this.setter = setter;
 		this.type = attributeType;

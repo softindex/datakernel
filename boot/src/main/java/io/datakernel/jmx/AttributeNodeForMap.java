@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
+
 import javax.management.openmbean.*;
 import java.util.*;
 
@@ -34,8 +36,8 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 	private final TabularType tabularType;
 	private final boolean isMapOfJmxRefreshable;
 
-	public AttributeNodeForMap(String name, String description, boolean visible,
-	                           ValueFetcher fetcher, AttributeNode subNode, boolean isMapOfJmxRefreshable) {
+	public AttributeNodeForMap(String name, @Nullable String description, boolean visible,
+			ValueFetcher fetcher, AttributeNode subNode, boolean isMapOfJmxRefreshable) {
 		super(name, description, fetcher, visible);
 		checkArgument(!name.isEmpty(), "Map attribute cannot have empty name");
 		this.tabularType = createTabularType(subNode, name);

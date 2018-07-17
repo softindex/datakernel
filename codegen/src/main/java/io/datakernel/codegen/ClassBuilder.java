@@ -108,10 +108,10 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 			if (o == null || getClass() != o.getClass()) return false;
 			AsmClassKey that = (AsmClassKey) o;
 			return Objects.equals(mainClass, that.mainClass) &&
-					Objects.equals(otherClasses, that.otherClasses) &&
-					Objects.equals(fields, that.fields) &&
-					Objects.equals(expressionMap, that.expressionMap) &&
-					Objects.equals(expressionStaticMap, that.expressionStaticMap);
+				Objects.equals(otherClasses, that.otherClasses) &&
+				Objects.equals(fields, that.fields) &&
+				Objects.equals(expressionMap, that.expressionMap) &&
+				Objects.equals(expressionStaticMap, that.expressionStaticMap);
 		}
 
 		@Override
@@ -143,7 +143,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	}
 
 	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
-		return new ClassBuilder<T>(classLoader, mainType, types);
+		return new ClassBuilder<>(classLoader, mainType, types);
 	}
 
 	public ClassBuilder<T> withBytecodeSaveDir(Path bytecodeSaveDir) {
@@ -368,6 +368,8 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 				g.returnValue();
 
 				g.endMethod();
+			} catch (RuntimeException e) {
+				throw e;
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}

@@ -33,7 +33,7 @@ public class LogManagerImplTest {
 	public void before() {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		logFileSystem = new LogFileSystemStub(eventloop);
-		serializer = BufferSerializers.utf16Serializer();
+		serializer = BufferSerializers.UTF16_SERIALIZER;
 	}
 
 	@Test
@@ -44,13 +44,13 @@ public class LogManagerImplTest {
 		List<String> values = asList("test1", "test2", "test3");
 
 		StreamProducer.ofIterable(values)
-				.streamTo(StreamConsumerWithResult.ofStage(logManager.consumer(testPartition)));
+			.streamTo(StreamConsumerWithResult.ofStage(logManager.consumer(testPartition)));
 
 		eventloop.run();
 
 		StreamConsumerWithResult<String, List<String>> listConsumer = StreamConsumerWithResult.toList();
 		logManager.producerStream(testPartition, new LogFile("", 0), 0, null)
-				.streamTo(listConsumer);
+			.streamTo(listConsumer);
 
 		CompletableFuture<List<String>> listFuture = listConsumer.getResult().toCompletableFuture();
 		eventloop.run();

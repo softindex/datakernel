@@ -21,6 +21,7 @@ package io.datakernel.stream.processor;
  *
  * @param <K> type of object for sharding
  */
+@FunctionalInterface
 public interface Sharder<K> {
 	/**
 	 * Returns shard key (index of partition to which this object should be sent)

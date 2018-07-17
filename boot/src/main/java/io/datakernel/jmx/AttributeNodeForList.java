@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
+
 import javax.management.openmbean.*;
 import java.lang.reflect.Array;
 import java.util.*;
@@ -31,8 +33,8 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 	private final ArrayType<?> arrayType;
 	private final boolean isListOfJmxRefreshables;
 
-	public AttributeNodeForList(String name, String description, boolean visible, ValueFetcher fetcher, AttributeNode subNode,
-	                            boolean isListOfJmxRefreshables) {
+	public AttributeNodeForList(String name, @Nullable String description, boolean visible, ValueFetcher fetcher, AttributeNode subNode,
+			boolean isListOfJmxRefreshables) {
 		super(name, description, fetcher, visible);
 		checkArgument(!name.isEmpty(), "List attribute cannot have empty name");
 		this.subNode = subNode;
@@ -77,7 +79,7 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 						new CompositeType("CompositeData", "CompositeData", itemNamesArr, itemNamesArr, itemTypesArr);
 			}
 
-			return new ArrayType<Object>(1, elementType);
+			return new ArrayType<>(1, elementType);
 		} catch (OpenDataException e) {
 			throw new IllegalArgumentException("Cannot create ArrayType. " + nodeName, e);
 		}

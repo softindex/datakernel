@@ -90,13 +90,10 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	private volatile Instant instantOfComplete;
 
 	private final CountDownLatch shutdownLatch = new CountDownLatch(1);
-
-	private final Thread mainThread = Thread.currentThread();
+	private final CountDownLatch finishLatch = new CountDownLatch(1);
 
 	/**
 	 * Supplies modules for application(ConfigModule, EventloopModule, etc...)
-	 *
-	 * @return
 	 */
 	protected abstract Collection<com.google.inject.Module> getModules();
 
@@ -126,7 +123,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 */
 	public void launch(boolean eagerSingletonsMode, String[] args) throws Exception {
 		instantOfStart = Instant.now();
-		Injector injector = createInjector(eagerSingletonsMode ? Stage.PRODUCTION : Stage.DEVELOPMENT, args);
+		createInjector(eagerSingletonsMode ? Stage.PRODUCTION : Stage.DEVELOPMENT, args);
 		logger.info("=== INJECTING DEPENDENCIES");
 		try {
 			onStart();
@@ -149,6 +146,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		} finally {
 			onStop();
 			instantOfComplete = Instant.now();
+			finishLatch.countDown();
 		}
 	}
 
@@ -156,9 +154,11 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		this.args = args;
 		return Guice.createInjector(stage,
 				combine(getModules()),
-				binder -> binder.bind(String[].class).annotatedWith(Args.class).toInstance(args),
-				binder -> binder.requestInjection(this),
-				binder -> binder.bind(Launcher.class).toInstance(this));
+				binder -> {
+					binder.bind(String[].class).annotatedWith(Args.class).toInstance(args);
+					binder.bind(Launcher.class).toInstance(this);
+				}
+		);
 	}
 
 	private void doStart() throws Exception {
@@ -174,24 +174,20 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 
 	/**
 	 * This method runs when application is starting
-	 *
-	 * @throws Exception
 	 */
+	@SuppressWarnings("RedundantThrows")
 	protected void onStart() throws Exception {
 	}
 
 	/**
 	 * Launcher's main method.
-	 *
-	 * @throws Exception
 	 */
 	protected abstract void run() throws Exception;
 
 	/**
 	 * This method runs when application is stopping
-	 *
-	 * @throws Exception
 	 */
+	@SuppressWarnings("RedundantThrows")
 	protected void onStop() throws Exception {
 	}
 
@@ -211,7 +207,8 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
 				shutdown();
-				mainThread.join();
+				finishLatch.await();
+				Thread.sleep(10); // wait a bit for things outside `launch` call, such as JUnit finishing or whatever
 			} catch (InterruptedException e) {
 				logger.error("Shutdown took too long", e);
 			}

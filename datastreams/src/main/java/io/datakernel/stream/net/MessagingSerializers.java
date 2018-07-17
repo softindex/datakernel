@@ -36,6 +36,10 @@ public final class MessagingSerializers {
 	private MessagingSerializers() {
 	}
 
+	public static <IO> MessagingSerializer<IO, IO> ofJson(TypeAdapter<IO> io) {
+		return ofJson(io, io);
+	}
+
 	public static <I, O> MessagingSerializer<I, O> ofJson(TypeAdapter<I> in, TypeAdapter<O> out) {
 		return new MessagingSerializer<I, O>() {
 			@Override
@@ -72,7 +76,9 @@ public final class MessagingSerializers {
 		static final MemSize INITIAL_BUF_SIZE = MemSize.kilobytes(2);
 		ByteBuf container;
 
-		ByteBufPoolAppendable() {this(INITIAL_BUF_SIZE);}
+		ByteBufPoolAppendable() {
+			this(INITIAL_BUF_SIZE);
+		}
 
 		ByteBufPoolAppendable(MemSize size) {
 			this.container = ByteBufPool.allocate(size);

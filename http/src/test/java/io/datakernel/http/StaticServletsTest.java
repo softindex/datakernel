@@ -80,7 +80,7 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StaticLoader resourceLoader = StaticLoaders.ofPath(eventloop, executor, resourcesPath);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(executor, resourcesPath);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/index.html");
@@ -102,7 +102,7 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StaticLoader resourceLoader = StaticLoaders.ofPath(eventloop, executor, resourcesPath);
+		StaticLoader resourceLoader = StaticLoaders.ofPath(executor, resourcesPath);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/anknownFile.txt");
@@ -121,7 +121,7 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StaticLoader resourceLoader = StaticLoaders.ofFile(eventloop, executor, resourcesFile);
+		StaticLoader resourceLoader = StaticLoaders.ofFile(executor, resourcesFile);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/index.html");
@@ -143,7 +143,7 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StaticLoader resourceLoader = StaticLoaders.ofFile(eventloop, executor, resourcesFile);
+		StaticLoader resourceLoader = StaticLoaders.ofFile(executor, resourcesFile);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/testFile.txt");
@@ -162,7 +162,7 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor);
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(executor);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/testFile.txt");
@@ -184,7 +184,7 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor);
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(executor);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/index.html");
@@ -203,7 +203,7 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor, this.getClass());
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(executor, this.getClass());
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/testFile.txt");
@@ -225,7 +225,7 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor, StaticServlet.class);
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(executor, StaticServlet.class);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/unknownFile.txt");
@@ -255,7 +255,7 @@ public class StaticServletsTest {
 				? Stage.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
 				: Stage.ofException(new NoSuchFileException(name));
 
-		StaticLoader resourceLoader = StaticLoaders.ofPredicate(testLoader, preDownloadResources::contains);
+		StaticLoader resourceLoader = testLoader.filter(preDownloadResources::contains);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/dir2/testFile.txt");
@@ -285,7 +285,7 @@ public class StaticServletsTest {
 				? Stage.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
 				: Stage.ofException(new NoSuchFileException(name));
 
-		StaticLoader resourceLoader = StaticLoaders.ofPredicate(testLoader, fileService::contains);
+		StaticLoader resourceLoader = testLoader.filter(fileService::contains);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		CompletableFuture<String> future = servlet.serve(get("http://test.com:8080/index.html"))

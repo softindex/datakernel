@@ -26,7 +26,6 @@ import io.datakernel.stream.processor.StreamSkip.Dropper;
 import io.datakernel.stream.processor.StreamSkip.SizeCounter;
 import io.datakernel.stream.processor.StreamSkip.SkipStrategy;
 
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -39,7 +38,6 @@ import java.util.stream.Stream;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
 
 /**
  * It represents object for asynchronous sending streams of data.
@@ -310,8 +308,7 @@ public interface StreamProducer<T> {
 
 			@Override
 			public Set<StreamCapability> getCapabilities() {
-				return StreamProducer.this.getCapabilities().contains(LATE_BINDING) ?
-						EnumSet.of(LATE_BINDING) : emptySet();
+				return StreamProducer.this.getCapabilities();
 			}
 		};
 	}
@@ -347,8 +344,7 @@ public interface StreamProducer<T> {
 
 			@Override
 			public Set<StreamCapability> getCapabilities() {
-				return StreamProducer.this.getCapabilities().contains(LATE_BINDING) ?
-						EnumSet.of(LATE_BINDING) : emptySet();
+				return StreamProducer.this.getCapabilities();
 			}
 		};
 	}

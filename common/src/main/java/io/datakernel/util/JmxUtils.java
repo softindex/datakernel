@@ -16,6 +16,8 @@
 
 package io.datakernel.util;
 
+import io.datakernel.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,11 +38,11 @@ public final class JmxUtils {
 		return out;
 	}
 
-	public static Map<String, Map<String, String>> createDescriptionMap(String name, String description) {
+	public static Map<String, Map<String, String>> createDescriptionMap(String name, @Nullable String description) {
 		if (description != null) {
 			return Collections.singletonMap(name, Collections.singletonMap(name, description));
 		} else {
-			return Collections.singletonMap(name, Collections.<String, String>emptyMap());
+			return Collections.singletonMap(name, Collections.emptyMap());
 		}
 	}
 

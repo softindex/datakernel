@@ -81,10 +81,10 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	public static JmxModule create() {
 		return new JmxModule()
 				.withCustomType(Duration.class, StringFormatUtils::formatDuration, StringFormatUtils::parseDuration)
-				.withCustomType(MemSize.class, StringFormatUtils::formatMemSize, StringFormatUtils::parseMemSize)
 				.withCustomType(Period.class, StringFormatUtils::formatPeriod, StringFormatUtils::parsePeriod)
 				.withCustomType(Instant.class, StringFormatUtils::formatInstant, StringFormatUtils::parseInstant)
 				.withCustomType(LocalDateTime.class, StringFormatUtils::formatLocalDateTime, StringFormatUtils::parseLocalDateTime)
+				.withCustomType(MemSize.class, StringFormatUtils::formatMemSize, StringFormatUtils::parseMemSize)
 				.withCustomType(TriggerWithResult.class, TriggerWithResult::toString)
 				.withCustomType(Severity.class, Severity::toString)
 				.withGlobalSingletons(ByteBufPool.getStats());

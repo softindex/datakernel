@@ -21,36 +21,35 @@ import io.datakernel.stream.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-/**
- * Provides an ability to split stream into number of equivalent outputs.
- * {@link StreamSplitter} has one Input and an arbitrary number of Outputs.
- *
- * @param <T>
- */
-@SuppressWarnings("unchecked")
-public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamDataReceiver<T> {
+public final class ShardingStreamSplitter<I, K> implements HasInput<I>, HasOutputs, StreamDataReceiver<I> {
 	private final Input input;
 	private final List<Output> outputs = new ArrayList<>();
+	private final MultiSharder<K> sharder;
+	private final Function<I, K> keyFunction;
 
 	@SuppressWarnings("unchecked")
-	private StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[0];
+	private StreamDataReceiver<I>[] dataReceivers = new StreamDataReceiver[0];
 	private int suspended = 0;
 
-
-	// region creators
-	private StreamSplitter() {
-		input = new Input();
+	private ShardingStreamSplitter(MultiSharder<K> sharder, Function<I, K> keyFunction) {
+		this.sharder = sharder;
+		this.keyFunction = keyFunction;
+		this.input = new Input();
 	}
 
-	public static <T> StreamSplitter<T> create() {
-		return new StreamSplitter<>();
+	public static <T> ShardingStreamSplitter<T, T> create(MultiSharder<T> sharder) {
+		return new ShardingStreamSplitter<>(sharder, Function.identity());
 	}
-	//endregion
 
-	public StreamProducer<T> newOutput() {
+	public static <I, K> ShardingStreamSplitter<I, K> create(MultiSharder<K> sharder, Function<I, K> keyFunction) {
+		return new ShardingStreamSplitter<>(sharder, keyFunction);
+	}
+
+	public StreamProducer<I> newOutput() {
 		Output output = new Output(outputs.size());
 		dataReceivers = Arrays.copyOf(dataReceivers, dataReceivers.length + 1);
 		suspended++;
@@ -59,27 +58,26 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 	}
 
 	@Override
-	public StreamConsumer<T> getInput() {
+	public StreamConsumer<I> getInput() {
 		return input;
 	}
 
 	@Override
-	public List<? extends StreamProducer<T>> getOutputs() {
+	public List<? extends StreamProducer<I>> getOutputs() {
 		return outputs;
 	}
 
 	@Override
-	public void onData(T item) {
-		//noinspection ForLoopReplaceableByForEach
-		for (int i = 0; i < dataReceivers.length; i++) {
-			dataReceivers[i].onData(item);
+	public void onData(I item) {
+		for (int index : sharder.shard(keyFunction.apply(item))) {
+			dataReceivers[index].onData(item);
 		}
 	}
 
-	protected final class Input extends AbstractStreamConsumer<T> {
+	protected final class Input extends AbstractStreamConsumer<I> {
 		@Override
 		protected void onStarted() {
-			checkState(!outputs.isEmpty(), "Splitter has no outputs");
+			checkState(!outputs.isEmpty(), "Empty outputs");
 		}
 
 		@Override
@@ -93,7 +91,7 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<T> {
+	protected final class Output extends AbstractStreamProducer<I> {
 		private final int index;
 
 		protected Output(int index) {
@@ -108,16 +106,14 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 		@Override
 		protected void onSuspended() {
 			suspended++;
-			assert input.getProducer() != null;
 			input.getProducer().suspend();
 		}
 
 		@Override
-		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+		protected void onProduce(StreamDataReceiver<I> dataReceiver) {
 			dataReceivers[index] = dataReceiver;
 			if (--suspended == 0) {
-				assert input.getProducer() != null;
-				input.getProducer().produce(StreamSplitter.this);
+				input.getProducer().produce(ShardingStreamSplitter.this);
 			}
 		}
 

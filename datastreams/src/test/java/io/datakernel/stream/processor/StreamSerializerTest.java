@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
+import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
 import static io.datakernel.stream.StreamConsumers.oneByOne;
 import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -48,7 +48,7 @@ public class StreamSerializerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> producer = StreamProducer.of(10, 20, 30, 40);
-		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
+		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(INT_SERIALIZER)
 				.withInitialBufferSize(MemSize.of(14))
 				.withMaxMessageSize(MemSize.of(14));
 		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create();
@@ -79,9 +79,9 @@ public class StreamSerializerTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3);
-		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
+		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(INT_SERIALIZER)
 				.withInitialBufferSize(MemSize.of(1));
-		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
+		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(INT_SERIALIZER);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		producer.with(serializerStream).with(deserializerStream).streamTo(
@@ -104,9 +104,9 @@ public class StreamSerializerTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> producer = StreamProducer.closingWithError(new ExpectedException("Test Exception"));
-		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
+		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(INT_SERIALIZER)
 				.withInitialBufferSize(MemSize.of(1));
-		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
+		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(INT_SERIALIZER);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		producer.with(serializerStream).with(deserializerStream).streamTo(

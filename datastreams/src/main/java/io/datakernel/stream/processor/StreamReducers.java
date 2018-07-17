@@ -18,6 +18,8 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.stream.StreamDataReceiver;
 
+import java.util.function.BinaryOperator;
+
 /**
  * Static utility methods pertaining to {@link StreamReducers.Reducer}.
  * Contains primary ready for use reducers.
@@ -512,6 +514,29 @@ public final class StreamReducers {
 
 		@Override
 		public void onComplete(StreamDataReceiver<T> stream, K key, Void accumulator) {
+		}
+	}
+
+	public static class BinaryAccumulatorReducer<K, T> implements Reducer<K, T, T, T> {
+		private final BinaryOperator<T> combiner;
+
+		public BinaryAccumulatorReducer(BinaryOperator<T> combiner) {
+			this.combiner = combiner;
+		}
+
+		@Override
+		public T onFirstItem(StreamDataReceiver<T> stream, K key, T firstValue) {
+			return firstValue;
+		}
+
+		@Override
+		public T onNextItem(StreamDataReceiver<T> stream, K key, T nextValue, T accumulator) {
+			return combiner.apply(accumulator, nextValue);
+		}
+
+		@Override
+		public void onComplete(StreamDataReceiver<T> stream, K key, T accumulator) {
+			stream.onData(accumulator);
 		}
 	}
 }

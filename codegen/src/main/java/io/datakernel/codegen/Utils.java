@@ -341,7 +341,7 @@ final class Utils {
 	}
 
 	public static String exceptionInGeneratedClass(Context ctx) {
-		return format("Throwed in generated class %s in method %s",
+		return format("Thrown in generated class %s in method %s",
 				ctx.getThisType().getClassName(),
 				ctx.getMethod()
 		);

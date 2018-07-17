@@ -22,6 +22,9 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import java.nio.charset.Charset;
+
 import static java.lang.Math.min;
 
 public class ByteBuf {
@@ -329,6 +332,10 @@ public class ByteBuf {
 
 	public String peekString(Charset charset) {
 		return new String(array, readPosition, readRemaining(), charset);
+	}
+
+	public String peekString() {
+		return peekString(UTF_8);
 	}
 
 	// region serialization input
