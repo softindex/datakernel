@@ -281,7 +281,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		checkState(messageTypes != null, "Message types must be specified");
 		checkState(!running);
 
-		SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = new SettableStage<>();
 		running = true;
 		startStage = stage;
 		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
@@ -321,7 +321,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		checkState(eventloop.inEventloopThread());
 		checkState(running);
 
-		SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = new SettableStage<>();
 
 		running = false;
 		if (startStage != null) {

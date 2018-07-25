@@ -49,7 +49,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private StreamStatus status = OPEN;
 	private Throwable exception;
 
-	private final SettableStage<Void> endOfStream = SettableStage.create();
+	private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 	private Object tag;
 

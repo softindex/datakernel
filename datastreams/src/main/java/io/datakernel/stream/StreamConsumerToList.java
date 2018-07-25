@@ -12,7 +12,7 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
 public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, List<T>>, StreamDataReceiver<T> {
 	protected final List<T> list;
-	private final SettableStage<List<T>> resultStage = SettableStage.create();
+	private final SettableStage<List<T>> resultStage = new SettableStage<>();
 
 	private StreamConsumerToList() {
 		this(new ArrayList<>());

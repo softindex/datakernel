@@ -18,7 +18,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
-	private final AsyncCallable<?> task;
+	private final AsyncSupplier<?> task;
 	private final StageStats stats = StageStats.create(Duration.ofMinutes(5));
 
 	private long initialDelay;
@@ -92,12 +92,12 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	private ScheduledRunnable scheduledTask;
 
-	private EventloopTaskScheduler(Eventloop eventloop, AsyncCallable<?> task) {
+	private EventloopTaskScheduler(Eventloop eventloop, AsyncSupplier<?> task) {
 		this.eventloop = eventloop;
 		this.task = task;
 	}
 
-	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncCallable<?> task) {
+	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncSupplier<?> task) {
 		return new EventloopTaskScheduler(eventloop, task);
 	}
 
@@ -165,14 +165,14 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 			}
 		}
 
-		scheduledTask = eventloop.scheduleBackground(timestamp, doCall::call);
+		scheduledTask = eventloop.scheduleBackground(timestamp, doCall::get);
 	}
 
-	private final AsyncCallable<Void> doCall = AsyncCallable.sharedCall(this::doCall);
+	private final AsyncSupplier<Void> doCall = AsyncSuppliers.reuse(this::doCall);
 
 	private Stage<Void> doCall() {
 		lastStartTime = eventloop.currentTimeMillis();
-		return task.call()
+		return task.get()
 				.whenComplete(stats.recordStats())
 				.whenComplete((result, throwable) -> {
 					lastCompleteTime = eventloop.currentTimeMillis();
@@ -295,7 +295,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	@JmxOperation
 	public void startNow() {
-		doCall.call();
+		doCall.get();
 	}
 
 }

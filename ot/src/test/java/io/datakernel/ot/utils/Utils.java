@@ -143,7 +143,7 @@ public class Utils {
 		}
 		return graph.entrySet().stream()
 				.map(entry -> OTCommit.of(entry.getKey(), entry.getValue(), initialLevel - 1L + levels.get(entry.getKey()))
-						.withCommitMetadata(initialLevel - 1L + levels.get(entry.getKey()), false))
+						.withTimestamp(initialLevel - 1L + levels.get(entry.getKey())))
 				.collect(toList());
 	}
 

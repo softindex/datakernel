@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -135,9 +135,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public <T> CompletableFuture<T> submit(AsyncCallable<T> asyncCallable) {
+	public <T> CompletableFuture<T> submit(AsyncSupplier<T> asyncCallable) {
 		CompletableFuture<T> future = new CompletableFuture<>();
-		post(() -> asyncCallable.call().whenComplete((t, throwable) -> complete()).whenComplete((t, throwable) -> {
+		post(() -> asyncCallable.get().whenComplete((t, throwable) -> complete()).whenComplete((t, throwable) -> {
 			if (throwable == null) {
 				future.complete(t);
 			} else {

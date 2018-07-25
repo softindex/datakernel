@@ -50,7 +50,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	private StreamStatus status = OPEN;
 	private Throwable exception;
 
-	private final SettableStage<Void> endOfStream = SettableStage.create();
+	private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 	@Nullable
 	private StreamDataReceiver<T> currentDataReceiver;

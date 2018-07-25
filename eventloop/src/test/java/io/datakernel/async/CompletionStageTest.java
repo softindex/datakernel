@@ -44,7 +44,7 @@ public class CompletionStageTest {
 
 	@Test
 	public void testLongStagesChainResult() throws ExecutionException, InterruptedException {
-		SettableStage<Integer> startStage = SettableStage.create();
+		SettableStage<Integer> startStage = new SettableStage<>();
 		Stage<Integer> powerOfTwo = startStage;
 		for (int i = 0; i < 100_000; i++) {
 			if (i % 100 == 0) {
@@ -61,7 +61,7 @@ public class CompletionStageTest {
 
 	@Test(expected = RuntimeException.class)
 	public void testLongStagesChainError() throws Throwable {
-		SettableStage<Integer> startStage = SettableStage.create();
+		SettableStage<Integer> startStage = new SettableStage<>();
 		Stage<Integer> powerOfTwo = startStage;
 		for (int i = 0; i < 100_000; i++) {
 			if (i % 100 == 0) {

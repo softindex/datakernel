@@ -22,10 +22,10 @@ class CachedStaticLoader implements StaticLoader {
         byte[] bytes = cache.get(name);
 
         if (bytes == null) {
-            SettableStage<ByteBuf> stage = SettableStage.create();
+	        SettableStage<ByteBuf> stage = new SettableStage<>();
             resourceLoader.getResource(name)
                     .whenComplete((byteBuf, throwable) -> {
-                        cache.put(name, throwable == null ? byteBuf.getRemainingArray() : BYTES_ERROR);
+                        cache.put(name, throwable == null ? byteBuf.peekArray() : BYTES_ERROR);
                         stage.set(byteBuf, throwable);
                     });
             return stage;

@@ -340,7 +340,7 @@ public class OTStateManagerTest {
 		}
 
 		@Override
-		public Stage<List<D>> loadSnapshot(K revisionId) {
+		public Stage<Optional<List<D>>> loadSnapshot(K revisionId) {
 			return remote.loadSnapshot(revisionId);
 		}
 
@@ -361,7 +361,7 @@ public class OTStateManagerTest {
 	}
 
 	private static <T> Stage<T> scheduledResult(Eventloop eventloop, long delta, T result) {
-		SettableStage<T> stage = SettableStage.create();
+		SettableStage<T> stage = new SettableStage<>();
 		eventloop.delay(delta, () -> stage.set(result));
 		return stage;
 	}

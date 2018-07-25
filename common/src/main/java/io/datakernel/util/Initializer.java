@@ -8,7 +8,7 @@ import static java.util.Arrays.asList;
 public interface Initializer<T extends Initializable<T>> {
 	void accept(T t);
 
-	default Initializer<T> andThen(Initializer<? super T> next) {
+	default Initializer<T> andThen(Initializer<T> next) {
 		return t -> {
 			this.accept(t);
 			next.accept(t);

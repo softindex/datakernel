@@ -29,7 +29,7 @@ import java.util.List;
 
 public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>> {
 	private final StreamConsumerSwitcher<T> switcher;
-	private final SettableStage<List<AggregationChunk>> result = SettableStage.create();
+	private final SettableStage<List<AggregationChunk>> result = new SettableStage<>();
 
 	private final AggregationStructure aggregation;
 	private final List<String> fields;
@@ -80,7 +80,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 	}
 
 	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, AggregationChunk>, StreamDataReceiver<T> {
-		private final SettableStage<AggregationChunk> result = SettableStage.create();
+		private final SettableStage<AggregationChunk> result = new SettableStage<>();
 		private final C chunkId;
 		private final int chunkSize;
 		private final PartitionPredicate<T> partitionPredicate;

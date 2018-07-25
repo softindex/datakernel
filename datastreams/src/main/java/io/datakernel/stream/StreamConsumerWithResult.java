@@ -16,6 +16,7 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.stream.processor.StreamLateBinder;
@@ -44,8 +45,8 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder.create());
 	}
 
-	static <T, X> StreamConsumerWithResult<T, X> ofStage(Stage<StreamConsumerWithResult<T, X>> consumerStage) {
-		SettableStage<X> result = SettableStage.create();
+	static <T, X> StreamConsumerWithResult<T, X> ofStage(Stage<? extends StreamConsumerWithResult<T, X>> consumerStage) {
+		SettableStage<X> result = new SettableStage<>();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
 		consumerStage.whenComplete((consumer, throwable) -> {
 			if (throwable == null) {
@@ -60,6 +61,10 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 			}
 		});
 		return binder.getInput().withResult(result);
+	}
+
+	static <T> StreamConsumerWithResult<T, Void> ofAsyncConsumer(AsyncConsumer<T> consumer) {
+		return new StreamConsumers.OfAsyncConsumerImpl<>(consumer);
 	}
 
 	default <U> StreamConsumerWithResult<T, U> thenApply(Function<? super X, ? extends U> fn) {
@@ -98,6 +103,7 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return this;
 	}
 
+	@Override
 	default StreamConsumerWithResult<T, X> whenException(Consumer<Throwable> consumer) {
 		getResult().post().whenException(consumer);
 		return this;

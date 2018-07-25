@@ -62,7 +62,7 @@ public class AsyncHttpServerTest {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
 			public Stage<HttpResponse> serve(HttpRequest request) {
-				SettableStage<HttpResponse> stage = SettableStage.create();
+				SettableStage<HttpResponse> stage = new SettableStage<>();
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				stage.set(content);
 				return stage;
@@ -77,7 +77,7 @@ public class AsyncHttpServerTest {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
 			public Stage<HttpResponse> serve(HttpRequest request) {
-				SettableStage<HttpResponse> stage = SettableStage.create();
+				SettableStage<HttpResponse> stage = new SettableStage<>();
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.delay(random.nextInt(3), () -> stage.set(content));
 				return stage;
@@ -343,7 +343,7 @@ public class AsyncHttpServerTest {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
 			public Stage<HttpResponse> serve(HttpRequest request) {
-				SettableStage<HttpResponse> stage = SettableStage.create();
+				SettableStage<HttpResponse> stage = new SettableStage<>();
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				stage.set(content);
 				return stage;

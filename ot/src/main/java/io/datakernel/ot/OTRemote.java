@@ -1,15 +1,12 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -25,7 +22,7 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 	default Stage<Void> push(Collection<OTCommit<K, D>> commits) {
 		return runSequence(commits.stream()
 				.sorted(comparingLong(OTCommit::getLevel))
-				.map(commit -> (AsyncCallable<Void>) () -> this.push(commit)));
+				.map(this::push));
 	}
 
 	default Stage<Void> push(OTCommit<K, D> commit) {
@@ -36,7 +33,11 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 
 	Stage<OTCommit<K, D>> loadCommit(K revisionId);
 
-	Stage<List<D>> loadSnapshot(K revisionId);
+	default Stage<Boolean> hasSnapshot(K revisionId) {
+		return loadSnapshot(revisionId).thenApply(Optional::isPresent);
+	}
+
+	Stage<Optional<List<D>>> loadSnapshot(K revisionId);
 
 	Stage<Void> saveSnapshot(K revisionId, List<D> diffs);
 
@@ -47,19 +48,19 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 			int writeRedundancy) {
 		return new OTRemote<K, D>() {
 
-			private Stage<Void> doCall(Stream<? extends AsyncCallable<?>> callables,
+			private Stage<Void> doCall(Stream<? extends AsyncSupplier<?>> callables,
 					int minSuccesses) {
-				List<? extends AsyncCallable<?>> list = callables.collect(toList());
+				List<? extends AsyncSupplier<?>> list = callables.collect(toList());
 				int minSuccessesFinal = min(minSuccesses, list.size());
 				if (minSuccessesFinal == 0) {
-					list.forEach(AsyncCallable::call);
+					list.forEach(AsyncSupplier::get);
 					return Stage.of(null);
 				}
-				SettableStage<Void> result = SettableStage.create();
+				SettableStage<Void> result = new SettableStage<>();
 				int[] successes = new int[]{0};
 				int[] completed = new int[]{0};
-				for (AsyncCallable<?> callable : list) {
-					callable.call().whenComplete(($, e) -> {
+				for (AsyncSupplier<?> callable : list) {
+					callable.get().whenComplete(($, e) -> {
 						if (e == null) {
 							if (++successes[0] == minSuccessesFinal) {
 								result.set(null);
@@ -80,7 +81,7 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 				return doCall(
 						writeList.apply(commit.getId()).stream()
 								.map(remotes::get)
-								.map(remote -> (AsyncCallable<Void>) () -> remote.push(commit)),
+								.map(remote -> (AsyncSupplier<Void>) () -> remote.push(commit)),
 						writeRedundancy);
 			}
 
@@ -100,15 +101,15 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 				return Stages.firstSuccessful(
 						readList.apply(revisionId).stream()
 								.map(remotes::get)
-								.map(remote -> (AsyncCallable<OTCommit<K, D>>) () -> remote.loadCommit(revisionId)));
+								.map(remote -> remote.loadCommit(revisionId)));
 			}
 
 			@Override
-			public Stage<List<D>> loadSnapshot(K revisionId) {
+			public Stage<Optional<List<D>>> loadSnapshot(K revisionId) {
 				return Stages.firstSuccessful(
 						readList.apply(revisionId).stream()
 								.map(remotes::get)
-								.map(remote -> (AsyncCallable<List<D>>) () -> remote.loadSnapshot(revisionId)));
+								.map(remote -> remote.loadSnapshot(revisionId)));
 			}
 
 			@Override
@@ -116,7 +117,7 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 				return doCall(
 						writeList.apply(revisionId).stream()
 								.map(remotes::get)
-								.map(remote -> (AsyncCallable<Void>) () -> remote.saveSnapshot(revisionId, diffs)),
+								.map(remote -> (AsyncSupplier<Void>) () -> remote.saveSnapshot(revisionId, diffs)),
 						writeRedundancy);
 			}
 

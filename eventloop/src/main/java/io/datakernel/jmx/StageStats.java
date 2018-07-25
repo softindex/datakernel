@@ -1,7 +1,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 
@@ -50,8 +50,8 @@ public class StageStats {
 		return eventloop.currentTimeMillis();
 	}
 
-	public <T> AsyncCallable<T> wrapper(AsyncCallable<T> callable) {
-		return () -> monitor(callable.call());
+	public <T> AsyncSupplier<T> wrapper(AsyncSupplier<T> callable) {
+		return () -> monitor(callable.get());
 	}
 
 	public <T> Stage<T> monitor(Stage<T> stage) {

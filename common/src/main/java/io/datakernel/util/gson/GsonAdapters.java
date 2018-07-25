@@ -3,7 +3,9 @@ package io.datakernel.util.gson;
 import com.google.gson.TypeAdapter;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import io.datakernel.util.*;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -17,6 +19,7 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 
+import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 
@@ -137,6 +140,10 @@ public final class GsonAdapters {
 		}
 	};
 
+	public static final TypeAdapter<byte[]> BYTES_JSON = GsonAdapters.transform(STRING_JSON,
+			Base64.getDecoder()::decode,
+			Base64.getEncoder()::encodeToString);
+
 	public static final TypeAdapter<LocalDate> LOCAL_DATE_JSON = new TypeAdapter<LocalDate>() {
 		@Override
 		public void write(JsonWriter out, LocalDate value) throws IOException {
@@ -170,7 +177,7 @@ public final class GsonAdapters {
 		<T> TypeAdapter<T> getAdapter(Type type);
 
 		default <T> String toJson(T obj) {
-			return GsonAdapters.toJson(getAdapter((Class<T>) obj.getClass()), obj);
+			return GsonAdapters.toJson(getAdapter(obj.getClass()), obj);
 		}
 	}
 
@@ -238,29 +245,29 @@ public final class GsonAdapters {
 	}
 
 	public static final TypeAdapterMappingImpl PRIMITIVES_MAP = TypeAdapterMappingImpl.create()
-		.withAdapter(boolean.class, BOOLEAN_JSON).withAdapter(Boolean.class, BOOLEAN_JSON)
-		.withAdapter(char.class, CHARACTER_JSON).withAdapter(Character.class, CHARACTER_JSON)
-		.withAdapter(byte.class, BYTE_JSON).withAdapter(Byte.class, BYTE_JSON)
-		.withAdapter(short.class, SHORT_JSON).withAdapter(Short.class, SHORT_JSON)
-		.withAdapter(int.class, INTEGER_JSON).withAdapter(Integer.class, INTEGER_JSON)
-		.withAdapter(long.class, LONG_JSON).withAdapter(Long.class, LONG_JSON)
-		.withAdapter(float.class, FLOAT_JSON).withAdapter(Float.class, FLOAT_JSON)
-		.withAdapter(double.class, DOUBLE_JSON).withAdapter(Double.class, DOUBLE_JSON)
-		.withAdapter(String.class, STRING_JSON)
-		.withAdapter(Enum.class, (cls, $) -> ofEnum((Class) cls))
-		.withAdapter(List.class, ($, paramAdapters) -> {
-			checkArgument(paramAdapters.length == 1);
-			return ofList(paramAdapters[0]);
-		})
-		.withAdapter(Set.class, ($, paramAdapters) -> {
-			checkArgument(paramAdapters.length == 1);
-			return ofSet(paramAdapters[0]);
-		})
-		.withAdapter(Map.class, ($, paramAdapters) -> {
-			checkArgument(paramAdapters.length == 2);
-			checkArgument(paramAdapters[0] == STRING_JSON, "Map key type should be string!");
-			return ofMap(paramAdapters[1]);
-		});
+			.withAdapter(boolean.class, BOOLEAN_JSON).withAdapter(Boolean.class, BOOLEAN_JSON)
+			.withAdapter(char.class, CHARACTER_JSON).withAdapter(Character.class, CHARACTER_JSON)
+			.withAdapter(byte.class, BYTE_JSON).withAdapter(Byte.class, BYTE_JSON)
+			.withAdapter(short.class, SHORT_JSON).withAdapter(Short.class, SHORT_JSON)
+			.withAdapter(int.class, INTEGER_JSON).withAdapter(Integer.class, INTEGER_JSON)
+			.withAdapter(long.class, LONG_JSON).withAdapter(Long.class, LONG_JSON)
+			.withAdapter(float.class, FLOAT_JSON).withAdapter(Float.class, FLOAT_JSON)
+			.withAdapter(double.class, DOUBLE_JSON).withAdapter(Double.class, DOUBLE_JSON)
+			.withAdapter(String.class, STRING_JSON)
+			.withAdapter(Enum.class, (cls, $) -> ofEnum((Class) cls))
+			.withAdapter(List.class, ($, paramAdapters) -> {
+				checkArgument(paramAdapters.length == 1);
+				return ofList(paramAdapters[0]);
+			})
+			.withAdapter(Set.class, ($, paramAdapters) -> {
+				checkArgument(paramAdapters.length == 1);
+				return ofSet(paramAdapters[0]);
+			})
+			.withAdapter(Map.class, ($, paramAdapters) -> {
+				checkArgument(paramAdapters.length == 2);
+				checkArgument(paramAdapters[0] == STRING_JSON, "Map key type should be string!");
+				return ofMap(paramAdapters[1]);
+			});
 
 	// copied from GsonSubclassesAdapter
 	// makes instantiation of stateless anonymous classes possible
@@ -278,7 +285,7 @@ public final class GsonAdapters {
 			Constructor<?> ctor = cls.getDeclaredConstructor(enclosingClass);
 			ctor.setAccessible(true);
 			return (T) ctor.newInstance((Object) null);
-		}catch(Exception e) {
+		} catch (Exception e) {
 			throw new AssertionError(e);
 		}
 	}
@@ -299,7 +306,7 @@ public final class GsonAdapters {
 
 	public static <T> TypeAdapter<T> stateless(T... singletons) {
 		Map<String, T> mapped = new HashMap<>();
-		for(T singleton : singletons) {
+		for (T singleton : singletons) {
 			mapped.put(singleton.getClass().getName(), singleton);
 		}
 		return new TypeAdapter<T>() {
@@ -352,7 +359,6 @@ public final class GsonAdapters {
 */
 
 	public interface FunctionIO<I, O> {
-
 		O convert(I in) throws IOException;
 	}
 
@@ -507,6 +513,63 @@ public final class GsonAdapters {
 		};
 	}
 
+	public static <R, T1> TypeAdapter<R> ofTuple(TupleConstructor1<T1, R> constructor,
+			String field1, Function<R, T1> getter1, TypeAdapter<T1> gson1) {
+		return transform(ofHeterogeneousMap(map(field1, gson1)),
+				map -> constructor.create((T1) map.get(field1)),
+				obj -> map(field1, getter1.apply(obj)));
+	}
+
+	public static <R, T1, T2> TypeAdapter<R> ofTuple(TupleConstructor2<T1, T2, R> constructor,
+			String field1, Function<R, T1> getter1, TypeAdapter<T1> gson1,
+			String field2, Function<R, T2> getter2, TypeAdapter<T2> gson2) {
+		return transform(ofHeterogeneousMap(map(field1, gson1, field2, gson2)),
+				map -> constructor.create((T1) map.get(field1), (T2) map.get(field2)),
+				obj -> map(field1, getter1.apply(obj), field2, getter2.apply(obj)));
+	}
+
+	public static <R, T1, T2, T3> TypeAdapter<R> ofTuple(TupleConstructor3<T1, T2, T3, R> constructor,
+			String field1, Function<R, T1> getter1, TypeAdapter<T1> gson1,
+			String field2, Function<R, T2> getter2, TypeAdapter<T2> gson2,
+			String field3, Function<R, T3> getter3, TypeAdapter<T3> gson3) {
+		return transform(ofHeterogeneousMap(map(field1, gson1, field2, gson2, field3, gson3)),
+				map -> constructor.create((T1) map.get(field1), (T2) map.get(field2), (T3) map.get(field3)),
+				obj -> map(field1, getter1.apply(obj), field2, getter2.apply(obj), field3, getter3.apply(obj)));
+	}
+
+	public static <R, T1, T2, T3, T4> TypeAdapter<R> ofTuple(TupleConstructor4<T1, T2, T3, T4, R> constructor,
+			String field1, Function<R, T1> getter1, TypeAdapter<T1> gson1,
+			String field2, Function<R, T2> getter2, TypeAdapter<T2> gson2,
+			String field3, Function<R, T3> getter3, TypeAdapter<T3> gson3,
+			String field4, Function<R, T4> getter4, TypeAdapter<T4> gson4) {
+		return transform(ofHeterogeneousMap(map(field1, gson1, field2, gson2, field3, gson3, field4, gson4)),
+				map -> constructor.create((T1) map.get(field1), (T2) map.get(field2), (T3) map.get(field3), (T4) map.get(field4)),
+				obj -> map(field1, getter1.apply(obj), field2, getter2.apply(obj), field3, getter3.apply(obj), field4, getter4.apply(obj)));
+	}
+
+	public static <R, T1, T2, T3, T4, T5> TypeAdapter<R> ofTuple(TupleConstructor5<T1, T2, T3, T4, T5, R> constructor,
+			String field1, Function<R, T1> getter1, TypeAdapter<T1> gson1,
+			String field2, Function<R, T2> getter2, TypeAdapter<T2> gson2,
+			String field3, Function<R, T3> getter3, TypeAdapter<T3> gson3,
+			String field4, Function<R, T4> getter4, TypeAdapter<T4> gson4,
+			String field5, Function<R, T5> getter5, TypeAdapter<T5> gson5) {
+		return transform(ofHeterogeneousMap(map(field1, gson1, field2, gson2, field3, gson3, field4, gson4, field5, gson5)),
+				map -> constructor.create((T1) map.get(field1), (T2) map.get(field2), (T3) map.get(field3), (T4) map.get(field4), (T5) map.get(field5)),
+				obj -> map(field1, getter1.apply(obj), field2, getter2.apply(obj), field3, getter3.apply(obj), field4, getter4.apply(obj), field5, getter5.apply(obj)));
+	}
+
+	public static <R, T1, T2, T3, T4, T5, T6> TypeAdapter<R> ofTuple(TupleConstructor6<T1, T2, T3, T4, T5, T6, R> constructor,
+			String field1, Function<R, T1> getter1, TypeAdapter<T1> gson1,
+			String field2, Function<R, T2> getter2, TypeAdapter<T2> gson2,
+			String field3, Function<R, T3> getter3, TypeAdapter<T3> gson3,
+			String field4, Function<R, T4> getter4, TypeAdapter<T4> gson4,
+			String field5, Function<R, T5> getter5, TypeAdapter<T5> gson5,
+			String field6, Function<R, T6> getter6, TypeAdapter<T6> gson6) {
+		return transform(ofHeterogeneousMap(map(field1, gson1, field2, gson2, field3, gson3, field4, gson4, field5, gson5, field6, gson6)),
+				map -> constructor.create((T1) map.get(field1), (T2) map.get(field2), (T3) map.get(field3), (T4) map.get(field4), (T5) map.get(field5), (T6) map.get(field6)),
+				obj -> map(field1, getter1.apply(obj), field2, getter2.apply(obj), field3, getter3.apply(obj), field4, getter4.apply(obj), field5, getter5.apply(obj), field6, getter6.apply(obj)));
+	}
+
 	public static TypeAdapter<Object[]> ofHeterogeneousArray(TypeAdapter<?>[] valueAdapters) {
 		return new TypeAdapter<Object[]>() {
 			@Override
@@ -529,6 +592,29 @@ public final class GsonAdapters {
 				}
 				reader.endArray();
 				return result;
+			}
+		};
+	}
+
+	public static <T> TypeAdapter<Optional<T>> optional(final TypeAdapter<T> adapter) {
+		return new TypeAdapter<Optional<T>>() {
+			@Override
+			public void write(JsonWriter out, Optional<T> value) throws IOException {
+				if (value.isPresent()) {
+					adapter.write(out, value.get());
+				} else {
+					out.nullValue();
+				}
+			}
+
+			@Override
+			public Optional<T> read(JsonReader in) throws IOException {
+				if (in.peek() != JsonToken.NULL) {
+					return Optional.of(adapter.read(in));
+				} else {
+					in.nextNull();
+					return Optional.empty();
+				}
 			}
 		};
 	}
@@ -559,7 +645,7 @@ public final class GsonAdapters {
 	}
 
 	public static TypeAdapter<Object[]> ofHeterogeneousArray(List<? extends TypeAdapter<?>> valueAdapters) {
-		return ofHeterogeneousArray(valueAdapters.toArray(new TypeAdapter<?>[valueAdapters.size()]));
+		return ofHeterogeneousArray(valueAdapters.toArray(new TypeAdapter<?>[0]));
 	}
 
 	public static TypeAdapter<List<?>> ofHeterogeneousList(TypeAdapter<?>[] valueAdapters) {
@@ -567,7 +653,7 @@ public final class GsonAdapters {
 	}
 
 	public static TypeAdapter<List<?>> ofHeterogeneousList(List<? extends TypeAdapter<?>> valueAdapters) {
-		return ofHeterogeneousList(valueAdapters.toArray(new TypeAdapter<?>[valueAdapters.size()]));
+		return ofHeterogeneousList(valueAdapters.toArray(new TypeAdapter<?>[0]));
 	}
 
 	public static <T> T fromJson(TypeAdapter<T> typeAdapter, String string) throws IOException {
@@ -610,7 +696,7 @@ public final class GsonAdapters {
 		adapter.write(jsonWriter, value);
 	}
 
-	public static <T> String toJson(TypeAdapter<T> adapter, T value) {
+	public static <T> String toJson(TypeAdapter<? super T> adapter, T value) {
 		try {
 			StringWriter writer = new StringWriter();
 			toJson(adapter, value, writer);
@@ -620,7 +706,7 @@ public final class GsonAdapters {
 		}
 	}
 
-	public static <T> void toJson(TypeAdapter<T> adapter, T obj, Appendable appendable) throws IOException {
+	public static <T> void toJson(TypeAdapter<? super T> adapter, T obj, Appendable appendable) throws IOException {
 		toJson(adapter, obj, Streams.writerForAppendable(appendable));
 	}
 }

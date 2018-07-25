@@ -69,7 +69,7 @@ public class LogManagerImplTest {
 		@Override
 		public Stage<LogFile> makeUniqueLogFile(String logPartition, String logName) {
 			Map<LogFile, List<ByteBuf>> partition = partitions.computeIfAbsent(logPartition, s -> new HashMap<>());
-			SettableStage<LogFile> stage = SettableStage.create();
+			SettableStage<LogFile> stage = new SettableStage<>();
 
 			eventloop.delay(100, () -> {
 				LogFile value = new LogFile(logName, partition.size());

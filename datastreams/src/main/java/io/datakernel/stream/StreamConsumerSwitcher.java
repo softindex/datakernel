@@ -88,7 +88,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	private class InternalProducer implements StreamProducer<T> {
 		private final Eventloop eventloop;
 		private final StreamConsumer<T> consumer;
-		private final SettableStage<Void> endOfStream = SettableStage.create();
+		private final SettableStage<Void> endOfStream = new SettableStage<>();
 		private StreamDataReceiver<T> lastDataReceiver;
 		private boolean suspended;
 		private ArrayList<T> pendingItems;

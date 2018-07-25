@@ -121,7 +121,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 					Collections.sort(logFilesToRead);
 
 					Iterator<LogFile> it = logFilesToRead.iterator();
-					SettableStage<LogPosition> positionStage = SettableStage.create();
+					SettableStage<LogPosition> positionStage = new SettableStage<>();
 
 					Iterator<StreamProducer<T>> producers = new Iterator<StreamProducer<T>>() {
 						private int n;

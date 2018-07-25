@@ -40,7 +40,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	}
 
 	public static SocketStreamConsumer create(AsyncTcpSocket asyncTcpSocket) {
-		return new SocketStreamConsumer(asyncTcpSocket, SettableStage.create());
+		return new SocketStreamConsumer(asyncTcpSocket, new SettableStage<>());
 	}
 	// endregion
 

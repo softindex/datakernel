@@ -16,7 +16,7 @@
 
 package io.datakernel.logfs.ot;
 
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.eventloop.Eventloop;
@@ -43,7 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.async.AsyncSuppliers.reuse;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
@@ -72,7 +72,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	private final StageStats stageConsumer = StageStats.create(Duration.ofMinutes(5));
 
 	private LogOTProcessor(Eventloop eventloop, LogManager<T> logManager, LogDataConsumer<T, D> logStreamConsumer,
-	                       String log, List<String> partitions, LogOTState<D> state) {
+			String log, List<String> partitions, LogOTState<D> state) {
 		this.eventloop = eventloop;
 		this.logManager = logManager;
 		this.logStreamConsumer = logStreamConsumer;
@@ -82,8 +82,8 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	}
 
 	public static <T, D> LogOTProcessor<T, D> create(Eventloop eventloop, LogManager<T> logManager,
-	                                                 LogDataConsumer<T, D> logStreamConsumer,
-	                                                 String log, List<String> partitions, LogOTState<D> state) {
+			LogDataConsumer<T, D> logStreamConsumer,
+			String log, List<String> partitions, LogOTState<D> state) {
 		return new LogOTProcessor<>(eventloop, logManager, logStreamConsumer, log, partitions, state);
 	}
 
@@ -102,10 +102,10 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		return Stage.of(null);
 	}
 
-	private final AsyncCallable<LogDiff<D>> processLog = sharedCall(this::doProcessLog);
+	private final AsyncSupplier<LogDiff<D>> processLog = reuse(this::doProcessLog);
 
 	public Stage<LogDiff<D>> processLog() {
-		return processLog.call();
+		return processLog.get();
 	}
 
 	private Stage<LogDiff<D>> doProcessLog() {

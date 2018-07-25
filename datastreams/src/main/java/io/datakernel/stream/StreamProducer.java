@@ -16,7 +16,7 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
@@ -26,6 +26,7 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -211,17 +212,16 @@ public interface StreamProducer<T> {
 		});
 	}
 
-	static <T> StreamProducer<T> ofAsyncCallable(AsyncCallable<T> supplier) {
-		return new StreamProducers.OfAsyncCallableImpl<>(supplier);
+	static <T> StreamProducer<T> ofAsyncSupplier(AsyncSupplier<T> supplier) {
+		return new StreamProducers.OfAsyncSupplierImpl<>(supplier);
 	}
-
 
 	String LATE_BINDING_ERROR_MESSAGE = "" +
 			"StreamProducer %s does not have LATE_BINDING capabilities, " +
 			"it must be bound in the same tick when it is created. " +
 			"Alternatively, use .withLateBinding() modifier";
 
-	static <T> StreamProducer<T> ofStage(Stage<StreamProducer<T>> producerStage) {
+	static <T> StreamProducer<T> ofStage(Stage<? extends StreamProducer<T>> producerStage) {
 		StreamLateBinder<T> binder = StreamLateBinder.create();
 		producerStage.whenComplete((producer, throwable) -> {
 			if (throwable == null) {
@@ -260,9 +260,17 @@ public interface StreamProducer<T> {
 		return concat(asList(producers));
 	}
 
+	default <X> StreamProducerWithResult<T, X> withResultAsyncSupplier(AsyncSupplier<X> result) {
+		return withResult(this.getEndOfStream().thenCompose($ -> result.get()));
+	}
+
+	default <X> StreamProducerWithResult<T, X> withResultSupplier(Supplier<X> result) {
+		return withResult(this.getEndOfStream().thenCompose($ -> Stage.of(result.get())));
+	}
+
 	default <X> StreamProducerWithResult<T, X> withResult(Stage<X> result) {
-		SettableStage<Void> safeEndOfStream = SettableStage.create();
-		SettableStage<X> safeResult = SettableStage.create();
+		SettableStage<Void> safeEndOfStream = new SettableStage<>();
+		SettableStage<X> safeResult = new SettableStage<>();
 		getEndOfStream().whenComplete(($, throwable) -> {
 			safeEndOfStream.trySet($, throwable);
 			if (throwable != null) {
@@ -305,7 +313,7 @@ public interface StreamProducer<T> {
 	}
 
 	default StreamProducerWithResult<T, Void> withEndOfStreamAsResult() {
-		SettableStage<Void> safeEndOfStream = SettableStage.create();
+		SettableStage<Void> safeEndOfStream = new SettableStage<>();
 		getEndOfStream().post().whenComplete(safeEndOfStream::trySet);
 		return new StreamProducerWithResult<T, Void>() {
 			@Override
@@ -347,6 +355,16 @@ public interface StreamProducer<T> {
 
 	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {
 		return streamTo(StreamConsumerWithResult.toCollector(collector)).getConsumerResult();
+	}
+
+	default StreamProducer<T> whenEndOfStream(Runnable runnable) {
+		getEndOfStream().whenResult($ -> runnable.run());
+		return this;
+	}
+
+	default StreamProducer<T> whenException(Consumer<Throwable> consumer) {
+		getEndOfStream().whenException(consumer);
+		return this;
 	}
 
 }

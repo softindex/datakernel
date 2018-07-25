@@ -454,7 +454,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@Override
 	public Stage<Void> stop() {
 		checkState(eventloop.inEventloopThread());
-		SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = new SettableStage<>();
 
 		poolKeepAlive.closeAllConnections();
 		assert addresses.isEmpty();

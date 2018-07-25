@@ -238,7 +238,7 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 	}
 
 	@Override
-	public Stage<List<D>> loadSnapshot(Long revisionId) {
+	public Stage<Optional<List<D>>> loadSnapshot(Long revisionId) {
 		return Stage.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
@@ -247,11 +247,11 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 							ps.setLong(1, revisionId);
 							ResultSet resultSet = ps.executeQuery();
 
-							if (!resultSet.next()) throw new IOException("No snapshot for id: " + revisionId);
+							if (!resultSet.next()) return Optional.<List<D>>empty();
 
 							String str = resultSet.getString(1);
 							List<D> snapshot = str == null ? Collections.emptyList() : fromJson(str);
-							return otSystem.squash(snapshot);
+							return Optional.of(otSystem.squash(snapshot));
 						}
 					}
 				})
@@ -299,7 +299,9 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 							throw new IOException("No commit with id: " + revisionId);
 						}
 
-						return OTCommit.of(revisionId, parentDiffs, level).withCommitMetadata(timestamp, snapshot);
+						return OTCommit.of(revisionId, parentDiffs, level)
+								.withTimestamp(timestamp)
+								.withSnapshotHint(snapshot);
 					}
 				})
 				.whenComplete(stageLoadCommit.recordStats())

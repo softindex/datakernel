@@ -71,7 +71,7 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 
 	@SuppressWarnings("unchecked")
 	public <L extends D, R extends D> OTSystemImpl<D> withTransformFunction(Class<? super L> leftType, Class<? super R> rightType,
-	                                                                        TransformFunction<D, L, R> transformer) {
+			TransformFunction<D, L, R> transformer) {
 		this.transformers.put(new KeyPair(leftType, rightType), transformer);
 		if (leftType != rightType) {
 			this.transformers.put(new KeyPair(rightType, leftType), (TransformFunction<D, R, L>) (left, right) -> {
@@ -91,7 +91,7 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 
 	@SuppressWarnings("unchecked")
 	public <O1 extends D, O2 extends D> OTSystemImpl<D> withSquashFunction(Class<? super O1> opType1, Class<? super O2> opType2,
-	                                                                       SquashFunction<D, O1, O2> squashFunction) {
+			SquashFunction<D, O1, O2> squashFunction) {
 		this.squashers.put(new KeyPair(opType1, opType2), squashFunction);
 		return this;
 	}

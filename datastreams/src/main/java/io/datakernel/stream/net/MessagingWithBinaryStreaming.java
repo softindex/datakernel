@@ -76,7 +76,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	}
 
 	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket asyncTcpSocket,
-																   MessagingSerializer<I, O> serializer) {
+			MessagingSerializer<I, O> serializer) {
 		return new MessagingWithBinaryStreaming<>(asyncTcpSocket, serializer);
 	}
 	// endregion
@@ -90,7 +90,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			return Stage.ofException(closedException);
 		}
 
-		SettableStage<I> result = SettableStage.create();
+		SettableStage<I> result = new SettableStage<>();
 		this.receiveMessageCallback = result;
 		if (readBuf != null || readEndOfStream) {
 			eventloop.post(() -> {
@@ -157,7 +157,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			logger.trace("sending message {}: {}", msg, this);
 		}
 
-		SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = new SettableStage<>();
 		writeCallbacks.add(stage);
 		ByteBuf buf = serializer.serialize(msg);
 		socket.write(buf);
@@ -177,7 +177,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		logger.trace("sending end of stream: {}", this);
 
-		SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = new SettableStage<>();
 		writeEndOfStreamRequest = true;
 		socket.writeEndOfStream();
 

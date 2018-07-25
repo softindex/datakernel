@@ -1,7 +1,7 @@
 package io.datakernel.exception;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public class ToDoException extends Exception {
+public class ToDoException extends RuntimeException {
 
 	public ToDoException() {
 		super();

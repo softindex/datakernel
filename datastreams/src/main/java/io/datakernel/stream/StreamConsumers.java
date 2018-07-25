@@ -16,6 +16,7 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
@@ -37,7 +38,7 @@ public final class StreamConsumers {
 
 	static final class ClosingWithErrorImpl<T> implements StreamConsumer<T> {
 		private final Throwable exception;
-		private final SettableStage<Void> endOfStream = SettableStage.create();
+		private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 		ClosingWithErrorImpl(Throwable exception) {
 			this.exception = exception;
@@ -60,7 +61,6 @@ public final class StreamConsumers {
 	}
 
 	static final class OfConsumerImpl<T> extends AbstractStreamConsumer<T> {
-
 		private final Consumer<T> consumer;
 
 		OfConsumerImpl(Consumer<T> consumer) {
@@ -88,13 +88,80 @@ public final class StreamConsumers {
 		}
 	}
 
+	static final class OfAsyncConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, Void>, StreamDataReceiver<T> {
+		private final AsyncConsumer<T> consumer;
+		private int waiting;
+		private final SettableStage<Void> resultStage = new SettableStage<>();
+
+		OfAsyncConsumerImpl(AsyncConsumer<T> consumer) {
+			this.consumer = consumer;
+		}
+
+		@Override
+		protected void onStarted() {
+			getProducer().produce(this);
+		}
+
+		@Override
+		public void onData(T item) {
+			Stage<Void> stage = consumer.accept(item);
+			if (stage instanceof SettableStage) {
+				SettableStage<Void> settableStage = (SettableStage<Void>) stage;
+				if (settableStage.isSetResult()) {
+					// do nothing, continue streaming
+					return;
+				} else if (settableStage.isSetException()) {
+					closeWithError(settableStage.getException());
+					return;
+				}
+			}
+			waiting++;
+			getProducer().suspend();
+			stage.whenComplete(($, throwable) -> {
+				if (--waiting == 0) {
+					if (throwable == null) {
+						if (getStatus().isOpen()) {
+							getProducer().streamTo(this);
+						} else {
+							resultStage.trySet(null);
+						}
+					} else {
+						closeWithError(throwable);
+					}
+				}
+			});
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			if (waiting == 0) {
+				resultStage.trySet(null);
+			}
+		}
+
+		@Override
+		protected void onError(Throwable t) {
+			resultStage.trySetException(t);
+		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			return EnumSet.of(LATE_BINDING);
+		}
+
+		@Override
+		public Stage<Void> getResult() {
+			return null;
+		}
+	}
+
 	/**
 	 * Represents a simple {@link AbstractStreamConsumer} which with changing producer sets its status as complete.
 	 *
 	 * @param <T> type of received data
 	 */
 	static final class IdleImpl<T> implements StreamConsumer<T> {
-		private final SettableStage<Void> endOfStream = SettableStage.create();
+		private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 		@Override
 		public void setProducer(StreamProducer<T> producer) {
@@ -127,7 +194,7 @@ public final class StreamConsumers {
 
 	public static <T> StreamConsumerModifier<T, T> decorator(Decorator<T> decorator) {
 		return consumer -> new ForwardingStreamConsumer<T>(consumer) {
-			final SettableStage<Void> endOfStream = SettableStage.create();
+			final SettableStage<Void> endOfStream = new SettableStage<>();
 
 			{
 				consumer.getEndOfStream().whenComplete(endOfStream::trySet);

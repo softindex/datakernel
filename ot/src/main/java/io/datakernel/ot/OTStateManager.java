@@ -1,7 +1,7 @@
 package io.datakernel.ot;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.function.Supplier;
 
-import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -119,10 +119,10 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 				.whenComplete(toLogger(logger, thisMethod(), commitId, this));
 	}
 
-	private final AsyncCallable<K> fetch = sharedCall(this::doFetch);
+	private final AsyncSupplier<K> fetch = reuse(this::doFetch);
 
 	public Stage<K> fetch() {
-		return fetch.call();
+		return fetch.get();
 	}
 
 	public Stage<K> fetch(K head) {
@@ -143,7 +143,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		K fetchedRevisionCopy = coalesce(fetchedRevision, revision);
 		return algorithms.findParent(heads,
 				DiffsReducer.toList(),
-				commit -> commit.getId().equals(fetchedRevisionCopy))
+				commit -> Stage.of(commit.getId().equals(fetchedRevisionCopy)))
 				.thenCompose(findResult -> {
 					if (!findResult.isFound()) {
 						logger.warn("Commit not found: {} in {}", heads, this);
@@ -220,10 +220,10 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	private final AsyncCallable<K> commit = sharedCall(this::doCommit);
+	private final AsyncSupplier<K> commit = reuse(this::doCommit);
 
 	public Stage<K> commit() {
-		return commit.call();
+		return commit.get();
 	}
 
 	Stage<K> doCommit() {
@@ -252,7 +252,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	private final AsyncCallable<Void> push = sharedCall(this::doPush);
+	private final AsyncSupplier<Void> push = reuse(this::doPush);
 
 	public Stage<Void> push() {
 		return push.call();

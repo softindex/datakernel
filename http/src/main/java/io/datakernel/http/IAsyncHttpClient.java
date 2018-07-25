@@ -22,7 +22,7 @@ import io.datakernel.async.Stage;
 
 public interface IAsyncHttpClient {
 	default Stage<HttpResponse> send(HttpRequest request) {
-		SettableStage<HttpResponse> result = SettableStage.create();
+		SettableStage<HttpResponse> result = new SettableStage<>();
 		send(request, result);
 		return result;
 	}

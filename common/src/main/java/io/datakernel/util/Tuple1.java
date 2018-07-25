@@ -1,5 +1,7 @@
 package io.datakernel.util;
 
+import java.util.Objects;
+
 public final class Tuple1<T1> {
 	private final T1 value1;
 
@@ -9,5 +11,18 @@ public final class Tuple1<T1> {
 
 	public T1 getValue1() {
 		return value1;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Tuple1<?> tuple1 = (Tuple1<?>) o;
+		return Objects.equals(value1, tuple1.value1);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(value1);
 	}
 }

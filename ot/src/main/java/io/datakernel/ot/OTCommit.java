@@ -1,5 +1,7 @@
 package io.datakernel.ot;
 
+import io.datakernel.annotation.Nullable;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +16,10 @@ public final class OTCommit<K, D> implements Comparable<OTCommit> {
 	private final Map<K, List<D>> parents;
 	private final long level;
 
-	private boolean snapshot;
 	private long timestamp;
+	@Nullable
+	private Boolean snapshotHint;
+	@Nullable
 	private Object serializedData;
 
 	private OTCommit(K id, Map<K, List<D>> parents, long level) {
@@ -51,14 +55,19 @@ public final class OTCommit<K, D> implements Comparable<OTCommit> {
 		return new OTCommit<K, D>(id, (Map) parents, maxParentLevel + 1L);
 	}
 
-	public OTCommit<K, D> withCommitMetadata(long timestamp, boolean snapshot) {
-		setCommitMetadata(timestamp, snapshot);
+	public OTCommit<K, D> withTimestamp(long timestamp) {
+		this.timestamp = timestamp;
 		return this;
 	}
 
-	public void setCommitMetadata(long timestamp, boolean snapshot) {
-		this.timestamp = timestamp;
-		this.snapshot = snapshot;
+	public OTCommit<K, D> withSnapshotHint(@Nullable Boolean snapshotHint) {
+		this.snapshotHint = snapshotHint;
+		return this;
+	}
+
+	public OTCommit<K, D> withSerializedData(Object serializedData) {
+		this.serializedData = serializedData;
+		return this;
 	}
 
 	public boolean isRoot() {
@@ -89,8 +98,9 @@ public final class OTCommit<K, D> implements Comparable<OTCommit> {
 		return parents.keySet();
 	}
 
-	public boolean isSnapshot() {
-		return snapshot;
+	@Nullable
+	public Boolean getSnapshotHint() {
+		return snapshotHint;
 	}
 
 	public long getTimestamp() {

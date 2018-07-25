@@ -4,7 +4,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.Stage;
 import io.datakernel.config.Config;
@@ -54,12 +54,11 @@ public abstract class CubeHttpServerLauncher extends HttpServerLauncher {
 				});
 	}
 
-	private AsyncCallable<Void> pullOrCheckoutTask(OTStateManager<Long, LogDiff<CubeDiff>> cubeStateManager) {
+	private AsyncSupplier<Void> pullOrCheckoutTask(OTStateManager<Long, LogDiff<CubeDiff>> cubeStateManager) {
 		return () -> cubeStateManager.pull()
-				.thenComposeEx((revisionId, throwable) ->
-						throwable == null ?
-								Stage.of(null) :
-								cubeStateManager.checkout().toVoid());
+				.thenComposeEx((revisionId, throwable) -> throwable == null ?
+						Stage.of(null) :
+						cubeStateManager.checkout().toVoid());
 	}
 
 	protected abstract Collection<Module> getCubeModules();

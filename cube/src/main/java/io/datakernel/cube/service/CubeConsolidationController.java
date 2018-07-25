@@ -4,8 +4,8 @@ import io.datakernel.aggregation.Aggregation;
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ot.AggregationDiff;
-import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncFunction;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Stage;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeDiffScheme;
@@ -20,7 +20,7 @@ import java.time.Duration;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toSet;
@@ -78,7 +78,7 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 		return new CubeConsolidationController<>(eventloop, cubeDiffScheme, cube, stateManager, aggregationChunkStorage, strategy);
 	}
 
-	private final AsyncCallable<Void> consolidate = sharedCall(this::doConsolidate);
+	private final AsyncSupplier<Void> consolidate = reuse(this::doConsolidate);
 
 	public Stage<Void> consolidate() {
 		return consolidate.call();

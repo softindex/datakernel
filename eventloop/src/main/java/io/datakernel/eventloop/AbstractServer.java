@@ -173,7 +173,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 	// endregion
 
-
 	public ServerSocketSettings getServerSocketSettings() {
 		return serverSocketSettings;
 	}
@@ -228,7 +227,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		if (!running) return Stage.of(null);
 		running = false;
 		closeServerSocketChannels();
-		SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = new SettableStage<>();
 		onClose(stage);
 		stage.whenComplete(($, e) -> {
 			if (e == null) {
@@ -319,7 +318,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@Override
 	public void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress,
-						 boolean ssl, SocketSettings socketSettings) {
+			boolean ssl, SocketSettings socketSettings) {
 		assert eventloop.inEventloopThread();
 		onAccept(socketChannel, localAddress, remoteAddress, ssl);
 		AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)

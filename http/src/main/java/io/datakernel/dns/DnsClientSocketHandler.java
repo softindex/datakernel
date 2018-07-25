@@ -63,7 +63,7 @@ final class DnsClientSocketHandler implements AsyncUdpSocket.EventHandler {
 	}
 
 	Stage<DnsQueryResult> resolve4(String domainName, InetSocketAddress dnsServerAddress, long timeout) {
-		SettableStage<DnsQueryResult> result = SettableStage.create();
+		SettableStage<DnsQueryResult> result = new SettableStage<>();
 		resolve(domainName, dnsServerAddress, timeout, result, false);
 		return result;
 	}
@@ -73,7 +73,7 @@ final class DnsClientSocketHandler implements AsyncUdpSocket.EventHandler {
 	}
 
 	Stage<DnsQueryResult> resolve6(String domainName, InetSocketAddress dnsServerAddress, long timeout) {
-		SettableStage<DnsQueryResult> result = SettableStage.create();
+		SettableStage<DnsQueryResult> result = new SettableStage<>();
 		resolve(domainName, dnsServerAddress, timeout, result, true);
 		return result;
 	}

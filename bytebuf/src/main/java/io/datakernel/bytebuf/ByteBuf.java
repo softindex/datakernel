@@ -16,8 +16,13 @@
 
 package io.datakernel.bytebuf;
 
+import io.datakernel.annotation.Nullable;
+
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+
+import static java.lang.Math.min;
 
 public class ByteBuf {
 	static final class ByteBufSlice extends ByteBuf {
@@ -106,6 +111,7 @@ public class ByteBuf {
 	public void recycle() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		if (refs > 0 && --refs == 0) {
+			//noinspection AssertWithSideEffects
 			assert --refs == -1;
 			ByteBufPool.recycle(this);
 		}
@@ -314,55 +320,14 @@ public class ByteBuf {
 		return -1;
 	}
 
-	public byte[] getRemainingArray() {
+	public byte[] peekArray() {
 		byte[] bytes = new byte[readRemaining()];
 		System.arraycopy(array, readPosition, bytes, 0, bytes.length);
 		return bytes;
 	}
 
-	@Override
-	public boolean equals(Object o) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		if (this == o) return true;
-		if (o == null || !(ByteBuf.class == o.getClass() || ByteBufSlice.class == o.getClass())) return false;
-
-		ByteBuf buf = (ByteBuf) o;
-
-		return readRemaining() == buf.readRemaining() &&
-			arraysEquals(this.array, this.readPosition, this.writePosition, buf.array, buf.readPosition);
-	}
-
-	private boolean arraysEquals(byte[] array, int offset, int limit, byte[] arr, int off) {
-		for (int i = 0; i < limit - offset; i++) {
-			if (array[offset + i] != arr[off + i]) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		int result = 1;
-		for (int i = readPosition; i < writePosition; i++) {
-			result = 31 * result + array[i];
-		}
-		return result;
-	}
-
-	@Override
-	public String toString() {
-		return toString(256);
-	}
-
-	public String toString(int maxBytes) {
-		char[] chars = new char[readRemaining() < maxBytes ? readRemaining() : maxBytes];
-		for (int i = 0; i < chars.length; i++) {
-			byte b = array[readPosition + i];
-			chars[i] = (b >= ' ') ? (char) b : (char) 65533;
-		}
-		return new String(chars);
+	public String peekString(Charset charset) {
+		return new String(array, readPosition, readRemaining(), charset);
 	}
 
 	// region serialization input
@@ -415,9 +380,9 @@ public class ByteBuf {
 		assert readRemaining() >= 4;
 
 		int result = ((array[readPosition] & 0xFF) << 24)
-			| ((array[readPosition + 1] & 0xFF) << 16)
-			| ((array[readPosition + 2] & 0xFF) << 8)
-			| (array[readPosition + 3] & 0xFF);
+				| ((array[readPosition + 1] & 0xFF) << 16)
+				| ((array[readPosition + 2] & 0xFF) << 8)
+				| (array[readPosition + 3] & 0xFF);
 		readPosition += 4;
 		return result;
 	}
@@ -469,13 +434,13 @@ public class ByteBuf {
 		assert readRemaining() >= 8;
 
 		long result = ((long) array[readPosition] << 56)
-			| ((long) (array[readPosition + 1] & 0xFF) << 48)
-			| ((long) (array[readPosition + 2] & 0xFF) << 40)
-			| ((long) (array[readPosition + 3] & 0xFF) << 32)
-			| ((long) (array[readPosition + 4] & 0xFF) << 24)
-			| ((array[readPosition + 5] & 0xFF) << 16)
-			| ((array[readPosition + 6] & 0xFF) << 8)
-			| ((array[readPosition + 7] & 0xFF));
+				| ((long) (array[readPosition + 1] & 0xFF) << 48)
+				| ((long) (array[readPosition + 2] & 0xFF) << 40)
+				| ((long) (array[readPosition + 3] & 0xFF) << 32)
+				| ((long) (array[readPosition + 4] & 0xFF) << 24)
+				| ((array[readPosition + 5] & 0xFF) << 16)
+				| ((array[readPosition + 6] & 0xFF) << 8)
+				| ((array[readPosition + 7] & 0xFF));
 
 		readPosition += 8;
 		return result;
@@ -486,7 +451,7 @@ public class ByteBuf {
 		assert readRemaining() >= 2;
 
 		short result = (short) (((array[readPosition] & 0xFF) << 8)
-			| ((array[readPosition + 1] & 0xFF)));
+				| ((array[readPosition + 1] & 0xFF)));
 		readPosition += 2;
 		return result;
 	}
@@ -498,12 +463,14 @@ public class ByteBuf {
 		return doReadIso88591(length);
 	}
 
+	@Nullable
 	public String readIso88591Nullable() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int length = readVarInt();
-		if (length == 0)
+		if (length == 0) {
 			return null;
+		}
 		return doReadIso88591(length - 1);
 	}
 
@@ -529,13 +496,15 @@ public class ByteBuf {
 		return doReadCustomUTF8(length);
 	}
 
+	@Nullable
 	@Deprecated
 	public String readCustomUTF8Nullable() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int length = readVarInt();
-		if (length == 0)
+		if (length == 0) {
 			return null;
+		}
 		return doReadCustomUTF8(length - 1);
 	}
 
@@ -566,6 +535,7 @@ public class ByteBuf {
 		return doReadUTF16(length);
 	}
 
+	@Nullable
 	public String readUTF16Nullable() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
@@ -609,6 +579,7 @@ public class ByteBuf {
 		return doReadJavaUTF8(length);
 	}
 
+	@Nullable
 	public String readJavaUTF8Nullable() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
@@ -717,4 +688,46 @@ public class ByteBuf {
 		writePosition = SerializationUtils.writeUTF16Nullable(array, writePosition, s);
 	}
 	// endregion
+
+	@Override
+	public boolean equals(Object o) {
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (this == o) return true;
+		if (o == null || !(ByteBuf.class == o.getClass() || ByteBufSlice.class == o.getClass())) return false;
+
+		ByteBuf buf = (ByteBuf) o;
+
+		return readRemaining() == buf.readRemaining() &&
+				arraysEquals(this.array, this.readPosition, this.writePosition, buf.array, buf.readPosition);
+	}
+
+	private static boolean arraysEquals(byte[] array, int offset, int limit, byte[] arr, int off) {
+		for (int i = 0; i < limit - offset; i++) {
+			if (array[offset + i] != arr[off + i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		int result = 1;
+		for (int i = readPosition; i < writePosition; i++) {
+			result = 31 * result + array[i];
+		}
+		return result;
+	}
+
+	@Override
+	public String toString() {
+		char[] chars = new char[min(readRemaining(), 256)];
+		for (int i = 0; i < chars.length; i++) {
+			byte b = array[readPosition + i];
+			chars[i] = (b >= ' ') ? (char) b : (char) 65533;
+		}
+		return new String(chars);
+	}
+
 }

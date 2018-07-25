@@ -33,7 +33,7 @@ import static io.datakernel.async.Callback.stageToCallback;
  */
 public interface AsyncServlet {
 	default Stage<HttpResponse> serve(HttpRequest request) {
-		SettableStage<HttpResponse> result = SettableStage.create();
+		SettableStage<HttpResponse> result = new SettableStage<>();
 		serve(request, result);
 		return result;
 	}

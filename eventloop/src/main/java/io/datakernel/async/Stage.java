@@ -19,7 +19,6 @@ import java.util.function.Function;
  * @see SettableStage
  */
 public interface Stage<T> {
-
 	/**
 	 * Creates successfully completed {@code Stage}
 	 *
@@ -44,7 +43,7 @@ public interface Stage<T> {
 	}
 
 	static <T> Stage<T> ofCallback(Consumer<SettableStage<T>> callbackConsumer) {
-		SettableStage<T> cb = SettableStage.create();
+		SettableStage<T> cb = new SettableStage<>();
 		callbackConsumer.accept(cb);
 		return cb;
 	}
@@ -82,7 +81,7 @@ public interface Stage<T> {
 	static <T> Stage<T> ofCompletionStage(CompletionStage<? extends T> completionStage) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
-		SettableStage<T> stage = SettableStage.create();
+		SettableStage<T> stage = new SettableStage<>();
 		completionStage.whenCompleteAsync((result, throwable) -> {
 			stage.set(result, throwable);
 			eventloop.completeExternalTask();
@@ -100,7 +99,7 @@ public interface Stage<T> {
 	static <T> Stage<T> ofFuture(Executor executor, Future<? extends T> future) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
-		SettableStage<T> stage = SettableStage.create();
+		SettableStage<T> stage = new SettableStage<>();
 		try {
 			executor.execute(() -> {
 				try {
@@ -134,7 +133,7 @@ public interface Stage<T> {
 	static <T> Stage<T> ofCallable(Executor executor, Callable<? extends T> callable) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
-		SettableStage<T> stage = SettableStage.create();
+		SettableStage<T> stage = new SettableStage<>();
 		try {
 			executor.execute(() -> {
 				try {
@@ -165,7 +164,7 @@ public interface Stage<T> {
 	static Stage<Void> ofThrowingRunnable(Executor executor, ThrowingRunnable runnable) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
-		SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = new SettableStage<>();
 		try {
 			executor.execute(() -> {
 				try {
@@ -255,9 +254,9 @@ public interface Stage<T> {
 	 */
 	<U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn);
 
-	default <U> Stage<U> thenCallback(BiConsumer<? super T, SettableStage<U>> fn) {
+	default <U> Stage<U> thenCallback(BiConsumer<? super T, Callback<U>> fn) {
 		return thenCompose(value -> {
-			SettableStage<U> cb = SettableStage.create();
+			SettableStage<U> cb = new SettableStage<>();
 			fn.accept(value, cb);
 			return cb;
 		});

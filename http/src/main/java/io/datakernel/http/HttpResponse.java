@@ -20,6 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.Initializable;
 
 import java.nio.charset.Charset;
 import java.util.*;
@@ -32,7 +33,7 @@ import static io.datakernel.http.HttpHeaders.*;
  * Represents HTTP response for {@link HttpRequest}. After handling {@code HttpResponse} will be recycled so you cannot
  * usi it afterwards.
  */
-public final class HttpResponse extends HttpMessage {
+public final class HttpResponse extends HttpMessage implements Initializable<HttpResponse> {
 	private static final Value CACHE_CONTROL__NO_STORE = HttpHeaders.asBytes(CACHE_CONTROL, "no-store");
 	private static final Value PRAGMA__NO_CACHE = HttpHeaders.asBytes(PRAGMA, "no-cache");
 	private static final Value AGE__0 = HttpHeaders.asBytes(AGE, "0");

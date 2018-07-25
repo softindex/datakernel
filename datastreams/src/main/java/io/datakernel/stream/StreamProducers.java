@@ -16,7 +16,10 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -39,7 +42,7 @@ public final class StreamProducers {
 	 * @param <T>
 	 */
 	static class ClosingWithErrorImpl<T> implements StreamProducer<T> {
-		private final SettableStage<Void> endOfStream = SettableStage.create();
+		private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 		private final Throwable exception;
 
@@ -79,7 +82,7 @@ public final class StreamProducers {
 	 * @param <T>
 	 */
 	static class ClosingImpl<T> implements StreamProducer<T> {
-		private final SettableStage<Void> endOfStream = SettableStage.create();
+		private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
@@ -108,7 +111,7 @@ public final class StreamProducers {
 	}
 
 	static final class IdleImpl<T> implements StreamProducer<T> {
-		private final SettableStage<Void> endOfStream = SettableStage.create();
+		private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
@@ -175,22 +178,22 @@ public final class StreamProducers {
 		}
 	}
 
-	static class OfAsyncCallableImpl<T> extends AbstractStreamProducer<T> {
-		private final AsyncCallable<T> asyncCallable;
+	static class OfAsyncSupplierImpl<T> extends AbstractStreamProducer<T> {
+		private final AsyncSupplier<T> asyncCallable;
 
 		/**
 		 * Creates a new instance of  StreamProducerOfIterator
 		 *
 		 * @param asyncCallable iterator with object which need to send
 		 */
-		public OfAsyncCallableImpl(AsyncCallable<T> asyncCallable) {
+		public OfAsyncSupplierImpl(AsyncSupplier<T> asyncCallable) {
 			this.asyncCallable = checkNotNull(asyncCallable);
 		}
 
 		@Override
 		protected void produce(AsyncProduceController async) {
 			async.begin();
-			asyncCallable.call()
+			asyncCallable.get()
 					.whenComplete((value, e) -> {
 						if (e == null) {
 							if (value != null) {
@@ -242,7 +245,7 @@ public final class StreamProducers {
 
 	public static <T> StreamProducerModifier<T, T> decorator(Decorator<T> decorator) {
 		return producer -> new ForwardingStreamProducer<T>(producer) {
-			final SettableStage<Void> endOfStream = SettableStage.create();
+			final SettableStage<Void> endOfStream = new SettableStage<>();
 
 			{
 				producer.getEndOfStream().whenComplete(endOfStream::trySet);
@@ -284,7 +287,7 @@ public final class StreamProducers {
 
 	public static <T> StreamProducerModifier<T, T> endOfStreamOnError(Predicate<Throwable> endOfStreamPredicate) {
 		return producer -> new ForwardingStreamProducer<T>(producer) {
-			final SettableStage<Void> endOfStream = SettableStage.create();
+			final SettableStage<Void> endOfStream = new SettableStage<>();
 
 			{
 				producer.getEndOfStream().whenComplete(($, throwable) -> {
@@ -313,7 +316,7 @@ public final class StreamProducers {
 
 	public static <T> StreamProducerModifier<T, T> noEndOfStream() {
 		return producer -> new ForwardingStreamProducer<T>(producer) {
-			final SettableStage<Void> endOfStream = SettableStage.create();
+			final SettableStage<Void> endOfStream = new SettableStage<>();
 
 			{
 				producer.getEndOfStream()

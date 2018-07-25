@@ -157,7 +157,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null) {
-			String firstBytes = line.toString(20);
+			String firstBytes = line.toString();
 			line.recycle();
 			throw new ParseException("Unknown HTTP method. First Bytes: " + firstBytes);
 		}

@@ -1,5 +1,7 @@
 package io.datakernel.ot;
 
+import io.datakernel.annotation.Nullable;
+import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
@@ -64,7 +66,24 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	public interface GraphWalker<K, D, R> {
 		void onStart(List<OTCommit<K, D>> commits);
 
-		Optional<R> onCommit(OTCommit<K, D> commit) throws Exception;
+		Stage<Optional<R>> onCommit(OTCommit<K, D> commit);
+	}
+
+	public static abstract class SimpleGraphWalker<K, D, R> implements GraphWalker<K, D, R> {
+		@Nullable
+		protected abstract R handleCommit(OTCommit<K, D> commit) throws Exception;
+
+		@Override
+		public final Stage<Optional<R>> onCommit(OTCommit<K, D> commit) {
+			try {
+				R result = handleCommit(commit);
+				return result != null ? Stage.of(Optional.of(result)) : Stage.of(Optional.empty());
+			} catch (RuntimeException e) {
+				throw e;
+			} catch (Exception e) {
+				return Stage.ofException(e);
+			}
+		}
 	}
 
 	public <R> Stage<R> walkGraph(Set<K> heads, GraphWalker<K, D, R> walker) {
@@ -86,50 +105,41 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		OTCommit<K, D> commit = queue.poll();
 		assert commit != null;
 
-		try {
-			Optional<R> maybeResult = walker.onCommit(commit);
-			if (maybeResult.isPresent()) {
-				return Stage.of(maybeResult.get());
-			}
-		} catch (RuntimeException e) {
-			throw e;
-		} catch (Exception e) {
-			return Stage.ofException(e);
-		}
+		return walker.onCommit(commit)
+				.thenCompose(maybeResult -> maybeResult.isPresent() ?
+						Stage.of(maybeResult.get()) :
+						toList(commit.getParents().keySet().stream().filter(visited::add).map(remote::loadCommit))
+								.post()
+								.thenCompose(parentCommits -> {
+									queue.addAll(parentCommits);
+									return walkGraphImpl(walker, queue, visited);
+								}));
 
-		return toList(commit.getParents().keySet().stream().filter(visited::add).map(remote::loadCommit))
-				.post()
-				.thenCompose(parentCommits -> {
-					queue.addAll(parentCommits);
-					return walkGraphImpl(walker, queue, visited);
-				});
 	}
 
 	public static final class FindResult<K, A> {
 		private final K commit;
 		private final Set<K> commitParents;
 		private final long commitLevel;
-		private final boolean commitSnapshot;
 		private final K child;
 		private final long childLevel;
 		private final A accumulatedDiffs;
 
-		private FindResult(K commit, K child, Set<K> commitParents, long commitLevel, boolean commitSnapshot, long childLevel, A accumulatedDiffs) {
+		private FindResult(K commit, K child, Set<K> commitParents, long commitLevel, long childLevel, A accumulatedDiffs) {
 			this.child = child;
 			this.commit = commit;
 			this.commitParents = commitParents;
 			this.commitLevel = commitLevel;
-			this.commitSnapshot = commitSnapshot;
 			this.childLevel = childLevel;
 			this.accumulatedDiffs = accumulatedDiffs;
 		}
 
-		public static <K, A> FindResult<K, A> of(K commit, K child, Set<K> parents, long commitLevel, boolean commitSnapshot, long childLevel, A accumulator) {
-			return new FindResult<>(commit, child, parents, commitLevel, commitSnapshot, childLevel, accumulator);
+		public static <K, A> FindResult<K, A> of(K commit, K child, Set<K> parents, long commitLevel, long childLevel, A accumulator) {
+			return new FindResult<>(commit, child, parents, commitLevel, childLevel, accumulator);
 		}
 
 		public static <K, A> FindResult<K, A> notFound() {
-			return new FindResult<>(null, null, null, 0, false, 0, null);
+			return new FindResult<>(null, null, null, 0, 0, null);
 		}
 
 		public boolean isFound() {
@@ -161,11 +171,6 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			return checkNotNull(commitLevel);
 		}
 
-		public boolean isCommitSnapshot() {
-			checkState(isFound());
-			return commitSnapshot;
-		}
-
 		public A getAccumulatedDiffs() {
 			checkState(isFound());
 			return accumulatedDiffs;
@@ -184,7 +189,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	public <A> Stage<FindResult<K, A>> findParent(Set<K> startNodes,
 			DiffsReducer<A, D> diffAccumulator,
-			Predicate<OTCommit<K, D>> matchPredicate) {
+			AsyncPredicate<OTCommit<K, D>> matchPredicate) {
 		return walkGraph(startNodes,
 				new FindParentWalker<>(startNodes, matchPredicate, diffAccumulator));
 	}
@@ -204,11 +209,11 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			}
 		}
 
-		private final Predicate<OTCommit<K, D>> matchPredicate;
+		private final AsyncPredicate<OTCommit<K, D>> matchPredicate;
 		private final DiffsReducer<A, D> diffsReducer;
 		private final HashMap<K, FindEntry<K, A>> entries = new HashMap<>();
 
-		private FindParentWalker(Set<K> startNodes, Predicate<OTCommit<K, D>> matchPredicate, DiffsReducer<A, D> diffsReducer) {
+		private FindParentWalker(Set<K> startNodes, AsyncPredicate<OTCommit<K, D>> matchPredicate, DiffsReducer<A, D> diffsReducer) {
 			this.matchPredicate = matchPredicate;
 			this.diffsReducer = diffsReducer;
 			for (K startNode : startNodes) {
@@ -221,7 +226,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		@Override
-		public Optional<FindResult<K, A>> onCommit(OTCommit<K, D> commit) {
+		public Stage<Optional<FindResult<K, A>>> onCommit(OTCommit<K, D> commit) {
 			K node = commit.getId();
 			FindEntry<K, A> nodeWithPath = entries.get(node);
 			if (nodeWithPath.childLevel == null) {
@@ -230,19 +235,23 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			}
 			A accumulatedDiffs = nodeWithPath.accumulator;
 
-			if (matchPredicate.test(commit)) {
-				return Optional.of(FindResult.of(commit.getId(), nodeWithPath.child, commit.getParentIds(), commit.getLevel(), commit.isSnapshot(), nodeWithPath.childLevel, accumulatedDiffs));
-			}
+			return matchPredicate.test(commit)
+					.thenApply(testResult -> {
+								if (testResult) {
+									return Optional.of(FindResult.of(commit.getId(), nodeWithPath.child, commit.getParentIds(), commit.getLevel(), nodeWithPath.childLevel, accumulatedDiffs));
+								}
 
-			for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
-				if (parentEntry.getValue() == null) continue;
+								for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
+									if (parentEntry.getValue() == null) continue;
 
-				K parent = parentEntry.getKey();
-				A newAccumulatedDiffs = diffsReducer.accumulate(accumulatedDiffs, parentEntry.getValue());
-				entries.put(parent, new FindEntry<>(parent, nodeWithPath.child, newAccumulatedDiffs, nodeWithPath.childLevel));
-			}
+									K parent = parentEntry.getKey();
+									A newAccumulatedDiffs = diffsReducer.accumulate(accumulatedDiffs, parentEntry.getValue());
+									entries.put(parent, new FindEntry<>(parent, nodeWithPath.child, newAccumulatedDiffs, nodeWithPath.childLevel));
+								}
 
-			return Optional.empty();
+								return Optional.empty();
+							}
+					);
 		}
 	}
 
@@ -333,16 +342,16 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			}
 
 			@Override
-			public Optional<Set<K>> onCommit(OTCommit<K, D> commit) throws Exception {
+			public Stage<Optional<Set<K>>> onCommit(OTCommit<K, D> commit) {
 				nodes.removeAll(commit.getParentIds());
 				if (commit.getLevel() <= minLevel)
-					return Optional.of(nodes);
-				return Optional.empty();
+					return Stage.of(Optional.of(nodes));
+				return Stage.of(Optional.empty());
 			}
 		}).whenComplete(toLogger(logger, thisMethod(), startNodes));
 	}
 
-	private static abstract class AbstractFindCommonParentWalker<K, D, R> implements GraphWalker<K, D, R> {
+	private static abstract class AbstractFindCommonParentWalker<K, D, R> extends SimpleGraphWalker<K, D, R> {
 		protected final Set<K> heads;
 		protected final Map<K, Set<K>> nodeToHeads;
 
@@ -351,16 +360,17 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			this.nodeToHeads = heads.stream().collect(toMap(identity(), head -> new HashSet<>(singleton(head))));
 		}
 
-		protected abstract Optional<R> tryGetResult();
+		@Nullable
+		protected abstract R tryGetResult();
 
 		@Override
 		public void onStart(List<OTCommit<K, D>> otCommits) {
 		}
 
 		@Override
-		public final Optional<R> onCommit(OTCommit<K, D> commit) throws Exception {
+		protected R handleCommit(OTCommit<K, D> commit) {
 			if (heads.size() == 1) {
-				return checkArgument(tryGetResult(), Optional::isPresent);
+				return checkNotNull(tryGetResult());
 			}
 
 			K commitId = commit.getId();
@@ -381,11 +391,12 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		@Override
-		protected Optional<K> tryGetResult() {
+		protected K tryGetResult() {
 			return nodeToHeads.entrySet().stream()
 					.filter(entry -> heads.equals(entry.getValue()))
 					.findAny()
-					.map(Map.Entry::getKey);
+					.map(Map.Entry::getKey)
+					.orElse(null);
 		}
 	}
 
@@ -395,10 +406,9 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		@Override
-		protected Optional<Set<K>> tryGetResult() {
-			return Optional.ofNullable(
-					nodeToHeads.values().stream().allMatch(heads::equals) ?
-							nodeToHeads.keySet() : null);
+		protected Set<K> tryGetResult() {
+			return nodeToHeads.values().stream().allMatch(heads::equals) ?
+					nodeToHeads.keySet() : null;
 		}
 	}
 
@@ -407,7 +417,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		return walkGraph(heads, new ReduceEdgesWalker<>(heads, parentNode, diffAccumulator));
 	}
 
-	private static final class ReduceEdgesWalker<K, D, A> implements GraphWalker<K, D, Map<K, A>> {
+	private static final class ReduceEdgesWalker<K, D, A> extends SimpleGraphWalker<K, D, Map<K, A>> {
 		private static class ReduceEntry<K, A> {
 			public final K node;
 			public final Map<K, A> toChildren;
@@ -436,11 +446,11 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		@Override
-		public Optional<Map<K, A>> onCommit(OTCommit<K, D> commit) throws Exception {
+		protected Map<K, A> handleCommit(OTCommit<K, D> commit) {
 			ReduceEntry<K, A> polledEntry = queueMap.remove(commit.getId());
 			assert polledEntry.node.equals(commit.getId());
 			if (parentNode.equals(commit.getId())) {
-				return Optional.of(polledEntry.toChildren);
+				return polledEntry.toChildren;
 			}
 
 			for (K parent : commit.getParents().keySet()) {
@@ -459,23 +469,31 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				}
 			}
 
-			return Optional.empty();
+			return null;
 		}
 	}
 
-	public Stage<List<D>> checkout(K head) {
-		return findParent(singleton(head), DiffsReducer.toList(), OTCommit::isSnapshot)
+	@SuppressWarnings({"SimplifiableConditionalExpression", "ConstantConditions", "OptionalIsPresent", "unchecked"})
+	public Stage<List<D>> checkout(K commitId) {
+		List<D>[] cachedSnapshot = new List[1];
+		return findParent(singleton(commitId), DiffsReducer.toList(),
+				commit -> commit.getSnapshotHint() == Boolean.FALSE ?
+						Stage.of(false) :
+						remote.loadSnapshot(commit.getId())
+								.thenApply(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null))
 				.thenCompose(findResult -> {
 					if (!findResult.isFound())
-						return Stage.ofException(new OTException("No snapshot or root from id:" + head));
+						return Stage.ofException(new OTException("No snapshot or root from id:" + commitId));
 
-					return remote.loadSnapshot(findResult.getCommit())
-							.thenApply(diffs -> {
-								List<D> changes = concat(diffs, findResult.getAccumulatedDiffs());
-								return otSystem.squash(changes);
-							});
+					List<D> changes = concat(cachedSnapshot[0], findResult.getAccumulatedDiffs());
+					return Stage.of(otSystem.squash(changes));
 				})
-				.whenComplete(toLogger(logger, thisMethod(), head));
+				.whenComplete(toLogger(logger, thisMethod(), commitId));
+	}
+
+	public Stage<Void> saveSnapshot(K revisionId) {
+		return checkout(revisionId)
+				.thenCompose(diffs -> remote.saveSnapshot(revisionId, diffs));
 	}
 
 	private Stage<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
@@ -498,7 +516,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				.whenComplete(toLogger(logger, thisMethod(), heads));
 	}
 
-	private class LoadGraphWalker implements GraphWalker<K, D, OTLoadedGraph<K, D>> {
+	private class LoadGraphWalker extends SimpleGraphWalker<K, D, OTLoadedGraph<K, D>> {
 		private final OTLoadedGraph<K, D> graph = new OTLoadedGraph<>(otSystem);
 		private final Map<K, Set<K>> head2roots = new HashMap<>();
 		private final Map<K, Set<K>> root2heads = new HashMap<>();
@@ -515,7 +533,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		@Override
-		public Optional<OTLoadedGraph<K, D>> onCommit(OTCommit<K, D> commit) throws OTException {
+		protected OTLoadedGraph<K, D> handleCommit(OTCommit<K, D> commit) {
 			K node = commit.getId();
 			Map<K, List<D>> parents = commit.getParents();
 
@@ -540,9 +558,8 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			}
 
 			return head2roots.keySet().stream()
-					.filter(head -> head2roots.get(head).equals(root2heads.keySet()))
-					.findAny()
-					.map($ -> graph);
+					.anyMatch(head -> head2roots.get(head).equals(root2heads.keySet())) ?
+					graph : null;
 		}
 	}
 

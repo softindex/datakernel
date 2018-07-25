@@ -458,10 +458,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	public <T> LogDataConsumer<T, CubeDiff> logStreamConsumer(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
 			AggregationPredicate predicate) {
-		return () -> {
-			StreamConsumerWithResult<T, CubeDiff> consumer = Cube.this.consume(inputClass, dimensionFields, measureFields, predicate);
-			return consumer.withResult(consumer.getResult().thenApply(Collections::singletonList));
-		};
+		return () -> this.consume(inputClass, dimensionFields, measureFields, predicate)
+				.thenApply(Collections::singletonList);
 	}
 
 	public <T> StreamConsumerWithResult<T, CubeDiff> consume(Class<T> inputClass) {
@@ -695,12 +693,12 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		logger.info("Launching consolidation");
 
 		Map<String, AggregationDiff> map = new HashMap<>();
-		List<AsyncCallable<?>> runnables = new ArrayList<>();
+		List<AsyncSupplier<?>> runnables = new ArrayList<>();
 
 		aggregations.forEach((aggregationId, aggregationContainer) -> {
 			Aggregation aggregation = aggregationContainer.aggregation;
 
-			runnables.add((AsyncCallable<AggregationDiff>) () ->
+			runnables.add((AsyncSupplier<AggregationDiff>) () ->
 					strategy.apply(aggregation)
 							.whenResult(aggregationDiff -> {
 								if (!aggregationDiff.isEmpty()) {

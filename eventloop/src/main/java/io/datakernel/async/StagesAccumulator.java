@@ -66,7 +66,7 @@ public final class StagesAccumulator<A> {
 	}
 
 	public <V> SettableStage<V> newStage(Reducer<A, V> reducer) {
-		SettableStage<V> resultStage = SettableStage.create();
+		SettableStage<V> resultStage = new SettableStage<>();
 		addStage(resultStage, reducer);
 		return resultStage;
 	}
@@ -74,7 +74,7 @@ public final class StagesAccumulator<A> {
 	public Stage<A> get() {
 		if (resultStage != null)
 			return resultStage;
-		resultStage = SettableStage.create();
+		resultStage = new SettableStage<>();
 		if (exception != null) {
 			resultStage.setException(exception);
 			return resultStage;

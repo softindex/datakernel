@@ -2,6 +2,7 @@ package io.datakernel.util;
 
 import io.datakernel.annotation.Nullable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.*;
@@ -27,6 +28,20 @@ public class Utils {
 
 	public static <T> T coalesce(T a, T b, T c) {
 		return a != null ? a : (b != null ? b : c);
+	}
+
+	public static <T, R> R apply(@Nullable T value, Function<? super T, ? extends R> fn) {
+		return value == null ? null : fn.apply(value);
+	}
+
+	public static <T> boolean test(@Nullable T value, Predicate<? super T> predicate) {
+		return value != null && predicate.test(value);
+	}
+
+	public static <T> T accept(@Nullable T value, Consumer<? super T> consumer) {
+		if (value == null) return null;
+		consumer.accept(value);
+		return value;
 	}
 
 	public static <T, R> R transform(@Nullable T seed, Function<T, R> fn) {
@@ -117,4 +132,34 @@ public class Utils {
 		return applyIf(modifier, value, Objects::nonNull);
 	}
 
+	public static Consumer<Boolean> ifTrue(Runnable runnable) {
+		return b -> {
+			if (b) {
+				runnable.run();
+			}
+		};
+	}
+
+	public static Consumer<Boolean> ifFalse(Runnable runnable) {
+		return b -> {
+			if (!b) {
+				runnable.run();
+			}
+		};
+	}
+
+	public static int deepHashCode(@Nullable Object value) {
+		if (value == null) return 0;
+		if (!value.getClass().isArray()) return value.hashCode();
+		if (value instanceof Object[]) return Arrays.deepHashCode((Object[]) value);
+		if (value instanceof byte[]) return Arrays.hashCode((byte[]) value);
+		if (value instanceof short[]) return Arrays.hashCode((short[]) value);
+		if (value instanceof int[]) return Arrays.hashCode((int[]) value);
+		if (value instanceof long[]) return Arrays.hashCode((long[]) value);
+		if (value instanceof float[]) return Arrays.hashCode((float[]) value);
+		if (value instanceof double[]) return Arrays.hashCode((double[]) value);
+		if (value instanceof boolean[]) return Arrays.hashCode((boolean[]) value);
+		if (value instanceof char[]) return Arrays.hashCode((char[]) value);
+		throw new AssertionError();
+	}
 }

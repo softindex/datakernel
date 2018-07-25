@@ -8,7 +8,8 @@ import io.datakernel.aggregation.IdGenerator;
 import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.aggregation.util.IdGeneratorSql;
 import io.datakernel.aggregation.util.SqlAtomicSequence;
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.AsyncSuppliers;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
@@ -123,8 +124,8 @@ public class ExampleCubeModule extends PrivateModule {
 	@Provides
 	@Singleton
 	IdGenerator<Long> idGenerator(IdGeneratorSql idGeneratorSql) {
-		AsyncCallable<Long> prefetch = AsyncCallable.of(idGeneratorSql::createId).prefetch(1);
-		return prefetch::call;
+		AsyncSupplier<Long> prefetch = AsyncSuppliers.prefetch(1, AsyncSupplier.of(idGeneratorSql::createId));
+		return prefetch::get;
 	}
 
 	@Provides

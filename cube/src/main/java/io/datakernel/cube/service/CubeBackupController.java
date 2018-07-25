@@ -1,7 +1,7 @@
 package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.LocalFsChunkStorage;
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.cube.CubeDiffScheme;
@@ -20,7 +20,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.cube.Utils.chunksInDiffs;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
@@ -62,7 +62,7 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 		return new CubeBackupController<>(eventloop, cubeDiffScheme, algorithms, (OTRemoteEx<K, D>) algorithms.getRemote(), storage);
 	}
 
-	private final AsyncCallable<Void> backup = sharedCall(this::backupHead);
+	private final AsyncSupplier<Void> backup = reuse(this::backupHead);
 
 	public Stage<Void> backup() {
 		return backup.call();
@@ -83,8 +83,8 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	public Stage<Void> backup(K commitId) {
 		return Stages.toTuple(remote.loadCommit(commitId), algorithms.checkout(commitId))
 				.thenCompose(tuple -> Stages.runSequence(
-						(AsyncCallable<Void>) () -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2())),
-						(AsyncCallable<Void>) () -> backupDb(tuple.getValue1(), tuple.getValue2())))
+						(AsyncSupplier<Void>) () -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2())),
+						(AsyncSupplier<Void>) () -> backupDb(tuple.getValue1(), tuple.getValue2())))
 				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 

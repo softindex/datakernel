@@ -34,7 +34,7 @@ public interface IAsyncDnsClient {
 	 * @param domainName domain name for searching IP
 	 */
 	default Stage<InetAddress[]> resolve4(String domainName) {
-		SettableStage<InetAddress[]> result = SettableStage.create();
+		SettableStage<InetAddress[]> result = new SettableStage<>();
 		resolve4(domainName, result);
 		return result;
 	}
@@ -47,7 +47,7 @@ public interface IAsyncDnsClient {
 	 * @param domainName domain name for searching IP
 	 */
 	default Stage<InetAddress[]> resolve6(String domainName) {
-		SettableStage<InetAddress[]> result = SettableStage.create();
+		SettableStage<InetAddress[]> result = new SettableStage<>();
 		resolve6(domainName, result);
 		return result;
 	}

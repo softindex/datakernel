@@ -16,6 +16,8 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.AsyncConsumer;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.stream.processor.StreamLateBinder;
@@ -23,6 +25,7 @@ import io.datakernel.stream.processor.StreamLateBinder;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -72,12 +75,16 @@ public interface StreamConsumer<T> {
 		return new StreamConsumers.OfConsumerImpl<>(consumer);
 	}
 
+	static <T> StreamConsumer<T> ofAsyncConsumer(AsyncConsumer<T> consumer) {
+		return new StreamConsumers.OfAsyncConsumerImpl<>(consumer);
+	}
+
 	String LATE_BINDING_ERROR_MESSAGE = "" +
 			"StreamConsumer %s does not have LATE_BINDING capabilities, " +
 			"it must be bound in the same tick when it is created. " +
 			"Alternatively, use .withLateBinding() modifier";
 
-	static <T> StreamConsumer<T> ofStage(Stage<StreamConsumer<T>> consumerStage) {
+	static <T> StreamConsumer<T> ofStage(Stage<? extends StreamConsumer<T>> consumerStage) {
 		StreamLateBinder<T> lateBounder = StreamLateBinder.create();
 		consumerStage.whenComplete((consumer, throwable) -> {
 			if (throwable == null) {
@@ -91,9 +98,17 @@ public interface StreamConsumer<T> {
 		return lateBounder.getInput();
 	}
 
+	default <X> StreamConsumerWithResult<T, X> withResultAsyncSupplier(AsyncSupplier<X> result) {
+		return withResult(this.getEndOfStream().thenCompose($ -> result.get()));
+	}
+
+	default <X> StreamConsumerWithResult<T, X> withResultSupplier(Supplier<X> result) {
+		return withResult(this.getEndOfStream().thenCompose($ -> Stage.of(result.get())));
+	}
+
 	default <X> StreamConsumerWithResult<T, X> withResult(Stage<X> result) {
-		SettableStage<Void> safeEndOfStream = SettableStage.create();
-		SettableStage<X> safeResult = SettableStage.create();
+		SettableStage<Void> safeEndOfStream = new SettableStage<>();
+		SettableStage<X> safeResult = new SettableStage<>();
 		getEndOfStream().whenComplete(($, throwable) -> {
 			safeEndOfStream.trySet($, throwable);
 			if (throwable != null) {
@@ -126,7 +141,7 @@ public interface StreamConsumer<T> {
 	}
 
 	default StreamConsumerWithResult<T, Void> withEndOfStreamAsResult() {
-		SettableStage<Void> safeEndOfStream = SettableStage.create();
+		SettableStage<Void> safeEndOfStream = new SettableStage<>();
 		getEndOfStream().post().whenComplete(safeEndOfStream::trySet);
 		return new StreamConsumerWithResult<T, Void>() {
 			@Override
@@ -151,4 +166,15 @@ public interface StreamConsumer<T> {
 			}
 		};
 	}
+
+	default StreamConsumer<T> whenEndOfStream(Runnable runnable) {
+		getEndOfStream().whenResult($ -> runnable.run());
+		return this;
+	}
+
+	default StreamConsumer<T> whenException(Consumer<Throwable> consumer) {
+		getEndOfStream().whenException(consumer);
+		return this;
+	}
+
 }

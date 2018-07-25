@@ -1,7 +1,7 @@
 package io.datakernel.aggregation.util;
 
 import io.datakernel.aggregation.IdGenerator;
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -14,7 +14,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBeanEx {
@@ -32,7 +32,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 
 	private final StageStats stageCreateId = StageStats.create(Duration.ofMinutes(5));
 
-	private final AsyncCallable<Void> reserveId = sharedCall(this::doReserveId).with(stageCreateId::wrapper);
+	private final AsyncSupplier<Void> reserveId = reuse(this::doReserveId).with(stageCreateId::wrapper);
 
 	private IdGeneratorSql(Eventloop eventloop, ExecutorService executor, DataSource dataSource, SqlAtomicSequence sequence) {
 		this.eventloop = eventloop;
@@ -74,7 +74,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 		if (next < limit) {
 			return Stage.of(next++);
 		}
-		return reserveId.call()
+		return reserveId.get()
 				.thenCompose($ -> createId());
 	}
 

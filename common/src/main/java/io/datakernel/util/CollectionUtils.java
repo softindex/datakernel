@@ -52,6 +52,15 @@ public class CollectionUtils {
 		return Stream.concat(a.stream(), b.stream()).collect(toSet());
 	}
 
+	public static <T> Set<T> union(List<Set<? extends T>> sets) {
+		return sets.stream().flatMap(Collection::stream).collect(toSet());
+	}
+
+	@SafeVarargs
+	public static <T> Set<T> union(Set<? extends T>... sets) {
+		return union(asList(sets));
+	}
+
 	public static <T> T first(Iterable<T> iterable) {
 		return iterable.iterator().next();
 	}
@@ -209,9 +218,27 @@ public class CollectionUtils {
 		};
 	}
 
-	public static <K, V> Map<K, V> keysToMap(Stream<K> stream, Function<K, V> function) {
+	public static <T, R> Iterator<R> transform(Iterator<? extends T> iterator, Function<? super T, ? extends R> fn) {
+		return new Iterator<R>() {
+			@Override
+			public boolean hasNext() {
+				return iterator.hasNext();
+			}
+
+			@Override
+			public R next() {
+				return fn.apply(iterator.next());
+			}
+		};
+	}
+
+	public static <K, V> Map<K, V> keysToMap(Set<K> keys, Function<K, V> fn) {
+		return keysToMap(keys.stream(), fn);
+	}
+
+	public static <K, V> Map<K, V> keysToMap(Stream<K> stream, Function<K, V> fn) {
 		LinkedHashMap<K, V> result = new LinkedHashMap<>();
-		stream.forEach(key -> result.put(key, function.apply(key)));
+		stream.forEach(key -> result.put(key, fn.apply(key)));
 		return result;
 	}
 
@@ -227,18 +254,59 @@ public class CollectionUtils {
 		return result;
 	}
 
-	public static int deepHashCode(@Nullable Object value) {
-		if (value == null) return 0;
-		if (!value.getClass().isArray()) return value.hashCode();
-		if (value instanceof Object[]) return Arrays.deepHashCode((Object[]) value);
-		if (value instanceof byte[]) return Arrays.hashCode((byte[]) value);
-		if (value instanceof short[]) return Arrays.hashCode((short[]) value);
-		if (value instanceof int[]) return Arrays.hashCode((int[]) value);
-		if (value instanceof long[]) return Arrays.hashCode((long[]) value);
-		if (value instanceof float[]) return Arrays.hashCode((float[]) value);
-		if (value instanceof double[]) return Arrays.hashCode((double[]) value);
-		if (value instanceof boolean[]) return Arrays.hashCode((boolean[]) value);
-		if (value instanceof char[]) return Arrays.hashCode((char[]) value);
-		throw new AssertionError();
+	public static <K, V> Map<K, V> map() {
+		return new LinkedHashMap<>();
 	}
+
+	public static <K, V> Map<K, V> map(K key1, V value1) {
+		LinkedHashMap<K, V> map = new LinkedHashMap<>();
+		map.put(key1, value1);
+		return map;
+	}
+
+	public static <K, V> Map<K, V> map(K key1, V value1, K key2, V value2) {
+		LinkedHashMap<K, V> map = new LinkedHashMap<>();
+		map.put(key1, value1);
+		map.put(key2, value2);
+		return map;
+	}
+
+	public static <K, V> Map<K, V> map(K key1, V value1, K key2, V value2, K key3, V value3) {
+		LinkedHashMap<K, V> map = new LinkedHashMap<>();
+		map.put(key1, value1);
+		map.put(key2, value2);
+		map.put(key3, value3);
+		return map;
+	}
+
+	public static <K, V> Map<K, V> map(K key1, V value1, K key2, V value2, K key3, V value3, K key4, V value4) {
+		LinkedHashMap<K, V> map = new LinkedHashMap<>();
+		map.put(key1, value1);
+		map.put(key2, value2);
+		map.put(key3, value3);
+		map.put(key4, value4);
+		return map;
+	}
+
+	public static <K, V> Map<K, V> map(K key1, V value1, K key2, V value2, K key3, V value3, K key4, V value4, K key5, V value5) {
+		LinkedHashMap<K, V> map = new LinkedHashMap<>();
+		map.put(key1, value1);
+		map.put(key2, value2);
+		map.put(key3, value3);
+		map.put(key4, value4);
+		map.put(key5, value5);
+		return map;
+	}
+
+	public static <K, V> Map<K, V> map(K key1, V value1, K key2, V value2, K key3, V value3, K key4, V value4, K key5, V value5, K key6, V value6) {
+		LinkedHashMap<K, V> map = new LinkedHashMap<>();
+		map.put(key1, value1);
+		map.put(key2, value2);
+		map.put(key3, value3);
+		map.put(key4, value4);
+		map.put(key5, value5);
+		map.put(key6, value6);
+		return map;
+	}
+
 }

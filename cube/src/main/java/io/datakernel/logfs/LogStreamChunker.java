@@ -33,14 +33,14 @@ public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> im
 	private final String logPartition;
 
 	private final StreamConsumerSwitcher<ByteBuf> switcher;
-	private final SettableStage<Void> result = SettableStage.create();
+	private final SettableStage<Void> result = new SettableStage<>();
 
 	private String currentChunkName;
 	private StreamDataReceiver<ByteBuf> dataReceiver;
 	private StreamConsumerWithResult<ByteBuf, Void> currentConsumer;
 
 	private LogStreamChunker(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat, String logPartition,
-	                         StreamConsumerSwitcher<ByteBuf> switcher) {
+			StreamConsumerSwitcher<ByteBuf> switcher) {
 		super(switcher);
 		this.currentTimeProvider = currentTimeProvider;
 		this.datetimeFormat = datetimeFormat;
@@ -51,12 +51,12 @@ public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> im
 	}
 
 	public static LogStreamChunker create(LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
-	                                      String logPartition) {
+			String logPartition) {
 		return create(Eventloop.getCurrentEventloop(), fileSystem, datetimeFormat, logPartition);
 	}
 
 	static LogStreamChunker create(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
-	                               String logPartition) {
+			String logPartition) {
 		StreamConsumerSwitcher<ByteBuf> switcher = StreamConsumerSwitcher.create();
 		LogStreamChunker chunker = new LogStreamChunker(currentTimeProvider, fileSystem, datetimeFormat, logPartition, switcher);
 		long timestamp = currentTimeProvider.currentTimeMillis();

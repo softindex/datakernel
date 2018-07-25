@@ -17,7 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.exception.AsyncTimeoutException;
@@ -822,7 +822,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	public Stage<SocketChannel> connect(SocketAddress address, int timeout) {
 		assert inEventloopThread();
 		SocketChannel socketChannel = null;
-		SettableStage<SocketChannel> stage = SettableStage.create();
+		SettableStage<SocketChannel> stage = new SettableStage<>();
 		try {
 			socketChannel = SocketChannel.open();
 			socketChannel.configureBlocking(false);
@@ -1017,9 +1017,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * Works the same as {@link Eventloop#submit(Runnable)} except for {@code AsyncCallable}
 	 */
 	@Override
-	public <T> CompletableFuture<T> submit(AsyncCallable<T> asyncCallable) {
+	public <T> CompletableFuture<T> submit(AsyncSupplier<T> asyncCallable) {
 		CompletableFuture<T> future = new CompletableFuture<>();
-		execute(() -> asyncCallable.call().whenComplete((t, throwable) -> {
+		execute(() -> asyncCallable.get().whenComplete((t, throwable) -> {
 			if (throwable == null) {
 				future.complete(t);
 			} else {

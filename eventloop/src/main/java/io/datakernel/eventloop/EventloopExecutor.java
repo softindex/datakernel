@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -27,5 +27,5 @@ public interface EventloopExecutor extends Executor {
 
 	<T> CompletableFuture<T> submit(Callable<T> callable);
 
-	<T> CompletableFuture<T> submit(AsyncCallable<T> asyncCallable);
+	<T> CompletableFuture<T> submit(AsyncSupplier<T> asyncCallable);
 }

@@ -11,7 +11,7 @@ public interface CollectListener<T, A, R> {
 
 	void onStart(CollectCanceller canceller, A accumulator);
 
-	default void onResult(T result, int index) {
+	default void onResult(T stageResult, int index) {
 	}
 
 	default void onException(Throwable throwable, int index) {
@@ -40,7 +40,7 @@ public interface CollectListener<T, A, R> {
 			}
 
 			@Override
-			public void onResult(T result, int index) {
+			public void onResult(T stageResult, int index) {
 				if (--counter == 0) {
 					canceller.finish();
 				}

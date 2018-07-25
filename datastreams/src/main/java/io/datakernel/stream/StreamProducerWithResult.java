@@ -109,8 +109,8 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder.create());
 	}
 
-	static <T, X> StreamProducerWithResult<T, X> ofStage(Stage<StreamProducerWithResult<T, X>> producerStage) {
-		SettableStage<X> result = SettableStage.create();
+	static <T, X> StreamProducerWithResult<T, X> ofStage(Stage<? extends StreamProducerWithResult<T, X>> producerStage) {
+		SettableStage<X> result = new SettableStage<>();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
 		producerStage.post().whenComplete((producer, throwable) -> {
 			if (throwable == null) {
@@ -162,6 +162,7 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		return this;
 	}
 
+	@Override
 	default StreamProducerWithResult<T, X> whenException(Consumer<Throwable> consumer) {
 		getResult().post().whenException(consumer);
 		return this;

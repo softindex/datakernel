@@ -3,8 +3,8 @@ package io.datakernel.cube.service;
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ot.AggregationDiff;
-import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncPredicate;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.cube.Cube;
@@ -24,7 +24,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.async.Stages.collectSequence;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -87,10 +87,10 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 		return this;
 	}
 
-	private final AsyncCallable<Boolean> processLogs = sharedCall(this::doProcessLogs);
+	private final AsyncSupplier<Boolean> processLogs = reuse(this::doProcessLogs);
 
 	public Stage<Boolean> processLogs() {
-		return processLogs.call();
+		return processLogs.get();
 	}
 
 	Stage<Boolean> doProcessLogs() {
@@ -107,13 +107,13 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 
 					logger.info("Pull to commit: {}, start log processing", stateManager.getRevision());
 
-					List<AsyncCallable<LogDiff<CubeDiff>>> tasks = logProcessors.stream()
-							.map(logProcessor -> AsyncCallable.of(logProcessor::processLog))
+					List<AsyncSupplier<LogDiff<CubeDiff>>> tasks = logProcessors.stream()
+							.map(logProcessor -> AsyncSupplier.of(logProcessor::processLog))
 							.collect(toList());
 
 					Stage<List<LogDiff<CubeDiff>>> stage = parallelRunner ?
-							Stages.toList(tasks.stream().map(AsyncCallable::call)) :
-							collectSequence(tasks, toList());
+							Stages.toList(tasks.stream().map(AsyncSupplier::get)) :
+							collectSequence(toList(), tasks);
 
 					return stage
 							.whenComplete(stageProcessLogsImpl.recordStats())

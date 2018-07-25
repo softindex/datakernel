@@ -22,11 +22,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	@Nullable
 	protected Throwable exception;
 
-	protected SettableStage() {
-	}
-
-	public static <T> SettableStage<T> create() {
-		return new SettableStage<>();
+	public SettableStage() {
 	}
 
 	/**
@@ -48,17 +44,17 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	 * Sets exception and completes this {@code SettableStage} exceptionally.
 	 * <p>AssertionError is thrown when you try to set exception for  already completed stage.</p>
 	 *
-	 * @param t exception
+	 * @param throwable exception
 	 */
 	@Override
-	public void setException(Throwable t) {
+	public void setException(Throwable throwable) {
 		assert !isSet();
 		if (next == null) {
 			result = null;
-			exception = t;
+			exception = throwable;
 		} else {
 			result = null;
-			completeExceptionally(t);
+			completeExceptionally(throwable);
 		}
 	}
 
@@ -70,17 +66,6 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 			return false;
 		}
 		set(result);
-		return true;
-	}
-
-	/**
-	 * The same as {@link SettableStage#trySet(Object, Throwable)} )} but for exception only.
-	 */
-	public boolean trySetException(Throwable t) {
-		if (isSet()) {
-			return false;
-		}
-		setException(t);
 		return true;
 	}
 
@@ -100,6 +85,41 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 			trySetException(throwable);
 		}
 		return true;
+	}
+
+	/**
+	 * The same as {@link SettableStage#trySet(Object, Throwable)} )} but for exception only.
+	 */
+	public boolean trySetException(Throwable throwable) {
+		if (isSet()) {
+			return false;
+		}
+		setException(throwable);
+		return true;
+	}
+
+	public void post(@Nullable T result) {
+		getCurrentEventloop().post(() -> set(result));
+	}
+
+	public void postException(Throwable throwable) {
+		getCurrentEventloop().post(() -> setException(throwable));
+	}
+
+	public void post(@Nullable T result, @Nullable Throwable throwable) {
+		getCurrentEventloop().post(() -> set(result, throwable));
+	}
+
+	public void tryPost(@Nullable T result) {
+		getCurrentEventloop().post(() -> trySet(result));
+	}
+
+	public void tryPostException(Throwable throwable) {
+		getCurrentEventloop().post(() -> trySetException(throwable));
+	}
+
+	public void tryPost(@Nullable T result, @Nullable Throwable throwable) {
+		getCurrentEventloop().post(() -> trySet(result, throwable));
 	}
 
 	@Override
@@ -126,6 +146,24 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	 */
 	public boolean isSet() {
 		return result != NO_RESULT;
+	}
+
+	public boolean isSetResult() {
+		return isSet() && exception == null;
+	}
+
+	public boolean isSetException() {
+		return isSet() && exception != null;
+	}
+
+	public T getResult() {
+		assert isSetResult();
+		return result;
+	}
+
+	public Throwable getException() {
+		assert isSetException();
+		return exception;
 	}
 
 	@Override

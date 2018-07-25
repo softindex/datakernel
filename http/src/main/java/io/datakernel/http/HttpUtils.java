@@ -20,6 +20,7 @@ import io.datakernel.exception.ParseException;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.util.Map;
@@ -31,7 +32,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
  * Util for working with {@link HttpRequest}
  */
 public final class HttpUtils {
-	private static final String ENCODING = "UTF-8";
 
 	public static InetAddress inetAddress(String host) {
 		try {
@@ -174,7 +174,7 @@ public final class HttpUtils {
 	 * @return string with parameters and its value in format URL
 	 */
 	public static String renderQueryString(Map<String, String> q) {
-		return renderQueryString(q, ENCODING);
+		return renderQueryString(q, "UTF-8");
 	}
 
 	/**
@@ -187,11 +187,11 @@ public final class HttpUtils {
 	public static String renderQueryString(Map<String, String> q, String enc) {
 		StringBuilder sb = new StringBuilder();
 		for (Map.Entry<String, String> e : q.entrySet()) {
-			String name = encode(e.getKey(), enc);
+			String name = urlEncode(e.getKey(), enc);
 			sb.append(name);
 			if (e.getValue() != null) {
 				sb.append('=');
-				sb.append(encode(e.getValue(), enc));
+				sb.append(urlEncode(e.getValue(), enc));
 			}
 			sb.append('&');
 		}
@@ -204,18 +204,24 @@ public final class HttpUtils {
 	 * Translates a string into application/x-www-form-urlencoded format using a specific encoding scheme.
 	 * This method uses the supplied encoding scheme to obtain the bytes for unsafe characters
 	 *
-	 * @param s   string for encoding
-	 * @param enc new encoding
+	 * @param string string for encoding
+	 * @param enc    new encoding
 	 * @return the translated String.
 	 */
-	static String encode(String s, String enc) {
+	public static String urlEncode(String string, String enc) {
 		try {
-			return URLEncoder.encode(s, enc);
+			return URLEncoder.encode(string, enc);
 		} catch (UnsupportedEncodingException e) {
 			throw new IllegalArgumentException("Can't encode with supplied encoding: " + enc, e);
 		}
 	}
 
-
+	public static String urlDecode(String string, String enc) {
+		try {
+			return URLDecoder.decode(string, enc);
+		} catch (UnsupportedEncodingException e) {
+			throw new IllegalArgumentException("Can't encode with supplied encoding: " + enc, e);
+		}
+	}
 
 }

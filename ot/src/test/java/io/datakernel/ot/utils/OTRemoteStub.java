@@ -98,9 +98,9 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	}
 
 	@Override
-	public Stage<List<D>> loadSnapshot(K revisionId) {
+	public Stage<Optional<List<D>>> loadSnapshot(K revisionId) {
 		try {
-			return Stage.of(doLoadSnapshot(revisionId));
+			return Stage.of(Optional.of(doLoadSnapshot(revisionId)));
 		} catch (IOException e) {
 			return Stage.ofException(e);
 		}
@@ -127,7 +127,8 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 		OTCommit<K, D> commit = commits.get(revisionId);
 		checkNotNull(commit);
 		return OTCommit.of(commit.getId(), commit.getParents(), commit.getLevel())
-				.withCommitMetadata(commit.getTimestamp(), snapshots.containsKey(revisionId));
+				.withTimestamp(commit.getTimestamp())
+				.withSnapshotHint(snapshots.containsKey(revisionId));
 	}
 
 	public void doSaveSnapshot(K revisionId, List<D> diffs) {

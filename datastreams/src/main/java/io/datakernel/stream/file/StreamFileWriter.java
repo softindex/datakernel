@@ -44,7 +44,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	public static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW, APPEND};
 
 	private final Deque<ByteBuf> bufs = new ArrayDeque<>();
-	private final SettableStage<Void> flushStage = SettableStage.create();
+	private final SettableStage<Void> flushStage = new SettableStage<>();
 
 	private final AsyncFile asyncFile;
 

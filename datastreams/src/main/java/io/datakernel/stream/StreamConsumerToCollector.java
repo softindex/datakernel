@@ -12,7 +12,7 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
 public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, R> {
 	private final Collector<T, A, R> collector;
-	private final SettableStage<R> resultStage = SettableStage.create();
+	private final SettableStage<R> resultStage = new SettableStage<>();
 	private A accumulator;
 
 	public StreamConsumerToCollector(Collector<T, A, R> collector) {

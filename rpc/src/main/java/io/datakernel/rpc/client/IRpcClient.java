@@ -27,7 +27,7 @@ public interface IRpcClient {
 	RpcOverloadException RPC_OVERLOAD_EXCEPTION = new RpcOverloadException();
 
 	default <I, O> Stage<O> sendRequest(I request, int timeout) {
-		SettableStage<O> result = SettableStage.create();
+		SettableStage<O> result = new SettableStage<>();
 		sendRequest(request, timeout, result);
 		return result;
 	}

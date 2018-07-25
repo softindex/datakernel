@@ -50,8 +50,8 @@ public interface AsyncFunction<T, R> {
 		return (T i) -> apply(i).thenCompose((R input) -> (Stage<U>) after.apply(input));
 	}
 
-	default AsyncCallable<R> asAsyncCallable(T argument) {
-		return AsyncCallable.of(this, argument);
+	default AsyncSupplier<R> asAsyncCallable(T argument) {
+		return AsyncSupplier.of(this, argument);
 	}
 
 	static <T, R> AsyncFunction<T, R> of(Function<T, R> function) {

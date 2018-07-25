@@ -1,7 +1,7 @@
 package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.LocalFsChunkStorage;
-import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.cube.CubeDiffScheme;
@@ -25,7 +25,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.cube.Utils.chunksInDiffs;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
 import static io.datakernel.util.CollectionUtils.union;
@@ -98,7 +98,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 		return commit.getParents().values().stream().flatMap(Collection::stream);
 	}
 
-	private final AsyncCallable<Void> cleanup = sharedCall(this::doCleanup);
+	private final AsyncSupplier<Void> cleanup = reuse(this::doCleanup);
 
 	public Stage<Void> cleanup() {
 		return cleanup.call();
@@ -160,7 +160,12 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	}
 
 	Stage<Optional<K>> findSnapshot(Set<K> heads, int skipSnapshots) {
-		return algorithms.findParent(heads, DiffsReducer.toVoid(), OTCommit::isSnapshot)
+		return algorithms.findParent(heads, DiffsReducer.toVoid(),
+				commit -> commit.getSnapshotHint() == Boolean.FALSE ?
+						Stage.of(false) :
+						commit.getSnapshotHint() == Boolean.TRUE ?
+								Stage.of(true) :
+								remote.hasSnapshot(commit.getId()))
 				.post()
 				.thenCompose(findResult -> {
 					if (!findResult.isFound()) return Stage.of(Optional.empty());

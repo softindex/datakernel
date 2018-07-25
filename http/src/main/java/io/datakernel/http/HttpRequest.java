@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.Initializable;
 
 import java.net.InetAddress;
 import java.nio.charset.Charset;
@@ -40,7 +41,7 @@ import static io.datakernel.http.HttpMethod.POST;
  * {@code HttpRequest} class provides methods which can be used intuitively for
  * creating and configuring an HTTP request.
  */
-public final class HttpRequest extends HttpMessage {
+public final class HttpRequest extends HttpMessage implements Initializable<HttpRequest> {
 	private final HttpMethod method;
 	private UrlParser url;
 	private InetAddress remoteAddress;
