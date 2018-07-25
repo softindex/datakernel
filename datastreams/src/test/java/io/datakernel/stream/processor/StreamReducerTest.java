@@ -29,8 +29,8 @@ import java.util.List;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumers.decorator;
-import static io.datakernel.stream.StreamConsumers.randomlySuspending;
+import static io.datakernel.stream.TestStreamConsumers.decorator;
+import static io.datakernel.stream.TestStreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;

@@ -88,69 +88,69 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, long offset) {
-		return mainClient.upload(fileName, offset);
+	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
+		return mainClient.upload(filename, offset);
 	}
 
 	/**
 	 * Tries to download file either from cache (if present) or from server.
 	 *
-	 * @param fileName name of the file to be downloaded
+	 * @param filename name of the file to be downloaded
 	 * @param offset   from which byte to download the file
 	 * @param length   how much bytes of the file do download
 	 * @return stage for stream producer of byte buffers
 	 */
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long offset, long length) {
-		checkNotNull(fileName, "fileName");
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
+		checkNotNull(filename, "fileName");
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
 
-		return cacheClient.getMetadata(fileName)
+		return cacheClient.getMetadata(filename)
 				.thenCompose(cacheMetadata -> {
 					if (cacheMetadata == null) {
 						if (offset != 0) {
-							return mainClient.download(fileName, offset, length);
+							return mainClient.download(filename, offset, length);
 						}
-						return mainClient.getMetadata(fileName)
+						return mainClient.getMetadata(filename)
 								.thenCompose(mainMetadata -> {
 									if (mainMetadata == null) {
-										return Stage.ofException(new RemoteFsException("File not found: " + fileName));
+										return Stage.ofException(new RemoteFsException("File not found: " + filename));
 									}
-									return downloadToCache(fileName, offset, length, 0);
+									return downloadToCache(filename, offset, length, 0);
 								});
 					}
 					long sizeInCache = cacheMetadata.getSize();
 
 					if (length != -1 && sizeInCache >= offset + length) {
-						return cacheClient.download(fileName, offset, length)
-								.whenComplete((val, err) -> updateCacheStats(fileName));
+						return cacheClient.download(filename, offset, length)
+								.whenComplete((val, err) -> updateCacheStats(filename));
 					}
 
 					if (offset > sizeInCache) {
-						return mainClient.download(fileName, offset, length);
+						return mainClient.download(filename, offset, length);
 					}
 
-					return mainClient.getMetadata(fileName)
+					return mainClient.getMetadata(filename)
 							.thenCompose(mainMetadata -> {
 								if (mainMetadata == null) {
-									return cacheClient.download(fileName, offset, length)
-											.whenComplete((val, err) -> updateCacheStats(fileName));
+									return cacheClient.download(filename, offset, length)
+											.whenComplete((val, err) -> updateCacheStats(filename));
 								}
 
 								long sizeInMain = mainMetadata.getSize();
 
 								if (sizeInCache >= sizeInMain) {
-									return cacheClient.download(fileName, offset, length)
-											.whenComplete((val, err) -> updateCacheStats(fileName));
+									return cacheClient.download(filename, offset, length)
+											.whenComplete((val, err) -> updateCacheStats(filename));
 								}
 
 								if ((length != -1) && (sizeInMain < (offset + length))) {
-									String repr = fileName + "(size=" + sizeInMain + (offset != 0 ? ", offset=" + offset : "") + ", length=" + length;
+									String repr = filename + "(size=" + sizeInMain + (offset != 0 ? ", offset=" + offset : "") + ", length=" + length;
 									return Stage.ofException(new RemoteFsException("Boundaries exceed file size: " + repr));
 								}
 
-								return downloadToCache(fileName, offset, length, sizeInCache);
+								return downloadToCache(filename, offset, length, sizeInCache);
 							});
 
 				});
@@ -269,7 +269,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	private Stage<Void> ensureSpace() {
-		return ensureSpace.call();
+		return ensureSpace.get();
 	}
 
 	private Stage<Void> doEnsureSpace() {

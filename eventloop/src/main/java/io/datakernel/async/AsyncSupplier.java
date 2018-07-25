@@ -21,10 +21,6 @@ import java.util.function.*;
 public interface AsyncSupplier<T> {
 	Stage<T> get();
 
-	default Stage<Void> call() {
-		return get().toVoid();
-	}
-
 	default AsyncSupplier<T> with(UnaryOperator<AsyncSupplier<T>> modifier) {
 		return modifier.apply(this);
 	}
@@ -39,6 +35,10 @@ public interface AsyncSupplier<T> {
 
 	static <A, B, T> AsyncSupplier<T> of(BiFunction<? super A, ? super B, Stage<T>> biFunction, A a, B b) {
 		return () -> biFunction.apply(a, b);
+	}
+
+	default AsyncSupplier<T> withExecutor(AsyncExecutor asyncExecutor) {
+		return () -> asyncExecutor.execute(this);
 	}
 
 	default <V> AsyncSupplier<V> transform(Function<? super T, ? extends V> fn) {

@@ -22,7 +22,7 @@ public interface RetryPolicy {
 
 	static RetryPolicy exponentialBackoff(long initialDelay, long maxDelay, double exponent) {
 		checkArgument(maxDelay > initialDelay && exponent > 1.0);
-		int maxRetryCount = (int) ceil(log(maxDelay / initialDelay) / log(exponent));
+		int maxRetryCount = (int) ceil(log((double) maxDelay / initialDelay) / log(exponent));
 		return (now, lastError, retryCount, retryTimestamp) -> now + (
 				retryCount > maxRetryCount ?
 						maxDelay :

@@ -8,7 +8,7 @@ import java.util.Set;
 
 import static io.datakernel.stream.StreamCapability.IMMEDIATE_SUSPEND;
 
-public class StreamSuspendBuffer<T> implements StreamTransformer<T, T>, StreamDataReceiver<T> {
+public class StreamBuffer<T> implements StreamTransformer<T, T> {
 
 	private final Input input;
 	private final Output output;
@@ -21,33 +21,21 @@ public class StreamSuspendBuffer<T> implements StreamTransformer<T, T>, StreamDa
 	private boolean finished = false;
 
 	// region creators
-	private StreamSuspendBuffer(int minBuffered, int maxBuffered) {
+	private StreamBuffer(int minBuffered, int maxBuffered) {
 		this.minBuffered = minBuffered;
 		this.maxBuffered = maxBuffered;
 		this.input = new Input();
 		this.output = new Output();
 	}
 
-	public static <T> StreamSuspendBuffer<T> create() {
-		return new StreamSuspendBuffer<>(0, 0);
+	public static <T> StreamBuffer<T> create() {
+		return new StreamBuffer<>(0, 0);
 	}
 
-	public static <T> StreamSuspendBuffer<T> create(int minBuffered, int maxBuffered) {
-		return new StreamSuspendBuffer<>(minBuffered, maxBuffered);
+	public static <T> StreamBuffer<T> create(int minBuffered, int maxBuffered) {
+		return new StreamBuffer<>(minBuffered, maxBuffered);
 	}
 	// endregion
-
-	@Override
-	public void onData(T item) {
-		if (suspended) {
-			buffer.offer(item);
-			if (buffer.size() >= maxBuffered) {
-				input.getProducer().suspend();
-			}
-			return;
-		}
-		output.send(item);
-	}
 
 	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
@@ -70,7 +58,19 @@ public class StreamSuspendBuffer<T> implements StreamTransformer<T, T>, StreamDa
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<T> {
+	protected final class Output extends AbstractStreamProducer<T> implements StreamDataReceiver<T> {
+		@Override
+		public void onData(T item) {
+			if (suspended) {
+				buffer.offer(item);
+				if (buffer.size() >= maxBuffered) {
+					input.getProducer().suspend();
+				}
+				return;
+			}
+			output.getLastDataReceiver().onData(item);
+		}
+
 		@Override
 		protected void produce(AsyncProduceController async) {
 			while (!buffer.isEmpty()) {
@@ -79,12 +79,12 @@ public class StreamSuspendBuffer<T> implements StreamTransformer<T, T>, StreamDa
 				}
 				send(buffer.pop());
 				if (buffer.size() < minBuffered) {
-					input.getProducer().produce(StreamSuspendBuffer.this);
+					input.getProducer().produce(this);
 				}
 			}
 			if (output.isReceiverReady()) {
 				suspended = false;
-				input.getProducer().produce(StreamSuspendBuffer.this);
+				input.getProducer().produce(this);
 			}
 			if (finished) {
 				sendEndOfStream();

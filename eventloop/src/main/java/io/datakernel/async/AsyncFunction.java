@@ -18,6 +18,7 @@ package io.datakernel.async;
 
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * Asynchronous determines an output value based on an input value.
@@ -30,6 +31,14 @@ public interface AsyncFunction<T, R> {
 	 * Returns the result of applying this function to input.
 	 */
 	Stage<R> apply(T input);
+
+	default AsyncFunction<T, R> with(UnaryOperator<AsyncFunction<T, R>> modifier) {
+		return modifier.apply(this);
+	}
+
+	default AsyncFunction<T, R> withExecutor(AsyncExecutor asyncExecutor) {
+		return input -> asyncExecutor.execute(() -> apply(input));
+	}
 
 	default <U> AsyncFunction<U, R> compose(Function<? super U, ? extends T> before) {
 		return (U t) -> this.apply(before.apply(t));

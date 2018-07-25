@@ -22,6 +22,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -63,8 +64,9 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return binder.getInput().withResult(result);
 	}
 
-	static <T> StreamConsumerWithResult<T, Void> ofAsyncConsumer(AsyncConsumer<T> consumer) {
-		return new StreamConsumers.OfAsyncConsumerImpl<>(consumer);
+	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+	static <T> StreamConsumerWithResult<T, Void> ofAsyncConsumer(AsyncConsumer<T> consumer, Optional<?> endOfStreamMarker) {
+		return new StreamConsumers.OfAsyncConsumerImpl<>(consumer, endOfStreamMarker);
 	}
 
 	default <U> StreamConsumerWithResult<T, U> thenApply(Function<? super X, ? extends U> fn) {

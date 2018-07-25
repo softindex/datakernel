@@ -19,23 +19,17 @@ package io.datakernel.stream;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumers.Decorator.Context;
 import io.datakernel.util.ThrowingConsumer;
 
 import java.util.EnumSet;
-import java.util.Random;
+import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
 public final class StreamConsumers {
-	private StreamConsumers() {
-	}
+	private StreamConsumers() {}
 
 	static final class ClosingWithErrorImpl<T> implements StreamConsumer<T> {
 		private final Throwable exception;
@@ -62,10 +56,18 @@ public final class StreamConsumers {
 	}
 
 	static final class OfConsumerImpl<T> extends AbstractStreamConsumer<T> {
+		private static final Object NO_END_OF_STREAM_MARKER = new Object();
 		private final ThrowingConsumer<T> consumer;
+		private final Object endOfStreamMarker;
 
 		OfConsumerImpl(ThrowingConsumer<T> consumer) {
 			this.consumer = consumer;
+			this.endOfStreamMarker = NO_END_OF_STREAM_MARKER;
+		}
+
+		OfConsumerImpl(ThrowingConsumer<T> consumer, Object endOfStreamMarker) {
+			this.consumer = consumer;
+			this.endOfStreamMarker = endOfStreamMarker;
 		}
 
 		@Override
@@ -82,9 +84,17 @@ public final class StreamConsumers {
 			});
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		protected void onEndOfStream() {
-
+			if (endOfStreamMarker != NO_END_OF_STREAM_MARKER) {
+				try {
+					consumer.accept((T) endOfStreamMarker);
+				} catch (RuntimeException e) {
+					throw e;
+				} catch (Throwable ignored) {
+				}
+			}
 		}
 
 		@Override
@@ -99,12 +109,20 @@ public final class StreamConsumers {
 	}
 
 	static final class OfAsyncConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, Void>, StreamDataReceiver<T> {
+		private static final Object NO_END_OF_STREAM_MARKER = new Object();
 		private final AsyncConsumer<T> consumer;
+		private final Object endOfStreamMarker;
 		private int waiting;
 		private final SettableStage<Void> resultStage = new SettableStage<>();
 
 		OfAsyncConsumerImpl(AsyncConsumer<T> consumer) {
 			this.consumer = consumer;
+			this.endOfStreamMarker = NO_END_OF_STREAM_MARKER;
+		}
+
+		OfAsyncConsumerImpl(AsyncConsumer<T> consumer, Object endOfStreamMarker) {
+			this.consumer = consumer;
+			this.endOfStreamMarker = endOfStreamMarker;
 		}
 
 		@Override
@@ -112,8 +130,10 @@ public final class StreamConsumers {
 			getProducer().produce(this);
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public void onData(T item) {
+			assert item != endOfStreamMarker;
 			Stage<Void> stage = consumer.accept(item);
 			if (stage instanceof SettableStage) {
 				SettableStage<Void> settableStage = (SettableStage<Void>) stage;
@@ -133,7 +153,10 @@ public final class StreamConsumers {
 						if (getStatus().isOpen()) {
 							getProducer().streamTo(this);
 						} else {
-							resultStage.trySet(null);
+							if (getStatus() == StreamStatus.END_OF_STREAM) {
+								(endOfStreamMarker != NO_END_OF_STREAM_MARKER ? consumer.accept((T) endOfStreamMarker) : Stage.of((Void) null))
+										.whenComplete(resultStage::trySet);
+							}
 						}
 					} else {
 						closeWithError(throwable);
@@ -142,10 +165,12 @@ public final class StreamConsumers {
 			});
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		protected void onEndOfStream() {
 			if (waiting == 0) {
-				resultStage.trySet(null);
+				(endOfStreamMarker != NO_END_OF_STREAM_MARKER ? consumer.accept((T) endOfStreamMarker) : Stage.of((Void) null))
+						.whenComplete(resultStage::trySet);
 			}
 		}
 
@@ -161,7 +186,7 @@ public final class StreamConsumers {
 
 		@Override
 		public Stage<Void> getResult() {
-			return null;
+			return resultStage;
 		}
 	}
 
@@ -188,108 +213,6 @@ public final class StreamConsumers {
 		public Set<StreamCapability> getCapabilities() {
 			return EnumSet.of(LATE_BINDING);
 		}
-	}
-
-	public interface Decorator<T> {
-		interface Context {
-			void suspend();
-
-			void resume();
-
-			void closeWithError(Throwable error);
-		}
-
-		StreamDataReceiver<T> decorate(Context context, StreamDataReceiver<T> dataReceiver);
-	}
-
-	public static <T> StreamConsumerModifier<T, T> decorator(Decorator<T> decorator) {
-		return consumer -> new ForwardingStreamConsumer<T>(consumer) {
-			final SettableStage<Void> endOfStream = new SettableStage<>();
-
-			{
-				consumer.getEndOfStream().whenComplete(endOfStream::trySet);
-			}
-
-			@Override
-			public void setProducer(StreamProducer<T> producer) {
-				super.setProducer(new ForwardingStreamProducer<T>(producer) {
-					@SuppressWarnings("unchecked")
-					@Override
-					public void produce(StreamDataReceiver<T> dataReceiver) {
-						StreamDataReceiver<T>[] dataReceiverHolder = new StreamDataReceiver[1];
-						Context context = new Context() {
-							final Eventloop eventloop = getCurrentEventloop();
-
-							@Override
-							public void suspend() {
-								producer.suspend();
-							}
-
-							@Override
-							public void resume() {
-								eventloop.post(() -> producer.produce(dataReceiverHolder[0]));
-							}
-
-							@Override
-							public void closeWithError(Throwable error) {
-								endOfStream.trySetException(error);
-							}
-						};
-						dataReceiverHolder[0] = decorator.decorate(context, dataReceiver);
-						super.produce(dataReceiverHolder[0]);
-					}
-				});
-			}
-
-			@Override
-			public Stage<Void> getEndOfStream() {
-				return endOfStream;
-			}
-		};
-	}
-
-	public static <T> StreamConsumerModifier<T, T> errorDecorator(Function<T, Throwable> errorFunction) {
-		return decorator((context, dataReceiver) ->
-				item -> {
-					Throwable error = errorFunction.apply(item);
-					if (error == null) {
-						dataReceiver.onData(item);
-					} else {
-						context.closeWithError(error);
-					}
-				});
-	}
-
-	public static <T> StreamConsumerModifier<T, T> suspendDecorator(Predicate<T> predicate, Consumer<Context> resumer) {
-		return decorator((context, dataReceiver) ->
-				item -> {
-					dataReceiver.onData(item);
-
-					if (predicate.test(item)) {
-						context.suspend();
-						resumer.accept(context);
-					}
-				});
-	}
-
-	public static <T> StreamConsumerModifier<T, T> suspendDecorator(Predicate<T> predicate) {
-		return suspendDecorator(predicate, Context::resume);
-	}
-
-	public static <T> StreamConsumerModifier<T, T> oneByOne() {
-		return suspendDecorator(item -> true);
-	}
-
-	public static <T> StreamConsumerModifier<T, T> randomlySuspending(Random random, double probability) {
-		return suspendDecorator(item -> random.nextDouble() < probability);
-	}
-
-	public static <T> StreamConsumerModifier<T, T> randomlySuspending(double probability) {
-		return randomlySuspending(new Random(), probability);
-	}
-
-	public static <T> StreamConsumerModifier<T, T> randomlySuspending() {
-		return randomlySuspending(0.5);
 	}
 
 }

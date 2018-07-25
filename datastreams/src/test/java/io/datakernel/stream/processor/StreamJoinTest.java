@@ -21,6 +21,7 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
@@ -147,7 +147,7 @@ public class StreamJoinTest {
 		source2.streamTo(streamJoin.getRight());
 
 		streamJoin.getOutput().streamTo(
-				consumer.with(randomlySuspending()));
+				consumer.with(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 
@@ -202,7 +202,7 @@ public class StreamJoinTest {
 		source2.streamTo(streamJoin.getRight());
 
 		streamJoin.getOutput().streamTo(
-				consumer.with(decorator((context, dataReceiver) ->
+				consumer.with(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (list.size() == 1) {
@@ -257,7 +257,7 @@ public class StreamJoinTest {
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
 
-		streamJoin.getOutput().streamTo(consumer.with(oneByOne()));
+		streamJoin.getOutput().streamTo(consumer.with(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 		assertTrue(list.size() == 0);

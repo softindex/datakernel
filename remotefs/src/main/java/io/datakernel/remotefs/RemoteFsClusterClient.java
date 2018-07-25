@@ -220,12 +220,12 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, long offset) {
-		checkNotNull(fileName, "fileName");
+	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
+		checkNotNull(filename, "fileName");
 
-		List<Object> selected = serverSelector.selectFrom(fileName, aliveClients.keySet(), replicationCount);
+		List<Object> selected = serverSelector.selectFrom(filename, aliveClients.keySet(), replicationCount);
 
-		checkState(!selected.isEmpty(), "Selected no servers to upload file " + fileName);
+		checkState(!selected.isEmpty(), "Selected no servers to upload file " + filename);
 		checkState(aliveClients.keySet().containsAll(selected), "Selected an id that is not one of client ids");
 
 		class ConsumerWithId {
@@ -240,7 +240,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 		return Stages.toList(selected.stream()
 				.map(id -> aliveClients.get(id)
-						.upload(fileName, offset)
+						.upload(filename, offset)
 						.thenComposeEx(wrapDeath(id))
 						.thenApply(consumer -> new ConsumerWithId(id, consumer.thenComposeEx(wrapDeath(id))))
 						.toTry()))
@@ -251,14 +251,14 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 							.collect(toList());
 
 					if (successes.isEmpty()) {
-						return ofFailure("Couldn't connect to any partition to download file " + fileName, tries);
+						return ofFailure("Couldn't connect to any partition to download file " + filename, tries);
 					}
 
 					FailsafeStreamSplitter<ByteBuf> splitter = FailsafeStreamSplitter.create();
 					successes.forEach(s -> splitter.newOutput().streamTo(s.consumer.with(StreamFunction.<ByteBuf, ByteBuf>create(ByteBuf::slice))));
 
 					if (logger.isTraceEnabled()) {
-						logger.trace("uploading file {} to {}, {}", fileName, successes.stream().map(s -> s.id.toString()).collect(joining(", ", "[", "]")), this);
+						logger.trace("uploading file {} to {}, {}", filename, successes.stream().map(s -> s.id.toString()).collect(joining(", ", "[", "]")), this);
 					}
 
 					// and also dont forget to recycle original bytebufs
@@ -274,11 +274,11 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 										// than replicationCount, they will still upload
 										if (ackTries.size() < replicationCount) {
 											return ofFailure("Didn't connect to enough partitions uploading " +
-													fileName + ", only " + successCount + " finished uploads", tries);
+													filename + ", only " + successCount + " finished uploads", tries);
 										}
 										if (successCount < replicationCount) {
 											return ofFailure("Couldn't finish uploadind file " +
-													fileName + ", only " + successCount + " acknowlegdes received", ackTries);
+													filename + ", only " + successCount + " acknowlegdes received", ackTries);
 										}
 										return Stage.of((Void) null);
 									})
@@ -288,8 +288,8 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long offset, long length) {
-		checkNotNull(fileName, "fileName");
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
+		checkNotNull(filename, "fileName");
 
 		class PartitionIdWithFileSize {
 			final Object partitionId;
@@ -310,7 +310,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				aliveClients.entrySet().stream()
 						.map(e -> {
 							Object partitionId = e.getKey();
-							return e.getValue().list(fileName) //   ↓ use null's as file non-existense indicators
+							return e.getValue().list(filename) //   ↓ use null's as file non-existense indicators
 									.thenApply(res -> res.isEmpty() ? null : new PartitionIdWithFileSize(partitionId, res.get(0).getSize()))
 									.thenComposeEx(wrapDeath(partitionId))
 									.toTry();
@@ -334,7 +334,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 							.collect(toList());
 
 					if (found.isEmpty()) {
-						return ofFailure("File not found: " + fileName, tries);
+						return ofFailure("File not found: " + filename, tries);
 					}
 
 					return Stages.firstSuccessful(found.stream() // try to download successively
@@ -343,9 +343,9 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 								if (client == null) { // marked as dead already by somebody
 									return Stage.ofException(new RemoteFsException("Client " + partitionId + " is not alive"));
 								}
-								logger.trace("downloading file {} from {}", fileName, partitionId);
-								return client.download(fileName, offset, length)
-										.whenException(err -> logger.warn("Failed to connect to server with key " + partitionId + " to download file " + fileName, err))
+								logger.trace("downloading file {} from {}", filename, partitionId);
+								return client.download(filename, offset, length)
+										.whenException(err -> logger.warn("Failed to connect to server with key " + partitionId + " to download file " + filename, err))
 										.thenComposeEx(wrapDeath(partitionId))
 										.thenApply(consumer -> consumer
 												.thenComposeEx(wrapDeath(partitionId))

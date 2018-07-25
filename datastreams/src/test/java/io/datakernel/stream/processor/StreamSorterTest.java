@@ -21,6 +21,7 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
@@ -37,7 +38,6 @@ import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
-import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
@@ -78,8 +78,8 @@ public class StreamSorterTest {
 
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
 		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
-		storage.readStream(chunk1.get()).streamTo(consumer1.with(oneByOne()));
-		storage.readStream(chunk2.get()).streamTo(consumer2.with(randomlySuspending()));
+		storage.readStream(chunk1.get()).streamTo(consumer1.with(TestStreamConsumers.oneByOne()));
+		storage.readStream(chunk2.get()).streamTo(consumer2.with(TestStreamConsumers.randomlySuspending()));
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer1.getList());
 		assertEquals(asList(111), consumer2.getList());
@@ -102,7 +102,7 @@ public class StreamSorterTest {
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
 		source.streamTo(sorter.getInput());
-		sorter.getOutput().streamTo(consumerToList.with(randomlySuspending()));
+		sorter.getOutput().streamTo(consumerToList.with(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 
@@ -128,7 +128,7 @@ public class StreamSorterTest {
 
 		source.streamTo(sorter.getInput());
 		sorter.getOutput().streamTo(
-				consumer.with(decorator((context, dataReceiver) ->
+				consumer.with(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (list.size() == 2) {

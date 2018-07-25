@@ -18,10 +18,7 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamStatus;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -30,7 +27,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
@@ -62,7 +58,7 @@ public class StreamUnionTest {
 		source4.streamTo(streamUnion.newInput());
 		source5.streamTo(streamUnion.newInput());
 		source6.streamTo(streamUnion.newInput());
-		streamUnion.getOutput().streamTo(consumer.with(randomlySuspending()));
+		streamUnion.getOutput().streamTo(consumer.with(TestStreamConsumers.randomlySuspending()));
 		eventloop.run();
 
 		List<Integer> result = consumer.getList();
@@ -98,7 +94,7 @@ public class StreamUnionTest {
 		source1.streamTo(streamUnion.newInput());
 		source2.streamTo(streamUnion.newInput());
 
-		streamUnion.getOutput().streamTo(consumer.with(decorator((context, dataReceiver) ->
+		streamUnion.getOutput().streamTo(consumer.with(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (item == 1) {
@@ -139,7 +135,7 @@ public class StreamUnionTest {
 		source0.streamTo(streamUnion.newInput());
 		source1.streamTo(streamUnion.newInput());
 
-		streamUnion.getOutput().streamTo(consumer.with(oneByOne()));
+		streamUnion.getOutput().streamTo(consumer.with(TestStreamConsumers.oneByOne()));
 		eventloop.run();
 
 		assertTrue(list.size() == 3);

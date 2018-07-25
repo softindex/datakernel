@@ -99,12 +99,12 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, long offset) {
-		checkNotNull(fileName, "fileName");
+	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
+		checkNotNull(filename, "fileName");
 
 		return connect(address)
 				.thenCompose(messaging ->
-						messaging.send(new Upload(fileName, offset))
+						messaging.send(new Upload(filename, offset))
 								.thenApply($ ->
 										messaging.sendBinaryStream()
 												.thenCompose($2 -> messaging.receive())
@@ -119,34 +119,34 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 													if (msg != null) {
 														return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
 													}
-													return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + fileName));
+													return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
 												})
 												.whenException(e -> {
 													messaging.close();
-													logger.warn("Error while trying to upload file " + fileName + " (" + e + "): " + this);
+													logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
 												})
 												.whenComplete(uploadFinishStage.recordStats())
 												.withLateBinding())
 								.whenException(e -> {
 									messaging.close();
-									logger.warn("Error while trying to upload file " + fileName + " (" + e + "): " + this);
+									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
 								}))
-				.whenComplete(toLogger(logger, TRACE, "upload", fileName, this))
+				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
 				.whenComplete(uploadStartStage.recordStats());
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long offset, long length) {
-		checkNotNull(fileName, "fileName");
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
+		checkNotNull(filename, "fileName");
 
 		return connect(address).thenCompose(messaging ->
-				messaging.send(new Download(fileName, offset, length))
+				messaging.send(new Download(filename, offset, length))
 						.thenCompose($ -> messaging.receive())
 						.thenCompose(msg -> {
 							if (msg instanceof DownloadSize) {
 								long receivingSize = ((DownloadSize) msg).getSize();
 
-								logger.trace("download size for file {} is {}: {}", fileName, receivingSize, this);
+								logger.trace("download size for file {} is {}: {}", filename, receivingSize, this);
 
 								StreamStatsDetailed<ByteBuf> stats = StreamStats.detailed(forByteBufs());
 								return Stage.of(messaging.receiveBinaryStream()
@@ -158,14 +158,14 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 												messaging.close();
 												return Stage.<Void>of(null);
 											}
-											return Stage.ofException(new IOException("Invalid stream size for file " + fileName +
+											return Stage.ofException(new IOException("Invalid stream size for file " + filename +
 													" (offset " + offset + ", length " + length + "), expected: " + receivingSize +
 													" actual: " + stats.getTotalSize()));
 
 										})
 										.whenException(e -> {
 											messaging.close();
-											logger.warn("Error while downloading file " + fileName +
+											logger.warn("Error while downloading file " + filename +
 													" (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
 										})
 										.whenComplete(downloadFinishStage.recordStats())
@@ -178,13 +178,13 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 								return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
 							}
 							logger.warn(this + ": Received unexpected end of stream");
-							return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + fileName));
+							return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
 						})
 						.whenException(e -> {
 							messaging.close();
-							logger.warn("Error trying to download file " + fileName + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
+							logger.warn("Error trying to download file " + filename + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
 						}))
-				.whenComplete(toLogger(logger, TRACE, "download", fileName, offset, length, this))
+				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))
 				.whenComplete(downloadStartStage.recordStats());
 	}
 

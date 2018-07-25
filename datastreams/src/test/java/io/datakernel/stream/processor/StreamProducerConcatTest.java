@@ -19,8 +19,8 @@ package io.datakernel.stream.processor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumers.randomlySuspending;
+import static io.datakernel.stream.TestStreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
@@ -104,7 +104,7 @@ public class StreamProducerConcatTest {
 				StreamProducer.of(4, 5, 6),
 				StreamProducer.closingWithError(new ExpectedException("Test Exception")))
 				.streamTo(
-						consumer.with(StreamConsumers.oneByOne()));
+						consumer.with(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 

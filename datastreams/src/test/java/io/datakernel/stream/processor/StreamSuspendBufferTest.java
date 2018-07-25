@@ -14,7 +14,7 @@ import java.util.function.BiConsumer;
 import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumers.decorator;
+import static io.datakernel.stream.TestStreamConsumers.decorator;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
@@ -32,7 +32,7 @@ public class StreamSuspendBufferTest {
 		boolean[] suspended = {false};
 		StreamProducer.ofIterable(items)
 				.with(suspendingModifier)
-				.with(StreamSuspendBuffer.create())
+				.with(StreamBuffer.create())
 				.streamTo(StreamConsumerToList.<String>create()
 						.with(decorator((context, receiver) -> item -> {
 							receiver.onData(item);

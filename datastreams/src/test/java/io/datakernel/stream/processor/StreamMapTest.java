@@ -19,13 +19,13 @@ package io.datakernel.stream.processor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
@@ -51,7 +51,7 @@ public class StreamMapTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		source.with(projection).streamTo(
-				consumer.with(randomlySuspending()));
+				consumer.with(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(11, 12, 13), consumer.getList());
@@ -70,7 +70,7 @@ public class StreamMapTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		source.with(projection).streamTo(
-				consumer.with(decorator((context, dataReceiver) ->
+				consumer.with(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (item == 12) {
@@ -101,7 +101,7 @@ public class StreamMapTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		source.with(projection).streamTo(
-				consumer.with(oneByOne()));
+				consumer.with(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 		assertTrue(list.size() == 2);

@@ -49,35 +49,35 @@ public interface FsClient {
 	 * If offset is 0 or more then this will override existing file starting from that byte
 	 * and fail if file does not exist or is smaller than the offset.
 	 *
-	 * @param fileName name of the file to upload
+	 * @param filename name of the file to upload
 	 * @param offset   from which byte to write the uploaded data
 	 * @return stage for stream consumer of byte buffers
 	 */
-	Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, long offset);
+	Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset);
 
 	/**
 	 * Shortcut for uploading NEW file
 	 *
-	 * @param fileName name of the file to upload
+	 * @param filename name of the file to upload
 	 * @return stage for stream consumer of byte buffers
 	 */
-	default Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName) {
-		return upload(fileName, -1);
+	default Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename) {
+		return upload(filename, -1);
 	}
 
 	/**
 	 * Shortcut for first uploading the folder into a temporary folder and then atomically moving it out.
 	 *
-	 * @param fileName   name of the file to upload
+	 * @param filename   name of the file to upload
 	 * @param tempFolder name of the temporary folder
 	 * @return stream consumer of byte buffers
 	 */
-	default Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, String tempFolder) {
-		String tempName = tempFolder + File.separator + fileName;
+	default Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, String tempFolder) {
+		String tempName = tempFolder + File.separator + filename;
 		return upload(tempName)
 				.thenApply(consumer ->
 						consumer.thenCompose($ ->
-								move(tempName, fileName)));
+								move(tempName, filename)));
 	}
 
 	/**
@@ -86,22 +86,22 @@ public interface FsClient {
 	 * It merges connection errors into end-of-stream stage, so on connection failure
 	 * returned stream closes with the error.
 	 *
-	 * @param fileName name of the file to upload
+	 * @param filename name of the file to upload
 	 * @return stream consumer of byte buffers
 	 */
-	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String fileName) {
-		return StreamConsumerWithResult.ofStage(upload(fileName));
+	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String filename) {
+		return StreamConsumerWithResult.ofStage(upload(filename));
 	}
 
-	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String fileName, long offset) {
-		return StreamConsumerWithResult.ofStage(upload(fileName, offset));
+	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String filename, long offset) {
+		return StreamConsumerWithResult.ofStage(upload(filename, offset));
 	}
 
 	/**
 	 * Same shortcut, but for {@link #upload(String, String)}
 	 */
-	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String fileName, String tempFolder) {
-		return StreamConsumerWithResult.ofStage(upload(fileName, tempFolder));
+	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String filename, String tempFolder) {
+		return StreamConsumerWithResult.ofStage(upload(filename, tempFolder));
 	}
 
 	/**
@@ -109,14 +109,14 @@ public interface FsClient {
 	 * If file does not exist, or specified range goes beyond it's size,
 	 * an error will be returned from the server.
 	 *
-	 * @param fileName name of the file to be downloaded
+	 * @param filename name of the file to be downloaded
 	 * @param offset   from which byte to download the file
 	 * @param length   how much bytes of the file do download
 	 * @return stage for stream producer of byte buffers
 	 * @see #download(String, long)
 	 * @see #download(String)
 	 */
-	Stage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long offset, long length);
+	Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length);
 
 	/**
 	 * Shortcut for downloading the whole file from given offset.
@@ -125,8 +125,8 @@ public interface FsClient {
 	 * @see #download(String, long, long)
 	 * @see #download(String)
 	 */
-	default Stage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long offset) {
-		return download(fileName, offset, -1);
+	default Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset) {
+		return download(filename, offset, -1);
 	}
 
 	/**
@@ -135,9 +135,10 @@ public interface FsClient {
 	 * @return stream producer of byte buffers
 	 * @see #download(String, long)
 	 * @see #download(String, long, long)
+	 * @param filename
 	 */
-	default Stage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName) {
-		return download(fileName, 0, -1);
+	default Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename) {
+		return download(filename, 0, -1);
 	}
 
 	/**
@@ -145,8 +146,8 @@ public interface FsClient {
 	 *
 	 * @see #download(String, long, long)
 	 */
-	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String fileName, long offset, long length) {
-		return StreamProducerWithResult.ofStage(download(fileName, offset, length));
+	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String filename, long offset, long length) {
+		return StreamProducerWithResult.ofStage(download(filename, offset, length));
 	}
 
 	/**
@@ -154,17 +155,18 @@ public interface FsClient {
 	 *
 	 * @see #download(String, long)
 	 */
-	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String fileName, long offset) {
-		return StreamProducerWithResult.ofStage(download(fileName, offset));
+	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String filename, long offset) {
+		return StreamProducerWithResult.ofStage(download(filename, offset));
 	}
 
 	/**
 	 * Same shortcut but for downloading the whole file.
 	 *
 	 * @see #download(String)
+	 * @param filename
 	 */
-	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String fileName) {
-		return StreamProducerWithResult.ofStage(download(fileName));
+	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String filename) {
+		return StreamProducerWithResult.ofStage(download(filename));
 	}
 
 	/**
@@ -195,12 +197,11 @@ public interface FsClient {
 	/**
 	 * Shortcut for {@link #strictMove} for a single file.
 	 * By default is is equivalent to calling strictMove(Collections.singletonMap(fileName, newFileName))
-	 *
-	 * @param fileName    file to be moved
-	 * @param newFileName new file name
+	 * @param filename    file to be moved
+	 * @param newFilename new file name
 	 */
-	default Stage<Void> move(String fileName, String newFileName) {
-		return strictMove(Collections.singletonMap(fileName, newFileName));
+	default Stage<Void> move(String filename, String newFilename) {
+		return strictMove(Collections.singletonMap(filename, newFilename));
 	}
 
 	/**
@@ -232,12 +233,11 @@ public interface FsClient {
 	/**
 	 * Shortcut for {@link #strictCopy} for a single file.
 	 * By default is is equivalent to calling strictCopy(Collections.singletonMap(fileName, newFileName))
-	 *
-	 * @param fileName    file to be moved
-	 * @param newFileName new file name
+	 *  @param filename    file to be moved
+	 * @param newFilename new file name
 	 */
-	default Stage<Void> copy(String fileName, String newFileName) {
-		return strictCopy(Collections.singletonMap(fileName, newFileName));
+	default Stage<Void> copy(String filename, String newFilename) {
+		return strictCopy(Collections.singletonMap(filename, newFilename));
 	}
 
 	/**
@@ -272,11 +272,11 @@ public interface FsClient {
 	/**
 	 * Shrtcut to get Stage of {@link FileMetadata} of a single file.
 	 *
-	 * @param fileName fileName of a file to fetch its metadata.
+	 * @param filename fileName of a file to fetch its metadata.
 	 * @return stage of file description or <code>null</code>
 	 */
-	default Stage<FileMetadata> getMetadata(String fileName) {
-		return list(fileName)
+	default Stage<FileMetadata> getMetadata(String filename) {
+		return list(filename)
 				.thenApply(list -> list.isEmpty() ? null : list.get(0));
 	}
 

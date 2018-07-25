@@ -18,10 +18,7 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,7 +28,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertProducerStatuses;
@@ -56,8 +52,8 @@ public class StreamSplitterTest {
 		StreamConsumerToList<Integer> consumerToList2 = StreamConsumerToList.create();
 
 		source.streamTo(streamConcat.getInput());
-		streamConcat.newOutput().streamTo(consumerToList1.with(randomlySuspending()));
-		streamConcat.newOutput().streamTo(consumerToList2.with(randomlySuspending()));
+		streamConcat.newOutput().streamTo(consumerToList1.with(TestStreamConsumers.randomlySuspending()));
+		streamConcat.newOutput().streamTo(consumerToList2.with(TestStreamConsumers.randomlySuspending()));
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumerToList1.getList());
 		assertEquals(asList(1, 2, 3), consumerToList2.getList());
@@ -83,16 +79,16 @@ public class StreamSplitterTest {
 
 		source.streamTo(streamConcat.getInput());
 
-		streamConcat.newOutput().streamTo(consumerToList1.with(StreamConsumers.oneByOne()));
+		streamConcat.newOutput().streamTo(consumerToList1.with(TestStreamConsumers.oneByOne()));
 		streamConcat.newOutput().streamTo(
-				badConsumer.with(decorator((context, dataReceiver) ->
+				badConsumer.with(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (item == 3) {
 								context.closeWithError(new ExpectedException("Test Exception"));
 							}
 						})));
-		streamConcat.newOutput().streamTo(consumerToList2.with(StreamConsumers.oneByOne()));
+		streamConcat.newOutput().streamTo(consumerToList2.with(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 
@@ -124,9 +120,9 @@ public class StreamSplitterTest {
 		StreamConsumer<Integer> consumer3 = StreamConsumerToList.create(list3);
 
 		source.streamTo(splitter.getInput());
-		splitter.newOutput().streamTo(consumer1.with(oneByOne()));
-		splitter.newOutput().streamTo(consumer2.with(oneByOne()));
-		splitter.newOutput().streamTo(consumer3.with(oneByOne()));
+		splitter.newOutput().streamTo(consumer1.with(TestStreamConsumers.oneByOne()));
+		splitter.newOutput().streamTo(consumer2.with(TestStreamConsumers.oneByOne()));
+		splitter.newOutput().streamTo(consumer3.with(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 

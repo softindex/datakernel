@@ -12,8 +12,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumers.errorDecorator;
-import static io.datakernel.stream.StreamConsumers.suspendDecorator;
+import static io.datakernel.stream.TestStreamConsumers.errorDecorator;
+import static io.datakernel.stream.TestStreamConsumers.suspendDecorator;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;

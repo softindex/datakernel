@@ -18,6 +18,10 @@ public interface AsyncConsumer<T> {
 		};
 	}
 
+	default AsyncConsumer<T> withExecutor(AsyncExecutor asyncExecutor) {
+		return value -> asyncExecutor.execute(() -> accept(value));
+	}
+
 	default <V> AsyncConsumer<V> transform(Function<? super V, ? extends T> fn) {
 		return value -> this.accept(fn.apply(value));
 	}

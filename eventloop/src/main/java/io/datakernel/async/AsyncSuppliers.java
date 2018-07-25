@@ -3,23 +3,20 @@ package io.datakernel.async;
 import java.util.ArrayDeque;
 import java.util.concurrent.RejectedExecutionException;
 
-import static io.datakernel.async.Utils.retryImpl;
-
 public final class AsyncSuppliers {
 	private AsyncSuppliers() {
 	}
 
 	public static <T> AsyncSupplier<T> reuse(AsyncSupplier<? extends T> actual) {
 		return new AsyncSupplier<T>() {
-			SettableStage<T> runningStage;
+			Stage<T> runningStage;
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public Stage<T> get() {
-				if (runningStage != null)
-					return runningStage;
-				runningStage = new SettableStage<>();
+				if (runningStage != null) return runningStage;
+				runningStage = (Stage<T>) actual.get();
 				runningStage.whenComplete((result, throwable) -> runningStage = null);
-				actual.get().whenComplete(runningStage::set);
 				return runningStage;
 			}
 		};
@@ -51,11 +48,11 @@ public final class AsyncSuppliers {
 		};
 	}
 
-	public static <T> AsyncSupplier<T> buffer(AsyncSupplier<? extends T> actual) {
-		return buffer(1, Integer.MAX_VALUE, actual);
+	public static <T> AsyncSupplier<T> buffered(AsyncSupplier<? extends T> actual) {
+		return buffered(1, Integer.MAX_VALUE, actual);
 	}
 
-	public static <T> AsyncSupplier<T> buffer(int maxParallelCalls, int maxBufferCalls, AsyncSupplier<? extends T> actual) {
+	public static <T> AsyncSupplier<T> buffered(int maxParallelCalls, int maxBufferedCalls, AsyncSupplier<? extends T> actual) {
 		return new AsyncSupplier<T>() {
 			private int pendingCalls;
 			private final ArrayDeque<SettableStage<T>> deque = new ArrayDeque<>();
@@ -83,21 +80,13 @@ public final class AsyncSuppliers {
 						processQueue();
 					});
 				}
-				if (deque.size() > maxBufferCalls) {
+				if (deque.size() > maxBufferedCalls) {
 					return Stage.ofException(new RejectedExecutionException());
 				}
 				SettableStage<T> result = new SettableStage<>();
 				deque.addLast(result);
 				return result;
 			}
-		};
-	}
-
-	public static <T> AsyncSupplier<T> retry(RetryPolicy retryPolicy, AsyncSupplier<? extends T> actual) {
-		return () -> {
-			SettableStage<T> result = new SettableStage<>();
-			retryImpl(actual, retryPolicy, 0, 0, result);
-			return result;
 		};
 	}
 

@@ -104,9 +104,9 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	// endregion
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, long offset) {
-		checkNotNull(fileName, "fileName");
-		return ensureDirectory(fileName)
+	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
+		checkNotNull(filename, "fileName");
+		return ensureDirectory(filename)
 				.thenCompose(path -> AsyncFile.openAsync(executor, path, new OpenOption[]{WRITE, offset == -1 ? CREATE_NEW : CREATE}, this))
 				.thenCompose(file -> {
 					logger.trace("writing to file: {}: {}", file, this);
@@ -132,27 +132,27 @@ public final class LocalFsClient implements FsClient, EventloopService {
 										.withLateBinding());
 							});
 				})
-				.whenComplete(toLogger(logger, TRACE, "upload", fileName, this))
+				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
 				.whenComplete(writeBeginStage.recordStats());
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long offset, long length) {
-		checkNotNull(fileName, "fileName");
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
+		checkNotNull(filename, "fileName");
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
 
-		Path path = storageDir.resolve(fileName).normalize();
+		Path path = storageDir.resolve(filename).normalize();
 		if (!path.startsWith(storageDir)) {
-			return Stage.ofException(new IOException("File " + fileName + " goes outside of the storage directory"));
+			return Stage.ofException(new IOException("File " + filename + " goes outside of the storage directory"));
 		}
 
 		return AsyncFile.size(executor, path)
 				.thenCompose(size -> {
 					if (size == null) {
-						return Stage.ofException(new RemoteFsException("File not found: " + fileName));
+						return Stage.ofException(new RemoteFsException("File not found: " + filename));
 					}
-					String repr = fileName + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "");
+					String repr = filename + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "");
 					if (offset > size) {
 						return Stage.ofException(new RemoteFsException("Offset exceeds file size for " + repr));
 					}
@@ -171,7 +171,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 										.withLateBinding();
 							});
 				})
-				.whenComplete(toLogger(logger, TRACE, "download", fileName, offset, length, this))
+				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))
 				.whenComplete(readBeginStage.recordStats());
 	}
 
@@ -187,22 +187,22 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> move(String fileName, String targetName) {
+	public Stage<Void> move(String filename, String targetName) {
 		return Stage.ofThrowingRunnable(executor, () -> {
 			synchronized (this) {
-				Path filePath = resolveFilePath(fileName);
+				Path filePath = resolveFilePath(filename);
 				Path targetPath = resolveFilePath(targetName);
 
 				if (Files.isDirectory(filePath)) {
 					if (Files.exists(targetPath)) {
-						throw new RemoteFsException("Trying to move directory " + fileName + " into existing file " + targetName);
+						throw new RemoteFsException("Trying to move directory " + filename + " into existing file " + targetName);
 					}
 				} else {
 					long fileSize = Files.isRegularFile(filePath) ? Files.size(filePath) : -1;
 					long targetSize = Files.isRegularFile(targetPath) ? Files.size(targetPath) : -1;
 
 					if (fileSize == -1 && targetSize == -1) {
-						throw new RemoteFsException("No file " + fileName + ", neither file " + targetName + " were found");
+						throw new RemoteFsException("No file " + filename + ", neither file " + targetName + " were found");
 					}
 
 					// assuming it did move in a possible previous erroneous attempt
@@ -221,12 +221,12 @@ public final class LocalFsClient implements FsClient, EventloopService {
 				try {
 					Files.move(filePath, targetPath, REPLACE_EXISTING, ATOMIC_MOVE);
 				} catch (AtomicMoveNotSupportedException e) {
-					logger.warn("Atomic move were not supported when moving {} into {}", fileName, targetName, e);
+					logger.warn("Atomic move were not supported when moving {} into {}", filename, targetName, e);
 					Files.move(filePath, targetPath, REPLACE_EXISTING);
 				}
 			}
 		})
-				.whenComplete(toLogger(logger, TRACE, "move", fileName, targetName, this))
+				.whenComplete(toLogger(logger, TRACE, "move", filename, targetName, this))
 				.whenComplete(singleMoveStage.recordStats());
 	}
 
@@ -242,14 +242,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> copy(String fileName, String copyName) {
+	public Stage<Void> copy(String filename, String copyName) {
 		return Stage.ofThrowingRunnable(executor, () -> {
 			synchronized (this) {
-				Path filePath = resolveFilePath(fileName);
+				Path filePath = resolveFilePath(filename);
 				Path copyPath = resolveFilePath(copyName);
 
 				if (!Files.isRegularFile(filePath)) {
-					throw new RemoteFsException("No file " + fileName + " were found");
+					throw new RemoteFsException("No file " + filename + " were found");
 				}
 				if (Files.isRegularFile(copyPath)) {
 					throw new RemoteFsException("File " + copyName + " already exists!");
@@ -266,7 +266,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 				}
 			}
 		})
-				.whenComplete(toLogger(logger, TRACE, "copy", fileName, copyName, this))
+				.whenComplete(toLogger(logger, TRACE, "copy", filename, copyName, this))
 				.whenComplete(singleCopyStage.recordStats());
 	}
 

@@ -222,32 +222,32 @@ public class TestLocalFsClient {
 		)
 				.thenCompose($ ->
 						client.downloadStream("concurrent.txt")
-								.streamTo(StreamConsumer.ofConsumer(buf -> {
-									String actual = new String(buf.peekArray(), StandardCharsets.UTF_8);
-									String expected = "Concurrent data - 1\n" +
-											"Concurrent data - 2\n" +
-											"Concurrent data - 3\n" +
-											"Concurrent data - 4\n" +
-											"Concurrent data - 5\n" +
-											"Concurrent data - 6\n" +
-											"Concurrent data - 7\n" +
-											"Concurrent data - 8\n" +
-											"Concurrent data - 9\n" +
-											"Concurrent data #2\n" +
-											"Concurrent data #2\n" +
-											"Concurrent data #2\n" +
-											"Concurrent data #2\n" +
-											"Concurrent data + new line\n";
-									assertEquals(expected, actual);
+								.streamTo(StreamConsumer.ofConsumer(
+										buf -> {
+											String actual = new String(buf.peekArray(), StandardCharsets.UTF_8);
+											String expected = "Concurrent data - 1\n" +
+													"Concurrent data - 2\n" +
+													"Concurrent data - 3\n" +
+													"Concurrent data - 4\n" +
+													"Concurrent data - 5\n" +
+													"Concurrent data - 6\n" +
+													"Concurrent data - 7\n" +
+													"Concurrent data - 8\n" +
+													"Concurrent data - 9\n" +
+													"Concurrent data #2\n" +
+													"Concurrent data #2\n" +
+													"Concurrent data #2\n" +
+													"Concurrent data #2\n" +
+													"Concurrent data + new line\n";
+											assertEquals(expected, actual);
 
-									buf.recycle();
-								}))
+											buf.recycle();
+										}))
 								.getProducerResult())
 				.thenRunEx(() -> System.out.println("finished"))
 				.whenComplete(assertComplete());
 
 		eventloop.run();
-
 
 	}
 
@@ -255,13 +255,14 @@ public class TestLocalFsClient {
 		Random random = new Random();
 		Iterator<ByteBuf> iterator = list.iterator();
 		return StreamProducer.ofAsyncSupplier(() -> {
-			if (iterator.hasNext()) {
-				SettableStage<ByteBuf> stage = new SettableStage<>();
-				eventloop.delay(random.nextInt(20) + 10, () -> stage.set(iterator.next()));
-				return stage;
-			}
-			return Stage.of(null);
-		});
+					if (iterator.hasNext()) {
+						SettableStage<ByteBuf> stage = new SettableStage<>();
+						eventloop.delay(random.nextInt(20) + 10, () -> stage.set(iterator.next()));
+						return stage;
+					}
+					return Stage.of(null);
+				},
+				null);
 	}
 
 	@Test

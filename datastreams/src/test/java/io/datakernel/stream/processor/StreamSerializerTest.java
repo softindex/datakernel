@@ -31,8 +31,8 @@ import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
-import static io.datakernel.stream.StreamConsumers.oneByOne;
-import static io.datakernel.stream.StreamConsumers.randomlySuspending;
+import static io.datakernel.stream.TestStreamConsumers.oneByOne;
+import static io.datakernel.stream.TestStreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;

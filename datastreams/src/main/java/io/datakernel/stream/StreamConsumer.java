@@ -16,6 +16,7 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.SettableStage;
@@ -28,6 +29,7 @@ import io.datakernel.stream.processor.StreamSkip.SkipStrategy;
 import io.datakernel.util.ThrowingConsumer;
 
 import java.util.EnumSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -74,12 +76,29 @@ public interface StreamConsumer<T> {
 	/**
 	 * Creates a stream consumer which passes consumed items into a given lambda.
 	 */
+	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 	static <T> StreamConsumer<T> ofConsumer(ThrowingConsumer<T> consumer) {
 		return new StreamConsumers.OfConsumerImpl<>(consumer);
 	}
 
+	static <T> StreamConsumer<T> ofConsumer(ThrowingConsumer<T> consumer, Object endOfStreamMarker) {
+		return new StreamConsumers.OfConsumerImpl<>(consumer, endOfStreamMarker);
+	}
+
+	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 	static <T> StreamConsumer<T> ofAsyncConsumer(AsyncConsumer<T> consumer) {
 		return new StreamConsumers.OfAsyncConsumerImpl<>(consumer);
+	}
+
+	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+	static <T> StreamConsumer<T> ofAsyncConsumer(AsyncConsumer<T> consumer, Object endOfStreamMarker) {
+		return new StreamConsumers.OfAsyncConsumerImpl<>(consumer, endOfStreamMarker);
+	}
+
+	default AsyncConsumer<T> toAsyncConsumer(@Nullable T endOfStreamMarker) {
+		StreamProducerEndpoint<T> endpoint = new StreamProducerEndpoint<>();
+		endpoint.streamTo(this);
+		return value -> value != endOfStreamMarker ? endpoint.post(value) : endpoint.postEndOfStream();
 	}
 
 	String LATE_BINDING_ERROR_MESSAGE = "" +
@@ -191,4 +210,5 @@ public interface StreamConsumer<T> {
 	default StreamConsumer<T> ignoreFirst(long skip) {
 		return with(StreamSkip.create(skip));
 	}
+
 }

@@ -65,7 +65,7 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	private final AsyncSupplier<Void> backup = reuse(this::backupHead);
 
 	public Stage<Void> backup() {
-		return backup.call();
+		return backup.get();
 	}
 
 	public Stage<Void> backupHead() {

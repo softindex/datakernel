@@ -101,7 +101,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	private final AsyncSupplier<Void> cleanup = reuse(this::doCleanup);
 
 	public Stage<Void> cleanup() {
-		return cleanup.call();
+		return cleanup.get();
 	}
 
 	Stage<Void> doCleanup() {

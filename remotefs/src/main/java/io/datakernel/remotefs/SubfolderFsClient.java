@@ -24,13 +24,13 @@ class SubfolderFsClient implements FsClient {
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, long offset) {
-		return parent.upload(folder + fileName, offset);
+	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
+		return parent.upload(folder + filename, offset);
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long offset, long length) {
-		return parent.download(folder + fileName, offset, length);
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
+		return parent.download(folder + filename, offset, length);
 	}
 
 	@Override

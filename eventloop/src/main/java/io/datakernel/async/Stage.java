@@ -36,6 +36,7 @@ public interface Stage<T> {
 	 * @param throwable Exception
 	 */
 	static <T> Stage<T> ofException(Throwable throwable) {
+		assert throwable != null;
 		SettableStage<T> stage = new SettableStage<>();
 		stage.result = null;
 		stage.exception = throwable;

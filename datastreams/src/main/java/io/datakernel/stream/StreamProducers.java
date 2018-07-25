@@ -19,12 +19,10 @@ package io.datakernel.stream;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
 
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
@@ -33,8 +31,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings("StatementWithEmptyBody")
 public final class StreamProducers {
-	private StreamProducers() {
-	}
+	private StreamProducers() {}
 
 	/**
 	 * Represent producer which sends specified exception to consumer.
@@ -180,14 +177,17 @@ public final class StreamProducers {
 
 	static class OfAsyncSupplierImpl<T> extends AbstractStreamProducer<T> {
 		private final AsyncSupplier<T> asyncCallable;
+		private final Object endOfStreamMarker;
 
 		/**
 		 * Creates a new instance of  StreamProducerOfIterator
 		 *
 		 * @param asyncCallable iterator with object which need to send
+		 * @param endOfStreamMarker
 		 */
-		public OfAsyncSupplierImpl(AsyncSupplier<T> asyncCallable) {
+		public OfAsyncSupplierImpl(AsyncSupplier<T> asyncCallable, Object endOfStreamMarker) {
 			this.asyncCallable = checkNotNull(asyncCallable);
+			this.endOfStreamMarker = endOfStreamMarker;
 		}
 
 		@Override
@@ -196,7 +196,7 @@ public final class StreamProducers {
 			asyncCallable.get()
 					.whenComplete((value, e) -> {
 						if (e == null) {
-							if (value != null) {
+							if (value != endOfStreamMarker) {
 								send(value);
 								async.resume();
 							} else {
@@ -216,73 +216,6 @@ public final class StreamProducers {
 		public Set<StreamCapability> getCapabilities() {
 			return EnumSet.of(LATE_BINDING);
 		}
-	}
-
-	public static <T> StreamProducerModifier<T, T> suppliedEndOfStream(Function<Stage<Void>, Stage<Void>> endOfStreamSupplier) {
-		return producer -> new ForwardingStreamProducer<T>(producer) {
-			final Stage<Void> endOfStream = endOfStreamSupplier.apply(producer.getEndOfStream());
-
-			@Override
-			public Stage<Void> getEndOfStream() {
-				return endOfStream;
-			}
-		};
-	}
-
-	public static <T> StreamProducerModifier<T, T> suppliedEndOfStream(Stage<Void> suppliedEndOfStream) {
-		return suppliedEndOfStream(actualEndOfStream -> Stages.any(actualEndOfStream, suppliedEndOfStream));
-	}
-
-	public interface Decorator<T> {
-		interface Context {
-			void endOfStream();
-
-			void closeWithError(Throwable error);
-		}
-
-		StreamDataReceiver<T> decorate(Context context, StreamDataReceiver<T> dataReceiver);
-	}
-
-	public static <T> StreamProducerModifier<T, T> decorator(Decorator<T> decorator) {
-		return producer -> new ForwardingStreamProducer<T>(producer) {
-			final SettableStage<Void> endOfStream = new SettableStage<>();
-
-			{
-				producer.getEndOfStream().whenComplete(endOfStream::trySet);
-			}
-
-			@Override
-			public void produce(StreamDataReceiver<T> dataReceiver) {
-				producer.produce(decorator.decorate(new Decorator.Context() {
-					@Override
-					public void endOfStream() {
-						endOfStream.trySet(null);
-					}
-
-					@Override
-					public void closeWithError(Throwable error) {
-						endOfStream.trySetException(error);
-					}
-				}, dataReceiver));
-			}
-
-			@Override
-			public Stage<Void> getEndOfStream() {
-				return endOfStream;
-			}
-		};
-	}
-
-	public static <T> StreamProducerModifier<T, T> errorDecorator(Function<T, Throwable> errorFunction) {
-		return decorator((context, dataReceiver) ->
-				item -> {
-					Throwable error = errorFunction.apply(item);
-					if (error == null) {
-						dataReceiver.onData(item);
-					} else {
-						context.closeWithError(error);
-					}
-				});
 	}
 
 	public static <T> StreamProducerModifier<T, T> endOfStreamOnError(Predicate<Throwable> endOfStreamPredicate) {

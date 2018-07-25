@@ -20,6 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamStatus;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
@@ -52,7 +52,7 @@ public class StreamMergerTest {
 		source1.streamTo(merger.newInput());
 		source2.streamTo(merger.newInput());
 
-		merger.getOutput().streamTo(consumer.with(randomlySuspending()));
+		merger.getOutput().streamTo(consumer.with(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(3, 4, 6, 7), consumer.getList());
@@ -80,7 +80,7 @@ public class StreamMergerTest {
 		source1.streamTo(merger.newInput());
 		source2.streamTo(merger.newInput());
 
-		merger.getOutput().streamTo(consumer.with(randomlySuspending()));
+		merger.getOutput().streamTo(consumer.with(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(3, 3, 4, 6, 7), consumer.getList());
@@ -120,7 +120,7 @@ public class StreamMergerTest {
 		source1.streamTo(merger.newInput());
 		source2.streamTo(merger.newInput());
 
-		merger.getOutput().streamTo(consumer.with(randomlySuspending()));
+		merger.getOutput().streamTo(consumer.with(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 
@@ -153,7 +153,7 @@ public class StreamMergerTest {
 		source2.streamTo(merger.newInput());
 
 		merger.getOutput().streamTo(
-				consumer.with(decorator((context, dataReceiver) ->
+				consumer.with(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (item == 8) {
@@ -199,7 +199,7 @@ public class StreamMergerTest {
 		source2.streamTo(merger.newInput());
 
 		merger.getOutput().streamTo(
-				consumer.with(oneByOne()));
+				consumer.with(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 

@@ -111,8 +111,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		return currentDataReceiver != null;
 	}
 
-	public final void send(T item) {
-		lastDataReceiver.onData(item);
+	protected void send(T item) {
+		getLastDataReceiver().onData(item);
 	}
 
 	@Nullable
@@ -197,7 +197,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		onSuspended();
 	}
 
-	public final void sendEndOfStream() {
+	public void sendEndOfStream() {
 		if (status.isClosed())
 			return;
 		status = END_OF_STREAM;

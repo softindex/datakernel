@@ -7,17 +7,14 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerWithResult;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class MockFsClient implements FsClient {
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, long offset) {
+	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
 		if (offset == -1) {
 			return Stage.ofException(new RemoteFsException("FileAlreadyExistsException"));
 		}
@@ -25,7 +22,7 @@ public class MockFsClient implements FsClient {
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long offset, long length) {
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
 		return Stage.of(StreamProducer.of(ByteBuf.wrapForReading("mock file".substring((int) offset, length == -1 ? 9 : (int) (offset + length)).getBytes(UTF_8))).withEndOfStreamAsResult());
 	}
 

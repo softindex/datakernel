@@ -81,7 +81,7 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 	private final AsyncSupplier<Void> consolidate = reuse(this::doConsolidate);
 
 	public Stage<Void> consolidate() {
-		return consolidate.call();
+		return consolidate.get();
 	}
 
 	Stage<Void> doConsolidate() {

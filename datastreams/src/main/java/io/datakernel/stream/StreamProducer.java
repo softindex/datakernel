@@ -16,6 +16,7 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
@@ -196,13 +197,13 @@ public interface StreamProducer<T> {
 	 * Creates a stream producer which produces items from a given lambda.
 	 * End of stream is marked as null, so no null values cannot be used.
 	 */
-	static <T> StreamProducer<T> ofSupplier(Supplier<T> supplier) {
+	static <T> StreamProducer<T> ofSupplier(Supplier<T> supplier, Object endOfStreamMarker) {
 		return new StreamProducers.OfIteratorImpl<>(new Iterator<T>() {
 			private T next = supplier.get();
 
 			@Override
 			public boolean hasNext() {
-				return next != null;
+				return next != endOfStreamMarker;
 			}
 
 			@Override
@@ -214,8 +215,16 @@ public interface StreamProducer<T> {
 		});
 	}
 
-	static <T> StreamProducer<T> ofAsyncSupplier(AsyncSupplier<T> supplier) {
-		return new StreamProducers.OfAsyncSupplierImpl<>(supplier);
+	static <T> StreamProducer<T> ofAsyncSupplier(AsyncSupplier<T> supplier, @Nullable Object endOfStreamMarker) {
+		return new StreamProducers.OfAsyncSupplierImpl<>(supplier, endOfStreamMarker);
+	}
+
+	@SuppressWarnings("unchecked")
+	default AsyncSupplier<T> toAsyncSupplier(@Nullable Object endOfStreamMarker) {
+		StreamConsumerEndpoint<T> endpoint = new StreamConsumerEndpoint<>();
+		this.streamTo(endpoint);
+		return () -> endpoint.receive(1)
+				.thenApply(items -> items == null ? (T) endOfStreamMarker : items[0]);
 	}
 
 	String LATE_BINDING_ERROR_MESSAGE = "" +

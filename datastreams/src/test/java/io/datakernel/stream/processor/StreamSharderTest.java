@@ -21,13 +21,13 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertProducerStatuses;
@@ -52,8 +52,8 @@ public class StreamSharderTest {
 
 		source.streamTo(streamSharder.getInput());
 
-		streamSharder.newOutput().streamTo(consumer1.with(randomlySuspending()));
-		streamSharder.newOutput().streamTo(consumer2.with(randomlySuspending()));
+		streamSharder.newOutput().streamTo(consumer1.with(TestStreamConsumers.randomlySuspending()));
+		streamSharder.newOutput().streamTo(consumer2.with(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(2, 4), consumer1.getList());
@@ -77,8 +77,8 @@ public class StreamSharderTest {
 		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
 
 		source.streamTo(streamSharder.getInput());
-		streamSharder.newOutput().streamTo(consumer1.with(randomlySuspending()));
-		streamSharder.newOutput().streamTo(consumer2.with(randomlySuspending()));
+		streamSharder.newOutput().streamTo(consumer1.with(TestStreamConsumers.randomlySuspending()));
+		streamSharder.newOutput().streamTo(consumer2.with(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(2, 4), consumer1.getList());
@@ -109,7 +109,7 @@ public class StreamSharderTest {
 		source.streamTo(streamSharder.getInput());
 		streamSharder.newOutput().streamTo(consumer1);
 		streamSharder.newOutput().streamTo(
-				consumer2.with(decorator((context, dataReceiver) ->
+				consumer2.with(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (item == 3) {
@@ -148,8 +148,8 @@ public class StreamSharderTest {
 		StreamConsumer<Integer> consumer2 = StreamConsumerToList.create(list2);
 
 		source.streamTo(streamSharder.getInput());
-		streamSharder.newOutput().streamTo(consumer1.with(oneByOne()));
-		streamSharder.newOutput().streamTo(consumer2.with(oneByOne()));
+		streamSharder.newOutput().streamTo(consumer1.with(TestStreamConsumers.oneByOne()));
+		streamSharder.newOutput().streamTo(consumer2.with(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 

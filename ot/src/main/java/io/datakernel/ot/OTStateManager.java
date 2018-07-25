@@ -255,7 +255,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	private final AsyncSupplier<Void> push = reuse(this::doPush);
 
 	public Stage<Void> push() {
-		return push.call();
+		return push.get();
 	}
 
 	Stage<Void> doPush() {

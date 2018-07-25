@@ -12,7 +12,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamProducers.errorDecorator;
+import static io.datakernel.stream.TestStreamProducers.errorDecorator;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -71,7 +71,8 @@ public class StreamProducersTest {
 						return null;
 					}
 					return i[0]++;
-				})
+				},
+				null)
 				.streamTo(StreamConsumerToList.create(actual));
 		eventloop.run();
 		assertEquals(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9), actual);
