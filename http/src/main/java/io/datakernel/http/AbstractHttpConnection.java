@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -82,8 +83,11 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	private int maxChunkHeaderChars;
 	protected final char[] headerChars;
 
+	@Nullable
 	ConnectionsLinkedList pool;
+	@Nullable
 	AbstractHttpConnection prev;
+	@Nullable
 	AbstractHttpConnection next;
 	long poolTimestamp;
 
@@ -137,6 +141,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	 */
 	protected abstract void onHttpMessage(ByteBuf bodyBuf);
 
+	@Nullable
 	private ByteBuf takeHeader() {
 		int offset = 0;
 		for (int i = 0; i < readQueue.remainingBufs(); i++) {
@@ -231,21 +236,21 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		}
 	}
 
-	private boolean contains(ByteBuf value, byte[] bytes) {
-		int pos = value.readPosition();
-		while (pos < value.writePosition()) {
-			if (value.array()[pos] == bytes[0] && value.readRemaining() >= bytes.length) {
-				if (equalsLowerCaseAscii(bytes, value.array(), pos, bytes.length)) {
-					return true;
-				} else {
-					pos += bytes.length;
-				}
-			} else {
-				pos++;
-			}
-		}
-		return false;
-	}
+//	private boolean contains(ByteBuf value, byte[] bytes) {
+//		int pos = value.readPosition();
+//		while (pos < value.writePosition()) {
+//			if (value.array()[pos] == bytes[0] && value.readRemaining() >= bytes.length) {
+//				if (equalsLowerCaseAscii(bytes, value.array(), pos, bytes.length)) {
+//					return true;
+//				} else {
+//					pos += bytes.length;
+//				}
+//			} else {
+//				pos++;
+//			}
+//		}
+//		return false;
+//	}
 
 	private void readBody() throws ParseException {
 		assert !isClosed();

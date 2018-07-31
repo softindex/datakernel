@@ -16,11 +16,13 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
+
 public final class QueryParameter {
 	private final String key;
 	private final String value;
 
-	QueryParameter(String key, String value) {
+	QueryParameter(String key, @Nullable String value) {
 		this.key = key;
 		this.value = value;
 	}
@@ -29,6 +31,7 @@ public final class QueryParameter {
 		return key;
 	}
 
+	@Nullable
 	public String getValue() {
 		return value;
 	}

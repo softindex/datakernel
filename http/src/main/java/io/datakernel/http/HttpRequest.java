@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
@@ -46,8 +47,6 @@ public final class HttpRequest extends HttpMessage {
 
 	private Map<String, String> bodyParameters;
 	private Map<String, String> pathParameters;
-
-	private boolean gzip = false;
 
 	// region builders
 	private HttpRequest(HttpMethod method) {
@@ -198,6 +197,7 @@ public final class HttpRequest extends HttpMessage {
 		assert !recycled;
 		this.url = UrlParser.of(url);
 		if (!this.url.isRelativePath()) {
+			assert this.url.getHostAndPort() != null; // sadly no advanced contracts yet
 			setHeader(HttpHeaders.ofString(HttpHeaders.HOST, this.url.getHostAndPort()));
 		}
 	}
@@ -275,6 +275,7 @@ public final class HttpRequest extends HttpMessage {
 		return remoteAddress;
 	}
 
+	@Nullable
 	public String getFullUrl() {
 		if (!url.isRelativePath()) {
 			return url.toString();
@@ -295,10 +296,12 @@ public final class HttpRequest extends HttpMessage {
 		return url;
 	}
 
+	@Nullable
 	public String getHostAndPort() {
 		return url.getHostAndPort();
 	}
 
+	@Nullable
 	public String getHost() {
 		String host = getHeader(HttpHeaders.HOST);
 		if ((host == null) || host.isEmpty())
@@ -324,6 +327,7 @@ public final class HttpRequest extends HttpMessage {
 		return url.getFragment();
 	}
 
+	@Nullable
 	public String getQueryParameter(String key) {
 		assert !recycled;
 		return url.getQueryParameter(key);
@@ -356,14 +360,15 @@ public final class HttpRequest extends HttpMessage {
 		return bodyParameters;
 	}
 
+	@Nullable
 	public String getPathParameter(String key) {
 		assert !recycled;
-		return pathParameters == null ? null : pathParameters.get(key);
+		return pathParameters != null ? pathParameters.get(key) : null;
 	}
 
 	public Map<String, String> getPathParameters() {
 		assert !recycled;
-		return pathParameters == null ? Collections.<String, String>emptyMap() : pathParameters;
+		return pathParameters != null ? pathParameters : Collections.emptyMap();
 	}
 
 	public List<AcceptMediaType> getAccept() {
@@ -396,6 +401,7 @@ public final class HttpRequest extends HttpMessage {
 		return charsets;
 	}
 
+	@Nullable
 	public Date getIfModifiedSince() {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_MODIFIED_SINCE);
@@ -409,6 +415,7 @@ public final class HttpRequest extends HttpMessage {
 		return null;
 	}
 
+	@Nullable
 	public Date getIfUnModifiedSince() {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_UNMODIFIED_SINCE);
@@ -519,6 +526,7 @@ public final class HttpRequest extends HttpMessage {
 		return buf;
 	}
 
+	@Nullable
 	@Override
 	public String toString() {
 		return getFullUrl();

@@ -49,7 +49,7 @@ import static org.junit.Assert.*;
 
 @Ignore
 public class AsyncSslSocketTest {
-	// <editor-fold desc="fields">
+	// region fields
 	private static final String KEYSTORE_PATH = "./src/test/resources/keystore.jks";
 	private static final String KEYSTORE_PASS = "testtest";
 	private static final String KEY_PASS = "testtest";
@@ -69,10 +69,9 @@ public class AsyncSslSocketTest {
 	private EventHandler clientEventHandler = context.mock(EventHandler.class, "clientEventHandler");
 	private EventHandler serverEventHandler = context.mock(EventHandler.class, "serverEventHandler");
 	private AsyncTcpSocketStub clientSocketStub;
-	private AsyncTcpSocketStub serverSocketStub;
-	// </editor-fold>
+	// endregion
 
-	// <editor-fold desc="initialization">
+	// region initialization
 	@Before
 	public void init() throws Exception {
 		Executor executor = new ExecutorStub();
@@ -82,7 +81,7 @@ public class AsyncSslSocketTest {
 
 		SSLEngine serverSSLEngine = sslContext.createSSLEngine();
 		serverSSLEngine.setUseClientMode(false);
-		serverSocketStub = new AsyncTcpSocketStub("server", eventloop);
+		AsyncTcpSocketStub serverSocketStub = new AsyncTcpSocketStub("server", eventloop);
 		serverSslSocket = AsyncSslSocket.create(eventloop, serverSocketStub, serverSSLEngine, executor);
 		serverSocketStub.setEventHandler(serverSslSocket);
 		serverSslSocket.setEventHandler(serverEventHandler);
@@ -97,11 +96,11 @@ public class AsyncSslSocketTest {
 		// connect client and server stub sockets directly
 		clientSocketStub.connect(serverSocketStub);
 	}
-	// </editor-fold>
+	// endregion
 
-	// <editor-fold desc="tests">
+	// region tests
 	@Test
-	public void performsSimpleMessageExchange() throws NoSuchAlgorithmException {
+	public void performsSimpleMessageExchange() {
 		context.checking(new Expectations() {{
 			oneOf(serverEventHandler).onRead(with(bytebufOfMessage("Hello")));
 			oneOf(clientEventHandler).onRead(with(bytebufOfMessage("World")));
@@ -115,18 +114,15 @@ public class AsyncSslSocketTest {
 			allowing(clientEventHandler).onRegistered();
 		}});
 
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				serverSslSocket.onRegistered();
-				clientSslSocket.onRegistered();
+		eventloop.post(() -> {
+			serverSslSocket.onRegistered();
+			clientSslSocket.onRegistered();
 
-				serverSslSocket.read();
-				clientSslSocket.read();
+			serverSslSocket.read();
+			clientSslSocket.read();
 
-				clientSslSocket.write(createByteBufFromString("Hello"));
-				serverSslSocket.write(createByteBufFromString("World"));
-			}
+			clientSslSocket.write(createByteBufFromString("Hello"));
+			serverSslSocket.write(createByteBufFromString("World"));
 		});
 
 		eventloop.run();
@@ -145,32 +141,33 @@ public class AsyncSslSocketTest {
 			ignoring(clientEventHandler);
 		}});
 
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				serverSslSocket.onRegistered();
-				clientSslSocket.onRegistered();
-
-				serverSslSocket.read();
-
-				// send large message
-				String largeMessage = generateLargeString(100_000);
-				sentData.append(largeMessage);
-				clientSslSocket.write(createByteBufFromString(largeMessage));
-
-				// send lots of small messages
-				String smallMsg = "data_012345";
-				for (int i = 0; i < 25_000; i++) {
-					sentData.append(smallMsg);
-					clientSslSocket.write(createByteBufFromString(smallMsg));
-				}
-			}
-		});
+		sendData(sentData, serverSslSocket, clientSslSocket);
 
 		eventloop.run();
 
 		assertThat("received bytes amount", serverDataAccumulator.getAccumulatedData().length(), greaterThan(0));
 		assertEquals(sentData.toString(), serverDataAccumulator.getAccumulatedData());
+	}
+
+	private void sendData(StringBuilder sentData, AsyncSslSocket serverSslSocket, AsyncSslSocket clientSslSocket) {
+		eventloop.post(() -> {
+			serverSslSocket.onRegistered();
+			clientSslSocket.onRegistered();
+
+			serverSslSocket.read();
+
+			// send large message
+			String largeMessage = generateLargeString(100_000);
+			sentData.append(largeMessage);
+			clientSslSocket.write(createByteBufFromString(largeMessage));
+
+			// send lots of small messages
+			String smallMsg = "data_012345";
+			for (int i = 0; i < 25_000; i++) {
+				sentData.append(smallMsg);
+				clientSslSocket.write(createByteBufFromString(smallMsg));
+			}
+		});
 	}
 
 	@Test
@@ -183,27 +180,7 @@ public class AsyncSslSocketTest {
 			ignoring(serverEventHandler);
 		}});
 
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				serverSslSocket.onRegistered();
-				clientSslSocket.onRegistered();
-
-				clientSslSocket.read();
-
-				// send large message
-				String largeMessage = generateLargeString(100_000);
-				sentData.append(largeMessage);
-				serverSslSocket.write(createByteBufFromString(largeMessage));
-
-				// send lots of small messages
-				String smallMsg = "data_012345";
-				for (int i = 0; i < 25_000; i++) {
-					sentData.append(smallMsg);
-					serverSslSocket.write(createByteBufFromString(smallMsg));
-				}
-			}
-		});
+		sendData(sentData, clientSslSocket, serverSslSocket);
 
 		eventloop.run();
 
@@ -228,23 +205,20 @@ public class AsyncSslSocketTest {
 			allowing(serverEventHandler).onClosedWithError(with(any(Exception.class)));
 		}});
 
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				serverSslSocket.onRegistered();
-				clientSslSocket.onRegistered();
+		eventloop.post(() -> {
+			serverSslSocket.onRegistered();
+			clientSslSocket.onRegistered();
 
-				serverSslSocket.read();
-				clientSslSocket.read();
+			serverSslSocket.read();
+			clientSslSocket.read();
 
-				clientSslSocket.write(createByteBufFromString("Hello"));
-				serverSslSocket.write(createByteBufFromString("World"));
+			clientSslSocket.write(createByteBufFromString("Hello"));
+			serverSslSocket.write(createByteBufFromString("World"));
 
-				eventloop.delay(100, () -> {
-					// write endOfStream directly to client stub socket
-					clientSocketStub.onReadEndOfStream();
-				});
-			}
+			eventloop.delay(100, () -> {
+				// write endOfStream directly to client stub socket
+				clientSocketStub.onReadEndOfStream();
+			});
 		});
 
 		eventloop.run();
@@ -265,26 +239,23 @@ public class AsyncSslSocketTest {
 			allowing(serverEventHandler).onWrite();
 		}});
 
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				serverSslSocket.onRegistered();
-				clientSslSocket.onRegistered();
+		eventloop.post(() -> {
+			serverSslSocket.onRegistered();
+			clientSslSocket.onRegistered();
 
-				serverSslSocket.read();
-				clientSslSocket.read();
+			serverSslSocket.read();
+			clientSslSocket.read();
 
-				clientSslSocket.write(createByteBufFromString("Hello"));
-				serverSslSocket.write(createByteBufFromString("World"));
-				eventloop.delay(100, () -> clientSslSocket.close());
-			}
+			clientSslSocket.write(createByteBufFromString("Hello"));
+			serverSslSocket.write(createByteBufFromString("World"));
+			eventloop.delay(100, () -> clientSslSocket.close());
 		});
 
 		eventloop.run();
 	}
-	// </editor-fold>
+	// endregion
 
-	// <editor-fold desc="stub classes">
+	// region stub classes
 	public static final class AsyncTcpSocketStub implements AsyncTcpSocket {
 		private String desc;
 
@@ -333,12 +304,7 @@ public class AsyncSslSocketTest {
 
 			AsyncTcpSocketStub cached = otherSide;
 
-			eventloop.postLater(new Runnable() {
-				@Override
-				public void run() {
-					cached.onRead(buf);
-				}
-			});
+			eventloop.postLater(() -> cached.onRead(buf));
 			downstreamEventHandler.onWrite();
 		}
 
@@ -348,12 +314,7 @@ public class AsyncSslSocketTest {
 
 			AsyncTcpSocketStub cached = otherSide;
 			writeEndOfStream = true;
-			eventloop.postLater(new Runnable() {
-				@Override
-				public void run() {
-					cached.onReadEndOfStream();
-				}
-			});
+			eventloop.postLater(cached::onReadEndOfStream);
 		}
 
 		@Override
@@ -421,9 +382,9 @@ public class AsyncSslSocketTest {
 			return data.toString();
 		}
 	}
-	// </editor-fold>
+	// endregion
 
-	// <editor-fold desc="helper methods">
+	// region helper methods
 	public static TrustManager[] createTrustManagers(File path, String pass) throws Exception {
 		KeyStore trustStore = KeyStore.getInstance("JKS");
 
@@ -446,7 +407,7 @@ public class AsyncSslSocketTest {
 	}
 
 	public static SSLContext createSslContext(String algorithm, KeyManager[] keyManagers, TrustManager[] trustManagers,
-	                                          SecureRandom secureRandom) throws NoSuchAlgorithmException, KeyManagementException {
+			SecureRandom secureRandom) throws NoSuchAlgorithmException, KeyManagementException {
 		SSLContext instance = SSLContext.getInstance(algorithm);
 		instance.init(keyManagers, trustManagers, secureRandom);
 		return instance;
@@ -477,9 +438,9 @@ public class AsyncSslSocketTest {
 		}
 		return builder.toString();
 	}
-	// </editor-fold>
+	// endregion
 
-	// <editor-fold desc="custom matchers">
+	// region custom matchers
 	public static Matcher<ByteBuf> bytebufOfMessage(String message) {
 		return new BaseMatcher<ByteBuf>() {
 			@Override
@@ -494,5 +455,5 @@ public class AsyncSslSocketTest {
 			}
 		};
 	}
-	// </editor-fold>
+	// endregion
 }

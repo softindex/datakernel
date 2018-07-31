@@ -16,7 +16,9 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -30,7 +32,7 @@ import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.net.InetAddress;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -39,13 +41,12 @@ import java.util.concurrent.ExecutionException;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.assertFailure;
 import static org.junit.Assert.assertEquals;
 
 public class AsyncHttpClientTest {
 	private static final int PORT = 45788;
 	public static final byte[] TIMEOUT_EXCEPTION_BYTES = encodeAscii("ERROR: Must be TimeoutException");
-
-	private static final InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
@@ -191,4 +192,52 @@ public class AsyncHttpClientTest {
 		}
 	}
 
+	@Test
+	public void testActiveRequestsCounter() throws IOException {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+
+		AsyncServlet slowloris = AsyncServlet.of(request -> {
+			request.recycleBufs();
+			return SettableStage.create();
+		});
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, slowloris)
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
+
+		server.listen();
+
+		AsyncHttpClient.JmxInspector inspector = new AsyncHttpClient.JmxInspector();
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop)
+				.withNoKeepAlive()
+				.withConnectTimeout(Duration.ofMillis(20))
+				.withReadTimeout(Duration.ofMillis(20))
+				.withWriteTimeout(Duration.ofMillis(20))
+				.withInspector(inspector);
+
+		Stages.all(
+				httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT))
+		)
+				.whenComplete(($, e) -> {
+					server.close();
+
+					inspector.getTotalRequests().refresh(eventloop.currentTimeMillis());
+					inspector.getHttpTimeouts().refresh(eventloop.currentTimeMillis());
+
+//					System.out.println(inspector.getTotalRequests().getTotalCount());
+//					System.out.println();
+//					System.out.println(inspector.getHttpTimeouts().getTotalCount());
+//					System.out.println(inspector.getResolveErrors().getTotal());
+//					System.out.println(inspector.getConnectErrors().getTotal());
+//					System.out.println(inspector.responsesErrors);
+//					System.out.println(inspector.responses);
+
+					assertEquals(0, inspector.getActiveRequests());
+				})
+				.whenComplete(assertFailure(AsyncTimeoutException.class, "timeout"));
+
+		eventloop.run();
+	}
 }

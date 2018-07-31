@@ -19,7 +19,9 @@ package io.datakernel.http;
 import io.datakernel.annotation.Nullable;
 
 final class ConnectionsLinkedList {
+	@Nullable
 	private AbstractHttpConnection first;
+	@Nullable
 	private AbstractHttpConnection last;
 
 	public boolean isEmpty() {

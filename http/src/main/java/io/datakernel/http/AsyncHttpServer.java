@@ -67,6 +67,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE.toInt()];
 
+	@Nullable
 	private AsyncCancellable expiredConnectionsCheck;
 
 	Inspector inspector;
@@ -217,6 +218,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	// endregion
 
+	@SuppressWarnings("Duplicates")
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
 		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
@@ -241,6 +243,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 				headerChars, maxHttpMessageSize);
 	}
 
+	@Nullable
 	private SettableStage<Void> closeStage;
 
 	void onConnectionClosed() {
@@ -307,6 +310,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	@JmxAttribute(name = "")
+	@Nullable
 	public JmxInspector getStats() {
 		return inspector instanceof JmxInspector ? (JmxInspector) inspector : null;
 	}

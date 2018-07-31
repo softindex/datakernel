@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
@@ -91,10 +92,18 @@ public final class UrlParser {
 
 	int[] queryPositions;
 
-	// creators
-	public static UrlParser of(String url) throws IllegalArgumentException {
+	// region creators
+	private UrlParser(String raw) {
+		this.raw = raw;
+	}
+
+	public static UrlParser of(String url) {
 		UrlParser httpUrl = new UrlParser(url);
-		httpUrl.parseQuietly(false);
+		try {
+			httpUrl.parse(false);
+		} catch (ParseException e) {
+			throw new IllegalArgumentException(e);
+		}
 		return httpUrl;
 	}
 
@@ -103,18 +112,7 @@ public final class UrlParser {
 		httpUrl.parse(true);
 		return httpUrl;
 	}
-
-	private UrlParser(String raw) {
-		this.raw = raw;
-	}
-
-	private void parseQuietly(boolean isRelativePathAllowed) {
-		try {
-			parse(isRelativePathAllowed);
-		} catch (ParseException e) {
-			throw new IllegalArgumentException(e);
-		}
-	}
+	// endregion
 
 	private void parse(boolean isRelativePathAllowed) throws ParseException {
 		if (raw.length() > Short.MAX_VALUE) {
@@ -229,22 +227,22 @@ public final class UrlParser {
 		return https;
 	}
 
+	@Nullable
 	public String getHostAndPort() {
 		if (host == -1) {
 			return null;
-		} else {
-			int end = path != -1 ? path : query != -1 ? query - 1 : raw.length();
-			return raw.substring(host, end);
 		}
+		int end = path != -1 ? path : query != -1 ? query - 1 : raw.length();
+		return raw.substring(host, end);
 	}
 
+	@Nullable
 	public String getHost() {
 		if (host == -1) {
 			return null;
-		} else {
-			int end = port != -1 ? port - 1 : path != -1 ? path : query != -1 ? query - 1 : raw.length();
-			return raw.substring(host, end);
 		}
+		int end = port != -1 ? port - 1 : path != -1 ? path : query != -1 ? query - 1 : raw.length();
+		return raw.substring(host, end);
 	}
 
 	public int getPort() {
@@ -315,6 +313,7 @@ public final class UrlParser {
 	}
 
 	// work with parameters
+	@Nullable
 	public String getQueryParameter(String key) {
 		if (query == -1) {
 			return null;
@@ -415,6 +414,7 @@ public final class UrlParser {
 		return result;
 	}
 
+	@Nullable
 	static String findParameter(String src, int[] parsedPositions, String key) {
 		for (int record : parsedPositions) {
 			if (record == 0) break;
@@ -500,9 +500,9 @@ public final class UrlParser {
 		return result;
 	}
 
+	@Nullable
 	private static String keyValueDecode(String url, int keyEnd) {
-		return urlDecode(url,
-				(keyEnd < url.length() && url.charAt(keyEnd) == '=') ? (keyEnd + 1) : keyEnd);
+		return urlDecode(url, keyEnd < url.length() && url.charAt(keyEnd) == '=' ? keyEnd + 1 : keyEnd);
 	}
 
 	/**
@@ -513,10 +513,12 @@ public final class UrlParser {
 	 * @param s string for decoding
 	 * @return the newly decoded String
 	 */
+	@Nullable
 	public static String urlDecode(String s) {
 		return urlDecode(s, 0);
 	}
 
+	@Nullable
 	private static String urlDecode(String s, int pos) {
 		int len = s.length();
 		for (int i = pos; i < len; i++) {
@@ -529,6 +531,7 @@ public final class UrlParser {
 		return s.substring(pos);
 	}
 
+	@Nullable
 	private static String _urlDecode(String s, int pos, int encodedSuffixPos) {
 		int len = s.length();
 

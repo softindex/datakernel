@@ -179,11 +179,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
+	@Nullable
 	private Inspector inspector;
 
 	// region builders
 	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel,
-												 SocketSettings socketSettings) {
+			SocketSettings socketSettings) {
 		try {
 			socketSettings.applySettings(socketChannel);
 		} catch (IOException e) {
@@ -205,7 +206,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		return new AsyncTcpSocketImpl(eventloop, socketChannel);
 	}
 
-	public AsyncTcpSocketImpl withInspector(Inspector inspector) {
+	public AsyncTcpSocketImpl withInspector(@Nullable Inspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}
@@ -516,13 +517,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			keyOps = "Key throwed exception: " + e.toString();
 		}
 		return "AsyncTcpSocketImpl{" +
-			"channel=" + (channel == null ? "" : channel.toString()) +
-			", writeQueueSize=" + writeQueue.size() +
-			", writeEndOfStream=" + writeEndOfStream +
-			", key.ops=" + keyOps +
-			", ops=" + opsToString(ops) +
-			", writing=" + (writeTimestamp != 0L) +
-			'}';
+				"channel=" + (channel == null ? "" : channel.toString()) +
+				", writeQueueSize=" + writeQueue.size() +
+				", writeEndOfStream=" + writeEndOfStream +
+				", key.ops=" + keyOps +
+				", ops=" + opsToString(ops) +
+				", writing=" + (writeTimestamp != 0L) +
+				'}';
 	}
 
 	private String opsToString(int ops) {

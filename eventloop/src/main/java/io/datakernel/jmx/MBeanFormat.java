@@ -57,7 +57,6 @@ public final class MBeanFormat {
 		return formatInstant(timestamp != 0L ? Instant.ofEpochMilli(timestamp) : null);
 	}
 
-	@Nullable
 	public static String formatListAsMultilineString(@Nullable List<?> list) {
 		if (list == null || list.isEmpty()) return "";
 		List<String> strings = list.stream().map(Object::toString).collect(toList());

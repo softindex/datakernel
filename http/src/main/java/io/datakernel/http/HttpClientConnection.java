@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -28,11 +29,57 @@ import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 
+
+/**
+ * <p>
+ * This class is responsible for sending and receiving HTTP requests.
+ * It's made so that one instance of it corresponds to one networking socket.
+ * That's why instances of those classes are all stored in one of three pools in their
+ * respective {@link AsyncHttpClient} instance.
+ * </p>
+ * <p>
+ * Those pools are: <code>poolKeepAlive</code>, <code>poolReading</code>, and <code>poolWriting</code>.
+ * </p>
+ * Path between those pools that any connection takes can be represented as a state machine,
+ * described as a GraphViz graph below.
+ * Nodes with (null) descriptor mean that the connection is not in any pool.
+ * <pre>
+ * digraph {
+ *     label="Single HttpConnection state machine"
+ *     rankdir="LR"
+ *
+ *     "open(null)"
+ *     "closed(null)"
+ *     "reading"
+ *     "writing"
+ *     "keep-alive"
+ *     "taken(null)"
+ *
+ *     "writing" -> "closed(null)" [color="#ff8080", style=dashed, label="peer reset/write timeout"]
+ *     "reading" -> "closed(null)" [color="#ff8080", style=dashed, label="peer reset/read timeout"]
+ *     "keep-alive" -> "closed(null)" [color="#ff8080", style=dashed, label="peer reset"]
+ *     "taken(null)" -> "closed(null)" [color="#ff8080", style=dashed, label="peer reset"]
+ *
+ *     "open(null)" -> "writing" [label="send request"]
+ *     "writing" -> "reading"
+ *     "reading" -> "closed(null)" [label="received response\n(no keep-alive)"]
+ *     "reading" -> "keep-alive" [label="received response"]
+ *     "keep-alive" -> "taken(null)" [label="reuse connection"]
+ *     "taken(null)" -> "writing" [label="send request"]
+ *     "keep-alive" -> "closed(null)" [label="expiration"]
+ *
+ *     { rank=same; "open(null)", "closed(null)" }
+ *     { rank=same; "reading", "writing", "keep-alive" }
+ * }
+ * </pre>
+ */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
+	@Nullable
 	private Callback<HttpResponse> callback;
+	@Nullable
 	private HttpResponse response;
 	private final AsyncHttpClient client;
 	private final AsyncHttpClient.Inspector inspector;
@@ -41,11 +88,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	HttpClientConnection addressPrev;
 	HttpClientConnection addressNext;
 
+	@Nullable
 	private Exception closeError;
 
 	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
-	                     AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client, char[] headerChars,
-	                     int maxHttpMessageSize) {
+			AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client, char[] headerChars,
+			int maxHttpMessageSize) {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
 		this.remoteAddress = remoteAddress;
 		this.client = client;
@@ -58,7 +106,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		if (inspector != null && e != null) inspector.onHttpError(this, callback == null, e);
+		if (inspector != null) inspector.onHttpError(this, callback == null, e);
 		readQueue.clear();
 		if (callback != null) {
 			Callback<HttpResponse> callback = this.callback;
@@ -124,6 +172,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
 		super.onHeader(header, value);
+		assert response != null;
 		response.addHeader(header, value);
 	}
 
@@ -134,6 +183,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		HttpResponse response = this.response;
 		this.response = null;
 		this.callback = null;
+
+		assert response != null;
+		assert callback != null;
 		response.setBody(bodyBuf);
 
 		if (inspector != null) inspector.onHttpResponse(this, response);
@@ -174,7 +226,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	public void send(HttpRequest request, Callback<HttpResponse> callback) {
 		this.callback = callback;
-		assert pool == null;
+		assert pool == null; // moving from open(null)/taken(null) state to writing state
 		(pool = client.poolWriting).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
 		request.addHeader(CONNECTION_KEEP_ALIVE);
@@ -187,7 +239,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		assert !isClosed();
 		reading = FIRSTLINE;
 		assert pool == client.poolWriting;
-		pool.removeNode(this);
+		assert pool != null; // ugh, intellij
+		pool.removeNode(this); // moving from writing state to reading state
 		(pool = client.poolReading).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
 		asyncTcpSocket.read();
@@ -197,6 +250,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * After closing this connection it removes it from its connections cache and recycles
 	 * Http response.
 	 */
+	@Override
 	protected void onClosed() {
 		assert callback == null;
 		if (pool == client.poolKeepAlive) {
@@ -208,8 +262,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 
 		// pool will be null if socket was closed by the peer just before connection.send() invocation
+		// (eg. if connection was in open(null) or taken(null) states)
 		if (pool != null) {
-			pool.removeNode(this);
+			pool.removeNode(this); // moving from any state to closed state
 			pool = null;
 		}
 
@@ -220,6 +275,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 	}
 
+	@Nullable
 	public Exception getCloseError() {
 		return closeError;
 	}

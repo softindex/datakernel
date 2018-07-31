@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -437,7 +438,7 @@ public final class HttpHeaders {
 	private static final class ValueOfString extends Value {
 		private final String string;
 
-		private ValueOfString(HttpHeader key, String string) {
+		private ValueOfString(HttpHeader key, @Nullable String string) {
 			super(key);
 			this.string = string;
 		}

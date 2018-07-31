@@ -68,6 +68,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE.toInt()];
 
+	@Nullable
 	private AsyncCancellable expiredConnectionsCheck;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
@@ -154,14 +155,16 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		public void onHttpError(HttpClientConnection connection, boolean keepAliveConnection, Throwable e) {
 			if (e == AbstractHttpConnection.READ_TIMEOUT_ERROR || e == AbstractHttpConnection.WRITE_TIMEOUT_ERROR) {
 				httpTimeouts.recordEvent();
-			} else {
-				httpErrors.recordException(e);
-				if (SSLException.class == e.getClass()) {
-					sslErrors.recordEvent();
-				}
-				if (!keepAliveConnection) {
-					responsesErrors++;
-				}
+				return;
+			}
+			httpErrors.recordException(e);
+			if (SSLException.class == e.getClass()) {
+				sslErrors.recordEvent();
+			}
+			// when connection is in keep-alive state, it means that the response already happenned,
+			// so error of keep-alive connection is not a response error
+			if (!keepAliveConnection) {
+				responsesErrors++;
 			}
 		}
 
@@ -178,6 +181,11 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		@JmxAttribute
 		public ExceptionStats getResolveErrors() {
 			return resolveErrors;
+		}
+
+		@JmxAttribute
+		public ExceptionStats getConnectErrors() {
+			return connectErrors;
 		}
 
 		@JmxAttribute(description = "number of \"open connection\" events)")
@@ -198,7 +206,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 		public long getActiveRequests() {
 			return totalRequests.getTotalCount() -
-					(resolveErrors.getTotal() + connectErrors.getTotal() + responsesErrors + responses);
+					(httpTimeouts.getTotalCount() + resolveErrors.getTotal() + connectErrors.getTotal() + responsesErrors + responses);
 		}
 
 		@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
@@ -277,6 +285,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 	// endregion
 
+	@SuppressWarnings("Duplicates")
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
 		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
@@ -291,14 +300,16 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		});
 	}
 
+	@Nullable
 	private HttpClientConnection takeKeepAliveConnection(InetSocketAddress address) {
 		AddressLinkedList addresses = this.addresses.get(address);
 		if (addresses == null)
 			return null;
 		HttpClientConnection connection = addresses.removeLastNode();
+		assert connection != null;
 		assert connection.pool == poolKeepAlive;
 		assert connection.remoteAddress.equals(address);
-		connection.pool.removeNode(connection);
+		connection.pool.removeNode(connection); // moving from keep-alive state to taken(null) state
 		connection.pool = null;
 		if (addresses.isEmpty()) {
 			this.addresses.remove(address);
@@ -315,7 +326,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		}
 		addresses.addLastNode(connection);
 		assert connection.pool == poolReading;
-		poolReading.removeNode(connection);
+		poolReading.removeNode(connection); // moving from reading state to keepalive state
 		(connection.pool = poolKeepAlive).addLastNode(connection);
 		connection.poolTimestamp = eventloop.currentTimeMillis();
 
@@ -334,6 +345,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		assert eventloop.inEventloopThread();
 		if (inspector != null) inspector.onRequest(request);
 		String host = request.getUrl().getHost();
+
+		assert host != null;
 
 		asyncDnsClient.resolve4(host, new Callback<InetAddress[]>() {
 			@Override
@@ -372,9 +385,12 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 					throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
 				}
 
+				String host = request.getUrl().getHost();
+				assert host != null;
+
 				AsyncTcpSocket asyncTcpSocket = https ?
 						wrapClientSocket(eventloop, asyncTcpSocketImpl,
-								request.getUrl().getHost(), request.getUrl().getPort(),
+								host, request.getUrl().getPort(),
 								sslContext, sslExecutor) :
 						asyncTcpSocketImpl;
 
@@ -401,7 +417,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				if (inspector != null) inspector.onConnectError(request, address, throwable);
 				request.recycleBufs();
 				callback.setException(throwable);
-				return;
 			}
 		});
 	}
@@ -417,6 +432,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return Stage.of(null);
 	}
 
+	@Nullable
 	private SettableStage<Void> closeStage;
 
 	public void onConnectionClosed() {
@@ -495,9 +511,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	@JmxAttribute(name = "")
+	@Nullable
 	public JmxInspector getStats() {
 		return (inspector instanceof JmxInspector ? (JmxInspector) inspector : null);
 	}
 	// endregion
-
 }
