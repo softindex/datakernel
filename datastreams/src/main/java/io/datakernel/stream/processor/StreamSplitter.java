@@ -24,6 +24,12 @@ import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkState;
 
+/**
+ * Provides an ability to split stream into number of equivalent outputs.
+ * {@link StreamSplitter} has one Input and an arbitrary number of Outputs.
+ *
+ * @param <T>
+ */
 @SuppressWarnings("unchecked")
 public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamDataReceiver<T> {
 	private final Input input;
@@ -32,6 +38,8 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 	private StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[0];
 	private int suspended = 0;
 
+
+	// region creators
 	private StreamSplitter() {
 		input = new Input();
 	}
@@ -39,6 +47,7 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 	public static <T> StreamSplitter<T> create() {
 		return new StreamSplitter<>();
 	}
+	//endregion
 
 	public StreamProducer<T> newOutput() {
 		Output output = new Output(outputs.size());

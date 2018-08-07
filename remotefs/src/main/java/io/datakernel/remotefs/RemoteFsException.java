@@ -18,6 +18,9 @@ package io.datakernel.remotefs;
 
 import io.datakernel.exception.StacklessException;
 
+/**
+ * An exception wrapper class that represents {@link Exception} that happened while working with remote filesystem.
+ */
 public class RemoteFsException extends StacklessException {
 	public RemoteFsException() {
 	}

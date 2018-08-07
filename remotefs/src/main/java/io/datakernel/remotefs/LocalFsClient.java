@@ -29,7 +29,6 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
-import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +41,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.stream.processor.StreamSkip.SkipStrategy.forByteBuf;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -81,7 +81,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private LocalFsClient(Eventloop eventloop, ExecutorService executor, Path storageDir) {
 		this.eventloop = checkNotNull(eventloop, "eventloop");
 		this.executor = checkNotNull(executor, "executor");
-		this.storageDir = checkNotNull(storageDir, "storageDir");
+		this.storageDir = checkNotNull(storageDir, "storageDir").normalize();
 
 		try {
 			Files.createDirectories(storageDir);
@@ -106,48 +106,34 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	@Override
 	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, long offset) {
 		checkNotNull(fileName, "fileName");
-
 		return ensureDirectory(fileName)
-			.thenCompose(path -> AsyncFile.openAsync(executor, path, new OpenOption[]{WRITE, offset == -1 ? CREATE_NEW : CREATE}, this))
-			.thenCompose(file -> {
-				logger.trace("writing to file: {}: {}", file, this);
-				return file.size()
-					.thenCompose(size -> {
-						if (offset != -1) {
-							if (size == null) {
-								return Stage.ofException(new RemoteFsException("Trying to append to non-existent file"));
-							}
-							if (offset > size) {
-								return Stage.ofException(new RemoteFsException("Trying to append at offset greater than the file size"));
-							}
-						}
-						long[] bytes = {0};
-						return Stage.of(StreamFileWriter.create(file)
-							.withOffset(offset == -1 ? 0L : offset)
-							.withForceOnClose(true)
-							.withFlushAsResult()
-							.with(offset != -1 ?
-								StreamMap.create((buf, receiver) -> {
-									if (bytes[0] == -1) {
-										receiver.onData(buf);
+				.thenCompose(path -> AsyncFile.openAsync(executor, path, new OpenOption[]{WRITE, offset == -1 ? CREATE_NEW : CREATE}, this))
+				.thenCompose(file -> {
+					logger.trace("writing to file: {}: {}", file, this);
+					return file.size()
+							.thenCompose(size -> {
+								if (offset != -1) {
+									if (size == null) {
+										return Stage.ofException(new RemoteFsException("Trying to append to non-existent file"));
 									}
-									bytes[0] += buf.readRemaining();
-									if (bytes[0] >= size) {
-										int tail = (int) (bytes[0] - size);
-										if (tail == 0) {
-											return;
-										}
-										receiver.onData(buf.slice(buf.readRemaining() - tail, tail));
-										buf.recycle();
-										bytes[0] = -1;
+									if (offset > size) {
+										return Stage.ofException(new RemoteFsException("Trying to append at offset greater than the file size"));
 									}
-								}) : StreamConsumerModifier.identity())
-							.whenComplete(writeFinishStage.recordStats())
-							.withLateBinding());
-					});
-			})
-			.whenComplete(toLogger(logger, TRACE, "upload", fileName, this))
-			.whenComplete(writeBeginStage.recordStats());
+								}
+								long skip = size - offset;
+								return Stage.of(StreamFileWriter.create(file)
+										.withOffset(offset == -1 ? 0L : size)
+										.withForceOnClose(true)
+										.withFlushAsResult()
+										.with(offset != -1 && skip != 0 ?
+												consumer -> consumer.ignoreFirst(skip, forByteBuf()) :
+												StreamConsumerModifier.identity())
+										.whenComplete(writeFinishStage.recordStats())
+										.withLateBinding());
+							});
+				})
+				.whenComplete(toLogger(logger, TRACE, "upload", fileName, this))
+				.whenComplete(writeBeginStage.recordStats());
 	}
 
 	@Override
@@ -162,42 +148,42 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		}
 
 		return AsyncFile.size(executor, path)
-			.thenCompose(size -> {
-				if (size == null) {
-					return Stage.ofException(new RemoteFsException("File not found: " + fileName));
-				}
-				String repr = fileName + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "");
-				if (offset > size) {
-					return Stage.ofException(new RemoteFsException("Offset exceeds file size for " + repr));
-				}
-				if (length != -1 && offset + length > size) {
-					return Stage.ofException(new RemoteFsException("Boundaries exceed file for " + repr));
-				}
-				return AsyncFile.openAsync(executor, path, StreamFileReader.READ_OPTIONS, this)
-					.thenApply(file -> {
-						logger.trace("reading from file {}: {}", repr, this);
-						return StreamFileReader.readFile(file)
-							.withBufferSize(readerBufferSize)
-							.withOffset(offset)
-							.withLength(length == -1 ? Long.MAX_VALUE : length)
-							.withEndOfStreamAsResult()
-							.whenComplete(readFinishStage.recordStats())
-							.withLateBinding();
-					});
-			})
-			.whenComplete(toLogger(logger, TRACE, "download", fileName, offset, length, this))
-			.whenComplete(readBeginStage.recordStats());
+				.thenCompose(size -> {
+					if (size == null) {
+						return Stage.ofException(new RemoteFsException("File not found: " + fileName));
+					}
+					String repr = fileName + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "");
+					if (offset > size) {
+						return Stage.ofException(new RemoteFsException("Offset exceeds file size for " + repr));
+					}
+					if (length != -1 && offset + length > size) {
+						return Stage.ofException(new RemoteFsException("Boundaries exceed file for " + repr));
+					}
+					return AsyncFile.openAsync(executor, path, StreamFileReader.READ_OPTIONS, this)
+							.thenApply(file -> {
+								logger.trace("reading from file {}: {}", repr, this);
+								return StreamFileReader.readFile(file)
+										.withBufferSize(readerBufferSize)
+										.withOffset(offset)
+										.withLength(length == -1 ? Long.MAX_VALUE : length)
+										.withEndOfStreamAsResult()
+										.whenComplete(readFinishStage.recordStats())
+										.withLateBinding();
+							});
+				})
+				.whenComplete(toLogger(logger, TRACE, "download", fileName, offset, length, this))
+				.whenComplete(readBeginStage.recordStats());
 	}
 
 	@Override
 	public Stage<Set<String>> move(Map<String, String> changes) {
 		return Stages.toList(changes.entrySet().stream().map(e ->
-			move(e.getKey(), e.getValue())
-				.whenException(err -> logger.warn("Failed to move file {} into {}: {}", e.getKey(), e.getValue(), err))
-				.thenApplyEx(($, err) -> err != null ? null : e.getKey())))
-			.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
-			.whenComplete(toLogger(logger, TRACE, "move", changes, this))
-			.whenComplete(moveStage.recordStats());
+				move(e.getKey(), e.getValue())
+						.whenException(err -> logger.warn("Failed to move file {} into {}: {}", e.getKey(), e.getValue(), err))
+						.thenApplyEx(($, err) -> err != null ? null : e.getKey())))
+				.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
+				.whenComplete(toLogger(logger, TRACE, "move", changes, this))
+				.whenComplete(moveStage.recordStats());
 	}
 
 	@Override
@@ -240,19 +226,19 @@ public final class LocalFsClient implements FsClient, EventloopService {
 				}
 			}
 		})
-			.whenComplete(toLogger(logger, TRACE, "move", fileName, targetName, this))
-			.whenComplete(singleMoveStage.recordStats());
+				.whenComplete(toLogger(logger, TRACE, "move", fileName, targetName, this))
+				.whenComplete(singleMoveStage.recordStats());
 	}
 
 	@Override
 	public Stage<Set<String>> copy(Map<String, String> changes) {
 		return Stages.toList(changes.entrySet().stream().map(e ->
-			copy(e.getKey(), e.getValue())
-				.whenException(err -> logger.warn("Failed to copy file {} into {}: {}", e.getKey(), e.getValue(), err))
-				.thenApplyEx(($, err) -> err != null ? null : e.getKey())))
-			.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
-			.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
-			.whenComplete(copyStage.recordStats());
+				copy(e.getKey(), e.getValue())
+						.whenException(err -> logger.warn("Failed to copy file {} into {}: {}", e.getKey(), e.getValue(), err))
+						.thenApplyEx(($, err) -> err != null ? null : e.getKey())))
+				.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
+				.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
+				.whenComplete(copyStage.recordStats());
 	}
 
 	@Override
@@ -280,8 +266,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 				}
 			}
 		})
-			.whenComplete(toLogger(logger, TRACE, "copy", fileName, copyName, this))
-			.whenComplete(singleCopyStage.recordStats());
+				.whenComplete(toLogger(logger, TRACE, "copy", fileName, copyName, this))
+				.whenComplete(singleCopyStage.recordStats());
 	}
 
 	@Override
@@ -294,8 +280,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 				});
 			}
 		})
-			.whenComplete(toLogger(logger, TRACE, "delete", glob, this))
-			.whenComplete(deleteStage.recordStats());
+				.whenComplete(toLogger(logger, TRACE, "delete", glob, this))
+				.whenComplete(deleteStage.recordStats());
 	}
 
 	@Override
@@ -305,8 +291,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			walkFiles(glob, (meta, $) -> list.add(meta));
 			return list;
 		})
-			.whenComplete(toLogger(logger, TRACE, "list", glob, this))
-			.whenComplete(listStage.recordStats());
+				.whenComplete(toLogger(logger, TRACE, "list", glob, this))
+				.whenComplete(listStage.recordStats());
 	}
 
 	@Override
@@ -363,7 +349,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			});
 			return;
 		}
-		// oprimization for single-file requests
+		// optimization for single-file requests
 		if (!GLOB_META.matcher(glob).find()) {
 			Path file = storageDir.resolve(glob);
 			if (Files.isRegularFile(file)) {

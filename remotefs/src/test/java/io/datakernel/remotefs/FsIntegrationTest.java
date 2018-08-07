@@ -96,7 +96,6 @@ public class FsIntegrationTest {
 
 	@After
 	public void tearDown() {
-		server.close();
 		executor.shutdownNow();
 	}
 

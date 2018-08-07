@@ -93,7 +93,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	/**
 	 * Collection of background tasks,
-	 * which mean that if eventloop contains only background tasks, it will be closed
+	 * which means that if eventloop contains only background tasks, it will be closed.
 	 */
 	private final PriorityQueue<ScheduledRunnable> backgroundTasks = new PriorityQueue<>();
 
@@ -108,7 +108,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private long timeAfterBusinessLogic;
 
 	/**
-	 * The NIO selector which selects a set of keys whose corresponding channels
+	 * The NIO selector which selects a set of keys whose corresponding channels are ready for I/O operations.
 	 */
 	@Nullable
 	private Selector selector;
@@ -116,14 +116,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private SelectorProvider selectorProvider;
 
 	/**
-	 * The thread where eventloop is running
+	 * The thread where eventloop is running.
 	 */
 	@Nullable
 	private Thread eventloopThread;
 
 	private static final ThreadLocal<Eventloop> CURRENT_EVENTLOOP = new ThreadLocal<>();
 	/**
-	 * The desired name of the thread
+	 * The desired name of the thread.
 	 */
 	private String threadName;
 	private int threadPriority;
@@ -242,11 +242,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	private static final String NO_CURRENT_EVENTLOOP_ERROR = "Trying to start async operations prior eventloop.run(), or from outside of eventloop.run() \n" +
-		"Possible solutions: " +
-		"1) Eventloop.create().withCurrentThread() ... {your code block} ... eventloop.run() \n" +
-		"2) try_with_resources Eventloop.useCurrentThread() ... {your code block} \n" +
-		"3) refactor application so it starts async operations within eventloop.run(), \n" +
-		"   i.e. by implementing EventloopService::start() {your code block} and using ServiceGraphModule";
+			"Possible solutions: " +
+			"1) Eventloop.create().withCurrentThread() ... {your code block} ... eventloop.run() \n" +
+			"2) try_with_resources Eventloop.useCurrentThread() ... {your code block} \n" +
+			"3) refactor application so it starts async operations within eventloop.run(), \n" +
+			"   i.e. by implementing EventloopService::start() {your code block} and using ServiceGraphModule";
 
 	public static Eventloop getCurrentEventloop() {
 		Eventloop eventloop = CURRENT_EVENTLOOP.get();
@@ -345,8 +345,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			return false;
 		lastExternalTasksCount = externalTasksCount.get();
 		return !localTasks.isEmpty() || !scheduledTasks.isEmpty() || !concurrentTasks.isEmpty()
-			|| lastExternalTasksCount > 0
-			|| keepAlive || (selector != null && selector.keys().size() - cancelledKeys > 0);
+				|| lastExternalTasksCount > 0
+				|| keepAlive || (selector != null && selector.keys().size() - cancelledKeys > 0);
 	}
 
 	@Nullable
@@ -504,7 +504,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
 		stats.updateSelectedKeysStats(lastSelectedKeys,
-			invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
+				invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
 
 		return acceptKeys + connectKeys + readKeys + writeKeys + invalidKeys;
 	}
@@ -780,8 +780,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @throws IOException if an I/O error occurs on opening DatagramChannel
 	 */
 	public static DatagramChannel createDatagramChannel(DatagramSocketSettings datagramSocketSettings,
-														@Nullable InetSocketAddress bindAddress,
-														@Nullable InetSocketAddress connectAddress) throws IOException {
+			@Nullable InetSocketAddress bindAddress,
+			@Nullable InetSocketAddress connectAddress) throws IOException {
 		DatagramChannel datagramChannel = null;
 		try {
 			datagramChannel = DatagramChannel.open();
@@ -1035,22 +1035,22 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	// JMX
 	@JmxOperation(description = "enable monitoring " +
-		"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
-		"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
 	public void startExtendedMonitoring() {
 		this.monitoring = true;
 	}
 
 	@JmxOperation(description = "disable monitoring " +
-		"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
-		"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
 	public void stopExtendedMonitoring() {
 		this.monitoring = false;
 	}
 
 	@JmxAttribute(
-		description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
-			"(for example, most of the durationStats are collected only when monitoring is enabled)")
+			description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
+					"(for example, most of the durationStats are collected only when monitoring is enabled)")
 	public boolean isExtendedMonitoring() {
 		return monitoring;
 	}

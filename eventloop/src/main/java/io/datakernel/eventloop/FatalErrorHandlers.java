@@ -23,8 +23,13 @@ import java.util.zip.ZipError;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
+/**
+ * Encapsulation of certain fatal error handlers that determine {@link Eventloop} behaviour in case of fatal error
+ * occurrences.
+ */
 public final class FatalErrorHandlers {
-	private FatalErrorHandlers() {}
+	private FatalErrorHandlers() {
+	}
 
 	public static FatalErrorHandler ignoreAllErrors() {
 		return (error, context) -> {};
@@ -36,10 +41,10 @@ public final class FatalErrorHandlers {
 
 	public static FatalErrorHandler exitOnMatchedError(List<Class> whiteList, List<Class> blackList) {
 		return (error, context) -> {
-            if(matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList)) {
-                shutdownForcibly();
-            }
-        };
+			if (matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList)) {
+				shutdownForcibly();
+			}
+		};
 	}
 
 	public static FatalErrorHandler exitOnJvmError() {
@@ -52,10 +57,10 @@ public final class FatalErrorHandlers {
 
 	public static FatalErrorHandler rethrowOnMatchedError(List<Class> whiteList, List<Class> blackList) {
 		return (error, context) -> {
-            if(matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList)) {
+			if (matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList)) {
 				propagate(error);
 			}
-        };
+		};
 	}
 
 	private static void propagate(Throwable error) {

@@ -21,6 +21,10 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.stream.processor.StreamLateBinder;
+import io.datakernel.stream.processor.StreamSkip;
+import io.datakernel.stream.processor.StreamSkip.Dropper;
+import io.datakernel.stream.processor.StreamSkip.SizeCounter;
+import io.datakernel.stream.processor.StreamSkip.SkipStrategy;
 
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -367,4 +371,15 @@ public interface StreamProducer<T> {
 		return this;
 	}
 
+	default StreamProducer<T> skipFirst(long skip, SizeCounter<T> sizeCounter, Dropper<T> dropper) {
+		return with(StreamSkip.create(skip, sizeCounter, dropper));
+	}
+
+	default StreamProducer<T> skipFirst(long skip, SkipStrategy<T> strategy) {
+		return with(StreamSkip.create(skip, strategy));
+	}
+
+	default StreamProducer<T> skipFirst(long skip) {
+		return with(StreamSkip.create(skip));
+	}
 }

@@ -3,7 +3,7 @@ package io.datakernel.remotefs;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
- * This is a POJO for holding both name and size of some file
+ * This is a POJO for holding name, size and timestamp of some file
  */
 public class FileMetadata {
 

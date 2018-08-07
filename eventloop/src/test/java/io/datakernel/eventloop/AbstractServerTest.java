@@ -42,40 +42,30 @@ public class AbstractServerTest {
 		InetSocketAddress address = new InetSocketAddress("localhost", 5588);
 		SocketSettings settings = SocketSettings.create().withImplReadTimeout(Duration.ofMillis(100000L)).withImplWriteTimeout(Duration.ofMillis(100000L));
 
-		SimpleServer.SocketHandlerProvider socketHandlerProvider = new SimpleServer.SocketHandlerProvider() {
+		SimpleServer.SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> new EventHandler() {
 			@Override
-			public EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				return new EventHandler() {
-					@Override
-					public void onRegistered() {
-						asyncTcpSocket.read();
-					}
+			public void onRegistered() {
+				asyncTcpSocket.read();
+			}
 
-					@Override
-					public void onRead(ByteBuf buf) {
-						eventloop.delay(5, new Runnable() {
-							@Override
-							public void run() {
-								asyncTcpSocket.write(buf);
-							}
-						});
-					}
+			@Override
+			public void onRead(ByteBuf buf) {
+				eventloop.delay(5, () -> asyncTcpSocket.write(buf));
+			}
 
-					@Override
-					public void onReadEndOfStream() {
-						asyncTcpSocket.close();
-					}
+			@Override
+			public void onReadEndOfStream() {
+				asyncTcpSocket.close();
+			}
 
-					@Override
-					public void onWrite() {
-						asyncTcpSocket.close();
-					}
+			@Override
+			public void onWrite() {
+				asyncTcpSocket.close();
+			}
 
-					@Override
-					public void onClosedWithError(Exception e) {
-						asyncTcpSocket.close();
-					}
-				};
+			@Override
+			public void onClosedWithError(Exception e) {
+				asyncTcpSocket.close();
 			}
 		};
 

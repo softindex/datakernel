@@ -16,8 +16,14 @@
 
 package io.datakernel.remotefs;
 
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
 import org.junit.After;
@@ -28,12 +34,11 @@ import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -45,6 +50,8 @@ import static io.datakernel.stream.file.StreamFileWriter.create;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
@@ -70,6 +77,8 @@ public class TestLocalFsClient {
 
 	@Before
 	public void setup() throws IOException {
+//		Runtime.getRuntime().exec("rm -r /tmp/TEST/").waitFor();
+//		storagePath = Paths.get("/tmp/TEST");
 		storagePath = Paths.get(tmpFolder.newFolder("storage").toURI());
 		clientPath = Paths.get(tmpFolder.newFolder("client").toURI());
 
@@ -77,23 +86,23 @@ public class TestLocalFsClient {
 		Files.createDirectories(clientPath);
 
 		Path f = clientPath.resolve("f.txt");
-		Files.write(f, ("some text1\n\nmore text1\t\n\n\r").getBytes(UTF_8));
+		Files.write(f, ("some text1\n\nmore text1\t\n\n\r").getBytes(UTF_8), CREATE, TRUNCATE_EXISTING);
 
 		Path c = clientPath.resolve("c.txt");
-		Files.write(c, ("some text2\n\nmore text2\t\n\n\r").getBytes(UTF_8));
+		Files.write(c, ("some text2\n\nmore text2\t\n\n\r").getBytes(UTF_8), CREATE, TRUNCATE_EXISTING);
 
 		Files.createDirectories(storagePath.resolve("1"));
 		Files.createDirectories(storagePath.resolve("2/3"));
 		Files.createDirectories(storagePath.resolve("2/b"));
 
 		Path a1 = storagePath.resolve("1/a.txt");
-		Files.write(a1, ("1\n2\n3\n4\n5\n6\n").getBytes(UTF_8));
+		Files.write(a1, ("1\n2\n3\n4\n5\n6\n").getBytes(UTF_8), CREATE, TRUNCATE_EXISTING);
 
 		Path b = storagePath.resolve("1/b.txt");
-		Files.write(b, ("7\n8\n9\n10\n11\n12\n").getBytes(UTF_8));
+		Files.write(b, ("7\n8\n9\n10\n11\n12\n").getBytes(UTF_8), CREATE, TRUNCATE_EXISTING);
 
 		Path a2 = storagePath.resolve("2/3/a.txt");
-		Files.write(a2, ("6\n5\n4\n3\n2\n1\n").getBytes(UTF_8));
+		Files.write(a2, ("6\n5\n4\n3\n2\n1\n").getBytes(UTF_8), CREATE, TRUNCATE_EXISTING);
 
 		Path d = storagePath.resolve("2/b/d.txt");
 		StringBuilder sb = new StringBuilder();
@@ -103,7 +112,10 @@ public class TestLocalFsClient {
 		Files.write(d, sb.toString().getBytes(UTF_8));
 
 		Path e = storagePath.resolve("2/b/e.txt");
-		Files.createFile(e);
+		try {
+			Files.createFile(e);
+		} catch (IOException ignored) {
+		}
 
 		client = LocalFsClient.create(eventloop, executor, storagePath);
 	}
@@ -128,13 +140,139 @@ public class TestLocalFsClient {
 	}
 
 	@Test
+	public void testConcurrentUpload() throws IOException {
+		Files.write(storagePath.resolve("concurrent.txt"), "Concurrent data - 1\nConcurr".getBytes());
+
+		Stages.all(
+				delayed(Arrays.asList(
+						ByteBuf.wrapForReading("oncurrent data - 1\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 3\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 4\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 5\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 6\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 7\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 8\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 9\n".getBytes())))
+						.streamTo(client.uploadStream("concurrent.txt", 1)).getConsumerResult(),
+
+				delayed(Arrays.asList(
+						ByteBuf.wrapForReading(" data - 1\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 3\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 4\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 5\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 6\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 7\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 8\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 9\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes())))
+						.streamTo(client.uploadStream("concurrent.txt", 10)).getConsumerResult(),
+
+				delayed(Arrays.asList(
+						ByteBuf.wrapForReading(" - 1\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 3\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 4\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 5\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 6\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 7\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 8\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 9\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes())))
+						.streamTo(client.uploadStream("concurrent.txt", 15)).getConsumerResult(),
+
+				delayed(Arrays.asList(
+						ByteBuf.wrapForReading("urrent data - 2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 3\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 4\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 5\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 6\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 7\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 8\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 9\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes())))
+						.streamTo(client.uploadStream("concurrent.txt", 24)).getConsumerResult(),
+
+				delayed(Arrays.asList(
+						ByteBuf.wrapForReading(" data - 1\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 3\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 4\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 5\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 6\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 7\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 8\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data - 9\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
+						ByteBuf.wrapForReading("Concurrent data + new line\n".getBytes())))
+						.streamTo(client.uploadStream("concurrent.txt", 10)).getConsumerResult()
+		)
+				.thenCompose($ ->
+						client.downloadStream("concurrent.txt")
+								.streamTo(StreamConsumer.ofConsumer(buf -> {
+									String actual = new String(buf.peekArray(), StandardCharsets.UTF_8);
+									String expected = "Concurrent data - 1\n" +
+											"Concurrent data - 2\n" +
+											"Concurrent data - 3\n" +
+											"Concurrent data - 4\n" +
+											"Concurrent data - 5\n" +
+											"Concurrent data - 6\n" +
+											"Concurrent data - 7\n" +
+											"Concurrent data - 8\n" +
+											"Concurrent data - 9\n" +
+											"Concurrent data #2\n" +
+											"Concurrent data #2\n" +
+											"Concurrent data #2\n" +
+											"Concurrent data #2\n" +
+											"Concurrent data + new line\n";
+									assertEquals(expected, actual);
+
+									buf.recycle();
+								}))
+								.getProducerResult())
+				.thenRunEx(() -> System.out.println("finished"))
+				.whenComplete(assertComplete());
+
+		eventloop.run();
+
+
+	}
+
+	private StreamProducer<ByteBuf> delayed(List<ByteBuf> list) {
+		Random random = new Random();
+		Iterator<ByteBuf> iterator = list.iterator();
+		return StreamProducer.ofAsyncSupplier(() -> {
+			if (iterator.hasNext()) {
+				SettableStage<ByteBuf> stage = new SettableStage<>();
+				eventloop.delay(random.nextInt(20) + 10, () -> stage.set(iterator.next()));
+				return stage;
+			}
+			return Stage.of(null);
+		});
+	}
+
+	@Test
 	public void testDoDownload() throws IOException {
 		Path outputFile = clientPath.resolve("d.txt");
 
 		AsyncFile open = AsyncFile.open(executor, outputFile, CREATE_OPTIONS);
-		client.download("2/b/d.txt").whenResult(reader -> reader.streamTo(create(open))
-				.getProducerResult()
-				.whenComplete(assertComplete()));
+		client.download("2/b/d.txt")
+				.whenResult(reader -> reader.streamTo(create(open))
+						.getProducerResult()
+						.whenComplete(assertComplete()));
 
 		eventloop.run();
 

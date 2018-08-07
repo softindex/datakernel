@@ -21,6 +21,10 @@ import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.stream.processor.StreamLateBinder;
+import io.datakernel.stream.processor.StreamSkip;
+import io.datakernel.stream.processor.StreamSkip.Dropper;
+import io.datakernel.stream.processor.StreamSkip.SizeCounter;
+import io.datakernel.stream.processor.StreamSkip.SkipStrategy;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -36,8 +40,6 @@ import static java.util.Collections.emptySet;
  * Implementors of this interface are strongly encouraged to extend one of the abstract classes
  * in this package which implement this interface and make the threading and state management
  * easier.
- *
- * @param <T> type of input data
  */
 public interface StreamConsumer<T> {
 	/**
@@ -177,4 +179,15 @@ public interface StreamConsumer<T> {
 		return this;
 	}
 
+	default StreamConsumer<T> ignoreFirst(long skip, SizeCounter<T> sizeCounter, Dropper<T> dropper) {
+		return with(StreamSkip.create(skip, sizeCounter, dropper));
+	}
+
+	default StreamConsumer<T> ignoreFirst(long skip, SkipStrategy<T> strategy) {
+		return with(StreamSkip.create(skip, strategy));
+	}
+
+	default StreamConsumer<T> ignoreFirst(long skip) {
+		return with(StreamSkip.create(skip));
+	}
 }

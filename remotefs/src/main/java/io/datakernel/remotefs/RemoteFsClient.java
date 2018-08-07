@@ -157,11 +157,11 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 											if (stats.getTotalSize() == receivingSize) {
 												messaging.close();
 												return Stage.<Void>of(null);
-											} else {
-												return Stage.ofException(new IOException("Invalid stream size for file " + fileName +
-														" (offset " + offset + ", length " + length + "), expected: " + receivingSize +
-														" actual: " + stats.getTotalSize()));
 											}
+											return Stage.ofException(new IOException("Invalid stream size for file " + fileName +
+													" (offset " + offset + ", length " + length + "), expected: " + receivingSize +
+													" actual: " + stats.getTotalSize()));
+
 										})
 										.whenException(e -> {
 											messaging.close();

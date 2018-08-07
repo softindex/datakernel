@@ -65,7 +65,8 @@ public class ByteBuf {
 
 	// creators
 	private ByteBuf(byte[] array, int readPosition, int writePosition) {
-		assert readPosition >= 0 && readPosition <= writePosition && writePosition <= array.length;
+		assert readPosition >= 0 && readPosition <= writePosition && writePosition <= array.length
+			: "Wrong ByteBuf boundaries - readPos: " + readPosition + ", writePos: " + writePosition + ", array.length: " + array.length;
 		this.array = array;
 		this.readPosition = readPosition;
 		this.writePosition = writePosition;

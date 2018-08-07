@@ -44,12 +44,23 @@ public interface FsClient {
 	 * <p>
 	 * So, outer stage might fail on connection try, end-of-stream stage
 	 * might fail while uploading and result stage might fail when closing.
+	 * <p>
+	 * If offset is -1 then when file exists this will fail.
+	 * If offset is 0 or more then this will override existing file starting from that byte
+	 * and fail if file does not exist or is smaller than the offset.
 	 *
 	 * @param fileName name of the file to upload
+	 * @param offset   from which byte to write the uploaded data
 	 * @return stage for stream consumer of byte buffers
 	 */
 	Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, long offset);
 
+	/**
+	 * Shortcut for uploading NEW file
+	 *
+	 * @param fileName name of the file to upload
+	 * @return stage for stream consumer of byte buffers
+	 */
 	default Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName) {
 		return upload(fileName, -1);
 	}
@@ -64,9 +75,9 @@ public interface FsClient {
 	default Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName, String tempFolder) {
 		String tempName = tempFolder + File.separator + fileName;
 		return upload(tempName)
-			.thenApply(consumer ->
-				consumer.thenCompose($ ->
-					move(tempName, fileName)));
+				.thenApply(consumer ->
+						consumer.thenCompose($ ->
+								move(tempName, fileName)));
 	}
 
 	/**
@@ -171,14 +182,14 @@ public interface FsClient {
 	 */
 	default Stage<Void> strictMove(Map<String, String> changes) {
 		return move(changes)
-			.thenCompose(res -> {
-				if (res.size() < changes.size()) {
-					HashSet<String> set = new HashSet<>(changes.keySet());
-					set.removeAll(res);
-					return Stage.ofException(new RemoteFsException("Those files were not moved: " + set));
-				}
-				return Stage.of(null);
-			});
+				.thenCompose(res -> {
+					if (res.size() < changes.size()) {
+						HashSet<String> set = new HashSet<>(changes.keySet());
+						set.removeAll(res);
+						return Stage.ofException(new RemoteFsException("Those files were not moved: " + set));
+					}
+					return Stage.of(null);
+				});
 	}
 
 	/**
@@ -208,14 +219,14 @@ public interface FsClient {
 	 */
 	default Stage<Void> strictCopy(Map<String, String> changes) {
 		return copy(changes)
-			.thenCompose(res -> {
-				if (res.size() < changes.size()) {
-					HashSet<String> set = new HashSet<>(changes.keySet());
-					set.removeAll(res);
-					return Stage.ofException(new RemoteFsException("Those files were not copied: " + set));
-				}
-				return Stage.of(null);
-			});
+				.thenCompose(res -> {
+					if (res.size() < changes.size()) {
+						HashSet<String> set = new HashSet<>(changes.keySet());
+						set.removeAll(res);
+						return Stage.ofException(new RemoteFsException("Those files were not copied: " + set));
+					}
+					return Stage.of(null);
+				});
 	}
 
 	/**
@@ -256,6 +267,17 @@ public interface FsClient {
 	 */
 	default Stage<Void> ping() {
 		return list("").toVoid();
+	}
+
+	/**
+	 * Shrtcut to get Stage of {@link FileMetadata} of a single file.
+	 *
+	 * @param fileName fileName of a file to fetch its metadata.
+	 * @return stage of file description or <code>null</code>
+	 */
+	default Stage<FileMetadata> getMetadata(String fileName) {
+		return list(fileName)
+				.thenApply(list -> list.isEmpty() ? null : list.get(0));
 	}
 
 	/**
