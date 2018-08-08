@@ -12,9 +12,6 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.trigger.TriggerRegistry;
-import io.datakernel.trigger.TriggersModule;
-import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.worker.Primary;
 import io.datakernel.worker.Worker;
@@ -59,7 +56,6 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create()
 						.initialize(ofGlobalEventloopStats()),
-				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
@@ -70,21 +66,17 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					@Provides
 					@Singleton
 					@Primary
-					public Eventloop provide(Config config,
-					                         TriggerRegistry triggerRegistry) {
+					public Eventloop provideEventloop(Config config) {
 						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop.primary")))
-								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")));
+								.initialize(ofEventloop(config.getChild("eventloop.primary")));
 					}
 
 					@Provides
 					@Worker
 					public Eventloop provide(Config config,
-					                         OptionalDependency<ThrottlingController> maybeThrottlingController,
-					                         TriggerRegistry triggerRegistry) {
+							OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop.worker")))
-								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
 					}
 
@@ -104,15 +96,9 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 
 					@Provides
 					@Worker
-					public AsyncHttpServer provideWorker(Eventloop eventloop, AsyncServlet rootServlet, TriggerRegistry triggerRegistry, Config config) {
+					public AsyncHttpServer provideWorker(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(ofHttpWorker(config.getChild("http")))
-								.initialize(ofHttpServerTriggers(triggerRegistry, config.getChild("triggers.http")));
-					}
-
-					@Provides
-					Initializer<TriggersModule> triggersModuleInitializer(Config config) {
-						return ofThrottlingController(config.getChild("triggers"));
+								.initialize(ofHttpWorker(config.getChild("http")));
 					}
 				});
 	}

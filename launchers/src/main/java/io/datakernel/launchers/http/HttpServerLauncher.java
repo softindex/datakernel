@@ -11,9 +11,6 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.trigger.TriggerRegistry;
-import io.datakernel.trigger.TriggersModule;
-import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.OptionalDependency;
 
 import java.net.InetSocketAddress;
@@ -25,7 +22,8 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.http.HttpResponse.ok200;
-import static io.datakernel.launchers.Initializers.*;
+import static io.datakernel.launchers.Initializers.ofEventloop;
+import static io.datakernel.launchers.Initializers.ofHttpServer;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -55,7 +53,6 @@ public abstract class HttpServerLauncher extends Launcher {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
@@ -66,25 +63,17 @@ public abstract class HttpServerLauncher extends Launcher {
 					@Provides
 					@Singleton
 					Eventloop provide(Config config,
-					                  OptionalDependency<ThrottlingController> maybeThrottlingController,
-					                  TriggerRegistry triggerRegistry) {
+							OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
 					}
 
 					@Provides
 					@Singleton
-					AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, TriggerRegistry triggerRegistry, Config config) {
+					AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(ofHttpServer(config.getChild("http")))
-								.initialize(ofHttpServerTriggers(triggerRegistry, config.getChild("triggers.http")));
-					}
-
-					@Provides
-					Initializer<TriggersModule> triggersModuleInitializer(Config config) {
-						return ofThrottlingController(config.getChild("triggers"));
+								.initialize(ofHttpServer(config.getChild("http")));
 					}
 				}
 		);

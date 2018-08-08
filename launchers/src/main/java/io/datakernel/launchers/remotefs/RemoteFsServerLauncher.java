@@ -10,8 +10,6 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.trigger.TriggerRegistry;
-import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.guice.OptionalDependency;
 
 import java.net.InetSocketAddress;
@@ -21,7 +19,8 @@ import java.util.concurrent.ExecutorService;
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.launchers.Initializers.*;
+import static io.datakernel.launchers.Initializers.ofEventloop;
+import static io.datakernel.launchers.Initializers.ofRemoteFsServer;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -43,7 +42,6 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
 								.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
@@ -54,21 +52,17 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 					@Provides
 					@Singleton
 					public Eventloop provide(Config config,
-					                         OptionalDependency<ThrottlingController> maybeThrottlingController,
-					                         TriggerRegistry triggerRegistry) {
+							OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
 					}
 
 					@Provides
 					@Singleton
-					RemoteFsServer remoteFsServer(Eventloop eventloop, ExecutorService executor, TriggerRegistry triggerRegistry,
-					                              Config config) {
+					RemoteFsServer remoteFsServer(Eventloop eventloop, ExecutorService executor, Config config) {
 						return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.path"))
-								.initialize(ofRemoteFsServer(config.getChild("remotefs")))
-								.initialize(ofRemoteFsServerTriggers(triggerRegistry, config.getChild("triggers.remotefs")));
+								.initialize(ofRemoteFsServer(config.getChild("remotefs")));
 					}
 
 					@Provides

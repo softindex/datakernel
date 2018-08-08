@@ -4,13 +4,9 @@ import io.datakernel.config.Config;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
-import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.trigger.TriggerRegistry;
-import io.datakernel.trigger.TriggerResult;
-import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.Initializer;
 
 import java.time.Duration;
@@ -18,9 +14,6 @@ import java.time.Duration;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_INITIAL_BUFFER_SIZE;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_MAX_MESSAGE_SIZE;
-import static io.datakernel.trigger.Severity.HIGH;
-import static io.datakernel.trigger.Severity.WARNING;
-import static java.lang.System.currentTimeMillis;
 
 public class Initializers {
 	private Initializers() {
@@ -46,21 +39,6 @@ public class Initializers {
 				.withThreadPriority(config.get(ofInteger(), "threadPriority", eventloop.getThreadPriority()));
 	}
 
-	public static Initializer<Eventloop> ofEventloopTriggers(TriggerRegistry triggersRegistry, Config config) {
-		return eventloop -> {
-			int businessLogicTimeWarning = config.get(ofInteger(), "businessLogicTime.warning", 10);
-			int businessLogicTimeHigh = config.get(ofInteger(), "businessLogicTime.high", 100);
-			triggersRegistry.add(HIGH, "fatalErrors", () ->
-					TriggerResult.ofError(eventloop.getStats().getFatalErrors()));
-			triggersRegistry.add(WARNING, "businessLogic", () ->
-					TriggerResult.ofValue(eventloop.getStats().getBusinessLogicTime().getSmoothedAverage(),
-							businessLogicTime -> businessLogicTime > businessLogicTimeWarning));
-			triggersRegistry.add(HIGH, "businessLogic", () ->
-					TriggerResult.ofValue(eventloop.getStats().getBusinessLogicTime().getSmoothedAverage(),
-							businessLogicTime -> businessLogicTime > businessLogicTimeHigh));
-		};
-	}
-
 	public static Initializer<AsyncHttpServer> ofHttpServer(Config config) {
 		return server -> server
 				.initialize(ofAbstractServer(config))
@@ -75,26 +53,9 @@ public class Initializers {
 				.withWriteTimeout(config.get(ofDuration(), "writeTimeout", server.getWriteTimeout()));
 	}
 
-	public static Initializer<AsyncHttpServer> ofHttpServerTriggers(TriggerRegistry triggers, Config config) {
-		return server -> {
-			if (server.getStats() == null) return;
-			int servletExceptionTtl = config.get(ofInteger(), "servletException.ttl", 5 * 60);
-			double httpTimeoutsThreshold = config.get(ofDouble(), "httpTimeoutsThreshold", 1.0);
-			triggers.add(HIGH, "servletExceptions", () ->
-					TriggerResult.ofError(server.getStats().getServletExceptions())
-							.whenTimestamp(timestamp -> timestamp > currentTimeMillis() - servletExceptionTtl * 1000L));
-			triggers.add(WARNING, "httpTimeouts", () ->
-					TriggerResult.ofValue(server.getStats().getHttpTimeouts().getSmoothedRate(), timeouts -> timeouts > httpTimeoutsThreshold));
-		};
-	}
-
 	public static Initializer<RemoteFsServer> ofRemoteFsServer(Config config) {
 		return server -> server
 				.initialize(ofAbstractServer(config));
-	}
-
-	public static Initializer<RemoteFsServer> ofRemoteFsServerTriggers(TriggerRegistry triggerRegistry, Config config) {
-		return server -> {}; // TODO
 	}
 
 	public static Initializer<RpcServer> ofRpcServer(Config config) {
@@ -106,20 +67,4 @@ public class Initializers {
 						config.get(ofBoolean(), "rpc.streamProtocol.compression", false))
 				.withAutoFlushInterval(config.get(ofDuration(), "rpc.flushDelay", Duration.ZERO));
 	}
-
-	public static Initializer<TriggersModule> ofThrottlingController(Config config) {
-		double throttlingLow = config.get(ofDouble(), "throttlingLow", 0.1);
-		double throttlingHigh = config.get(ofDouble(), "throttlingHigh", 0.5);
-		return triggersModule -> triggersModule
-				.with(ThrottlingController.class, WARNING, "throttling", throttlingController ->
-						TriggerResult.ofValue(throttlingController.getAvgThrottling(),
-								throttling -> throttling >
-										throttlingLow))
-				.with(ThrottlingController.class, HIGH, "throttling", throttlingController ->
-						TriggerResult.ofValue(throttlingController.getAvgThrottling(),
-								throttling -> throttling >
-										throttlingHigh))
-				;
-	}
-
 }
