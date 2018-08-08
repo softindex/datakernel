@@ -21,50 +21,43 @@ import com.google.inject.Provider;
 import com.google.inject.Scope;
 import io.datakernel.annotation.Nullable;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.function.Supplier;
 
-import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class WorkerPoolScope implements WorkerPools, Scope {
-	final Map<Key<?>, WorkerPoolObjects> pool = new HashMap<>();
-
+public final class WorkerPoolScope implements Scope {
 	@Nullable
-	WorkerPool currentWorkerPool;
-
+	private WorkerPool currentWorkerPool;
 	@Nullable
-	Integer currentWorkerId;
+	private Integer currentWorkerId = -1;
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> Provider<T> scope(Key<T> key, Provider<T> unscoped) {
 		return () -> {
-			checkState(currentWorkerPool != null && currentWorkerId != null,
-					"Use WorkerPool to get instances of %s", key);
-
-			WorkerPoolObjects workerPoolObjects = pool.get(key);
-			if (workerPoolObjects == null) {
-				workerPoolObjects = new WorkerPoolObjects(currentWorkerPool, new Object[currentWorkerPool.workers]);
-				pool.put(key, workerPoolObjects);
-			}
-			checkArgument(workerPoolObjects.workerPool == currentWorkerPool,
-					"%s has been created with different WorkerPool", key);
-			T[] instances = (T[]) workerPoolObjects.objects;
-			T instance = instances[currentWorkerId];
-			if (instance == null) {
-				instance = unscoped.get();
-				instances[currentWorkerId] = instance;
-			}
-			return instance;
+			checkState(currentWorkerPool != null && currentWorkerId != null, "Use WorkerPool to get instances of %s", key);
+			return (T) currentWorkerPool.getOrAdd(key, currentWorkerId, unscoped);
 		};
 	}
 
+	public synchronized <T> T inScope(WorkerPool workerPool, int workerId, Supplier<T> supplier) {
+		int originalWorkerId = currentWorkerId;
+		WorkerPool originalWorkerPool = currentWorkerPool;
+		currentWorkerId = workerId;
+		currentWorkerPool = workerPool;
+		T t = supplier.get();
+		currentWorkerId = originalWorkerId;
+		currentWorkerPool = originalWorkerPool;
+		return t;
+	}
+
+	@Nullable
 	public Integer getCurrentWorkerId() {
 		return currentWorkerId;
 	}
 
-	public WorkerPoolObjects getWorkerPoolObjects(Key<?> key) {
-		return pool.get(key);
+	@Nullable
+	public WorkerPool getCurrentWorkerPool() {
+		return currentWorkerPool;
 	}
 }

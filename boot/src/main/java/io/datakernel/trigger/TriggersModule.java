@@ -19,6 +19,7 @@ package io.datakernel.trigger;
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.ProvisionListener;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
@@ -26,10 +27,10 @@ import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
+import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -46,10 +47,10 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	private final Set<Key<?>> workerKeys = new HashSet<>();
 
 	private final LinkedHashSet<Key<?>> currentlyProvidingSingletonKeys = new LinkedHashSet<>();
-	private final LinkedHashMap<Key<?>, Integer> currentlyProvidingWorkerKeys = new LinkedHashMap<>();
+	private final LinkedHashMap<Key<?>, KeyWithWorkerData> currentlyProvidingWorkerKeys = new LinkedHashMap<>();
 
 	private final Map<Key<?>, List<TriggerRegistryRecorder>> singletonRegistryRecords = new HashMap<>();
-	private final Map<KeyWithWorkerId, List<TriggerRegistryRecorder>> workerRegistryRecords = new HashMap<>();
+	private final Map<KeyWithWorkerData, List<TriggerRegistryRecorder>> workerRegistryRecords = new HashMap<>();
 
 	private final Map<Class<?>, Set<TriggerConfig<?>>> classSettings = new LinkedHashMap<>();
 	private final Map<Key<?>, Set<TriggerConfig<?>>> keySettings = new LinkedHashMap<>();
@@ -81,16 +82,20 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		}
 	}
 
-	private static final class KeyWithWorkerId {
+	private static final class KeyWithWorkerData {
 		private final Key<?> key;
+
+		@Nullable
+		private final WorkerPool pool;
 		private final int workerId;
 
-		private KeyWithWorkerId(Key<?> key) {
-			this(key, -1);
+		private KeyWithWorkerData(Key<?> key) {
+			this(key, null, -1);
 		}
 
-		private KeyWithWorkerId(Key<?> key, int workerId) {
+		private KeyWithWorkerData(Key<?> key, @Nullable WorkerPool pool, int workerId) {
 			this.key = key;
+			this.pool = pool;
 			this.workerId = workerId;
 		}
 
@@ -98,14 +103,22 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		public boolean equals(Object o) {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
-			KeyWithWorkerId that = (KeyWithWorkerId) o;
-			return workerId == that.workerId &&
-					Objects.equals(key, that.key);
+
+			KeyWithWorkerData that = (KeyWithWorkerData) o;
+
+			return workerId == that.workerId
+					&& key.equals(that.key)
+					&& (pool != null ? pool.equals(that.pool) : that.pool == null);
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(key, workerId);
+			return 31 * (31 * key.hashCode() + (pool != null ? pool.hashCode() : 0)) + workerId;
+		}
+
+		@Override
+		public String toString() {
+			return "KeyWithWorkerData{key=" + key + ", pool=" + pool + ", workerId=" + workerId + '}';
 		}
 	}
 
@@ -206,8 +219,10 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 				synchronized (TriggersModule.this) {
 					Key<T> key = provision.getBinding().getKey();
 					Integer workerId = extractWorkerId(provision.getBinding());
-					if (workerId == null) throw new AssertionError(provision.getBinding());
-					currentlyProvidingWorkerKeys.put(key, workerId);
+					WorkerPool workerPool = extractWorkerPool(provision.getBinding());
+					assert workerId != null && workerPool != null : provision.getBinding();
+
+					currentlyProvidingWorkerKeys.put(key, new KeyWithWorkerData(key, workerPool, workerId));
 					if (provision.provision() != null) {
 						workerKeys.add(provision.getBinding().getKey());
 					}
@@ -221,22 +236,24 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 				return binding.getKey().equals(Key.get(TriggerRegistry.class));
 			}
 		}, new ProvisionListener() {
+			@SuppressWarnings("deprecation")
 			@Override
 			public <T> void onProvision(ProvisionInvocation<T> provision) {
 				synchronized (TriggersModule.this) {
 					TriggerRegistryRecorder triggerRegistry = (TriggerRegistryRecorder) provision.provision();
-					if (triggerRegistry != null) {
-						for (int i = provision.getDependencyChain().size() - 1; i >= 0; i--) {
-							Key<?> key = provision.getDependencyChain().get(i).getDependency().getKey();
-							if (currentlyProvidingSingletonKeys.contains(key)) {
-								singletonRegistryRecords.computeIfAbsent(key, $ -> new ArrayList<>()).add(triggerRegistry);
-								break;
-							}
-							if (currentlyProvidingWorkerKeys.keySet().contains(key)) {
-								int workerId = currentlyProvidingWorkerKeys.get(key);
-								workerRegistryRecords.computeIfAbsent(new KeyWithWorkerId(key, workerId), $ -> new ArrayList<>()).add(triggerRegistry);
-								break;
-							}
+					if (triggerRegistry == null) {
+						return;
+					}
+					for (int i = provision.getDependencyChain().size() - 1; i >= 0; i--) {
+						Key<?> key = provision.getDependencyChain().get(i).getDependency().getKey();
+						if (currentlyProvidingSingletonKeys.contains(key)) {
+							singletonRegistryRecords.computeIfAbsent(key, $ -> new ArrayList<>()).add(triggerRegistry);
+							break;
+						}
+						KeyWithWorkerData kwwd = currentlyProvidingWorkerKeys.get(key);
+						if (kwwd != null) {
+							workerRegistryRecords.computeIfAbsent(kwwd, $ -> new ArrayList<>()).add(triggerRegistry);
+							break;
 						}
 					}
 				}
@@ -251,12 +268,12 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		optionalInitializer.accept(this);
 		return new TriggersModuleService() {
 			@Override
-			public void start() throws Exception {
+			public void start() {
 				initialize(injector);
 			}
 
 			@Override
-			public void stop() throws Exception {
+			public void stop() {
 			}
 		};
 	}
@@ -276,14 +293,13 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	private void initialize(Injector injector) {
 		Triggers triggers = injector.getInstance(Triggers.class);
 
-		Map<KeyWithWorkerId, List<TriggerRegistryRecord>> triggersMap = new LinkedHashMap<>();
+		Map<KeyWithWorkerData, List<TriggerRegistryRecord>> triggersMap = new LinkedHashMap<>();
 
 		// register singletons
 		for (Key<?> k : singletonKeys) {
 			Key<Object> key = (Key<Object>) k;
 			Object instance = injector.getInstance(key);
-			Type type = key.getTypeLiteral().getType();
-			KeyWithWorkerId internalKey = new KeyWithWorkerId(key);
+			KeyWithWorkerData internalKey = new KeyWithWorkerData(key);
 
 			scanHasTriggers(triggersMap, internalKey, instance);
 			scanClassSettings(triggersMap, internalKey, instance);
@@ -294,30 +310,30 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		// register workers
 		if (!workerKeys.isEmpty()) {
 			WorkerPools workerPools = injector.getInstance(WorkerPools.class);
-			for (Key<?> k : workerKeys) {
-				Key<Object> key = (Key<Object>) k;
-				List<Object> instances = workerPools.getWorkerPoolObjects(key).getObjects();
+			for (Key<?> key : workerKeys) {
+				for (WorkerPool workerPool : workerPools.getWorkerPools()) {
+					List<?> instances = workerPool.getInstances(key);
+					for (int i = 0; i < instances.size(); i++) {
+						Object instance = instances.get(i);
+						KeyWithWorkerData k = new KeyWithWorkerData(key, workerPool, i);
 
-				for (int i = 0; i < instances.size(); i++) {
-					Object instance = instances.get(i);
-					KeyWithWorkerId internalKey = new KeyWithWorkerId(key, i);
-
-					scanHasTriggers(triggersMap, internalKey, instance);
-					scanClassSettings(triggersMap, internalKey, instance);
-					scanRegistryRecords(triggersMap, internalKey, workerRegistryRecords.getOrDefault(internalKey, emptyList()));
-					scanKeySettings(triggersMap, internalKey, instance);
+						scanHasTriggers(triggersMap, k, instance);
+						scanClassSettings(triggersMap, k, instance);
+						scanRegistryRecords(triggersMap, k, workerRegistryRecords.getOrDefault(k, emptyList()));
+						scanKeySettings(triggersMap, k, instance);
+					}
 				}
 			}
 		}
 
-		for (KeyWithWorkerId keyWithWorkerId : triggersMap.keySet()) {
-			for (TriggerRegistryRecord registryRecord : triggersMap.getOrDefault(keyWithWorkerId, emptyList())) {
-				triggers.addTrigger(registryRecord.severity, prettyPrintSimpleKeyName(keyWithWorkerId.key), registryRecord.name, registryRecord.triggerFunction);
+		for (KeyWithWorkerData keyWithWorkerData : triggersMap.keySet()) {
+			for (TriggerRegistryRecord registryRecord : triggersMap.getOrDefault(keyWithWorkerData, emptyList())) {
+				triggers.addTrigger(registryRecord.severity, prettyPrintSimpleKeyName(keyWithWorkerData.key), registryRecord.name, registryRecord.triggerFunction);
 			}
 		}
 	}
 
-	private void scanHasTriggers(Map<KeyWithWorkerId, List<TriggerRegistryRecord>> triggers, KeyWithWorkerId internalKey, Object instance) {
+	private void scanHasTriggers(Map<KeyWithWorkerData, List<TriggerRegistryRecord>> triggers, KeyWithWorkerData internalKey, Object instance) {
 		if (instance instanceof HasTriggers) {
 			((HasTriggers) instance).registerTriggers(new TriggerRegistry() {
 				@Override
@@ -339,7 +355,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@SuppressWarnings("unchecked")
-	private void scanClassSettings(Map<KeyWithWorkerId, List<TriggerRegistryRecord>> triggers, KeyWithWorkerId internalKey, Object instance) {
+	private void scanClassSettings(Map<KeyWithWorkerData, List<TriggerRegistryRecord>> triggers, KeyWithWorkerData internalKey, Object instance) {
 		for (Class<?> clazz : classSettings.keySet()) {
 			for (TriggerConfig<?> config : classSettings.get(clazz)) {
 				if (clazz.isAssignableFrom(instance.getClass())) {
@@ -351,7 +367,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		}
 	}
 
-	private void scanRegistryRecords(Map<KeyWithWorkerId, List<TriggerRegistryRecord>> triggers, KeyWithWorkerId internalKey, List<TriggerRegistryRecorder> registryRecorders) {
+	private void scanRegistryRecords(Map<KeyWithWorkerData, List<TriggerRegistryRecord>> triggers, KeyWithWorkerData internalKey, List<TriggerRegistryRecorder> registryRecorders) {
 		for (TriggerRegistryRecorder recorder : registryRecorders) {
 			for (TriggerRegistryRecord record : recorder.records) {
 				triggers.computeIfAbsent(internalKey, $ -> new ArrayList<>()).add(record);
@@ -360,7 +376,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@SuppressWarnings("unchecked")
-	private void scanKeySettings(Map<KeyWithWorkerId, List<TriggerRegistryRecord>> triggers, KeyWithWorkerId internalKey, Object instance) {
+	private void scanKeySettings(Map<KeyWithWorkerData, List<TriggerRegistryRecord>> triggers, KeyWithWorkerData internalKey, Object instance) {
 		Key<Object> key = (Key<Object>) internalKey.key;
 		for (TriggerConfig<?> config : keySettings.getOrDefault(key, emptySet())) {
 			triggers.computeIfAbsent(internalKey, $ -> new ArrayList<>())

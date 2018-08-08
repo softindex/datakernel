@@ -24,8 +24,6 @@ import com.google.inject.spi.ProvisionListener;
 import java.lang.annotation.Annotation;
 
 public final class WorkerPoolModule extends AbstractModule {
-	private WorkerPoolScope workerPoolScope;
-
 	public static boolean isWorkerScope(Binding<?> binding) {
 		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
 			@Override
@@ -52,8 +50,8 @@ public final class WorkerPoolModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		workerPoolScope = new WorkerPoolScope();
-
+		WorkerPoolScope scope = new WorkerPoolScope();
+		WorkerPools workerPools = new WorkerPools();
 		Provider<Injector> injectorProvider = getProvider(Injector.class);
 		bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
@@ -64,21 +62,14 @@ public final class WorkerPoolModule extends AbstractModule {
 			@Override
 			public <T> void onProvision(ProvisionInvocation<T> provision) {
 				WorkerPool workerPool = (WorkerPool) provision.provision();
-				workerPool.injector = injectorProvider.get();
-				workerPool.poolScope = workerPoolScope;
+				workerPool.setInjector(injectorProvider.get());
+				workerPool.setScopeInstance(scope);
+				workerPools.addWorkerPool(workerPool);
 			}
 		});
 
-		bindScope(Worker.class, workerPoolScope);
-		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(() -> workerPoolScope.currentWorkerId);
-	}
-
-	public WorkerPoolObjects getPoolObjects(Key<?> key) {
-		return workerPoolScope.getWorkerPoolObjects(key);
-	}
-
-	@Provides
-	WorkerPools workerPools() {
-		return workerPoolScope;
+		bindScope(Worker.class, scope);
+		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(scope::getCurrentWorkerId);
+		bind(WorkerPools.class).toInstance(workerPools);
 	}
 }

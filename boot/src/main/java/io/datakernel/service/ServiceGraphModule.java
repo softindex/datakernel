@@ -32,7 +32,7 @@ import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPoolModule;
-import io.datakernel.worker.WorkerPoolObjects;
+import io.datakernel.worker.WorkerPools;
 import org.slf4j.Logger;
 
 import javax.sql.DataSource;
@@ -95,8 +95,6 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	private final IdentityHashMap<Object, CachedService> services = new IdentityHashMap<>();
 
 	private final Executor executor;
-
-	private WorkerPoolModule workerPoolModule;
 
 	private ServiceGraph serviceGraph;
 
@@ -229,7 +227,9 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 	private static Throwable getRootCause(Throwable throwable) {
 		Throwable cause;
-		while ((cause = throwable.getCause()) != null) throwable = cause;
+		while ((cause = throwable.getCause()) != null) {
+			throwable = cause;
+		}
 		return throwable;
 	}
 
@@ -313,6 +313,8 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	private void createGuiceGraph(Injector injector, ServiceGraph graph) {
+		WorkerPools workerPools = injector.getInstance(WorkerPools.class);
+
 		if (!difference(keys.keySet(), injector.getAllBindings().keySet()).isEmpty()) {
 			logger.warn("Unused services : {}", difference(keys.keySet(), injector.getAllBindings().keySet()));
 		}
@@ -324,8 +326,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		}
 
 		for (Key<?> key : workerKeys) {
-			WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
-			Service service = getWorkersServiceOrNull(key, poolObjects.getObjects());
+			Service service = getWorkersServiceOrNull(key, workerPools.getAllObjects(key));
 			graph.add(key, service);
 		}
 
@@ -360,8 +361,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 	@Override
 	protected void configure() {
-		workerPoolModule = new WorkerPoolModule();
-		install(workerPoolModule);
+		install(new WorkerPoolModule());
 		bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
 			public boolean matches(Binding<?> binding) {
@@ -420,8 +420,8 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	@Provides
 	@Singleton
 	synchronized ServiceGraph serviceGraph(Injector injector,
-	                                       OptionalInitializer<ServiceGraphModule> serviceGraphModuleOptionalInitializer,
-	                                       OptionalInitializer<ServiceGraph> serviceGraphOptionalInitializer) {
+			OptionalInitializer<ServiceGraphModule> serviceGraphModuleOptionalInitializer,
+			OptionalInitializer<ServiceGraph> serviceGraphOptionalInitializer) {
 		serviceGraphModuleOptionalInitializer.accept(this);
 		if (serviceGraph == null) {
 			serviceGraph = ServiceGraph.create()
@@ -430,8 +430,8 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 						serviceGraph.removeIntermediateNodes();
 					})
 					.withNodeSuffixes(key -> {
-						WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
-						return poolObjects != null ? poolObjects.getObjects().size() : null;
+						List<?> list = injector.getInstance(WorkerPools.class).getAllObjects(key);
+						return list.isEmpty() ? null : list.size();
 					})
 					.initialize(initializer)
 					.initialize(serviceGraphOptionalInitializer);

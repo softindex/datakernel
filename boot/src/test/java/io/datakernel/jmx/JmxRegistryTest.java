@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import com.google.inject.BindingAnnotation;
 import com.google.inject.Key;
+import io.datakernel.worker.WorkerPool;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
@@ -31,6 +32,7 @@ import java.lang.annotation.RetentionPolicy;
 
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 public class JmxRegistryTest {
 
@@ -42,13 +44,14 @@ public class JmxRegistryTest {
 	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);
 	private final String domain = ServiceStub.class.getPackage().getName();
 	private final MBeanSettings settings = MBeanSettings.defaultSettings();
+	private final WorkerPool workerPool = new WorkerPool(3);
 
 	@Test
 	public void registerSingletonInstanceWithout_Annotation_AndComposeAppropriateObjectName() throws Exception {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory).createFor(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub")));
@@ -64,7 +67,7 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory).createFor(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
@@ -82,7 +85,7 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory).createFor(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub,Group=major")));
@@ -99,7 +102,7 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory).createFor(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(
@@ -133,13 +136,13 @@ public class JmxRegistryTest {
 
 		context.checking(new Expectations() {{
 			// creating DynamicMBeans for each worker separately
-			allowing(mbeanFactory).createFor(with(asList(worker_1)), with(any(MBeanSettings.class)), with(false));
+			allowing(mbeanFactory).createFor(with(singletonList(worker_1)), with(any(MBeanSettings.class)), with(false));
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(with(asList(worker_2)), with(any(MBeanSettings.class)), with(false));
+			allowing(mbeanFactory).createFor(with(singletonList(worker_2)), with(any(MBeanSettings.class)), with(false));
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(with(asList(worker_3)), with(any(MBeanSettings.class)), with(false));
+			allowing(mbeanFactory).createFor(with(singletonList(worker_3)), with(any(MBeanSettings.class)), with(false));
 			will(returnValue(dynamicMBean));
 
 			// creating DynamicMBean for worker pool
@@ -151,13 +154,13 @@ public class JmxRegistryTest {
 			// checking calls and names for each worker separately
 			oneOf(mBeanServer).registerMBean(
 					with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-0")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-0,workerPool=" + workerPool.toString())));
 			oneOf(mBeanServer).registerMBean(
 					with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-1")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-1,workerPool=" + workerPool.toString())));
 			oneOf(mBeanServer).registerMBean(
 					with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-2")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-2,workerPool=" + workerPool.toString())));
 
 			// checking calls and names for worker_pool DynamicMBean
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
@@ -167,7 +170,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.registerWorkers(key, asList(worker_1, worker_2, worker_3), settings);
+		jmxRegistry.registerWorkers(workerPool, key, asList(worker_1, worker_2, worker_3), settings);
 	}
 
 	@Test
@@ -179,11 +182,11 @@ public class JmxRegistryTest {
 		context.checking(new Expectations() {{
 			// checking calls and names for each worker separately
 			oneOf(mBeanServer).unregisterMBean(
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-0")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-0,workerPool=" + workerPool.toString())));
 			oneOf(mBeanServer).unregisterMBean(
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-1")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-1,workerPool=" + workerPool.toString())));
 			oneOf(mBeanServer).unregisterMBean(
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-2")));
+					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,workerId=worker-2,workerPool=" + workerPool.toString())));
 
 			// checking calls and names for worker_pool DynamicMBean
 			oneOf(mBeanServer).unregisterMBean(
@@ -193,7 +196,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.unregisterWorkers(key, asList(worker_1, worker_2, worker_3));
+		jmxRegistry.unregisterWorkers(workerPool, key, asList(worker_1, worker_2, worker_3));
 	}
 
 	// annotations

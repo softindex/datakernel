@@ -32,6 +32,7 @@ import io.datakernel.util.StringFormatUtils;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
+import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 
@@ -43,6 +44,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -168,7 +170,11 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		bind(new TypeLiteral<OptionalDependency<ServiceGraph>>() {}).asEagerSingleton();
 		bind(new TypeLiteral<RequiredDependency<JmxModuleService>>() {}).asEagerSingleton();
 
-		bindListener(new AbstractMatcher<Binding<?>>() {
+		bindKeyListeners(binder(), this, b -> singletonKeys.add(b.getKey()), b -> workerKeys.add(b.getKey()));
+	}
+
+	public static void bindKeyListeners(Binder binder, Object lock, Consumer<Binding<?>> singletonBindingConsumer, Consumer<Binding<?>> workerBindingConsumer) {
+		binder.bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
 			public boolean matches(Binding<?> binding) {
 				return WorkerPoolModule.isWorkerScope(binding);
@@ -176,14 +182,14 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		}, new ProvisionListener() {
 			@Override
 			public <T> void onProvision(ProvisionInvocation<T> provision) {
-				synchronized (JmxModule.this) {
+				synchronized (lock) {
 					if (provision.provision() != null) {
-						workerKeys.add(provision.getBinding().getKey());
+						workerBindingConsumer.accept(provision.getBinding());
 					}
 				}
 			}
 		});
-		bindListener(new AbstractMatcher<Binding<?>>() {
+		binder.bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
 			public boolean matches(Binding<?> binding) {
 				return isSingleton(binding);
@@ -191,9 +197,9 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		}, new ProvisionListener() {
 			@Override
 			public <T> void onProvision(ProvisionInvocation<T> provision) {
-				synchronized (JmxModule.this) {
+				synchronized (lock) {
 					if (provision.provision() != null) {
-						singletonKeys.add(provision.getBinding().getKey());
+						singletonBindingConsumer.accept(provision.getBinding());
 					}
 				}
 			}
@@ -203,52 +209,9 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	@Provides
 	@Singleton
 	JmxModuleService service(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory,
-	                         OptionalInitializer<JmxModule> optionalInitializer) {
+			OptionalInitializer<JmxModule> optionalInitializer) {
 		optionalInitializer.accept(this);
 		return new JmxModuleService() {
-			private void registerJmxMBeans() {
-				// register ByteBufPool
-				Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufPoolStats.class);
-				jmxRegistry.registerSingleton(byteBufPoolKey, ByteBufPool.getStats(), MBeanSettings.defaultSettings().withCustomTypes(customTypes));
-
-				Map<Type, List<Object>> globalMBeanObjects = new HashMap<>();
-
-				// register singletons
-				for (Key<?> key : singletonKeys) {
-					Object instance = injector.getInstance(key);
-					jmxRegistry.registerSingleton(key, instance, ensureSettingsFor(key));
-
-					Type type = key.getTypeLiteral().getType();
-					if (globalMBeans.containsKey(type)) {
-						globalMBeanObjects.computeIfAbsent(type, type1 -> new ArrayList<>()).add(instance);
-					}
-				}
-
-				// register workers
-				if (!workerKeys.isEmpty()) {
-					WorkerPools workerPools = injector.getInstance(WorkerPools.class);
-					for (Key<?> key : workerKeys) {
-						List<?> objects = workerPools.getWorkerPoolObjects(key).getObjects();
-						jmxRegistry.registerWorkers(key, objects, ensureSettingsFor(key));
-
-						Type type = key.getTypeLiteral().getType();
-						if (globalMBeans.containsKey(type)) {
-							for (Object workerObject : objects) {
-								globalMBeanObjects.computeIfAbsent(type, type1 -> new ArrayList<>()).add(workerObject);
-							}
-						}
-					}
-				}
-
-				for (Type type : globalMBeanObjects.keySet()) {
-					List<Object> objects = globalMBeanObjects.get(type);
-					Key<?> key = globalMBeans.get(type);
-					DynamicMBean globalMBean =
-							mbeanFactory.createFor(objects, ensureSettingsFor(key), false);
-					jmxRegistry.registerSingleton(key, globalMBean, null);
-				}
-			}
-
 			private MBeanSettings ensureSettingsFor(Key<?> key) {
 				MBeanSettings settings = MBeanSettings.defaultSettings()
 						.withCustomTypes(customTypes);
@@ -283,14 +246,16 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 				// register workers
 				if (!workerKeys.isEmpty()) {
 					WorkerPools workerPools = injector.getInstance(WorkerPools.class);
-					for (Key<?> key : workerKeys) {
-						List<?> objects = workerPools.getWorkerPoolObjects(key).getObjects();
-						jmxRegistry.registerWorkers(key, objects, ensureSettingsFor(key));
+					for (WorkerPool workerPool : workerPools.getWorkerPools()) {
+						for (Key<?> key : workerKeys) {
+							List<?> objects = workerPools.getAllObjects(key);
+							jmxRegistry.registerWorkers(workerPool, key, objects, ensureSettingsFor(key));
 
-						Type type = key.getTypeLiteral().getType();
-						if (globalMBeans.containsKey(type)) {
-							for (Object workerObject : objects) {
-								globalMBeanObjects.computeIfAbsent(type, type1 -> new ArrayList<>()).add(workerObject);
+							Type type = key.getTypeLiteral().getType();
+							if (globalMBeans.containsKey(type)) {
+								for (Object workerObject : objects) {
+									globalMBeanObjects.computeIfAbsent(type, type1 -> new ArrayList<>()).add(workerObject);
+								}
 							}
 						}
 					}

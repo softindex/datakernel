@@ -170,8 +170,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	// region building tree of AttributeNodes
 	private List<AttributeNode> createNodesFor(Class<?> clazz, Class<?> mbeanClass,
-	                                           String[] includedOptionalAttrs, Method getter,
-	                                           Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+			String[] includedOptionalAttrs, Method getter,
+			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 
 		Set<String> includedOptionals = new HashSet<>(asList(includedOptionalAttrs));
 		List<AttributeDescriptor> attrDescriptors = fetchAttributeDescriptors(clazz, customTypes);
@@ -277,10 +277,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	@SuppressWarnings("unchecked")
 	private AttributeNode createAttributeNodeFor(String attrName, String attrDescription, Type attrType,
-	                                             boolean included,
-	                                             JmxAttribute attrAnnotation,
-	                                             Method getter, Method setter, Class<?> mbeanClass,
-	                                             Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+			boolean included,
+			JmxAttribute attrAnnotation,
+			Method getter, Method setter, Class<?> mbeanClass,
+			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		ValueFetcher defaultFetcher = getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 		if (attrType instanceof Class) {
 			// 4 cases: custom-type, simple-type, JmxRefreshableStats, POJO
@@ -452,9 +452,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private AttributeNode createNodeForParametrizedType(String attrName, String attrDescription,
-														ParameterizedType pType, boolean included,
-														Method getter, Method setter, Class<?> mbeanClass,
-														Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+			ParameterizedType pType, boolean included,
+			Method getter, Method setter, Class<?> mbeanClass,
+			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		ValueFetcher fetcher = createAppropriateFetcher(getter);
 		Class<?> rawType = (Class<?>) pType.getRawType();
 
@@ -474,11 +474,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	@SuppressWarnings("unchecked")
 	private AttributeNodeForConverterType createConverterAttributeNodeFor(String attrName, String attrDescription,
-																		  ParameterizedType type, boolean included,
-																		  ValueFetcher fetcher, Method setter,
-																		  Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+			ParameterizedType type, boolean included,
+			ValueFetcher fetcher, Method setter,
+			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		Type[] actualTypes = type.getActualTypeArguments();
-		for (Type genericType: actualTypes) {
+		for (Type genericType : actualTypes) {
 			if (!customTypes.containsKey(genericType)) {
 				throw new IllegalArgumentException("There is no support for generic type " + type.getTypeName());
 			}
@@ -488,10 +488,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private AttributeNodeForList createListAttributeNodeFor(String attrName, String attrDescription,
-															boolean included,
-															ValueFetcher fetcher,
-															Type listElementType, Class<?> mbeanClass,
-															Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+			boolean included,
+			ValueFetcher fetcher,
+			Type listElementType, Class<?> mbeanClass,
+			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		if (listElementType instanceof Class<?>) {
 			Class<?> listElementClass = (Class<?>) listElementType;
 			boolean isListOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(listElementClass));
@@ -522,9 +522,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private AttributeNodeForMap createMapAttributeNodeFor(String attrName, String attrDescription,
-														  boolean included, ValueFetcher fetcher,
-														  Type valueType, Class<?> mbeanClass,
-														  Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+			boolean included, ValueFetcher fetcher,
+			Type valueType, Class<?> mbeanClass,
+			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		boolean isMapOfJmxRefreshable = false;
 		AttributeNode node;
 		if (valueType instanceof Class<?>) {
@@ -570,8 +570,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private Runnable createRefreshTask(Eventloop eventloop,
-									   List<JmxRefreshable> previousList,
-									   int previousRefreshes) {
+			List<JmxRefreshable> previousList,
+			int previousRefreshes) {
 		return () -> {
 			long currentTime = eventloop.currentTimeMillis();
 
@@ -621,8 +621,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	// region creating jmx metadata - MBeanInfo
 	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode,
-											 Class<?> monitorableClass,
-											 boolean enableRefresh) {
+			Class<?> monitorableClass,
+			boolean enableRefresh) {
 		String monitorableName = "";
 		String monitorableDescription = "";
 		MBeanAttributeInfo[] attributes = rootNode != null ?
@@ -857,8 +857,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final Map<OperationKey, Method> opkeyToMethod;
 
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends MBeanWrapper> mbeanWrappers,
-									  AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod,
-									  boolean refreshEnabled) {
+				AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod,
+				boolean refreshEnabled) {
 			this.mBeanInfo = mBeanInfo;
 			this.mbeanWrappers = mbeanWrappers;
 

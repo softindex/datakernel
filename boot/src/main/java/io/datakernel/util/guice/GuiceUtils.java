@@ -3,7 +3,9 @@ package io.datakernel.util.guice;
 import com.google.inject.*;
 import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.DefaultBindingScopingVisitor;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.util.SimpleType;
+import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolScope;
 
 import java.lang.annotation.Annotation;
@@ -84,8 +86,19 @@ public final class GuiceUtils {
 	public static Integer extractWorkerId(Binding<?> binding) {
 		return binding.acceptScopingVisitor(new DefaultBindingScopingVisitor<Integer>() {
 			@Override
+			@Nullable
 			public Integer visitScope(Scope scope) {
 				return scope instanceof WorkerPoolScope ? ((WorkerPoolScope) scope).getCurrentWorkerId() : null;
+			}
+		});
+	}
+
+	public static WorkerPool extractWorkerPool(Binding<?> binding) {
+		return binding.acceptScopingVisitor(new DefaultBindingScopingVisitor<WorkerPool>() {
+			@Override
+			@Nullable
+			public WorkerPool visitScope(Scope scope) {
+				return scope instanceof WorkerPoolScope ? ((WorkerPoolScope) scope).getCurrentWorkerPool() : null;
 			}
 		});
 	}
