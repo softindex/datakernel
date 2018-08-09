@@ -144,4 +144,9 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 		}
 		return Integer.toString(count) + last;
 	}
+
+	@Nullable
+	public Object getContext(){
+		return context;
+	}
 }

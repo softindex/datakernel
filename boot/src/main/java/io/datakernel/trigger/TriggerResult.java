@@ -19,14 +19,14 @@ public final class TriggerResult {
 	private final Object value;
 	private final int count;
 
-	TriggerResult(long timestamp, Throwable throwable, Object value, int count) {
+	TriggerResult(long timestamp, @Nullable Throwable throwable, @Nullable Object value, int count) {
 		this.timestamp = timestamp;
 		this.throwable = throwable;
 		this.value = value;
 		this.count = count;
 	}
 
-	TriggerResult(long timestamp, Throwable throwable, Object context) {
+	TriggerResult(long timestamp, @Nullable Throwable throwable, @Nullable Object context) {
 		this(timestamp, throwable, context, 1);
 	}
 
@@ -38,7 +38,11 @@ public final class TriggerResult {
 		return new TriggerResult(0L, null, null);
 	}
 
-	public static TriggerResult create(long timestamp, Throwable throwable, Object value) {
+	public static TriggerResult create(long timestamp, Throwable throwable, int count) {
+		return new TriggerResult(timestamp, throwable, null, count);
+	}
+
+	public static TriggerResult create(long timestamp, @Nullable Throwable throwable, @Nullable Object value) {
 		return new TriggerResult(timestamp, throwable, value);
 	}
 
@@ -102,7 +106,11 @@ public final class TriggerResult {
 	public static TriggerResult ofError(ExceptionStats exceptionStats) {
 		Throwable lastException = exceptionStats.getLastException();
 		return lastException != null ?
-				create(exceptionStats.getLastTime().toEpochMilli(), lastException, exceptionStats.getTotal()) : NONE;
+				create(exceptionStats.getLastTime() != null ?
+								exceptionStats.getLastTime().toEpochMilli() :
+								0,
+						lastException, exceptionStats.getTotal()) :
+				NONE;
 	}
 
 	public static TriggerResult ofValue(Object value) {

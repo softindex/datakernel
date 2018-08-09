@@ -74,7 +74,7 @@ public abstract class RpcServerLauncher extends Launcher {
 
 					@Provides
 					Initializer<TriggersModule> triggersModuleInitializer(Config config) {
-						return ofTriggersModule(config.getChild("triggers"));
+						return ofThrottlingController(config.getChild("triggers"));
 					}
 				}
 		);

@@ -55,7 +55,7 @@ public abstract class HttpServerLauncher extends Launcher {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				TriggersModule.defaultInstance(),
+				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
@@ -84,7 +84,7 @@ public abstract class HttpServerLauncher extends Launcher {
 
 					@Provides
 					Initializer<TriggersModule> triggersModuleInitializer(Config config) {
-						return ofTriggersModule(config.getChild("triggers"));
+						return ofThrottlingController(config.getChild("triggers"));
 					}
 				}
 		);

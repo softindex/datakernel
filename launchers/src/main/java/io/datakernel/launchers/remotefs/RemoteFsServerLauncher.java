@@ -43,7 +43,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				TriggersModule.defaultInstance(),
+				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
 								.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))

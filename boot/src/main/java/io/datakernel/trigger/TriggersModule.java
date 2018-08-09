@@ -19,7 +19,6 @@ package io.datakernel.trigger;
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.ProvisionListener;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
@@ -36,7 +35,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static com.google.common.collect.Iterators.getLast;
-import static io.datakernel.trigger.Severity.HIGH;
 import static io.datakernel.util.guice.GuiceUtils.*;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
@@ -62,7 +60,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		private final Function<T, TriggerResult> triggerFunction;
 
 		TriggerConfig(Severity severity, String name,
-		              Function<T, TriggerResult> triggerFunction) {
+				Function<T, TriggerResult> triggerFunction) {
 			this.severity = severity;
 			this.name = name;
 			this.triggerFunction = triggerFunction;
@@ -157,25 +155,19 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		return new TriggersModule();
 	}
 
-	public static TriggersModule defaultInstance() {
-		return create()
-				.with(Eventloop.class, HIGH, "fatalErrors", eventloop ->
-						TriggerResult.ofError(eventloop.getStats().getFatalErrors()));
-	}
-
 	public TriggersModule withNaming(Function<Key<?>, String> keyToString) {
 		this.keyToString = keyToString;
 		return this;
 	}
 
 	public <T> TriggersModule with(Class<T> type, Severity severity, String name,
-	                               Function<T, TriggerResult> triggerFunction) {
+			Function<T, TriggerResult> triggerFunction) {
 		classSettings.computeIfAbsent(type, $ -> new LinkedHashSet<>()).add(new TriggerConfig<>(severity, name, triggerFunction));
 		return this;
 	}
 
 	public <T> TriggersModule with(Key<T> key, Severity severity, String name,
-	                               Function<T, TriggerResult> triggerFunction) {
+			Function<T, TriggerResult> triggerFunction) {
 		keySettings.computeIfAbsent(key, $ -> new LinkedHashSet<>()).add(new TriggerConfig<>(severity, name, triggerFunction));
 		return this;
 	}
@@ -255,7 +247,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	@Provides
 	@Singleton
 	TriggersModuleService service(Injector injector, Triggers triggers,
-	                              OptionalInitializer<TriggersModule> optionalInitializer) {
+			OptionalInitializer<TriggersModule> optionalInitializer) {
 		optionalInitializer.accept(this);
 		return new TriggersModuleService() {
 			@Override
