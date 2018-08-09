@@ -47,12 +47,11 @@ public final class StringFormatUtils {
 			long divideResult = bytes / unit;
 			long remainder = bytes % unit;
 
-			if (divideResult != 0) {
-				if (remainder == 0) {
-					return divideResult + getUnit(unit);
-				} else {
-					return "" + bytes;
-				}
+			if (divideResult == 0) {
+				continue;
+			}
+			if (remainder == 0) {
+				return divideResult + getUnit(unit);
 			}
 		}
 	}
@@ -69,7 +68,7 @@ public final class StringFormatUtils {
 				case (int) MemSize.KB:
 					return "Kb";
 				case 1:
-					return "b";
+					return "";
 				default:
 					throw new IllegalArgumentException("Wrong unit");
 			}

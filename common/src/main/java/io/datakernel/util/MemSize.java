@@ -18,6 +18,9 @@ package io.datakernel.util;
 
 import java.util.function.Function;
 
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkState;
+
 public final class MemSize {
 	public static final long KB = 1024;
 	public static final long MB = 1024 * KB;
@@ -31,6 +34,7 @@ public final class MemSize {
 	}
 
 	public static MemSize of(long bytes) {
+		checkArgument(bytes >= 0, "Cannot create MemSize of negative value");
 		return new MemSize(bytes);
 	}
 
@@ -39,18 +43,22 @@ public final class MemSize {
 	}
 
 	public static MemSize kilobytes(long kilobytes) {
+		checkArgument(kilobytes <= Long.MAX_VALUE/KB, "Resulting number of bytes exceeds Long.MAX_VALUE");
 		return of(kilobytes * KB);
 	}
 
 	public static MemSize megabytes(long megabytes) {
+		checkArgument(megabytes <= Long.MAX_VALUE/MB, "Resulting number of bytes exceeds Long.MAX_VALUE");
 		return of(megabytes * MB);
 	}
 
 	public static MemSize gigabytes(long gigabytes) {
+		checkArgument(gigabytes <= Long.MAX_VALUE/GB, "Resulting number of bytes exceeds Long.MAX_VALUE");
 		return of(gigabytes * GB);
 	}
 
 	public static MemSize terabytes(long terabytes) {
+		checkArgument(terabytes <= Long.MAX_VALUE/TB, "Resulting number of bytes exceeds Long.MAX_VALUE");
 		return of(terabytes * TB);
 	}
 

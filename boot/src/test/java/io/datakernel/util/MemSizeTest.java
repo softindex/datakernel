@@ -16,12 +16,15 @@
 
 package io.datakernel.util;
 
-import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import static org.junit.Assert.assertEquals;
 
 public class MemSizeTest {
+	@Rule
+	public ExpectedException exception = ExpectedException.none();
 
 	@Test
 	public void testMemSize() {
@@ -32,7 +35,7 @@ public class MemSizeTest {
 		assertEquals(bytes, MemSize.valueOf("0 b").toLong());
 
 		bytes = 512;
-		assertEquals(bytes + "b", MemSize.of(bytes).format());
+		assertEquals("" + bytes, MemSize.of(bytes).format());
 		assertEquals(bytes, MemSize.valueOf("512").toLong());
 
 		bytes = 1024;
@@ -107,16 +110,30 @@ public class MemSizeTest {
 		bytes = 1024L * 1024L * 1024L * 1024L * 2 + 1024L * 1024L * 1024L * 3 + 1024L * 1024L * 228 + 1;
 		assertEquals(MemSize.valueOf("2 Tb 3gb 1b 228mb").format(), MemSize.of(bytes).format());
 
-		try {
-			MemSize.valueOf("2.2b");
-			Assert.fail();
-		} catch (IllegalArgumentException ignored) {
-		}
+		MemSize memSize = MemSize.kilobytes(1423998);
+		assertEquals(1458173952L, memSize.toLong());
+		assertEquals("1423998Kb", StringFormatUtils.formatMemSize(memSize));
+	}
 
-		try {
-			MemSize.valueOf("2.2");
-			Assert.fail();
-		} catch (IllegalArgumentException ignored) {
-		}
+	@Test
+	public void testParsingExceptions() {
+		exception.expect(IllegalArgumentException.class);
+		exception.expectMessage("MemSize unit bytes cannot be fractional");
+		MemSize.valueOf("2.2b");
+	}
+
+	@Test
+	public void testLongOverflow() {
+		exception.expect(IllegalArgumentException.class);
+		exception.expectMessage("Resulting number of bytes exceeds Long.MAX_VALUE");
+		MemSize.kilobytes(Long.MAX_VALUE);
+	}
+
+	@Test
+	public void testMemSizeOfNegative() {
+		exception.expect(IllegalArgumentException.class);
+		exception.expectMessage("Cannot create MemSize of negative value");
+		MemSize.kilobytes(-1);
+
 	}
 }
