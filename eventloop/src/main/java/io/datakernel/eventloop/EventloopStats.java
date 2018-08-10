@@ -47,9 +47,9 @@ public final class EventloopStats {
 	EventloopStats(Eventloop.ExtraStatsExtractor extraStatsExtractor) {
 		loops = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
 		selectorSelectTimeout = ValueStats.create(DEFAULT_SMOOTHING_WINDOW)
-				.withHistogram(new int[]{-256, -128, -64, -32, -16, -8, -4, -2, -1, 0, 1, 2, 4, 8, 16, 32});
-		selectorSelectTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
-		businessLogicTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+				.withHistogram(new int[]{-256, -128, -64, -32, -16, -8, -4, -2, -1, 0, 1, 2, 4, 8, 16, 32}).withUnit("milliseconds");
+		selectorSelectTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");
+		businessLogicTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");
 		tasks = new Tasks(extraStatsExtractor);
 		keys = new Keys();
 		fatalErrors = ExceptionStats.create();
@@ -269,8 +269,8 @@ public final class EventloopStats {
 
 		public TaskStats(Count count) {
 			this.tasksPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
-			this.loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
-			this.oneTaskTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+			this.loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");
+			this.oneTaskTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("microseconds");
 			this.longestTask = new DurationRunnable();
 			this.count = count;
 		}
@@ -285,7 +285,7 @@ public final class EventloopStats {
 			return loopTime;
 		}
 
-		@JmxAttribute(name = "oneTaskTime(μs)", extraSubAttributes = "histogram")
+		@JmxAttribute(extraSubAttributes = "histogram")
 		public ValueStats getOneTaskTime() {
 			return oneTaskTime;
 		}
@@ -306,7 +306,7 @@ public final class EventloopStats {
 
 		public ScheduledTaskStats(Count count) {
 			super(count);
-			overdues = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+			overdues = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withRate().withUnit("milliseconds");
 		}
 
 		@JmxAttribute(extraSubAttributes = "histogram")
@@ -326,14 +326,14 @@ public final class EventloopStats {
 		private final ValueStats oneKeyTime;
 
 		public Keys() {
-			all = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
-			invalid = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+			all = EventStats.create(DEFAULT_SMOOTHING_WINDOW).withRateUnit("keys");
+			invalid = EventStats.create(DEFAULT_SMOOTHING_WINDOW).withRateUnit("keys");
 			acceptPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
 			connectPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
 			readPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
 			writePerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
-			loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
-			oneKeyTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+			loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");
+			oneKeyTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("microseconds");
 		}
 
 		@JmxAttribute
@@ -371,7 +371,7 @@ public final class EventloopStats {
 			return loopTime;
 		}
 
-		@JmxAttribute(name = "oneKeyTime(μs)", extraSubAttributes = "histogram")
+		@JmxAttribute(extraSubAttributes = "histogram")
 		public ValueStats getOneKeyTime() {
 			return oneKeyTime;
 		}

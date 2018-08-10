@@ -48,7 +48,7 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 	private StageStats stageProcessLogs = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private StageStats stageProcessLogsImpl = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private ValueStats addedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private ValueStats addedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private ValueStats addedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withRate();
 
 	CubeLogProcessorController(Eventloop eventloop, List<LogOTProcessor<?, CubeDiff>> logProcessors, OTSystem<LogDiff<CubeDiff>> otSystem, AggregationChunkStorage chunkStorage, OTStateManager<Integer, LogDiff<CubeDiff>> stateManager, AsyncPredicate<Integer> predicate) {
 		this.eventloop = eventloop;

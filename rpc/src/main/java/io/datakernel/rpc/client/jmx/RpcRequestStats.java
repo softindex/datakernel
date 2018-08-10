@@ -36,8 +36,8 @@ public final class RpcRequestStats implements JmxRefreshable {
 		failedRequests = EventStats.create(smoothingWindow);
 		rejectedRequests = EventStats.create(smoothingWindow);
 		expiredRequests = EventStats.create(smoothingWindow);
-		responseTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-		overdues = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+		responseTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");
+		overdues = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO).withRate().withUnit("milliseconds");
 		serverExceptions = ExceptionStats.create();
 	}
 

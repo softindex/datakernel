@@ -48,6 +48,45 @@ public class EventStatsTest {
 	}
 
 	@Test
+	public void ifRateIsFloatEventStatsShouldApproximateThatRateAfterEnoughTimePassed() {
+		EventStats eventStats = EventStats.create(Duration.ofSeconds(1));
+		long currentTimestamp = 0;
+		int events = 10000;
+		double rate = 20.0;
+		double period = 1.0 / rate;
+		int periodInMillis = (int) (period * 1000);
+
+		for (int i = 0; i < 100; i++) {
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+		assertEquals(0, eventStats.getSmoothedRate(), 0.1);
+
+
+		for (int i = 0; i < events; i++) {
+			eventStats.recordEvent();
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+		assertEquals(rate, eventStats.getSmoothedRate(), 1E-5);
+
+
+		for (int i = 0; i < 250; i++) {
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+		assertEquals(0, eventStats.getSmoothedRate(), 0.1);
+
+
+		for (int i = 0; i < events; i++) {
+			eventStats.recordEvent();
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+		assertEquals(rate, eventStats.getSmoothedRate(), 1E-5);
+	}
+
+	@Test
 	public void counterShouldResetRateAfterResetMethodCall() {
 		Duration smoothingWindow = Duration.ofSeconds(1);
 		EventStats eventStats = EventStats.create(smoothingWindow);
@@ -162,5 +201,116 @@ public class EventStatsTest {
 
 	public static int uniformRandom(int min, int max) {
 		return min + Math.abs(RANDOM.nextInt()) % (max - min + 1);
+	}
+
+	@Test
+	public void itShouldProperlyBuildString() {
+		Duration smoothingWindow = Duration.ofSeconds(1);
+		EventStats eventStats = EventStats.create(smoothingWindow);
+		long currentTimestamp = 0;
+		int events = 1000;
+		double rate = 6;
+		double period = 1.0 / rate;
+		int periodInMillis = (int) (period * 1000);
+
+		for (int i = 0; i < events; i++) {
+			eventStats.recordEvent();
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+		assertEquals("1000 @ 6.024/second", eventStats.toString());
+
+		eventStats.withRateUnit("records");
+		assertEquals("1000 @ 6.024 records/second", eventStats.toString());
+
+		rate = 0.0555464;
+		period = 1.0 / rate;
+		periodInMillis = (int) (period * 1000);
+
+		for (int i = 0; i < events * 5; i++) {
+			eventStats.recordEvent();
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+
+		assertEquals("6000 @ 0.05555 records/second", eventStats.toString());
+	}
+
+	@Test
+	public void testPrecision() {
+		Duration smoothingWindow = Duration.ofSeconds(1);
+		EventStats eventStats = EventStats.create(smoothingWindow);
+		long currentTimestamp = 0;
+		int events = 1000;
+
+		// Rate is ~ 0.1 - precision should be 0.1/1000 = 0.0001 (4 digits)
+		double rate = 0.11234567;
+		double period = 1.0 / rate;
+		int periodInMillis = (int) (period * 1000);
+		for (int i = 0; i < events; i++) {
+			eventStats.recordEvent();
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+		assertNumberOfDigitsAfterDot(eventStats, 4);
+
+		// Rate is ~ 1 - precision should be 1/1000 = 0.001 (3 digits)
+		eventStats.resetStats();
+		rate = 1.1234567;
+		period = 1.0 / rate;
+		periodInMillis = (int) (period * 1000);
+		for (int i = 0; i < events; i++) {
+			eventStats.recordEvent();
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+		assertNumberOfDigitsAfterDot(eventStats, 3);
+
+		// Rate is ~ 10 - precision should be 10/1000 = 0.01 (2 digits)
+		eventStats.resetStats();
+		rate = 10.2345678;
+		period = 1.0 / rate;
+		periodInMillis = (int) (period * 1000);
+		for (int i = 0; i < events; i++) {
+			eventStats.recordEvent();
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+		assertNumberOfDigitsAfterDot(eventStats, 2);
+
+		// Rate is ~ 100 - precision should be 100/1000 = 0.1 (1 digit)
+		eventStats.resetStats();
+		rate = 100.12345678;
+		period = 1.0 / rate;
+		periodInMillis = (int) (period * 1000);
+		for (int i = 0; i < events; i++) {
+			eventStats.recordEvent();
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+		assertNumberOfDigitsAfterDot(eventStats, 1);
+
+		// Rate is ~ 1000 - precision should be 1000/1000 = 1 (0 digits)
+		eventStats.resetStats();
+		rate = 1000.12345678;
+		period = 1.0 / rate;
+		periodInMillis = (int) (period * 1000);
+		for (int i = 0; i < events; i++) {
+			eventStats.recordEvent();
+			eventStats.refresh(currentTimestamp);
+			currentTimestamp += periodInMillis;
+		}
+		assertNumberOfDigitsAfterDot(eventStats, 0);
+	}
+
+	private void assertNumberOfDigitsAfterDot(EventStats stats, int number) {
+		String statsString = stats.toString();
+		String formattedRate = statsString.substring(statsString.indexOf('@') + 2, statsString.indexOf("/"));
+		String[] splitRate = formattedRate.split("\\.");
+		if (splitRate.length == 1) {
+			assertEquals(0, number);
+			return;
+		}
+		assertEquals(number, splitRate[1].length());
 	}
 }

@@ -41,7 +41,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	private int reloadErrors;
 	private int resolveErrors;
 	private K lastResolveErrorKey;
-	private final ValueStats reloadTime = ValueStats.create(Duration.ofHours(1));
+	private final ValueStats reloadTime = ValueStats.create(Duration.ofHours(1)).withRate("reloads").withUnit("milliseconds");
 
 	protected ReloadingAttributeResolver(Eventloop eventloop) {
 		this.eventloop = eventloop;

@@ -16,10 +16,15 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
+
+import java.text.DecimalFormat;
 import java.time.Duration;
 
-import static java.lang.Math.exp;
-import static java.lang.Math.log;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static java.lang.Math.*;
+import static java.lang.Math.log10;
+import static java.lang.Math.max;
 
 /**
  * Computes total amount of events and dynamic rate using exponential smoothing algorithm
@@ -44,6 +49,11 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 	// fields for aggregation
 	private int addedStats;
 
+	// formatting
+	@Nullable
+	private String rateUnit;
+	private int precision = 1000;
+
 	// region builders
 	private EventStats(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
@@ -67,6 +77,22 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 	 */
 	public static EventStats create(Duration smoothingWindow) {
 		return new EventStats(smoothingWindow.toMillis() / 1000.0);
+	}
+
+	public EventStats withRateUnit(String rateUnit){
+		this.rateUnit = rateUnit;
+		return this;
+	}
+
+	public EventStats withPrecision(int precision){
+		checkArgument(precision > 0, "Precision should be a positive value");
+		this.precision = precision;
+		return this;
+	}
+
+	public EventStats withScientificNotation(){
+		this.precision = -1;
+		return this;
 	}
 	// endregion
 
@@ -145,6 +171,10 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 		addedStats++;
 	}
 
+	public static String format(long count, double rate, String rateUnit, DecimalFormat decimalFormat){
+		return count + " @ " + decimalFormat.format(rate) + (rateUnit == null || rateUnit.equals("") ? "" : " " + rateUnit) + "/second";
+	}
+
 	/**
 	 * Returns smoothed value of rate in events per second.
 	 * <p>
@@ -187,7 +217,16 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 
 	@Override
 	public String toString() {
-		if (getTotalCount() == 0) return null;
-		return String.format("%d @ %.3f/s", getTotalCount(), getSmoothedRate());
+		if (totalCount == 0) {
+			return null;
+		}
+		DecimalFormat decimalFormat;
+		if (precision == -1) {
+			decimalFormat = new DecimalFormat("0.0####E0#");
+		} else {
+			decimalFormat = new DecimalFormat("0");
+			decimalFormat.setMaximumFractionDigits((int) ceil(min(max(-log10(abs(smoothedRate) / precision), 0), 6)));
+		}
+		return format(totalCount, smoothedRate, rateUnit, decimalFormat);
 	}
 }

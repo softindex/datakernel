@@ -16,6 +16,9 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
+
+import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -109,6 +112,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	private double smoothedCount;
 	private double smoothedMin;
 	private double smoothedMax;
+	private double absoluteMaxValue;
+	private double absoluteMinValue;
 	private double smoothedTimeSeconds;
 	private double smoothedRate;
 
@@ -122,7 +127,15 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	private int addedStats;
 
 	// formatting
-	private NumberFormatting formatting = NumberFormatting.DECIMAL_TWO_DIGITS;
+	@Nullable
+	private String unit;
+	@Nullable
+	private String rateUnit;
+	private boolean useAvgAndDeviaton = true;
+	private boolean useMinMax = true;
+	private boolean useLastValue = true;
+	private boolean useAbsoluteValues;
+	private int precision = 1000;
 
 	// region builders
 	private ValueStats(double smoothingWindow) {
@@ -149,17 +162,59 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	public static ValueStats create(Duration smoothingWindow) {
 		return new ValueStats(smoothingWindow.toMillis() / 1000.0);
 	}
-	// endregion
+
+	public ValueStats withUnit(String unit) {
+		this.unit = unit;
+		return this;
+	}
+
+	public ValueStats withRate(String rateUnit) {
+		this.rateUnit = rateUnit;
+		return this;
+	}
+
+	public ValueStats withRate() {
+		this.rateUnit = "";
+		return this;
+	}
 
 	public ValueStats withHistogram(int[] levels) {
 		setHistogramLevels(levels);
 		return this;
 	}
 
-	public ValueStats withNumberFormatting(NumberFormatting formatting) {
-		this.formatting = formatting;
+	public ValueStats withAbsoluteValues(boolean value) {
+		this.useAbsoluteValues = value;
 		return this;
 	}
+
+	public ValueStats withAverageAndDeviation(boolean value) {
+		this.useAvgAndDeviaton = value;
+		return this;
+	}
+
+	public ValueStats withMinMax(boolean value) {
+		this.useMinMax = value;
+		return this;
+	}
+
+	public ValueStats withLastValue(boolean value) {
+		this.useLastValue = value;
+		return this;
+	}
+
+	public ValueStats withPrecision(int precision) {
+		checkArgument(precision > 0, "Precision should be a positive value");
+		this.precision = precision;
+		return this;
+	}
+
+	public ValueStats withScientificNotation() {
+		this.precision = -1;
+		return this;
+	}
+
+	// endregion
 
 	public void setHistogramLevels(int[] levels) {
 		checkArgument(levels.length > 0, "levels amount must be at least 1");
@@ -326,6 +381,9 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 
 		double lastMin = (lastMinInteger < lastMinDouble) ? lastMinInteger : lastMinDouble;
 		double lastMax = (lastMaxInteger > lastMaxDouble) ? lastMaxInteger : lastMaxDouble;
+
+		absoluteMinValue = (absoluteMinValue < lastMin) ? absoluteMinValue : lastMin;
+		absoluteMaxValue = (absoluteMaxValue > lastMax) ? absoluteMaxValue : lastMax;
 
 		if (lastTimestampMillis == 0L) {
 			smoothedSum = lastSum;
@@ -497,9 +555,9 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	}
 
 	/**
-	 * Returns minimum of all added values
+	 * Returns smoothed minimum of all added values
 	 *
-	 * @return minimum of all added values
+	 * @return smoothed minimum of all added values
 	 */
 	@JmxAttribute(name = "min", optional = true)
 	public double getSmoothedMin() {
@@ -507,13 +565,33 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	}
 
 	/**
-	 * Returns maximum of all added values
+	 * Returns smoothed maximum of all added values
 	 *
-	 * @return maximum of all added values
+	 * @return smoothed maximum of all added values
 	 */
 	@JmxAttribute(name = "max", optional = true)
 	public double getSmoothedMax() {
 		return totalCount == 0 ? 0.0 : smoothedMax;
+	}
+
+	/**
+	 * Returns minimum of all added values
+	 *
+	 * @return minimum of all added values
+	 */
+	@JmxAttribute(name = "absoluteMin", optional = true)
+	public double getAbsosuteMin() {
+		return totalCount == 0 ? 0.0 : absoluteMinValue;
+	}
+
+	/**
+	 * Returns maximum of all added values
+	 *
+	 * @return maximum of all added values
+	 */
+	@JmxAttribute(name = "absoluteMax", optional = true)
+	public double getAbsoluteMax() {
+		return totalCount == 0 ? 0.0 : absoluteMaxValue;
 	}
 
 	@JmxAttribute(optional = true)
@@ -649,29 +727,68 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 
 	@Override
 	public String toString() {
-		if (getCount() == 0) return null;
-		String rawTemplate = "{format1}±{format2} [{format1}...{format1}]  last: {format1}  calls: %d @ {format2}/s";
-		String template;
-		switch (formatting) {
-			case AUTO:
-				template = rawTemplate.replace("{format1}", "%.2g").replace("{format2}", "%.3g");
-				break;
-			case SCIENTIFIC_NOTATION:
-				template = rawTemplate.replace("{format1}", "%.2e").replace("{format2}", "%.3e");
-				break;
-			case DECIMAL_TWO_DIGITS:
-				template = rawTemplate.replace("{format1}", "%.2f").replace("{format2}", "%.3f");
-				break;
-			default:
-				template = rawTemplate.replace("{format1}", "%.2f").replace("{format2}", "%.3f");
+		if (totalCount == 0) {
+			return null;
 		}
-		return String.format(template, getSmoothedAverage(), getSmoothedStandardDeviation(), getSmoothedMin(),
-				getSmoothedMax(), getLastValue(), getCount(), getSmoothedRate());
-	}
 
-	// region helper classes
-	public enum NumberFormatting {
-		AUTO, SCIENTIFIC_NOTATION, DECIMAL_TWO_DIGITS
+		double min = smoothedMin;
+		double max = smoothedMax;
+		DecimalFormat decimalFormat;
+
+		if (useAbsoluteValues) {
+			min = absoluteMinValue;
+			max = absoluteMaxValue;
+		}
+
+		if (precision == -1) {
+			decimalFormat = new DecimalFormat("0.0####E0#");
+		} else {
+			decimalFormat = new DecimalFormat("0");
+			decimalFormat.setMaximumFractionDigits((int) ceil(min(max(-log10(abs(max-min) / precision), 0), 6)));
+		}
+
+		StringBuilder constructorTemplate = new StringBuilder();
+
+		// average and deviation
+		if (useAvgAndDeviaton) {
+			constructorTemplate
+					.append(decimalFormat.format(getSmoothedAverage()))
+					.append('±')
+					.append(decimalFormat.format(getSmoothedStandardDeviation()))
+					.append(' ');
+			if (unit != null) {
+				constructorTemplate.append(unit)
+						.append("  ");
+			} else {
+				constructorTemplate.append(' ');
+			}
+		}
+
+		// min and max
+		if (useMinMax) {
+			constructorTemplate
+					.append('[')
+					.append(decimalFormat.format(min))
+					.append("...")
+					.append(decimalFormat.format(max))
+					.append("]  ");
+		}
+
+		// last value
+		if (useLastValue) {
+			constructorTemplate
+					.append("last: ")
+					.append(decimalFormat.format(getLastValue()))
+					.append("  ");
+		}
+
+		// rate
+		if (rateUnit != null) {
+			constructorTemplate
+					.append("calls: ")
+					.append(EventStats.format(totalCount, smoothedRate, rateUnit, decimalFormat));
+		}
+
+		return constructorTemplate.toString().trim();
 	}
-	// endregion
 }

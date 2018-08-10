@@ -96,7 +96,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
 	private EventStats successfulRequests = EventStats.create(SMOOTHING_WINDOW);
 	private EventStats failedRequests = EventStats.create(SMOOTHING_WINDOW);
-	private ValueStats requestHandlingTime = ValueStats.create(SMOOTHING_WINDOW);
+	private ValueStats requestHandlingTime = ValueStats.create(SMOOTHING_WINDOW).withUnit("milliseconds");
 	private ExceptionStats lastRequestHandlingException = ExceptionStats.create();
 	private ExceptionStats lastProtocolError = ExceptionStats.create();
 	private boolean monitoring;

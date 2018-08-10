@@ -92,11 +92,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public static class JmxInspector implements Inspector {
 		public static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
-		private final ValueStats reads = ValueStats.create(SMOOTHING_WINDOW);
+		private final ValueStats reads = ValueStats.create(SMOOTHING_WINDOW).withUnit("bytes").withRate();
 		private final EventStats readEndOfStreams = EventStats.create(SMOOTHING_WINDOW);
 		private final EventStats readErrors = EventStats.create(SMOOTHING_WINDOW);
 		private final EventStats readTimeouts = EventStats.create(SMOOTHING_WINDOW);
-		private final ValueStats writes = ValueStats.create(SMOOTHING_WINDOW);
+		private final ValueStats writes = ValueStats.create(SMOOTHING_WINDOW).withUnit("bytes").withRate();
 		private final EventStats writeErrors = EventStats.create(SMOOTHING_WINDOW);
 		private final EventStats writeTimeouts = EventStats.create(SMOOTHING_WINDOW);
 		private final EventStats writeOverloaded = EventStats.create(SMOOTHING_WINDOW);

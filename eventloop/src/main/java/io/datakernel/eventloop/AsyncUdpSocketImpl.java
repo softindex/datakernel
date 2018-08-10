@@ -74,9 +74,9 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 //		}
 
 		public JmxInspector(Duration smoothingWindow) {
-			this.receives = ValueStats.create(smoothingWindow);
+			this.receives = ValueStats.create(smoothingWindow).withUnit("bytes").withRate();
 			this.receiveErrors = EventStats.create(smoothingWindow);
-			this.sends = ValueStats.create(smoothingWindow);
+			this.sends = ValueStats.create(smoothingWindow).withUnit("bytes").withRate();
 			this.sendErrors = EventStats.create(smoothingWindow);
 		}
 

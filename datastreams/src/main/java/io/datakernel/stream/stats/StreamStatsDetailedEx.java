@@ -15,7 +15,7 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 	@Nullable
 	private final StreamStatsSizeCounter<Object> sizeCounter;
 
-	private final EventStats count = EventStats.create(DEFAULT_DETAILED_SMOOTHING_WINDOW);
+	private final EventStats count = EventStats.create(DEFAULT_DETAILED_SMOOTHING_WINDOW).withRateUnit("data items");
 	private final ValueStats itemSize = ValueStats.create(DEFAULT_DETAILED_SMOOTHING_WINDOW);
 	private final EventStats totalSize = EventStats.create(DEFAULT_DETAILED_SMOOTHING_WINDOW);
 
