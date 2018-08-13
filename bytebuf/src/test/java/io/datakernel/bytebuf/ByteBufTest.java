@@ -22,6 +22,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.*;
@@ -242,6 +243,25 @@ public class ByteBufTest {
 		assertEquals(-1, buf.find(new byte[]{'T', 'e', 's', 's'}));
 		assertEquals(1, buf.find(new byte[]{'T', 'e', 's', 's'}, 1, 2));
 	}
+
+	@Test
+	public void testClearPool() {
+		ByteBufPool.clear();
+		List<String> cleared = ByteBufPool.getStats().getPoolSlabs();
+		assertEquals("32768,0,0,0", cleared.get(16));
+		int size = 10;
+		ByteBuf[] bufs = new ByteBuf[size];
+		for (int i = 0; i < size; i++) {
+			bufs[i] = ByteBufPool.allocate(30_000);
+		}
+		assertNotEquals(cleared.get(16), ByteBufPool.getStats().getPoolSlabs().get(16));
+		for (int i = 0; i < size; i++) {
+			bufs[i].recycle();
+		}
+		ByteBufPool.getStats().clearPool();
+		assertEquals(cleared, ByteBufPool.getStats().getPoolSlabs());
+	}
+
 
 	private ByteBuf createEmptyByteBufOfSize(int size) {
 		return ByteBuf.wrapForWriting(new byte[size]);

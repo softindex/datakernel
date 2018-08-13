@@ -232,6 +232,8 @@ public final class ByteBufPool {
 		long getPoolSizeKB();
 
 		List<String> getPoolSlabs();
+
+		void clearPool();
 	}
 
 	public static final class ByteBufPoolStats implements ByteBufPoolStatsMXBean {
@@ -261,6 +263,11 @@ public final class ByteBufPool {
 				result.add((slotSize & 0xffffffffL) + "," + created[i] + "," + count + "," + slotSize * count / 1024);
 			}
 			return result;
+		}
+
+		@Override
+		public void clearPool() {
+			ByteBufPool.clear();
 		}
 	}
 
