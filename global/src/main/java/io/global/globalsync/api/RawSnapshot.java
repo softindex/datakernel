@@ -7,6 +7,7 @@ import io.global.common.SimKeyHash;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import static io.global.globalsync.util.SerializationUtils.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -31,8 +32,6 @@ public final class RawSnapshot implements Signable {
 	public static RawSnapshot ofBytes(byte[] bytes) throws IOException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 		RepositoryName repositoryId = readRepositoryId(buf);
-		byte[] dataBytes = readBytes(buf);
-		byte[] signatureBytes = readBytes(buf);
 		CommitId commitId = readCommitId(buf);
 		EncryptedData encryptedData = readEncryptedData(buf);
 		SimKeyHash simKeyHash = readSimKeyHash(buf);
@@ -43,13 +42,12 @@ public final class RawSnapshot implements Signable {
 			CommitId commitId,
 			EncryptedData encryptedDiffs,
 			SimKeyHash simKeyHash) {
-		ECPoint q = repositoryId.getPubKey().getEcPublicKey().getQ();
 		ByteBuf buf = ByteBufPool.allocate(sizeof(repositoryId) + sizeof(commitId) + sizeof(encryptedDiffs) + sizeof(simKeyHash));
 		writeRepositoryId(buf, repositoryId);
 		writeCommitId(buf, commitId);
 		writeEncryptedData(buf, encryptedDiffs);
 		writeSimKeyHash(buf, simKeyHash);
-		return new RawSnapshot(buf.peekArray(),
+		return new RawSnapshot(buf.asArray(),
 				repositoryId, commitId, encryptedDiffs, simKeyHash);
 	}
 
@@ -68,5 +66,18 @@ public final class RawSnapshot implements Signable {
 
 	public SimKeyHash getSimKeyHash() {
 		return checkNotNull(simKeyHash);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		RawSnapshot that = (RawSnapshot) o;
+		return Arrays.equals(bytes, that.bytes);
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(bytes);
 	}
 }

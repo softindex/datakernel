@@ -224,7 +224,7 @@ public class TestLocalFsClient {
 						client.downloadStream("concurrent.txt")
 								.streamTo(StreamConsumer.ofConsumer(
 										buf -> {
-											String actual = new String(buf.peekArray(), StandardCharsets.UTF_8);
+											String actual = new String(buf.asArray(), StandardCharsets.UTF_8);
 											String expected = "Concurrent data - 1\n" +
 													"Concurrent data - 2\n" +
 													"Concurrent data - 3\n" +

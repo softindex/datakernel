@@ -27,6 +27,10 @@ public final class SignedData<T extends Signable> {
 		return new SignedData<>(data, new ECDSASignature(r, s));
 	}
 
+	public static <T extends Signable> SignedData<T> sign(T data, PrivKey privKey) {
+		return sign(data, privKey.getPrivateKeyForSigning());
+	}
+
 	public static <T extends Signable> SignedData<T> sign(T data, BigInteger privateKeyForSigning) {
 		byte[] dataBytes = data.toBytes();
 		ECDSASignature signature = CryptoUtils.sign(dataBytes, privateKeyForSigning);
@@ -39,7 +43,7 @@ public final class SignedData<T extends Signable> {
 		writeBytes(buf, dataBytes);
 		writeBigInteger(buf, signature.r);
 		writeBigInteger(buf, signature.s);
-		return buf.peekArray();
+		return buf.asArray();
 	}
 
 	public T getData() {
@@ -48,5 +52,21 @@ public final class SignedData<T extends Signable> {
 
 	public ECDSASignature getSignature() {
 		return signature;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		SignedData<?> that = (SignedData<?>) o;
+		if (!data.equals(that.data)) return false;
+		return signature.equals(that.signature);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = data.hashCode();
+		result = 31 * result + signature.hashCode();
+		return result;
 	}
 }

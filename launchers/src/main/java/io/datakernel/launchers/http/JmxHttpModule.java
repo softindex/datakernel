@@ -356,7 +356,7 @@ public class JmxHttpModule extends AbstractModule {
 
 				return loader.getResource("index_template.html")
 						.thenApply(buf -> HttpResponse.ok200()
-								.withBody(cachedIndex = String.format(buf.peekString(), indexHTML(tree, request.getPath())).getBytes(UTF_8)));
+								.withBody(cachedIndex = String.format(buf.asString(UTF_8), indexHTML(tree, request.getPath())).getBytes(UTF_8)));
 			}
 
 			Matcher matcher = KEY_PARAM_PATTERN.matcher(keyParam);
@@ -414,7 +414,7 @@ public class JmxHttpModule extends AbstractModule {
 						return loader.getResource("table_template.html")
 								.thenApply(buf -> HttpResponse.ok200()
 										.withBody(String.format(
-												buf.peekString(),
+												buf.asString(UTF_8),
 												htmlEscape(prettyPrintSimpleKeyName(key)) + (workerId != null ? " (worker id: " + workerId + ")" : ""),
 												tableHTML(finalInstance)
 										).getBytes(UTF_8)));

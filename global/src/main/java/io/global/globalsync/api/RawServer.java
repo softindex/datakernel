@@ -16,7 +16,7 @@ import java.util.Set;
 import static java.util.Collections.*;
 
 public interface RawServer {
-	Stage<Set<String>> getRepositories(PubKey pubKey);
+	Stage<Set<String>> list(PubKey pubKey);
 
 	Stage<Void> save(RepositoryName repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads);
 
@@ -70,6 +70,22 @@ public interface RawServer {
 		public Set<CommitId> getHeads() {
 			return heads;
 		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			HeadsInfo that = (HeadsInfo) o;
+			if (!bases.equals(that.bases)) return false;
+			return heads.equals(that.heads);
+		}
+
+		@Override
+		public int hashCode() {
+			int result = bases.hashCode();
+			result = 31 * result + heads.hashCode();
+			return result;
+		}
 	}
 
 	Stage<HeadsInfo> getHeadsInfo(RepositoryName repositoryId);
@@ -107,6 +123,22 @@ public interface RawServer {
 
 		public Set<CommitId> getExcludedHeads() {
 			return excludedHeads;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			HeadsDelta that = (HeadsDelta) o;
+			if (!newHeads.equals(that.newHeads)) return false;
+			return excludedHeads.equals(that.excludedHeads);
+		}
+
+		@Override
+		public int hashCode() {
+			int result = newHeads.hashCode();
+			result = 31 * result + excludedHeads.hashCode();
+			return result;
 		}
 	}
 

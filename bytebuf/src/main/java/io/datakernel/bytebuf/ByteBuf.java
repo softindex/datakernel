@@ -23,7 +23,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import java.nio.charset.Charset;
 
 import static java.lang.Math.min;
 
@@ -324,18 +323,14 @@ public class ByteBuf {
 		return -1;
 	}
 
-	public byte[] peekArray() {
+	public byte[] asArray() {
 		byte[] bytes = new byte[readRemaining()];
 		System.arraycopy(array, readPosition, bytes, 0, bytes.length);
 		return bytes;
 	}
 
-	public String peekString(Charset charset) {
+	public String asString(Charset charset) {
 		return new String(array, readPosition, readRemaining(), charset);
-	}
-
-	public String peekString() {
-		return peekString(UTF_8);
 	}
 
 	// region serialization input

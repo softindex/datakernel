@@ -31,21 +31,21 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 
 public class RawServerHttpClient implements RawServer {
-	private final AsyncHttpClient httpClient;
+	private final IAsyncHttpClient httpClient;
 	private final String url;
 
-	public RawServerHttpClient(AsyncHttpClient httpClient, String url) {
+	public RawServerHttpClient(IAsyncHttpClient httpClient, String url) {
 		this.httpClient = httpClient;
 		this.url = url;
 	}
 
-	private HttpRequest request(HttpMethod httpMethod, String apiMethod, String apiQuery) {
-		return HttpRequest.of(httpMethod, apiMethod + (apiQuery != null ? "/" + apiQuery : ""));
+	private HttpRequest request(HttpMethod httpMethod, @Nullable String apiMethod, String apiQuery) {
+		return HttpRequest.of(httpMethod, url + (apiMethod != null ? apiMethod : "") + (apiQuery != null ? "/" + apiQuery : ""));
 	}
 
 	private String apiQuery(@Nullable RepositoryName repositoryId, @Nullable Map<String, String> parameters) {
-		return url +
-				(repositoryId != null ? "/" + urlEncodeRepositoryId(repositoryId) : "") +
+		return "" +
+				(repositoryId != null ? urlEncodeRepositoryId(repositoryId) : "") +
 				(parameters != null ? "?" + renderQueryString(parameters) : "");
 	}
 
@@ -67,15 +67,15 @@ public class RawServerHttpClient implements RawServer {
 		if (r.getCode() != 200) Stage.ofException(HttpException.ofCode(r.getCode()));
 		try {
 			return Stage.of(gson != null ?
-					fromJson(gson, r.getBody().peekString(UTF_8)) : null);
+					fromJson(gson, r.getBody().asString(UTF_8)) : null);
 		} catch (IOException e) {
 			return Stage.ofException(e);
 		}
 	}
 
 	@Override
-	public Stage<Set<String>> getRepositories(PubKey pubKey) {
-		return httpClient.send(HttpRequest.get(url))
+	public Stage<Set<String>> list(PubKey pubKey) {
+		return httpClient.send(request(GET, LIST, urlEncodePubKey(pubKey)))
 				.thenCompose(r -> processResult(r, SET_OF_STRINGS));
 	}
 
@@ -126,7 +126,7 @@ public class RawServerHttpClient implements RawServer {
 					if (!r.getBody().canRead()) return Stage.of(Optional.empty());
 					try {
 						return Stage.of(Optional.of(
-								SignedData.ofBytes(r.getBody().peekArray(), RawSnapshot::ofBytes)));
+								SignedData.ofBytes(r.getBody().asArray(), RawSnapshot::ofBytes)));
 					} catch (IOException e) {
 						return Stage.ofException(e);
 					}

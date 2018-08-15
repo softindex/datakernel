@@ -17,7 +17,7 @@ import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.CollectionUtils.difference;
 import static java.lang.System.currentTimeMillis;
 
-final class RawServer_PubKey {
+public final class RawServer_PubKey {
 	private final RawDiscoveryService discoveryService;
 	private final CommitStorage commitStorage;
 

@@ -64,7 +64,7 @@ public final class CryptoUtils {
 		assert xOff == (encodedState.length - 52) / 4;
 		assert xOff == (byteCount / 4) % 16;
 		assert xOff * 4 + xBufOff == byteCount % 64;
-		byte[] packedState = new byte[SHA256_LENGTH + xOff * 4 + xBufOff]; // 16..96 bytes
+		byte[] packedState = new byte[SHA256_LENGTH + xOff * 4 + xBufOff]; // 32..96 bytes
 		arraycopy(encodedState, 16, packedState, 0, SHA256_LENGTH); // H1 .. H8
 		arraycopy(encodedState, 52, packedState, SHA256_LENGTH, xOff * 4);
 		arraycopy(encodedState, 0, packedState, SHA256_LENGTH + xOff * 4, xBufOff);

@@ -4,6 +4,7 @@ import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.Signable;
 
+import java.util.Arrays;
 import java.util.Set;
 
 public final class AnnounceData implements Signable {
@@ -36,5 +37,18 @@ public final class AnnounceData implements Signable {
 
 	public Set<RawServerId> getServerIds() {
 		return serverIds;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		AnnounceData that = (AnnounceData) o;
+		return Arrays.equals(bytes, that.bytes);
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(bytes);
 	}
 }

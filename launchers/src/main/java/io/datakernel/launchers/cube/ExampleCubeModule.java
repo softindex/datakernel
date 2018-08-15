@@ -50,40 +50,40 @@ public class ExampleCubeModule extends PrivateModule {
 	@Singleton
 	Cube cube(Eventloop eventloop, ExecutorService executor, DefiningClassLoader classLoader, AggregationChunkStorage aggregationChunkStorage) {
 		return Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
-			.withDimension("date", ofLocalDate())
-			.withDimension("advertiser", ofInt())
-			.withDimension("campaign", ofInt())
-			.withDimension("banner", ofInt())
-			.withRelation("campaign", "advertiser")
-			.withRelation("banner", "campaign")
-			.withMeasure("impressions", sum(ofLong()))
-			.withMeasure("clicks", sum(ofLong()))
-			.withMeasure("conversions", sum(ofLong()))
-			.withMeasure("revenue", sum(ofDouble()))
-			.withAggregation(id("detailed")
-				.withDimensions("date", "advertiser", "campaign", "banner")
-				.withMeasures("impressions", "clicks", "conversions", "revenue"))
-			.withAggregation(id("date")
-				.withDimensions("date")
-				.withMeasures("impressions", "clicks", "conversions", "revenue"))
-			.withAggregation(id("advertiser")
-				.withDimensions("advertiser")
-				.withMeasures("impressions", "clicks", "conversions", "revenue"));
+				.withDimension("date", ofLocalDate())
+				.withDimension("advertiser", ofInt())
+				.withDimension("campaign", ofInt())
+				.withDimension("banner", ofInt())
+				.withRelation("campaign", "advertiser")
+				.withRelation("banner", "campaign")
+				.withMeasure("impressions", sum(ofLong()))
+				.withMeasure("clicks", sum(ofLong()))
+				.withMeasure("conversions", sum(ofLong()))
+				.withMeasure("revenue", sum(ofDouble()))
+				.withAggregation(id("detailed")
+						.withDimensions("date", "advertiser", "campaign", "banner")
+						.withMeasures("impressions", "clicks", "conversions", "revenue"))
+				.withAggregation(id("date")
+						.withDimensions("date")
+						.withMeasures("impressions", "clicks", "conversions", "revenue"))
+				.withAggregation(id("advertiser")
+						.withDimensions("advertiser")
+						.withMeasures("impressions", "clicks", "conversions", "revenue"));
 	}
 
 	@Provides
 	@Singleton
 	OTStateManager<Long, LogDiff<CubeDiff>> otStateManager(Config config, Eventloop eventloop,
-		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms,
-		LogOTState<CubeDiff> cubeDiffLogOTState) {
+			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms,
+			LogOTState<CubeDiff> cubeDiffLogOTState) {
 		return OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 	}
 
 	@Provides
 	@Singleton
 	OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms(Config config, Eventloop eventloop,
-		OTSystem<LogDiff<CubeDiff>> otSystem,
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql) {
+			OTSystem<LogDiff<CubeDiff>> otSystem,
+			OTRemoteSql<LogDiff<CubeDiff>> otSourceSql) {
 		return OTAlgorithms.create(eventloop, otSystem, otSourceSql);
 	}
 
@@ -96,10 +96,10 @@ public class ExampleCubeModule extends PrivateModule {
 	@Provides
 	@Singleton
 	OTRemoteSql<LogDiff<CubeDiff>> otSourceSql(Config config, Eventloop eventloop,
-		ExecutorService executor,
-		DataSource dataSource,
-		OTSystem<LogDiff<CubeDiff>> otSystem,
-		Cube cube) {
+			ExecutorService executor,
+			DataSource dataSource,
+			OTSystem<LogDiff<CubeDiff>> otSystem,
+			Cube cube) {
 		return OTRemoteSql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
 	}
 
@@ -112,14 +112,14 @@ public class ExampleCubeModule extends PrivateModule {
 	@Provides
 	@Singleton
 	AggregationChunkStorage aggregationChunkStorage(Config config, Eventloop eventloop,
-		ExecutorService executor,
-		IdGenerator<Long> idGenerator) {
+			ExecutorService executor,
+			IdGenerator<Long> idGenerator) {
 		Path aggregationPath = config.get(ConfigConverters.ofPath(), "Aggregations.path");
 		MemSize bufferSize = config.get(ConfigConverters.ofMemSize(), "Aggregations.bufferSize", MemSize.kilobytes(256));
 		Path backupPath = config.get(ConfigConverters.ofPath(), "Aggregations.backupPath", aggregationPath.resolve(RemoteFsChunkStorage.DEFAULT_BACKUP_FOLDER_NAME));
 		return RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), idGenerator, LocalFsClient.create(eventloop, executor, aggregationPath))
-			.withBufferSize(bufferSize)
-			.withBackupPath(backupPath.toString());
+				.withBufferSize(bufferSize)
+				.withBackupPath(backupPath.toString());
 	}
 
 	@Provides
@@ -133,8 +133,8 @@ public class ExampleCubeModule extends PrivateModule {
 	@Singleton
 	IdGeneratorSql idGenerator(Eventloop eventloop, ExecutorService executor, DataSource dataSource) {
 		return IdGeneratorSql.create(eventloop, executor, dataSource,
-			SqlAtomicSequence.ofLastInsertID("ot_chunks", "next"))
-			.withStride(1000);
+				SqlAtomicSequence.ofLastInsertID("ot_chunks", "next"))
+				.withStride(1000);
 	}
 
 	@Provides

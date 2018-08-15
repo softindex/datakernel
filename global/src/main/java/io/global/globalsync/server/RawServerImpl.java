@@ -54,7 +54,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<Set<String>> getRepositories(PubKey pubKey) {
+	public Stage<Set<String>> list(PubKey pubKey) {
 		return Stage.of(new HashSet<>(pubKeyDbMap.computeIfAbsent(pubKey, k -> new RawServer_PubKey(discoveryService, commitStorage, k, settings.getPubKeySettings(k)))
 				.repositories.values().stream()
 				.map(RawServer_Repository::getRepositoryId)

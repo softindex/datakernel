@@ -3,20 +3,19 @@ package io.global.globalsync.client;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
-import io.global.common.*;
 import io.datakernel.ot.OTCommit;
+import io.global.common.*;
 import io.global.globalsync.api.*;
 import io.global.globalsync.util.SerializationUtils;
-import org.spongycastle.crypto.params.KeyParameter;
 
 import java.io.IOException;
 import java.util.*;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.util.CollectionUtils.union;
 import static io.global.common.CryptoUtils.*;
 import static io.global.globalsync.util.SerializationUtils.sizeof;
 import static io.global.globalsync.util.SerializationUtils.writeList;
-import static io.datakernel.util.CollectionUtils.union;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 
@@ -43,7 +42,7 @@ public final class OTDriver {
 		ByteBuf dataBuf = ByteBuf.wrapForWriting(new byte[sizeof(diffsBytes, SerializationUtils::sizeof)]);
 		writeList(dataBuf, diffsBytes, SerializationUtils::writeBytes);
 		EncryptedData encryptedDiffs = encryptAES(
-				dataBuf.peekArray(),
+				dataBuf.asArray(),
 				currentSimKey.getAesKey());
 		RawCommit rawCommitData = RawCommit.of(
 				parents,
@@ -73,14 +72,13 @@ public final class OTDriver {
 
 					SharedSimKey sharedSimKey = signedSimKey.getData();
 
-					byte[] aesBytes = decryptECIES(sharedSimKey.getEncryptedSimKey(),
-							myRepositoryId.getPrivKey().getPrivateKeyForSigning());
+					SimKey simKey = SimKey.ofEncryptedSimKey(sharedSimKey.getEncryptedSimKey(),
+							myRepositoryId.getPrivKey());
 
-					if (!Arrays.equals(sha1(aesBytes), simKeyHash.toBytes())) {
+					if (!Arrays.equals(sha1(simKey.toBytes()), simKeyHash.toBytes())) {
 						return Optional.empty();
 					}
 
-					SimKey simKey = new SimKey(new KeyParameter(aesBytes));
 					simKeys.put(simKeyHash, simKey);
 					return Optional.of(simKey);
 				});

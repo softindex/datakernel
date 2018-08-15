@@ -6,6 +6,7 @@ import io.global.common.SimKeyHash;
 import io.global.globalsync.util.SerializationUtils;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,7 +35,6 @@ public final class RawCommit {
 
 	public static RawCommit ofBytes(byte[] bytes) throws IOException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		CommitId commitId = readCommitId(buf);
 		List<CommitId> parents = readList(buf, SerializationUtils::readCommitId);
 		EncryptedData encryptedData = readEncryptedData(buf);
 		long level = buf.readLong();
@@ -51,7 +51,7 @@ public final class RawCommit {
 		buf.writeLong(level);
 		buf.writeLong(timestamp);
 		writeSimKeyHash(buf, simKeyHash);
-		return new RawCommit(buf.peekArray(),
+		return new RawCommit(buf.asArray(),
 				parents, encryptedDiffs, simKeyHash, level, timestamp);
 	}
 
@@ -77,5 +77,18 @@ public final class RawCommit {
 
 	public long getTimestamp() {
 		return timestamp;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		RawCommit that = (RawCommit) o;
+		return Arrays.equals(bytes, that.bytes);
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(bytes);
 	}
 }

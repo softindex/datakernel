@@ -21,7 +21,7 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.toSet;
 
-final class RawServer_Repository {
+public final class RawServer_Repository {
 	public static final int DOWNLOAD_PREFETCH_COUNT = 10;
 	private final CommitStorage commitStorage;
 	private final RepositoryName repositoryId;

@@ -5,6 +5,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.global.common.Signable;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import static io.global.globalsync.util.SerializationUtils.*;
 
@@ -36,7 +37,7 @@ public final class RawCommitHead implements Signable {
 		writeRepositoryId(buf, repositoryId);
 		writeCommitId(buf, commitId);
 		buf.writeLong(timestamp);
-		return new RawCommitHead(buf.peekArray(),
+		return new RawCommitHead(buf.asArray(),
 				repositoryId, commitId, timestamp);
 	}
 
@@ -51,5 +52,18 @@ public final class RawCommitHead implements Signable {
 
 	public CommitId getCommitId() {
 		return commitId;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		RawCommitHead that = (RawCommitHead) o;
+		return Arrays.equals(bytes, that.bytes);
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(bytes);
 	}
 }

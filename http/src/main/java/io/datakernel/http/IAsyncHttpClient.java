@@ -27,5 +27,7 @@ public interface IAsyncHttpClient {
 		return result;
 	}
 
-	void send(HttpRequest request, Callback<HttpResponse> callback);
+	default void send(HttpRequest request, Callback<HttpResponse> callback) {
+		send(request).whenComplete(callback::set);
+	}
 }

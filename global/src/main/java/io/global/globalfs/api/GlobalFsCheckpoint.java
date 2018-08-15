@@ -8,6 +8,7 @@ import io.global.globalsync.util.SerializationUtils;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public final class GlobalFsCheckpoint implements Signable {
 	private final byte[] bytes;
@@ -35,7 +36,7 @@ public final class GlobalFsCheckpoint implements Signable {
 		ByteBuf buf = ByteBufPool.allocate(8 + SerializationUtils.sizeof(digestState));
 		buf.writeLong(position);
 		SerializationUtils.writeBytes(buf, digestState);
-		return new GlobalFsCheckpoint(buf.peekArray(),
+		return new GlobalFsCheckpoint(buf.asArray(),
 				position, digest);
 	}
 
@@ -50,5 +51,18 @@ public final class GlobalFsCheckpoint implements Signable {
 
 	public SHA256Digest getDigest() {
 		return digest;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		GlobalFsCheckpoint that = (GlobalFsCheckpoint) o;
+		return Arrays.equals(bytes, that.bytes);
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(bytes);
 	}
 }

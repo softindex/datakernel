@@ -1,6 +1,8 @@
 package io.global.globalsync.http;
 
 import com.google.gson.TypeAdapter;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpUtils;
 import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -28,6 +30,7 @@ import static java.util.stream.Collectors.toMap;
 public class HttpDataFormats {
 	private HttpDataFormats() {}
 
+	public static final String LIST = "list";
 	public static final String SAVE = "save";
 	public static final String LOAD_COMMIT = "loadCommit";
 	public static final String GET_HEADS_INFO = "getHeadsInfo";
@@ -106,10 +109,10 @@ public class HttpDataFormats {
 		return urlEncodePubKey(repositoryId.getPubKey()) + '/' + urlEncode(repositoryId.getRepositoryName(), "UTF-8");
 	}
 
-	public static RepositoryName urlDecodeRepositoryId(String str) {
-		int pos = str.indexOf('/');
-		PubKey pubKey = urlDecodePubKey(str.substring(0, pos));
-		return new RepositoryName(pubKey, urlDecode(str.substring(pos + 1), "UTF-8"));
+	public static RepositoryName urlDecodeRepositoryId(HttpRequest httpRequest) {
+		String pubKey = httpRequest.getPathParameter("pubKey");
+		String name = httpRequest.getPathParameter("name");
+		return new RepositoryName(urlDecodePubKey(pubKey), HttpUtils.urlDecode(name, "UTF-8"));
 	}
 
 	public static String urlEncodePubKey(PubKey pubKey) {

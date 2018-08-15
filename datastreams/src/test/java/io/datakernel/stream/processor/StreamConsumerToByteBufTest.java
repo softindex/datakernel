@@ -24,7 +24,7 @@ public class StreamConsumerToByteBufTest {
 		).streamTo(StreamConsumerToByteBuf.create())
 				.getConsumerResult()
 				.whenComplete(assertComplete(byteBuf ->
-						assertArrayEquals(byteBuf.peekArray(), new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 8, 9, 10})));
+						assertArrayEquals(byteBuf.asArray(), new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 8, 9, 10})));
 
 		eventloop.run();
 	}
@@ -35,7 +35,7 @@ public class StreamConsumerToByteBufTest {
 
 		StreamProducer.<ByteBuf>closing().streamTo(StreamConsumerToByteBuf.create())
 				.getConsumerResult()
-				.whenComplete(assertComplete(byteBuf -> assertArrayEquals(byteBuf.peekArray(), new byte[0])));
+				.whenComplete(assertComplete(byteBuf -> assertArrayEquals(byteBuf.asArray(), new byte[0])));
 
 		eventloop.run();
 	}

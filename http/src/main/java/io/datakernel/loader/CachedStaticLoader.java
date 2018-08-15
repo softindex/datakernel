@@ -25,7 +25,7 @@ class CachedStaticLoader implements StaticLoader {
 	        SettableStage<ByteBuf> stage = new SettableStage<>();
             resourceLoader.getResource(name)
                     .whenComplete((byteBuf, throwable) -> {
-                        cache.put(name, throwable == null ? byteBuf.peekArray() : BYTES_ERROR);
+                        cache.put(name, throwable == null ? byteBuf.asArray() : BYTES_ERROR);
                         stage.set(byteBuf, throwable);
                     });
             return stage;

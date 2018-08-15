@@ -21,4 +21,20 @@ public final class ECDSASignature {
 			return this;
 		}
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		ECDSASignature that = (ECDSASignature) o;
+		if (!r.equals(that.r)) return false;
+		return s.equals(that.s);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = r.hashCode();
+		result = 31 * result + s.hashCode();
+		return result;
+	}
 }

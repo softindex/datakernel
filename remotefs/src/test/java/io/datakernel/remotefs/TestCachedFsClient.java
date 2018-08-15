@@ -83,7 +83,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = ByteBufQueue.create();
 					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
 							.getEndOfStream()
-							.thenApply($ -> new String(q.takeRemaining().peekArray(), UTF_8));
+							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> {
 					server.close();
@@ -108,7 +108,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = ByteBufQueue.create();
 					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
 							.getEndOfStream()
-							.thenApply($ -> new String(q.takeRemaining().peekArray(), UTF_8));
+							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> {
 					assertEquals(res, "in");
@@ -129,7 +129,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = ByteBufQueue.create();
 					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
 							.getEndOfStream()
-							.thenApply($ -> new String(q.takeRemaining().peekArray(), UTF_8));
+							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> {
 					server.close();
@@ -156,7 +156,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = ByteBufQueue.create();
 					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
 							.getEndOfStream()
-							.thenApply($ -> new String(q.takeRemaining().peekArray(), UTF_8));
+							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> {
 					assertEquals("in", res);
@@ -175,7 +175,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = ByteBufQueue.create();
 					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
 							.getEndOfStream()
-							.thenApply($ -> new String(q.takeRemaining().peekArray(), UTF_8));
+							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> server.close())
 				.whenResult(s -> assertEquals(testTxtContent, s))
@@ -192,7 +192,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = ByteBufQueue.create();
 					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
 							.getEndOfStream()
-							.thenApply($ -> new String(q.takeRemaining().peekArray(), UTF_8));
+							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> assertEquals("in", res))
 				.whenComplete((res, err) -> assertComplete())
@@ -211,7 +211,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = ByteBufQueue.create();
 					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
 							.getEndOfStream()
-							.thenApply($ -> new String(q.takeRemaining().peekArray(), UTF_8));
+							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> server.close())
 				.whenResult(s -> assertComplete())
@@ -230,7 +230,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = ByteBufQueue.create();
 					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
 							.getEndOfStream()
-							.thenApply($ -> new String(q.takeRemaining().peekArray(), UTF_8));
+							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> assertEquals("hi", res))
 				.whenComplete((res, err) -> assertComplete())
