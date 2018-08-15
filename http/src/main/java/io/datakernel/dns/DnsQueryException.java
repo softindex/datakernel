@@ -16,25 +16,29 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.exception.StacklessException;
 
 /**
- * Exception which will be thrown when parsing DNS response from UDP packet payload fails
+ * Represents a failed DNS query response as a exception.
  */
-public class DnsResponseParseException extends ParseException {
+public final class DnsQueryException extends StacklessException {
+	private final DnsQuery query;
+	private final DnsResponse result;
 
-	public DnsResponseParseException() {
+	/**
+	 * Creates a new instance of DnsQueryException
+	 */
+	public DnsQueryException(DnsResponse response) {
+		super(response.getTransaction().getQuery() + " failed with error code: " + response.getErrorCode().name());
+		this.query = response.getTransaction().getQuery();
+		this.result = response;
 	}
 
-	public DnsResponseParseException(String message) {
-		super(message);
+	public DnsQuery getQuery() {
+		return query;
 	}
 
-	public DnsResponseParseException(String message, Throwable cause) {
-		super(message, cause);
-	}
-
-	public DnsResponseParseException(Throwable cause) {
-		super(cause);
+	public DnsResponse getResult() {
+		return result;
 	}
 }

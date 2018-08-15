@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,255 +16,191 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.Callback;
+import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Stage;
+import io.datakernel.dns.DnsProtocol.ResponseErrorCode;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.time.CurrentTimeProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
 import java.time.Duration;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.datakernel.dns.DnsMessage.AAAA_RECORD_TYPE;
-import static io.datakernel.dns.DnsMessage.A_RECORD_TYPE;
+import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.NO_ERROR;
 
 /**
  * Represents a cache for storing resolved domains during its time to live.
  */
-final class DnsCache {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+public final class DnsCache {
+	private static final Logger logger = LoggerFactory.getLogger(DnsCache.class);
 
-	private final Map<String, CachedDnsLookupResult> cache = new ConcurrentHashMap<>();
-	private final Map<Long, Set<String>> expirations = new HashMap<>();
-	private long lastCleanupSecond;
+	public static final Duration DEFAULT_TIMED_OUT_EXCEPTION_TTL = Duration.ofSeconds(1);
+	public static final Duration DEFAULT_ERROR_CACHE_EXPIRATION = Duration.ofMinutes(1);
+	public static final Duration DEFAULT_HARD_EXPIRATION_DELTA = Duration.ofMinutes(1);
 
-	private final long errorCacheExpirationSeconds;
-	private final long hardExpirationDeltaSeconds;
-	private final CurrentTimeProvider timeProvider;
+	private final Map<DnsQuery, CachedDnsQueryResult> cache = new ConcurrentHashMap<>();
+	private final Eventloop eventloop;
 
-	private long maxTtlSeconds = Long.MAX_VALUE;
-	private final long timedOutExceptionTtlSeconds;
+	private long errorCacheExpiration = DEFAULT_ERROR_CACHE_EXPIRATION.toMillis();
+	private long timedOutExceptionTtl = DEFAULT_HARD_EXPIRATION_DELTA.toMillis();
+	private long hardExpirationDelta = DEFAULT_TIMED_OUT_EXCEPTION_TTL.toMillis();
+	private long maxTtl = Long.MAX_VALUE;
 
-	private AsyncDnsClient.Inspector inspector;
+	private final AtomicBoolean cleaningUpNow = new AtomicBoolean(false);
+	private final PriorityQueue<CachedDnsQueryResult> expirations = new PriorityQueue<>();
 
-	/**
-	 * Enum with freshness cache's entry.
-	 * <ul>
-	 * <li>FRESH - while time to live of this entry has not passed, empty is considered resolved
-	 * <li> SOFT_TTL_EXPIRED - while hard time expiration has not passed, empty is considered resolved, but needs refreshing
-	 * <li> HARD_TTL_EXPIRED - while hard time expiration has passed, empty is considered not resolved
-	 * </ul>
-	 */
-	public enum DnsCacheEntryFreshness {
-		FRESH,
-		SOFT_TTL_EXPIRED,
-		HARD_TTL_EXPIRED,
-	}
-
-	public enum DnsCacheQueryResult {
-		RESOLVED,
-		RESOLVED_NEEDS_REFRESHING,
-		NOT_RESOLVED
-	}
+	CurrentTimeProvider now;
 
 	/**
 	 * Creates a new DNS cache.
 	 *
-	 * @param timeProvider               time provider
+	 * @param eventloop eventloop
+	 */
+	private DnsCache(Eventloop eventloop) {
+		this.eventloop = eventloop;
+		now = eventloop;
+	}
+
+	public static DnsCache create(Eventloop eventloop) {
+		return new DnsCache(eventloop);
+	}
+
+	/**
 	 * @param errorCacheExpiration expiration time for errors without time to live
-	 * @param hardExpirationDelta  delta between time at which entry is considered resolved, but needs
+	 */
+	public DnsCache withErrorCacheExpirationSeconds(Duration errorCacheExpiration) {
+		this.errorCacheExpiration = errorCacheExpiration.toMillis();
+		return this;
+	}
+
+	/**
+	 * @param hardExpirationDelta delta between time at which entry is considered resolved, but needs
+	 */
+	public DnsCache withHardExpirationDelta(Duration hardExpirationDelta) {
+		this.hardExpirationDelta = hardExpirationDelta.toMillis();
+		return this;
+	}
+
+	/**
 	 * @param timedOutExceptionTtl expiration time for timed out exception
 	 */
-	private DnsCache(CurrentTimeProvider timeProvider, Duration errorCacheExpiration, Duration hardExpirationDelta,
-	                 Duration timedOutExceptionTtl, AsyncDnsClient.Inspector inspector) {
-		this.errorCacheExpirationSeconds = errorCacheExpiration.getSeconds();
-		this.hardExpirationDeltaSeconds = hardExpirationDelta.getSeconds();
-		this.timeProvider = timeProvider;
-		this.timedOutExceptionTtlSeconds = timedOutExceptionTtl.getSeconds();
-		this.lastCleanupSecond = getCurrentSecond();
-		this.inspector = inspector;
-	}
-
-	public static DnsCache create(CurrentTimeProvider timeProvider, Duration errorCacheExpiration, Duration hardExpirationDelta,
-								  Duration timedOutExceptionTtl, AsyncDnsClient.Inspector inspector) {
-		return new DnsCache(timeProvider, errorCacheExpiration, hardExpirationDelta,
-				timedOutExceptionTtl, inspector);
-	}
-
-	private boolean isRequestedType(CachedDnsLookupResult cachedResult, boolean requestedIpv6) {
-		Short cachedResultType = cachedResult.getType();
-
-		if (cachedResultType == A_RECORD_TYPE & !requestedIpv6)
-			return true;
-
-		if (cachedResultType == AAAA_RECORD_TYPE & requestedIpv6)
-			return true;
-
-		else return false;
+	public DnsCache withTimedOutExceptionTtl(Duration timedOutExceptionTtl) {
+		this.errorCacheExpiration = timedOutExceptionTtl.toMillis();
+		return this;
 	}
 
 	/**
-	 * Tries to get status of the entry for some domain name from the cache.
+	 * Tries to get status of the entry for some query from the cache.
 	 *
-	 * @param domainName domain name for finding entry
-	 * @param ipv6       type of result, if true - IPv6, false - IPv4
-	 * @param callback   callback with which it will handle result
-	 * @return DnsCacheQueryResult for this domain name
+	 * @param query DNS query
+	 * @return DnsQueryCacheResult for this query
 	 */
-
-	public DnsCacheQueryResult tryToResolve(String domainName, boolean ipv6, Callback<InetAddress[]> callback) {
-		CachedDnsLookupResult cachedResult = cache.get(domainName);
+	@Nullable
+	public DnsQueryCacheResult tryToResolve(DnsQuery query) {
+		CachedDnsQueryResult cachedResult = cache.get(query);
 
 		if (cachedResult == null) {
-			if (logger.isDebugEnabled())
-				logger.debug("Cache miss for host: {}", domainName);
-			return DnsCacheQueryResult.NOT_RESOLVED;
+			logger.trace("{} cache miss", query);
+			return null;
 		}
 
-		if (cachedResult.isSuccessful() && !isRequestedType(cachedResult, ipv6)) {
-			if (logger.isDebugEnabled())
-				logger.debug("Cache miss for host: {}", domainName);
-			return DnsCacheQueryResult.NOT_RESOLVED;
-		}
-
-		DnsCacheEntryFreshness freshness = getResultFreshness(cachedResult);
-
-		switch (freshness) {
-			case HARD_TTL_EXPIRED: {
-				if (logger.isDebugEnabled())
-					logger.debug("Hard TTL expired for host: {}", domainName);
-				return DnsCacheQueryResult.NOT_RESOLVED;
-			}
-
-			case SOFT_TTL_EXPIRED: {
-				if (logger.isDebugEnabled())
-					logger.debug("Soft TTL expired for host: {}", domainName);
-				returnResultThroughCallback(domainName, cachedResult, callback);
-				return DnsCacheQueryResult.RESOLVED_NEEDS_REFRESHING;
-			}
-
-			default: {
-				returnResultThroughCallback(domainName, cachedResult, callback);
-				return DnsCacheQueryResult.RESOLVED;
-			}
-		}
-	}
-
-	private void returnResultThroughCallback(String domainName, CachedDnsLookupResult result, Callback<InetAddress[]> callback) {
+		DnsResponse result = cachedResult.response;
+		assert result != null; // results with null responses should never be in cache map
 		if (result.isSuccessful()) {
-			InetAddress[] ipsFromCache = result.getIps();
-			if (inspector != null) inspector.onCacheHit(domainName, ipsFromCache);
-			callback.set(ipsFromCache);
-			if (logger.isDebugEnabled())
-				logger.debug("Cache hit for host: {}", domainName);
+			logger.trace("{} cache hit", query);
 		} else {
-			DnsException exception = result.getException();
-			if (inspector != null) inspector.onCacheHitError(domainName, exception);
-			callback.setException(exception);
-			if (logger.isDebugEnabled())
-				logger.debug("Error cache hit for host: {}", domainName);
+			logger.trace("{} error cache hit", query);
 		}
+
+		if (isExpired(cachedResult)) {
+			logger.trace("{} hard TTL expired", query);
+			return null;
+		} else if (isSoftExpired(cachedResult)) {
+			logger.trace("{} soft TTL expired", query);
+			return new DnsQueryCacheResult(result, true);
+		}
+		return new DnsQueryCacheResult(result, false);
 	}
 
-	private DnsCacheEntryFreshness getResultFreshness(CachedDnsLookupResult result) {
-		long softExpirationSecond = result.getExpirationSecond();
-		long hardExpirationSecond = getHardExpirationSecond(softExpirationSecond);
-		long currentSecond = getCurrentSecond();
+	private boolean isExpired(CachedDnsQueryResult cachedResult) {
+		return now.currentTimeMillis() >= cachedResult.expirationTime + hardExpirationDelta;
+	}
 
-		if (currentSecond >= hardExpirationSecond)
-			return DnsCacheEntryFreshness.HARD_TTL_EXPIRED;
-		else if (currentSecond >= softExpirationSecond)
-			return DnsCacheEntryFreshness.SOFT_TTL_EXPIRED;
-		else
-			return DnsCacheEntryFreshness.FRESH;
+	private boolean isSoftExpired(CachedDnsQueryResult cachedResult) {
+		return now.currentTimeMillis() >= cachedResult.expirationTime;
 	}
 
 	/**
-	 * Adds DnsQueryResult to this cache
+	 * Adds DnsResponse to this cache
 	 *
-	 * @param result result to add
+	 * @param response response to add
 	 */
-	public void add(DnsQueryResult result) {
-		if (result.getMinTtl() == 0)
-			return;
-		long expirationSecond;
-		if (result.getMinTtl() > maxTtlSeconds)
-			expirationSecond = maxTtlSeconds + getCurrentSecond();
-		else
-			expirationSecond = result.getMinTtl() + getCurrentSecond();
-		String domainName = result.getDomainName();
-		cache.put(domainName, CachedDnsLookupResult.fromQueryWithExpiration(result, expirationSecond));
-		setExpiration(expirations, expirationSecond + hardExpirationDeltaSeconds, domainName);
-		if (logger.isDebugEnabled())
-			logger.debug("Add result to cache for host: {}", domainName);
-	}
-
-	/**
-	 * Adds DnsException to this cache
-	 *
-	 * @param exception exception to add
-	 */
-	public void add(DnsException exception) {
-		long expirationSecond = errorCacheExpirationSeconds + getCurrentSecond();
-		if (exception.getErrorCode() == DnsMessage.ResponseErrorCode.TIMED_OUT) {
-			expirationSecond = timedOutExceptionTtlSeconds + getCurrentSecond();
+	public void add(DnsQuery query, DnsResponse response) {
+		assert eventloop.inEventloopThread() : "Concurrent cache adds are not allowed";
+		long expirationTime = now.currentTimeMillis();
+		if (response.isSuccessful()) {
+			assert response.getRecord() != null; // where are my advanced contracts so that Intellj would know it's true here without an assert?
+			long minTtl = response.getRecord().getMinTtl() * 1000;
+			if (minTtl == 0) {
+				return;
+			}
+			expirationTime += Math.min(minTtl, maxTtl);
+		} else {
+			expirationTime += response.getErrorCode() == ResponseErrorCode.TIMED_OUT ?
+					timedOutExceptionTtl :
+					errorCacheExpiration;
 		}
-		String domainName = exception.getDomainName();
-		cache.put(domainName, CachedDnsLookupResult.fromExceptionWithExpiration(exception, expirationSecond));
-		setExpiration(expirations, expirationSecond + hardExpirationDeltaSeconds, domainName);
-		if (logger.isDebugEnabled())
-			logger.debug("Add exception to cache for host: {}", domainName);
+		CachedDnsQueryResult cachedResult = new CachedDnsQueryResult(response, expirationTime);
+		CachedDnsQueryResult old = cache.put(query, cachedResult);
+		expirations.add(cachedResult);
+
+		if (old != null) {
+			old.response = null; // mark old cache response as refreshed (see performCleanup)
+			logger.trace("Refreshed cache entry for {}", query);
+		} else {
+			logger.trace("Added cache entry for {}", query);
+		}
 	}
 
 	public void performCleanup() {
-		long callSecond = getCurrentSecond();
-
-		if (callSecond > lastCleanupSecond) {
-			clear(callSecond, lastCleanupSecond);
-			lastCleanupSecond = callSecond;
+		if (!cleaningUpNow.compareAndSet(false, true)) {
+			return;
 		}
-	}
+		long currentTime = now.currentTimeMillis();
 
-	private void clear(long callSecond, long lastCleanupSecond) {
-		for (long i = lastCleanupSecond; i <= callSecond; ++i) {
-			Collection<String> domainNames = expirations.remove(i);
-
-			if (domainNames != null) {
-				for (String domainName : domainNames) {
-					CachedDnsLookupResult cachedResult = cache.get(domainName);
-					if (cachedResult != null && getResultFreshness(cachedResult) == DnsCacheEntryFreshness.HARD_TTL_EXPIRED) {
-						if (inspector != null) inspector.onDomainExpired(domainName);
-						cache.remove(domainName);
-					}
-				}
+		CachedDnsQueryResult peeked;
+		while ((peeked = expirations.peek()) != null && peeked.expirationTime <= currentTime) {
+			DnsResponse response = peeked.response;
+			if (response != null) { // if it was not refreshed(so there is a newer response in the queue)
+				DnsQuery query = response.getTransaction().getQuery();
+				cache.remove(query); // we drop it from cache
+				logger.trace("Cache entry expired for {}", query);
 			}
+			expirations.poll();
 		}
+		cleaningUpNow.set(false);
 	}
 
-	public long getMaxTtlSeconds() {
-		return maxTtlSeconds;
+	public long getMaxTtl() {
+		return maxTtl;
 	}
 
 	public void setMaxTtl(Duration maxTtl) {
-		this.maxTtlSeconds = maxTtl.getSeconds();
+		this.maxTtl = maxTtl.getSeconds();
 	}
 
-	public long getTimedOutExceptionTtlSeconds() {
-		return timedOutExceptionTtlSeconds;
+	public long getTimedOutExceptionTtl() {
+		return timedOutExceptionTtl;
 	}
 
 	public void clear() {
+		assert eventloop.inEventloopThread();
 		cache.clear();
 		expirations.clear();
-	}
-
-	private long getCurrentSecond() {
-		return timeProvider.currentTimeMillis() / 1000;
-	}
-
-	private long getHardExpirationSecond(long softExpirationSecond) {
-		return softExpirationSecond + hardExpirationDeltaSeconds;
 	}
 
 	public int getNumberOfCachedDomainNames() {
@@ -272,79 +208,102 @@ final class DnsCache {
 	}
 
 	public int getNumberOfCachedExceptions() {
-		int exceptions = 0;
-
-		for (CachedDnsLookupResult cachedResult : cache.values()) {
-			if (!cachedResult.isSuccessful())
-				++exceptions;
-		}
-
-		return exceptions;
+		return (int) cache.values().stream()
+				.filter(cachedResult -> {
+					assert cachedResult.response != null;
+					return !cachedResult.response.isSuccessful();
+				})
+				.count();
 	}
 
 	public String[] getSuccessfullyResolvedDomainNames() {
-		List<String> domainNames = new ArrayList<>();
-
-		for (Map.Entry<String, CachedDnsLookupResult> entry : cache.entrySet()) {
-			if (entry.getValue().isSuccessful()) {
-				domainNames.add(entry.getKey());
-			}
-		}
-
-		return domainNames.toArray(new String[domainNames.size()]);
+		return cache.entrySet().stream()
+				.filter(entry -> {
+					assert entry.getValue().response != null;
+					return entry.getValue().response.isSuccessful();
+				})
+				.map(Entry::getKey)
+				.toArray(String[]::new);
 	}
 
 	public String[] getDomainNamesOfFailedRequests() {
-		List<String> domainNames = new ArrayList<>();
-
-		for (Map.Entry<String, CachedDnsLookupResult> entry : cache.entrySet()) {
-			if (!entry.getValue().isSuccessful()) {
-				domainNames.add(entry.getKey());
-			}
-		}
-
-		return domainNames.toArray(new String[domainNames.size()]);
+		return cache.entrySet().stream()
+				.filter(entry -> {
+					assert entry.getValue().response != null;
+					return !entry.getValue().response.isSuccessful();
+				})
+				.map(Entry::getKey)
+				.toArray(String[]::new);
 	}
 
 	public String[] getAllCacheEntriesWithHeaderLine() {
+		if (cache.isEmpty()) {
+			return new String[0];
+		}
+
 		List<String> cacheEntries = new ArrayList<>();
 		StringBuilder sb = new StringBuilder();
 
-		if (!cache.isEmpty())
-			cacheEntries.add("domainName;ips;secondsToSoftExpiration;secondsToHardExpiration;status");
-
-		for (Map.Entry<String, CachedDnsLookupResult> detailedCacheEntry : cache.entrySet()) {
-			String domainName = detailedCacheEntry.getKey();
-			CachedDnsLookupResult dnsLookupResult = detailedCacheEntry.getValue();
-			InetAddress[] ips = dnsLookupResult.getIps();
-			long softExpirationSecond = dnsLookupResult.getExpirationSecond();
-			long hardExpirationSecond = getHardExpirationSecond(softExpirationSecond);
-			long currentSecond = getCurrentSecond();
+		cacheEntries.add("domainName;ips;secondsToSoftExpiration;secondsToHardExpiration;status");
+		cache.forEach((domainName, cachedResult) -> {
+			long softExpirationSecond = cachedResult.expirationTime;
+			long hardExpirationSecond = softExpirationSecond + hardExpirationDelta;
+			long currentSecond = now.currentTimeMillis();
 			long secondsToSoftExpiration = softExpirationSecond - currentSecond;
 			long secondsToHardExpiration = hardExpirationSecond - currentSecond;
-			sb.append(domainName);
-			sb.append(";");
-			sb.append(Arrays.toString(ips));
-			sb.append(";");
-			sb.append(secondsToSoftExpiration <= 0 ? "expired" : secondsToSoftExpiration);
-			sb.append(";");
-			sb.append(secondsToHardExpiration <= 0 ? "expired" : secondsToHardExpiration);
-			sb.append(";");
-			sb.append(dnsLookupResult.getErrorCode());
-			cacheEntries.add(sb.toString());
+			DnsResponse result = cachedResult.response;
+			//noinspection ConstantConditions - for getRecord() != null after isSuccessful() check
+			cacheEntries.add(sb
+					.append(domainName)
+					.append(";")
+					.append(result.isSuccessful() ? Arrays.toString(result.getRecord().getIps()) : "[]")
+					.append(";")
+					.append(secondsToSoftExpiration <= 0 ? "expired" : secondsToSoftExpiration)
+					.append(";")
+					.append(secondsToHardExpiration <= 0 ? "expired" : secondsToHardExpiration)
+					.append(";")
+					.append(result.getErrorCode())
+					.toString());
 			sb.setLength(0);
+		});
+
+		return cacheEntries.toArray(new String[0]);
+	}
+
+	public static final class DnsQueryCacheResult {
+		private final DnsResponse response;
+		private final boolean needsRefreshing;
+
+		public DnsQueryCacheResult(DnsResponse response, boolean needsRefreshing) {
+			this.response = response;
+			this.needsRefreshing = needsRefreshing;
 		}
 
-		return cacheEntries.toArray(new String[cacheEntries.size()]);
+		public Stage<DnsResponse> getResponseAsStage() {
+			if (response.getErrorCode() == NO_ERROR) {
+				return Stage.of(response);
+			}
+			return Stage.ofException(new DnsQueryException(response));
+		}
+
+		public boolean doesNeedRefreshing() {
+			return needsRefreshing;
+		}
 	}
 
-	private void setExpiration(Map<Long, Set<String>> expirations, long time, String domain) {
-		Set<String> sameTime = expirations.computeIfAbsent(time, k -> new HashSet<>());
-		sameTime.add(domain);
-	}
+	static final class CachedDnsQueryResult implements Comparable<CachedDnsQueryResult> {
+		@Nullable
+		DnsResponse response;
+		final long expirationTime;
 
-	void setInspector(AsyncDnsClient.Inspector inspector) {
-		this.inspector = inspector;
-	}
+		CachedDnsQueryResult(@Nullable DnsResponse response, long expirationTime) {
+			this.response = response;
+			this.expirationTime = expirationTime;
+		}
 
+		@Override
+		public int compareTo(CachedDnsQueryResult o) {
+			return Long.compare(expirationTime, o.expirationTime);
+		}
+	}
 }

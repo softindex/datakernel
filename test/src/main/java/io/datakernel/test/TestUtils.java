@@ -111,7 +111,7 @@ public class TestUtils {
 				throw new AssertionError("Expected an error");
 			}
 			if (error == null || !errorClass.isAssignableFrom(error.getClass())) {
-				throw new AssertionError("Expected an error of type " + errorClass.getName() + " got " + (error == null ? "none" : error.getClass().getSimpleName()));
+				throw new AssertionError("Expected an error of type " + errorClass.getName() + ", but got " + (error == null ? "none" : error.getClass().getSimpleName()));
 			}
 			if (messagePattern != null && !Pattern.compile(messagePattern).matcher(error.getMessage()).find()) {
 				throw new AssertionError("Expected error message to match pattern `" + messagePattern + "`, but got message '" + error.getMessage() + "'");

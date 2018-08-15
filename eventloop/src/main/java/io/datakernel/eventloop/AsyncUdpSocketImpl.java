@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.jmx.EventStats;
@@ -26,6 +27,7 @@ import io.datakernel.util.MemSize;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.time.Duration;
@@ -38,6 +40,8 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	private static final MemSize DEFAULT_UDP_BUFFER_SIZE = MemSize.kilobytes(16);
 
 	private final Eventloop eventloop;
+
+	@Nullable
 	private SelectionKey key;
 
 	private int receiveBufferSize = DEFAULT_UDP_BUFFER_SIZE.toInt();
@@ -49,7 +53,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 	private int ops = 0;
 
-	// region jmx classes
+	// region JMX
 	public interface Inspector {
 		void onReceive(UdpPacket packet);
 
@@ -120,11 +124,12 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 			return sendErrors;
 		}
 	}
+
+	@Nullable
+	private Inspector inspector;
 	// endregion
 
-	private Inspector inspector;
-
-	// region creators && builder methods
+	// region creators
 	private AsyncUdpSocketImpl(Eventloop eventloop, DatagramChannel channel) {
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(channel);
@@ -134,7 +139,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		return new AsyncUdpSocketImpl(eventloop, channel);
 	}
 
-	public AsyncUdpSocketImpl withInspector(Inspector inspector) {
+	public AsyncUdpSocketImpl withInspector(@Nullable Inspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}
@@ -149,7 +154,6 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		this.receiveBufferSize = receiveBufferSize;
 	}
 
-	//  miscellaneous
 	public void register() {
 		try {
 			key = channel.register(eventloop.ensureSelector(), ops, this);
@@ -162,11 +166,10 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		eventHandler.onRegistered();
 	}
 
-	public final boolean isOpen() {
+	public boolean isOpen() {
 		return key != null;
 	}
 
-	//  read cycle
 	@Override
 	public void receive() {
 		readInterest(true);
@@ -196,7 +199,6 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		}
 	}
 
-	//  write cycle
 	@Override
 	public void send(UdpPacket packet) {
 		writeQueue.add(packet);
@@ -207,6 +209,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	public void onWriteReady() {
 		while (!writeQueue.isEmpty()) {
 			UdpPacket packet = writeQueue.peek();
+			assert packet != null; // isEmpty check
 			ByteBuffer buffer = packet.getBuf().toReadByteBuffer();
 
 			int needToSend = buffer.remaining();
@@ -236,7 +239,6 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		}
 	}
 
-	// interests management
 	@SuppressWarnings("MagicConstant")
 	private void interests(int newOps) {
 		if (ops != newOps) {
@@ -247,6 +249,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		}
 	}
 
+	@SuppressWarnings("SameParameterValue")
 	private void readInterest(boolean readInterest) {
 		interests(readInterest ? (ops | SelectionKey.OP_READ) : (ops & ~SelectionKey.OP_READ));
 	}
@@ -255,11 +258,12 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		interests(writeInterest ? (ops | SelectionKey.OP_WRITE) : (ops & ~SelectionKey.OP_WRITE));
 	}
 
-	//  close handling
 	@Override
 	public void close() {
 		assert eventloop.inEventloopThread();
-		if (key == null) return;
+		if (key == null) {
+			return;
+		}
 		eventloop.closeChannel(key);
 		key = null;
 		for (UdpPacket packet : writeQueue) {
@@ -270,14 +274,19 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 	@Override
 	public String toString() {
-		return getRemoteSocketAddress() + " " + eventHandler.toString();
+		if (isOpen()) {
+			return getRemoteSocketAddress() + " " + eventHandler.toString();
+		}
+		return "<closed> " + eventHandler.toString();
 	}
 
 	private InetSocketAddress getRemoteSocketAddress() {
 		try {
 			return (InetSocketAddress) channel.getRemoteAddress();
-		} catch (IOException ignored) {
-			throw new AssertionError("I/O error occurs or channel closed");
+		} catch (ClosedChannelException e) {
+			throw new AssertionError("Channel is closed");
+		} catch (IOException e) {
+			throw new AssertionError(e);
 		}
 	}
 }

@@ -796,7 +796,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			if (datagramChannel != null) {
 				try {
 					datagramChannel.close();
-				} catch (Exception ignored) {
+				} catch (Exception nested) {
+					logger.error("Failed closing datagram channel after I/O error", nested);
 				}
 			}
 			throw e;
@@ -1048,9 +1049,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		this.monitoring = false;
 	}
 
-	@JmxAttribute(
-			description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
-					"(for example, most of the durationStats are collected only when monitoring is enabled)")
+	@JmxAttribute(description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, most of the durationStats are collected only when monitoring is enabled)")
 	public boolean isExtendedMonitoring() {
 		return monitoring;
 	}

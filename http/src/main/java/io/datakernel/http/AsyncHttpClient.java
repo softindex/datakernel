@@ -22,7 +22,8 @@ import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.dns.AsyncDnsClient;
-import io.datakernel.dns.IAsyncDnsClient;
+import io.datakernel.dns.CachedAsyncDnsClient;
+import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -55,7 +56,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	public static final Duration DEFAULT_KEEP_ALIVE_MILLIS = Duration.ofSeconds(30);
 
 	private final Eventloop eventloop;
-	private IAsyncDnsClient asyncDnsClient;
+	private AsyncDnsClient asyncDnsClient;
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
 
 	int connectionsCount;
@@ -226,13 +227,13 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private int inetAddressIdx = 0;
 
 	// region builders
-	private AsyncHttpClient(Eventloop eventloop, IAsyncDnsClient asyncDnsClient) {
+	private AsyncHttpClient(Eventloop eventloop, AsyncDnsClient asyncDnsClient) {
 		this.eventloop = eventloop;
 		this.asyncDnsClient = asyncDnsClient;
 	}
 
 	public static AsyncHttpClient create(Eventloop eventloop) {
-		IAsyncDnsClient defaultDnsClient = AsyncDnsClient.create(eventloop);
+		AsyncDnsClient defaultDnsClient = CachedAsyncDnsClient.create(eventloop, RemoteAsyncDnsClient.create(eventloop));
 		return new AsyncHttpClient(eventloop, defaultDnsClient);
 	}
 
@@ -241,7 +242,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return this;
 	}
 
-	public AsyncHttpClient withDnsClient(IAsyncDnsClient asyncDnsClient) {
+	public AsyncHttpClient withDnsClient(AsyncDnsClient asyncDnsClient) {
 		this.asyncDnsClient = asyncDnsClient;
 		return this;
 	}
@@ -356,20 +357,22 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 		assert host != null;
 
-		asyncDnsClient.resolve4(host, new Callback<InetAddress[]>() {
-			@Override
-			public void set(InetAddress[] inetAddresses) {
-				if (inspector != null) inspector.onResolve(request, inetAddresses);
-				doSend(request, inetAddresses, callback);
-			}
-
-			@Override
-			public void setException(Throwable e) {
-				if (inspector != null) inspector.onResolveError(request, e);
-				request.recycleBufs();
-				callback.setException(e);
-			}
-		});
+		asyncDnsClient.resolve4(host)
+				.whenComplete((result, e) -> {
+					if (e != null) {
+						if (inspector != null) {
+							inspector.onResolveError(request, e);
+						}
+						request.recycleBufs();
+						callback.setException(e);
+						return;
+					}
+					InetAddress[] ips = result.getRecord().getIps();
+					if (inspector != null) {
+						inspector.onResolve(request, ips);
+					}
+					doSend(request, ips, callback);
+				});
 	}
 
 	private void doSend(HttpRequest request, InetAddress[] inetAddresses,

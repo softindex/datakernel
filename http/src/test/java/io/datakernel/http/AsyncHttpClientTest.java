@@ -91,9 +91,7 @@ public class AsyncHttpClientTest {
 						return Stage.ofException(e);
 					}
 				})
-				.whenComplete((s, throwable) -> {
-					httpClient.stop();
-				})
+				.whenComplete((s, throwable) -> httpClient.stop())
 				.toCompletableFuture();
 
 		eventloop.run();

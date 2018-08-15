@@ -18,6 +18,8 @@ package io.datakernel.http;
 
 import io.datakernel.async.Stage;
 import io.datakernel.dns.AsyncDnsClient;
+import io.datakernel.dns.CachedAsyncDnsClient;
+import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.stream.processor.ByteBufRule;
@@ -87,10 +89,11 @@ public class SimpleProxyServerTest {
 		echoServerThread.start();
 
 		Eventloop eventloop2 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop2)
+		AsyncDnsClient dnsClient = CachedAsyncDnsClient.create(eventloop2, RemoteAsyncDnsClient.create(eventloop2)
 				.withDatagramSocketSetting(DatagramSocketSettings.create())
-				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2).withDnsClient(dnsClient);
+				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2)
+				.withDnsClient(dnsClient);
 
 		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);
 		proxyServer.listen();

@@ -19,6 +19,8 @@ package io.datakernel.https;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.dns.AsyncDnsClient;
+import io.datakernel.dns.CachedAsyncDnsClient;
+import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AcceptMediaType;
 import io.datakernel.http.AsyncHttpClient;
@@ -59,9 +61,9 @@ public class TestHttpsClient {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 
-		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
+		AsyncDnsClient dnsClient = CachedAsyncDnsClient.create(eventloop, RemoteAsyncDnsClient.create(eventloop)
 				.withTimeout(Duration.ofMillis(500))
-				.withDnsServerAddress(inetAddress("8.8.8.8"));
+				.withDnsServerAddress(inetAddress("8.8.8.8")));
 
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop)
 				.withDnsClient(dnsClient)

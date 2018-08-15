@@ -20,6 +20,8 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.async.Stage;
 import io.datakernel.dns.AsyncDnsClient;
+import io.datakernel.dns.CachedAsyncDnsClient;
+import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.stream.processor.ByteBufRule;
@@ -83,9 +85,9 @@ public class TestHttpsClientServer {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.withSslListenPort(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor, SSL_PORT);
 
-		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
+		AsyncDnsClient dnsClient = CachedAsyncDnsClient.create(eventloop, RemoteAsyncDnsClient.create(eventloop)
 				.withTimeout(Duration.ofMillis(500))
-				.withDnsServerAddress(GOOGLE_PUBLIC_DNS);
+				.withDnsServerAddress(GOOGLE_PUBLIC_DNS));
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop)
 				.withConnectTimeout(Duration.ofMillis(500))
 				.withDnsClient(dnsClient)
@@ -113,9 +115,9 @@ public class TestHttpsClientServer {
 				.withSslListenPort(context, executor, SSL_PORT)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
-		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
+		AsyncDnsClient dnsClient = CachedAsyncDnsClient.create(eventloop, RemoteAsyncDnsClient.create(eventloop)
 				.withTimeout(Duration.ofMillis(500))
-				.withDnsServerAddress(GOOGLE_PUBLIC_DNS);
+				.withDnsServerAddress(GOOGLE_PUBLIC_DNS));
 
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop)
 				.withDnsClient(dnsClient)

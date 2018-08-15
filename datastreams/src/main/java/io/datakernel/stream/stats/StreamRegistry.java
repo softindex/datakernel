@@ -14,7 +14,7 @@ import java.util.List;
 import static java.lang.System.currentTimeMillis;
 
 public final class StreamRegistry<V> implements Iterable<V> {
-	private final IntrusiveLinkedList<Entry<V>> list = IntrusiveLinkedList.create();
+	private final IntrusiveLinkedList<Entry<V>> list = new IntrusiveLinkedList<>();
 	private int limit = 10;
 
 	public static class Entry<T> {

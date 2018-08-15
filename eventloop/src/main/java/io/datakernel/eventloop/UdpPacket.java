@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 
 import java.net.InetSocketAddress;
@@ -28,6 +29,7 @@ public final class UdpPacket {
 	/**
 	 * The data buffer to send
 	 */
+	@Nullable
 	private ByteBuf buf;
 	/**
 	 * The address to which the packet should be sent or from which it
@@ -35,8 +37,8 @@ public final class UdpPacket {
 	 */
 	private final InetSocketAddress inetSocketAddress;
 
-	// region builders
-	private UdpPacket(ByteBuf buf, InetSocketAddress inetSocketAddress) {
+	// region creators
+	private UdpPacket(@Nullable ByteBuf buf, InetSocketAddress inetSocketAddress) {
 		this.buf = buf;
 		this.inetSocketAddress = inetSocketAddress;
 	}
@@ -57,6 +59,7 @@ public final class UdpPacket {
 	 * Returns the data buffer to send or which was received
 	 */
 	public ByteBuf getBuf() {
+		assert buf != null : "Using UdpPacket after recycling";
 		return buf;
 	}
 

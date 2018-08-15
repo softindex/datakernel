@@ -138,19 +138,20 @@ public class HttpTolerantApplicationTest {
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
-			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), new Callback<HttpResponse>() {
-				@Override
-				public void set(HttpResponse response) {
-					future.complete(response.getHeader(HttpHeaders.CONTENT_TYPE));
-					httpClient.stop();
-				}
+			eventloop.post(() ->
+					httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), new Callback<HttpResponse>() {
+						@Override
+						public void set(HttpResponse response) {
+							future.complete(response.getHeader(HttpHeaders.CONTENT_TYPE));
+							httpClient.stop();
+						}
 
-				@Override
-				public void setException(Throwable exception) {
-					future.completeExceptionally(exception);
-					httpClient.stop();
-				}
-			});
+						@Override
+						public void setException(Throwable exception) {
+							future.completeExceptionally(exception);
+							httpClient.stop();
+						}
+					}));
 
 			eventloop.run();
 		}

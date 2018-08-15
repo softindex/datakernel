@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,35 +16,26 @@
 
 package io.datakernel.dns;
 
+import io.datakernel.annotation.Nullable;
+
 import java.net.InetAddress;
+import java.util.Arrays;
 
 /**
- * Represent a resolved domain
+ * Represents a resolved domain (of A or AAAA type)
  */
-final class DnsResourceRecord {
+public final class DnsResourceRecord {
 	private final InetAddress[] ips;
 	private final int minTtl;
-	private final short type;
 
-	/**
-	 * Creates a new instance of DnsResourceRecord
-	 *
-	 * @param ips    address of the resolved domain
-	 * @param minTtl time to live for this record
-	 * @param type   type of address
-	 */
-	private DnsResourceRecord(InetAddress[] ips, int minTtl, short type) {
+	private DnsResourceRecord(InetAddress[] ips, int minTtl) {
 		this.ips = ips;
 		this.minTtl = minTtl;
-		this.type = type;
 	}
 
-	public static DnsResourceRecord of(InetAddress[] ips, int minTtl, short type) {
-		return new DnsResourceRecord(ips, minTtl, type);
-	}
-
-	public boolean hasData() {
-		return ips.length != 0;
+	public static DnsResourceRecord of(InetAddress[] ips, int minTtl) {
+		assert ips.length > 0 : "Cannot create DNS record with no data";
+		return new DnsResourceRecord(ips, minTtl);
 	}
 
 	public InetAddress[] getIps() {
@@ -55,7 +46,23 @@ final class DnsResourceRecord {
 		return minTtl;
 	}
 
-	public short getType() {
-		return type;
+	@Override
+	public String toString() {
+		return "DnsResourceRecord{ips=" + Arrays.toString(ips) + ", minTtl=" + minTtl + '}';
+	}
+
+	@Override
+	public boolean equals(@Nullable Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		DnsResourceRecord that = (DnsResourceRecord) o;
+
+		return minTtl == that.minTtl && Arrays.equals(ips, that.ips);
+	}
+
+	@Override
+	public int hashCode() {
+		return 31 * Arrays.hashCode(ips) + minTtl;
 	}
 }

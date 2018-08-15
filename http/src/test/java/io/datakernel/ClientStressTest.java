@@ -17,7 +17,8 @@
 package io.datakernel;
 
 import io.datakernel.async.Stage;
-import io.datakernel.dns.AsyncDnsClient;
+import io.datakernel.dns.CachedAsyncDnsClient;
+import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import org.slf4j.Logger;
@@ -63,7 +64,7 @@ public class ClientStressTest {
 	private final SSLContext context = SSLContext.getDefault();
 
 	private AsyncHttpClient client = AsyncHttpClient.create(eventloop)
-			.withDnsClient(AsyncDnsClient.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")))
+			.withDnsClient(CachedAsyncDnsClient.create(eventloop, RemoteAsyncDnsClient.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8"))))
 			.withSslEnabled(context, executor);
 
 	private ClientStressTest() throws Exception {

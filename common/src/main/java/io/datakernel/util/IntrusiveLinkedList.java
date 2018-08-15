@@ -22,16 +22,11 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 public final class IntrusiveLinkedList<T> implements Iterable<T> {
-	private IntrusiveLinkedList() {
-	}
-
-	public static <T> IntrusiveLinkedList<T> create() {
-		return new IntrusiveLinkedList<T>();
-	}
 
 	@Override
 	public Iterator<T> iterator() {
 		return new Iterator<T>() {
+			@Nullable
 			Node<T> node = getFirstNode();
 
 			@Override
@@ -41,7 +36,10 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 
 			@Override
 			public T next() {
-				if (!hasNext()) throw new NoSuchElementException();
+				if (!hasNext()) {
+					throw new NoSuchElementException();
+				}
+				assert node != null;
 				T result = node.value;
 				node = node.next;
 				return result;
@@ -51,13 +49,17 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 
 	public static final class Node<T> {
 		final T value;
+		@Nullable
 		Node<T> prev;
+		@Nullable
 		Node<T> next;
 
+		@Nullable
 		public Node<T> getPrev() {
 			return prev;
 		}
 
+		@Nullable
 		public Node<T> getNext() {
 			return next;
 		}
@@ -72,13 +74,17 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 	}
 
 	private int size;
+	@Nullable
 	private Node<T> first;
+	@Nullable
 	private Node<T> last;
 
+	@Nullable
 	public Node<T> getFirstNode() {
 		return first;
 	}
 
+	@Nullable
 	public Node<T> getLastNode() {
 		return last;
 	}
@@ -106,6 +112,7 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 		return size;
 	}
 
+	@Nullable
 	public Node<T> removeFirstNode() {
 		if (first == null)
 			return null;
@@ -122,6 +129,7 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 		return node;
 	}
 
+	@Nullable
 	public Node<T> removeLastNode() {
 		if (last == null)
 			return null;
@@ -208,6 +216,44 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 			return;
 		removeNode(node);
 		addFirstNode(node);
+	}
+
+	public Node<T> addAfterNode(@Nullable Node<T> node, T value) {
+		assert first != null && last != null; // node is assumed to be in this list
+		// null node in add-after context is "node before the head"
+		if (node == null) {
+			return addFirstValue(value);
+		}
+		if (node.next == null) {
+			return addLastValue(value);
+		}
+		Node<T> newNode = new Node<>(value);
+		Node<T> next = node.next;
+		node.next = newNode;
+		next.prev = newNode;
+		newNode.prev = node;
+		newNode.next = next;
+		size++;
+		return newNode;
+	}
+
+	public Node<T> addBeforeNode(Node<T> node, T value) {
+		assert first != null && last != null; // node is assumed to be in this list
+		// null node in add-before context is "node after the tail"
+		if (node == null) {
+			return addLastValue(value);
+		}
+		if (node.prev == null) {
+			return addFirstValue(value);
+		}
+		Node<T> newNode = new Node<>(value);
+		Node<T> prev = node.prev;
+		prev.next = newNode;
+		node.prev = newNode;
+		newNode.prev = prev;
+		newNode.next = node;
+		size++;
+		return newNode;
 	}
 
 	public void removeNode(Node<T> node) {

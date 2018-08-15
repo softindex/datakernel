@@ -27,7 +27,7 @@ public class IntrusiveLinkedListTest {
 
 	@Before
 	public void before() {
-		list = IntrusiveLinkedList.create();
+		list = new IntrusiveLinkedList<>();
 	}
 
 	@Test
