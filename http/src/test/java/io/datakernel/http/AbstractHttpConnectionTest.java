@@ -21,6 +21,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.EventStats;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -113,6 +114,98 @@ public class AbstractHttpConnectionTest {
 
 		eventloop.run();
 		future.get();
+	}
+
+	@Test
+	public void testClientWithMaxKeepAliveRequests() throws Exception {
+		client.withMaxKeepAliveRequests(3);
+
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public Stage<HttpResponse> serve(HttpRequest request) {
+				return Stage.of(HttpResponse.ok200());
+			}
+		};
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
+		server.listen();
+
+		EventStats clientConnectionCount = client.getStats().getConnected();
+
+		client.send(HttpRequest.get(url))
+				.thenCompose(response -> {
+					clientConnectionCount.refresh(System.currentTimeMillis());
+					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
+					assertEquals(1, clientConnectionCount.getTotalCount());
+					return client.send(HttpRequest.get(url));
+				})
+				.thenCompose(response -> {
+					clientConnectionCount.refresh(System.currentTimeMillis());
+					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
+					assertEquals(1, clientConnectionCount.getTotalCount());
+					return client.send(HttpRequest.get(url));
+				})
+				.thenCompose(response -> {
+					clientConnectionCount.refresh(System.currentTimeMillis());
+					assertEquals("close", response.getHeaderValue(CONNECTION).toString());
+					assertEquals(1, client.getStats().getConnected().getTotalCount());
+					return client.send(HttpRequest.get(url));
+				})
+				.thenCompose(response -> {
+					clientConnectionCount.refresh(System.currentTimeMillis());
+					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
+					assertEquals(2, clientConnectionCount.getTotalCount());
+					return stopClientAndServer(client, server);
+				})
+				.toCompletableFuture();
+
+		eventloop.run();
+	}
+
+	@Test
+	public void testServerWithMaxKeepAliveRequests() throws Exception {
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public Stage<HttpResponse> serve(HttpRequest request) {
+				return Stage.of(HttpResponse.ok200());
+			}
+		};
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+				.withListenAddress(new InetSocketAddress("localhost", PORT))
+				.withMaxKeepAliveRequests(3);
+		server.listen();
+
+		EventStats clientConnectionCount = server.getAccepts();
+		assert clientConnectionCount != null;
+
+		client.send(HttpRequest.get(url))
+				.thenCompose(response -> {
+					clientConnectionCount.refresh(System.currentTimeMillis());
+					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
+					assertEquals(1, clientConnectionCount.getTotalCount());
+					return client.send(HttpRequest.get(url));
+				})
+				.thenCompose(response2 -> {
+					clientConnectionCount.refresh(System.currentTimeMillis());
+					assertEquals("keep-alive", response2.getHeaderValue(CONNECTION).toString());
+					assertEquals(1, clientConnectionCount.getTotalCount());
+					return client.send(HttpRequest.get(url));
+				})
+				.thenCompose(response3 -> {
+					clientConnectionCount.refresh(System.currentTimeMillis());
+					assertEquals("close", response3.getHeaderValue(CONNECTION).toString());
+					assertEquals(1, clientConnectionCount.getTotalCount());
+					return client.send(HttpRequest.get(url));
+				})
+				.thenCompose(response4 -> {
+					clientConnectionCount.refresh(System.currentTimeMillis());
+					assertEquals("keep-alive", response4.getHeaderValue(CONNECTION).toString());
+					assertEquals(2, clientConnectionCount.getTotalCount());
+					return stopClientAndServer(client, server);
+				})
+				.toCompletableFuture();
+
+		eventloop.run();
 	}
 
 	private Stage<Void> stopClientAndServer(AsyncHttpClient client, AsyncHttpServer server) {

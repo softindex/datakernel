@@ -237,6 +237,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
+		if (keepAlive && server.maxKeepAliveRequests != -1){
+			if(++numberOfKeepAliveRequests >= server.maxKeepAliveRequests){
+				keepAlive = false;
+			}
+		}
+
 		reading = NOTHING;
 		request.setBody(bodyBuf);
 		request.setRemoteAddress(remoteAddress);

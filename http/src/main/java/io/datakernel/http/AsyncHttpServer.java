@@ -53,6 +53,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private HttpExceptionFormatter errorFormatter = DEFAULT_ERROR_FORMATTER;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE.toMillis();
+	int maxKeepAliveRequests = -1;
 	private int readTimeoutMillis = 0;
 	private int writeTimeoutMillis = 0;
 
@@ -160,6 +161,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		checkArgument(keepAliveTimeMillis >= 0, "Keep alive timeout should not be less than zero");
 
 		this.keepAliveTimeoutMillis = (int) keepAliveTimeMillis;
+		return this;
+	}
+
+	public AsyncHttpServer withMaxKeepAliveRequests(int maxKeepAliveRequests) {
+		checkArgument(maxKeepAliveRequests >= 0, "Maximum number of requests per keep-alive connection should not be less than zero");
+		this.maxKeepAliveRequests = maxKeepAliveRequests;
 		return this;
 	}
 

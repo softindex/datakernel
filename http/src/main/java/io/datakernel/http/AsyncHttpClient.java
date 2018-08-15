@@ -46,6 +46,7 @@ import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.http.AbstractHttpConnection.*;
 import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
@@ -75,6 +76,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	// timeouts
 	private int connectTimeoutMillis = 0;
 	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE_MILLIS.getSeconds();
+	int maxKeepAliveRequests = -1;
 	private int readTimeoutMillis = 0;
 	private int writeTimeoutMillis = 0;
 
@@ -257,6 +259,12 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	public AsyncHttpClient withNoKeepAlive() {
 		return withKeepAliveTimeout(Duration.ZERO);
+	}
+
+	public AsyncHttpClient  withMaxKeepAliveRequests(int maxKeepAliveRequests) {
+		checkArgument(maxKeepAliveRequests >= 0, "Maximum number of requests per keep-alive connection should not be less than zero");
+		this.maxKeepAliveRequests = maxKeepAliveRequests;
+		return this;
 	}
 
 	public AsyncHttpClient withReadTimeout(Duration readTimeout) {

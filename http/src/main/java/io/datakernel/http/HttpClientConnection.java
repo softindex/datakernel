@@ -225,11 +225,17 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param request request for sending
 	 */
 	public void send(HttpRequest request, Callback<HttpResponse> callback) {
+		boolean sendKeepAliveHeader = true;
+		if (client.maxKeepAliveRequests != -1) {
+			if (++numberOfKeepAliveRequests >= client.maxKeepAliveRequests) {
+				sendKeepAliveHeader = false;
+			}
+		}
 		this.callback = callback;
 		assert pool == null; // moving from open(null)/taken(null) state to writing state
 		(pool = client.poolWriting).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
-		request.addHeader(CONNECTION_KEEP_ALIVE);
+		request.addHeader(sendKeepAliveHeader ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
 		asyncTcpSocket.write(request.toByteBuf());
 		request.recycleBufs();
 	}

@@ -57,6 +57,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	protected final ByteBufQueue readQueue = ByteBufQueue.create();
 
 	protected boolean keepAlive;
+	protected int numberOfKeepAliveRequests;
 
 	protected final ByteBufQueue bodyQueue = ByteBufQueue.create();
 
