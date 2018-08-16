@@ -1,19 +1,24 @@
 package io.datakernel.trigger;
 
 import com.google.inject.*;
+import com.google.inject.multibindings.MultibindingsScanner;
+import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.util.Initializer;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
 import static com.google.inject.name.Names.named;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class TriggersModuleTest {
 	@Rule
@@ -23,12 +28,13 @@ public class TriggersModuleTest {
 	public void testDuplicatesRejection() {
 		exception.expect(IllegalArgumentException.class);
 		exception.expectMessage("Cannot assign duplicate triggers");
-		Injector injector = Guice.createInjector(
+		Guice.createInjector(
 				ServiceGraphModule.defaultInstance(),
 				TriggersModule.create()
 						.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create())
 						.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create())
 		);
+		fail();
 	}
 
 	@Test
@@ -39,6 +45,7 @@ public class TriggersModuleTest {
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					int counter = 0;
+
 					@Provides
 					@Singleton
 					@Named("first")
@@ -73,11 +80,71 @@ public class TriggersModuleTest {
 		injector.getInstance(Key.get(WorkerPool.class, named("first"))).getInstances(String.class);
 		injector.getInstance(Key.get(WorkerPool.class, named("second"))).getInstances(String.class);
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
-		serviceGraph.startFuture().get();
-		Triggers triggersWatcher = injector.getInstance(Triggers.class);
-		assertEquals(firstPoolSize + secondPoolSize, triggersWatcher.getResults().size());
-		triggersWatcher.getResults()
-				.forEach(triggerWithResult -> assertTrue(triggerWithResult.toString().startsWith("HIGH : String : test :: ")));
+		boolean[] wasExecuted = {false};
+		try {
+			serviceGraph.startFuture().get();
+			Triggers triggersWatcher = injector.getInstance(Triggers.class);
+			assertEquals(firstPoolSize + secondPoolSize, triggersWatcher.getResults().size());
+			triggersWatcher.getResults()
+					.forEach(triggerWithResult -> assertTrue(triggerWithResult.toString().startsWith("HIGH : String : test :: ")));
+			wasExecuted[0] = true;
+		} finally {
+			assertTrue(wasExecuted[0]);
+			serviceGraph.stopFuture().get();
+		}
 	}
 
+	@Test
+	public void testMultiModule() throws ExecutionException, InterruptedException {
+		Injector injector = Guice.createInjector(
+				ServiceGraphModule.defaultInstance(),
+				new AbstractModule() {
+					@Override
+					protected void configure() {
+						// deprecated in Guice 4.2
+						install(MultibindingsScanner.asModule());
+						install(TriggersModule.create());
+					}
+
+					@Provides
+					@Singleton
+					Eventloop provide() {
+						return Eventloop.create();
+					}
+
+					@Provides
+					Initializer<TriggersModule> triggersModuleInitializer(Eventloop _eventloop) {
+						return triggersModule -> triggersModule
+								.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create());
+					}
+				},
+				new AbstractModule() {
+					@ProvidesIntoSet
+					Initializer<TriggersModule> triggersModuleInitializer() {
+						return triggersModule -> triggersModule
+								.with(Eventloop.class, Severity.HIGH, "testModule1", eventloop -> TriggerResult.create());
+					}
+				},
+				new AbstractModule() {
+					@ProvidesIntoSet
+					Initializer<TriggersModule> triggersModuleInitializer() {
+						return triggersModule -> triggersModule
+								.with(Eventloop.class, Severity.HIGH, "testModule2", eventloop -> TriggerResult.create());
+					}
+				}
+		);
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		boolean[] wasExecuted = {false};
+		try {
+			serviceGraph.startFuture().get();
+			Triggers triggersWatcher = injector.getInstance(Triggers.class);
+			List<Triggers.TriggerWithResult> triggerResults = triggersWatcher.getResults();
+			assertEquals(3, triggerResults.size());
+			triggerResults.forEach(result -> assertTrue(result.toString().startsWith("HIGH : Eventloop : test")));
+			wasExecuted[0] = true;
+		} finally {
+			assertTrue(wasExecuted[0]);
+			serviceGraph.stopFuture().get();
+		}
+	}
 }
