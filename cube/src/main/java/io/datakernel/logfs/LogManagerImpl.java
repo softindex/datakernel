@@ -182,10 +182,10 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 
 						private void log(Void $, Throwable throwable) {
 							if (throwable == null && logger.isTraceEnabled()) {
-								logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
+								logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
 										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
 							} else if (throwable != null && logger.isErrorEnabled()) {
-								logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
+								logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
 										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), throwable);
 							}
 						}
