@@ -59,6 +59,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	public static final Duration REFRESH_PERIOD_DEFAULT = Duration.ofSeconds(1);
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;
 
+	private final Set<Object> globalSingletons = new HashSet<>();
 	private final Set<Key<?>> singletonKeys = new HashSet<>();
 	private final Set<Key<?>> workerKeys = new HashSet<>();
 
@@ -85,7 +86,8 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 				.withCustomType(Instant.class, StringFormatUtils::formatInstant, StringFormatUtils::parseInstant)
 				.withCustomType(LocalDateTime.class, StringFormatUtils::formatLocalDateTime, StringFormatUtils::parseLocalDateTime)
 				.withCustomType(TriggerWithResult.class, TriggerWithResult::toString)
-				.withCustomType(Severity.class, Severity::toString);
+				.withCustomType(Severity.class, Severity::toString)
+				.withGlobalSingletons(ByteBufPool.getStats());
 	}
 
 	public JmxModule withRefreshPeriod(Duration refreshPeriod) {
@@ -165,6 +167,11 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		return this;
 	}
 
+	public JmxModule withGlobalSingletons(Object... instances) {
+		this.globalSingletons.addAll(Arrays.asList(instances));
+		return this;
+	}
+
 	@Override
 	protected void configure() {
 		bind(new TypeLiteral<OptionalDependency<ServiceGraph>>() {}).asEagerSingleton();
@@ -226,11 +233,14 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 
 			@Override
 			public void start() {
-				// register ByteBufPool
-				Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufPoolStats.class);
-				jmxRegistry.registerSingleton(byteBufPoolKey, ByteBufPool.getStats(), MBeanSettings.defaultSettings().withCustomTypes(customTypes));
 
 				Map<Type, List<Object>> globalMBeanObjects = new HashMap<>();
+
+				// register global singletons
+				for (Object globalSingleton : globalSingletons) {
+					Key<?> globalKey = Key.get(globalSingleton.getClass());
+					jmxRegistry.registerSingleton(globalKey, globalSingleton, MBeanSettings.defaultSettings().withCustomTypes(customTypes));
+				}
 
 				// register singletons
 				for (Key<?> key : singletonKeys) {
