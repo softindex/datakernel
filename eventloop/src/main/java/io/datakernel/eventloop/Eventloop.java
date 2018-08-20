@@ -48,6 +48,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.emptyIterator;
@@ -780,8 +781,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @throws IOException if an I/O error occurs on opening DatagramChannel
 	 */
 	public static DatagramChannel createDatagramChannel(DatagramSocketSettings datagramSocketSettings,
-		@Nullable InetSocketAddress bindAddress,
-		@Nullable InetSocketAddress connectAddress) throws IOException {
+			@Nullable InetSocketAddress bindAddress,
+			@Nullable InetSocketAddress connectAddress) throws IOException {
 		DatagramChannel datagramChannel = null;
 		try {
 			datagramChannel = DatagramChannel.open();
@@ -813,6 +814,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return connect(address, 0);
 	}
 
+	public Stage<SocketChannel> connect(SocketAddress address, Duration timeout) {
+		return connect(address, timeout.toMillis());
+	}
+
 	/**
 	 * Connects to given socket address asynchronously with a specified timeout value.
 	 * A timeout of zero is interpreted as an default system timeout
@@ -820,7 +825,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param address socketChannel's address
 	 * @param timeout the timeout value to be used in milliseconds, 0 as default system connection timeout
 	 */
-	public Stage<SocketChannel> connect(SocketAddress address, int timeout) {
+	public Stage<SocketChannel> connect(SocketAddress address, long timeout) {
 		assert inEventloopThread();
 		SocketChannel socketChannel = null;
 		SettableStage<SocketChannel> stage = new SettableStage<>();
@@ -1018,9 +1023,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * Works the same as {@link Eventloop#submit(Runnable)} except for {@code AsyncCallable}
 	 */
 	@Override
-	public <T> CompletableFuture<T> submit(AsyncSupplier<T> asyncCallable) {
+	public <T> CompletableFuture<T> submit(AsyncSupplier<T> supplier) {
 		CompletableFuture<T> future = new CompletableFuture<>();
-		execute(() -> asyncCallable.get().whenComplete((t, throwable) -> {
+		execute(() -> supplier.get().whenComplete((t, throwable) -> {
 			if (throwable == null) {
 				future.complete(t);
 			} else {

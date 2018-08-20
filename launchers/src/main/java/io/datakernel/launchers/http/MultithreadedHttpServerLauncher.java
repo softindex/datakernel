@@ -4,6 +4,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -12,6 +13,7 @@ import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
@@ -31,7 +33,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.jmx.JmxModuleInitializers.ofGlobalEventloopStats;
 import static io.datakernel.launchers.Initializers.*;
 import static java.lang.Boolean.parseBoolean;
@@ -125,8 +126,8 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					@Provides
 					@Worker
 					AsyncServlet provideServlet(@WorkerId int worker) {
-						return AsyncServlet.ofBlocking(req -> ok200()
-								.withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
+						return req -> Stage.of(
+								HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
 					}
 				};
 

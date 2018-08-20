@@ -73,8 +73,9 @@ public interface AsyncTcpSocket {
 		 * Is called when socket is closed with error.
 		 * No subsequent operations on the socket must be called afterwards.
 		 * No more event handler methods will be invoked afterwards
+		 * @param e
 		 */
-		void onClosedWithError(Exception e);
+		void onClosedWithError(Throwable e);
 	}
 
 	void setEventHandler(EventHandler eventHandler);

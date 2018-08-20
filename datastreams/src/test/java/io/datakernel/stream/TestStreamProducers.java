@@ -1,5 +1,6 @@
 package io.datakernel.stream;
 
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
@@ -31,7 +32,7 @@ public class TestStreamProducers {
 			}
 
 			@Override
-			public Stage<Void> getEndOfStream() {
+			public MaterializedStage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};

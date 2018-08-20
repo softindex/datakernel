@@ -16,8 +16,10 @@
 
 package io.datakernel.remotefs;
 
+import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
@@ -38,7 +40,10 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.IntStream;
 
@@ -196,9 +201,11 @@ public class FsIntegrationTest {
 	}
 
 	private ByteBuf download(String file) {
-		ByteBufQueue queue = ByteBufQueue.create();
+		ByteBufQueue queue = new ByteBufQueue();
 
-		client.downloadStream(file).streamTo(StreamConsumer.ofConsumer(queue::add)).getProducerResult()
+		client.downloadStream(file)
+				.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(queue::add))))
+				.getProducerResult()
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
 
@@ -351,7 +358,6 @@ public class FsIntegrationTest {
 				client.subfolder("subfolder2").list().whenResult(actual2::addAll)).whenComplete(($, err) -> server.close());
 
 		eventloop.run();
-
 
 		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getName);
 		actual.sort(comparator);

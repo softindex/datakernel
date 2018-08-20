@@ -81,7 +81,7 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 				return doCall(
 						writeList.apply(commit.getId()).stream()
 								.map(remotes::get)
-								.map(remote -> (AsyncSupplier<Void>) () -> remote.push(commit)),
+								.map(remote -> AsyncSupplier.of(() -> remote.push(commit))),
 						writeRedundancy);
 			}
 
@@ -117,7 +117,7 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 				return doCall(
 						writeList.apply(revisionId).stream()
 								.map(remotes::get)
-								.map(remote -> (AsyncSupplier<Void>) () -> remote.saveSnapshot(revisionId, diffs)),
+								.map(remote -> AsyncSupplier.of(() -> remote.saveSnapshot(revisionId, diffs))),
 						writeRedundancy);
 			}
 

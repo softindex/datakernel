@@ -16,9 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.AsyncCancellable;
-
-public final class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable {
+public final class ScheduledRunnable implements Comparable<ScheduledRunnable> {
 	private final long timestamp;
 	private Runnable runnable;
 	private boolean cancelled;
@@ -53,7 +51,6 @@ public final class ScheduledRunnable implements Comparable<ScheduledRunnable>, A
 		return Long.compare(timestamp, o.timestamp);
 	}
 
-	@Override
 	public void cancel() {
 		this.cancelled = true;
 		this.runnable = null;

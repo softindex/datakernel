@@ -103,7 +103,7 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	}
 
 	@Override
-	public void onClosedWithError(Exception e) {
+	public void onClosedWithError(Throwable e) {
 		socketReader.closeWithError(e);
 		socketWriter.closeWithError(e);
 	}

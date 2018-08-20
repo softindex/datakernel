@@ -1,52 +1,34 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.serial.SerialBuffer;
 import io.datakernel.async.Stage;
-
-import java.util.ArrayDeque;
-import java.util.Iterator;
-
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.util.CollectionUtils.asIterator;
-import static io.datakernel.util.Preconditions.checkState;
+import io.datakernel.functional.Try;
 
 public final class StreamProducerEndpoint<T> extends AbstractStreamProducer<T> {
-	private final ArrayDeque<Object> buffer = new ArrayDeque<>();
-	private SettableStage<Void> endOfStream;
+	public static final int DEFAULT_BUFFER_SIZE = 10;
 
-	public Stage<Void> post(T item) {
-		return post(asIterator(item));
+	private final SerialBuffer<T> buffer;
+
+	public StreamProducerEndpoint() {
+		this(0, DEFAULT_BUFFER_SIZE);
 	}
 
-	public Stage<Void> post(Iterable<T> items) {
-		return post(items.iterator());
+	public StreamProducerEndpoint(int bufferSize) {
+		this(0, bufferSize);
 	}
 
-	public Stage<Void> post(Iterator<T> it) {
-		assert endOfStream == null;
-		if (buffer.isEmpty()) {
-			for (; ; ) {
-				if (!it.hasNext()) {
-					return Stage.of(null);
-				}
-				StreamDataReceiver<T> dataReceiver = getCurrentDataReceiver();
-				if (dataReceiver == null) break;
-				dataReceiver.onData(it.next());
-			}
-		}
-		if (getStatus().isOpen()) {
-			buffer.add(it);
-			SettableStage<Void> stage = new SettableStage<>();
-			buffer.add(stage);
-			return stage;
-		}
-		return getStatus() == END_OF_STREAM ? Stage.of(null) : Stage.ofException(getException());
+	private StreamProducerEndpoint(int bufferMinSize, int bufferMaxSize) {
+		this.buffer = new SerialBuffer<>(bufferMinSize, bufferMaxSize);
 	}
 
-	public Stage<Void> postEndOfStream() {
-		checkState(endOfStream == null);
-		endOfStream = new SettableStage<>();
-		return endOfStream;
+	public void add(T item) {
+		postProduce();
+		buffer.add(item);
+	}
+
+	public Stage<Void> put(T item) {
+		postProduce();
+		return buffer.put(item);
 	}
 
 	@SuppressWarnings({"unchecked", "ConstantConditions"})
@@ -54,41 +36,23 @@ public final class StreamProducerEndpoint<T> extends AbstractStreamProducer<T> {
 	protected void produce(AsyncProduceController async) {
 		assert getStatus().isOpen();
 		while (!buffer.isEmpty()) {
-			Iterator<T> it = (Iterator<T>) buffer.peek();
-			while (true) {
-				if (it.hasNext()) {
-					StreamDataReceiver<T> dataReceiver = getCurrentDataReceiver();
-					if (dataReceiver == null) break;
-					dataReceiver.onData(it.next());
+			Try<T> stage = buffer.poll();
+			if (stage.isSuccess()) {
+				T item = stage.getResult();
+				if (item != null) {
+					send(item);
 				} else {
-					buffer.poll();
-					SettableStage<Void> stage = (SettableStage<Void>) buffer.poll();
-					stage.set(null);
+					sendEndOfStream();
 				}
+			} else {
+				closeWithError(stage.getException());
 			}
-		}
-		if (endOfStream != null && buffer.isEmpty()) {
-			sendEndOfStream();
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected void onError(Throwable t) {
-	}
-
-	@SuppressWarnings({"ConstantConditions", "unchecked"})
-	@Override
-	protected void cleanup() {
-		while (!buffer.isEmpty()) {
-			Object value = buffer.poll();
-			SettableStage<Void> stage = (SettableStage<Void>) buffer.poll();
-			stage.set(null, getException());
-		}
-		if (endOfStream != null) {
-			SettableStage<Void> endOfStream = this.endOfStream;
-			this.endOfStream = null;
-			endOfStream.set(null, getException());
-		}
+	protected void onError(Throwable e) {
+		buffer.closeWithError(e);
 	}
 }

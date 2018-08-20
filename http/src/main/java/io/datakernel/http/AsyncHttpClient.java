@@ -17,17 +17,13 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncCancellable;
-import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.dns.AsyncDnsClient;
-import io.datakernel.dns.CachedAsyncDnsClient;
+import io.datakernel.dns.DnsQueryException;
+import io.datakernel.dns.DnsResponse;
 import io.datakernel.dns.RemoteAsyncDnsClient;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
@@ -71,7 +67,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE.toInt()];
 
 	@Nullable
-	private AsyncCancellable expiredConnectionsCheck;
+	private ScheduledRunnable expiredConnectionsCheck;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	// timeouts
@@ -92,7 +88,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 		void onRequest(HttpRequest request);
 
-		void onResolve(HttpRequest request, InetAddress[] inetAddresses);
+		void onResolve(HttpRequest request, DnsResponse dnsResponse);
 
 		void onResolveError(HttpRequest request, Throwable e);
 
@@ -131,7 +127,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		}
 
 		@Override
-		public void onResolve(HttpRequest request, InetAddress[] inetAddresses) {
+		public void onResolve(HttpRequest request, DnsResponse dnsResponse) {
 		}
 
 		@Override
@@ -233,7 +229,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	public static AsyncHttpClient create(Eventloop eventloop) {
-		AsyncDnsClient defaultDnsClient = CachedAsyncDnsClient.create(eventloop, RemoteAsyncDnsClient.create(eventloop));
+		AsyncDnsClient defaultDnsClient = RemoteAsyncDnsClient.create(eventloop);
 		return new AsyncHttpClient(eventloop, defaultDnsClient);
 	}
 
@@ -262,7 +258,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return withKeepAliveTimeout(Duration.ZERO);
 	}
 
-	public AsyncHttpClient  withMaxKeepAliveRequests(int maxKeepAliveRequests) {
+	public AsyncHttpClient withMaxKeepAliveRequests(int maxKeepAliveRequests) {
 		checkArgument(maxKeepAliveRequests >= 0, "Maximum number of requests per keep-alive connection should not be less than zero");
 		this.maxKeepAliveRequests = maxKeepAliveRequests;
 		return this;
@@ -334,10 +330,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			this.addresses.put(connection.remoteAddress, addresses);
 		}
 		addresses.addLastNode(connection);
-		assert connection.pool == poolReading;
-		poolReading.removeNode(connection); // moving from reading state to keepalive state
-		(connection.pool = poolKeepAlive).addLastNode(connection);
-		connection.poolTimestamp = eventloop.currentTimeMillis();
+		connection.switchPool(poolKeepAlive);
 
 		if (expiredConnectionsCheck == null) {
 			scheduleExpiredConnectionsCheck();
@@ -350,86 +343,78 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	 * @param request request for server
 	 */
 	@Override
-	public void send(HttpRequest request, Callback<HttpResponse> callback) {
+	public Stage<HttpResponse> requestBodyStream(HttpRequest request) {
 		assert eventloop.inEventloopThread();
 		if (inspector != null) inspector.onRequest(request);
 		String host = request.getUrl().getHost();
 
 		assert host != null;
 
-		asyncDnsClient.resolve4(host)
-				.whenComplete((result, e) -> {
-					if (e != null) {
-						if (inspector != null) {
-							inspector.onResolveError(request, e);
+		return asyncDnsClient.resolve4(host)
+				.thenComposeEx((dnsResponse, e) -> {
+					if (e == null) {
+						if (inspector != null) inspector.onResolve(request, dnsResponse);
+						if (dnsResponse.isSuccessful()) {
+							return doSend(request, dnsResponse.getRecord().getIps());
+						} else {
+							return Stage.ofException(new DnsQueryException(dnsResponse));
 						}
-						request.recycleBufs();
-						callback.setException(e);
-						return;
+					} else {
+						if (inspector != null) inspector.onResolveError(request, e);
+						request.recycle();
+						return Stage.ofException(e);
 					}
-					InetAddress[] ips = result.getRecord().getIps();
-					if (inspector != null) {
-						inspector.onResolve(request, ips);
-					}
-					doSend(request, ips, callback);
 				});
 	}
 
-	private void doSend(HttpRequest request, InetAddress[] inetAddresses,
-			Callback<HttpResponse> callback) {
+	private Stage<HttpResponse> doSend(HttpRequest request, InetAddress[] inetAddresses) {
 		InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
 		InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
 		HttpClientConnection keepAliveConnection = takeKeepAliveConnection(address);
 		if (keepAliveConnection != null) {
-			keepAliveConnection.send(request, callback);
-			return;
+			return keepAliveConnection.send(request);
 		}
 
-		eventloop.connect(address, connectTimeoutMillis).whenComplete((socketChannel, throwable) -> {
-			if (throwable == null) {
-				boolean https = request.isHttps();
-				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
-						.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
+		return eventloop.connect(address, connectTimeoutMillis)
+				.thenComposeEx((socketChannel, e) -> {
+					if (e == null) {
+						boolean https = request.isHttps();
+						AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
+								.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
 
-				if (https && sslContext == null) {
-					throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
-				}
+						if (https && sslContext == null) {
+							throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
+						}
 
-				String host = request.getUrl().getHost();
-				assert host != null;
+						String host = request.getUrl().getHost();
+						assert host != null;
 
-				AsyncTcpSocket asyncTcpSocket = https ?
-						wrapClientSocket(eventloop, asyncTcpSocketImpl,
-								host, request.getUrl().getPort(),
-								sslContext, sslExecutor) :
-						asyncTcpSocketImpl;
+						AsyncTcpSocket asyncTcpSocket = https ?
+								wrapClientSocket(eventloop, asyncTcpSocketImpl,
+										host, request.getUrl().getPort(),
+										sslContext, sslExecutor) :
+								asyncTcpSocketImpl;
 
-				HttpClientConnection connection = new HttpClientConnection(eventloop, address, asyncTcpSocket,
-						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
+						HttpClientConnection connection = new HttpClientConnection(eventloop, address, asyncTcpSocket,
+								AsyncHttpClient.this, headerChars);
 
-				asyncTcpSocket.setEventHandler(connection);
-				asyncTcpSocketImpl.register();
+						asyncTcpSocket.setEventHandler(connection);
+						asyncTcpSocketImpl.register();
 
-				if (inspector != null) inspector.onConnect(request, connection);
+						if (inspector != null) inspector.onConnect(request, connection);
 
-				connectionsCount++;
-				if (expiredConnectionsCheck == null)
-					scheduleExpiredConnectionsCheck();
+						connectionsCount++;
+						if (expiredConnectionsCheck == null)
+							scheduleExpiredConnectionsCheck();
 
-				// connection was unexpectedly closed by the peer
-				if (connection.getCloseError() != null) {
-					callback.setException(connection.getCloseError());
-					return;
-				}
-
-				connection.send(request, callback);
-			} else {
-				if (inspector != null) inspector.onConnectError(request, address, throwable);
-				request.recycleBufs();
-				callback.setException(throwable);
-			}
-		});
+						return connection.send(request);
+					} else {
+						if (inspector != null) inspector.onConnectError(request, address, e);
+						request.recycle();
+						return Stage.ofException(e);
+					}
+				});
 	}
 
 	@Override

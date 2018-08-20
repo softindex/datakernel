@@ -16,9 +16,10 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.serial.SerialSupplier;
 
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -49,7 +50,7 @@ public final class StreamProducers {
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(() -> endOfStream.setException(exception));
+			getCurrentEventloop().post(() -> endOfStream.trySetException(exception));
 		}
 
 		@Override
@@ -63,13 +64,18 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public Stage<Void> getEndOfStream() {
+		public MaterializedStage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
 			return EnumSet.of(LATE_BINDING);
+		}
+
+		@Override
+		public void closeWithError(Throwable e) {
+			endOfStream.trySetException(e);
 		}
 	}
 
@@ -83,7 +89,7 @@ public final class StreamProducers {
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(() -> endOfStream.set(null));
+			getCurrentEventloop().post(() -> endOfStream.trySet(null));
 		}
 
 		@Override
@@ -97,13 +103,18 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public Stage<Void> getEndOfStream() {
+		public MaterializedStage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
 			return EnumSet.of(LATE_BINDING);
+		}
+
+		@Override
+		public void closeWithError(Throwable e) {
+			endOfStream.trySetException(e);
 		}
 	}
 
@@ -113,7 +124,7 @@ public final class StreamProducers {
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
 			consumer.getEndOfStream()
-					.whenException(endOfStream::setException);
+					.whenException(endOfStream::trySetException);
 		}
 
 		@Override
@@ -125,13 +136,18 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public Stage<Void> getEndOfStream() {
+		public MaterializedStage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
 			return EnumSet.of(LATE_BINDING);
+		}
+
+		@Override
+		public void closeWithError(Throwable e) {
+			endOfStream.trySetException(e);
 		}
 	}
 
@@ -175,28 +191,20 @@ public final class StreamProducers {
 		}
 	}
 
-	static class OfAsyncSupplierImpl<T> extends AbstractStreamProducer<T> {
-		private final AsyncSupplier<T> asyncCallable;
-		private final Object endOfStreamMarker;
+	static class OfSerialSupplierImpl<T> extends AbstractStreamProducer<T> {
+		private final SerialSupplier<T> supplier;
 
-		/**
-		 * Creates a new instance of  StreamProducerOfIterator
-		 *
-		 * @param asyncCallable iterator with object which need to send
-		 * @param endOfStreamMarker
-		 */
-		public OfAsyncSupplierImpl(AsyncSupplier<T> asyncCallable, Object endOfStreamMarker) {
-			this.asyncCallable = checkNotNull(asyncCallable);
-			this.endOfStreamMarker = endOfStreamMarker;
+		public OfSerialSupplierImpl(SerialSupplier<T> supplier) {
+			this.supplier = supplier;
 		}
 
 		@Override
 		protected void produce(AsyncProduceController async) {
 			async.begin();
-			asyncCallable.get()
+			supplier.get()
 					.whenComplete((value, e) -> {
 						if (e == null) {
-							if (value != endOfStreamMarker) {
+							if (value != null) {
 								send(value);
 								async.resume();
 							} else {
@@ -210,6 +218,7 @@ public final class StreamProducers {
 
 		@Override
 		protected void onError(Throwable t) {
+			supplier.closeWithError(t);
 		}
 
 		@Override
@@ -225,20 +234,26 @@ public final class StreamProducers {
 			{
 				producer.getEndOfStream().whenComplete(($, throwable) -> {
 					if (throwable == null) {
-						endOfStream.set(null);
+						endOfStream.trySet(null);
 					} else {
 						if (endOfStreamPredicate.test(throwable)) {
-							endOfStream.set(null);
+							endOfStream.trySet(null);
 						} else {
-							endOfStream.setException(throwable);
+							endOfStream.trySetException(throwable);
 						}
 					}
 				});
 			}
 
 			@Override
-			public Stage<Void> getEndOfStream() {
+			public MaterializedStage<Void> getEndOfStream() {
 				return endOfStream;
+			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				super.closeWithError(e);
+				endOfStream.trySetException(e);
 			}
 		};
 	}
@@ -257,7 +272,7 @@ public final class StreamProducers {
 			}
 
 			@Override
-			public Stage<Void> getEndOfStream() {
+			public MaterializedStage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};

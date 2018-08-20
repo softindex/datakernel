@@ -16,6 +16,9 @@
 
 package io.datakernel.bytebuf;
 
+import java.util.function.Consumer;
+import java.util.stream.Collector;
+
 import static java.lang.System.arraycopy;
 
 public final class ByteBufQueue {
@@ -26,17 +29,23 @@ public final class ByteBufQueue {
 	private int first = 0;
 	private int last = 0;
 
-	// region builders
-	private ByteBufQueue(int capacity) {
+	public ByteBufQueue() {
+		this(DEFAULT_CAPACITY);
+	}
+
+	public ByteBufQueue(int capacity) {
 		this.bufs = new ByteBuf[capacity];
 	}
 
-	public static ByteBufQueue create() {return new ByteBufQueue(DEFAULT_CAPACITY);}
+	private static Collector<ByteBuf, ByteBufQueue, ByteBuf> COLLECTOR = Collector.of(
+			ByteBufQueue::new,
+			ByteBufQueue::add,
+			(bufs1, bufs2) -> { throw new UnsupportedOperationException();},
+			ByteBufQueue::takeRemaining);
 
-	public ByteBufQueue withCapacity(int capacity) {
-		return new ByteBufQueue(capacity);
+	public static Collector<ByteBuf, ByteBufQueue, ByteBuf> collector() {
+		return COLLECTOR;
 	}
-	// endregion
 
 	private int next(int i) {
 		return ++i >= bufs.length ? 0 : i;
@@ -333,6 +342,16 @@ public final class ByteBufQueue {
 		return size;
 	}
 
+	public int drainTo(Consumer<ByteBuf> dest) {
+		int size = 0;
+		while (hasRemaining()) {
+			ByteBuf buf = take();
+			dest.accept(buf);
+			size += buf.readRemaining();
+		}
+		return size;
+	}
+
 	/**
 	 * Adds to ByteBufQueue dest {@code maxSize} bytes from this queue. If this queue doesn't contain enough bytes,
 	 * add all bytes from this queue.
@@ -346,6 +365,16 @@ public final class ByteBufQueue {
 		while (s != 0 && hasRemaining()) {
 			ByteBuf buf = takeMaxSize(s);
 			dest.add(buf);
+			s -= buf.readRemaining();
+		}
+		return maxSize - s;
+	}
+
+	public int drainTo(Consumer<ByteBuf> dest, int maxSize) {
+		int s = maxSize;
+		while (s != 0 && hasRemaining()) {
+			ByteBuf buf = takeMaxSize(s);
+			dest.accept(buf);
 			s -= buf.readRemaining();
 		}
 		return maxSize - s;

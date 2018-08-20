@@ -106,7 +106,7 @@ public class PingPongSocketConnectionTest {
 		}
 
 		@Override
-		public void onClosedWithError(Exception e) {
+		public void onClosedWithError(Throwable e) {
 			e.printStackTrace();
 			fail();
 		}
@@ -150,7 +150,7 @@ public class PingPongSocketConnectionTest {
 		}
 
 		@Override
-		public void onClosedWithError(Exception e) {
+		public void onClosedWithError(Throwable e) {
 			e.printStackTrace();
 			fail();
 		}

@@ -16,9 +16,9 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
@@ -35,6 +35,7 @@ import java.util.Random;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.http.AsyncServlet.ensureBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.lang.Math.min;
@@ -47,44 +48,29 @@ public class AsyncHttpServerTest {
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				return Stage.of(content);
-			}
-		};
-
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
+		return AsyncHttpServer.create(primaryEventloop,
+				request -> Stage.of(
+						HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))))
+				.withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
 	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				SettableStage<HttpResponse> stage = new SettableStage<>();
-				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				stage.set(content);
-				return stage;
-			}
-		};
-
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
+		return AsyncHttpServer.create(primaryEventloop,
+				request ->
+						Stage.ofCallback(cb -> cb.post(
+								HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())))))
+				.withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
-	public static AsyncHttpServer delayedHttpServer(Eventloop primaryEventloop, int port) {
-		Random random = new Random();
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				SettableStage<HttpResponse> stage = new SettableStage<>();
-				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				primaryEventloop.delay(random.nextInt(3), () -> stage.set(content));
-				return stage;
-			}
-		};
+	static final Random RANDOM = new Random();
 
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
+	public static AsyncHttpServer delayedHttpServer(Eventloop primaryEventloop, int port) {
+		return AsyncHttpServer.create(primaryEventloop,
+				request -> Stage.ofCallback(
+						cb -> primaryEventloop.delay(RANDOM.nextInt(3),
+								() -> cb.set(
+										HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))))))
+				.withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
 	public static void writeByRandomParts(Socket socket, String string) throws IOException {
@@ -335,22 +321,17 @@ public class AsyncHttpServerTest {
 	public void testBigHttpMessage() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ByteBuf buf =
-				HttpRequest.post("http://127.0.0.1:" + port)
-						.withBody(encodeAscii("Test big HTTP message body"))
-						.toByteBuf();
 
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				SettableStage<HttpResponse> stage = new SettableStage<>();
-				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				stage.set(content);
-				return stage;
-			}
-		};
+		HttpRequest request = HttpRequest.post("http://127.0.0.1:" + port)
+				.withBody(encodeAscii("Test big HTTP message body"));
 
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+		ByteBuf buf = ByteBufPool.allocate(request.estimateSize() + request.body.readRemaining());
+		request.writeTo(buf);
+		buf.put(request.body);
+
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				req -> Stage.of(
+						HttpResponse.ok200().withBody(encodeAscii(req.getUrl().getPathAndQuery()))))
 				.withMaxHttpMessageSize(MemSize.kilobytes(25))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 		server.listen();
@@ -375,12 +356,8 @@ public class AsyncHttpServerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				new AsyncServlet() {
-					@Override
-					public Stage<HttpResponse> serve(HttpRequest request) {
-						return Stage.of(HttpResponse.ok200().withBody(request.detachBody()));
-					}
-				})
+				ensureBody(request ->
+						Stage.of(HttpResponse.ok200().withBody(request.getBody().slice()))))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 
 		server.listen();

@@ -16,13 +16,13 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncConsumer;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.util.ThrowingConsumer;
 
 import java.util.EnumSet;
-import java.util.Optional;
 import java.util.Set;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
@@ -41,11 +41,11 @@ public final class StreamConsumers {
 
 		@Override
 		public void setProducer(StreamProducer<T> producer) {
-			getCurrentEventloop().post(() -> endOfStream.setException(exception));
+			getCurrentEventloop().post(() -> endOfStream.trySetException(exception));
 		}
 
 		@Override
-		public Stage<Void> getEndOfStream() {
+		public MaterializedStage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
@@ -53,21 +53,18 @@ public final class StreamConsumers {
 		public Set<StreamCapability> getCapabilities() {
 			return EnumSet.of(LATE_BINDING);
 		}
+
+		@Override
+		public void closeWithError(Throwable e) {
+			endOfStream.trySetException(e);
+		}
 	}
 
 	static final class OfConsumerImpl<T> extends AbstractStreamConsumer<T> {
-		private static final Object NO_END_OF_STREAM_MARKER = new Object();
 		private final ThrowingConsumer<T> consumer;
-		private final Object endOfStreamMarker;
 
 		OfConsumerImpl(ThrowingConsumer<T> consumer) {
 			this.consumer = consumer;
-			this.endOfStreamMarker = NO_END_OF_STREAM_MARKER;
-		}
-
-		OfConsumerImpl(ThrowingConsumer<T> consumer, Object endOfStreamMarker) {
-			this.consumer = consumer;
-			this.endOfStreamMarker = endOfStreamMarker;
 		}
 
 		@Override
@@ -87,19 +84,16 @@ public final class StreamConsumers {
 		@SuppressWarnings("unchecked")
 		@Override
 		protected void onEndOfStream() {
-			if (endOfStreamMarker != NO_END_OF_STREAM_MARKER) {
-				try {
-					consumer.accept((T) endOfStreamMarker);
-				} catch (RuntimeException e) {
-					throw e;
-				} catch (Throwable ignored) {
-				}
+			try {
+				consumer.accept(null);
+			} catch (RuntimeException e) {
+				throw e;
+			} catch (Throwable ignored) {
 			}
 		}
 
 		@Override
 		protected void onError(Throwable t) {
-
 		}
 
 		@Override
@@ -108,21 +102,13 @@ public final class StreamConsumers {
 		}
 	}
 
-	static final class OfAsyncConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, Void>, StreamDataReceiver<T> {
-		private static final Object NO_END_OF_STREAM_MARKER = new Object();
-		private final AsyncConsumer<T> consumer;
-		private final Object endOfStreamMarker;
+	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, Void>, StreamDataReceiver<T> {
+		private final SerialConsumer<T> consumer;
 		private int waiting;
 		private final SettableStage<Void> resultStage = new SettableStage<>();
 
-		OfAsyncConsumerImpl(AsyncConsumer<T> consumer) {
+		OfSerialConsumerImpl(SerialConsumer<T> consumer) {
 			this.consumer = consumer;
-			this.endOfStreamMarker = NO_END_OF_STREAM_MARKER;
-		}
-
-		OfAsyncConsumerImpl(AsyncConsumer<T> consumer, Object endOfStreamMarker) {
-			this.consumer = consumer;
-			this.endOfStreamMarker = endOfStreamMarker;
 		}
 
 		@Override
@@ -133,16 +119,13 @@ public final class StreamConsumers {
 		@SuppressWarnings("unchecked")
 		@Override
 		public void onData(T item) {
-			assert item != endOfStreamMarker;
+			assert item != null;
 			Stage<Void> stage = consumer.accept(item);
-			if (stage instanceof SettableStage) {
-				SettableStage<Void> settableStage = (SettableStage<Void>) stage;
-				if (settableStage.isSetResult()) {
-					// do nothing, continue streaming
+			if (stage.isSet()) {
+				if (stage.isResult()) {
 					return;
-				} else if (settableStage.isSetException()) {
-					closeWithError(settableStage.getException());
-					return;
+				} else {
+					closeWithError(stage.getException());
 				}
 			}
 			waiting++;
@@ -154,7 +137,7 @@ public final class StreamConsumers {
 							getProducer().streamTo(this);
 						} else {
 							if (getStatus() == StreamStatus.END_OF_STREAM) {
-								(endOfStreamMarker != NO_END_OF_STREAM_MARKER ? consumer.accept((T) endOfStreamMarker) : Stage.of((Void) null))
+								consumer.accept(null)
 										.whenComplete(resultStage::trySet);
 							}
 						}
@@ -169,13 +152,14 @@ public final class StreamConsumers {
 		@Override
 		protected void onEndOfStream() {
 			if (waiting == 0) {
-				(endOfStreamMarker != NO_END_OF_STREAM_MARKER ? consumer.accept((T) endOfStreamMarker) : Stage.of((Void) null))
+				consumer.accept(null)
 						.whenComplete(resultStage::trySet);
 			}
 		}
 
 		@Override
 		protected void onError(Throwable t) {
+			consumer.closeWithError(t);
 			resultStage.trySetException(t);
 		}
 
@@ -185,7 +169,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public Stage<Void> getResult() {
+		public MaterializedStage<Void> getResult() {
 			return resultStage;
 		}
 	}
@@ -200,18 +184,23 @@ public final class StreamConsumers {
 
 		@Override
 		public void setProducer(StreamProducer<T> producer) {
-			producer.getEndOfStream().whenComplete(endOfStream::set);
+			producer.getEndOfStream().whenComplete(endOfStream::trySet);
 			producer.produce($ -> {});
 		}
 
 		@Override
-		public Stage<Void> getEndOfStream() {
+		public MaterializedStage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
 			return EnumSet.of(LATE_BINDING);
+		}
+
+		@Override
+		public void closeWithError(Throwable e) {
+			endOfStream.trySetException(e);
 		}
 	}
 

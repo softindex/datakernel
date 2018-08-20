@@ -1,6 +1,8 @@
 package io.global.globalsync.server;
 
 import io.datakernel.async.*;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.time.CurrentTimeProvider;
@@ -252,7 +254,7 @@ public final class RawServer_Repository {
 				.thenApply(thisHeads -> {
 					Set<CommitId> excludedHeads = new HashSet<>();
 					Set<SignedData<RawCommitHead>> addedHeads = new HashSet<>();
-					return StreamConsumerWithResult.ofAsyncConsumer(
+					return StreamConsumerWithResult.ofSerialConsumer(SerialConsumer.of(
 							(CommitEntry entry) -> {
 								for (CommitId parentId : entry.getRawCommit().getParents()) {
 									if (thisHeads.contains(parentId)) {
@@ -263,8 +265,7 @@ public final class RawServer_Repository {
 									addedHeads.add(entry.getRawHead());
 								}
 								return commitStorage.saveCommit(entry.commitId, entry.rawCommit).toVoid();
-							},
-							Optional.empty())
+							}))
 							.thenCompose($ ->
 									commitStorage.markCompleteCommits()
 											.thenCompose($2 ->
@@ -287,7 +288,7 @@ public final class RawServer_Repository {
 						.thenApply(supplier -> supplier.transform(
 								entry -> new CommitEntry(entry.commitId, entry.rawCommit, thisHeads.get(entry.commitId))))
 						.thenApply(supplier -> AsyncSuppliers.prefetch(DOWNLOAD_PREFETCH_COUNT, supplier))
-						.thenApply(supplier -> StreamProducer.ofAsyncSupplier(supplier, null)));
+						.thenApply(supplier -> StreamProducer.ofSerialSupplier(SerialSupplier.of(supplier))));
 	}
 
 	private Stage<RawCommitEntry> getNextStreamEntry(PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,

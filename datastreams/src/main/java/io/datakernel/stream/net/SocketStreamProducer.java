@@ -23,7 +23,7 @@ import io.datakernel.stream.AbstractStreamProducer;
 
 final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	private final AsyncTcpSocket asyncTcpSocket;
-	protected final ByteBufQueue readQueue = ByteBufQueue.create();
+	protected final ByteBufQueue readQueue = new ByteBufQueue();
 	private boolean readEndOfStream;
 
 	// region creators

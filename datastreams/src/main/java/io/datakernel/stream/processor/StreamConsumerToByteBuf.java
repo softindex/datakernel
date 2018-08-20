@@ -1,6 +1,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
@@ -45,7 +46,7 @@ public class StreamConsumerToByteBuf extends AbstractStreamConsumer<ByteBuf> imp
 	}
 
 	@Override
-	public Stage<ByteBuf> getResult() {
+	public MaterializedStage<ByteBuf> getResult() {
 		return result;
 	}
 }

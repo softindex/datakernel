@@ -16,6 +16,7 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
@@ -153,12 +154,13 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 			}
 		}
 
+		@Override
 		public void closeWithError(Throwable t) {
 			StreamConsumerSwitcher.this.closeWithError(t);
 		}
 
 		@Override
-		public Stage<Void> getEndOfStream() {
+		public MaterializedStage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 

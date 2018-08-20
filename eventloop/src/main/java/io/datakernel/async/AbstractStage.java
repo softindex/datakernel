@@ -1,7 +1,6 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.functional.Try;
 
@@ -17,9 +16,8 @@ import static io.datakernel.util.Preconditions.checkArgument;
 
 abstract class AbstractStage<T> implements Stage<T> {
 
-	private static final BiConsumer<Object, Throwable> COMPLETED_STAGE = (t, throwable) -> {
-		throw new UnsupportedOperationException();
-	};
+	private static final BiConsumer<Object, Throwable> COMPLETED_STAGE =
+			(value, throwable) -> { throw new UnsupportedOperationException();};
 
 	protected BiConsumer<? super T, Throwable> next;
 
@@ -130,15 +128,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> whenResult(Consumer<? super T> action) {
-		return whenComplete((result, throwable) -> {
-			if (throwable == null) {
-				action.accept(result);
-			}
-		});
-	}
-
-	@Override
 	public Stage<T> thenRun(Runnable action) {
 		return whenComplete((result, throwable) -> {
 			if (throwable == null) {
@@ -157,19 +146,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 		return then(new NextStage<T, U>() {
 			@Override
 			protected void onComplete(T value) {
-				Stage<U> stage = fn.apply(value);
-				if (stage instanceof SettableStage) {
-					SettableStage<U> settableStage = (SettableStage<U>) stage;
-					if (settableStage.isSet()) {
-						if (settableStage.exception == null) {
-							complete(settableStage.result);
-						} else {
-							completeExceptionally(settableStage.exception);
-						}
-						return;
-					}
-				}
-				stage.whenComplete(this::complete);
+				fn.apply(value).whenComplete(this::complete);
 			}
 		});
 	}
@@ -178,19 +155,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 	public <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
 		return then(new NextStage<T, U>() {
 			private void handleComplete(@Nullable T value, @Nullable Throwable throwable) {
-				Stage<U> stage = fn.apply(value, throwable);
-				if (stage instanceof SettableStage) {
-					SettableStage<U> settableStage = (SettableStage<U>) stage;
-					if (settableStage.isSet()) {
-						if (settableStage.exception == null) {
-							complete(settableStage.result);
-						} else {
-							completeExceptionally(settableStage.exception);
-						}
-						return;
-					}
-				}
-				stage.whenComplete(this::complete);
+				fn.apply(value, throwable).whenComplete(this::complete);
 			}
 
 			@Override
@@ -209,6 +174,15 @@ abstract class AbstractStage<T> implements Stage<T> {
 	public Stage<T> whenComplete(BiConsumer<? super T, Throwable> action) {
 		subscribe(action);
 		return this;
+	}
+
+	@Override
+	public Stage<T> whenResult(Consumer<? super T> action) {
+		return whenComplete((result, throwable) -> {
+			if (throwable == null) {
+				action.accept(result);
+			}
+		});
 	}
 
 	@Override
@@ -299,6 +273,11 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 	@Override
 	public <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
+		if (other instanceof CompleteStage) {
+			@SuppressWarnings("unchecked") CompleteStage<U> otherCompleteStage = (CompleteStage<U>) other;
+			if (otherCompleteStage.isException()) return otherCompleteStage.mold();
+			return thenApply(result -> fn.apply(result, otherCompleteStage.getResult()));
+		}
 		StageCombine<T, V, U> resultStage = new StageCombine<>(fn);
 		other.whenComplete((result, throwable) -> {
 			if (throwable == null) {
@@ -329,6 +308,11 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 	@Override
 	public Stage<Void> both(Stage<?> other) {
+		if (other instanceof CompleteStage) {
+			@SuppressWarnings("unchecked") CompleteStage<?> otherCompleteStage = (CompleteStage<?>) other;
+			if (otherCompleteStage.isException()) return otherCompleteStage.mold();
+			return toVoid();
+		}
 		StageBoth<T> resultStage = new StageBoth<>();
 		other.whenComplete((result, throwable) -> {
 			if (throwable == null) {
@@ -360,6 +344,11 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 	@Override
 	public Stage<T> either(Stage<? extends T> other) {
+		if (other instanceof CompleteStage) {
+			@SuppressWarnings("unchecked") CompleteStage<T> otherCompleteStage = (CompleteStage<T>) other;
+			if (otherCompleteStage.isException()) return this;
+			return otherCompleteStage;
+		}
 		EitherStage<T> resultStage = new EitherStage<>();
 		other.whenComplete((result, throwable) -> {
 			if (throwable == null) {
@@ -374,33 +363,8 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> post() {
-		return then(new NextStage<T, T>() {
-			@Override
-			protected void onComplete(T result) {
-				getCurrentEventloop().post(() -> complete(result));
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
-				getCurrentEventloop().post(() -> completeExceptionally(throwable));
-			}
-		});
-	}
-
-	@Override
-	public Stage<T> postTo(Eventloop eventloop) {
-		return then(new NextStage<T, T>() {
-			@Override
-			protected void onComplete(T result) {
-				eventloop.submit(() -> complete(result));
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
-				eventloop.submit(() -> completeExceptionally(throwable));
-			}
-		});
+	public Stage<T> async() {
+		return this;
 	}
 
 	@Override

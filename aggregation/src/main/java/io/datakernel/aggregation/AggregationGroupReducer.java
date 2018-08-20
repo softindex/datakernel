@@ -18,6 +18,7 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -69,8 +70,8 @@ public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<
 	}
 
 	@Override
-	public Stage<List<AggregationChunk>> getResult() {
-		return resultsTracker.get();
+	public MaterializedStage<List<AggregationChunk>> getResult() {
+		return resultsTracker.get().materialize();
 	}
 
 	@Override

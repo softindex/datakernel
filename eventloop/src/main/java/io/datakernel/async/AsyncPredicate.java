@@ -1,6 +1,5 @@
 package io.datakernel.async;
 
-import java.util.Objects;
 import java.util.function.Predicate;
 
 public interface AsyncPredicate<T> {
@@ -11,23 +10,11 @@ public interface AsyncPredicate<T> {
 	}
 
 	default AsyncPredicate<T> and(AsyncPredicate<? super T> other) {
-		Objects.requireNonNull(other);
-		return t -> this.test(t).thenCompose(b -> b ? other.test(t) : Stage.of(Boolean.FALSE));
-	}
-
-	default AsyncPredicate<T> and(Predicate<? super T> other) {
-		Objects.requireNonNull(other);
-		return t -> this.test(t).thenApply(b -> b ? other.test(t) : Boolean.FALSE);
-	}
-
-	default AsyncPredicate<T> or(Predicate<? super T> other) {
-		Objects.requireNonNull(other);
-		return t -> this.test(t).thenApply(b -> b ? Boolean.TRUE : other.test(t));
+		return t -> test(t).combine(other.test(t), (b1, b2) -> b1 && b2);
 	}
 
 	default AsyncPredicate<T> or(AsyncPredicate<? super T> other) {
-		Objects.requireNonNull(other);
-		return t -> this.test(t).thenCompose(b -> b ? Stage.of(Boolean.TRUE) : other.test(t));
+		return t -> test(t).combine(other.test(t), (b1, b2) -> b1 || b2);
 	}
 
 	static <T> AsyncPredicate<T> of(Predicate<T> predicate) {

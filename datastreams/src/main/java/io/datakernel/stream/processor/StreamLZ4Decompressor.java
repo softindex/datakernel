@@ -105,7 +105,7 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 		private final LZ4FastDecompressor decompressor;
 		private final StreamingXXHash32 checksum;
 
-		private final ByteBufQueue queue = ByteBufQueue.create();
+		private final ByteBufQueue queue = new ByteBufQueue();
 
 		private final ByteBuf headerBuf = ByteBuf.wrapForWriting(new byte[HEADER_LENGTH]);
 		private final Header header = new Header();

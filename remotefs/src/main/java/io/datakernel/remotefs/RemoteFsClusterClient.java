@@ -1,8 +1,10 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -262,7 +264,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					}
 
 					// and also dont forget to recycle original bytebufs
-					splitter.newOutput().streamTo(StreamConsumer.ofConsumer(ByteBuf::recycle));
+					splitter.newOutput().streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle))));
 
 					return Stage.of(splitter.getInput()
 							.withLateBinding()

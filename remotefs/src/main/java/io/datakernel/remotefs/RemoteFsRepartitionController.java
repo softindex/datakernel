@@ -1,8 +1,10 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -174,7 +176,8 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 					StreamSplitter<ByteBuf> splitter = StreamSplitter.create();
 					localStorage.downloadStream(name).streamTo(splitter.getInput()); // stream from local into our splitter
-					splitter.newOutput().streamTo(StreamConsumer.ofConsumer(buf -> eventloop.post(buf::recycle))); // recycle original non-slice buffer
+					splitter.newOutput().streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(
+							buf -> eventloop.post(buf::recycle))))); // recycle original non-slice buffer
 
 					return Stages.toList(uploadTargets.stream() // upload file to target partitions
 							.map(partitionId -> {

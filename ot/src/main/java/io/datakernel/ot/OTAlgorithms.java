@@ -109,7 +109,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				.thenCompose(maybeResult -> maybeResult.isPresent() ?
 						Stage.of(maybeResult.get()) :
 						toList(commit.getParents().keySet().stream().filter(visited::add).map(remote::loadCommit))
-								.post()
+								.async()
 								.thenCompose(parentCommits -> {
 									queue.addAll(parentCommits);
 									return walkGraphImpl(walker, queue, visited);
@@ -311,7 +311,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		OTCommit<K, D> commit = queue.poll();
 		assert commit != null;
 		return toList(commit.getParents().keySet().stream().filter(visited::add).map(remote::loadCommit))
-				.post()
+				.async()
 				.thenCompose(parentCommits -> {
 					queue.addAll(parentCommits);
 					return findCutImpl(queue, visited, matchPredicate);

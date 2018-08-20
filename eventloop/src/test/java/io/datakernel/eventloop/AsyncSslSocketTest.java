@@ -374,7 +374,7 @@ public class AsyncSslSocketTest {
 		}
 
 		@Override
-		public void onClosedWithError(Exception e) {
+		public void onClosedWithError(Throwable e) {
 
 		}
 

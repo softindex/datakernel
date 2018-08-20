@@ -16,9 +16,12 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.StreamResult.Pair;
 import io.datakernel.stream.processor.StreamLateBinder;
 
@@ -31,7 +34,7 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
-	Stage<X> getResult();
+	MaterializedStage<X> getResult();
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -112,7 +115,7 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 	static <T, X> StreamProducerWithResult<T, X> ofStage(Stage<? extends StreamProducerWithResult<T, X>> producerStage) {
 		SettableStage<X> result = new SettableStage<>();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
-		producerStage.post().whenComplete((producer, throwable) -> {
+		producerStage.async().whenComplete((producer, throwable) -> {
 			if (throwable == null) {
 				checkArgument(producer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, producer);
@@ -135,36 +138,36 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 	}
 
 	default StreamProducerWithResult<T, X> thenRun(Runnable action) {
-		getResult().post().thenRun(action);
+		getResult().async().thenRun(action);
 		return this;
 	}
 
 	default StreamProducerWithResult<T, X> thenRunEx(Runnable action) {
-		getResult().post().thenRunEx(action);
+		getResult().async().thenRunEx(action);
 		return this;
 	}
 
 	default <U> StreamProducerWithResult<T, U> thenCompose(Function<? super X, ? extends Stage<U>> fn) {
-		return withResult(getResult().post().thenCompose(fn));
+		return withResult(getResult().async().thenCompose(fn));
 	}
 
 	default <U> StreamProducerWithResult<T, U> thenComposeEx(BiFunction<? super X, Throwable, ? extends Stage<U>> fn) {
-		return withResult(getResult().post().thenComposeEx(fn));
+		return withResult(getResult().async().thenComposeEx(fn));
 	}
 
 	default StreamProducerWithResult<T, X> whenComplete(BiConsumer<? super X, Throwable> consumer) {
-		getResult().post().whenComplete(consumer);
+		getResult().async().whenComplete(consumer);
 		return this;
 	}
 
 	default StreamProducerWithResult<T, X> whenResult(Consumer<? super X> action) {
-		getResult().post().whenResult(action);
+		getResult().async().whenResult(action);
 		return this;
 	}
 
 	@Override
 	default StreamProducerWithResult<T, X> whenException(Consumer<Throwable> consumer) {
-		getResult().post().whenException(consumer);
+		getResult().async().whenException(consumer);
 		return this;
 	}
 

@@ -11,6 +11,10 @@ public interface AsyncConsumer<T> {
 		return modifier.apply(this);
 	}
 
+	default AsyncConsumer<T> async() {
+		return value -> accept(value).async();
+	}
+
 	static <T> AsyncConsumer<T> of(Consumer<? super T> consumer) {
 		return value -> {
 			consumer.accept(value);
@@ -23,7 +27,7 @@ public interface AsyncConsumer<T> {
 	}
 
 	default <V> AsyncConsumer<V> transform(Function<? super V, ? extends T> fn) {
-		return value -> this.accept(fn.apply(value));
+		return value -> accept(fn.apply(value));
 	}
 
 	default <V> AsyncConsumer<V> transformAsync(Function<? super V, ? extends Stage<T>> fn) {

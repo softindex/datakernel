@@ -18,6 +18,7 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
@@ -75,7 +76,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 	}
 
 	@Override
-	public Stage<List<AggregationChunk>> getResult() {
+	public MaterializedStage<List<AggregationChunk>> getResult() {
 		return result;
 	}
 
@@ -137,7 +138,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		}
 
 		@Override
-		public Stage<AggregationChunk> getResult() {
+		public MaterializedStage<AggregationChunk> getResult() {
 			return result;
 		}
 	}

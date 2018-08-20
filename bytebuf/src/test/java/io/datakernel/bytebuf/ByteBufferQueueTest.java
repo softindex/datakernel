@@ -32,7 +32,7 @@ public class ByteBufferQueueTest {
 			test[i] = (byte) (i + 1);
 		}
 
-		ByteBufQueue queue = ByteBufQueue.create();
+		ByteBufQueue queue = new ByteBufQueue();
 
 		int left = test.length;
 		int pos = 0;

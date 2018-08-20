@@ -1,13 +1,18 @@
 package io.datakernel.remotefs;
 
+import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stage;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerWithResult;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -18,7 +23,9 @@ public class MockFsClient implements FsClient {
 		if (offset == -1) {
 			return Stage.ofException(new RemoteFsException("FileAlreadyExistsException"));
 		}
-		return Stage.of(StreamConsumer.ofConsumer(ByteBuf::recycle).withEndOfStreamAsResult());
+		return Stage.of(
+				StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)))
+						.withEndOfStreamAsResult());
 	}
 
 	@Override

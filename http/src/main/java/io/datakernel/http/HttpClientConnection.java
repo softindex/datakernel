@@ -17,18 +17,18 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Callback;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.SerialSupplier;
 
 import java.net.InetSocketAddress;
 
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
-
 
 /**
  * <p>
@@ -78,7 +78,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	@Nullable
-	private Callback<HttpResponse> callback;
+	private SettableStage<HttpResponse> result;
 	@Nullable
 	private HttpResponse response;
 	private final AsyncHttpClient client;
@@ -88,13 +88,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	HttpClientConnection addressPrev;
 	HttpClientConnection addressNext;
 
-	@Nullable
-	private Exception closeError;
-
 	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
-			AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client, char[] headerChars,
-			int maxHttpMessageSize) {
-		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
+			AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client, char[] headerChars) {
+		super(eventloop, asyncTcpSocket, headerChars);
 		this.remoteAddress = remoteAddress;
 		this.client = client;
 		this.inspector = client.inspector;
@@ -102,18 +98,17 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onRegistered() {
+		asyncTcpSocket.read();
 	}
 
 	@Override
-	public void onClosedWithError(Exception e) {
-		if (inspector != null) inspector.onHttpError(this, callback == null, e);
+	public void onClosedWithError(Throwable e) {
+		if (inspector != null) inspector.onHttpError(this, result == null, e);
 		readQueue.clear();
-		if (callback != null) {
-			Callback<HttpResponse> callback = this.callback;
+		if (result != null) {
+			Callback<HttpResponse> callback = this.result;
 			eventloop.post(() -> callback.setException(e));
-			this.callback = null;
-		} else {
-			closeError = e;
+			this.result = null;
 		}
 		onClosed();
 	}
@@ -177,43 +172,47 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onHttpMessage(ByteBuf bodyBuf) {
+	protected void onHeadersReceived(SerialSupplier<ByteBuf> bodySupplier) {
 		assert !isClosed();
-		Callback<HttpResponse> callback = this.callback;
-		HttpResponse response = this.response;
-		this.response = null;
-		this.callback = null;
 
 		assert response != null;
-		assert callback != null;
-		response.setBody(bodyBuf);
+		response.bodySupplier = bodySupplier;
 
 		if (inspector != null) inspector.onHttpResponse(this, response);
+
+		assert result != null;
+		result.set(response);
+		result = null;
+	}
+
+	@Override
+	protected void onBodyReceived() {
+		if (response != null && bodyWriter == null && bodyReader == null) onHttpMessageComplete();
+	}
+
+	@Override
+	protected void onBodySent() {
+		if (response != null && bodyWriter == null && bodyReader == null) onHttpMessageComplete();
+	}
+
+	private void onHttpMessageComplete() {
+		assert response != null;
+		response.recycle();
+		response = null;
+
 		if (keepAlive && client.keepAliveTimeoutMillis != 0) {
 			reset();
 			client.returnToKeepAlivePool(this);
 		} else {
 			close();
 		}
-
-		callback.set(response);
-		response.recycleBufs();
-	}
-
-	@Override
-	public void onReadEndOfStream() {
-		if (callback != null) {
-			closeWithError(CLOSED_CONNECTION);
-			assert callback == null;
-		}
-		close();
 	}
 
 	@Override
 	protected void reset() {
 		reading = END_OF_STREAM;
 		if (response != null) {
-			response.recycleBufs();
+			response.recycle();
 			response = null;
 		}
 		super.reset();
@@ -224,32 +223,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 *
 	 * @param request request for sending
 	 */
-	public void send(HttpRequest request, Callback<HttpResponse> callback) {
-		boolean sendKeepAliveHeader = true;
-		if (client.maxKeepAliveRequests != -1) {
-			if (++numberOfKeepAliveRequests >= client.maxKeepAliveRequests) {
-				sendKeepAliveHeader = false;
-			}
-		}
-		this.callback = callback;
-		assert pool == null; // moving from open(null)/taken(null) state to writing state
-		(pool = client.poolWriting).addLastNode(this);
-		poolTimestamp = eventloop.currentTimeMillis();
-		request.addHeader(sendKeepAliveHeader ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
-		asyncTcpSocket.write(request.toByteBuf());
-		request.recycleBufs();
-	}
-
-	@Override
-	public void onWrite() {
-		assert !isClosed();
+	public Stage<HttpResponse> send(HttpRequest request) {
+		this.result = new SettableStage<>();
+		switchPool(client.poolWriting);
+		request.addHeader(CONNECTION_KEEP_ALIVE);
+		writeHttpMessage(request);
 		reading = FIRSTLINE;
-		assert pool == client.poolWriting;
-		assert pool != null; // ugh, intellij
-		pool.removeNode(this); // moving from writing state to reading state
-		(pool = client.poolReading).addLastNode(this);
-		poolTimestamp = eventloop.currentTimeMillis();
-		asyncTcpSocket.read();
+		return this.result;
 	}
 
 	/**
@@ -258,7 +238,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onClosed() {
-		assert callback == null;
+		assert result == null;
 		if (pool == client.poolKeepAlive) {
 			AddressLinkedList addresses = client.addresses.get(remoteAddress);
 			addresses.removeNode(this);
@@ -269,27 +249,19 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		// pool will be null if socket was closed by the peer just before connection.send() invocation
 		// (eg. if connection was in open(null) or taken(null) states)
-		if (pool != null) {
-			pool.removeNode(this); // moving from any state to closed state
-			pool = null;
-		}
+		switchPool(null);
 
 		client.onConnectionClosed();
-		bodyQueue.clear();
 		if (response != null) {
-			response.recycleBufs();
+			response.recycle();
+			response = null;
 		}
-	}
-
-	@Nullable
-	public Exception getCloseError() {
-		return closeError;
 	}
 
 	@Override
 	public String toString() {
 		return "HttpClientConnection{" +
-				"callback=" + callback +
+				"callback=" + result +
 				", response=" + response +
 				", httpClient=" + client +
 				", keepAlive=" + (pool == client.poolKeepAlive) +

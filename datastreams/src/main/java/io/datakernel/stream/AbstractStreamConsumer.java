@@ -17,6 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
@@ -83,7 +84,6 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		return producer != null;
 	}
 
-	@Nullable
 	public final StreamProducer<T> getProducer() {
 		return producer;
 	}
@@ -100,6 +100,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	protected abstract void onEndOfStream();
 
+	@Override
 	public final void closeWithError(Throwable t) {
 		if (status.isClosed())
 			return;
@@ -129,7 +130,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public final Stage<Void> getEndOfStream() {
+	public final MaterializedStage<Void> getEndOfStream() {
 		return endOfStream;
 	}
 

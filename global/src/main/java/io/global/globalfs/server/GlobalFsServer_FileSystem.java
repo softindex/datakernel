@@ -4,6 +4,7 @@ import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.StreamTransformer;
@@ -74,16 +75,16 @@ final class GlobalFsServer_FileSystem {
 				.thenCompose(files -> Stages.runSequence(files.stream()
 						.map(file ->
 								server.downloadStream(name, file.getName(), 0, file.getSize())
-										.streamTo(StreamConsumer.ofAsyncConsumer(
+										.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(
 												dataFrame -> {
 													return null;
-												}))
+												})))
 										.getProducerResult())));
 	}
 
 	// TODO (abulah)
 	private final class Downloader implements StreamTransformer<ByteBuf, DataFrame> {
-		final ByteBufQueue queue = ByteBufQueue.create();
+		final ByteBufQueue queue = new ByteBufQueue();
 		private SettableStage<DataFrame> queueDataAvailable;
 
 		@Override
@@ -114,7 +115,7 @@ final class GlobalFsServer_FileSystem {
 
 	// TODO (abulah)
 	private final class Uploader implements StreamTransformer<DataFrame, ByteBuf> {
-		final ByteBufQueue queue = ByteBufQueue.create();
+		final ByteBufQueue queue = new ByteBufQueue();
 
 		protected Stage<Void> consume(DataFrame dataFrame) {
 			if (dataFrame.isBuf()) {

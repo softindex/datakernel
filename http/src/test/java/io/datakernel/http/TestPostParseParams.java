@@ -46,6 +46,6 @@ public class TestPostParseParams {
 		assertEquals(2, params.size());
 		assertEquals("world", params.get("hello"));
 		assertEquals("1234", params.get("value"));
-		request.recycleBufs();
+		request.recycle();
 	}
 }

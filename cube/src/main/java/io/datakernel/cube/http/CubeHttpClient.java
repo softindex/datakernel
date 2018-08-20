@@ -19,7 +19,6 @@ package io.datakernel.cube.http;
 import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.async.Stage;
-import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.ICube;
 import io.datakernel.cube.QueryResult;
@@ -40,6 +39,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
 import static io.datakernel.cube.http.Utils.*;
 import static io.datakernel.util.LogUtils.toLogger;
 
@@ -106,11 +106,11 @@ public final class CubeHttpClient implements ICube {
 
 	@Override
 	public Stage<QueryResult> query(CubeQuery query) {
-		return httpClient.send(buildRequest(query))
+		return httpClient.request(buildRequest(query))
 				.thenCompose(httpResponse -> {
 					String response;
 					try {
-						response = ByteBufStrings.decodeUtf8(httpResponse.getBody()); // TODO getBodyAsString
+						response = decodeUtf8(httpResponse.getBody()); // TODO getBodyAsString
 					} catch (ParseException e) {
 						return Stage.ofException(new ParseException("Cube HTTP query failed. Invalid data received", e));
 					}

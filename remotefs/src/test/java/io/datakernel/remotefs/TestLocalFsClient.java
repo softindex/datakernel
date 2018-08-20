@@ -16,12 +16,12 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.ByteBufRule;
@@ -222,7 +222,7 @@ public class TestLocalFsClient {
 		)
 				.thenCompose($ ->
 						client.downloadStream("concurrent.txt")
-								.streamTo(StreamConsumer.ofConsumer(
+								.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(
 										buf -> {
 											String actual = new String(buf.asArray(), StandardCharsets.UTF_8);
 											String expected = "Concurrent data - 1\n" +
@@ -242,7 +242,7 @@ public class TestLocalFsClient {
 											assertEquals(expected, actual);
 
 											buf.recycle();
-										}))
+										}))))
 								.getProducerResult())
 				.thenRunEx(() -> System.out.println("finished"))
 				.whenComplete(assertComplete());
@@ -254,15 +254,12 @@ public class TestLocalFsClient {
 	private StreamProducer<ByteBuf> delayed(List<ByteBuf> list) {
 		Random random = new Random();
 		Iterator<ByteBuf> iterator = list.iterator();
-		return StreamProducer.ofAsyncSupplier(() -> {
-					if (iterator.hasNext()) {
-						SettableStage<ByteBuf> stage = new SettableStage<>();
-						eventloop.delay(random.nextInt(20) + 10, () -> stage.set(iterator.next()));
-						return stage;
-					}
-					return Stage.of(null);
-				},
-				null);
+		return StreamProducer.ofSerialSupplier(SerialSupplier.of(() ->
+				iterator.hasNext() ?
+						Stage.ofCallback(stage ->
+								eventloop.delay(random.nextInt(20) + 10, () ->
+										stage.set(iterator.next()))) :
+						Stage.of(null)));
 	}
 
 	@Test

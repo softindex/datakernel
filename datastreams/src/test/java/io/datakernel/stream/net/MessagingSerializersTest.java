@@ -27,6 +27,7 @@ import org.junit.Test;
 
 import java.util.Objects;
 
+import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 import static io.datakernel.util.gson.GsonAdapters.*;
 import static org.junit.Assert.assertEquals;
@@ -152,7 +153,7 @@ public class MessagingSerializersTest {
 		Req req = new Req("Hello", 1, 6.24);
 
 		ByteBuf buf = deserializer.serialize(req);
-		assertEquals("{\"text\":\"Hello\",\"num\":1,\"val\":6.24}\0", ByteBufStrings.decodeUtf8(buf));
+		assertEquals("{\"text\":\"Hello\",\"num\":1,\"val\":6.24}\0", decodeUtf8(buf));
 
 		Req newReq = serializer.tryDeserialize(buf);
 		assertEquals(req, newReq);
@@ -161,7 +162,7 @@ public class MessagingSerializersTest {
 		Res res = new Res(true);
 
 		buf = serializer.serialize(res);
-		assertEquals("{\"bool\":true}\0", ByteBufStrings.decodeUtf8(buf));
+		assertEquals("{\"bool\":true}\0", decodeUtf8(buf));
 
 		Res newRes = deserializer.tryDeserialize(buf);
 		assertEquals(res, newRes);

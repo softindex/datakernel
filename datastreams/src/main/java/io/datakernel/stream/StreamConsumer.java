@@ -16,20 +16,16 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.*;
+import io.datakernel.serial.AbstractSerialConsumer;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.stream.processor.StreamSkip;
 import io.datakernel.stream.processor.StreamSkip.Dropper;
 import io.datakernel.stream.processor.StreamSkip.SizeCounter;
 import io.datakernel.stream.processor.StreamSkip.SkipStrategy;
-import io.datakernel.util.ThrowingConsumer;
 
 import java.util.EnumSet;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -44,7 +40,7 @@ import static java.util.Collections.emptySet;
  * in this package which implement this interface and make the threading and state management
  * easier.
  */
-public interface StreamConsumer<T> {
+public interface StreamConsumer<T> extends Cancellable {
 	/**
 	 * Sets wired producer. It will sent data to this consumer
 	 *
@@ -52,7 +48,7 @@ public interface StreamConsumer<T> {
 	 */
 	void setProducer(StreamProducer<T> producer);
 
-	Stage<Void> getEndOfStream();
+	MaterializedStage<Void> getEndOfStream();
 
 	Set<StreamCapability> getCapabilities();
 
@@ -73,32 +69,19 @@ public interface StreamConsumer<T> {
 		return new StreamConsumers.ClosingWithErrorImpl<>(exception);
 	}
 
-	/**
-	 * Creates a stream consumer which passes consumed items into a given lambda.
-	 */
-	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-	static <T> StreamConsumer<T> ofConsumer(ThrowingConsumer<T> consumer) {
-		return new StreamConsumers.OfConsumerImpl<>(consumer);
+	static <T> StreamConsumer<T> ofSerialConsumer(SerialConsumer<T> consumer) {
+		return new StreamConsumers.OfSerialConsumerImpl<>(consumer);
 	}
 
-	static <T> StreamConsumer<T> ofConsumer(ThrowingConsumer<T> consumer, Object endOfStreamMarker) {
-		return new StreamConsumers.OfConsumerImpl<>(consumer, endOfStreamMarker);
-	}
-
-	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-	static <T> StreamConsumer<T> ofAsyncConsumer(AsyncConsumer<T> consumer) {
-		return new StreamConsumers.OfAsyncConsumerImpl<>(consumer);
-	}
-
-	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-	static <T> StreamConsumer<T> ofAsyncConsumer(AsyncConsumer<T> consumer, Object endOfStreamMarker) {
-		return new StreamConsumers.OfAsyncConsumerImpl<>(consumer, endOfStreamMarker);
-	}
-
-	default AsyncConsumer<T> toAsyncConsumer(@Nullable T endOfStreamMarker) {
+	default SerialConsumer<T> asSerialConsumer() {
 		StreamProducerEndpoint<T> endpoint = new StreamProducerEndpoint<>();
 		endpoint.streamTo(this);
-		return value -> value != endOfStreamMarker ? endpoint.post(value) : endpoint.postEndOfStream();
+		return new AbstractSerialConsumer<T>(this) {
+			@Override
+			public Stage<Void> accept(T value) {
+				return endpoint.put(value);
+			}
+		};
 	}
 
 	String LATE_BINDING_ERROR_MESSAGE = "" +
@@ -129,15 +112,8 @@ public interface StreamConsumer<T> {
 	}
 
 	default <X> StreamConsumerWithResult<T, X> withResult(Stage<X> result) {
-		SettableStage<Void> safeEndOfStream = new SettableStage<>();
-		SettableStage<X> safeResult = new SettableStage<>();
-		getEndOfStream().whenComplete(($, throwable) -> {
-			safeEndOfStream.trySet($, throwable);
-			if (throwable != null) {
-				safeResult.trySetException(throwable);
-			}
-		});
-		result.post().whenComplete(safeResult::trySet);
+		MaterializedStage<Void> endOfStream = getEndOfStream();
+		MaterializedStage<X> safeResult = result.combine(endOfStream, (x, $) -> x).materialize();
 		return new StreamConsumerWithResult<T, X>() {
 			@Override
 			public void setProducer(StreamProducer<T> producer) {
@@ -145,12 +121,12 @@ public interface StreamConsumer<T> {
 			}
 
 			@Override
-			public Stage<Void> getEndOfStream() {
-				return safeEndOfStream;
+			public MaterializedStage<Void> getEndOfStream() {
+				return endOfStream;
 			}
 
 			@Override
-			public Stage<X> getResult() {
+			public MaterializedStage<X> getResult() {
 				return safeResult;
 			}
 
@@ -159,12 +135,16 @@ public interface StreamConsumer<T> {
 				return StreamConsumer.this.getCapabilities().contains(LATE_BINDING) ?
 						EnumSet.of(LATE_BINDING) : emptySet();
 			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				StreamConsumer.this.closeWithError(e);
+			}
 		};
 	}
 
 	default StreamConsumerWithResult<T, Void> withEndOfStreamAsResult() {
-		SettableStage<Void> safeEndOfStream = new SettableStage<>();
-		getEndOfStream().post().whenComplete(safeEndOfStream::trySet);
+		MaterializedStage<Void> endOfStream = getEndOfStream();
 		return new StreamConsumerWithResult<T, Void>() {
 			@Override
 			public void setProducer(StreamProducer<T> producer) {
@@ -172,19 +152,24 @@ public interface StreamConsumer<T> {
 			}
 
 			@Override
-			public Stage<Void> getEndOfStream() {
-				return safeEndOfStream;
+			public MaterializedStage<Void> getEndOfStream() {
+				return endOfStream;
 			}
 
 			@Override
-			public Stage<Void> getResult() {
-				return safeEndOfStream;
+			public MaterializedStage<Void> getResult() {
+				return endOfStream;
 			}
 
 			@Override
 			public Set<StreamCapability> getCapabilities() {
 				return StreamConsumer.this.getCapabilities().contains(LATE_BINDING) ?
 						EnumSet.of(LATE_BINDING) : emptySet();
+			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				StreamConsumer.this.closeWithError(e);
 			}
 		};
 	}

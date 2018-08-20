@@ -72,7 +72,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 	}
 
 	protected <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
-		Input input = new Input<>(inputs.size(), priorityQueue, keyFunction, reducer, bufferSize);
+		Input<I> input = new Input<I>(inputs.size(), priorityQueue, keyFunction, reducer, bufferSize);
 		inputs.add(input);
 		streamsAwaiting++;
 		streamsOpen++;
@@ -101,7 +101,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 		private final StreamReducers.Reducer<K, I, O, A> reducer;
 
 		private Input(int index,
-		              PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer, int bufferSize) {
+				PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer, int bufferSize) {
 			this.index = index;
 			this.priorityQueue = priorityQueue;
 			this.keyFunction = keyFunction;

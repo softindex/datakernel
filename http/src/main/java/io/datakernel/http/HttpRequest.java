@@ -17,8 +17,8 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.Initializable;
 
@@ -27,10 +27,10 @@ import java.nio.charset.Charset;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * Represents the HTTP request which {@link AsyncHttpClient} sends to
@@ -46,7 +46,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private UrlParser url;
 	private InetAddress remoteAddress;
 
-	private Map<String, String> bodyParameters;
 	private Map<String, String> pathParameters;
 
 	// region builders
@@ -195,7 +194,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	// region setters
 	public void setUrl(String url) throws IllegalArgumentException {
-		assert !recycled;
+		assert !isRecycled();
 		this.url = UrlParser.of(url);
 		if (!this.url.isRelativePath()) {
 			assert this.url.getHostAndPort() != null; // sadly no advanced contracts yet
@@ -204,7 +203,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	public void setRemoteAddress(InetAddress inetAddress) {
-		assert !recycled;
+		assert !isRecycled();
 		this.remoteAddress = inetAddress;
 	}
 
@@ -267,12 +266,12 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	// region getters
 	public HttpMethod getMethod() {
-		assert !recycled;
+		assert !isRecycled();
 		return method;
 	}
 
 	public InetAddress getRemoteAddress() {
-		assert !recycled;
+		assert !isRecycled();
 		return remoteAddress;
 	}
 
@@ -293,7 +292,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	UrlParser getUrl() {
-		assert !recycled;
+		assert !isRecycled();
 		return url;
 	}
 
@@ -311,12 +310,12 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	public String getPath() {
-		assert !recycled;
+		assert !isRecycled();
 		return url.getPath();
 	}
 
 	public String getPathAndQuery() {
-		assert !recycled;
+		assert !isRecycled();
 		return url.getPathAndQuery();
 	}
 
@@ -330,50 +329,51 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@Nullable
 	public String getQueryParameter(String key) {
-		assert !recycled;
+		assert !isRecycled();
 		return url.getQueryParameter(key);
 	}
 
 	public List<String> getQueryParameters(String key) {
-		assert !recycled;
+		assert !isRecycled();
 		return url.getQueryParameters(key);
 	}
 
 	public Iterable<QueryParameter> getQueryParametersIterable() {
-		assert !recycled;
+		assert !isRecycled();
 		return url.getQueryParametersIterable();
 	}
 
 	public Map<String, String> getQueryParameters() {
-		assert !recycled;
+		assert !isRecycled();
 		return url.getQueryParameters();
 	}
 
-	public String getPostParameter(String key) {
-		assert !recycled;
-		parseBodyParams();
-		return bodyParameters.get(key);
-	}
-
 	public Map<String, String> getPostParameters() {
-		assert !recycled;
-		parseBodyParams();
-		return bodyParameters;
+		assert !isRecycled();
+		checkNotNull(body);
+		if (method == POST
+				&& getContentType() != null
+				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
+				&& this.body.readPosition() != this.body.writePosition()) {
+			return UrlParser.parseQueryIntoMap(decodeAscii(body));
+		} else {
+			return Collections.emptyMap();
+		}
 	}
 
 	@Nullable
 	public String getPathParameter(String key) {
-		assert !recycled;
+		assert !isRecycled();
 		return pathParameters != null ? pathParameters.get(key) : null;
 	}
 
 	public Map<String, String> getPathParameters() {
-		assert !recycled;
+		assert !isRecycled();
 		return pathParameters != null ? pathParameters : Collections.emptyMap();
 	}
 
 	public List<AcceptMediaType> getAccept() {
-		assert !recycled;
+		assert !isRecycled();
 		List<AcceptMediaType> list = new ArrayList<>();
 		List<Value> headers = getHeaderValues(ACCEPT);
 		for (Value header : headers) {
@@ -388,7 +388,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	public List<AcceptCharset> getAcceptCharsets() {
-		assert !recycled;
+		assert !isRecycled();
 		List<AcceptCharset> charsets = new ArrayList<>();
 		List<Value> headers = getHeaderValues(ACCEPT_CHARSET);
 		for (Value header : headers) {
@@ -404,7 +404,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@Nullable
 	public Date getIfModifiedSince() {
-		assert !recycled;
+		assert !isRecycled();
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_MODIFIED_SINCE);
 		if (header != null) {
 			try {
@@ -418,7 +418,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@Nullable
 	public Date getIfUnModifiedSince() {
-		assert !recycled;
+		assert !isRecycled();
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_UNMODIFIED_SINCE);
 		if (header != null)
 			try {
@@ -431,7 +431,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@Override
 	public List<HttpCookie> getCookies() {
-		assert !recycled;
+		assert !isRecycled();
 		List<HttpCookie> cookie = new ArrayList<>();
 		List<Value> headers = getHeaderValues(COOKIE);
 		for (Value header : headers) {
@@ -451,20 +451,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 	// endregion
 
-	// region internal
-	private void parseBodyParams() {
-		if (bodyParameters != null)
-			return;
-		if (method == POST
-				&& getContentType() != null
-				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
-				&& body.readPosition() != body.writePosition()) {
-			bodyParameters = UrlParser.parseQueryIntoMap(decodeAscii(getBody()));
-		} else {
-			bodyParameters = Collections.emptyMap();
-		}
-	}
-
 	int getPos() {
 		return url.pos;
 	}
@@ -474,12 +460,12 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	String getPartialPath() {
-		assert !recycled;
+		assert !isRecycled();
 		return url.getPartialPath();
 	}
 
 	String pollUrlPart() {
-		assert !recycled;
+		assert !isRecycled();
 		return url.pollUrlPart();
 	}
 
@@ -499,32 +485,26 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
 	private static final byte[] GZIP_BYTES = encodeAscii("gzip");
 
+	@SuppressWarnings("unchecked")
+	public Stage<HttpRequest> ensureBody() {
+		return (Stage<HttpRequest>) doEnsureBody();
+	}
+
 	@Override
-	public ByteBuf toByteBuf() {
-		assert !recycled;
-		if (body != null || method != GET) {
-			if (useGzip && body != null && body.readRemaining() > 0) {
-				body = toGzip(body);
-				setHeader(asBytes(CONTENT_ENCODING, GZIP_BYTES));
-			}
-			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.readRemaining()));
-		}
-		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
+	protected int estimateSize() {
+		return estimateSize(LONGEST_HTTP_METHOD_SIZE
 				+ 1 // SPACE
 				+ url.getPathAndQueryLength())
 				+ HTTP_1_1_SIZE;
-		ByteBuf buf = ByteBufPool.allocate(estimatedSize);
+	}
 
+	@Override
+	protected void writeTo(ByteBuf buf) {
 		method.write(buf);
 		buf.put(SP);
 		url.writePathAndQuery(buf);
 		buf.put(HTTP_1_1);
-
 		writeHeaders(buf);
-
-		writeBody(buf);
-
-		return buf;
 	}
 
 	@Nullable

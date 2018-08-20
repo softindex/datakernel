@@ -48,28 +48,19 @@ public class SimpleProxyServerTest {
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static AsyncHttpServer proxyHttpServer(Eventloop primaryEventloop, AsyncHttpClient httpClient) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				String path = ECHO_SERVER_PORT + request.getUrl().getPath();
-				return httpClient.send(HttpRequest.get("http://127.0.0.1:" + path)).thenApply(result -> {
-					int code = result.getCode();
-					byte[] body = encodeAscii("FORWARDED: " + decodeAscii(result.getBody()));
-					return HttpResponse.ofCode(code).withBody(body);
-				});
-			}
-		};
-
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PROXY_SERVER_PORT));
+		return AsyncHttpServer.create(primaryEventloop,
+				request -> {
+					String path = ECHO_SERVER_PORT + request.getUrl().getPath();
+					return httpClient.request(HttpRequest.get("http://127.0.0.1:" + path))
+							.thenApply(result -> HttpResponse.ofCode(result.getCode())
+									.withBody(encodeAscii("FORWARDED: " + decodeAscii(result.getBody()))));
+				})
+				.withListenAddress(new InetSocketAddress("localhost", PROXY_SERVER_PORT));
 	}
 
 	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				return Stage.of(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
-			}
-		};
+		AsyncServlet servlet = request ->
+				Stage.of(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", ECHO_SERVER_PORT));
 	}

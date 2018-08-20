@@ -25,6 +25,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AcceptMediaType;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -70,15 +71,14 @@ public class TestHttpsClient {
 				.withSslEnabled(SSLContext.getDefault(), executor);
 
 		String url = "https://en.wikipedia.org/wiki/Wikipedia";
-		CompletableFuture<Integer> future = client.send(get(url)).thenApply(response -> {
-			client.stop();
-			return response.getCode();
-		}).toCompletableFuture();
+		CompletableFuture<HttpResponse> future = client.request(get(url))
+				.thenRunEx(client::stop)
+				.toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdown();
 
-		assertEquals(200, (int) future.get());
+		assertEquals(200, future.get().getCode());
 	}
 
 	private HttpRequest get(String url) {

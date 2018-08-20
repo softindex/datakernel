@@ -1,5 +1,6 @@
 package io.datakernel.stream;
 
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
@@ -52,8 +53,14 @@ public class TestStreamConsumers {
 			}
 
 			@Override
-			public Stage<Void> getEndOfStream() {
+			public MaterializedStage<Void> getEndOfStream() {
 				return endOfStream;
+			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				super.closeWithError(e);
+				endOfStream.trySetException(e);
 			}
 		};
 	}

@@ -51,7 +51,7 @@ public class StreamLZ4Test {
 	}
 
 	private static byte[] byteBufsToByteArray(List<ByteBuf> byteBufs) {
-		ByteBufQueue queue = ByteBufQueue.create();
+		ByteBufQueue queue = new ByteBufQueue();
 		for (ByteBuf buf : byteBufs) {
 			queue.add(buf.slice());
 		}

@@ -17,6 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Stage;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -24,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 public final class BlockingEventloopExecutor implements EventloopExecutor {
 	private final Eventloop eventloop;
@@ -135,9 +137,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public <T> CompletableFuture<T> submit(AsyncSupplier<T> asyncCallable) {
+	public <T> CompletableFuture<T> submit(AsyncSupplier<T> supplier) {
 		CompletableFuture<T> future = new CompletableFuture<>();
-		post(() -> asyncCallable.get().whenComplete((t, throwable) -> complete()).whenComplete((t, throwable) -> {
+		post(() -> supplier.get().whenComplete((t, throwable) -> complete()).whenComplete((t, throwable) -> {
 			if (throwable == null) {
 				future.complete(t);
 			} else {

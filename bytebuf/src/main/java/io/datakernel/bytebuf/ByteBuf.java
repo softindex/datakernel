@@ -17,16 +17,15 @@
 package io.datakernel.bytebuf;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.util.Recyclable;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import static java.lang.Math.min;
 
-public class ByteBuf {
+public class ByteBuf implements Recyclable {
 	static final class ByteBufSlice extends ByteBuf {
 		private ByteBuf root;
 
@@ -111,6 +110,7 @@ public class ByteBuf {
 	}
 
 	// recycling
+	@Override
 	public void recycle() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		if (refs > 0 && --refs == 0) {
@@ -697,11 +697,9 @@ public class ByteBuf {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		if (this == o) return true;
 		if (o == null || !(ByteBuf.class == o.getClass() || ByteBufSlice.class == o.getClass())) return false;
-
-		ByteBuf buf = (ByteBuf) o;
-
-		return readRemaining() == buf.readRemaining() &&
-				arraysEquals(this.array, this.readPosition, this.writePosition, buf.array, buf.readPosition);
+		ByteBuf other = (ByteBuf) o;
+		return readRemaining() == other.readRemaining() &&
+				arraysEquals(this.array, this.readPosition, this.writePosition, other.array, other.readPosition);
 	}
 
 	private static boolean arraysEquals(byte[] array, int offset, int limit, byte[] arr, int off) {

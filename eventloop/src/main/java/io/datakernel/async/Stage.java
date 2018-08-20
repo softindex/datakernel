@@ -24,23 +24,17 @@ public interface Stage<T> {
 	 *
 	 * @param value result of Stage
 	 */
-	static <T> Stage<T> of(@Nullable T value) {
-		SettableStage<T> stage = new SettableStage<>();
-		stage.result = value;
-		return stage;
+	static <T> Stage<T> of(T value) {
+		return new CompleteStage<>(value, null);
 	}
 
 	/**
 	 * Creates exceptionally completed {@code Stage}
 	 *
-	 * @param throwable Exception
+	 * @param exception Throwable
 	 */
-	static <T> Stage<T> ofException(Throwable throwable) {
-		assert throwable != null;
-		SettableStage<T> stage = new SettableStage<>();
-		stage.result = null;
-		stage.exception = throwable;
-		return stage;
+	static <T> CompleteStage<T> ofException(Throwable exception) {
+		return new CompleteStage<>(null, exception);
 	}
 
 	static <T> Stage<T> ofCallback(Consumer<SettableStage<T>> callbackConsumer) {
@@ -58,10 +52,7 @@ public interface Stage<T> {
 	 */
 	static <T> Stage<T> of(@Nullable T value, @Nullable Throwable throwable) {
 		assert !(value != null && throwable != null);
-		SettableStage<T> stage = new SettableStage<>();
-		stage.result = value;
-		stage.exception = throwable;
-		return stage;
+		return new CompleteStage<>(value, throwable);
 	}
 
 	/**
@@ -195,6 +186,40 @@ public interface Stage<T> {
 	 */
 	static Stage<Void> ofRunnable(Executor executor, Runnable runnable) {
 		return ofThrowingRunnable(executor, runnable::run);
+	}
+
+	default boolean isSet() {
+		return isResult() || isException();
+	}
+
+	boolean isResult();
+
+	boolean isException();
+
+	T getResult();
+
+	Throwable getException();
+
+	@Nullable
+	Try<T> getTry();
+
+	boolean setTo(BiConsumer<? super T, Throwable> consumer);
+
+	boolean setResultTo(Consumer<? super T> consumer);
+
+	boolean setExceptionTo(Consumer<Throwable> consumer);
+
+	/**
+	 * Ensures that stage completes asynchronously:
+	 * If this stage is already complete, its completion will be posted to next eventloop tick.
+	 * Otherwise, do nothing.
+	 */
+	Stage<T> async();
+
+	default MaterializedStage<T> materialize() {
+		SettableStage<T> cb = new SettableStage<>();
+		whenComplete(cb::set);
+		return cb;
 	}
 
 	/**
@@ -350,13 +375,6 @@ public interface Stage<T> {
 	 * @param timeout timeout in milliseconds
 	 */
 	Stage<T> timeout(@Nullable Duration timeout);
-
-	/**
-	 * When this stage is completed it's completion will be postponed to the next eventloop tick.
-	 */
-	Stage<T> post();
-
-	Stage<T> postTo(Eventloop eventloop);
 
 	/**
 	 * Wraps {@code Stage} into {@code CompletableFuture}

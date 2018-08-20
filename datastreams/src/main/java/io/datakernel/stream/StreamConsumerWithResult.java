@@ -16,13 +16,13 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncConsumer;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -34,7 +34,7 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
-	Stage<X> getResult();
+	MaterializedStage<X> getResult();
 
 	@Override
 	default <R> StreamConsumerWithResult<R, X> with(StreamConsumerModifier<T, R> modifier) {
@@ -49,65 +49,64 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 	static <T, X> StreamConsumerWithResult<T, X> ofStage(Stage<? extends StreamConsumerWithResult<T, X>> consumerStage) {
 		SettableStage<X> result = new SettableStage<>();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
-		consumerStage.whenComplete((consumer, throwable) -> {
-			if (throwable == null) {
+		consumerStage.whenComplete((consumer, e) -> {
+			if (e == null) {
 				assert consumer != null;
 				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, consumer);
 				binder.getOutput().streamTo(consumer);
 				consumer.getResult().whenComplete(result::set);
 			} else {
-				binder.getOutput().streamTo(StreamConsumer.closingWithError(throwable));
-				result.setException(throwable);
+				binder.getOutput().streamTo(StreamConsumer.closingWithError(e));
+				result.setException(e);
 			}
 		});
 		return binder.getInput().withResult(result);
 	}
 
-	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-	static <T> StreamConsumerWithResult<T, Void> ofAsyncConsumer(AsyncConsumer<T> consumer, Optional<?> endOfStreamMarker) {
-		return new StreamConsumers.OfAsyncConsumerImpl<>(consumer, endOfStreamMarker);
+	static <T> StreamConsumerWithResult<T, Void> ofSerialConsumer(SerialConsumer<T> consumer) {
+		return new StreamConsumers.OfSerialConsumerImpl<>(consumer);
 	}
 
 	default <U> StreamConsumerWithResult<T, U> thenApply(Function<? super X, ? extends U> fn) {
-		return withResult(getResult().post().thenApply(fn));
+		return withResult(getResult().async().thenApply(fn));
 	}
 
 	default <U> StreamConsumerWithResult<T, U> thenApplyEx(BiFunction<? super X, Throwable, ? extends U> fn) {
-		return withResult(getResult().post().thenApplyEx(fn));
+		return withResult(getResult().async().thenApplyEx(fn));
 	}
 
 	default StreamConsumerWithResult<T, X> thenRun(Runnable action) {
-		getResult().post().thenRun(action);
+		getResult().async().thenRun(action);
 		return this;
 	}
 
 	default StreamConsumerWithResult<T, X> thenRunEx(Runnable action) {
-		getResult().post().thenRunEx(action);
+		getResult().async().thenRunEx(action);
 		return this;
 	}
 
 	default <U> StreamConsumerWithResult<T, U> thenCompose(Function<? super X, ? extends Stage<U>> fn) {
-		return withResult(getResult().post().thenCompose(fn));
+		return withResult(getResult().async().thenCompose(fn));
 	}
 
 	default <U> StreamConsumerWithResult<T, U> thenComposeEx(BiFunction<? super X, Throwable, ? extends Stage<U>> fn) {
-		return withResult(getResult().post().thenComposeEx(fn));
+		return withResult(getResult().async().thenComposeEx(fn));
 	}
 
 	default StreamConsumerWithResult<T, X> whenComplete(BiConsumer<? super X, Throwable> consumer) {
-		getResult().post().whenComplete(consumer);
+		getResult().async().whenComplete(consumer);
 		return this;
 	}
 
 	default StreamConsumerWithResult<T, X> whenResult(Consumer<? super X> action) {
-		getResult().post().whenResult(action);
+		getResult().async().whenResult(action);
 		return this;
 	}
 
 	@Override
 	default StreamConsumerWithResult<T, X> whenException(Consumer<Throwable> consumer) {
-		getResult().post().whenException(consumer);
+		getResult().async().whenException(consumer);
 		return this;
 	}
 

@@ -16,6 +16,25 @@
 
 package io.datakernel.async;
 
-public interface AsyncCancellable {
-	void cancel();
+import io.datakernel.exception.StacklessException;
+
+public interface Cancellable {
+	StacklessException CANCEL_EXCEPTION = new StacklessException("AsyncSupplier cancelled");
+
+	void closeWithError(Throwable e);
+
+	default void cancel() {
+		closeWithError(CANCEL_EXCEPTION);
+	}
+
+	static Cancellable of(Cancellable... cancellables) {
+		return new Cancellable() {
+			@Override
+			public void closeWithError(Throwable e) {
+				for (Cancellable cancellable : cancellables) {
+					cancellable.closeWithError(e);
+				}
+			}
+		};
+	}
 }

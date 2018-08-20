@@ -17,14 +17,12 @@
 package io.datakernel.http;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
-import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.stream.processor.ByteBufRule;
@@ -38,8 +36,7 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
-import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static org.junit.Assert.assertEquals;
@@ -60,16 +57,14 @@ public class AsyncHttpClientTest {
 
 		httpServer.listen();
 
-		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)).thenCompose(response -> {
-			try {
-				return Stage.of(decodeUtf8(response.getBody()));
-			} catch (ParseException e) {
-				return Stage.ofException(e);
-			} finally {
-				httpClient.stop();
-				httpServer.close();
-			}
-		}).toCompletableFuture();
+		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.thenApply(HttpMessage::getBody)
+				.thenTry(ByteBufStrings::decodeUtf8)
+				.thenRunEx(() -> {
+					httpClient.stop();
+					httpServer.close();
+				})
+				.toCompletableFuture();
 
 		eventloop.run();
 
@@ -83,15 +78,9 @@ public class AsyncHttpClientTest {
 
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
 
-		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://google.com"))
-				.thenCompose(response -> {
-					try {
-						return Stage.of(decodeUtf8(response.getBody()));
-					} catch (ParseException e) {
-						return Stage.ofException(e);
-					}
-				})
-				.whenComplete((s, throwable) -> httpClient.stop())
+		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://google.com"))
+				.thenTry(response -> decodeUtf8(response.getBody()))
+				.thenRunEx(httpClient::stop)
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -112,16 +101,13 @@ public class AsyncHttpClientTest {
 
 		httpServer.listen();
 
-		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)).thenCompose(response -> {
-			try {
-				return Stage.of(decodeUtf8(response.getBody()));
-			} catch (ParseException e) {
-				return Stage.ofException(e);
-			}
-		}).whenComplete((s, throwable) -> {
-			httpClient.stop();
-			httpServer.close();
-		}).toCompletableFuture();
+		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.thenTry(response -> decodeUtf8(response.getBody()))
+				.thenRunEx(() -> {
+					httpClient.stop();
+					httpServer.close();
+				})
+				.toCompletableFuture();
 
 		eventloop.run();
 
@@ -136,50 +122,48 @@ public class AsyncHttpClientTest {
 	public void testEmptyLineResponse() throws Throwable {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> new AsyncTcpSocket.EventHandler() {
-			@Override
-			public void onRegistered() {
-				asyncTcpSocket.read();
-			}
+		SimpleServer server = SimpleServer.create(eventloop,
+				asyncTcpSocket ->
+						new AsyncTcpSocket.EventHandler() {
+							@Override
+							public void onRegistered() {
+								asyncTcpSocket.read();
+							}
 
-			@Override
-			public void onRead(ByteBuf buf) {
-				buf.recycle();
-				asyncTcpSocket.write(ByteBufStrings.wrapAscii("\r\n"));
-			}
+							@Override
+							public void onRead(ByteBuf buf) {
+								buf.recycle();
+								asyncTcpSocket.write(wrapAscii("\r\n"));
+							}
 
-			@Override
-			public void onReadEndOfStream() {
-				// empty
-			}
+							@Override
+							public void onReadEndOfStream() {
+								// empty
+							}
 
-			@Override
-			public void onWrite() {
-				asyncTcpSocket.close();
-			}
+							@Override
+							public void onWrite() {
+								asyncTcpSocket.close();
+							}
 
-			@Override
-			public void onClosedWithError(Exception e) {
-				// empty
-			}
-		};
-
-		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider).withListenAddress(new InetSocketAddress("localhost", PORT));
+							@Override
+							public void onClosedWithError(Throwable e1) {
+								// empty
+							}
+						})
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
 		server.listen();
 
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
-		CompletableFuture<String> future = httpClient.send(request).thenCompose(response -> {
-			try {
-				return Stage.of(decodeUtf8(response.getBody()));
-			} catch (ParseException e) {
-				return Stage.ofException(e);
-			}
-		}).whenComplete((s, throwable) -> {
-			httpClient.stop();
-			server.close();
-		}).toCompletableFuture();
+		CompletableFuture<String> future = httpClient.request(request)
+				.thenTry(response -> decodeUtf8(response.getBody()))
+				.thenRunEx(() -> {
+					httpClient.stop();
+					server.close();
+				})
+				.toCompletableFuture();
 
 		eventloop.run();
 
@@ -194,10 +178,10 @@ public class AsyncHttpClientTest {
 	public void testActiveRequestsCounter() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		AsyncServlet slowloris = AsyncServlet.of(request -> {
-			request.recycleBufs();
+		AsyncServlet slowloris = request -> {
+			request.recycleHeaders();
 			return new SettableStage<>();
-		});
+		};
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, slowloris)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
@@ -212,12 +196,11 @@ public class AsyncHttpClientTest {
 				.withInspector(inspector);
 
 		Stages.all(
-				httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT))
-		)
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
 				.whenComplete(($, e) -> {
 					server.close();
 

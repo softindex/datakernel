@@ -16,7 +16,8 @@ public final class AsyncSuppliers {
 			public Stage<T> get() {
 				if (runningStage != null) return runningStage;
 				runningStage = (Stage<T>) actual.get();
-				runningStage.whenComplete((result, throwable) -> runningStage = null);
+				Stage<T> runningStage = this.runningStage;
+				runningStage.whenComplete((result, throwable) -> this.runningStage = null);
 				return runningStage;
 			}
 		};
@@ -35,9 +36,9 @@ public final class AsyncSuppliers {
 					runningStage.whenComplete((result, throwable) -> {
 						runningStage = subscribeStage;
 						subscribeStage = null;
-						actual.get().whenComplete(runningStage::set);
+						actual.get().async().whenComplete(runningStage::set);
 					});
-					actual.get().whenComplete(runningStage::set);
+					actual.get().async().whenComplete(runningStage::set);
 					return runningStage;
 				}
 				if (subscribeStage == null) {
@@ -62,7 +63,7 @@ public final class AsyncSuppliers {
 				while (pendingCalls < maxParallelCalls && !deque.isEmpty()) {
 					SettableStage<T> resultStage = deque.pollFirst();
 					pendingCalls++;
-					actual.get().whenComplete((value, throwable) -> {
+					actual.get().async().whenComplete((value, throwable) -> {
 						pendingCalls--;
 						processQueue();
 						resultStage.set(value, throwable);
@@ -75,7 +76,7 @@ public final class AsyncSuppliers {
 			public Stage<T> get() {
 				if (pendingCalls <= maxParallelCalls) {
 					pendingCalls++;
-					return (Stage<T>) actual.get().whenComplete((value, throwable) -> {
+					return (Stage<T>) actual.get().async().whenComplete((value, throwable) -> {
 						pendingCalls--;
 						processQueue();
 					});
@@ -104,7 +105,7 @@ public final class AsyncSuppliers {
 			private void tryPrefetch() {
 				for (int i = 0; i < count - (deque.size() + pendingCalls); i++) {
 					pendingCalls++;
-					prefetchCallable.get().whenComplete((value, throwable) -> {
+					prefetchCallable.get().async().whenComplete((value, throwable) -> {
 						pendingCalls--;
 						if (throwable == null) {
 							deque.addLast(value);

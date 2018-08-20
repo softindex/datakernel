@@ -16,6 +16,8 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.AsyncConsumer;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
@@ -66,7 +68,7 @@ public class StreamFileReaderWriterTest {
 				.whenComplete(assertComplete());
 		eventloop.run();
 
-		ByteBufQueue byteQueue = ByteBufQueue.create();
+		ByteBufQueue byteQueue = new ByteBufQueue();
 		for (ByteBuf buf : list) {
 			byteQueue.add(buf);
 		}
@@ -118,7 +120,7 @@ public class StreamFileReaderWriterTest {
 				.whenComplete(assertComplete());
 		eventloop.run();
 
-		ByteBufQueue byteQueue = ByteBufQueue.create();
+		ByteBufQueue byteQueue = new ByteBufQueue();
 		for (ByteBuf buf : list) {
 			byteQueue.add(buf);
 		}
@@ -182,10 +184,10 @@ public class StreamFileReaderWriterTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		StreamFileReader.readFile(executor, file)
-				.streamTo(StreamConsumer.ofConsumer(buf -> {
-							assertTrue("Received byte buffer is empty", buf.canRead());
-							buf.recycle();
-						}))
+				.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(buf -> {
+					assertTrue("Received byte buffer is empty", buf.canRead());
+					buf.recycle();
+				}))))
 				.getEndOfStream()
 				.whenComplete(assertComplete());
 

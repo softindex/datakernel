@@ -17,6 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
@@ -161,7 +162,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		}
 	}
 
-	protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+	protected final void postProduce() {
 		if (produceStatus != null)
 			return; // recursive call from downstream - just hot-switch to another receiver
 		produceStatus = ProduceStatus.POSTED;
@@ -169,6 +170,10 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 			produceStatus = null;
 			tryProduce();
 		});
+	}
+
+	protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+		postProduce();
 	}
 
 	@Override
@@ -207,6 +212,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		endOfStream.set(null);
 	}
 
+	@Override
 	public final void closeWithError(Throwable e) {
 		if (status.isClosed())
 			return;
@@ -239,7 +245,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	@Override
-	public final Stage<Void> getEndOfStream() {
+	public final MaterializedStage<Void> getEndOfStream() {
 		return endOfStream;
 	}
 

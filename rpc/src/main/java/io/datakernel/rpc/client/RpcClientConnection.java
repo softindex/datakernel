@@ -16,9 +16,9 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.Callback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -79,7 +79,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
 	private final Runnable expiredResponsesTask = createExpiredResponsesTask();
 
-	private AsyncCancellable scheduleExpiredResponsesTask;
+	private ScheduledRunnable scheduleExpiredResponsesTask;
 	private int cookie = 0;
 	private Duration timeoutPrecision = DEFAULT_TIMEOUT_PRECISION;
 	private boolean connectionClosing;
@@ -92,8 +92,8 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private final EventStats connectionRequests;
 
 	protected RpcClientConnection(Eventloop eventloop, RpcClient rpcClient,
-								  InetSocketAddress address,
-								  RpcStream stream) {
+			InetSocketAddress address,
+			RpcStream stream) {
 		this.eventloop = eventloop;
 		this.rpcClient = rpcClient;
 		this.stream = stream;
@@ -344,7 +344,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		private final long dueTimestamp;
 
 		public JmxConnectionMonitoringResultCallback(RpcRequestStats requestStatsPerClass, Callback<T> callback,
-													 long timeout) {
+				long timeout) {
 			this.stopwatch = Stopwatch.createStarted();
 			this.callback = callback;
 			this.requestStatsPerClass = requestStatsPerClass;

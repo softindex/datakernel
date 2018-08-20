@@ -44,6 +44,7 @@ import java.util.zip.GZIPOutputStream;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.http.AsyncServlet.ensureBody;
 import static io.datakernel.http.GzipProcessorUtils.fromGzip;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
@@ -107,16 +108,15 @@ public class TestGzipProcessorUtils {
 	@Test
 	public void testGzippedCommunicationBetweenClientServer() throws IOException, ParseException, ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				String receivedData = ByteBufStrings.decodeAscii(request.getBody());
-				assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
-				assertEquals("gzip", request.getHeader(HttpHeaders.ACCEPT_ENCODING));
-				assertEquals(text, receivedData);
-				return Stage.of(HttpResponse.ok200().withBodyGzipCompression().withBody(ByteBufStrings.wrapAscii(receivedData)));
-			}
-		};
+		AsyncServlet servlet = ensureBody(request -> {
+			String receivedData = ByteBufStrings.decodeAscii(request.getBody());
+			assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
+			assertEquals("gzip", request.getHeader(HttpHeaders.ACCEPT_ENCODING));
+			assertEquals(text, receivedData);
+			return Stage.of(HttpResponse.ok200()
+					.withBodyGzipCompression()
+					.withBody(ByteBufStrings.wrapAscii(receivedData)));
+		});
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
@@ -129,12 +129,14 @@ public class TestGzipProcessorUtils {
 				.withBody(wrapAscii(text));
 
 		server.listen();
-		CompletableFuture<String> future = client.send(request).thenApply(result -> {
-			assertEquals("gzip", result.getHeader(HttpHeaders.CONTENT_ENCODING));
-			server.close();
-			client.stop();
-			return decodeAscii(result.getBody());
-		}).toCompletableFuture();
+		CompletableFuture<String> future = client.request(request)
+				.thenApply(result -> {
+					assertEquals("gzip", result.getHeader(HttpHeaders.CONTENT_ENCODING));
+					server.close();
+					client.stop();
+					return decodeAscii(result.getBody());
+				})
+				.toCompletableFuture();
 
 		eventloop.run();
 		assertEquals(text, future.get());

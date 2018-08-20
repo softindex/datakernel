@@ -51,36 +51,29 @@ public class AbstractHttpConnectionTest {
 
 	@Test
 	public void testMultiLineHeader() throws Exception {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				return Stage.of(createMultiLineHeaderWithInitialBodySpacesResponse());
-			}
-		};
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				request -> Stage.of(
+						HttpResponse.ok200()
+								.withHeader(DATE, "Mon, 27 Jul 2009 12:28:53 GMT")
+								.withHeader(CONTENT_TYPE, "text/\n          html")
+								.withBody(ByteBufStrings.wrapAscii("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>"))))
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
 		Map<String, String> data = new HashMap<>();
-		CompletableFuture<Void> future = client.send(HttpRequest.get(url)).thenCompose(result -> {
-			data.put("body", decodeAscii(result.getBody()));
-			data.put("header", result.getHeader(CONTENT_TYPE));
-			return stopClientAndServer(client, server);
-		}).toCompletableFuture();
+		CompletableFuture<Void> future = client.request(HttpRequest.get(url))
+				.whenResult(result -> {
+					data.put("body", decodeAscii(result.getBody()));
+					data.put("header", result.getHeader(CONTENT_TYPE));
+				})
+				.thenCompose($ -> stopClientAndServer(client, server))
+				.toCompletableFuture();
 
 		eventloop.run();
 		future.get();
 
 		assertEquals("text/           html", data.get("header"));
 		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", data.get("body"));
-	}
-
-	private HttpResponse createMultiLineHeaderWithInitialBodySpacesResponse() {
-		HttpResponse response = HttpResponse.ok200();
-		response.addHeader(DATE, "Mon, 27 Jul 2009 12:28:53 GMT");
-		response.addHeader(CONTENT_TYPE, "text/\n          html");
-		response.setBody(ByteBufStrings.wrapAscii("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>"));
-		return response;
 	}
 
 	@Test
@@ -104,13 +97,15 @@ public class AbstractHttpConnectionTest {
 		server.listen();
 
 		HttpRequest request = HttpRequest.get(url).withHeader(ACCEPT_ENCODING, "gzip");
-		CompletableFuture<Void> future = client.send(request).thenCompose(response -> {
-			assertNotNull(response.getHeaderValue(CONTENT_ENCODING));
-			return client.send(HttpRequest.get(url)).thenCompose(innerResponse -> {
-				assertNull(innerResponse.getHeaderValue(CONTENT_ENCODING));
-				return stopClientAndServer(client, server);
-			});
-		}).toCompletableFuture();
+		CompletableFuture<Void> future = client.request(request)
+				.thenCompose(response -> {
+					assertNotNull(response.getHeaderValue(CONTENT_ENCODING));
+					return client.request(HttpRequest.get(url)).thenCompose(innerResponse -> {
+						assertNull(innerResponse.getHeaderValue(CONTENT_ENCODING));
+						return stopClientAndServer(client, server);
+					});
+				})
+				.toCompletableFuture();
 
 		eventloop.run();
 		future.get();
@@ -120,36 +115,31 @@ public class AbstractHttpConnectionTest {
 	public void testClientWithMaxKeepAliveRequests() throws Exception {
 		client.withMaxKeepAliveRequests(3);
 
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				return Stage.of(HttpResponse.ok200());
-			}
-		};
+		AsyncServlet servlet = request -> Stage.of(HttpResponse.ok200());
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
 		EventStats clientConnectionCount = client.getStats().getConnected();
 
-		client.send(HttpRequest.get(url))
+		client.request(HttpRequest.get(url))
 				.thenCompose(response -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
 					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
 					assertEquals(1, clientConnectionCount.getTotalCount());
-					return client.send(HttpRequest.get(url));
+					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
 					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
 					assertEquals(1, clientConnectionCount.getTotalCount());
-					return client.send(HttpRequest.get(url));
+					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
 					assertEquals("close", response.getHeaderValue(CONNECTION).toString());
 					assertEquals(1, client.getStats().getConnected().getTotalCount());
-					return client.send(HttpRequest.get(url));
+					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
@@ -164,13 +154,9 @@ public class AbstractHttpConnectionTest {
 
 	@Test
 	public void testServerWithMaxKeepAliveRequests() throws Exception {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				return Stage.of(HttpResponse.ok200());
-			}
-		};
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				request -> Stage.of(
+						HttpResponse.ok200()))
 				.withListenAddress(new InetSocketAddress("localhost", PORT))
 				.withMaxKeepAliveRequests(3);
 		server.listen();
@@ -178,24 +164,24 @@ public class AbstractHttpConnectionTest {
 		EventStats clientConnectionCount = server.getAccepts();
 		assert clientConnectionCount != null;
 
-		client.send(HttpRequest.get(url))
+		client.request(HttpRequest.get(url))
 				.thenCompose(response -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
 					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
 					assertEquals(1, clientConnectionCount.getTotalCount());
-					return client.send(HttpRequest.get(url));
+					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response2 -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
 					assertEquals("keep-alive", response2.getHeaderValue(CONNECTION).toString());
 					assertEquals(1, clientConnectionCount.getTotalCount());
-					return client.send(HttpRequest.get(url));
+					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response3 -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
 					assertEquals("close", response3.getHeaderValue(CONNECTION).toString());
 					assertEquals(1, clientConnectionCount.getTotalCount());
-					return client.send(HttpRequest.get(url));
+					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response4 -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());

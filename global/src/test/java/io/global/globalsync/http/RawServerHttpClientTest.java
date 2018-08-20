@@ -135,7 +135,7 @@ public class RawServerHttpClientTest {
 
 		IAsyncHttpClient httpClient = new IAsyncHttpClient() {
 			@Override
-			public Stage<HttpResponse> send(HttpRequest request) {
+			public Stage<HttpResponse> requestBodyStream(HttpRequest request) {
 				return servlet.serve(request);
 			}
 		};

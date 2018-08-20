@@ -1,8 +1,15 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.exception.StacklessException;
+import io.datakernel.functional.Try;
 
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
@@ -12,15 +19,15 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
  *
  * @param <T> Result type
  */
-public final class SettableStage<T> extends AbstractStage<T> implements Callback<T> {
-	private static final Object NO_RESULT = new Object();
+public final class SettableStage<T> extends AbstractStage<T> implements MaterializedStage<T>, Callback<T> {
+	private static final Throwable NO_RESULT = new StacklessException();
 
 	@SuppressWarnings("unchecked")
 	@Nullable
-	protected T result = (T) NO_RESULT;
+	protected T result;
 
 	@Nullable
-	protected Throwable exception;
+	protected Throwable exception = NO_RESULT;
 
 	public SettableStage() {
 	}
@@ -34,8 +41,8 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 		assert !isSet();
 		if (next == null) {
 			this.result = result;
+			this.exception = null;
 		} else {
-			this.result = null;
 			complete(result);
 		}
 	}
@@ -61,12 +68,11 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	/**
 	 * The same as {@link SettableStage#trySet(Object, Throwable)} )} but for result only.
 	 */
-	public boolean trySet(@Nullable T result) {
+	public void trySet(@Nullable T result) {
 		if (isSet()) {
-			return false;
+			return;
 		}
 		set(result);
-		return true;
 	}
 
 	/**
@@ -75,27 +81,25 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	 *
 	 * @return {@code true} if result or exception was set, {@code false} otherwise
 	 */
-	public boolean trySet(@Nullable T result, @Nullable Throwable throwable) {
+	public void trySet(@Nullable T result, @Nullable Throwable throwable) {
 		if (isSet()) {
-			return false;
+			return;
 		}
 		if (throwable == null) {
 			trySet(result);
 		} else {
 			trySetException(throwable);
 		}
-		return true;
 	}
 
 	/**
 	 * The same as {@link SettableStage#trySet(Object, Throwable)} )} but for exception only.
 	 */
-	public boolean trySetException(Throwable throwable) {
+	public void trySetException(Throwable throwable) {
 		if (isSet()) {
-			return false;
+			return;
 		}
 		setException(throwable);
-		return true;
 	}
 
 	public void post(@Nullable T result) {
@@ -124,46 +128,256 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 
 	@Override
 	protected void subscribe(BiConsumer<? super T, Throwable> next) {
-		if (isSet()) {
-			if (this.next == null) { // to post only once
-				getCurrentEventloop().post(() -> {
-					if (exception == null) {
-						complete(result);
-					} else {
-						completeExceptionally(exception);
-					}
-
-					result = null;
-					exception = null;
-				});
-			}
-		}
+		assert !isSet();
 		super.subscribe(next);
 	}
 
 	/**
 	 * @return {@code true} if this {@code SettableStage} result is not set, {@code false} otherwise.
 	 */
+	@Override
 	public boolean isSet() {
-		return result != NO_RESULT;
+		return exception != NO_RESULT;
 	}
 
-	public boolean isSetResult() {
-		return isSet() && exception == null;
+	@Override
+	public boolean isResult() {
+		return exception == null;
 	}
 
-	public boolean isSetException() {
-		return isSet() && exception != null;
+	@Override
+	public boolean isException() {
+		return exception != NO_RESULT && exception != null;
 	}
 
+	@Override
 	public T getResult() {
-		assert isSetResult();
-		return result;
+		if (isResult()) {
+			return result;
+		}
+		throw new IllegalStateException();
 	}
 
+	@Override
 	public Throwable getException() {
-		assert isSetException();
-		return exception;
+		if (isException()) {
+			return exception;
+		}
+		throw new IllegalStateException();
+	}
+
+	@Override
+	public Try<T> getTry() {
+		return isSet() ? Try.of(result, exception) : null;
+	}
+
+	@Override
+	public boolean setTo(BiConsumer<? super T, Throwable> consumer) {
+		if (isSet()) {
+			consumer.accept(result, exception);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	@Override
+	public boolean setResultTo(Consumer<? super T> consumer) {
+		if (isResult()) {
+			consumer.accept(result);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	@Override
+	public boolean setExceptionTo(Consumer<Throwable> consumer) {
+		if (isException()) {
+			consumer.accept(exception);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	public <U> Stage<U> mold() {
+		assert isException() : "Trying to mold a successful SettableStage!";
+		return (Stage<U>) this;
+	}
+
+	@Override
+	public <U, S extends BiConsumer<? super T, Throwable> & Stage<U>> Stage<U> then(S stage) {
+		if (isSet()) {
+			stage.accept(result, exception);
+			return stage;
+		}
+		return super.then(stage);
+	}
+
+	@Override
+	public <U> Stage<U> thenApply(Function<? super T, ? extends U> fn) {
+		if (isSet()) return isResult() ? Stage.of(fn.apply(result)) : mold();
+		return super.thenApply(fn);
+	}
+
+	@Override
+	public <U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
+		if (isSet()) return Stage.of(fn.apply(result, exception));
+		return super.thenApplyEx(fn);
+	}
+
+	@Override
+	public Stage<T> thenRun(Runnable action) {
+		if (isSet()) {
+			if (isResult()) action.run();
+			return this;
+		}
+		return super.thenRun(action);
+	}
+
+	@Override
+	public Stage<T> thenRunEx(Runnable action) {
+		if (isSet()) {
+			action.run();
+			return this;
+		}
+		return super.thenRunEx(action);
+	}
+
+	@Override
+	public <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {
+		if (isSet()) {
+			return isResult() ? fn.apply(result) : mold();
+		}
+		return super.thenCompose(fn);
+	}
+
+	@Override
+	public <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
+		if (isSet()) {
+			return fn.apply(result, exception);
+		}
+		return super.thenComposeEx(fn);
+	}
+
+	@Override
+	public Stage<T> whenComplete(BiConsumer<? super T, Throwable> action) {
+		if (isSet()) {
+			action.accept(result, exception);
+			return this;
+		}
+		return super.whenComplete(action);
+	}
+
+	@Override
+	public Stage<T> whenResult(Consumer<? super T> action) {
+		if (isSet()) {
+			if (isResult()) action.accept(result);
+			return this;
+		}
+		return super.whenResult(action);
+	}
+
+	@Override
+	public Stage<T> whenException(Consumer<Throwable> action) {
+		if (isSet()) {
+			if (isException()) action.accept(exception);
+			return this;
+		}
+		return super.whenException(action);
+	}
+
+	@Override
+	public Stage<T> thenException(Function<? super T, Throwable> fn) {
+		if (isSet()) {
+			return isResult() ? Stage.ofException(fn.apply(result)) : mold();
+		}
+		return super.thenException(fn);
+	}
+
+	@Override
+	public <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
+		if (isSet()) {
+			if (isException()) return mold();
+			try {
+				return Stage.of(fn.apply(result));
+			} catch (RuntimeException e) {
+				throw e;
+			} catch (Exception e) {
+				return Stage.ofException(e);
+			}
+		}
+		return super.thenTry(fn);
+	}
+
+	@Override
+	public Stage<T> async() {
+		if (isSet()) {
+			SettableStage<T> result = new SettableStage<>();
+			getCurrentEventloop().post(isResult() ?
+					() -> result.set(this.result) :
+					() -> result.setException(exception));
+			return result;
+		}
+		return super.async();
+	}
+
+	@Override
+	public Stage<Try<T>> toTry() {
+		if (isSet()) {
+			return isResult() ? Stage.of(Try.of(result)) : mold();
+		}
+		return super.toTry();
+	}
+
+	@Override
+	public Stage<Void> toVoid() {
+		if (isSet()) {
+			return isResult() ? Stage.of(null) : mold();
+		}
+		return super.toVoid();
+	}
+
+	@Override
+	public <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
+		if (isSet()) {
+			return new CompleteStage<>(result, exception).combine(other, fn);
+		}
+		return super.combine(other, fn);
+	}
+
+	@Override
+	public Stage<Void> both(Stage<?> other) {
+		if (isSet()) {
+			return new CompleteStage<>(result, exception).both(other);
+		}
+		return super.both(other);
+	}
+
+	@Override
+	public Stage<T> either(Stage<? extends T> other) {
+		if (isSet()) {
+			return new CompleteStage<>(result, exception).either(other);
+		}
+		return super.either(other);
+	}
+
+	@Override
+	public Stage<T> timeout(@Nullable Duration timeout) {
+		if (isSet()) {
+			return this;
+		}
+		return super.timeout(timeout);
+	}
+
+	@Override
+	public CompletableFuture<T> toCompletableFuture() {
+		if (isSet()) {
+			return new CompleteStage<>(result, exception).toCompletableFuture();
+		}
+		return super.toCompletableFuture();
 	}
 
 	@Override

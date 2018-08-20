@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Callback;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -26,9 +26,6 @@ import java.net.InetAddress;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.http.GzipProcessorUtils.toGzip;
-import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
-import static io.datakernel.http.HttpHeaders.asBytes;
 import static io.datakernel.http.HttpMethod.*;
 
 /**
@@ -66,7 +63,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private static final byte[] EXPECT_100_CONTINUE = encodeAscii("100-continue");
 	private static final byte[] EXPECT_RESPONSE_CONTINUE = encodeAscii("HTTP/1.1 100 Continue\r\n\r\n");
-	private boolean statusExpectContinue;
 
 	/**
 	 * Creates a new instance of HttpServerConnection
@@ -77,9 +73,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet       servlet for handling requests
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-	                     AsyncHttpServer server, AsyncServlet servlet,
-	                     char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
+			AsyncHttpServer server, AsyncServlet servlet,
+			char[] headerChars) {
+		super(eventloop, asyncTcpSocket, headerChars);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
@@ -89,20 +85,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	public void onRegistered() {
 		asyncTcpSocket.read();
-		(pool = server.poolReading).addLastNode(this);
-		poolTimestamp = eventloop.currentTimeMillis();
+		switchPool(server.poolReading);
 	}
 
 	@Override
-	public void onReadEndOfStream() {
-		if (reading == NOTHING)
-			close();
-		else
-			closeWithError(CLOSED_CONNECTION);
-	}
-
-	@Override
-	public void onClosedWithError(Exception e) {
+	public void onClosedWithError(Throwable e) {
 		if (inspector != null && e != null) inspector.onHttpError(remoteAddress, e);
 		readQueue.clear();
 		onClosed();
@@ -151,9 +138,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
-		pool.removeNode(this);
-		(pool = server.poolReading).addLastNode(this);
-		poolTimestamp = eventloop.currentTimeMillis();
+		switchPool(server.poolReading);
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null) {
@@ -211,7 +196,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		super.onHeader(header, value);
 		if (header == HttpHeaders.EXPECT) {
 			if (equalsLowerCaseAscii(EXPECT_100_CONTINUE, value.array(), value.readPosition(), value.readRemaining())) {
-				statusExpectContinue = true;
 				asyncTcpSocket.write(ByteBuf.wrapForReading(EXPECT_RESPONSE_CONTINUE));
 			}
 		}
@@ -220,102 +204,66 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private void writeHttpResult(HttpResponse httpResponse) {
 		httpResponse.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
-		ByteBuf buf = httpResponse.toByteBuf();
-		httpResponse.recycleBufs();
-		statusExpectContinue = false;
-		asyncTcpSocket.write(buf);
+		writeHttpMessage(httpResponse);
 	}
 
-	/**
-	 * This method is called after receiving every request. It handles it,
-	 * using servlet and sends a response back to the client.
-	 * <p>
-	 * After sending a response, request and response will be recycled and you
-	 * can not use it twice.
-	 *
-	 * @param bodyBuf the received message
-	 */
 	@Override
-	protected void onHttpMessage(ByteBuf bodyBuf) {
-		if (keepAlive && server.maxKeepAliveRequests != -1){
-			if(++numberOfKeepAliveRequests >= server.maxKeepAliveRequests){
-				keepAlive = false;
-			}
-		}
-
-		reading = NOTHING;
-		request.setBody(bodyBuf);
+	protected void onHeadersReceived(SerialSupplier<ByteBuf> bodySupplier) {
+		request.bodySupplier = bodySupplier;
 		request.setRemoteAddress(remoteAddress);
 
 		if (inspector != null) inspector.onHttpRequest(request);
 
-		pool.removeNode(this);
-		(pool = server.poolServing).addLastNode(this);
-		poolTimestamp = eventloop.currentTimeMillis();
+		switchPool(server.poolServing);
 
-		servlet.serve(request, new Callback<HttpResponse>() {
-			@Override
-			public void set(HttpResponse httpResponse) {
-				assert eventloop.inEventloopThread();
-				if (inspector != null) inspector.onHttpResponse(request, httpResponse);
-
-				if (!isClosed()) {
-					if (httpResponse.useGzip && httpResponse.getBody() != null && httpResponse.getBody().readRemaining() > 0) {
-						httpResponse.setHeader(asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
-						httpResponse.setBody(toGzip(httpResponse.detachBody()));
+		servlet.serve(request)
+				.whenComplete((response, e) -> {
+					if (e == null) {
+						if (inspector != null) inspector.onHttpResponse(request, response);
+						if (!isClosed()) {
+							switchPool(server.poolWriting);
+							writeHttpResult(response);
+						} else {
+							//connection is closed, but bufs are not recycled, let 's recycle them now
+							response.recycle();
+						}
+					} else {
+						if (inspector != null) inspector.onServletException(request, e);
+						if (!isClosed()) {
+							switchPool(server.poolWriting);
+							writeException(e);
+						}
 					}
-					pool.removeNode(HttpServerConnection.this);
-					(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
-					poolTimestamp = eventloop.currentTimeMillis();
-					writeHttpResult(httpResponse);
-				} else {
-					//connection is closed, but bufs are not recycled, let 's recycle them now
-					httpResponse.recycleBufs();
-				}
-				recycleBufs();
-			}
-
-			@Override
-			public void setException(Throwable e) {
-				assert eventloop.inEventloopThread();
-				if (inspector != null) inspector.onServletException(request, e);
-				if (!isClosed()) {
-					pool.removeNode(HttpServerConnection.this);
-					(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
-					poolTimestamp = eventloop.currentTimeMillis();
-					writeException(e);
-				}
-				recycleBufs();
-			}
-		});
+					recycleBufs();
+				});
 	}
 
 	@Override
 	protected void reset() {
 		reading = FIRSTLINE;
-		if (request != null) {
-			request.recycleBufs();
-			request = null;
-		}
+		recycleBufs();
 		super.reset();
 	}
 
 	@Override
-	public void onWrite() {
-		assert !isClosed();
-		if (reading != NOTHING) return;
+	protected void onBodyReceived() {
+		if (bodyWriter == null && bodyReader == null && pool != server.poolServing) onHttpMessageComplete();
+	}
 
-		if (statusExpectContinue) {
-			return;
-		}
+	@Override
+	protected void onBodySent() {
+		if (bodyWriter == null && bodyReader == null && pool != server.poolServing) onHttpMessageComplete();
+	}
+
+	private void onHttpMessageComplete() {
+		assert !isClosed();
 
 		if (keepAlive && server.keepAliveTimeoutMillis != 0) {
 			reset();
-			pool.removeNode(HttpServerConnection.this);
-			(pool = server.poolKeepAlive).addLastNode(HttpServerConnection.this);
-			poolTimestamp = eventloop.currentTimeMillis();
+			switchPool(server.poolKeepAlive);
+			reading = FIRSTLINE;
 			if (readQueue.hasRemaining()) {
-				onRead(null);
+				eventloop.post(() -> onRead(null));
 			}
 		} else {
 			close();
@@ -327,17 +275,15 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	private void recycleBufs() {
-		bodyQueue.clear();
 		if (request != null) {
-			request.recycleBufs();
+			request.recycle();
 			request = null;
 		}
 	}
 
 	@Override
 	protected void onClosed() {
-		pool.removeNode(this);
-		pool = null;
+		switchPool(null);
 		if (reading != NOTHING) {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();

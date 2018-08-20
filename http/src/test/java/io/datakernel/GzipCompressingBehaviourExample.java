@@ -28,27 +28,17 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 public final class GzipCompressingBehaviourExample {
 	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		MiddlewareServlet dispatcher = MiddlewareServlet.create();
+		MiddlewareServlet servlet = MiddlewareServlet.create()
+				// always responds in gzip
+				.with(HttpMethod.GET, "/gzip/",
+						request -> Stage.of(
+								HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!"))))
+				// never responds in gzip
+				.with(HttpMethod.GET, "/nogzip/",
+						request -> Stage.of(
+								HttpResponse.ok200().withBody(encodeAscii("Hello!"))));
 
-		// always responds in gzip
-		dispatcher.with(HttpMethod.GET, "/gzip/",
-				new AsyncServlet() {
-					@Override
-					public Stage<HttpResponse> serve(HttpRequest request) {
-						return Stage.of(HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!")));
-					}
-				});
-
-		// never responds in gzip
-		dispatcher.with(HttpMethod.GET, "/nogzip/",
-				new AsyncServlet() {
-					@Override
-					public Stage<HttpResponse> serve(HttpRequest request) {
-						return Stage.of(HttpResponse.ok200().withBody(encodeAscii("Hello!")));
-					}
-				});
-
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, dispatcher).withListenPort(1234);
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(1234);
 
 		server.listen();
 		eventloop.run();
@@ -63,6 +53,6 @@ public final class GzipCompressingBehaviourExample {
 				.withBodyGzipCompression()
 				.withAcceptEncodingGzip();
 
-		client.send(request);
+		client.request(request);
 	}
 }

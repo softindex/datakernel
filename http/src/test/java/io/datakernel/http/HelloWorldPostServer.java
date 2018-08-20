@@ -24,22 +24,18 @@ import java.net.InetSocketAddress;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.http.AsyncServlet.ensureBody;
 
 public final class HelloWorldPostServer {
 	public static final int PORT = 5588;
 	public static final String HELLO_WORLD = "Hello, World!";
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				String s = HELLO_WORLD + decodeAscii(request.getBody());
-				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(s));
-				return Stage.of(content);
-			}
-		};
-
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
+		return AsyncHttpServer.create(primaryEventloop,
+				ensureBody(request -> Stage.of(
+						HttpResponse.ok200()
+								.withBody(encodeAscii(HELLO_WORLD + decodeAscii(request.getBody()))))))
+				.withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
 	public static void main(String[] args) throws Exception {

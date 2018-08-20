@@ -56,7 +56,7 @@ public class TestClientMultilineHeaders {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
-		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT))
+		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenApply(response -> {
 					httpClient.stop();
 					server.close();

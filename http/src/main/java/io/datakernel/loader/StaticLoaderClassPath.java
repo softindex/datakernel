@@ -34,13 +34,9 @@ class StaticLoaderClassPath implements StaticLoader {
 			return Stage.ofException(HttpException.notFound404());
 		}
 
-        SettableStage<ByteBuf> stage = new SettableStage<>();
-	    Stage.ofCallable(executorService, () -> wrapForReading(loadResource(file)))
-                .whenComplete((result, throwable) ->
-                        stage.set(result, throwable instanceof NoSuchFileException ?
-                                HttpException.notFound404() :
-                                throwable));
-        return stage;
+	    return Stage.ofCallable(executorService, () -> wrapForReading(loadResource(file)))
+                .thenComposeEx((result, e) ->
+		                Stage.of(result, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
     }
 
 	private byte[] loadResource(URL file) throws IOException {

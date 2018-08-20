@@ -4,6 +4,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -11,6 +12,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
@@ -24,7 +26,6 @@ import static com.google.inject.util.Modules.override;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
-import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.launchers.Initializers.ofEventloop;
 import static io.datakernel.launchers.Initializers.ofHttpServer;
 import static java.lang.Boolean.parseBoolean;
@@ -107,8 +108,8 @@ public abstract class HttpServerLauncher extends Launcher {
 					@Provides
 					public AsyncServlet provide(Config config) {
 						String message = config.get("message", "Hello, world!");
-						return AsyncServlet.ofBlocking(req -> ok200()
-								.withBody(ByteBuf.wrapForReading(encodeAscii(message))));
+						return req -> Stage.of(
+								HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii(message))));
 					}
 				};
 

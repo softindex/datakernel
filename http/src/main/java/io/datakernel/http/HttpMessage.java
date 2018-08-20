@@ -16,23 +16,26 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.SerialSupplier;
 
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpHeaders.DATE;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
  */
 public abstract class HttpMessage {
-	protected boolean recycled;
-
 	protected ArrayList<HttpHeaders.Value> headers = new ArrayList<>();
 	private ArrayList<ByteBuf> headerBufs;
+	protected SerialSupplier<ByteBuf> bodySupplier;
 	protected ByteBuf body;
 	protected boolean useGzip;
 
@@ -68,7 +71,7 @@ public abstract class HttpMessage {
 	 * @param value value of this header
 	 */
 	protected void setHeader(HttpHeaders.Value value) {
-		assert !recycled;
+		assert !isRecycled();
 		assert getHeaderValue(value.getKey()) == null : "Duplicate header: " + value.getKey();
 		headers.add(value);
 	}
@@ -80,12 +83,12 @@ public abstract class HttpMessage {
 	 * @param value value of this header
 	 */
 	protected void addHeader(HttpHeaders.Value value) {
-		assert !recycled;
+		assert !isRecycled();
 		headers.add(value);
 	}
 
 	public void addHeader(HttpHeader header, ByteBuf value) {
-		assert !recycled;
+		assert !isRecycled();
 		addHeader(HttpHeaders.asBytes(header, value.array(), value.readPosition(), value.readRemaining()));
 		if (value.isRecycleNeeded()) {
 			if (headerBufs == null) {
@@ -96,25 +99,13 @@ public abstract class HttpMessage {
 	}
 
 	public void addHeader(HttpHeader header, byte[] value) {
-		assert !recycled;
+		assert !isRecycled();
 		addHeader(HttpHeaders.asBytes(header, value, 0, value.length));
 	}
 
 	public void addHeader(HttpHeader header, String string) {
-		assert !recycled;
+		assert !isRecycled();
 		addHeader(HttpHeaders.ofString(header, string));
-	}
-
-	public void setBody(ByteBuf body) {
-		assert !recycled;
-		if (this.body != null)
-			this.body.recycle();
-		this.body = body;
-	}
-
-	public void setBody(byte[] body) {
-		assert !recycled;
-		this.body = ByteBuf.wrapForReading(body);
 	}
 
 	public void setBodyGzipCompression() {
@@ -123,7 +114,7 @@ public abstract class HttpMessage {
 
 	// getters
 	public ContentType getContentType() {
-		assert !recycled;
+		assert !isRecycled();
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(CONTENT_TYPE);
 		if (header != null) {
 			try {
@@ -136,7 +127,7 @@ public abstract class HttpMessage {
 	}
 
 	public Date getDate() {
-		assert !recycled;
+		assert !isRecycled();
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(DATE);
 		if (header != null) {
 			try {
@@ -149,40 +140,81 @@ public abstract class HttpMessage {
 		return null;
 	}
 
-	/**
-	 * Removes the body of this message and returns it. After its method, owner of
-	 * body of this HttpMessage is changed, and it will not be automatically recycled in HTTP client or HTTP server.
-	 *
-	 * @return the body
-	 */
-	public ByteBuf detachBody() {
-		ByteBuf buf = body;
-		body = null;
-		return buf;
+	public ByteBuf getBody() {
+		return checkNotNull(body);
 	}
 
-	public ByteBuf getBody() {
-		assert !recycled;
-		return body;
+	public Stage<ByteBuf> getBodyStage() {
+		if (body != null) return Stage.of(body);
+		if (bodySupplier != null) {
+			return bodySupplier.toCollector(ByteBufQueue.collector())
+					.whenComplete((buf, e) -> {
+						this.body = buf;
+						this.bodySupplier = null;
+					});
+		}
+		return Stage.of(ByteBuf.empty());
+	}
+
+	protected Stage<? extends HttpMessage> doEnsureBody() {
+		if (body != null) return Stage.of(this);
+		if (bodySupplier != null) {
+			return bodySupplier.toCollector(ByteBufQueue.collector())
+					.thenComposeEx((buf, e) -> {
+						this.body = buf;
+						this.bodySupplier = null;
+						return Stage.of(this);
+					});
+		}
+		return Stage.of(this);
+	}
+
+	public SerialSupplier<ByteBuf> getBodyStream() {
+		if (body != null) return SerialSupplier.of(body);
+		if (bodySupplier != null) return bodySupplier;
+		return SerialSupplier.of(ByteBuf.empty());
+	}
+
+	public void setBody(ByteBuf body) {
+		this.body = body;
+	}
+
+	public void setBody(byte[] body) {
+		setBody(ByteBuf.wrapForReading(body));
+	}
+
+	public void setBodyStream(SerialSupplier<ByteBuf> bodySupplier) {
+		this.bodySupplier = bodySupplier;
+	}
+
+	protected boolean isRecycled() {
+		return headers == null;
 	}
 
 	/**
 	 * Recycles body and header. You should do it before reusing.
 	 */
-	protected void recycleBufs() {
-		assert !recycled;
-		if (body != null) {
-			body.recycle();
-			body = null;
-		}
+	protected void recycleHeaders() {
+		assert !isRecycled();
 		headers = null;
 		if (headerBufs != null) {
 			for (ByteBuf headerBuf : headerBufs) {
 				headerBuf.recycle();
 			}
-			headerBufs = null;
+			headerBufs.clear();
 		}
-		recycled = true;
+	}
+
+	protected void recycle() {
+		recycleHeaders();
+		if (bodySupplier != null) {
+//			bodySupplier.cancel();
+			bodySupplier = null;
+		}
+		if (body != null) {
+			body.recycle();
+			body = null;
+		}
 	}
 
 	/**
@@ -191,7 +223,7 @@ public abstract class HttpMessage {
 	 * @param buf the new headers
 	 */
 	protected void writeHeaders(ByteBuf buf) {
-		assert !recycled;
+		assert !isRecycled();
 		for (HttpHeaders.Value entry : this.headers) {
 			HttpHeader header = entry.getKey();
 
@@ -209,23 +241,14 @@ public abstract class HttpMessage {
 		buf.put(LF);
 	}
 
-	protected void writeBody(ByteBuf buf) {
-		assert !recycled;
-		if (body != null) {
-			buf.put(body);
-		}
-	}
-
 	protected int estimateSize(int firstLineSize) {
-		assert !recycled;
+		assert !isRecycled();
 		int size = firstLineSize;
 		for (HttpHeaders.Value entry : this.headers) {
 			HttpHeader header = entry.getKey();
 			size += 2 + header.size() + 2 + entry.estimateSize(); // CR,LF,header,": ",value
 		}
 		size += 4; // CR,LF,CR,LF
-		if (body != null)
-			size += body.readRemaining();
 		return size;
 	}
 
@@ -254,7 +277,7 @@ public abstract class HttpMessage {
 	protected abstract List<HttpCookie> getCookies();
 
 	public Map<String, HttpCookie> getCookiesMap() {
-		assert !recycled;
+		assert !isRecycled();
 		List<HttpCookie> cookies = getCookies();
 		LinkedHashMap<String, HttpCookie> map = new LinkedHashMap<>();
 		for (HttpCookie cookie : cookies) {
@@ -264,7 +287,7 @@ public abstract class HttpMessage {
 	}
 
 	public HttpCookie getCookie(String name) {
-		assert !recycled;
+		assert !isRecycled();
 		List<HttpCookie> cookies = getCookies();
 		for (HttpCookie cookie : cookies) {
 			if (name.equals(cookie.getName()))
@@ -273,6 +296,7 @@ public abstract class HttpMessage {
 		return null;
 	}
 
-	public abstract ByteBuf toByteBuf();
+	protected abstract int estimateSize();
 
+	protected abstract void writeTo(ByteBuf buf);
 }

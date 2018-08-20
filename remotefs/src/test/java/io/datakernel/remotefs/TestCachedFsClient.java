@@ -1,9 +1,12 @@
 package io.datakernel.remotefs;
 
+import io.datakernel.async.AsyncConsumer;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.test.TestUtils;
 import io.datakernel.util.MemSize;
 import org.junit.After;
 import org.junit.Before;
@@ -77,17 +80,16 @@ public class TestCachedFsClient {
 	}
 
 	@Test
-	public void testDownloadFileNotInCache() throws IOException {
+	public void testDownloadFileNotInCache() {
 		cacheRemote.download("test.txt")
 				.thenCompose(producer -> {
-					ByteBufQueue q = ByteBufQueue.create();
-					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
+					ByteBufQueue q = new ByteBufQueue();
+					return producer
+							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
 							.getEndOfStream()
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
-				.whenComplete((res, err) -> {
-					server.close();
-				})
+				.thenRunEx(server::close)
 				.whenResult(s -> assertEquals(testTxtContent, s))
 				.whenResult(s -> {
 					try {
@@ -105,14 +107,15 @@ public class TestCachedFsClient {
 	public void testDownloadFileNotInCacheWithOffsetAndLength() {
 		cacheRemote.download("test.txt", 1, 2)
 				.thenCompose(producer -> {
-					ByteBufQueue q = ByteBufQueue.create();
-					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
+					ByteBufQueue q = new ByteBufQueue();
+					return producer
+							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
 							.getEndOfStream()
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
+				.thenRunEx(server::close)
 				.whenComplete((res, err) -> {
 					assertEquals(res, "in");
-					server.close();
 					assertFalse(Files.exists(cacheStorage.resolve("test.txt")));
 				})
 				.whenComplete(assertComplete());
@@ -126,16 +129,15 @@ public class TestCachedFsClient {
 
 		cacheRemote.download("test.txt")
 				.thenCompose(producer -> {
-					ByteBufQueue q = ByteBufQueue.create();
-					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
+					ByteBufQueue q = new ByteBufQueue();
+					return producer
+							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
 							.getEndOfStream()
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
-				.whenComplete((res, err) -> {
-					server.close();
-				})
+				.thenRunEx(server::close)
 				.whenResult(s -> assertEquals(testTxtContent, s))
-				.whenResult(s -> {
+				.thenRun(() -> {
 					try {
 						assertArrayEquals(Files.readAllBytes(cacheTestFile), testTxtContent.getBytes(UTF_8));
 					} catch (IOException e) {
@@ -153,16 +155,17 @@ public class TestCachedFsClient {
 
 		cacheRemote.download("test.txt", 1, 2)
 				.thenCompose(producer -> {
-					ByteBufQueue q = ByteBufQueue.create();
-					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
+					ByteBufQueue q = new ByteBufQueue();
+					return producer
+							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
 							.getEndOfStream()
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
+				.thenRunEx(server::close)
 				.whenComplete((res, err) -> {
 					assertEquals("in", res);
-					server.close();
-					assertComplete();
-				});
+				})
+				.whenComplete(assertComplete());
 
 		eventloop.run();
 	}
@@ -172,12 +175,13 @@ public class TestCachedFsClient {
 		Files.copy(serverTestFile, cacheTestFile);
 		cacheRemote.download("test.txt")
 				.thenCompose(producer -> {
-					ByteBufQueue q = ByteBufQueue.create();
-					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
+					ByteBufQueue q = new ByteBufQueue();
+					return producer
+							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
 							.getEndOfStream()
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
-				.whenComplete((res, err) -> server.close())
+				.thenRunEx(server::close)
 				.whenResult(s -> assertEquals(testTxtContent, s))
 				.whenComplete(assertComplete());
 
@@ -189,14 +193,15 @@ public class TestCachedFsClient {
 		Files.copy(serverTestFile, cacheTestFile);
 		cacheRemote.download("test.txt", 1, 2)
 				.thenCompose(producer -> {
-					ByteBufQueue q = ByteBufQueue.create();
-					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
+					ByteBufQueue q = new ByteBufQueue();
+					return producer
+							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
 							.getEndOfStream()
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> assertEquals("in", res))
-				.whenComplete((res, err) -> assertComplete())
-				.whenComplete((res, err) -> server.close());
+				.whenComplete(assertComplete())
+				.thenRunEx(server::close);
 
 		eventloop.run();
 	}
@@ -208,13 +213,14 @@ public class TestCachedFsClient {
 		Files.write(filePath, fileContent.getBytes());
 		cacheRemote.download("cacheOnly.txt")
 				.thenCompose(producer -> {
-					ByteBufQueue q = ByteBufQueue.create();
-					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
+					ByteBufQueue q = new ByteBufQueue();
+					return producer
+							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
 							.getEndOfStream()
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
-				.whenComplete((res, err) -> server.close())
-				.whenResult(s -> assertComplete())
+				.thenRunEx(server::close)
+				.whenComplete(assertComplete())
 				.whenResult(s -> assertEquals(fileContent, s));
 
 		eventloop.run();
@@ -227,14 +233,15 @@ public class TestCachedFsClient {
 		Files.write(filePath, fileContent.getBytes());
 		cacheRemote.download("cacheOnly.txt", 1, 2)
 				.thenCompose(producer -> {
-					ByteBufQueue q = ByteBufQueue.create();
-					return producer.streamTo(StreamConsumer.ofConsumer(q::add))
+					ByteBufQueue q = new ByteBufQueue();
+					return producer
+							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
 							.getEndOfStream()
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> assertEquals("hi", res))
-				.whenComplete((res, err) -> assertComplete())
-				.whenComplete((res, err) -> server.close());
+				.whenComplete(assertComplete())
+				.thenRunEx(server::close);
 
 		eventloop.run();
 	}
@@ -290,9 +297,8 @@ public class TestCachedFsClient {
 						throw new AssertionError(e);
 					}
 					return cacheRemote.getMetadata("newFile.txt")
-							.whenResult(newMetadata -> {
-								assertTrue("New metadata is not greater than old one", newMetadata.getSize() > oldSize);
-							});
+							.whenResult(newMetadata ->
+									assertTrue("New metadata is not greater than old one", newMetadata.getSize() > oldSize));
 				})
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
@@ -398,7 +404,7 @@ public class TestCachedFsClient {
 		initializeCacheFolder();
 
 		cacheRemote.start()
-				.whenResult($ -> assertComplete())
+				.whenComplete(assertComplete())
 				.thenApply($ -> cacheRemote.getTotalCacheSize()
 						.whenResult(r -> assertTrue(r.toLong() < cacheRemote.getCacheSizeLimit().toLong())))
 				.whenResult($ -> server.close());
@@ -515,8 +521,9 @@ public class TestCachedFsClient {
 				server.listen();
 				cacheRemote.download(prefix + i)
 						.thenCompose(producer -> {
-							ByteBufQueue q = ByteBufQueue.create();
-							return producer.streamTo(StreamConsumer.ofConsumer(q::add))
+							ByteBufQueue q = new ByteBufQueue();
+							return producer
+									.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
 									.getEndOfStream();
 						})
 						.whenResult($ -> server.close());

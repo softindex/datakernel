@@ -88,7 +88,7 @@ public final class Stages {
 	public static Stage<Void> all(Iterator<? extends Stage<?>> stages) {
 		if (!stages.hasNext()) return all();
 		StageAll<Object> resultStage = new StageAll<>(1);
-		stages.next().then(resultStage);
+		stages.next().async().then(resultStage);
 		while (stages.hasNext()) {
 			resultStage.countdown++;
 			stages.next().whenComplete((result, throwable) -> {
@@ -178,7 +178,7 @@ public final class Stages {
 		if (!stages.hasNext()) return any();
 		Stage<? extends T> first = stages.next();
 		StageAny<T> resultStage = new StageAny<>(1);
-		first.then(resultStage);
+		first.async().then(resultStage);
 		while (stages.hasNext()) {
 			resultStage.errors++;
 			stages.next().whenComplete((result, throwable) -> {
@@ -239,7 +239,7 @@ public final class Stages {
 
 		A accumulator = collector.accumulator(size);
 		StageCollect<T, A, R> resultStage = new StageCollect<>(collector, accumulator, size);
-		stages.get(0).then(resultStage);
+		stages.get(0).async().then(resultStage);
 
 		for (int i = 1; i < size; i++) {
 			int index = i;
@@ -305,7 +305,7 @@ public final class Stages {
 		A accumulator = collector.accumulator(size);
 		StageCollectorEx<T, A, R> resultStage = new StageCollectorEx<>(collector, listener, accumulator, size);
 		listener.onStart(resultStage, accumulator);
-		stages.get(0).then(resultStage);
+		stages.get(0).async().then(resultStage);
 
 		for (int i = 1; i < size; i++) {
 			int index = i;

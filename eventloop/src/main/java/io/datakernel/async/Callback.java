@@ -18,17 +18,6 @@ public interface Callback<T> {
 		}
 	}
 
-	static <T> void stageToCallback(Stage<T> stage, Callback<T> callback) {
-		if (stage instanceof SettableStage) {
-			SettableStage<T> settableStage = (SettableStage<T>) stage;
-			if (settableStage.isSet()) {
-				callback.set(settableStage.result, settableStage.exception);
-				return;
-			}
-		}
-		stage.whenComplete(callback::set);
-	}
-
 	Callback<Object> IGNORE_CALLBACK = new Callback<Object>() {
 		@Override
 		public void set(Object result) {

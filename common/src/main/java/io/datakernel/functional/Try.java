@@ -4,9 +4,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.util.ThrowingRunnable;
 import io.datakernel.util.ThrowingSupplier;
 
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.*;
 
 import static io.datakernel.util.Preconditions.checkState;
 
@@ -85,9 +83,41 @@ public final class Try<T> {
 		return result;
 	}
 
+	public T getResult() {
+		assert isSuccess();
+		return result;
+	}
+
+	public Throwable getException() {
+		assert !isSuccess();
+		return throwable;
+	}
+
 	@Nullable
 	public Throwable getExceptionOrNull() {
 		return throwable;
+	}
+
+	public void setTo(BiConsumer<? super T, Throwable> consumer) {
+		consumer.accept(result, throwable);
+	}
+
+	public boolean setResultTo(Consumer<? super T> consumer) {
+		if (isSuccess()) {
+			consumer.accept(result);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public boolean setExceptionTo(Consumer<Throwable> consumer) {
+		if (!isSuccess()) {
+			consumer.accept(throwable);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -137,5 +167,26 @@ public final class Try<T> {
 			return Either.right(result);
 		}
 		return Either.left(throwable);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Try<?> other = (Try<?>) o;
+		if (result != null ? !result.equals(other.result) : other.result != null) return false;
+		return throwable != null ? throwable.equals(other.throwable) : other.throwable == null;
+	}
+
+	@Override
+	public int hashCode() {
+		int hash = result != null ? result.hashCode() : 0;
+		hash = 31 * hash + (throwable != null ? throwable.hashCode() : 0);
+		return hash;
+	}
+
+	@Override
+	public String toString() {
+		return "{" + (isSuccess() ? "" + result : "" + throwable) + "}";
 	}
 }

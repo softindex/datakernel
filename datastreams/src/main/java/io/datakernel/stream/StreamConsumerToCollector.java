@@ -1,5 +1,6 @@
 package io.datakernel.stream;
 
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 
@@ -39,7 +40,7 @@ public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamCons
 	}
 
 	@Override
-	public Stage<R> getResult() {
+	public MaterializedStage<R> getResult() {
 		return resultStage;
 	}
 

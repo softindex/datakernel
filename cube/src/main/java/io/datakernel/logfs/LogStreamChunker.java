@@ -16,6 +16,7 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
@@ -96,7 +97,7 @@ public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> im
 	}
 
 	@Override
-	public Stage<Void> getResult() {
+	public MaterializedStage<Void> getResult() {
 		return result;
 	}
 }

@@ -1,5 +1,7 @@
 package io.datakernel.stream;
 
+import io.datakernel.async.AsyncConsumer;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.TestUtils.CountTransformer;
 import org.junit.Before;
@@ -111,7 +113,7 @@ public class StreamConsumersTest {
 		List<Integer> values = IntStream.range(1, 6).boxed().collect(toList());
 		List<Integer> actual = new ArrayList<>();
 		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
-		StreamConsumer<Integer> consumer = StreamConsumer.ofConsumer(actual::add);
+		StreamConsumer<Integer> consumer = StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(actual::add)));
 		producer.streamTo(consumer);
 		eventloop.run();
 		assertEquals(values, actual);

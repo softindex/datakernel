@@ -16,18 +16,13 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Callback;
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 
 public interface IAsyncHttpClient {
-	default Stage<HttpResponse> send(HttpRequest request) {
-		SettableStage<HttpResponse> result = new SettableStage<>();
-		send(request, result);
-		return result;
-	}
+	Stage<HttpResponse> requestBodyStream(HttpRequest request);
 
-	default void send(HttpRequest request, Callback<HttpResponse> callback) {
-		send(request).whenComplete(callback::set);
+	default Stage<HttpResponse> request(HttpRequest request) {
+		return requestBodyStream(request)
+				.thenCompose(HttpResponse::ensureBody);
 	}
 }

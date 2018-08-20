@@ -166,7 +166,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 						commit.getSnapshotHint() == Boolean.TRUE ?
 								Stage.of(true) :
 								remote.hasSnapshot(commit.getId()))
-				.post()
+				.async()
 				.thenCompose(findResult -> {
 					if (!findResult.isFound()) return Stage.of(Optional.empty());
 					else if (skipSnapshots <= 0) return Stage.of(Optional.of(findResult.getCommit()));

@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -77,7 +78,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	public HttpResponse withBodyGzipCompression() {
-		super.setBodyGzipCompression();
+//		super.setBodyGzipCompression(); // FIXME
 		return this;
 	}
 
@@ -202,12 +203,12 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	// region getters
 	public int getCode() {
-		assert !recycled;
+		assert !isRecycled();
 		return code;
 	}
 
 	public int getAge() {
-		assert !recycled;
+		assert !isRecycled();
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(AGE);
 		if (header != null)
 			try {
@@ -219,7 +220,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	public Date getExpires() {
-		assert !recycled;
+		assert !isRecycled();
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(EXPIRES);
 		if (header != null)
 			try {
@@ -231,7 +232,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	public Date getLastModified() {
-		assert !recycled;
+		assert !isRecycled();
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(LAST_MODIFIED);
 		if (header != null)
 			try {
@@ -244,7 +245,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	@Override
 	public List<HttpCookie> getCookies() {
-		assert !recycled;
+		assert !isRecycled();
 		List<HttpCookie> cookies = new ArrayList<>();
 		List<Value> headers = getHeaderValues(SET_COOKIE);
 		for (Value header : headers) {
@@ -314,24 +315,20 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		buf.put(result);
 	}
 
-	/**
-	 * Writes this HttpResult to pool-allocated ByteBuf with large enough size
-	 *
-	 * @return HttpResponse as ByteBuf
-	 */
+	@SuppressWarnings("unchecked")
+	protected Stage<HttpResponse> ensureBody() {
+		return (Stage<HttpResponse>) doEnsureBody();
+	}
+
 	@Override
-	public ByteBuf toByteBuf() {
-		assert !recycled;
-		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.readRemaining()));
-		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);
-		ByteBuf buf = ByteBufPool.allocate(estimateSize);
+	protected int estimateSize() {
+		return estimateSize(LONGEST_FIRST_LINE_SIZE);
+	}
 
+	@Override
+	protected void writeTo(ByteBuf buf) {
 		writeCodeMessage(buf, code);
-
 		writeHeaders(buf);
-		writeBody(buf);
-
-		return buf;
 	}
 
 	@Override

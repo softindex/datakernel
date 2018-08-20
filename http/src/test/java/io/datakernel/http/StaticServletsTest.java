@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Stage;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.FileNamesLoadingService;
@@ -66,13 +67,18 @@ public class StaticServletsTest {
 	private static Path resourcesPath;
 	private static File resourcesFile;
 
-
 	@BeforeClass
 	public static void setup() throws IOException {
 		resourcesPath = tmpFolder.newFolder("static").toPath();
 		resourcesFile = resourcesPath.toFile();
 
 		Files.write(resourcesPath.resolve("index.html"), encodeAscii(EXPECTED_CONTENT));
+	}
+
+	private static String toAscii(ByteBuf buf) {
+		String str = decodeAscii(buf);
+		buf.recycle();
+		return str;
 	}
 
 	@Test
@@ -85,11 +91,7 @@ public class StaticServletsTest {
 
 		HttpRequest request = get("http://test.com:8080/index.html");
 		CompletableFuture<String> future = servlet.serve(request)
-				.thenApply(httpResponse -> {
-					String body = decodeAscii(httpResponse.getBody());
-					httpResponse.recycleBufs();
-					return body;
-				})
+				.thenCompose(httpResponse -> httpResponse.getBodyStage().thenApply(StaticServletsTest::toAscii))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -126,11 +128,7 @@ public class StaticServletsTest {
 
 		HttpRequest request = get("http://test.com:8080/index.html");
 		CompletableFuture<String> future = servlet.serve(request)
-				.thenApply(httpResponse -> {
-					String body = decodeAscii(httpResponse.getBody());
-					httpResponse.recycleBufs();
-					return body;
-				})
+				.thenCompose(httpResponse -> httpResponse.getBodyStage().thenApply(StaticServletsTest::toAscii))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -167,11 +165,7 @@ public class StaticServletsTest {
 
 		HttpRequest request = get("http://test.com:8080/testFile.txt");
 		CompletableFuture<String> future = servlet.serve(request)
-				.thenApply(httpResponse -> {
-					String body = decodeAscii(httpResponse.getBody());
-					httpResponse.recycleBufs();
-					return body;
-				})
+				.thenCompose(httpResponse -> httpResponse.getBodyStage().thenApply(StaticServletsTest::toAscii))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -208,11 +202,7 @@ public class StaticServletsTest {
 
 		HttpRequest request = get("http://test.com:8080/testFile.txt");
 		CompletableFuture<String> future = servlet.serve(request)
-				.thenApply(httpResponse -> {
-					String body = decodeAscii(httpResponse.getBody());
-					httpResponse.recycleBufs();
-					return body;
-				})
+				.thenCompose(httpResponse -> httpResponse.getBodyStage().thenApply(StaticServletsTest::toAscii))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -260,11 +250,7 @@ public class StaticServletsTest {
 
 		HttpRequest request = get("http://test.com:8080/dir2/testFile.txt");
 		CompletableFuture<String> future = servlet.serve(request)
-				.thenApply(httpResponse -> {
-					String body = decodeAscii(httpResponse.getBody());
-					httpResponse.recycleBufs();
-					return body;
-				})
+				.thenCompose(httpResponse -> httpResponse.getBodyStage().thenApply(StaticServletsTest::toAscii))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -289,11 +275,7 @@ public class StaticServletsTest {
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		CompletableFuture<String> future = servlet.serve(get("http://test.com:8080/index.html"))
-				.thenApply(httpResponse -> {
-					String body = decodeAscii(httpResponse.getBody());
-					httpResponse.recycleBufs();
-					return body;
-				})
+				.thenCompose(httpResponse -> httpResponse.getBodyStage().thenApply(StaticServletsTest::toAscii))
 				.toCompletableFuture();
 
 		eventloop.run();

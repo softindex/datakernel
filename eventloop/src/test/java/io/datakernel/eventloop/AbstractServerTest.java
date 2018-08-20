@@ -64,7 +64,7 @@ public class AbstractServerTest {
 			}
 
 			@Override
-			public void onClosedWithError(Exception e) {
+			public void onClosedWithError(Throwable e) {
 				asyncTcpSocket.close();
 			}
 		};
@@ -102,7 +102,7 @@ public class AbstractServerTest {
 					}
 
 					@Override
-					public void onClosedWithError(Exception e) {
+					public void onClosedWithError(Throwable e) {
 						asyncTcpSocket.close();
 						server.close();
 					}

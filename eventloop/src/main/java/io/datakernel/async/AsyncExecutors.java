@@ -19,30 +19,25 @@ public class AsyncExecutors {
 		};
 	}
 
-	public static AsyncExecutor ofEventloop(Supplier<Eventloop> eventloopSupplier) {
+	public static AsyncExecutor ofEventloop(Eventloop eventloop) {
 		return new AsyncExecutor() {
 			@Override
 			public <T> Stage<T> execute(AsyncSupplier<T> supplier) {
-				Eventloop eventloop = eventloopSupplier.get();
 				Eventloop currentEventloop = Eventloop.getCurrentEventloop();
 				if (eventloop == currentEventloop) {
 					return supplier.get();
 				}
-				return Stage.ofCallback(settableStage -> {
+				return Stage.ofCallback(cb -> {
 					currentEventloop.startExternalTask();
 					eventloop.execute(() -> supplier.get()
 							.whenComplete((result, throwable) -> {
 								currentEventloop.execute(() ->
-										settableStage.set(result, throwable));
+										cb.set(result, throwable));
 								currentEventloop.completeExternalTask();
 							}));
 				});
 			}
 		};
-	}
-
-	public static AsyncExecutor ofEventloop(Eventloop eventloop) {
-		return ofEventloop(() -> eventloop);
 	}
 
 	public static AsyncExecutor roundRobin(List<AsyncExecutor> executors) {
@@ -85,7 +80,7 @@ public class AsyncExecutors {
 			public <T> Stage<T> execute(AsyncSupplier<T> supplier) throws RejectedExecutionException {
 				if (pendingCalls <= maxParallelCalls) {
 					pendingCalls++;
-					return supplier.get().whenComplete(($, throwable) -> {
+					return supplier.get().async().whenComplete(($, throwable) -> {
 						pendingCalls--;
 						processBuffer();
 					});
@@ -113,7 +108,7 @@ public class AsyncExecutors {
 
 	private static <T> void retryImpl(AsyncSupplier<? extends T> supplier, RetryPolicy retryPolicy,
 			int retryCount, long _retryTimestamp, SettableStage<T> cb) {
-		supplier.get().whenComplete((value, throwable) -> {
+		supplier.get().async().whenComplete((value, throwable) -> {
 			if (throwable == null) {
 				cb.set(value);
 			} else {

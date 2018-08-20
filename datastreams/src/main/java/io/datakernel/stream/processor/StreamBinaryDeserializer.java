@@ -82,7 +82,7 @@ public final class StreamBinaryDeserializer<T> implements StreamTransformer<Byte
 	}
 
 	private final class Output extends AbstractStreamProducer<T> implements StreamDataReceiver<ByteBuf> {
-		private final ByteBufQueue queue = ByteBufQueue.create();
+		private final ByteBufQueue queue = new ByteBufQueue();
 
 		private final BufferSerializer<T> valueSerializer;
 

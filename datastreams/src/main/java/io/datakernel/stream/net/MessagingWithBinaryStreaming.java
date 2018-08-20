@@ -63,7 +63,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	private SocketStreamProducer socketReader;
 	private SocketStreamConsumer socketWriter;
 
-	private Exception closedException;
+	private Throwable closedException;
 
 	private boolean readDone;
 	private boolean writeDone;
@@ -316,7 +316,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	}
 
 	@Override
-	public void onClosedWithError(Exception e) {
+	public void onClosedWithError(Throwable e) {
 		logger.warn("closing with error: " + this, e);
 		if (socketReader != null) {
 			socketReader.closeWithError(e);

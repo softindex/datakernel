@@ -25,16 +25,12 @@ public interface AsyncSupplier<T> {
 		return modifier.apply(this);
 	}
 
+	default AsyncSupplier<T> async() {
+		return () -> get().async();
+	}
+
 	static <T> AsyncSupplier<T> of(Supplier<? extends Stage<T>> supplier) {
 		return supplier::get;
-	}
-
-	static <A, T> AsyncSupplier<T> of(AsyncFunction<? super A, T> function, A a) {
-		return () -> function.apply(a);
-	}
-
-	static <A, B, T> AsyncSupplier<T> of(BiFunction<? super A, ? super B, Stage<T>> biFunction, A a, B b) {
-		return () -> biFunction.apply(a, b);
 	}
 
 	default AsyncSupplier<T> withExecutor(AsyncExecutor asyncExecutor) {

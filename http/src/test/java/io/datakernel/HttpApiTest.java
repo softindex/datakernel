@@ -117,7 +117,7 @@ public class HttpApiTest {
 	public void test() throws IOException, ExecutionException, InterruptedException {
 		server.listen();
 		HttpRequest request = createRequest();
-		client.send(request)
+		client.request(request)
 				.whenComplete((response, throwable) -> {
 					if (throwable != null) {
 						fail("Should not end here");

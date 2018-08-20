@@ -17,15 +17,17 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Stage;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 
 public interface EventloopExecutor extends Executor {
 	CompletableFuture<Void> submit(Runnable runnable);
 
 	<T> CompletableFuture<T> submit(Callable<T> callable);
 
-	<T> CompletableFuture<T> submit(AsyncSupplier<T> asyncCallable);
+	<T> CompletableFuture<T> submit(AsyncSupplier<T> supplier);
 }

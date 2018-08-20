@@ -145,7 +145,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	@Override
-	public void onClosedWithError(Exception e) {
+	public void onClosedWithError(Throwable e) {
 		if (engine2app != null) {
 			downstreamEventHandler.onClosedWithError(e);
 		}

@@ -17,11 +17,11 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
@@ -75,7 +75,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE.toInt()];
 
 	@Nullable
-	private AsyncCancellable expiredConnectionsCheck;
+	private ScheduledRunnable expiredConnectionsCheck;
 
 	Inspector inspector;
 
@@ -253,7 +253,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		if (expiredConnectionsCheck == null)
 			scheduleExpiredConnectionsCheck();
 		return new HttpServerConnection(eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket, this, servlet,
-				headerChars, maxHttpMessageSize);
+				headerChars);
 	}
 
 	@Nullable

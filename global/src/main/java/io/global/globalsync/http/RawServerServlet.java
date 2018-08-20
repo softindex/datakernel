@@ -84,15 +84,11 @@ public final class RawServerServlet implements AsyncServlet {
 	}
 
 	private AsyncServlet servlet(ServletFunction fn) {
-		return new AsyncServlet() {
-			@SuppressWarnings("unchecked")
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				try {
-					return fn.convert(request);
-				} catch (IOException e) {
-					return Stage.ofException(e);
-				}
+		return request -> {
+			try {
+				return fn.convert(request);
+			} catch (IOException e) {
+				return Stage.ofException(e);
 			}
 		};
 	}

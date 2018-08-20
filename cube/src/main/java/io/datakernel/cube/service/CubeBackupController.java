@@ -83,8 +83,8 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	public Stage<Void> backup(K commitId) {
 		return Stages.toTuple(remote.loadCommit(commitId), algorithms.checkout(commitId))
 				.thenCompose(tuple -> Stages.runSequence(
-						(AsyncSupplier<Void>) () -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2())),
-						(AsyncSupplier<Void>) () -> backupDb(tuple.getValue1(), tuple.getValue2())))
+						AsyncSupplier.of(() -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2()))),
+						AsyncSupplier.of(() -> backupDb(tuple.getValue1(), tuple.getValue2()))))
 				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 

@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.function.Supplier;
 
 public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -172,7 +173,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		scheduledTask = eventloop.scheduleBackground(timestamp, doCall::get);
 	}
 
-	private final AsyncSupplier<Void> doCall = AsyncSuppliers.reuse(this::doCall);
+	private final AsyncSupplier<Void> doCall = AsyncSuppliers.reuse(AsyncSupplier.of(this::doCall));
 
 	private Stage<Void> doCall() {
 		lastStartTime = eventloop.currentTimeMillis();

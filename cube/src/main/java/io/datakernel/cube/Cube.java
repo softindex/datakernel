@@ -22,7 +22,10 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
+import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.*;
 import io.datakernel.cube.asm.MeasuresFunction;
 import io.datakernel.cube.asm.RecordFunction;
@@ -689,7 +692,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return excessive;
 	}
 
-	public Stage<CubeDiff> consolidate(AsyncFunction<Aggregation, AggregationDiff> strategy) {
+	public Stage<CubeDiff> consolidate(Function<Aggregation, Stage<AggregationDiff>> strategy) {
 		logger.info("Launching consolidation");
 
 		Map<String, AggregationDiff> map = new HashMap<>();
@@ -698,13 +701,13 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		aggregations.forEach((aggregationId, aggregationContainer) -> {
 			Aggregation aggregation = aggregationContainer.aggregation;
 
-			runnables.add((AsyncSupplier<AggregationDiff>) () ->
+			runnables.add(AsyncSupplier.of(() ->
 					strategy.apply(aggregation)
 							.whenResult(aggregationDiff -> {
 								if (!aggregationDiff.isEmpty()) {
 									map.put(aggregationId, aggregationDiff);
 								}
-							}));
+							})));
 		});
 
 		return Stages.runSequence(runnables).thenApply($ -> CubeDiff.of(map));
