@@ -103,14 +103,20 @@ final class ExpressionArithmeticOp implements Expression {
 				getJavaType(leftVar.type(ctx)), getJavaType(rightVar.type(ctx))));
 		if (leftVar.type(ctx) != resultType) {
 			leftVar.load(ctx);
-			g.cast(leftVar.type(ctx), resultType);
+			Type type = leftVar.type(ctx);
+			if (isValidCast(type, resultType)) {
+				g.cast(type, resultType);
+			}
 			VarLocal newLeftVar = newLocal(ctx, resultType);
 			newLeftVar.storeLocal(g);
 			leftVar = newLeftVar;
 		}
 		if (rightVar.type(ctx) != resultType) {
 			rightVar.load(ctx);
-			g.cast(rightVar.type(ctx), resultType);
+			Type type = rightVar.type(ctx);
+			if (isValidCast(type, resultType)) {
+				g.cast(type, resultType);
+			}
 			VarLocal newRightVar = newLocal(ctx, resultType);
 			newRightVar.storeLocal(g);
 			rightVar = newRightVar;

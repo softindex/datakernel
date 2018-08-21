@@ -68,7 +68,7 @@ final class ExpressionNeg implements Expression {
 			return arg.type(ctx);
 		}
 		if (sort == Type.BYTE || sort == Type.SHORT || sort == Type.CHAR) {
-			g.cast(arg.type(ctx), INT_TYPE);
+//			g.cast(arg.type(ctx), INT_TYPE);
 			g.math(GeneratorAdapter.NEG, INT_TYPE);
 			return arg.type(ctx);
 		}

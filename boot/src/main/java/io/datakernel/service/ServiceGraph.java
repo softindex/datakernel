@@ -266,7 +266,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	private CompletionStage<?> processNode(Key<?> node, boolean start,
-	                                       Map<Key<?>, CompletionStage<?>> cache, Executor executor) {
+										   Map<Key<?>, CompletionStage<?>> cache, Executor executor) {
 		List<CompletionStage<?>> dependencies = new ArrayList<>();
 		for (Key<?> dependency : (start ? forwards : backwards).getOrDefault(node, emptySet())) {
 			dependencies.add(processNode(dependency, start, cache, executor));
@@ -277,40 +277,40 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		}
 
 		CompletionStage<Void> result = waitAll(dependencies)
-			.thenComposeAsync($ -> {
-				Service service = services.get(node);
-				if (service == null) {
-					logger.debug("...skipping no-service node: " + keyToString(node));
-					return CompletableFuture.completedFuture(null);
-				}
+				.thenComposeAsync($ -> {
+					Service service = services.get(node);
+					if (service == null) {
+						logger.debug("...skipping no-service node: " + keyToString(node));
+						return CompletableFuture.completedFuture(null);
+					}
 
-				if (!start && !nodeStatuses.getOrDefault(node, NodeStatus.DEFAULT).isStartedSuccessfully()) {
-					logger.debug("...skipping not running node: " + keyToString(node));
-					return CompletableFuture.completedFuture(null);
-				}
+					if (!start && !nodeStatuses.getOrDefault(node, NodeStatus.DEFAULT).isStartedSuccessfully()) {
+						logger.debug("...skipping not running node: " + keyToString(node));
+						return CompletableFuture.completedFuture(null);
+					}
 
-				Stopwatch sw = Stopwatch.createStarted();
-				logger.info((start ? "Starting" : "Stopping") + " node: " + keyToString(node));
-				NodeStatus nodeStatus = nodeStatuses.computeIfAbsent(node, $1 -> new NodeStatus());
-				if (start) {
-					nodeStatus.startBegin = currentTimeMillis();
-				} else {
-					nodeStatus.stopBegin = currentTimeMillis();
-				}
-				return (start ? service.start() : service.stop())
-					.whenCompleteAsync(($2, throwable) -> {
-						if (start) {
-							nodeStatus.startEnd = currentTimeMillis();
-							nodeStatus.startException = throwable;
-						} else {
-							nodeStatus.stopEnd = currentTimeMillis();
-							nodeStatus.stopException = throwable;
-						}
+					Stopwatch sw = Stopwatch.createStarted();
+					logger.info((start ? "Starting" : "Stopping") + " node: " + keyToString(node));
+					NodeStatus nodeStatus = nodeStatuses.computeIfAbsent(node, $1 -> new NodeStatus());
+					if (start) {
+						nodeStatus.startBegin = currentTimeMillis();
+					} else {
+						nodeStatus.stopBegin = currentTimeMillis();
+					}
+					return (start ? service.start() : service.stop())
+							.whenCompleteAsync(($2, throwable) -> {
+								if (start) {
+									nodeStatus.startEnd = currentTimeMillis();
+									nodeStatus.startException = throwable;
+								} else {
+									nodeStatus.stopEnd = currentTimeMillis();
+									nodeStatus.stopException = throwable;
+								}
 
-						long elapsed = sw.elapsed(MILLISECONDS);
-						logger.info((start ? "Started" : "Stopped") + " " + keyToString(node) + (elapsed >= 1L ? (" in " + sw) : ""));
-					}, executor);
-			}, executor);
+								long elapsed = sw.elapsed(MILLISECONDS);
+								logger.info((start ? "Started" : "Stopped") + " " + keyToString(node) + (elapsed >= 1L ? (" in " + sw) : ""));
+							}, executor);
+				}, executor);
 
 		cache.put(node, result);
 		return result;
@@ -367,15 +367,15 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		logger.debug("Root nodes: {}", rootNodes);
 		startBegin = currentTimeMillis();
 		return doStartStop(true, rootNodes)
-			.whenComplete(($, e) -> {
-				startEnd = currentTimeMillis();
-				if (e != null) startException = e;
-			})
-			.thenRun(() ->
-				slowestChain = findSlowestChain(
-					difference(union(services.keySet(), forwards.keySet()), backwards.keySet()),
-					new HashMap<>()))
-			.toCompletableFuture();
+				.whenComplete(($, e) -> {
+					startEnd = currentTimeMillis();
+					if (e != null) startException = e;
+				})
+				.thenRun(() ->
+						slowestChain = findSlowestChain(
+								difference(union(services.keySet(), forwards.keySet()), backwards.keySet()),
+								new HashMap<>()))
+				.toCompletableFuture();
 	}
 
 	/**
@@ -387,21 +387,21 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		logger.debug("Leaf nodes: {}", leafNodes);
 		stopBegin = currentTimeMillis();
 		return doStartStop(false, leafNodes)
-			.whenComplete(($, e) -> {
-				stopEnd = currentTimeMillis();
-				if (e != null) stopException = e;
-			})
-			.toCompletableFuture();
+				.whenComplete(($, e) -> {
+					stopEnd = currentTimeMillis();
+					if (e != null) stopException = e;
+				})
+				.toCompletableFuture();
 	}
 
 	private CompletionStage<Void> doStartStop(boolean start, Collection<Key<?>> startNodes) {
 		ExecutorService executor = newSingleThreadExecutor();
 		Map<Key<?>, CompletionStage<?>> cache = new HashMap<>();
 		return waitAll(
-			startNodes.stream()
-				.map(rootNode -> processNode(rootNode, start, cache, executor))
-				.collect(toList()))
-			.whenCompleteAsync(($, throwable) -> executor.shutdown(), executor);
+				startNodes.stream()
+						.map(rootNode -> processNode(rootNode, start, cache, executor))
+						.collect(toList()))
+				.whenCompleteAsync(($, throwable) -> executor.shutdown(), executor);
 	}
 
 	private static String repeat(String str, int count) {
@@ -463,8 +463,8 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 				int loopIndex = path.indexOf(node);
 				if (loopIndex != -1) {
 					logger.warn("Circular dependencies found: " + path.subList(loopIndex, path.size()).stream()
-						.map(this::keyToString)
-						.collect(joining(", ", "[", "]")));
+							.map(this::keyToString)
+							.collect(joining(", ", "[", "]")));
 					return path.subList(loopIndex, path.size());
 				}
 				if (!visited.contains(node)) {
@@ -500,24 +500,30 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 
 	private SlowestChain findSlowestChain(Collection<Key<?>> nodes, Map<Key<?>, SlowestChain> memo) {
 		return nodes.stream()
-			.map(node -> memo.computeIfAbsent(node, key -> forwards.containsKey(key) ?
-				SlowestChain.concat(key, nodeStatuses.get(key).getStartTime(),
-					findSlowestChain(forwards.get(key), memo)) :
-				SlowestChain.of(key, nodeStatuses.get(key).getStartTime())))
-			.max(comparingLong(longestPath -> longestPath.sum))
-			.get();
+				.map(node -> {
+					SlowestChain slowestChain = memo.get(node);
+					if (slowestChain != null) {
+						return slowestChain;
+					}
+					return forwards.containsKey(node) ?
+							SlowestChain.concat(node, nodeStatuses.get(node).getStartTime(),
+									findSlowestChain(forwards.get(node), memo)) :
+							SlowestChain.of(node, nodeStatuses.get(node).getStartTime());
+				})
+				.max(comparingLong(longestPath -> longestPath.sum))
+				.get();
 	}
 
 	private String keyToString(Key<?> key) {
 		Annotation annotation = key.getAnnotation();
 		return (annotation != null ? prettyPrintAnnotation(annotation) + " " : "") +
-			key.getTypeLiteral();
+				key.getTypeLiteral();
 	}
 
 	private String keyToNode(Key<?> key) {
 		String str = keyToString(key)
-			.replace("\n", "\\n")
-			.replace("\"", "\\\"");
+				.replace("\n", "\\n")
+				.replace("\"", "\\\"");
 		return "\"" + str + "\"";
 	}
 
@@ -526,17 +532,17 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		Object nodeSuffix = nodeSuffixes.apply(key);
 		NodeStatus status = nodeStatuses.get(key);
 		String label = (annotation != null ? prettyPrintAnnotation(annotation) + "\\n" : "") +
-			SimpleType.ofType(key.getTypeLiteral().getType()).getSimpleName() +
-			(nodeSuffix != null ? " [" + nodeSuffix + "]" : "") +
-			(status != null && status.isStarted() ?
-				"\\n" +
-					formatDuration(Duration.ofMillis(status.getStartTime())) +
-					(status.isStopped() ?
-						" / " + formatDuration(Duration.ofMillis(status.getStopTime())) :
-						"") :
-				"") +
-			(status != null && status.startException != null ? "\\n" + status.startException : "") +
-			(status != null && status.stopException != null ? "\\n" + status.stopException : "");
+				SimpleType.ofType(key.getTypeLiteral().getType()).getSimpleName() +
+				(nodeSuffix != null ? " [" + nodeSuffix + "]" : "") +
+				(status != null && status.isStarted() ?
+						"\\n" +
+								formatDuration(Duration.ofMillis(status.getStartTime())) +
+								(status.isStopped() ?
+										" / " + formatDuration(Duration.ofMillis(status.getStopTime())) :
+										"") :
+						"") +
+				(status != null && status.startException != null ? "\\n" + status.startException : "") +
+				(status != null && status.stopException != null ? "\\n" + status.stopException : "");
 		return label.replace("\"", "\\\"");
 	}
 
@@ -556,12 +562,12 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		for (Key<?> node : forwards.keySet()) {
 			for (Key<?> dependency : forwards.get(node)) {
 				sb.append("\t" + keyToNode(node) + " -> " + keyToNode(dependency) +
-					(slowestChain != null &&
-						slowestChain.path.contains(node) && slowestChain.path.contains(dependency) &&
-						slowestChain.path.indexOf(node) == slowestChain.path.indexOf(dependency) + 1 ?
-						" [" + graphvizSlowestEdge + "]" :
-						(!graphvizEdge.isEmpty() ? " [" + graphvizEdge + "]" : "")) +
-					"\n");
+						(slowestChain != null &&
+								slowestChain.path.contains(node) && slowestChain.path.contains(dependency) &&
+								slowestChain.path.indexOf(node) == slowestChain.path.indexOf(dependency) + 1 ?
+								" [" + graphvizSlowestEdge + "]" :
+								(!graphvizEdge.isEmpty() ? " [" + graphvizEdge + "]" : "")) +
+						"\n");
 			}
 		}
 
@@ -578,17 +584,17 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 			String nodeColor = status != null ? nodeColors.getOrDefault(status.getOperation(), "") : "";
 			Object suffix = nodeSuffixes.apply(key);
 			sb.append("\t" + keyToNode(key) + " [ label=\"" + keyToLabel(key) + "\"" +
-				(!nodeColor.isEmpty() ? " " + nodeColor : "") +
-				(suffix != null ? " " + graphvizNodeWithSuffix : "") +
-				(slowestChain != null && slowestChain.path.contains(key) ? " " + graphvizSlowestNode : "") +
-				" ]\n");
+					(!nodeColor.isEmpty() ? " " + nodeColor : "") +
+					(suffix != null ? " " + graphvizNodeWithSuffix : "") +
+					(slowestChain != null && slowestChain.path.contains(key) ? " " + graphvizSlowestNode : "") +
+					" ]\n");
 		}
 
 		sb.append("\n\t{ rank=same; " +
-			difference(union(services.keySet(), backwards.keySet()), forwards.keySet()).stream()
-				.map(this::keyToNode)
-				.collect(joining(" ")) +
-			" }\n");
+				difference(union(services.keySet(), backwards.keySet()), forwards.keySet()).stream()
+						.map(this::keyToNode)
+						.collect(joining(" ")) +
+				" }\n");
 
 		sb.append("}\n");
 		return sb.toString();
@@ -597,47 +603,47 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	@JmxAttribute
 	public String getStartingNodes() {
 		return union(services.keySet(), union(backwards.keySet(), forwards.keySet())).stream()
-			.filter(node -> {
-				NodeStatus status = nodeStatuses.get(node);
-				return status != null && status.isStarting();
-			})
-			.map(this::keyToString)
-			.collect(joining(", "));
+				.filter(node -> {
+					NodeStatus status = nodeStatuses.get(node);
+					return status != null && status.isStarting();
+				})
+				.map(this::keyToString)
+				.collect(joining(", "));
 	}
 
 	@JmxAttribute
 	public String getStoppingNodes() {
 		return union(services.keySet(), union(backwards.keySet(), forwards.keySet())).stream()
-			.filter(node -> {
-				NodeStatus status = nodeStatuses.get(node);
-				return status != null && status.isStopping();
-			})
-			.map(this::keyToString)
-			.collect(joining(", "));
+				.filter(node -> {
+					NodeStatus status = nodeStatuses.get(node);
+					return status != null && status.isStopping();
+				})
+				.map(this::keyToString)
+				.collect(joining(", "));
 	}
 
 	@JmxAttribute
 	public String getSlowestNode() {
 		return union(services.keySet(), union(backwards.keySet(), forwards.keySet())).stream()
-			.filter(key -> {
-				NodeStatus nodeStatus = nodeStatuses.get(key);
-				return nodeStatus != null && nodeStatus.isStarted();
-			})
-			.max(comparingLong(node -> nodeStatuses.get(node).getStartTime()))
-			.map(node -> keyToString(node) +
-				" : " +
-				formatDuration(Duration.ofMillis(nodeStatuses.get(node).getStartTime())))
-			.orElse(null);
+				.filter(key -> {
+					NodeStatus nodeStatus = nodeStatuses.get(key);
+					return nodeStatus != null && nodeStatus.isStarted();
+				})
+				.max(comparingLong(node -> nodeStatuses.get(node).getStartTime()))
+				.map(node -> keyToString(node) +
+						" : " +
+						formatDuration(Duration.ofMillis(nodeStatuses.get(node).getStartTime())))
+				.orElse(null);
 	}
 
 	@JmxAttribute
 	public String getSlowestChain() {
 		if (slowestChain == null) return null;
 		return slowestChain.path.stream()
-			.map(this::keyToString)
-			.collect(joining(", ", "[", "]")) +
-			" : " +
-			formatDuration(Duration.ofMillis(slowestChain.sum));
+				.map(this::keyToString)
+				.collect(joining(", ", "[", "]")) +
+				" : " +
+				formatDuration(Duration.ofMillis(slowestChain.sum));
 	}
 
 	@JmxAttribute

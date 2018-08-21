@@ -1,6 +1,9 @@
 package io.datakernel.launchers.remotefs;
 
-import com.google.inject.*;
+import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
@@ -34,11 +37,11 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 	RemoteFsServer remoteFsServer;
 
 	@Override
-	protected final Collection<Module> getModules() {
+	protected final Collection<com.google.inject.Module> getModules() {
 		return singletonList(override(getBaseModules()).with(getOverrideModules()));
 	}
 
-	private Collection<Module> getBaseModules() {
+	private Collection<com.google.inject.Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
@@ -74,7 +77,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 		);
 	}
 
-	protected Collection<Module> getOverrideModules() {
+	protected Collection<com.google.inject.Module> getOverrideModules() {
 		return emptyList();
 	}
 

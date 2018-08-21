@@ -24,7 +24,7 @@ public interface Initializer<T extends Initializable<T>> {
 	}
 
 	@SafeVarargs
-	static <T extends Initializable<T>> Initializer<T> combine(Initializer<? super T>... initializers) {
+	static <T extends Initializable<T>, S extends Initializer<? super T>> Initializer<T> combine(S... initializers) {
 		return combine(asList(initializers));
 	}
 }

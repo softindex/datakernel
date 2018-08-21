@@ -19,6 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.codegen.Utils.isValidCast;
 import static io.datakernel.codegen.Utils.newLocal;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -65,13 +66,15 @@ final class ExpressionBitOp implements Expression {
 		Type type = type(ctx);
 
 		left.load(ctx);
-		if (!left.type(ctx).equals(type)) {
-			g.cast(left.type(ctx), type);
+		Type leftType = left.type(ctx);
+		if (isValidCast(leftType, type)) {
+			g.cast(leftType, type);
 		}
 
 		right.load(ctx);
-		if (!right.type(ctx).equals(type)) {
-			g.cast(right.type(ctx), type);
+		Type rightType = right.type(ctx);
+		if (isValidCast(rightType, type)) {
+			g.cast(rightType, type);
 		}
 
 		g.visitInsn(type.getOpcode(op.opCode));
@@ -88,8 +91,8 @@ final class ExpressionBitOp implements Expression {
 			case Type.SHORT:
 			case Type.CHAR:
 			case Type.BYTE:
-				g.cast(right.type(ctx), Type.INT_TYPE);
-				break;
+//				g.cast(right.type(ctx), Type.INT_TYPE);
+//				break;
 			case Type.INT:
 				break;
 			default:
@@ -113,7 +116,7 @@ final class ExpressionBitOp implements Expression {
 		}
 
 		if (valueSort == Type.BYTE || valueSort == Type.SHORT || valueSort == Type.CHAR || valueSort == Type.BOOLEAN) {
-			g.cast(left.type(ctx), Type.INT_TYPE);
+//			g.cast(left.type(ctx), Type.INT_TYPE);
 			varIntShift.load(ctx);
 
 			g.visitInsn(Type.INT_TYPE.getOpcode(op.opCode));

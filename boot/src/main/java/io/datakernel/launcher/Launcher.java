@@ -16,7 +16,10 @@
 
 package io.datakernel.launcher;
 
-import com.google.inject.*;
+import com.google.inject.Guice;
+import com.google.inject.Inject;
+import com.google.inject.Injector;
+import com.google.inject.Stage;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.jmx.ConcurrentJmxMBean;
@@ -95,7 +98,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	 *
 	 * @return
 	 */
-	protected abstract Collection<Module> getModules();
+	protected abstract Collection<com.google.inject.Module> getModules();
 
 	/**
 	 * Creates a Guice injector with modules and overrides from this launcher and

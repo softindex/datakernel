@@ -103,13 +103,13 @@ public final class GuiceUtils {
 		});
 	}
 
-	public interface ModuleWithRemapping extends Module {
+	public interface ModuleWithRemapping extends com.google.inject.Module {
 		<T> ModuleWithRemapping remap(Key<T> key, Key<T> to);
 
 		<T> ModuleWithRemapping expose(Key<T> key);
 	}
 
-	public static ModuleWithRemapping remapModule(Module module) {
+	public static ModuleWithRemapping remapModule(com.google.inject.Module module) {
 		return new ModuleWithRemapping() {
 			Map<Key<?>, Key<?>> remappedKeys = new LinkedHashMap<>();
 			Set<Key<?>> exposedKeys = new LinkedHashSet<>();

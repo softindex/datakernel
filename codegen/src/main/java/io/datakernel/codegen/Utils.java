@@ -310,7 +310,7 @@ final class Utils {
 
 		if (targetType.equals(getType(Object.class)) && isPrimitiveType(type)) {
 			g.box(type);
-			g.cast(wrap(type), getType(Object.class));
+//			g.cast(wrap(type), getType(Object.class));
 			return;
 		}
 
@@ -326,7 +326,7 @@ final class Utils {
 
 			assert isPrimitiveType(type);
 
-			if (type != targetTypePrimitive) {
+			if (isValidCast(type, targetTypePrimitive)) {
 				g.cast(type, targetTypePrimitive);
 			}
 
@@ -367,5 +367,14 @@ final class Utils {
 			stringBuilder.append(separator).append(iterator.next());
 		}
 		return stringBuilder.toString();
+	}
+
+	public static boolean isValidCast(Type from, Type to) {
+		return from.getSort() != to.getSort()
+				&&
+				!(from.getSort() < Type.BOOLEAN
+						|| from.getSort() > Type.DOUBLE
+						|| to.getSort() < Type.BOOLEAN
+						|| to.getSort() > Type.DOUBLE);
 	}
 }

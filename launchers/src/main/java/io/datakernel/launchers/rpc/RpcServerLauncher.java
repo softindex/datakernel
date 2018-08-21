@@ -1,6 +1,9 @@
 package io.datakernel.launchers.rpc;
 
-import com.google.inject.*;
+import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import io.datakernel.async.Stage;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -35,13 +38,13 @@ public abstract class RpcServerLauncher extends Launcher {
 	RpcServer rpcServer;
 
 	@Override
-	protected final Collection<Module> getModules() {
+	protected final Collection<com.google.inject.Module> getModules() {
 		return asList(
 				override(getBaseModules()).with(getOverrideModules()),
 				combine(getBusinessLogicModules()));
 	}
 
-	private Collection<Module> getBaseModules() {
+	private Collection<com.google.inject.Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
@@ -71,11 +74,11 @@ public abstract class RpcServerLauncher extends Launcher {
 		);
 	}
 
-	protected Collection<Module> getOverrideModules() {
+	protected Collection<com.google.inject.Module> getOverrideModules() {
 		return emptyList();
 	}
 
-	protected abstract Collection<Module> getBusinessLogicModules();
+	protected abstract Collection<com.google.inject.Module> getBusinessLogicModules();
 
 	@Override
 	protected void run() throws Exception {
@@ -84,8 +87,8 @@ public abstract class RpcServerLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
-		Module businessLogicModule = businessLogicModuleName != null ?
-				(Module) Class.forName(businessLogicModuleName).newInstance() :
+		com.google.inject.Module businessLogicModule = businessLogicModuleName != null ?
+				(com.google.inject.Module) Class.forName(businessLogicModuleName).newInstance() :
 				new AbstractModule() {
 					@Provides
 					Initializer<RpcServer> rpcServerInitializer() {
@@ -98,7 +101,7 @@ public abstract class RpcServerLauncher extends Launcher {
 
 		Launcher launcher = new RpcServerLauncher() {
 			@Override
-			protected Collection<Module> getBusinessLogicModules() {
+			protected Collection<com.google.inject.Module> getBusinessLogicModules() {
 				return singletonList(businessLogicModule);
 			}
 		};

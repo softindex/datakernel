@@ -311,7 +311,7 @@ public final class ServiceAdapters {
 	}
 
 	@SafeVarargs
-	public static <T> ServiceAdapter<T> combinedAdapter(ServiceAdapter<? super T>... startOrder) {
+	public static <T, S extends ServiceAdapter<? super T>> ServiceAdapter<T> combinedAdapter(S... startOrder) {
 		return combinedAdapter(Arrays.asList(startOrder));
 	}
 
