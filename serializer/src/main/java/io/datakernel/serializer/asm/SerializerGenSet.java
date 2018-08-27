@@ -31,15 +31,18 @@ import static io.datakernel.codegen.Expressions.*;
 public class SerializerGenSet implements SerializerGen, NullableOptimization {
 	private final SerializerGen valueSerializer;
 	private final boolean nullable;
+	private final Class<?> elementType;
 
-	public SerializerGenSet(SerializerGen valueSerializer) {
+	public SerializerGenSet(SerializerGen valueSerializer, Class<?> type) {
 		this.valueSerializer = valueSerializer;
 		this.nullable = false;
+		this.elementType = type;
 	}
 
-	public SerializerGenSet(SerializerGen valueSerializer, boolean nullable) {
+	public SerializerGenSet(SerializerGen valueSerializer, boolean nullable, Class<?> type) {
 		this.valueSerializer = valueSerializer;
 		this.nullable = nullable;
+		this.elementType = type;
 	}
 
 	@Override
@@ -67,16 +70,15 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 		Expression serializeEach = forEach(value, valueSerializer.getRawType(),
 				it -> set(off, valueSerializer.serialize(arg(0), arg(1), it, version, staticMethods, compatibilityLevel)));
 
-		if (!nullable) {
-			return sequence(
-					set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, call(value, "size"))),
-					serializeEach, off);
-		} else {
+		if (nullable) {
 			return ifThenElse(isNull(value),
 					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
 					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))),
 							serializeEach, off));
 		}
+		return sequence(
+				set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, call(value, "size"))),
+				serializeEach, off);
 	}
 
 	@Override
@@ -90,11 +92,10 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 		Class<?> targetInstance = isEnum ? EnumSet.class : LinkedHashSet.class;
 		Preconditions.check(targetType.isAssignableFrom(targetInstance));
 
-		if (!isEnum) {
-			return deserializeSimpleSet(version, staticMethods, compatibilityLevel);
-		} else {
+		if (isEnum) {
 			return deserializeEnumSet(version, staticMethods, compatibilityLevel);
 		}
+		return deserializeSimpleSet(version, staticMethods, compatibilityLevel);
 	}
 
 	private Expression deserializeEnumSet(int version,
@@ -107,13 +108,19 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 		Expression list = let(cast(callStatic(Arrays.class, "asList", container), Collection.class));
 		Expression enumSet = callStatic(EnumSet.class, "copyOf", list);
 
-		if (!nullable) {
-			return sequence(len, container, array, list, enumSet);
-		} else {
+		Expression readSet = sequence(container, array, list, enumSet);
+		Expression emptySet = callStatic(EnumSet.class, "noneOf", value(elementType));
+
+		if (nullable) {
 			return ifThenElse(cmpEq(len, value(0)),
 					nullRef(EnumSet.class),
-					sequence(container, array, list, enumSet));
+					ifThenElse(cmpEq(len, value(1)),
+							emptySet,
+							readSet));
 		}
+		return ifThenElse(cmpEq(len, value(0)),
+				emptySet,
+				readSet);
 	}
 
 	private Expression deserializeSimpleSet(int version,
@@ -127,17 +134,15 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 						voidExp()));
 		if (!nullable) {
 			return sequence(length, container, deserializeEach, container);
-		} else {
-			return ifThenElse(cmpEq(length, value(0)),
-					nullRef(LinkedHashSet.class),
-					sequence(container, deserializeEach, container)
-			);
 		}
+		return ifThenElse(cmpEq(length, value(0)),
+				nullRef(LinkedHashSet.class),
+				sequence(container, deserializeEach, container));
 	}
 
 	@Override
 	public SerializerGen setNullable() {
-		return new SerializerGenSet(valueSerializer, true);
+		return new SerializerGenSet(valueSerializer, true, elementType);
 	}
 
 	@Override

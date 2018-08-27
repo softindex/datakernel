@@ -61,7 +61,7 @@ public final class FieldTypes {
 	}
 
 	public static <T> FieldType<Set<T>> ofSet(FieldType<T> fieldType) {
-		SerializerGenSet serializer = new SerializerGenSet(fieldType.getSerializer());
+		SerializerGenSet serializer = new SerializerGenSet(fieldType.getSerializer(), fieldType.getInternalDataType());
 		Type wrappedNestedType = fieldType.getDataType() instanceof Class ?
 				Primitives.wrap((Class<?>) fieldType.getDataType()) :
 				fieldType.getDataType();

@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.serializer.annotations.*;
@@ -1514,6 +1515,11 @@ public class AsmSerializerTest {
 	public static class EnumSetHolder {
 		@Serialize(order = 0)
 		public Set<TestEnum> set;
+
+		@Nullable
+		@Serialize(order = 1)
+		@SerializeNullable
+		public Set<TestEnum> setNullable;
 	}
 
 	@Test
@@ -1523,6 +1529,24 @@ public class AsmSerializerTest {
 		EnumSetHolder testData2 = doTest(EnumSetHolder.class, testData1);
 		assertEquals(testData1.set, testData2.set);
 		assertTrue(testData2.set instanceof EnumSet);
+
+		// test for empty set with null
+		EnumSetHolder testEmpty1 = new EnumSetHolder();
+		testEmpty1.set = EnumSet.noneOf(TestEnum.class);
+		testEmpty1.setNullable = null;
+		EnumSetHolder testEmpty2 = doTest(EnumSetHolder.class, testEmpty1);
+		assertEquals(testEmpty1.set, testEmpty2.set);
+		assertEquals(testEmpty1.setNullable, testEmpty2.setNullable);
+		assertTrue(testEmpty2.set instanceof EnumSet);
+		assertNull(testEmpty2.setNullable);
+
+		// test for empty set without null
+		testEmpty1.setNullable = EnumSet.noneOf(TestEnum.class);
+		testEmpty2 = doTest(EnumSetHolder.class, testEmpty1);
+		assertEquals(testEmpty1.set, testEmpty2.set);
+		assertEquals(testEmpty1.setNullable, testEmpty2.setNullable);
+		assertTrue(testEmpty2.set instanceof EnumSet);
+		assertTrue(testEmpty2.setNullable instanceof EnumSet);
 	}
 
 	public static class Generic<T> {

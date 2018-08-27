@@ -110,7 +110,7 @@ public final class SerializerBuilder {
 		});
 		builder.setSerializer(Set.class, (type, generics, fallback) -> {
 			check(generics.length == 1);
-			return new SerializerGenSet(generics[0].serializer);
+			return new SerializerGenSet(generics[0].serializer, generics[0].rawType);
 		});
 		builder.setSerializer(Map.class, (type, generics, fallback) -> {
 			check(generics.length == 2);
