@@ -31,10 +31,8 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class WorkerPool {
-	private static int staticPoolIdCounter = -1;
-
-	private final int poolId;
 	private final int workers;
+	private String annotationString = "";
 
 	private WorkerPoolScope poolScope;
 	private Injector injector;
@@ -47,7 +45,6 @@ public final class WorkerPool {
 
 	public WorkerPool(int workers) {
 		this.workers = workers;
-		poolId = staticPoolIdCounter++;
 	}
 
 	@Nullable
@@ -154,16 +151,23 @@ public final class WorkerPool {
 		this.poolScope = poolScope;
 	}
 
+	public void setAnnotationString(String annotationString){
+		this.annotationString = annotationString;
+	}
+
 	public void setInjector(Injector injector) {
 		this.injector = injector;
 	}
-
 	public boolean isValidBinding(Key<?> key) {
 		return pool.get(key) != null || getInstances(key).size() != 0;
 	}
 
+	public String getAnnotationString() {
+		return annotationString;
+	}
+
 	@Override
 	public String toString() {
-		return "WorkerPool-" + poolId;
+		return "WorkerPool" + annotationString;
 	}
 }

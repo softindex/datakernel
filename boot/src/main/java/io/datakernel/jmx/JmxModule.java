@@ -258,7 +258,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 					WorkerPools workerPools = injector.getInstance(WorkerPools.class);
 					for (WorkerPool workerPool : workerPools.getWorkerPools()) {
 						for (Key<?> key : workerKeys) {
-							List<?> objects = workerPools.getAllObjects(key);
+							List<?> objects = workerPool.getInstances(key);
 							jmxRegistry.registerWorkers(workerPool, key, objects, ensureSettingsFor(key));
 
 							Type type = key.getTypeLiteral().getType();

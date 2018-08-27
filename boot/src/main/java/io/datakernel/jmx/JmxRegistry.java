@@ -18,13 +18,13 @@ package io.datakernel.jmx;
 
 import com.google.inject.Key;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
+import io.datakernel.util.ReflectionUtils;
 import io.datakernel.worker.WorkerPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.management.*;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
@@ -121,7 +121,6 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			String msg = format("Cannot register MBean for instance with key %s and ObjectName \"%s\"",
 					key.toString(), objectName.toString());
 			logger.error(msg, e);
-			return;
 		}
 	}
 
@@ -164,7 +163,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		String commonName;
 		try {
-			commonName = createNameForKey(key);
+			commonName = createNameForKey(key, pool);
 		} catch (Exception e) {
 			String msg = format("Error during generation name for pool of instances with key %s", key.toString());
 			logger.error(msg, e);
@@ -175,7 +174,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		for (int i = 0; i < poolInstances.size(); i++) {
 			MBeanSettings settingsForOptionals = MBeanSettings.of(
 					settings.getIncludedOptionals(), new HashMap<>(), customTypes);
-			registerMBeanForWorker(poolInstances.get(i), pool, i, commonName, key, settingsForOptionals);
+			registerMBeanForWorker(poolInstances.get(i), i, commonName, key, settingsForOptionals);
 		}
 
 		// register aggregated mbean for pool of workers
@@ -211,7 +210,6 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			String msg = format("Cannot register aggregated MBean of pool of workers with key %s " +
 					"and ObjectName \"%s\"", key.toString(), objectName.toString());
 			logger.error(msg, e);
-			return;
 		}
 	}
 
@@ -232,7 +230,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		String commonName;
 		try {
-			commonName = createNameForKey(key);
+			commonName = createNameForKey(key, pool);
 		} catch (ReflectiveOperationException e) {
 			String msg = format("Error during generation name for pool of instances with key %s", key.toString());
 			logger.error(msg, e);
@@ -242,7 +240,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		// unregister mbeans for each worker separately
 		for (int i = 0; i < poolInstances.size(); i++) {
 			try {
-				String workerName = createWorkerName(commonName, i, pool);
+				String workerName = createWorkerName(commonName, i);
 				mbs.unregisterMBean(new ObjectName(workerName));
 			} catch (JMException e) {
 				String msg = format("Error during attempt to unregister mbean for worker" +
@@ -272,9 +270,9 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		return true;
 	}
 
-	private void registerMBeanForWorker(Object worker, WorkerPool pool, int workerId, String commonName,
+	private void registerMBeanForWorker(Object worker, int workerId, String commonName,
 			Key<?> key, MBeanSettings settings) {
-		String workerName = createWorkerName(commonName, workerId, pool);
+		String workerName = createWorkerName(commonName, workerId);
 
 		DynamicMBean mbean;
 		try {
@@ -305,52 +303,47 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			String msg = format("Cannot register MBean for worker of pool of instances with key %s. " +
 					"ObjectName for worker is \"%s\"", key.toString(), objectName.toString());
 			logger.error(msg, e);
-			return;
 		}
 	}
 
-	private static String createWorkerName(String commonName, int workerId, WorkerPool workerPool) {
-		return commonName + format(",workerId=worker-%d,workerPool=%s", workerId, workerPool.toString());
+	private static String createWorkerName(String commonName, int workerId) {
+		return commonName + format(",workerId=worker-%d", workerId);
 	}
 
 	private String createNameForKey(Key<?> key) throws ReflectiveOperationException {
-		if (keyToObjectNames.containsKey(key))
+		return createNameForKey(key, null);
+	}
+
+	private String createNameForKey(Key<?> key, WorkerPool pool) throws ReflectiveOperationException {
+		if (keyToObjectNames.containsKey(key)) {
 			return keyToObjectNames.get(key);
+		}
 		Class<?> rawType = key.getTypeLiteral().getRawType();
 		Annotation annotation = key.getAnnotation();
 		String domain = rawType.getPackage().getName();
-		String name = domain + ":";
-		if (annotation == null) { // without annotation
-			name += "type=" + rawType.getSimpleName();
-		} else {
-			Class<? extends Annotation> annotationType = annotation.annotationType();
-			Method[] annotationElements = filterNonEmptyElements(annotation);
-			name += "type=" + rawType.getSimpleName() + ",";
-			if (annotationElements.length == 0) { // annotation without elements
-				name += "annotation=" + annotationType.getSimpleName();
-			} else if (annotationElements.length == 1 && annotationElements[0].getName().equals("value")) {
-				// annotation with single element which has name "value"
-				Object value = fetchAnnotationElementValue(annotation, annotationElements[0]);
-				name += annotationType.getSimpleName() + "=" + value.toString();
-			} else { // annotation with one or more custom elements
-				for (Method annotationParameter : annotationElements) {
-					Object value = fetchAnnotationElementValue(annotation, annotationParameter);
-					String nameKey = annotationParameter.getName();
-					String nameValue = value.toString();
-					name += nameKey + "=" + nameValue + ",";
-				}
+		String name = domain + ":" + "type=" + rawType.getSimpleName();
 
-				assert name.substring(name.length() - 1).equals(",");
-
-				name = name.substring(0, name.length() - 1);
+		if (annotation != null) { // with annotation
+			name += ',';
+			String annotationString = ReflectionUtils.getAnnotationString(annotation);
+			if (!annotationString.contains("(")) {
+				name += "annotation=" + annotationString;
+			} else if (!annotationString.startsWith("(")) {
+				name += annotationString.substring(0, annotationString.indexOf('('));
+				name += '=' + annotationString.substring(annotationString.indexOf('(') + 1, annotationString.length() - 1);
+			} else {
+				name += annotationString.substring(1, annotationString.length() - 1);
 			}
+		}
+		if (pool != null && !pool.getAnnotationString().equals("")) {
+			name += format(",workerPool=%s", pool.toString());
 		}
 		return addGenericParamsInfo(name, key);
 	}
 
 	private static String addGenericParamsInfo(String srcName, Key<?> key) {
 		Type type = key.getTypeLiteral().getType();
-		String resultName = srcName;
+		StringBuilder resultName = new StringBuilder(srcName);
 		if (type instanceof ParameterizedType) {
 			ParameterizedType pType = (ParameterizedType) type;
 			Type[] genericArgs = pType.getActualTypeArguments();
@@ -358,10 +351,10 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 				Type genericArg = genericArgs[i];
 				String argClassName = formatSimpleGenericName(genericArg);
 				int argId = i + 1;
-				resultName += "," + format(GENERIC_PARAM_NAME_FORMAT, argId, argClassName);
+				resultName.append(",").append(format(GENERIC_PARAM_NAME_FORMAT, argId, argClassName));
 			}
 		}
-		return resultName;
+		return resultName.toString();
 	}
 
 	private static String formatSimpleGenericName(Type type) {
@@ -373,35 +366,6 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 				Arrays.stream(genericType.getActualTypeArguments())
 						.map(JmxRegistry::formatSimpleGenericName)
 						.collect(joining(";", "<", ">"));
-	}
-
-	/**
-	 * Returns values if it is not null, otherwise throws exception
-	 */
-	private static Object fetchAnnotationElementValue(Annotation annotation, Method element) throws ReflectiveOperationException {
-		Object value = element.invoke(annotation);
-		if (value == null) {
-			String errorMsg = "@" + annotation.annotationType().getName() + "." +
-					element.getName() + "() returned null";
-			throw new NullPointerException(errorMsg);
-		}
-		return value;
-	}
-
-	private static Method[] filterNonEmptyElements(Annotation annotation) throws ReflectiveOperationException {
-		List<Method> filtered = new ArrayList<>();
-		for (Method method : annotation.annotationType().getDeclaredMethods()) {
-			Object elementValue = fetchAnnotationElementValue(annotation, method);
-			if (elementValue instanceof String) {
-				String stringValue = (String) elementValue;
-				if (stringValue.length() == 0) {
-					// skip this element, because it is empty string
-					continue;
-				}
-			}
-			filtered.add(method);
-		}
-		return filtered.toArray(new Method[filtered.size()]);
 	}
 
 	private static boolean isStandardMBean(Class<?> clazz) {

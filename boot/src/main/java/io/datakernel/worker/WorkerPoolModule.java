@@ -23,6 +23,8 @@ import com.google.inject.spi.ProvisionListener;
 
 import java.lang.annotation.Annotation;
 
+import static io.datakernel.util.ReflectionUtils.getAnnotationString;
+
 public final class WorkerPoolModule extends AbstractModule {
 	public static boolean isWorkerScope(Binding<?> binding) {
 		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
@@ -64,6 +66,16 @@ public final class WorkerPoolModule extends AbstractModule {
 				WorkerPool workerPool = (WorkerPool) provision.provision();
 				workerPool.setInjector(injectorProvider.get());
 				workerPool.setScopeInstance(scope);
+
+				Annotation annotation = provision.getBinding().getKey().getAnnotation();
+				if (annotation != null) {
+					try {
+						workerPool.setAnnotationString("@" + getAnnotationString(annotation));
+					} catch (ReflectiveOperationException e) {
+						throw new IllegalStateException("Error during generation annotation string for worker pool " + workerPool, e);
+					}
+				}
+
 				workerPools.addWorkerPool(workerPool);
 			}
 		});

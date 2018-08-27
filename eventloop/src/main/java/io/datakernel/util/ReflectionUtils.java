@@ -19,6 +19,7 @@ package io.datakernel.util;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.*;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -210,6 +211,77 @@ public final class ReflectionUtils {
 			return first(result);
 		}
 		return null;
+	}
+
+	/**
+	 * Builds string representation of annotation with its elements.
+	 * The string looks differently depending on the number of elements, that an annotation has.
+	 * If annotation has no elements, string looks like this : "AnnotationName"
+	 * If annotation has a single element with the name "value", string looks like this : "AnnotationName(someValue)"
+	 * If annotation has one or more custom elements, string looks like this : "(key1=value1,key2=value2)"
+	 * @param annotation
+	 * @return String representation of annotation with its elements
+	 * @throws ReflectiveOperationException
+	 */
+	public static String getAnnotationString(Annotation annotation) throws ReflectiveOperationException {
+		Class<? extends Annotation> annotationType = annotation.annotationType();
+		StringBuilder annotationString = new StringBuilder();
+		Method[] annotationElements = filterNonEmptyElements(annotation);
+		if (annotationElements.length == 0) {
+			// annotation without elements
+			annotationString.append(annotationType.getSimpleName());
+			return annotationString.toString();
+		}
+		if (annotationElements.length == 1 && annotationElements[0].getName().equals("value")) {
+			// annotation with single element which has name "value"
+			annotationString.append(annotationType.getSimpleName());
+			Object value = fetchAnnotationElementValue(annotation, annotationElements[0]);
+			annotationString.append('(').append(value.toString()).append(')');
+			return annotationString.toString();
+		}
+		// annotation with one or more custom elements
+		annotationString.append('(');
+		for (Method annotationParameter : annotationElements) {
+			Object value = fetchAnnotationElementValue(annotation, annotationParameter);
+			String nameKey = annotationParameter.getName();
+			String nameValue = value.toString();
+			annotationString.append(nameKey).append('=').append(nameValue).append(',');
+		}
+
+		assert annotationString.substring(annotationString.length() - 1).equals(",");
+
+		annotationString = new StringBuilder(annotationString.substring(0, annotationString.length() - 1));
+		annotationString.append(')');
+		return annotationString.toString();
+	}
+
+	public static Method[] filterNonEmptyElements(Annotation annotation) throws ReflectiveOperationException {
+		List<Method> filtered = new ArrayList<>();
+		for (Method method : annotation.annotationType().getDeclaredMethods()) {
+			Object elementValue = fetchAnnotationElementValue(annotation, method);
+			if (elementValue instanceof String) {
+				String stringValue = (String) elementValue;
+				if (stringValue.length() == 0) {
+					// skip this element, because it is empty string
+					continue;
+				}
+			}
+			filtered.add(method);
+		}
+		return filtered.toArray(new Method[0]);
+	}
+
+	/**
+	 * Returns values if it is not null, otherwise throws exception
+	 */
+	public static Object fetchAnnotationElementValue(Annotation annotation, Method element) throws ReflectiveOperationException {
+		Object value = element.invoke(annotation);
+		if (value == null) {
+			String errorMsg = "@" + annotation.annotationType().getName() + "." +
+					element.getName() + "() returned null";
+			throw new NullPointerException(errorMsg);
+		}
+		return value;
 	}
 
 }

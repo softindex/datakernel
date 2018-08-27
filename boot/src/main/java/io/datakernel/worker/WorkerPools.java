@@ -116,4 +116,8 @@ public final class WorkerPools {
 		return workerPools.stream()
 				.anyMatch(workerPool -> workerPool.isValidBinding(key));
 	}
+
+	public int size(){
+		return workerPools.size();
+	}
 }
