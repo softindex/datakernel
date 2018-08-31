@@ -85,7 +85,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 				if (msg == null) {
 					logger.warn("unexpected end of stream: {}", this);
 					messaging.close();
-					return Stage.of(null);
+					return Stage.complete();
 				}
 				MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
 				if (handler == null) {
@@ -96,7 +96,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 			.whenComplete(handleRequestStage.recordStats())
 			.thenComposeEx(($, err) -> {
 				if (err == null) {
-					return Stage.of(null);
+					return Stage.complete();
 				}
 				logger.warn("got an error while handling message (" + err + ") : " + this);
 				String prefix = err.getClass() != RemoteFsException.class ? err.getClass().getSimpleName() + ": " : "";

@@ -3,12 +3,12 @@ package io.global.globalsync.server;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
-import io.datakernel.serial.SerialConsumer;
 import io.datakernel.exception.ToDoException;
-import io.global.globalsync.api.CommitId;
-import io.global.globalsync.api.RawCommit;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
+import io.global.globalsync.api.CommitId;
+import io.global.globalsync.api.RawCommit;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -49,7 +49,7 @@ final class RawCommitCache implements AsyncConsumer<RawCommitEntry> {
 		SettableStage<RawCommit> pendingStage = pendingStages.remove(entry.commitId);
 		if (pendingStage != null) {
 			pendingStage.set(entry.rawCommit);
-			return Stage.of(null);
+			return Stage.complete();
 		}
 		preloadedCommits.put(entry.commitId, entry.rawCommit);
 		if (acceptStage != null) {

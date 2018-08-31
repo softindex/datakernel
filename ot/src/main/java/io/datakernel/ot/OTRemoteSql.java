@@ -152,7 +152,7 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 
 	@Override
 	public Stage<Void> push(Collection<OTCommit<Long, D>> commits) {
-		if (commits.isEmpty()) return Stage.of(null);
+		if (commits.isEmpty()) return Stage.complete();
 		return Stage.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {

@@ -29,7 +29,7 @@ public class CommitStorageStub implements CommitStorage {
 		Map<CommitId, SignedData<RawCommitHead>> map = heads.computeIfAbsent(repositoryId, repositoryId1 -> new HashMap<>());
 		addHeads.forEach(head -> map.put(head.getData().commitId, head));
 		excludeHeads.forEach(map::remove);
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override
@@ -94,7 +94,7 @@ public class CommitStorageStub implements CommitStorage {
 		while (!pendingCompleteCommits.isEmpty()) {
 			pendingCompleteCommits.forEach(this::markCompleteCommit);
 		}
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@SuppressWarnings("ConstantConditions")

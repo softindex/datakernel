@@ -53,7 +53,7 @@ public final class RawServer_Repository {
 
 	public Stage<Void> update() {
 		if (updateTimestamp >= now.currentTimeMillis() - settings.getLatencyMargin().toMillis()) {
-			return Stage.of(null);
+			return Stage.complete();
 		}
 		return Stages.all(updateHeads(), updatePullRequests())
 				.thenRun(() -> updateTimestamp = now.currentTimeMillis());

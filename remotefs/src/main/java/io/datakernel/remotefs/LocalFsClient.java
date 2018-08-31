@@ -307,7 +307,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Stage<Void> stop() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override

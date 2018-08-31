@@ -98,7 +98,7 @@ public final class SerialZeroBuffer<T> implements HasSerialConsumer<T>, HasSeria
 				SettableStage<T> take = this.take;
 				this.take = null;
 				take.set(value);
-				return Stage.of(null);
+				return Stage.complete();
 			}
 
 			if (value != null) {
@@ -109,7 +109,7 @@ public final class SerialZeroBuffer<T> implements HasSerialConsumer<T>, HasSeria
 			}
 
 			endOfStreamReceived = true;
-			return Stage.of(null);
+			return Stage.complete();
 		}
 
 		deepRecycle(value);

@@ -54,7 +54,7 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 				int minSuccessesFinal = min(minSuccesses, list.size());
 				if (minSuccessesFinal == 0) {
 					list.forEach(AsyncSupplier::get);
-					return Stage.of(null);
+					return Stage.complete();
 				}
 				SettableStage<Void> result = new SettableStage<>();
 				int[] successes = new int[]{0};
@@ -67,7 +67,7 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 							}
 						}
 						if (++completed[0] == list.size()) {
-							if (!result.isSet()) {
+							if (!result.isComplete()) {
 								result.setException(new IOException());
 							}
 						}

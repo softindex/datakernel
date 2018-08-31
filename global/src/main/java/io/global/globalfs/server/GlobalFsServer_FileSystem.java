@@ -99,7 +99,7 @@ final class GlobalFsServer_FileSystem {
 
 		protected Stage<Void> consume(ByteBuf buf) {
 			queue.add(buf);
-			return Stage.of(null);
+			return Stage.complete();
 		}
 
 		protected Stage<DataFrame> produce() {

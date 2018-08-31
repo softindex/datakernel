@@ -59,6 +59,6 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 		for (Integer partition : partitionsToDelete) {
 			storage.remove(partition);
 		}
-		return Stage.of(null);
+		return Stage.complete();
 	}
 }

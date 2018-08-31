@@ -81,7 +81,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	@Override
 	public Stage<Void> stop() {
 		invalidateInternalState();
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	public Stage<K> checkout() {

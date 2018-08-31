@@ -88,7 +88,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 
 	@Override
 	public Stage<Void> start() {
-		if (reloadPeriod == 0) return Stage.of(null);
+		if (reloadPeriod == 0) return Stage.complete();
 		long reloadTimestamp = getEventloop().currentTimeMillis();
 		return reload(timestamp)
 				.whenResult(result -> {
@@ -103,7 +103,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	@Override
 	public Stage<Void> stop() {
 		if (scheduledRunnable != null) scheduledRunnable.cancel();
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@JmxOperation

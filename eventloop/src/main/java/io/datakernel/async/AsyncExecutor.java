@@ -9,7 +9,7 @@ public interface AsyncExecutor {
 	default Stage<Void> run(Runnable runnable) throws RejectedExecutionException {
 		return execute(() -> {
 			runnable.run();
-			return Stage.of(null);
+			return Stage.complete();
 		});
 	}
 

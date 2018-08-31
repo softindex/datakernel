@@ -37,12 +37,11 @@ public interface SerialSupplier<T> extends Cancellable {
 		Stage<T> stage;
 		while (true) {
 			stage = this.get();
-			if (stage.isResult()) {
-				T result = stage.getResult();
-				if (result != null) {
-					preprocessor.accept(result);
-					continue;
-				}
+			if (!stage.hasResult()) break;
+			T item = stage.getResult();
+			if (item != null) {
+				preprocessor.accept(item);
+				continue;
 			}
 			break;
 		}
@@ -112,6 +111,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	}
 
 	static <T> SerialSupplier<T> ofStage(Stage<? extends SerialSupplier<T>> stage) {
+		MaterializedStage<? extends SerialSupplier<T>> materializedStage = stage.materialize();
 		return new SerialSupplier<T>() {
 			SerialSupplier<T> supplier;
 			Throwable exception;
@@ -119,15 +119,12 @@ public interface SerialSupplier<T> extends Cancellable {
 			@Override
 			public Stage<T> get() {
 				if (supplier != null) return supplier.get();
-				return stage.thenComposeEx((supplier, e) -> {
+				return materializedStage.thenComposeEx((supplier, e) -> {
 					if (e == null) {
 						this.supplier = supplier;
 						return supplier.get();
 					} else {
-						if (exception != null) {
-							supplier.closeWithError(exception);
-						}
-						return Stage.ofException(exception);
+						return Stage.ofException(e);
 					}
 				});
 			}
@@ -135,9 +132,7 @@ public interface SerialSupplier<T> extends Cancellable {
 			@Override
 			public void closeWithError(Throwable e) {
 				exception = e;
-				if (supplier != null) {
-					supplier.closeWithError(e);
-				}
+				materializedStage.whenResult(supplier -> supplier.closeWithError(e));
 			}
 		};
 	}

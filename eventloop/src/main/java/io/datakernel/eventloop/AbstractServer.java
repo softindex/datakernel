@@ -224,7 +224,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	@Override
 	public final Stage<Void> close() {
 		check(eventloop.inEventloopThread(), "Cannot close server from different thread");
-		if (!running) return Stage.of(null);
+		if (!running) return Stage.complete();
 		running = false;
 		closeServerSocketChannels();
 		SettableStage<Void> stage = new SettableStage<>();

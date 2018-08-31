@@ -35,7 +35,7 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 	protected abstract A resolveAttributes(K key);
 
 	protected Stage<Void> prepareToResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	private Stage<Void> doResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
@@ -46,7 +46,7 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 				attributesFunction.applyAttributes(result, toAttributes(attributes));
 			}
 		}
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override

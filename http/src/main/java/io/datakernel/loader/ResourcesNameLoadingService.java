@@ -66,7 +66,7 @@ public class ResourcesNameLoadingService implements EventloopService {
 
 	@Override
 	public Stage<Void> stop() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	public Set<String> getNames() {

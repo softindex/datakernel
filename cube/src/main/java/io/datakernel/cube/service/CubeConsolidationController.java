@@ -125,7 +125,7 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 	}
 
 	private Stage<Void> tryPushConsolidation(CubeDiff cubeDiff) {
-		if (cubeDiff.isEmpty()) return Stage.of(null);
+		if (cubeDiff.isEmpty()) return Stage.complete();
 
 		stateManager.add(cubeDiffScheme.wrap(cubeDiff));
 		return stateManager.pull()

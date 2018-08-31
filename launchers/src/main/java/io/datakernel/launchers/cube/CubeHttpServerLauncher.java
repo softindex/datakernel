@@ -22,7 +22,6 @@ import javax.inject.Named;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.function.Supplier;
 
 import static com.google.inject.util.Modules.combine;
 import static io.datakernel.config.ConfigConverters.ofDuration;
@@ -58,7 +57,7 @@ public abstract class CubeHttpServerLauncher extends HttpServerLauncher {
 	private AsyncSupplier<Void> pullOrCheckoutTask(OTStateManager<Long, LogDiff<CubeDiff>> cubeStateManager) {
 		return () -> cubeStateManager.pull()
 				.thenComposeEx((revisionId, throwable) -> throwable == null ?
-						Stage.of(null) :
+						Stage.complete() :
 						cubeStateManager.checkout().toVoid());
 	}
 

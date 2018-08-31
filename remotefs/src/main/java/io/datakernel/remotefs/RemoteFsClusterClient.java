@@ -4,7 +4,6 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
-import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -12,6 +11,7 @@ import io.datakernel.functional.Try;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
@@ -449,12 +449,12 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 	@Override
 	public Stage<Void> start() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override
 	public Stage<Void> stop() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override

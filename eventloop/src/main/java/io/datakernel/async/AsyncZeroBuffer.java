@@ -64,7 +64,7 @@ public final class AsyncZeroBuffer<T> {
 			SettableStage<T> take = this.take;
 			this.take = null;
 			take.set(value);
-			return Stage.of(null);
+			return Stage.complete();
 		}
 
 		add(value);

@@ -20,6 +20,6 @@ public class RawDiscoveryServiceStub implements RawDiscoveryService {
 		map.compute(announceData.getData().getPubKey(),
 				(pubKey, existing) ->
 						announceData.getData().getTimestamp() > existing.getData().getTimestamp() ? announceData : existing);
-		return Stage.of(null);
+		return Stage.complete();
 	}
 }

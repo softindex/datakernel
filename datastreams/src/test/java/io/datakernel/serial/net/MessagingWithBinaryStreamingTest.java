@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.net;
+package io.datakernel.serial.net;
 
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -24,6 +24,9 @@ import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.net.Messaging;
+import io.datakernel.stream.net.MessagingSerializer;
+import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
@@ -68,20 +71,20 @@ public class MessagingWithBinaryStreamingTest {
 	public void testPing() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		MessagingSerializer<Integer, Integer> serializer =
+		io.datakernel.stream.net.MessagingSerializer<Integer, Integer> serializer =
 				ofJson(INTEGER_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 
 			@Override
 			public AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				MessagingWithBinaryStreaming<Integer, Integer> messaging =
-						MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+				io.datakernel.stream.net.MessagingWithBinaryStreaming<Integer, Integer> messaging =
+						io.datakernel.stream.net.MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 				pong(messaging);
 				return messaging;
 			}
 
-			void pong(Messaging<Integer, Integer> messaging) {
+			void pong(io.datakernel.stream.net.Messaging<Integer, Integer> messaging) {
 				messaging.receive()
 						.whenResult(msg -> {
 							if (msg != null) {
@@ -125,8 +128,8 @@ public class MessagingWithBinaryStreamingTest {
 			public void accept(SocketChannel socketChannel, Throwable throwable) {
 				if (throwable == null) {
 					AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					MessagingWithBinaryStreaming<Integer, Integer> messaging =
-							MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+					io.datakernel.stream.net.MessagingWithBinaryStreaming<Integer, Integer> messaging =
+							io.datakernel.stream.net.MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 					ping(3, messaging);
 					asyncTcpSocket.setEventHandler(messaging);
 					asyncTcpSocket.register();
@@ -148,12 +151,12 @@ public class MessagingWithBinaryStreamingTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
-		MessagingSerializer<String, String> serializer =
+		io.datakernel.stream.net.MessagingSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
-			MessagingWithBinaryStreaming<String, String> messaging =
-					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+			io.datakernel.stream.net.MessagingWithBinaryStreaming<String, String> messaging =
+					io.datakernel.stream.net.MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 			messaging.receive()
 					.whenResult(msg -> {
@@ -178,8 +181,8 @@ public class MessagingWithBinaryStreamingTest {
 		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
 			if (throwable == null) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				MessagingWithBinaryStreaming<String, String> messaging =
-						MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+				io.datakernel.stream.net.MessagingWithBinaryStreaming<String, String> messaging =
+						io.datakernel.stream.net.MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 				messaging.send("start");
 				messaging.sendEndOfStream();
@@ -211,12 +214,12 @@ public class MessagingWithBinaryStreamingTest {
 		StreamConsumerWithResult<Long, List<Long>> consumerToList = StreamConsumerToList.create();
 		CompletableFuture<List<Long>> future = consumerToList.getResult().toCompletableFuture();
 
-		MessagingSerializer<String, String> serializer =
+		io.datakernel.stream.net.MessagingSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
-			MessagingWithBinaryStreaming<String, String> messaging =
-					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+			io.datakernel.stream.net.MessagingWithBinaryStreaming<String, String> messaging =
+					io.datakernel.stream.net.MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 			messaging.receive()
 					.whenResult(msg -> {
@@ -244,8 +247,8 @@ public class MessagingWithBinaryStreamingTest {
 				.whenComplete((socketChannel, throwable) -> {
 					if (throwable == null) {
 						AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-						MessagingWithBinaryStreaming<String, String> messaging =
-								MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+						io.datakernel.stream.net.MessagingWithBinaryStreaming<String, String> messaging =
+								io.datakernel.stream.net.MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 						messaging.send("start");
 
@@ -280,11 +283,11 @@ public class MessagingWithBinaryStreamingTest {
 		StreamConsumerWithResult<Long, List<Long>> consumerToList = StreamConsumerToList.create();
 		CompletableFuture<List<Long>> future = consumerToList.getResult().toCompletableFuture();
 
-		MessagingSerializer<String, String> serializer =
+		io.datakernel.stream.net.MessagingSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = (AsyncTcpSocket asyncTcpSocket) -> {
-			MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+			io.datakernel.stream.net.MessagingWithBinaryStreaming<String, String> messaging = io.datakernel.stream.net.MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 			messaging.receive()
 					.whenResult(msg -> {
@@ -314,8 +317,8 @@ public class MessagingWithBinaryStreamingTest {
 		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
 			if (throwable == null) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				MessagingWithBinaryStreaming<String, String> messaging =
-						MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+				io.datakernel.stream.net.MessagingWithBinaryStreaming<String, String> messaging =
+						io.datakernel.stream.net.MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 				messaging.send("start");
 
@@ -362,8 +365,8 @@ public class MessagingWithBinaryStreamingTest {
 				ofJson(STRING_JSON, STRING_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
-			MessagingWithBinaryStreaming<String, String> messaging =
-					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+			io.datakernel.stream.net.MessagingWithBinaryStreaming<String, String> messaging =
+					io.datakernel.stream.net.MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 			messaging.receive()
 					.whenResult(msg -> {
@@ -390,7 +393,7 @@ public class MessagingWithBinaryStreamingTest {
 		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
 			if (throwable == null) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				MessagingWithBinaryStreaming<String, String> messaging =
+				io.datakernel.stream.net.MessagingWithBinaryStreaming<String, String> messaging =
 						MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 				messaging.send("start");

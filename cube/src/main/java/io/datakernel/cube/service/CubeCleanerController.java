@@ -153,7 +153,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 														tuple.lastSnapshot.getInstant().minus(chunksCleanupDelay)));
 							else {
 								logger.info("Not enough snapshots, skip cleanup");
-								return Stage.of(null);
+								return Stage.complete();
 							}
 						}))
 				.whenComplete(toLogger(logger, thisMethod(), checkpointNode));

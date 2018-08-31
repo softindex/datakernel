@@ -62,7 +62,7 @@ public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> im
 		LogStreamChunker chunker = new LogStreamChunker(currentTimeProvider, fileSystem, datetimeFormat, logPartition, switcher);
 		long timestamp = currentTimeProvider.currentTimeMillis();
 		String chunkName = datetimeFormat.format(Instant.ofEpochMilli(timestamp));
-		chunker.startNewChunk(chunkName, Stage.of(null));
+		chunker.startNewChunk(chunkName, Stage.complete());
 		return chunker;
 	}
 

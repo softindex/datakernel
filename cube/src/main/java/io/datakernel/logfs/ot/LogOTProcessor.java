@@ -94,12 +94,12 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 
 	@Override
 	public Stage<Void> start() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override
 	public Stage<Void> stop() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	private final AsyncSupplier<LogDiff<D>> processLog = reuse(this::doProcessLog);

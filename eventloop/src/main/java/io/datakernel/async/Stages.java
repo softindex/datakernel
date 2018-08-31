@@ -31,7 +31,7 @@ public final class Stages {
 	 * @see Stages#all(List)
 	 */
 	public static Stage<Void> all() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	/**
@@ -76,7 +76,7 @@ public final class Stages {
 	 */
 	public static Stage<Void> all(List<? extends Stage<?>> stages) {
 		int size = stages.size();
-		if (size == 0) return Stage.of(null);
+		if (size == 0) return Stage.complete();
 		if (size == 1) return stages.get(0).toVoid();
 		if (size == 2) return stages.get(0).both(stages.get(1));
 		return all(stages.iterator());
@@ -331,7 +331,7 @@ public final class Stages {
 		while (stages.hasNext()) {
 			stages.next().whenComplete((value, throwable) -> {
 				if (throwable == null) {
-					if (!result.isSet()) {
+					if (!result.isComplete()) {
 						accumulatorConsumer.accept(accumulatorValue, value);
 						if (--counter[0] == 0) {
 							result.trySet(collector.finisher().apply(accumulatorValue));
@@ -656,7 +656,7 @@ public final class Stages {
 	 * @see Stages#runSequence(Iterator)
 	 */
 	public static Stage<Void> runSequence() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	/**

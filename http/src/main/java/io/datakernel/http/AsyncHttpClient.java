@@ -425,7 +425,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@Override
 	public Stage<Void> start() {
 		checkState(eventloop.inEventloopThread());
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Nullable

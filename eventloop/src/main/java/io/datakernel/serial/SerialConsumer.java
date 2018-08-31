@@ -15,7 +15,7 @@ public interface SerialConsumer<T> extends Cancellable {
 	}
 
 	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer) {
-		return of(consumer, endOfStream -> Stage.of(null));
+		return of(consumer, endOfStream -> Stage.complete());
 	}
 
 	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer,
@@ -41,7 +41,17 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
+	static <T> SerialConsumer<T> ofException(Throwable e) {
+		return new AbstractSerialConsumer<T>() {
+			@Override
+			public Stage<Void> accept(T value) {
+				return Stage.ofException(e);
+			}
+		};
+	}
+
 	static <T> SerialConsumer<T> ofStage(Stage<? extends SerialConsumer<T>> stage) {
+		MaterializedStage<? extends SerialConsumer<T>> materializedStage = stage.materialize();
 		return new SerialConsumer<T>() {
 			SerialConsumer<T> consumer;
 			Throwable exception;
@@ -54,10 +64,7 @@ public interface SerialConsumer<T> extends Cancellable {
 						this.consumer = consumer;
 						return consumer.accept(value);
 					} else {
-						if (exception != null) {
-							consumer.closeWithError(exception);
-						}
-						return Stage.ofException(exception);
+						return Stage.ofException(e);
 					}
 				});
 			}
@@ -65,9 +72,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			@Override
 			public void closeWithError(Throwable e) {
 				exception = e;
-				if (consumer != null) {
-					consumer.closeWithError(e);
-				}
+				materializedStage.whenResult(supplier -> supplier.closeWithError(e));
 			}
 		};
 	}
@@ -118,7 +123,7 @@ public interface SerialConsumer<T> extends Cancellable {
 				if (value != null && predicate.test(value)) {
 					return SerialConsumer.this.accept(value);
 				} else {
-					return Stage.of(null);
+					return Stage.complete();
 				}
 			}
 		};
@@ -132,9 +137,9 @@ public interface SerialConsumer<T> extends Cancellable {
 					return predicate.test(value)
 							.thenCompose(test -> test ?
 									SerialConsumer.this.accept(value) :
-									Stage.of(null));
+									Stage.complete());
 				} else {
-					return Stage.of(null);
+					return Stage.complete();
 				}
 			}
 		};
@@ -142,15 +147,11 @@ public interface SerialConsumer<T> extends Cancellable {
 
 	default SerialConsumer<T> whenEndOfStream(Runnable action) {
 		return new AbstractSerialConsumer<T>(this) {
-			boolean done;
-
 			@Override
 			public Stage<Void> accept(T value) {
-				if (value == null && !done) {
-					done = true;
-					action.run();
-				}
-				return SerialConsumer.this.accept(value);
+				Stage<Void> result = SerialConsumer.this.accept(value);
+				if (value == null) action.run();
+				return result;
 			}
 		};
 	}

@@ -265,12 +265,12 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Stage<Void> start() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override
 	public Stage<Void> stop() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override

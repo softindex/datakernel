@@ -190,7 +190,7 @@ public interface FsClient {
 						set.removeAll(res);
 						return Stage.ofException(new RemoteFsException("Those files were not moved: " + set));
 					}
-					return Stage.of(null);
+					return Stage.complete();
 				});
 	}
 
@@ -226,7 +226,7 @@ public interface FsClient {
 						set.removeAll(res);
 						return Stage.ofException(new RemoteFsException("Those files were not copied: " + set));
 					}
-					return Stage.of(null);
+					return Stage.complete();
 				});
 	}
 

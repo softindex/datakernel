@@ -22,6 +22,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.util.ThrowingConsumer;
 
+import java.util.ArrayDeque;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -104,7 +105,8 @@ public final class StreamConsumers {
 
 	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, Void>, StreamDataReceiver<T> {
 		private final SerialConsumer<T> consumer;
-		private int waiting;
+		private final ArrayDeque<T> deque = new ArrayDeque<>();
+		private boolean endOfStreamReceived;
 		private final SettableStage<Void> resultStage = new SettableStage<>();
 
 		OfSerialConsumerImpl(SerialConsumer<T> consumer) {
@@ -116,49 +118,62 @@ public final class StreamConsumers {
 			getProducer().produce(this);
 		}
 
-		@SuppressWarnings("unchecked")
-		@Override
-		public void onData(T item) {
-			assert item != null;
-			Stage<Void> stage = consumer.accept(item);
-			if (stage.isSet()) {
-				if (stage.isResult()) {
-					return;
-				} else {
-					closeWithError(stage.getException());
-				}
-			}
-			waiting++;
-			getProducer().suspend();
-			stage.whenComplete(($, throwable) -> {
-				if (--waiting == 0) {
-					if (throwable == null) {
-						if (getStatus().isOpen()) {
-							getProducer().streamTo(this);
-						} else {
-							if (getStatus() == StreamStatus.END_OF_STREAM) {
-								consumer.accept(null)
-										.whenComplete(resultStage::trySet);
-							}
-						}
-					} else {
-						closeWithError(throwable);
-					}
-				}
-			});
+		private boolean isExhausted() {
+			return deque.isEmpty();
 		}
 
-		@SuppressWarnings("unchecked")
-		@Override
-		protected void onEndOfStream() {
-			if (waiting == 0) {
+		private boolean isSaturated() {
+			return !deque.isEmpty();
+		}
+
+		private void produce() {
+			while (!deque.isEmpty()) {
+				Stage<Void> accept = consumer.accept(deque.poll());
+				if (accept.isResult()) continue;
+				accept.whenComplete(($, e) -> {
+					if (e == null) {
+						produce();
+					} else {
+						closeWithError(e);
+					}
+				});
+				break;
+			}
+			if (isExhausted()) {
+				getProducer().produce(this);
+			} else if (isSaturated()) {
+				getProducer().suspend();
+			}
+			if (getStatus() == StreamStatus.END_OF_STREAM) {
 				consumer.accept(null)
 						.whenComplete(resultStage::trySet);
 			}
 		}
 
+		@SuppressWarnings("unchecked")
+		@Override
+		public void onData(T item) {
+			assert item != null;
+			getProducer().suspend();
+			boolean wasEmpty = deque.isEmpty();
+			deque.add(item);
+			if (wasEmpty) {
+				produce();
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		protected void onEndOfStream() {
+			endOfStreamReceived = true;
+			if (deque.isEmpty()) {
+				produce();
+			}
+		}
+
 		@Override
 		protected void onError(Throwable t) {
+			deque.clear();
 			consumer.closeWithError(t);
 			resultStage.trySetException(t);
 		}

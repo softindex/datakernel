@@ -81,7 +81,7 @@ public class AggregationGroupReducerTest {
 
 			@Override
 			public Stage<Void> finish(Set<Long> chunkIds) {
-				return Stage.of(null);
+				return Stage.complete();
 			}
 		};
 

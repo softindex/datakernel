@@ -74,7 +74,7 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	@Override
 	public Stage<Void> push(Collection<OTCommit<K, D>> commits) {
 		doPush(commits);
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override
@@ -94,7 +94,7 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	@Override
 	public Stage<Void> saveSnapshot(K revisionId, List<D> diffs) {
 		doSaveSnapshot(revisionId, diffs);
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override

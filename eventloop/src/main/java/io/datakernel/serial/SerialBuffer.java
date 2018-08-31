@@ -121,7 +121,7 @@ public final class SerialBuffer<T> implements HasSerialConsumer<T>, HasSerialSup
 				SettableStage<T> take = this.take;
 				this.take = null;
 				take.set(value);
-				return Stage.of(null);
+				return Stage.complete();
 			}
 
 			if (value != null) {
@@ -131,12 +131,12 @@ public final class SerialBuffer<T> implements HasSerialConsumer<T>, HasSerialSup
 					put = new SettableStage<>();
 					return put;
 				} else {
-					return Stage.of(null);
+					return Stage.complete();
 				}
 			}
 
 			endOfStreamReceived = true;
-			return Stage.of(null);
+			return Stage.complete();
 		}
 
 		deepRecycle(value);

@@ -14,24 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.async;
+package io.datakernel.serial.net;
 
-import io.datakernel.exception.StacklessException;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 
-public interface Cancellable {
-	StacklessException CANCEL_EXCEPTION = new StacklessException("AsyncSupplier cancelled");
+public interface SocketStreaming {
+	SerialSupplier<ByteBuf> getSocketReader();
 
-	void closeWithError(Throwable e);
-
-	default void cancel() {
-		closeWithError(CANCEL_EXCEPTION);
-	}
-
-	static Cancellable of(Cancellable... cancellables) {
-		return e -> {
-			for (Cancellable cancellable : cancellables) {
-				cancellable.closeWithError(e);
-			}
-		};
-	}
+	SerialConsumer<ByteBuf> getSocketWriter();
 }

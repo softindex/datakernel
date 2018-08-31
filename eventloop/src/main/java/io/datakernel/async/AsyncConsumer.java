@@ -18,7 +18,7 @@ public interface AsyncConsumer<T> {
 	static <T> AsyncConsumer<T> of(Consumer<? super T> consumer) {
 		return value -> {
 			consumer.accept(value);
-			return Stage.of(null);
+			return Stage.complete();
 		};
 	}
 

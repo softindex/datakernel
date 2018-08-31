@@ -4,7 +4,6 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
-import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -13,6 +12,7 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.processor.StreamFunction;
 import io.datakernel.stream.processor.StreamSplitter;
@@ -119,7 +119,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 												if (repartitionStage == null) {
 													return Stage.ofException(new Exception("forced stop"));
 												}
-												return Stage.of(null);
+												return Stage.complete();
 											})));
 				})
 				.whenComplete(repartitionStageStats.recordStats())
@@ -130,7 +130,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 						logger.info("repartition finished, {} files ensured, {} errored", ensuredFiles, failedFiles);
 					}
 					repartitionStage = null;
-					return Stage.of(null);
+					return Stage.complete();
 				});
 		return repartitionStage;
 	}
@@ -239,19 +239,19 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 								}
 							})
 							.toTry();
-				})
-		).thenCompose(tries -> {
-			if (!tries.stream().allMatch(Try::isSuccess)) { // any of list calls failed
-				logger.warn("failed figuring out partitions for file " + fileToUpload + ", skipping");
-				return Stage.of(null); // using null to mark failure without exceptions
-			}
-			return Stage.of(uploadTargets);
-		});
+				}))
+				.thenCompose(tries -> {
+					if (!tries.stream().allMatch(Try::isSuccess)) { // any of list calls failed
+						logger.warn("failed figuring out partitions for file " + fileToUpload + ", skipping");
+						return Stage.of(null); // using null to mark failure without exceptions
+					}
+					return Stage.of(uploadTargets);
+				});
 	}
 
 	@Override
 	public Stage<Void> start() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override
@@ -261,7 +261,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 			this.repartitionStage = null;
 			return repartitionStage;
 		}
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	// region JMX

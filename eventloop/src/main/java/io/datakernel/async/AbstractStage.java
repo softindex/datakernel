@@ -19,14 +19,28 @@ abstract class AbstractStage<T> implements Stage<T> {
 	private static final BiConsumer<Object, Throwable> COMPLETED_STAGE =
 			(value, throwable) -> { throw new UnsupportedOperationException();};
 
+	private static final BiConsumer<Object, Throwable> COMPLETED_EXCEPTIONALLY_STAGE =
+			(value, throwable) -> { throw new UnsupportedOperationException();};
+
 	protected BiConsumer<? super T, Throwable> next;
 
+	@Override
 	public boolean isComplete() {
+		return next == COMPLETED_STAGE || next == COMPLETED_EXCEPTIONALLY_STAGE;
+	}
+
+	@Override
+	public boolean isResult() {
 		return next == COMPLETED_STAGE;
 	}
 
+	@Override
+	public boolean isException() {
+		return next == COMPLETED_EXCEPTIONALLY_STAGE;
+	}
+
 	protected void complete(@Nullable T value, @Nullable Throwable error) {
-		assert !isComplete();
+		assert next != COMPLETED_STAGE && next != COMPLETED_EXCEPTIONALLY_STAGE;
 		if (error == null) {
 			complete(value);
 		} else {
@@ -36,22 +50,20 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
 	protected void complete(@Nullable T value) {
-		assert !isComplete();
+		assert next != COMPLETED_STAGE && next != COMPLETED_EXCEPTIONALLY_STAGE;
 		if (next != null) {
 			next.accept(value, null);
 			next = COMPLETED_STAGE;
 		}
-		assert (next = COMPLETED_STAGE) != null;
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
 	protected void completeExceptionally(@Nullable Throwable error) {
-		assert !isComplete();
+		assert next != COMPLETED_STAGE && next != COMPLETED_EXCEPTIONALLY_STAGE;
 		if (next != null) {
 			next.accept(null, error);
-			next = COMPLETED_STAGE;
+			next = COMPLETED_EXCEPTIONALLY_STAGE;
 		}
-		assert (next = COMPLETED_STAGE) != null;
 	}
 
 	protected void tryComplete(@Nullable T value, @Nullable Throwable error) {
@@ -83,7 +95,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 		if (next == null) {
 			next = consumer;
 		} else {
-			assert next != COMPLETED_STAGE : "Stage has already been completed";
+			assert !isComplete() : "Stage has already been completed";
 			if (consumer instanceof NextStage) {
 				NextStage nextStage = (NextStage) consumer;
 				assert nextStage.next == null;
@@ -360,11 +372,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 			}
 		});
 		return then(resultStage);
-	}
-
-	@Override
-	public Stage<T> async() {
-		return this;
 	}
 
 	@Override

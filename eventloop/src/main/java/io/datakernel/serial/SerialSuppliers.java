@@ -37,7 +37,7 @@ public final class SerialSuppliers {
 
 	public static <T> SerialSupplier<T> concat(Iterator<? extends SerialSupplier<? extends T>> iterator) {
 		return new SerialSupplier<T>() {
-			SerialSupplier<? extends T> current = SerialSupplier.of(() -> null);
+			SerialSupplier<? extends T> current = SerialSupplier.of();
 
 			@Override
 			public Stage<T> get() {
@@ -104,7 +104,7 @@ public final class SerialSuppliers {
 		Stage<T> supplierStage;
 		while (true) {
 			supplierStage = supplier.get();
-			if (!supplierStage.isResult()) break;
+			if (!supplierStage.hasResult()) break;
 			T item = supplierStage.getResult();
 			if (item == null) break;
 			Stage<Void> consumerStage = consumer.accept(item);

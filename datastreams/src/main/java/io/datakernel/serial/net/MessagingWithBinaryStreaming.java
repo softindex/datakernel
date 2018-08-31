@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.net;
+package io.datakernel.serial.net;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
@@ -25,10 +25,10 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.util.Taggable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -195,35 +195,35 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	}
 
 	@Override
-	public StreamConsumerWithResult<ByteBuf, Void> sendBinaryStream() {
+	public SerialConsumer<ByteBuf> sendBinaryStream() {
 		checkState(socketWriter == null, "Cannot send raw binary data while already sending raw binary data");
 		checkState(!writeEndOfStreamRequest, "Cannot send raw binary data after end of stream was sent");
 
 		writeCallbacks.clear();
 		if (closedException != null) {
 			logger.warn("failed to send binary data: " + this, closedException);
-			return StreamConsumer.<ByteBuf>closingWithError(closedException).withEndOfStreamAsResult();
+			return SerialConsumer.ofException(closedException);
 		}
 
 		logger.trace("sending binary data: {}", this);
 
-		socketWriter = SocketStreamConsumer.create(socket);
-		return socketWriter.withResult(socketWriter.getSentStage());
+		socketWriter = new SocketStreamConsumer(socket);
+		return socketWriter;
 	}
 
 	@Override
-	public StreamProducerWithResult<ByteBuf, Void> receiveBinaryStream() {
+	public SerialSupplier<ByteBuf> receiveBinaryStream() {
 		checkState(socketReader == null, "Cannot receive raw binary data while already receiving raw binary data");
 		checkState(receiveMessageCallback == null, "Cannot receive raw binary data while trying to receive a message");
 
 		if (closedException != null) {
 			logger.warn("failed to receive binary data: " + this, closedException);
-			return StreamProducer.<ByteBuf>closingWithError(closedException).withEndOfStreamAsResult();
+			return SerialSupplier.ofException(closedException);
 		}
 
 		logger.trace("receiving binary data: {}", this);
 
-		socketReader = SocketStreamProducer.create(socket);
+		socketReader = new SocketStreamProducer(socket);
 		if (readBuf != null || readEndOfStream) {
 			eventloop.post(() -> {
 				if (readBuf != null) {
@@ -234,7 +234,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 				}
 			});
 		}
-		return socketReader.withEndOfStreamAsResult();
+		return socketReader;
 	}
 
 	@Override
@@ -309,7 +309,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 				writeDone = true;
 		} else {
 			socketWriter.onWrite();
-			if (socketWriter.getStatus().isClosed())
+			if (socketWriter.isClosed())
 				writeDone = true;
 		}
 		closeIfDone();

@@ -20,16 +20,41 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
  * @param <T> Result type
  */
 public final class SettableStage<T> extends AbstractStage<T> implements MaterializedStage<T>, Callback<T> {
-	private static final Throwable NO_RESULT = new StacklessException();
+	private static final Throwable NO_EXCEPTION = new StacklessException();
 
 	@SuppressWarnings("unchecked")
 	@Nullable
 	protected T result;
 
 	@Nullable
-	protected Throwable exception = NO_RESULT;
+	protected Throwable exception = NO_EXCEPTION;
 
 	public SettableStage() {
+	}
+
+	@Override
+	public boolean isComplete() {
+		return exception != NO_EXCEPTION;
+	}
+
+	@Override
+	public boolean isResult() {
+		return exception == null;
+	}
+
+	@Override
+	public boolean isException() {
+		return super.isException();
+	}
+
+	@Override
+	public boolean hasResult() {
+		return isResult();
+	}
+
+	@Override
+	public boolean hasException() {
+		return isException();
 	}
 
 	/**
@@ -38,13 +63,10 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	 */
 	@Override
 	public void set(@Nullable T result) {
-		assert !isSet();
-		if (next == null) {
-			this.result = result;
-			this.exception = null;
-		} else {
-			complete(result);
-		}
+		assert !isComplete();
+		this.result = result;
+		this.exception = null;
+		complete(result);
 	}
 
 	/**
@@ -55,21 +77,17 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	 */
 	@Override
 	public void setException(Throwable throwable) {
-		assert !isSet();
-		if (next == null) {
-			result = null;
-			exception = throwable;
-		} else {
-			result = null;
-			completeExceptionally(throwable);
-		}
+		assert !isComplete();
+		result = null;
+		exception = throwable;
+		completeExceptionally(throwable);
 	}
 
 	/**
 	 * The same as {@link SettableStage#trySet(Object, Throwable)} )} but for result only.
 	 */
 	public void trySet(@Nullable T result) {
-		if (isSet()) {
+		if (isComplete()) {
 			return;
 		}
 		set(result);
@@ -82,7 +100,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	 * @return {@code true} if result or exception was set, {@code false} otherwise
 	 */
 	public void trySet(@Nullable T result, @Nullable Throwable throwable) {
-		if (isSet()) {
+		if (isComplete()) {
 			return;
 		}
 		if (throwable == null) {
@@ -96,7 +114,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	 * The same as {@link SettableStage#trySet(Object, Throwable)} )} but for exception only.
 	 */
 	public void trySetException(Throwable throwable) {
-		if (isSet()) {
+		if (isComplete()) {
 			return;
 		}
 		setException(throwable);
@@ -128,26 +146,8 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	protected void subscribe(BiConsumer<? super T, Throwable> next) {
-		assert !isSet();
+		assert !isComplete();
 		super.subscribe(next);
-	}
-
-	/**
-	 * @return {@code true} if this {@code SettableStage} result is not set, {@code false} otherwise.
-	 */
-	@Override
-	public boolean isSet() {
-		return exception != NO_RESULT;
-	}
-
-	@Override
-	public boolean isResult() {
-		return exception == null;
-	}
-
-	@Override
-	public boolean isException() {
-		return exception != NO_RESULT && exception != null;
 	}
 
 	@Override
@@ -168,12 +168,12 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Try<T> getTry() {
-		return isSet() ? Try.of(result, exception) : null;
+		return isComplete() ? Try.of(result, exception) : null;
 	}
 
 	@Override
 	public boolean setTo(BiConsumer<? super T, Throwable> consumer) {
-		if (isSet()) {
+		if (isComplete()) {
 			consumer.accept(result, exception);
 			return true;
 		} else {
@@ -209,7 +209,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public <U, S extends BiConsumer<? super T, Throwable> & Stage<U>> Stage<U> then(S stage) {
-		if (isSet()) {
+		if (isComplete()) {
 			stage.accept(result, exception);
 			return stage;
 		}
@@ -218,19 +218,19 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public <U> Stage<U> thenApply(Function<? super T, ? extends U> fn) {
-		if (isSet()) return isResult() ? Stage.of(fn.apply(result)) : mold();
+		if (isComplete()) return isResult() ? Stage.of(fn.apply(result)) : mold();
 		return super.thenApply(fn);
 	}
 
 	@Override
 	public <U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
-		if (isSet()) return Stage.of(fn.apply(result, exception));
+		if (isComplete()) return Stage.of(fn.apply(result, exception));
 		return super.thenApplyEx(fn);
 	}
 
 	@Override
 	public Stage<T> thenRun(Runnable action) {
-		if (isSet()) {
+		if (isComplete()) {
 			if (isResult()) action.run();
 			return this;
 		}
@@ -239,7 +239,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Stage<T> thenRunEx(Runnable action) {
-		if (isSet()) {
+		if (isComplete()) {
 			action.run();
 			return this;
 		}
@@ -248,7 +248,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {
-		if (isSet()) {
+		if (isComplete()) {
 			return isResult() ? fn.apply(result) : mold();
 		}
 		return super.thenCompose(fn);
@@ -256,7 +256,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
-		if (isSet()) {
+		if (isComplete()) {
 			return fn.apply(result, exception);
 		}
 		return super.thenComposeEx(fn);
@@ -264,7 +264,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Stage<T> whenComplete(BiConsumer<? super T, Throwable> action) {
-		if (isSet()) {
+		if (isComplete()) {
 			action.accept(result, exception);
 			return this;
 		}
@@ -273,7 +273,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Stage<T> whenResult(Consumer<? super T> action) {
-		if (isSet()) {
+		if (isComplete()) {
 			if (isResult()) action.accept(result);
 			return this;
 		}
@@ -282,7 +282,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Stage<T> whenException(Consumer<Throwable> action) {
-		if (isSet()) {
+		if (isComplete()) {
 			if (isException()) action.accept(exception);
 			return this;
 		}
@@ -291,7 +291,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Stage<T> thenException(Function<? super T, Throwable> fn) {
-		if (isSet()) {
+		if (isComplete()) {
 			return isResult() ? Stage.ofException(fn.apply(result)) : mold();
 		}
 		return super.thenException(fn);
@@ -299,7 +299,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
-		if (isSet()) {
+		if (isComplete()) {
 			if (isException()) return mold();
 			try {
 				return Stage.of(fn.apply(result));
@@ -314,19 +314,19 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Stage<T> async() {
-		if (isSet()) {
+		if (isComplete()) {
 			SettableStage<T> result = new SettableStage<>();
 			getCurrentEventloop().post(isResult() ?
 					() -> result.set(this.result) :
 					() -> result.setException(exception));
 			return result;
 		}
-		return super.async();
+		return this;
 	}
 
 	@Override
 	public Stage<Try<T>> toTry() {
-		if (isSet()) {
+		if (isComplete()) {
 			return isResult() ? Stage.of(Try.of(result)) : mold();
 		}
 		return super.toTry();
@@ -334,15 +334,15 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Stage<Void> toVoid() {
-		if (isSet()) {
-			return isResult() ? Stage.of(null) : mold();
+		if (isComplete()) {
+			return isResult() ? Stage.complete() : mold();
 		}
 		return super.toVoid();
 	}
 
 	@Override
 	public <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
-		if (isSet()) {
+		if (isComplete()) {
 			return new CompleteStage<>(result, exception).combine(other, fn);
 		}
 		return super.combine(other, fn);
@@ -350,7 +350,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Stage<Void> both(Stage<?> other) {
-		if (isSet()) {
+		if (isComplete()) {
 			return new CompleteStage<>(result, exception).both(other);
 		}
 		return super.both(other);
@@ -358,7 +358,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Stage<T> either(Stage<? extends T> other) {
-		if (isSet()) {
+		if (isComplete()) {
 			return new CompleteStage<>(result, exception).either(other);
 		}
 		return super.either(other);
@@ -366,7 +366,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public Stage<T> timeout(@Nullable Duration timeout) {
-		if (isSet()) {
+		if (isComplete()) {
 			return this;
 		}
 		return super.timeout(timeout);
@@ -374,7 +374,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public CompletableFuture<T> toCompletableFuture() {
-		if (isSet()) {
+		if (isComplete()) {
 			return new CompleteStage<>(result, exception).toCompletableFuture();
 		}
 		return super.toCompletableFuture();
@@ -382,7 +382,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public String toString() {
-		return "SettableStage{" + String.valueOf(isSet() ?
+		return "SettableStage{" + String.valueOf(isComplete() ?
 				(exception == null ?
 						"result=" + result :
 						"exception=" + exception.getClass().getSimpleName()) :

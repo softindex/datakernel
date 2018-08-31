@@ -82,7 +82,7 @@ public class AggregationChunkerTest {
 
 			@Override
 			public Stage<Void> finish(Set<Long> chunkIds) {
-				return Stage.of(null);
+				return Stage.complete();
 			}
 		};
 
@@ -158,7 +158,7 @@ public class AggregationChunkerTest {
 
 			@Override
 			public Stage<Void> finish(Set<Long> chunkIds) {
-				return Stage.of(null);
+				return Stage.complete();
 			}
 		};
 
@@ -254,7 +254,7 @@ public class AggregationChunkerTest {
 
 			@Override
 			public Stage<Void> finish(Set<Long> chunkIds) {
-				return Stage.of(null);
+				return Stage.complete();
 			}
 		};
 

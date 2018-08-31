@@ -4,17 +4,16 @@ import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.global.common.*;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.time.CurrentTimeProvider;
+import io.global.common.*;
 import io.global.globalsync.api.*;
 
 import java.util.*;
 
 import static java.util.Collections.emptyMap;
 import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 public final class RawServerImpl implements RawServer, EventloopService {
@@ -100,7 +99,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 						repositoryDb.ensureServers()
 								.thenCompose(servers -> Stages.any(servers.stream()
 										.map(server -> server.saveSnapshot(repositoryId, encryptedSnapshot)))) :
-						Stage.of(null));
+						Stage.complete());
 	}
 
 	@Override
@@ -132,7 +131,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				.sharedKeysBySender
 				.computeIfAbsent(simKey.getData().getRepositoryOwner(), $ -> new HashMap<>())
 				.put(simKey.getData().getSimKeyHash(), simKey);
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	@Override
@@ -153,7 +152,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 										servers.stream()
 												.map(server -> server.sendPullRequest(pullRequest))
 								)) :
-						Stage.of(null));
+						Stage.complete());
 	}
 
 	@Override
@@ -173,7 +172,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 
 	@Override
 	public Stage<Void> stop() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	private Stage<RawCommit> loadAndCacheCommit(RepositoryName repositoryId, List<? extends RawServer> servers, CommitId commitId) {

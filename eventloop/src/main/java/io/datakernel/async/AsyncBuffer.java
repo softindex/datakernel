@@ -78,7 +78,7 @@ public final class AsyncBuffer<T> {
 			SettableStage<T> take = this.take;
 			this.take = null;
 			take.set(value);
-			return Stage.of(null);
+			return Stage.complete();
 		}
 
 		deque.add(value);
@@ -86,7 +86,7 @@ public final class AsyncBuffer<T> {
 			put = new SettableStage<>();
 			return put;
 		} else {
-			return Stage.of(null);
+			return Stage.complete();
 		}
 	}
 

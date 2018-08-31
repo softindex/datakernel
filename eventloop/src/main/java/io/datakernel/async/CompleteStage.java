@@ -34,7 +34,7 @@ public final class CompleteStage<T> implements MaterializedStage<T> {
 	}
 
 	@Override
-	public boolean isSet() {
+	public boolean isComplete() {
 		return true;
 	}
 
@@ -46,6 +46,16 @@ public final class CompleteStage<T> implements MaterializedStage<T> {
 	@Override
 	public boolean isException() {
 		return exception != null;
+	}
+
+	@Override
+	public boolean hasResult() {
+		return true;
+	}
+
+	@Override
+	public boolean hasException() {
+		return true;
 	}
 
 	@Override
@@ -192,7 +202,7 @@ public final class CompleteStage<T> implements MaterializedStage<T> {
 		if (other instanceof CompleteStage) {
 			CompleteStage<?> otherComplete = (CompleteStage<?>) other;
 			if (otherComplete.isException()) return otherComplete.mold();
-			return Stage.of(null);
+			return Stage.complete();
 		}
 		return other.toVoid();
 	}
@@ -220,7 +230,7 @@ public final class CompleteStage<T> implements MaterializedStage<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Stage<Void> toVoid() {
-		return isResult() ? Stage.of(null) : mold();
+		return isResult() ? Stage.complete() : mold();
 	}
 
 	@Override

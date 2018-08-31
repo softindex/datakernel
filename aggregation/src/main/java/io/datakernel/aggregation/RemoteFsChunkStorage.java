@@ -296,7 +296,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 
 	@Override
 	public Stage<Void> stop() {
-		return Stage.of(null);
+		return Stage.complete();
 	}
 
 	// region JMX
