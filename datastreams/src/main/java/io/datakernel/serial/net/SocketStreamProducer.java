@@ -56,7 +56,7 @@ final class SocketStreamProducer implements SerialSupplier<ByteBuf> {
 
 	@Override
 	public void closeWithError(Throwable e) {
-		readQueue.clear();
+		readQueue.recycle();
 		if (read != null) {
 			read.setException(e);
 		}

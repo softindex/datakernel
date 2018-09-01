@@ -20,4 +20,7 @@ public interface MaterializedStage<T> extends Stage<T> {
 	default boolean hasException() {
 		return isException();
 	}
+
+	@Override
+	MaterializedStage<T> async();
 }

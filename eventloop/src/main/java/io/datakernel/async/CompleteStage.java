@@ -214,7 +214,7 @@ public final class CompleteStage<T> implements MaterializedStage<T> {
 	}
 
 	@Override
-	public Stage<T> async() {
+	public MaterializedStage<T> async() {
 		SettableStage<T> result = new SettableStage<>();
 		getCurrentEventloop().post(isResult() ?
 				() -> result.set(this.result) :

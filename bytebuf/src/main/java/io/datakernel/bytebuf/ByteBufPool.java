@@ -142,6 +142,22 @@ public final class ByteBufPool {
 		}
 	}
 
+	public static ByteBuf pack(ByteBuf buf) {
+		int size = buf.readRemaining();
+		if (size == 0) {
+			buf.recycle();
+			return ByteBuf.empty();
+		}
+		if (buf.array.length < minSize || buf.array.length >= maxSize) return buf;
+		int targetSize = 1 << (32 - Integer.numberOfLeadingZeros(size - 1));
+		if (targetSize == buf.array.length) return buf;
+		ByteBuf newBuf = allocate(targetSize);
+		newBuf.put(buf);
+		buf.recycle();
+		assert newBuf == pack(newBuf);
+		return newBuf;
+	}
+
 	public static ByteBuf append(ByteBuf to, ByteBuf from) {
 		assert !to.isRecycled() && !from.isRecycled();
 		if (to.readRemaining() == 0) {
@@ -202,8 +218,8 @@ public final class ByteBufPool {
 			int poolItems = ByteBufPool.getPoolItems(i);
 			if (createdItems != poolItems) {
 				sb.append(String.format("Slab %d (%d) ", i, (1 << i)))
-					.append(" created: ").append(createdItems)
-					.append(" pool: ").append(poolItems).append("\n");
+						.append(" created: ").append(createdItems)
+						.append(" pool: ").append(poolItems).append("\n");
 			}
 		}
 		return sb.toString();

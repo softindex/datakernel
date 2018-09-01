@@ -313,7 +313,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	}
 
 	@Override
-	public Stage<T> async() {
+	public MaterializedStage<T> async() {
 		if (isComplete()) {
 			SettableStage<T> result = new SettableStage<>();
 			getCurrentEventloop().post(isResult() ?

@@ -40,7 +40,7 @@ public final class BufsConsumerChunkedEncoder implements BufsConsumer {
 
 	@Override
 	public void closeWithError(Throwable e) {
-		outputBufs.clear();
+		outputBufs.recycle();
 		next.closeWithError(e);
 	}
 

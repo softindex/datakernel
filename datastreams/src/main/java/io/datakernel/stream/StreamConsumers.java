@@ -28,6 +28,8 @@ import java.util.Set;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.util.Recyclable.deepRecycle;
 
 public final class StreamConsumers {
 	private StreamConsumers() {}
@@ -106,8 +108,8 @@ public final class StreamConsumers {
 	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, Void>, StreamDataReceiver<T> {
 		private final SerialConsumer<T> consumer;
 		private final ArrayDeque<T> deque = new ArrayDeque<>();
-		private boolean endOfStreamReceived;
-		private final SettableStage<Void> resultStage = new SettableStage<>();
+		private final SettableStage<Void> result = new SettableStage<>();
+		private boolean writing;
 
 		OfSerialConsumerImpl(SerialConsumer<T> consumer) {
 			this.consumer = consumer;
@@ -115,67 +117,55 @@ public final class StreamConsumers {
 
 		@Override
 		protected void onStarted() {
-			getProducer().produce(this);
-		}
-
-		private boolean isExhausted() {
-			return deque.isEmpty();
-		}
-
-		private boolean isSaturated() {
-			return !deque.isEmpty();
-		}
-
-		private void produce() {
-			while (!deque.isEmpty()) {
-				Stage<Void> accept = consumer.accept(deque.poll());
-				if (accept.isResult()) continue;
-				accept.whenComplete(($, e) -> {
-					if (e == null) {
-						produce();
-					} else {
-						closeWithError(e);
-					}
-				});
-				break;
-			}
-			if (isExhausted()) {
-				getProducer().produce(this);
-			} else if (isSaturated()) {
-				getProducer().suspend();
-			}
-			if (getStatus() == StreamStatus.END_OF_STREAM) {
-				consumer.accept(null)
-						.whenComplete(resultStage::trySet);
-			}
+			produce();
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
 		public void onData(T item) {
 			assert item != null;
-			getProducer().suspend();
-			boolean wasEmpty = deque.isEmpty();
-			deque.add(item);
-			if (wasEmpty) {
-				produce();
+			if (!deque.isEmpty()) {
+				getProducer().suspend();
 			}
+			deque.add(item);
+			produce();
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
 		protected void onEndOfStream() {
-			endOfStreamReceived = true;
-			if (deque.isEmpty()) {
-				produce();
+			produce();
+		}
+
+		private void produce() {
+			if (writing) return;
+			while (!deque.isEmpty()) {
+				Stage<Void> accept = consumer.accept(deque.poll());
+				if (accept.isResult()) continue;
+				writing = true;
+				accept.whenComplete(($, e) -> {
+					writing = false;
+					if (e == null) {
+						produce();
+					} else {
+						closeWithError(e);
+					}
+				});
+				return;
+			}
+			if (getStatus() == END_OF_STREAM) {
+				consumer.accept(null)
+						.whenComplete(result::trySet);
+			} else {
+				getProducer().produce(this);
 			}
 		}
 
 		@Override
 		protected void onError(Throwable t) {
-			deque.clear();
+			deepRecycle(deque);
 			consumer.closeWithError(t);
-			resultStage.trySetException(t);
+			result.trySetException(t);
 		}
 
 		@Override
@@ -185,7 +175,7 @@ public final class StreamConsumers {
 
 		@Override
 		public MaterializedStage<Void> getResult() {
-			return resultStage;
+			return result;
 		}
 	}
 

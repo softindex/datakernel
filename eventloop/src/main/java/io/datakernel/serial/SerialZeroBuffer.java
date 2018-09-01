@@ -8,7 +8,7 @@ import io.datakernel.async.Stage;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
 
-public final class SerialZeroBuffer<T> implements HasSerialConsumer<T>, HasSerialSupplier<T>, Cancellable {
+public final class SerialZeroBuffer<T> implements SerialQueue<T>, HasSerialConsumer<T>, HasSerialSupplier<T>, Cancellable {
 	@Nullable
 	private CompleteStage<?> endOfStream;
 	@Nullable
@@ -88,6 +88,7 @@ public final class SerialZeroBuffer<T> implements HasSerialConsumer<T>, HasSeria
 		return endOfStreamReceived && isEmpty();
 	}
 
+	@Override
 	@SuppressWarnings("unchecked")
 	public Stage<Void> put(@Nullable T value) {
 		assert put == null;
@@ -116,6 +117,7 @@ public final class SerialZeroBuffer<T> implements HasSerialConsumer<T>, HasSeria
 		return (Stage<Void>) endOfStream;
 	}
 
+	@Override
 	@SuppressWarnings("unchecked")
 	public Stage<T> take() {
 		assert take == null;

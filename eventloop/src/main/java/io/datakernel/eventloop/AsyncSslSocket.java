@@ -29,6 +29,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.bytebuf.ByteBufPool.pack;
 import static io.datakernel.bytebuf.ByteBufPool.recycleIfEmpty;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
@@ -348,7 +349,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			read = false;
 			ByteBuf readBuf = engine2app;
 			engine2app = ByteBuf.empty();
-			downstreamEventHandler.onRead(readBuf);
+			downstreamEventHandler.onRead(pack(readBuf));
 		}
 
 		if (engine2app != null && result != null && result.getStatus() == CLOSED) {

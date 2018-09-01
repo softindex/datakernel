@@ -16,11 +16,11 @@
 
 package io.datakernel.http;
 
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.SerialSupplier;
 
 import java.net.InetAddress;
 import java.util.Arrays;
@@ -91,7 +91,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	public void onClosedWithError(Throwable e) {
 		if (inspector != null && e != null) inspector.onHttpError(remoteAddress, e);
-		readQueue.clear();
+		readQueue.recycle();
 		onClosed();
 	}
 

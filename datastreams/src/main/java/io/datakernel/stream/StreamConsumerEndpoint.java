@@ -1,7 +1,7 @@
 package io.datakernel.stream;
 
-import io.datakernel.serial.SerialBuffer;
 import io.datakernel.async.Stage;
+import io.datakernel.serial.SerialBuffer;
 
 public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	public static final int DEFAULT_BUFFER_SIZE = 10;

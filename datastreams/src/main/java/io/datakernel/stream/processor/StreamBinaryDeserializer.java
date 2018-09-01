@@ -160,7 +160,7 @@ public final class StreamBinaryDeserializer<T> implements StreamTransformer<Byte
 
 		@Override
 		protected void cleanup() {
-			queue.clear();
+			queue.recycle();
 		}
 	}
 

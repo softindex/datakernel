@@ -1,8 +1,8 @@
 package io.datakernel.stream;
 
-import io.datakernel.serial.SerialBuffer;
 import io.datakernel.async.Stage;
 import io.datakernel.functional.Try;
+import io.datakernel.serial.SerialBuffer;
 
 public final class StreamProducerEndpoint<T> extends AbstractStreamProducer<T> {
 	public static final int DEFAULT_BUFFER_SIZE = 10;

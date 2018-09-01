@@ -69,7 +69,7 @@ public class BufsConsumerGunzip implements BufsConsumer {
 	@Override
 	public void closeWithError(Throwable e) {
 		inflater.end();
-		outputBufs.clear();
+		outputBufs.recycle();
 		next.closeWithError(e);
 	}
 

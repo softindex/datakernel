@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -129,6 +130,10 @@ public interface StreamProducer<T> extends Cancellable {
 
 	default <R> StreamProducer<R> with(StreamProducerModifier<T, R> modifier) {
 		return modifier.applyTo(this);
+	}
+
+	default <R> R applyTo(Function<StreamProducer<T>, R> fn) {
+		return fn.apply(this);
 	}
 
 	default StreamProducer<T> withLateBinding() {

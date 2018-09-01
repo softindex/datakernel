@@ -194,7 +194,7 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 
 		@Override
 		protected void cleanup() {
-			queue.clear();
+			queue.recycle();
 		}
 	}
 

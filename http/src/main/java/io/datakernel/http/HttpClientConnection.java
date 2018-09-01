@@ -17,7 +17,9 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.*;
+import io.datakernel.async.Callback;
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -104,7 +106,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public void onClosedWithError(Throwable e) {
 		if (inspector != null) inspector.onHttpError(this, result == null, e);
-		readQueue.clear();
+		readQueue.recycle();
 		if (result != null) {
 			Callback<HttpResponse> callback = this.result;
 			eventloop.post(() -> callback.setException(e));

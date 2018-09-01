@@ -3,7 +3,6 @@ package io.datakernel.stream.processor;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.stream.AbstractStreamConsumer;
@@ -24,14 +23,14 @@ public class StreamConsumerToByteBuf extends AbstractStreamConsumer<ByteBuf> imp
 
 	@Override
 	protected void onStarted() {
-		getProducer().produce((data) -> {
+		getProducer().produce(buf -> {
 			ByteBuf state = this.state;
 			if (state == null) {
-				state = ByteBufPool.allocate(data.readRemaining());
+				state = ByteBufPool.allocate(buf.readRemaining());
 			}
-			state = ByteBufPool.ensureWriteRemaining(state, data.readRemaining());
-			state.put(data);
-			data.recycle();
+			state = ByteBufPool.ensureWriteRemaining(state, buf.readRemaining());
+			state.put(buf);
+			buf.recycle();
 			this.state = state;
 		});
 	}

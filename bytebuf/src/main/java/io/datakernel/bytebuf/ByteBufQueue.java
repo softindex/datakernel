@@ -16,12 +16,14 @@
 
 package io.datakernel.bytebuf;
 
+import io.datakernel.util.Recyclable;
+
 import java.util.function.Consumer;
 import java.util.stream.Collector;
 
 import static java.lang.System.arraycopy;
 
-public final class ByteBufQueue {
+public final class ByteBufQueue implements Recyclable {
 	private static final int DEFAULT_CAPACITY = 8;
 
 	private ByteBuf[] bufs;
@@ -383,7 +385,8 @@ public final class ByteBufQueue {
 	/**
 	 * Recycles all ByteBufs from this queue.
 	 */
-	public void clear() {
+	@Override
+	public void recycle() {
 		for (int i = first; i != last; i = next(i)) {
 			bufs[i].recycle();
 		}

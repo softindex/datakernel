@@ -70,4 +70,12 @@ public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, Stre
 		return getOutput();
 	}
 
+	default Function<StreamProducer<I>, StreamProducer<O>> toProducer() {
+		return this::applyTo;
+	}
+
+	default Function<StreamConsumer<O>, StreamConsumer<I>> toConsumer() {
+		return this::applyTo;
+	}
+
 }

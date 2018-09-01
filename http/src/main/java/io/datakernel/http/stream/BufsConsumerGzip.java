@@ -57,7 +57,7 @@ public class BufsConsumerGzip implements BufsConsumer {
 	@Override
 	public void closeWithError(Throwable e) {
 		deflater.end();
-		outputBufs.clear();
+		outputBufs.recycle();
 		next.closeWithError(e);
 	}
 

@@ -52,6 +52,12 @@ public interface SerialSupplier<T> extends Cancellable {
 		return modifier.apply(this);
 	}
 
+	default <X> X streamTo(Function<SerialSupplier<T>, X> fn) {
+		SerialZeroBuffer<T> buffer = new SerialZeroBuffer<>();
+		streamTo(buffer.getConsumer());
+		return fn.apply(buffer.getSupplier());
+	}
+
 	static <T> SerialSupplier<T> of(AsyncSupplier<T> supplier) {
 		return of(supplier, null);
 	}

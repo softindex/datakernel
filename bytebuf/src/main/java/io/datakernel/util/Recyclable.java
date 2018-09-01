@@ -1,5 +1,7 @@
 package io.datakernel.util;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -17,14 +19,20 @@ public interface Recyclable {
 				Object next = it.next();
 				deepRecycle(it.next());
 			}
+		} else if (object instanceof Collection) {
+			deepRecycle(object);
+			((Collection) object).clear();
 		} else if (object instanceof Iterable) {
 			deepRecycle(object);
 		} else if (object instanceof Map) {
 			deepRecycle(((Map) object).values());
+			((Map) object).clear();
 		} else if (object instanceof Object[]) {
-			for (Object element : (Object[]) object) {
+			Object[] objects = (Object[]) object;
+			for (Object element : objects) {
 				deepRecycle(element);
 			}
+			Arrays.fill(objects, null);
 		}
 	}
 }

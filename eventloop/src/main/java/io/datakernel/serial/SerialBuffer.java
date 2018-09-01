@@ -11,7 +11,7 @@ import java.util.ArrayDeque;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
 
-public final class SerialBuffer<T> implements HasSerialConsumer<T>, HasSerialSupplier<T>, Cancellable {
+public final class SerialBuffer<T> implements HasSerialConsumer<T>, HasSerialSupplier<T>, Cancellable, SerialQueue<T> {
 	private final ArrayDeque<T> deque = new ArrayDeque<>();
 	private final int bufferMinSize;
 	private final int bufferMaxSize;
@@ -111,6 +111,7 @@ public final class SerialBuffer<T> implements HasSerialConsumer<T>, HasSerialSup
 		deepRecycle(value);
 	}
 
+	@Override
 	@SuppressWarnings("unchecked")
 	public Stage<Void> put(@Nullable T value) {
 		assert put == null;
@@ -143,6 +144,7 @@ public final class SerialBuffer<T> implements HasSerialConsumer<T>, HasSerialSup
 		return (Stage<Void>) endOfStream;
 	}
 
+	@Override
 	@SuppressWarnings("unchecked")
 	public Stage<T> take() {
 		assert take == null;

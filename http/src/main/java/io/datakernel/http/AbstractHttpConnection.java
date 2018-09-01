@@ -125,7 +125,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	public final void close() {
 		if (isClosed()) return;
 		asyncTcpSocket.close();
-		readQueue.clear();
+		readQueue.recycle();
 		onClosed();
 	}
 
@@ -190,9 +190,13 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 							.whenResult(done -> {
 								if (!done) copyBufs(bufsSupplier, bufsConsumer, bufs);
 							})
-							.whenException(e -> {bufsSupplier.closeWithError(e); bufs.clear();});
+							.whenException(e -> {bufsSupplier.closeWithError(e);
+								bufs.recycle();
+							});
 				})
-				.whenException(e -> {bufsConsumer.closeWithError(e); bufs.clear();});
+				.whenException(e -> {bufsConsumer.closeWithError(e);
+					bufs.recycle();
+				});
 	}
 
 	@Override
