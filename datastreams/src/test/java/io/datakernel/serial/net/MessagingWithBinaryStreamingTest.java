@@ -21,14 +21,13 @@ import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
+import io.datakernel.serial.SerialZeroBuffer;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
-import io.datakernel.stream.StreamConsumer;
+import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.ByteBufRule;
-import io.datakernel.stream.processor.StreamBinaryDeserializer;
-import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
@@ -104,39 +103,40 @@ public class MessagingWithBinaryStreamingTest {
 
 		server.listen();
 
-		eventloop.connect(address).whenComplete(new BiConsumer<SocketChannel, Throwable>() {
-			void ping(int n, Messaging<Integer, Integer> messaging) {
-				messaging.send(n);
+		eventloop.connect(address)
+				.whenComplete(new BiConsumer<SocketChannel, Throwable>() {
+					void ping(int n, Messaging<Integer, Integer> messaging) {
+						messaging.send(n);
 
-				messaging.receive()
-						.whenResult(msg -> {
-							if (msg != null) {
-								if (msg > 0) {
-									ping(msg - 1, messaging);
-								} else {
-									messaging.close();
-								}
-							} else {
-								// empty
-							}
-						})
-						.whenException(e -> messaging.close());
-			}
+						messaging.receive()
+								.whenResult(msg -> {
+									if (msg != null) {
+										if (msg > 0) {
+											ping(msg - 1, messaging);
+										} else {
+											messaging.close();
+										}
+									} else {
+										// empty
+									}
+								})
+								.whenException(e -> messaging.close());
+					}
 
-			@Override
-			public void accept(SocketChannel socketChannel, Throwable throwable) {
-				if (throwable == null) {
-					AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					MessagingWithBinaryStreaming<Integer, Integer> messaging =
-							MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
-					ping(3, messaging);
-					asyncTcpSocket.setEventHandler(messaging);
-					asyncTcpSocket.register();
-				} else {
-					fail("Test Exception: " + throwable);
-				}
-			}
-		});
+					@Override
+					public void accept(SocketChannel socketChannel, Throwable throwable) {
+						if (throwable == null) {
+							AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+							MessagingWithBinaryStreaming<Integer, Integer> messaging =
+									MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+							ping(3, messaging);
+							asyncTcpSocket.setEventHandler(messaging);
+							asyncTcpSocket.register();
+						} else {
+							fail("Test Exception: " + throwable);
+						}
+					}
+				});
 
 		eventloop.run();
 	}
@@ -162,9 +162,9 @@ public class MessagingWithBinaryStreamingTest {
 						if (msg != null) {
 							assertEquals("start", msg);
 							StreamProducer.ofIterable(source)
-									.with(StreamBinarySerializer.create(LONG_SERIALIZER)
-											.withInitialBufferSize(MemSize.of(1)))
-									.asSerialSupplier()
+									.with(SerialBinarySerializer.create(LONG_SERIALIZER)
+											.withInitialBufferSize(MemSize.of(1))
+											.transformer(new SerialZeroBuffer<>()))
 									.streamTo(messaging.sendBinaryStream());
 						}
 					});
@@ -187,8 +187,8 @@ public class MessagingWithBinaryStreamingTest {
 				messaging.send("start");
 				messaging.sendEndOfStream();
 
-				StreamProducer.ofSerialSupplier(messaging.receiveBinaryStream())
-						.with(StreamBinaryDeserializer.create(LONG_SERIALIZER))
+				messaging.receiveBinaryStream()
+						.with(SerialBinaryDeserializer.create(LONG_SERIALIZER).transformer())
 						.streamTo(consumerToList);
 
 				asyncTcpSocket.setEventHandler(messaging);
@@ -226,8 +226,8 @@ public class MessagingWithBinaryStreamingTest {
 						if (msg != null) {
 							assertEquals("start", msg);
 
-							StreamProducer.ofSerialSupplier(messaging.receiveBinaryStream())
-									.with(StreamBinaryDeserializer.create(LONG_SERIALIZER))
+							messaging.receiveBinaryStream()
+									.with(SerialBinaryDeserializer.create(LONG_SERIALIZER).transformer())
 									.streamTo(consumerToList);
 
 							messaging.sendEndOfStream();
@@ -253,9 +253,10 @@ public class MessagingWithBinaryStreamingTest {
 						messaging.send("start");
 
 						StreamProducer.ofIterable(source)
-								.with(StreamBinarySerializer.create(LONG_SERIALIZER)
-										.withInitialBufferSize(MemSize.of(1)))
-								.streamTo(StreamConsumer.ofSerialConsumer(messaging.sendBinaryStream()));
+								.with(SerialBinarySerializer.create(LONG_SERIALIZER)
+										.withInitialBufferSize(MemSize.of(1))
+										.transformer(new SerialZeroBuffer<>()))
+								.streamTo(messaging.sendBinaryStream());
 
 						asyncTcpSocket.setEventHandler(messaging);
 						asyncTcpSocket.register();
@@ -295,7 +296,7 @@ public class MessagingWithBinaryStreamingTest {
 							assertEquals("start", msg);
 
 							messaging.receiveBinaryStream()
-									.streamTo(SerialBinaryDeserializer.modifier(LONG_SERIALIZER))
+									.with(SerialBinaryDeserializer.create(LONG_SERIALIZER).transformer())
 									.streamTo(consumerToList)
 									.getConsumerResult()
 									.thenRun(() -> {
@@ -323,9 +324,10 @@ public class MessagingWithBinaryStreamingTest {
 				messaging.send("start");
 
 				StreamProducer.ofIterable(source)
-						.with(StreamBinarySerializer.create(LONG_SERIALIZER)
-								.withInitialBufferSize(MemSize.of(1)))
-						.streamTo(StreamConsumer.ofSerialConsumer(messaging.sendBinaryStream()));
+						.with(SerialBinarySerializer.create(LONG_SERIALIZER)
+								.withInitialBufferSize(MemSize.of(1))
+								.transformer(new SerialZeroBuffer<>()))
+						.streamTo(messaging.sendBinaryStream());
 
 				messaging.receive()
 						.whenResult(msg -> {
@@ -375,8 +377,8 @@ public class MessagingWithBinaryStreamingTest {
 
 							messaging.sendEndOfStream();
 
-							StreamProducer.ofSerialSupplier(messaging.receiveBinaryStream())
-									.with(StreamBinaryDeserializer.create(LONG_SERIALIZER))
+							messaging.receiveBinaryStream()
+									.with(SerialBinaryDeserializer.create(LONG_SERIALIZER).transformer())
 									.streamTo(consumerToList);
 						}
 					});
@@ -399,10 +401,9 @@ public class MessagingWithBinaryStreamingTest {
 				messaging.send("start");
 
 				StreamProducer.ofIterable(source)
-						.applyTo(StreamBinarySerializer.create(LONG_SERIALIZER)
+						.with(SerialBinarySerializer.create(LONG_SERIALIZER)
 								.withInitialBufferSize(MemSize.of(1))
-								.toProducer())
-						.asSerialSupplier()
+								.transformer(new SerialZeroBuffer<>()))
 						.streamTo(messaging.sendBinaryStream());
 
 				asyncTcpSocket.setEventHandler(messaging);

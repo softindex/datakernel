@@ -42,7 +42,7 @@ import static java.lang.Math.max;
  * @param <T> original type of data
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> {
+public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToSerial<SerialBinarySerializer<T>, T, ByteBuf> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
@@ -59,15 +59,14 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> {
 	private boolean skipSerializationErrors = false;
 
 	private Input input;
-	private final SerialConsumer<ByteBuf> output;
+	private SerialConsumer<ByteBuf> output;
 
 	private final ArrayDeque<ByteBuf> bufs = new ArrayDeque<>();
 	private boolean writing;
 
 	// region creators
-	private SerialBinarySerializer(SerialConsumer<ByteBuf> output, BufferSerializer<T> serializer) {
+	private SerialBinarySerializer(BufferSerializer<T> serializer) {
 		this.serializer = serializer;
-		this.output = output;
 		rebuild();
 	}
 
@@ -81,9 +80,8 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> {
 	 *
 	 * @param serializer specified BufferSerializer for this type
 	 */
-	public static <T> SerialBinarySerializer<T> create(SerialConsumer<ByteBuf> output,
-			BufferSerializer<T> serializer) {
-		return new SerialBinarySerializer<>(output, serializer);
+	public static <T> SerialBinarySerializer<T> create(BufferSerializer<T> serializer) {
+		return new SerialBinarySerializer<>(serializer);
 	}
 
 	public SerialBinarySerializer<T> withInitialBufferSize(MemSize bufferSize) {
@@ -112,6 +110,16 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> {
 		this.skipSerializationErrors = skipSerializationErrors;
 		rebuild();
 		return this;
+	}
+
+	@Override
+	public void setOutput(SerialConsumer<ByteBuf> output) {
+		this.output = output;
+	}
+
+	@Override
+	public SerialConsumer<ByteBuf> getOutput() {
+		return output;
 	}
 
 	// endregion
@@ -150,7 +158,6 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> {
 		if (!bufs.isEmpty()) {
 			writing = true;
 			output.accept(bufs.poll())
-					.async()
 					.thenRun(() -> {
 						writing = false;
 						produce();

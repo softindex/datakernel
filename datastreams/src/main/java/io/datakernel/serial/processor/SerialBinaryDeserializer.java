@@ -24,9 +24,6 @@ import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamProducer;
-
-import java.util.function.Function;
 
 import static java.lang.String.format;
 
@@ -36,25 +33,33 @@ import static java.lang.String.format;
  *
  * @param <T> original type of data
  */
-public final class SerialBinaryDeserializer<T> extends AbstractStreamProducer<T> {
+public final class SerialBinaryDeserializer<T> extends AbstractStreamProducer<T> implements WithSerialToStream<SerialBinaryDeserializer<T>, ByteBuf, T> {
 	public static final ParseException HEADER_SIZE_EXCEPTION = new ParseException("Header size is too large");
 	public static final ParseException DESERIALIZED_SIZE_EXCEPTION = new ParseException("Deserialized size != parsed data size");
 
-	private final SerialSupplier<ByteBuf> input;
+	private SerialSupplier<ByteBuf> input;
 	private final BufferSerializer<T> valueSerializer;
 
 	private final ByteBufQueue queue = new ByteBufQueue();
 
 	// region creators
-	public SerialBinaryDeserializer(SerialSupplier<ByteBuf> input, BufferSerializer<T> valueSerializer) {
+	private SerialBinaryDeserializer(BufferSerializer<T> valueSerializer) {
 		this.valueSerializer = valueSerializer;
+	}
+
+	public static <T> SerialBinaryDeserializer<T> create(BufferSerializer<T> valueSerializer) {
+		return new SerialBinaryDeserializer<T>(valueSerializer);
+	}
+
+	@Override
+	public void setInput(SerialSupplier<ByteBuf> input) {
 		this.input = input;
 	}
 
-	public static <T> Function<SerialSupplier<ByteBuf>, StreamProducer<T>> modifier(BufferSerializer<T> valueSerializer) {
-		return input -> new SerialBinaryDeserializer<>(input, valueSerializer);
+	@Override
+	public SerialSupplier<ByteBuf> getInput() {
+		return input;
 	}
-
 	// endregion
 
 	@Override
@@ -91,7 +96,6 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamProducer<T>
 
 			if (isReceiverReady()) {
 				input.get()
-						.async()
 						.whenResult(buf -> {
 							if (getStatus().isClosed()) {
 								buf.recycle();

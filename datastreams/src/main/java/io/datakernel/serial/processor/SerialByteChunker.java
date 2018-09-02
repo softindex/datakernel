@@ -28,9 +28,9 @@ import io.datakernel.util.MemSize;
 import static io.datakernel.bytebuf.ByteBufPool.pack;
 import static java.lang.Math.min;
 
-public final class SerialByteChunker implements AsyncProcess {
-	private final SerialSupplier<ByteBuf> input;
-	private final SerialConsumer<ByteBuf> output;
+public final class SerialByteChunker implements WithSerialToSerial<SerialByteChunker, ByteBuf, ByteBuf>, AsyncProcess {
+	private SerialSupplier<ByteBuf> input;
+	private SerialConsumer<ByteBuf> output;
 
 	private final int minChunkSize;
 	private final int maxChunkSize;
@@ -39,28 +39,35 @@ public final class SerialByteChunker implements AsyncProcess {
 	private SettableStage<Void> process;
 
 	// region creators
-	private SerialByteChunker(SerialSupplier<ByteBuf> input, SerialConsumer<ByteBuf> output,
-			int minChunkSize, int maxChunkSize) {
-		this.input = input;
-		this.output = output;
+	private SerialByteChunker(int minChunkSize, int maxChunkSize) {
 		this.minChunkSize = minChunkSize;
 		this.maxChunkSize = maxChunkSize;
 	}
 
-	public static SerialByteChunker create(SerialSupplier<ByteBuf> input, SerialConsumer<ByteBuf> output,
-			MemSize minChunkSize, MemSize maxChunkSize) {
-		return new SerialByteChunker(input, output,
-				minChunkSize.toInt(), maxChunkSize.toInt());
+	public static SerialByteChunker create(MemSize minChunkSize, MemSize maxChunkSize) {
+		return new SerialByteChunker(minChunkSize.toInt(), maxChunkSize.toInt());
 	}
-	// endregion
 
+	@Override
+	public void setInput(SerialSupplier<ByteBuf> input) {
+		this.input = input;
+	}
+
+	@Override
 	public SerialSupplier<ByteBuf> getInput() {
 		return input;
 	}
 
+	@Override
+	public void setOutput(SerialConsumer<ByteBuf> output) {
+		this.output = output;
+	}
+
+	@Override
 	public SerialConsumer<ByteBuf> getOutput() {
 		return output;
 	}
+	// endregion
 
 	@Override
 	public Stage<Void> process() {
@@ -74,14 +81,15 @@ public final class SerialByteChunker implements AsyncProcess {
 	private void doProcess() {
 		if (process.isComplete()) return;
 		input.get()
-				.async()
 				.whenResult(buf -> {
 					if (process.isComplete()) {
 						buf.recycle();
 						return;
 					}
 					if (buf == null) {
-						output.accept(bufs.takeRemaining())
+						(bufs.hasRemaining() ?
+								output.accept(bufs.takeRemaining()) :
+								Stage.complete())
 								.thenCompose($ -> output.accept(null))
 								.thenRun(() -> process.trySet(null))
 								.whenException(this::closeWithError);
@@ -102,7 +110,6 @@ public final class SerialByteChunker implements AsyncProcess {
 					}
 					ByteBuf out = bufs.takeExactSize(min(exactSize, maxChunkSize));
 					output.accept(out)
-							.async()
 							.thenRun(this::doProcess)
 							.whenException(this::closeWithError);
 				})

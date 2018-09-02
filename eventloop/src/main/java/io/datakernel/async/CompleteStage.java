@@ -50,12 +50,12 @@ public final class CompleteStage<T> implements MaterializedStage<T> {
 
 	@Override
 	public boolean hasResult() {
-		return true;
+		return isResult();
 	}
 
 	@Override
 	public boolean hasException() {
-		return true;
+		return isException();
 	}
 
 	@Override

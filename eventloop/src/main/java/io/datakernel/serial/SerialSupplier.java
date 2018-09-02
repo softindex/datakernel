@@ -52,10 +52,8 @@ public interface SerialSupplier<T> extends Cancellable {
 		return modifier.apply(this);
 	}
 
-	default <X> X streamTo(Function<SerialSupplier<T>, X> fn) {
-		SerialZeroBuffer<T> buffer = new SerialZeroBuffer<>();
-		streamTo(buffer.getConsumer());
-		return fn.apply(buffer.getSupplier());
+	default <X> X with(Function<SerialSupplier<T>, X> fn) {
+		return fn.apply(this);
 	}
 
 	static <T> SerialSupplier<T> of(AsyncSupplier<T> supplier) {
@@ -189,8 +187,14 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
 			public Stage<T> get() {
-				return SerialSupplier.this.get()
-						.thenCompose(value -> value == null || predicate.test(value) ? Stage.of(value) : get());
+				while (true) {
+					Stage<T> stage = SerialSupplier.this.get();
+					if (stage.hasResult()) {
+						if (predicate.test(stage.getResult())) return stage;
+						continue;
+					}
+					return stage.thenCompose(value -> value == null || predicate.test(value) ? Stage.of(value) : get());
+				}
 			}
 		};
 	}

@@ -108,17 +108,16 @@ public final class SerialSuppliers {
 			T item = supplierStage.getResult();
 			if (item == null) break;
 			Stage<Void> consumerStage = consumer.accept(item);
-			if (!consumerStage.isResult()) {
-				consumerStage.whenComplete(($, e2) -> {
-					if (e2 == null) {
-						streamImpl(supplier, consumer, result);
-					} else {
-						supplier.closeWithError(e2);
-						result.trySetException(e2);
-					}
-				});
-				return;
-			}
+			if (consumerStage.isResult()) continue;
+			consumerStage.whenComplete(($, e) -> {
+				if (e == null) {
+					streamImpl(supplier, consumer, result);
+				} else {
+					supplier.closeWithError(e);
+					result.trySetException(e);
+				}
+			});
+			return;
 		}
 		supplierStage
 				.whenComplete((item, e1) -> {

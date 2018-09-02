@@ -11,7 +11,7 @@ import java.util.ArrayDeque;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
 
-public final class SerialBuffer<T> implements HasSerialConsumer<T>, HasSerialSupplier<T>, Cancellable, SerialQueue<T> {
+public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	private final ArrayDeque<T> deque = new ArrayDeque<>();
 	private final int bufferMinSize;
 	private final int bufferMaxSize;
@@ -29,26 +29,6 @@ public final class SerialBuffer<T> implements HasSerialConsumer<T>, HasSerialSup
 	public SerialBuffer(int bufferMinSize, int bufferMaxSize) {
 		this.bufferMinSize = bufferMinSize + 1;
 		this.bufferMaxSize = bufferMaxSize;
-	}
-
-	@Override
-	public SerialConsumer<T> getConsumer() {
-		return new AbstractSerialConsumer<T>(SerialBuffer.this) {
-			@Override
-			public Stage<Void> accept(T value) {
-				return SerialBuffer.this.put(value);
-			}
-		};
-	}
-
-	@Override
-	public SerialSupplier<T> getSupplier() {
-		return new AbstractSerialSupplier<T>(SerialBuffer.this) {
-			@Override
-			public Stage<T> get() {
-				return SerialBuffer.this.take();
-			}
-		};
 	}
 
 	public boolean isSaturated() {

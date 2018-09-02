@@ -97,7 +97,7 @@ public final class StreamFileReader implements SerialSupplier<ByteBuf> {
 					int bytesRead = buf.readRemaining(); // bytes written (as they were read from file, thus the name) to be read by a consumer (thus the method)
 					if (bytesRead == 0) { // this happens when file size is exact multiple of buffer size
 						buf.recycle();
-						return Stage.of((ByteBuf) null);
+						return Stage.of(null);
 					}
 					position += bytesRead;
 					if (limit != Long.MAX_VALUE) {
@@ -120,7 +120,7 @@ public final class StreamFileReader implements SerialSupplier<ByteBuf> {
 		cleanup();
 	}
 
-	protected void cleanup() {
+	private void cleanup() {
 		asyncFile.close()
 				.whenComplete(($, e) -> {
 					if (e == null) {

@@ -8,7 +8,7 @@ import io.datakernel.async.Stage;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
 
-public final class SerialZeroBuffer<T> implements SerialQueue<T>, HasSerialConsumer<T>, HasSerialSupplier<T>, Cancellable {
+public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	@Nullable
 	private CompleteStage<?> endOfStream;
 	@Nullable
@@ -18,26 +18,6 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, HasSerialConsu
 	private SettableStage<T> take;
 
 	private boolean endOfStreamReceived;
-
-	@Override
-	public SerialConsumer<T> getConsumer() {
-		return new AbstractSerialConsumer<T>(this) {
-			@Override
-			public Stage<Void> accept(T value) {
-				return put(value);
-			}
-		};
-	}
-
-	@Override
-	public SerialSupplier<T> getSupplier() {
-		return new AbstractSerialSupplier<T>(this) {
-			@Override
-			public Stage<T> get() {
-				return take();
-			}
-		};
-	}
 
 	public boolean isSaturated() {
 		return !isEmpty(); // size() > 0;

@@ -25,7 +25,7 @@ import java.nio.charset.Charset;
 
 import static java.lang.Math.min;
 
-public class ByteBuf implements Recyclable {
+public class ByteBuf implements Recyclable, AutoCloseable {
 	static final class ByteBufSlice extends ByteBuf {
 		private ByteBuf root;
 
@@ -118,6 +118,11 @@ public class ByteBuf implements Recyclable {
 			assert --refs == -1;
 			ByteBufPool.recycle(this);
 		}
+	}
+
+	@Override
+	public void close() {
+		recycle();
 	}
 
 	boolean isRecycled() {

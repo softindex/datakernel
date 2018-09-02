@@ -8,4 +8,23 @@ public interface SerialQueue<T> extends Cancellable {
 	Stage<Void> put(@Nullable T value);
 
 	Stage<T> take();
+
+	default SerialConsumer<T> getConsumer() {
+		return new AbstractSerialConsumer<T>(this) {
+			@Override
+			public Stage<Void> accept(T value) {
+				return put(value);
+			}
+		};
+	}
+
+	default SerialSupplier<T> getSupplier() {
+		return new AbstractSerialSupplier<T>(this) {
+			@Override
+			public Stage<T> get() {
+				return take();
+			}
+		};
+	}
+
 }

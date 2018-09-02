@@ -35,7 +35,6 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.bytebuf.ByteBufPool.pack;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings({"WeakerAccess", "AssertWithSideEffects"})
@@ -346,7 +345,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		if (inspector != null) inspector.onRead(buf);
-		socketEventHandler.onRead(pack(buf));
+		socketEventHandler.onRead(buf);
 		return numRead;
 	}
 

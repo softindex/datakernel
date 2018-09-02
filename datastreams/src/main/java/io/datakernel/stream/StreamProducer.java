@@ -132,7 +132,7 @@ public interface StreamProducer<T> extends Cancellable {
 		return modifier.applyTo(this);
 	}
 
-	default <R> R applyTo(Function<StreamProducer<T>, R> fn) {
+	default <R> R with(Function<StreamProducer<T>, R> fn) {
 		return fn.apply(this);
 	}
 

@@ -24,7 +24,7 @@ public interface Stage<T> {
 	/**
 	 * Creates successfully completed {@code Stage}
 	 */
-	static Stage<Void> complete() {
+	static CompleteStage<Void> complete() {
 		return COMPLETE;
 	}
 
