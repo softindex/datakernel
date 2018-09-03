@@ -20,7 +20,7 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	private SettableStage<T> take;
 
 	private boolean endOfStreamReceived;
-	private CompleteStage<?> endOfStream;
+	private Stage<?> endOfStream;
 
 	public SerialBuffer(int bufferSize) {
 		this(0, bufferSize);
@@ -194,6 +194,6 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 		deepRecycle(deque);
 		deque.clear();
 
-		endOfStream = CompleteStage.ofException(e);
+		endOfStream = Stage.ofException(e);
 	}
 }

@@ -283,12 +283,11 @@ abstract class AbstractStage<T> implements Stage<T> {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
 		if (other instanceof CompleteStage) {
-			@SuppressWarnings("unchecked") CompleteStage<U> otherCompleteStage = (CompleteStage<U>) other;
-			if (otherCompleteStage.isException()) return otherCompleteStage.mold();
-			return thenApply(result -> fn.apply(result, otherCompleteStage.getResult()));
+			return thenApply(result -> fn.apply(result, ((CompleteStage<U>) other).getResult()));
 		}
 		StageCombine<T, V, U> resultStage = new StageCombine<>(fn);
 		other.whenComplete((result, throwable) -> {
@@ -321,8 +320,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 	@Override
 	public Stage<Void> both(Stage<?> other) {
 		if (other instanceof CompleteStage) {
-			@SuppressWarnings("unchecked") CompleteStage<?> otherCompleteStage = (CompleteStage<?>) other;
-			if (otherCompleteStage.isException()) return otherCompleteStage.mold();
 			return toVoid();
 		}
 		StageBoth<T> resultStage = new StageBoth<>();

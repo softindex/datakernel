@@ -19,7 +19,7 @@ import java.util.function.Function;
  * @see SettableStage
  */
 public interface Stage<T> {
-	CompleteStage<Void> COMPLETE = new CompleteStage<>(null, null);
+	CompleteStage<Void> COMPLETE = new CompleteStage<>(null);
 
 	/**
 	 * Creates successfully completed {@code Stage}
@@ -34,7 +34,7 @@ public interface Stage<T> {
 	 * @param value result of Stage
 	 */
 	static <T> Stage<T> of(T value) {
-		return new CompleteStage<>(value, null);
+		return new CompleteStage<>(value);
 	}
 
 	/**
@@ -42,8 +42,8 @@ public interface Stage<T> {
 	 *
 	 * @param exception Throwable
 	 */
-	static <T> CompleteStage<T> ofException(Throwable exception) {
-		return new CompleteStage<>(null, exception);
+	static <T> Stage<T> ofException(Throwable exception) {
+		return new CompleteExceptionallyStage<>(exception);
 	}
 
 	static <T> Stage<T> ofCallback(Consumer<SettableStage<T>> callbackConsumer) {
@@ -57,11 +57,11 @@ public interface Stage<T> {
 	 * Useful for {@link #thenComposeEx(BiFunction)} passthroughs (eg. when mapping specific exceptions).
 	 *
 	 * @param value     value to wrap when exception is null
-	 * @param throwable possibly-null exception, determines type of stage completion
+	 * @param exception possibly-null exception, determines type of stage completion
 	 */
-	static <T> Stage<T> of(@Nullable T value, @Nullable Throwable throwable) {
-		assert !(value != null && throwable != null);
-		return new CompleteStage<>(value, throwable);
+	static <T> Stage<T> of(@Nullable T value, @Nullable Throwable exception) {
+		assert !(value != null && exception != null);
+		return exception == null ? of(value) : ofException(exception);
 	}
 
 	/**

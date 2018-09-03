@@ -41,19 +41,6 @@ public final class AsyncZeroBuffer<T> {
 		return value == null;
 	}
 
-	private void add(T value) {
-		assert value != null;
-		assert isEmpty();
-		this.value = value;
-	}
-
-	private T poll() {
-		assert !isEmpty();
-		T value = this.value;
-		this.value = null;
-		return value;
-	}
-
 	@SuppressWarnings("unchecked")
 	public Stage<Void> put(T value) {
 		assert value != null;
@@ -67,7 +54,7 @@ public final class AsyncZeroBuffer<T> {
 			return Stage.complete();
 		}
 
-		add(value);
+		this.value = value;
 		put = new SettableStage<>();
 		return put;
 	}
@@ -77,15 +64,18 @@ public final class AsyncZeroBuffer<T> {
 		assert take == null;
 
 		if (put != null) {
-			T item = poll();
+			T value = this.value;
 			SettableStage<Void> put = this.put;
+			this.value = null;
 			this.put = null;
 			put.set(null);
-			return Stage.of(item);
+			return Stage.of(value);
 		}
 
 		if (!isEmpty()) {
-			return Stage.of(poll());
+			T value = this.value;
+			this.value = null;
+			return Stage.of(value);
 		}
 
 		take = new SettableStage<>();

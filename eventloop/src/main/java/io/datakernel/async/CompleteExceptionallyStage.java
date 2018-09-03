@@ -12,16 +12,16 @@ import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
-public final class CompleteStage<T> implements MaterializedStage<T> {
-	private final T result;
-	private final Throwable exception = null;
+public final class CompleteExceptionallyStage<T> implements MaterializedStage<T> {
+	private final Throwable exception;
 
-	CompleteStage(T result) {
-		this.result = result;
+	CompleteExceptionallyStage(Throwable exception) {
+		this.exception = exception;
 	}
 
-	public static <T> CompleteStage<T> of(T result) {
-		return new CompleteStage<>(result);
+	public static <T> CompleteExceptionallyStage<T> ofException(Throwable e) {
+		assert e != null;
+		return new CompleteExceptionallyStage<>(e);
 	}
 
 	@Override
@@ -31,80 +31,80 @@ public final class CompleteStage<T> implements MaterializedStage<T> {
 
 	@Override
 	public boolean isResult() {
-		return true;
+		return false;
 	}
 
 	@Override
 	public boolean isException() {
-		return false;
-	}
-
-	@Override
-	public boolean hasResult() {
 		return true;
 	}
 
 	@Override
-	public boolean hasException() {
+	public boolean hasResult() {
 		return false;
 	}
 
 	@Override
-	public T getResult() {
-		return result;
+	public boolean hasException() {
+		return true;
 	}
 
 	@Override
-	public Throwable getException() {
+	public T getResult() {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
+	public Throwable getException() {
+		return exception;
+	}
+
+	@Override
 	public Try<T> getTry() {
-		return Try.of(result);
+		return Try.ofException(exception);
 	}
 
 	@Override
 	public boolean setTo(BiConsumer<? super T, Throwable> consumer) {
-		consumer.accept(result, exception);
+		consumer.accept(null, exception);
 		return true;
 	}
 
 	@Override
 	public boolean setResultTo(Consumer<? super T> consumer) {
-		consumer.accept(result);
-		return true;
+		return false;
 	}
 
 	@Override
 	public boolean setExceptionTo(Consumer<Throwable> consumer) {
-		return false;
+		consumer.accept(exception);
+		return true;
 	}
 
 	@SuppressWarnings("unchecked")
-	public <U> CompleteStage<U> mold() {
-		throw new AssertionError("Trying to mold a successful CompleteStage!");
+	public <U> CompleteExceptionallyStage<U> mold() {
+		return (CompleteExceptionallyStage<U>) this;
 	}
 
 	@Override
 	public <U, S extends BiConsumer<? super T, Throwable> & Stage<U>> Stage<U> then(S stage) {
-		stage.accept(result, exception);
+		stage.accept(null, exception);
 		return stage;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Stage<U> thenApply(Function<? super T, ? extends U> fn) {
-		return Stage.of(fn.apply(result));
+		return mold();
 	}
 
 	@Override
 	public <U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
-		return Stage.of(fn.apply(result, exception));
+		return Stage.of(fn.apply(null, exception));
 	}
 
 	@Override
 	public Stage<T> thenRun(Runnable action) {
-		action.run();
 		return this;
 	}
 
@@ -114,93 +114,77 @@ public final class CompleteStage<T> implements MaterializedStage<T> {
 		return this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {
-		return fn.apply(result);
+		return mold();
 	}
 
 	@Override
 	public <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
-		return fn.apply(result, exception);
+		return fn.apply(null, exception);
 	}
 
 	@Override
 	public Stage<T> whenComplete(BiConsumer<? super T, Throwable> action) {
-		action.accept(result, exception);
+		action.accept(null, exception);
 		return this;
 	}
 
 	@Override
 	public Stage<T> whenResult(Consumer<? super T> action) {
-		action.accept(result);
 		return this;
 	}
 
 	@Override
 	public Stage<T> whenException(Consumer<Throwable> action) {
+		action.accept(exception);
 		return this;
-	}
-
-	@Override
-	public Stage<T> thenException(Function<? super T, Throwable> fn) {
-		return Stage.ofException(fn.apply(result));
-	}
-
-	@Override
-	public <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
-		try {
-			return Stage.of(fn.apply(result));
-		} catch (RuntimeException e) {
-			throw e;
-		} catch (Exception e) {
-			return Stage.ofException(e);
-		}
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
+	public Stage<T> thenException(Function<? super T, Throwable> fn) {
+		return mold();
+	}
+
+	@Override
+	public <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
+		return mold();
+	}
+
+	@Override
 	public <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
-		if (other instanceof CompleteStage) {
-			return Stage.of(fn.apply(this.result, ((CompleteStage<U>) other).getResult()));
-		}
-		return other.then(new NextStage<U, V>() {
-			@Override
-			protected void onComplete(U result) {
-				complete(fn.apply(CompleteStage.this.result, result));
-			}
-		});
+		return mold();
 	}
 
 	@Override
 	public Stage<Void> both(Stage<?> other) {
-		if (other instanceof CompleteStage) {
-			return Stage.complete();
-		}
-		return other.toVoid();
+		return mold();
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Stage<T> either(Stage<? extends T> other) {
-		return this;
+		return (Stage<T>) other;
 	}
 
 	@Override
 	public MaterializedStage<T> async() {
 		SettableStage<T> result = new SettableStage<>();
-		getCurrentEventloop().post(() -> result.set(this.result));
+		getCurrentEventloop().post(() -> result.setException(exception));
 		return result;
 	}
 
 	@Override
 	public Stage<Try<T>> toTry() {
-		return Stage.of(Try.of(result));
+		return Stage.of(Try.ofException(exception));
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Stage<Void> toVoid() {
-		return Stage.complete();
+		return mold();
 	}
 
 	@Override
@@ -211,7 +195,7 @@ public final class CompleteStage<T> implements MaterializedStage<T> {
 	@Override
 	public CompletableFuture<T> toCompletableFuture() {
 		CompletableFuture<T> future = new CompletableFuture<>();
-		future.complete(result);
+		future.completeExceptionally(exception);
 		return future;
 	}
 }

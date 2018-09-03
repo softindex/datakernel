@@ -327,7 +327,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	@Override
 	public Stage<Try<T>> toTry() {
 		if (isComplete()) {
-			return isResult() ? Stage.of(Try.of(result)) : mold();
+			return Stage.of(Try.of(result, exception));
 		}
 		return super.toTry();
 	}
@@ -343,7 +343,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	@Override
 	public <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
 		if (isComplete()) {
-			return new CompleteStage<>(result, exception).combine(other, fn);
+			return Stage.of(result, exception).combine(other, fn);
 		}
 		return super.combine(other, fn);
 	}
@@ -351,7 +351,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	@Override
 	public Stage<Void> both(Stage<?> other) {
 		if (isComplete()) {
-			return new CompleteStage<>(result, exception).both(other);
+			return Stage.of(result, exception).both(other);
 		}
 		return super.both(other);
 	}
@@ -359,7 +359,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	@Override
 	public Stage<T> either(Stage<? extends T> other) {
 		if (isComplete()) {
-			return new CompleteStage<>(result, exception).either(other);
+			return Stage.of(result, exception).either(other);
 		}
 		return super.either(other);
 	}
@@ -375,7 +375,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	@Override
 	public CompletableFuture<T> toCompletableFuture() {
 		if (isComplete()) {
-			return new CompleteStage<>(result, exception).toCompletableFuture();
+			return Stage.of(result, exception).toCompletableFuture();
 		}
 		return super.toCompletableFuture();
 	}

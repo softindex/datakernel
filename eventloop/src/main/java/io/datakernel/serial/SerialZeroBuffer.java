@@ -10,7 +10,7 @@ import static io.datakernel.util.Recyclable.deepRecycle;
 
 public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	@Nullable
-	private CompleteStage<?> endOfStream;
+	private Stage<?> endOfStream;
 	@Nullable
 	private T value;
 
@@ -51,19 +51,6 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 		return value == null;
 	}
 
-	private void add(T value) {
-		assert value != null;
-		assert isEmpty();
-		this.value = value;
-	}
-
-	private T poll() {
-		assert !isEmpty();
-		T value = this.value;
-		this.value = null;
-		return value;
-	}
-
 	public boolean isEndOfStream() {
 		return endOfStreamReceived && isEmpty();
 	}
@@ -84,7 +71,7 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 
 			if (value != null) {
 				assert !endOfStreamReceived;
-				add(value);
+				this.value = value;
 				put = new SettableStage<>();
 				return put;
 			}
@@ -105,15 +92,18 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 		if (endOfStream != null) return (Stage<T>) endOfStream;
 
 		if (put != null) {
-			T item = poll();
+			T value = this.value;
 			SettableStage<Void> put = this.put;
+			this.value = null;
 			this.put = null;
 			put.set(null);
-			return Stage.of(item);
+			return Stage.of(value);
 		}
 
 		if (!isEmpty()) {
-			return Stage.of(poll());
+			T value = this.value;
+			this.value = null;
+			return Stage.of(value);
 		}
 
 		if (!endOfStreamReceived) {
@@ -138,6 +128,6 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 		deepRecycle(value);
 		value = null;
 
-		endOfStream = CompleteStage.ofException(e);
+		endOfStream = Stage.ofException(e);
 	}
 }
