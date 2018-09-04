@@ -1,14 +1,28 @@
+/*
+ * Copyright (C) 2015 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.serial;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
 
 public interface SerialConsumer<T> extends Cancellable {
-	Stage<Void> accept(T value);
+	Stage<Void> accept(@Nullable T value);
 
 	default SerialConsumer<T> with(UnaryOperator<SerialConsumer<T>> modifier) {
 		return modifier.apply(this);
@@ -54,7 +68,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
-	static <T, R> SerialConsumer<T> ofSupplier(Consumer<SerialSupplier<T>> supplierAcceptor, SerialQueue<T> queue) {
+	static <T> SerialConsumer<T> ofSupplier(Consumer<SerialSupplier<T>> supplierAcceptor, SerialQueue<T> queue) {
 		supplierAcceptor.accept(queue.getSupplier());
 		return queue.getConsumer();
 	}
@@ -72,7 +86,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			@Override
 			public Stage<Void> accept(T value) {
 				if (consumer != null) return consumer.accept(value);
-				return stage.thenComposeEx((consumer, e) -> {
+				return materializedStage.thenComposeEx((consumer, e) -> {
 					if (e == null) {
 						this.consumer = consumer;
 						return consumer.accept(value);
@@ -178,8 +192,40 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
+	//** Methods below accept lambdas with dummy void argument for API compatibility **//
+
+	default SerialConsumer<T> whenComplete(BiConsumer<Void, Throwable> action) {
+		return new AbstractSerialConsumer<T>(this) {
+
+			@Override
+			public Stage<Void> accept(T value) {
+				Stage<Void> result = SerialConsumer.this.accept(value);
+				return value != null ? result : result.whenComplete(action);
+			}
+		};
+	}
+
+	default SerialConsumer<T> thenCompose(Function<Void, Stage<Void>> action) {
+		return new AbstractSerialConsumer<T>(this) {
+			@Override
+			public Stage<Void> accept(T value) {
+				Stage<Void> result = SerialConsumer.this.accept(value);
+				return value != null ? result : result.thenCompose(action);
+			}
+		};
+	}
+
+	default SerialConsumer<T> thenComposeEx(BiFunction<Void, Throwable, Stage<Void>> action) {
+		return new AbstractSerialConsumer<T>(this) {
+			@Override
+			public Stage<Void> accept(T value) {
+				Stage<Void> result = SerialConsumer.this.accept(value);
+				return value != null ? result : result.thenComposeEx(action);
+			}
+		};
+	}
+
 	default Stage<Void> streamFrom(SerialSupplier<T> supplier) {
 		return supplier.streamTo(this);
 	}
-
 }

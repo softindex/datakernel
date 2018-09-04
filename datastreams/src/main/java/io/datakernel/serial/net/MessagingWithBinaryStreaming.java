@@ -263,9 +263,10 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		assert eventloop.inEventloopThread();
 		if (socketReader == null) {
 			if (readBuf == null) {
-				readBuf = ByteBufPool.allocate(Math.max(8192, buf.writeRemaining()));
+				readBuf = buf;
+			} else {
+				readBuf = ByteBufPool.append(readBuf, buf);
 			}
-			readBuf = ByteBufPool.append(readBuf, buf);
 			tryReadMessage();
 		} else {
 			if (readBuf != null) {
@@ -277,7 +278,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 	@Override
 	public void onReadEndOfStream() {
-		logger.trace("onShutdownInput: {}", this);
+		logger.trace("onReadEndOfStream {}", this);
 		readEndOfStream = true;
 		if (socketReader == null) {
 			tryReadMessage();

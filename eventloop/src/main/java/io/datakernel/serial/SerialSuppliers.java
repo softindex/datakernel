@@ -1,5 +1,6 @@
 package io.datakernel.serial;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.util.CollectionUtils;
@@ -15,6 +16,7 @@ public final class SerialSuppliers {
 
 	public static <T> SerialSupplier<T> of(T item) {
 		return new AbstractSerialSupplier<T>() {
+			@Nullable
 			T thisItem = item;
 
 			@Override

@@ -16,14 +16,12 @@
 
 package io.datakernel.serial;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -69,7 +67,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return of(supplier, null);
 	}
 
-	static <T> SerialSupplier<T> of(AsyncSupplier<T> supplier, Cancellable cancellable) {
+	static <T> SerialSupplier<T> of(AsyncSupplier<T> supplier, @Nullable Cancellable cancellable) {
 		return new AbstractSerialSupplier<T>(cancellable) {
 			@Override
 			public Stage<T> get() {
@@ -242,6 +240,63 @@ public interface SerialSupplier<T> extends Cancellable {
 			@Override
 			public Stage<T> get() {
 				return SerialSupplier.this.get().whenException(action);
+			}
+		};
+	}
+
+	//** Methods below accept lambdas with dummy void argument for API compatibility **//
+
+	default SerialSupplier<T> whenComplete(BiConsumer<Void, Throwable> action) {
+		return new AbstractSerialSupplier<T>(this) {
+			boolean done;
+
+			@Override
+			public Stage<T> get() {
+				return SerialSupplier.this.get()
+						.whenComplete((value, e) -> {
+							if (value == null && !done) {
+								done = true;
+								action.accept(null, e);
+							}
+						});
+			}
+		};
+	}
+
+	default SerialSupplier<T> thenCompose(Function<Void, Stage<Void>> action) {
+		return new AbstractSerialSupplier<T>(this) {
+			boolean done;
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public Stage<T> get() {
+				return SerialSupplier.this.get()
+						.thenCompose(value -> {
+							if (value == null && !done) {
+								done = true;
+								return (Stage<T>) action.apply(null); // value is null anyway
+							}
+							return Stage.of(value);
+						});
+			}
+		};
+	}
+
+	default SerialSupplier<T> thenComposeEx(BiFunction<Void, Throwable, Stage<Void>> action) {
+		return new AbstractSerialSupplier<T>(this) {
+			boolean done;
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public Stage<T> get() {
+				return SerialSupplier.this.get()
+						.thenComposeEx((value, e) -> {
+							if (value == null && !done) {
+								done = true;
+								return (Stage<T>) action.apply(null, e); // value is null anyway
+							}
+							return Stage.of(value, e);
+						});
 			}
 		};
 	}

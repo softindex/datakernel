@@ -24,11 +24,11 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
-import io.datakernel.stream.StreamConsumerModifier;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.file.SerialFileReader;
+import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.file.StreamFileReader;
-import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +41,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.stream.processor.StreamSkip.SkipStrategy.forByteBuf;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -104,8 +103,9 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	// endregion
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
+	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		checkNotNull(filename, "fileName");
+
 		return ensureDirectory(filename)
 				.thenCompose(path -> AsyncFile.openAsync(executor, path, new OpenOption[]{WRITE, offset == -1 ? CREATE_NEW : CREATE}, this))
 				.thenCompose(file -> {
@@ -121,15 +121,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 									}
 								}
 								long skip = size - offset;
-								return Stage.of(StreamFileWriter.create(file)
+								return Stage.of(SerialFileWriter.create(file)
 										.withOffset(offset == -1 ? 0L : size)
 										.withForceOnClose(true)
-										.withFlushAsResult()
-										.with(offset != -1 && skip != 0 ?
-												consumer -> consumer.ignoreFirst(skip, forByteBuf()) :
-												StreamConsumerModifier.identity())
-										.whenComplete(writeFinishStage.recordStats())
-										.withLateBinding());
+										.whenComplete(writeFinishStage.recordStats()));
+//										.with(offset != -1 && skip != 0 ?
+//												consumer -> consumer.skipFirst(skip, forByteBuf()) :
+//												StreamConsumerModifier.identity())
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
@@ -137,7 +135,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
+	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		checkNotNull(filename, "fileName");
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
@@ -162,13 +160,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					return AsyncFile.openAsync(executor, path, StreamFileReader.READ_OPTIONS, this)
 							.thenApply(file -> {
 								logger.trace("reading from file {}: {}", repr, this);
-								return StreamFileReader.readFile(file)
+								return SerialFileReader.readFile(file)
 										.withBufferSize(readerBufferSize)
 										.withOffset(offset)
 										.withLength(length == -1 ? Long.MAX_VALUE : length)
-										.withEndOfStreamAsResult()
-										.whenComplete(readFinishStage.recordStats())
-										.withLateBinding();
+										.whenComplete(readFinishStage.recordStats());
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))
@@ -296,6 +292,16 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
+	public Stage<Void> ping() {
+		return Stage.of(null); // local fs is always awailable
+	}
+
+	@Override
+	public Stage<FileMetadata> getMetadata(String filename) {
+		return Stage.ofCallable(executor, () -> getFileMeta(storageDir.resolve(filename)));
+	}
+
+	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
@@ -342,7 +348,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 				@Override
 				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
 					if (Files.isRegularFile(file)) {
-						walker.accept(new FileMetadata(storageDir.relativize(file).toString(), Files.size(file), Files.getLastModifiedTime(file).toMillis()), file);
+						walker.accept(getFileMeta(file), file);
 					}
 					return CONTINUE;
 				}
@@ -353,7 +359,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		if (!GLOB_META.matcher(glob).find()) {
 			Path file = storageDir.resolve(glob);
 			if (Files.isRegularFile(file)) {
-				walker.accept(new FileMetadata(storageDir.relativize(file).toString(), Files.size(file), Files.getLastModifiedTime(file).toMillis()), file);
+				walker.accept(getFileMeta(file), file);
 			}
 			return;
 		}
@@ -363,12 +369,16 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
 				if (matcher.matches(storageDir.relativize(file))) {
 					if (Files.isRegularFile(file)) {
-						walker.accept(new FileMetadata(storageDir.relativize(file).toString(), Files.size(file), Files.getLastModifiedTime(file).toMillis()), file);
+						walker.accept(getFileMeta(file), file);
 					}
 				}
 				return CONTINUE;
 			}
 		});
+	}
+
+	private FileMetadata getFileMeta(Path file) throws IOException {
+		return new FileMetadata(storageDir.relativize(file).toString(), Files.size(file), Files.getLastModifiedTime(file).toMillis());
 	}
 
 	@FunctionalInterface

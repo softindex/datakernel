@@ -13,9 +13,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.processor.StreamFunction;
-import io.datakernel.stream.processor.StreamSplitter;
+import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -174,20 +172,24 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 					logger.trace("uploading file {} to partitions {}...", meta, uploadTargets);
 
-					StreamSplitter<ByteBuf> splitter = StreamSplitter.create();
-					localStorage.downloadStream(name).streamTo(splitter.getInput()); // stream from local into our splitter
-					splitter.newOutput().streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(
-							buf -> eventloop.post(buf::recycle))))); // recycle original non-slice buffer
+					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create()
+							.withInput(localStorage.downloadSerial(name));
+
+					// recycle original non-slice buffer
+					splitter.newOutputSupplier()
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(buf -> eventloop.post(buf::recycle))));
+
+					splitter.process();
 
 					return Stages.toList(uploadTargets.stream() // upload file to target partitions
 							.map(partitionId -> {
 								if (partitionId == localPartitionId) {
 									return Stage.of(Try.of(null)); // just skip it here
 								}
-								return splitter.newOutput().streamTo(clients.get(partitionId) // upload file to this partition
-										.uploadStream(name)
-										.with(StreamFunction.create(ByteBuf::slice)) // using bytebuf slices
-								).getConsumerResult()
+								return splitter.newOutputSupplier()
+										.streamTo(clients.get(partitionId) // upload file to this partition
+												.uploadSerial(name)
+												.transform(ByteBuf::slice)) // using bytebuf slices
 										.whenException(err -> {
 											logger.warn("failed uploading to partition " + partitionId + " (" + err + ')');
 											cluster.markDead(partitionId, err);

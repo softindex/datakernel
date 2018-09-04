@@ -154,6 +154,7 @@ public final class SerializationUtils {
 		list.forEach(item -> writer.accept(buf, item));
 	}
 
+	@FunctionalInterface
 	public interface Parser<T> {
 		T parse(ByteBuf buf) throws IOException;
 	}

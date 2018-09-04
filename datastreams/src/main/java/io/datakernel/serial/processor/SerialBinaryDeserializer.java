@@ -48,7 +48,7 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamProducer<T>
 	}
 
 	public static <T> SerialBinaryDeserializer<T> create(BufferSerializer<T> valueSerializer) {
-		return new SerialBinaryDeserializer<T>(valueSerializer);
+		return new SerialBinaryDeserializer<>(valueSerializer);
 	}
 
 	@Override

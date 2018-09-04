@@ -16,7 +16,6 @@
 
 package io.datakernel.serial.file;
 
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.file.AsyncFile;
@@ -40,7 +39,6 @@ public final class SerialFileWriter implements SerialConsumer<ByteBuf> {
 	public static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW, APPEND};
 
 	private final AsyncFile asyncFile;
-	private final SettableStage<Void> flushStage = new SettableStage<>();
 
 	private boolean forceOnClose = false;
 	private boolean forceMetadata = false;
@@ -72,27 +70,24 @@ public final class SerialFileWriter implements SerialConsumer<ByteBuf> {
 	}
 	// endregion
 
-	public Stage<Void> getFlushStage() {
-		return flushStage;
-	}
-
 	@Override
 	public void closeWithError(Throwable e) {
-		// TODO
+		close();
 	}
 
 	@Override
 	public Stage<Void> accept(ByteBuf buf) {
-		return start() // TODO
-				.whenException(e -> buf.recycle())
-				.thenCompose($ -> asyncFile.write(buf))
+		return start()
 				.thenComposeEx(($, e) -> {
-					if (e == null) {
-						return Stage.complete();
-					} else {
+					if (e != null) {
+						buf.recycle();
 						closeWithError(e);
 						return Stage.ofException(e);
 					}
+					if (buf == null) {
+						return close();
+					}
+					return asyncFile.write(buf);
 				});
 	}
 
@@ -108,13 +103,14 @@ public final class SerialFileWriter implements SerialConsumer<ByteBuf> {
 	}
 
 	private Stage<Void> start() {
-		if (!started && startingOffset != -1) {
-			return asyncFile.seek(startingOffset)
-					.thenRun(() -> started = true);
-		} else {
-			started = true;
+		if (started) {
 			return Stage.complete();
 		}
+		if (startingOffset != -1) {
+			return asyncFile.seek(startingOffset);
+		}
+		started = true;
+		return Stage.complete();
 	}
 
 	@Override

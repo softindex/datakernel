@@ -12,11 +12,8 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.processor.FailsafeStreamSplitter;
-import io.datakernel.stream.processor.StreamFunction;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -222,7 +219,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
+	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		checkNotNull(filename, "fileName");
 
 		List<Object> selected = serverSelector.selectFrom(filename, aliveClients.keySet(), replicationCount);
@@ -232,9 +229,9 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 		class ConsumerWithId {
 			final Object id;
-			final StreamConsumerWithResult<ByteBuf, Void> consumer;
+			final SerialConsumer<ByteBuf> consumer;
 
-			ConsumerWithId(Object id, StreamConsumerWithResult<ByteBuf, Void> consumer) {
+			ConsumerWithId(Object id, SerialConsumer<ByteBuf> consumer) {
 				this.id = id;
 				this.consumer = consumer;
 			}
@@ -253,44 +250,48 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 							.collect(toList());
 
 					if (successes.isEmpty()) {
-						return ofFailure("Couldn't connect to any partition to download file " + filename, tries);
+						return ofFailure("Couldn't connect to any partition to upload file " + filename, tries);
 					}
 
-					FailsafeStreamSplitter<ByteBuf> splitter = FailsafeStreamSplitter.create();
-					successes.forEach(s -> splitter.newOutput().streamTo(s.consumer.with(StreamFunction.<ByteBuf, ByteBuf>create(ByteBuf::slice))));
+					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create().lenient();
+
+					Stage<List<Try<Void>>> uploadResults = Stages.collect(toList(), successes.stream()
+							.map(s -> splitter.newOutputSupplier().streamTo(s.consumer.transform(ByteBuf::slice)).toTry()));
 
 					if (logger.isTraceEnabled()) {
 						logger.trace("uploading file {} to {}, {}", filename, successes.stream().map(s -> s.id.toString()).collect(joining(", ", "[", "]")), this);
 					}
 
 					// and also dont forget to recycle original bytebufs
-					splitter.newOutput().streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle))));
+					splitter.newOutputSupplier().streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
 
-					return Stage.of(splitter.getInput()
-							.withLateBinding()
-							.withResult(Stages.toList(successes.stream().map(s -> s.consumer.getResult().toTry()))
-									.thenCompose(ackTries -> {
+					SerialConsumer<ByteBuf> consumer = splitter.newInputConsumer();
+					splitter.process();
+
+					//noinspection RedundantTypeArguments - that <Void> 3 lines below is needed badly for Java, uughh
+					return Stage.of(consumer
+							.thenCompose($ ->
+									uploadResults.<Void>thenCompose(ackTries -> {
 										long successCount = ackTries.stream().filter(Try::isSuccess).count();
-
 										// check number of uploads only here, so even if there were less connections
 										// than replicationCount, they will still upload
 										if (ackTries.size() < replicationCount) {
 											return ofFailure("Didn't connect to enough partitions uploading " +
-													filename + ", only " + successCount + " finished uploads", tries);
+													filename + ", only " + successCount + " finished uploads", ackTries);
 										}
 										if (successCount < replicationCount) {
 											return ofFailure("Couldn't finish uploadind file " +
 													filename + ", only " + successCount + " acknowlegdes received", ackTries);
 										}
-										return Stage.of((Void) null);
-									})
-									.whenComplete(uploadFinishStage.recordStats())));
+										return Stage.complete();
+									}))
+							.whenComplete(uploadFinishStage.recordStats()));
 				})
 				.whenComplete(uploadStartStage.recordStats());
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
+	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		checkNotNull(filename, "fileName");
 
 		class PartitionIdWithFileSize {
@@ -349,7 +350,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 								return client.download(filename, offset, length)
 										.whenException(err -> logger.warn("Failed to connect to server with key " + partitionId + " to download file " + filename, err))
 										.thenComposeEx(wrapDeath(partitionId))
-										.thenApply(consumer -> consumer
+										.thenApply(supplier -> supplier
 												.thenComposeEx(wrapDeath(partitionId))
 												.whenComplete(downloadFinishStage.recordStats()));
 							}));
@@ -406,7 +407,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						.toTry()))
 				.thenCompose(tries -> {
 					if (tries.stream().anyMatch(Try::isSuccess)) { // connected at least to somebody
-						return Stage.of((Void) null);
+						return Stage.complete();
 					}
 					return ofFailure("Couldn't delete on any partition", tries);
 				})

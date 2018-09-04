@@ -28,16 +28,13 @@ import io.datakernel.remotefs.RemoteFsCommands.Download;
 import io.datakernel.remotefs.RemoteFsCommands.FsCommand;
 import io.datakernel.remotefs.RemoteFsCommands.Upload;
 import io.datakernel.remotefs.RemoteFsResponses.*;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.net.MessagingSerializer;
-import io.datakernel.stream.net.MessagingWithBinaryStreaming;
-import io.datakernel.stream.stats.StreamStats;
-import io.datakernel.stream.stats.StreamStatsDetailed;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.net.MessagingSerializer;
+import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.List;
@@ -45,8 +42,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.stream.net.MessagingSerializers.ofJson;
-import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
+import static io.datakernel.serial.net.MessagingSerializers.ofJson;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -99,7 +95,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
+	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		checkNotNull(filename, "fileName");
 
 		return connect(address)
@@ -107,26 +103,31 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 						messaging.send(new Upload(filename, offset))
 								.thenApply($ ->
 										messaging.sendBinaryStream()
-												.thenCompose($2 -> messaging.receive())
-												.thenCompose(msg -> {
-													messaging.close();
-													if (msg instanceof UploadFinished) {
-														return Stage.<Void>of(null);
-													}
-													if (msg instanceof ServerError) {
-														return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
-													}
-													if (msg != null) {
-														return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
-													}
-													return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
-												})
 												.whenException(e -> {
 													messaging.close();
 													logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
 												})
-												.whenComplete(uploadFinishStage.recordStats())
-												.withLateBinding())
+												.thenCompose($2 ->
+														messaging.receive()
+																.whenException(e -> {
+																	messaging.close();
+																	logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
+																})
+																.thenCompose(msg -> {
+																	messaging.close();
+																	if (msg instanceof UploadFinished) {
+																		return Stage.complete();
+																	}
+																	if (msg instanceof ServerError) {
+																		return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
+																	}
+																	if (msg != null) {
+																		return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
+																	}
+																	return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
+																})
+																.whenComplete(uploadFinishStage.recordStats()))
+								)
 								.whenException(e -> {
 									messaging.close();
 									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
@@ -136,54 +137,54 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
+	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		checkNotNull(filename, "fileName");
 
-		return connect(address).thenCompose(messaging ->
-				messaging.send(new Download(filename, offset, length))
-						.thenCompose($ -> messaging.receive())
-						.thenCompose(msg -> {
-							if (msg instanceof DownloadSize) {
-								long receivingSize = ((DownloadSize) msg).getSize();
+		return connect(address)
+				.thenCompose(messaging ->
+						messaging.send(new Download(filename, offset, length))
+								.thenCompose($ -> messaging.receive())
+								.thenCompose(msg -> {
+									if (msg instanceof DownloadSize) {
+										long receivingSize = ((DownloadSize) msg).getSize();
 
-								logger.trace("download size for file {} is {}: {}", filename, receivingSize, this);
+										logger.trace("download size for file {} is {}: {}", filename, receivingSize, this);
 
-								StreamStatsDetailed<ByteBuf> stats = StreamStats.detailed(forByteBufs());
-								return Stage.of(messaging.receiveBinaryStream()
-										.with(stats)
-										.thenCompose($2 -> {
-											assert stats.getTotalSize() != null;
-											messaging.sendEndOfStream();
-											if (stats.getTotalSize() == receivingSize) {
-												messaging.close();
-												return Stage.<Void>of(null);
-											}
-											return Stage.ofException(new IOException("Invalid stream size for file " + filename +
-													" (offset " + offset + ", length " + length + "), expected: " + receivingSize +
-													" actual: " + stats.getTotalSize()));
-
-										})
-										.whenException(e -> {
-											messaging.close();
-											logger.warn("Error while downloading file " + filename +
-													" (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
-										})
-										.whenComplete(downloadFinishStage.recordStats())
-										.withLateBinding());
-							}
-							if (msg instanceof ServerError) {
-								return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
-							}
-							if (msg != null) {
-								return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
-							}
-							logger.warn(this + ": Received unexpected end of stream");
-							return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
-						})
-						.whenException(e -> {
-							messaging.close();
-							logger.warn("Error trying to download file " + filename + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
-						}))
+//										StreamStatsDetailed<ByteBuf> stats = StreamStats.detailed(forByteBufs());
+										return Stage.of(messaging.receiveBinaryStream()
+//												.with(stats)
+												.thenCompose($ -> {
+//													assert stats.getTotalSize() != null;
+													messaging.sendEndOfStream();
+//													if (stats.getTotalSize() == receivingSize) {
+													messaging.close();
+													//noinspection RedundantTypeArguments - might need this back when the if is restored
+													return Stage.<Void>of(null);
+//													}
+//													return Stage.ofException(new IOException("Invalid stream size for file " + filename +
+//															" (offset " + offset + ", length " + length + "), expected: " + receivingSize +
+//															" actual: " + stats.getTotalSize()));
+												})
+												.whenException(e -> {
+													messaging.close();
+													logger.warn("Error while downloading file " + filename +
+															" (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
+												})
+												.whenComplete(downloadFinishStage.recordStats()));
+									}
+									if (msg instanceof ServerError) {
+										return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
+									}
+									if (msg != null) {
+										return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
+									}
+									logger.warn(this + ": Received unexpected end of stream");
+									return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
+								})
+								.whenException(e -> {
+									messaging.close();
+									logger.warn("Error trying to download file " + filename + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
+								}))
 				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))
 				.whenComplete(downloadStartStage.recordStats());
 	}

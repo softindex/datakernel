@@ -19,12 +19,12 @@ package io.datakernel.remotefs.stress;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
+import io.datakernel.serial.file.SerialFileReader;
+import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.file.StreamFileReader;
-import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
@@ -69,82 +69,69 @@ class StressClient {
 		Files.createDirectories(downloads);
 
 		// create and upload
-		operations.add(new Operation() {
-			@Override
-			public void go() {
-				try {
-					String fileName = createFile();
-					existingClientFiles.add(fileName);
+		operations.add(() -> {
+			try {
+				String fileName = createFile();
+				existingClientFiles.add(fileName);
 
-					Path file = clientStorage.resolve(fileName);
+				Path file = clientStorage.resolve(fileName);
 
-					StreamFileReader.readFile(executor, file).withBufferSize(MemSize.kilobytes(16))
-							.streamTo(
-									client.uploadStream(fileName))
-							.getConsumerResult()
-							.whenComplete(($, throwable) -> {
-								if (throwable == null) {
-									logger.info("Uploaded: " + fileName);
-								} else {
-									logger.info("Failed to upload: {}", throwable.getMessage());
-								}
-							});
-				} catch (IOException e) {
-					logger.info(e.getMessage());
-				}
+				SerialFileReader.readFile(executor, file).withBufferSize(MemSize.kilobytes(16))
+						.streamTo(client.uploadSerial(fileName))
+						.whenComplete(($, throwable) -> {
+							if (throwable == null) {
+								logger.info("Uploaded: " + fileName);
+							} else {
+								logger.info("Failed to upload: {}", throwable.getMessage());
+							}
+						});
+			} catch (IOException e) {
+				logger.info(e.getMessage());
 			}
 		});
 
 		// download
-		operations.add(new Operation() {
-			@Override
-			public void go() {
-				if (existingClientFiles.isEmpty()) return;
+		operations.add(() -> {
+			if (existingClientFiles.isEmpty()) return;
 
-				int index = rand.nextInt(existingClientFiles.size());
-				String fileName = existingClientFiles.get(index);
+			int index = rand.nextInt(existingClientFiles.size());
+			String fileName = existingClientFiles.get(index);
 
-				if (fileName == null) return;
+			if (fileName == null) return;
 
-				try {
-					StreamFileWriter consumer = StreamFileWriter.create(executor, downloads.resolve(fileName));
-					consumer.getFlushStage().whenComplete(($, throwable) -> {
-						if (throwable == null) logger.info("Downloaded: " + fileName);
-						else logger.info("Failed to download: {}", throwable.getMessage());
-					});
+			try {
+				SerialFileWriter consumer = SerialFileWriter.create(executor, downloads.resolve(fileName));
 
-					client.download(fileName, 0).whenComplete((producer, throwable) -> {
-						if (throwable == null) {
-							producer.streamTo(consumer);
-						} else {
-							logger.info("can't download: {}", throwable.getMessage());
-						}
-					});
-				} catch (IOException e) {
-					logger.info("can't create consumer: {}", e.getMessage());
-				}
-
+				client.download(fileName, 0)
+						.thenCompose(producer -> producer.streamTo(consumer))
+						.whenComplete((producer, e) -> {
+							if (e == null) {
+								logger.info("Downloaded: " + fileName);
+							} else {
+								logger.info("Failed to download: {}", e.getMessage());
+							}
+						});
+			} catch (IOException e) {
+				logger.info("Can't create consumer: {}", e.getMessage());
 			}
+
 		});
 
 		// delete file
-		operations.add(new Operation() {
-			@Override
-			public void go() {
-				if (existingClientFiles.isEmpty()) return;
+		operations.add(() -> {
+			if (existingClientFiles.isEmpty()) return;
 
-				int index = rand.nextInt(existingClientFiles.size());
-				String fileName = existingClientFiles.get(index);
+			int index = rand.nextInt(existingClientFiles.size());
+			String fileName = existingClientFiles.get(index);
 
-				client.delete(fileName).whenComplete(($, throwable) -> {
-					if (throwable == null) {
-						existingClientFiles.remove(fileName);
-						logger.info("Deleted: " + fileName);
-					} else {
-						logger.info("Failed to delete: {}", throwable.getMessage());
-					}
-				});
-			}
+			client.delete(fileName).whenComplete(($, throwable) -> {
+				if (throwable == null) {
+					existingClientFiles.remove(fileName);
+					logger.info("Deleted: " + fileName);
+				} else {
+					logger.info("Failed to delete: {}", throwable.getMessage());
+				}
+			});
 		});
 
 		// list file
@@ -168,6 +155,7 @@ class StressClient {
 		executor.shutdown();
 	}
 
+	@FunctionalInterface
 	private interface Operation {
 		void go();
 	}
@@ -208,9 +196,10 @@ class StressClient {
 		StreamBinarySerializer<TestObject> serializer = StreamBinarySerializer.create(bufferSerializer)
 				.withInitialBufferSize(StreamBinarySerializer.MAX_SIZE);
 
-		producer.with(serializer).streamTo(
-				client.uploadStream("someName" + i));
-		eventloop.run();
+//		producer.with(serializer).streamTo(
+//				client.uploadStream("someName" + i));
+//		eventloop.run();
+		throw new UnsupportedOperationException("TODO");
 	}
 
 	void downloadSmallObjects(int i) {
@@ -219,11 +208,12 @@ class StressClient {
 			if (throwable != null) {
 				logger.error("can't download", throwable);
 			} else {
-				try {
-					producer.streamTo(StreamFileWriter.create(executor, downloads.resolve(name)));
-				} catch (IOException e) {
-					logger.error("can't download", e);
-				}
+//				try {
+//					producer.streamTo(SerialFileWriter.create(executor, downloads.resolve(name)));
+//				} catch (IOException e) {
+//					logger.error("can't download", e);
+//				}
+				throw new UnsupportedOperationException("TODO");
 			}
 		});
 

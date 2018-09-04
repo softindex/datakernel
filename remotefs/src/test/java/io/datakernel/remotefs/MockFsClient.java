@@ -2,12 +2,9 @@ package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stage;
-import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 
 import java.util.Collections;
 import java.util.List;
@@ -19,18 +16,16 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class MockFsClient implements FsClient {
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
+	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		if (offset == -1) {
 			return Stage.ofException(new RemoteFsException("FileAlreadyExistsException"));
 		}
-		return Stage.of(
-				StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)))
-						.withEndOfStreamAsResult());
+		return Stage.of(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
-		return Stage.of(StreamProducer.of(ByteBuf.wrapForReading("mock file".substring((int) offset, length == -1 ? 9 : (int) (offset + length)).getBytes(UTF_8))).withEndOfStreamAsResult());
+	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+		return Stage.of(SerialSupplier.of(ByteBuf.wrapForReading("mock file".substring((int) offset, length == -1 ? 9 : (int) (offset + length)).getBytes(UTF_8))));
 	}
 
 	@Override

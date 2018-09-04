@@ -1,5 +1,7 @@
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
+
 import java.util.ArrayDeque;
 import java.util.concurrent.RejectedExecutionException;
 
@@ -9,6 +11,7 @@ public final class AsyncSuppliers {
 
 	public static <T> AsyncSupplier<T> reuse(AsyncSupplier<? extends T> actual) {
 		return new AsyncSupplier<T>() {
+			@Nullable
 			Stage<T> runningStage;
 
 			@SuppressWarnings("unchecked")
@@ -26,6 +29,7 @@ public final class AsyncSuppliers {
 	public static <T> AsyncSupplier<T> resubscribe(AsyncSupplier<? extends T> actual) {
 		return new AsyncSupplier<T>() {
 			SettableStage<T> runningStage;
+			@Nullable
 			SettableStage<T> subscribeStage;
 
 			@Override

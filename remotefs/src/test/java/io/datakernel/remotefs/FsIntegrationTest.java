@@ -19,14 +19,14 @@ package io.datakernel.remotefs;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
-import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialSuppliers;
+import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.test.TestUtils;
 import org.junit.After;
@@ -43,8 +43,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.IntStream;
 
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
@@ -63,11 +63,7 @@ public class FsIntegrationTest {
 
 	static {
 		TestUtils.enableLogging();
-
-		Random rand = new Random(1L);
-		for (int i = 0; i < BIG_FILE.length; i++) {
-			BIG_FILE[i] = (byte) (rand.nextInt(256) - 128);
-		}
+		ThreadLocalRandom.current().nextBytes(BIG_FILE);
 	}
 
 	private static final byte[] CONTENT = "content".getBytes(UTF_8);
@@ -88,7 +84,15 @@ public class FsIntegrationTest {
 	public void setup() throws IOException {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		executor = newCachedThreadPool();
-		storage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
+
+//		storage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
+		try {
+			Runtime.getRuntime().exec("rm -r /tmp/TESTS").waitFor();
+		} catch (InterruptedException e) {
+			System.out.println("removal interrupted: " + e.getMessage());
+		}
+		storage = Paths.get("/tmp/TESTS");
+
 		server = RemoteFsServer.create(eventloop, executor, storage).withListenAddress(address);
 		server.listen();
 		client = RemoteFsClient.create(eventloop, address);
@@ -110,7 +114,7 @@ public class FsIntegrationTest {
 				.whenComplete(assertComplete());
 		eventloop.run();
 
-		assertArrayEquals(Files.readAllBytes(storage.resolve(resultFile)), CONTENT);
+		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
 	}
 
 	@Test
@@ -118,8 +122,7 @@ public class FsIntegrationTest {
 		int files = 10;
 
 		Stages.all(IntStream.range(0, 10)
-				.mapToObj(i -> StreamProducer.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploadStream("file" + i))
-						.getConsumerResult()))
+				.mapToObj(i -> SerialSupplier.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploadSerial("file" + i))))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
 
@@ -139,7 +142,7 @@ public class FsIntegrationTest {
 				.whenComplete(assertComplete());
 		eventloop.run();
 
-		assertArrayEquals(Files.readAllBytes(storage.resolve(resultFile)), BIG_FILE);
+		assertArrayEquals(BIG_FILE, Files.readAllBytes(storage.resolve(resultFile)));
 	}
 
 	@Test
@@ -151,7 +154,7 @@ public class FsIntegrationTest {
 				.whenComplete(assertComplete());
 		eventloop.run();
 
-		assertArrayEquals(Files.readAllBytes(storage.resolve(resultFile)), CONTENT);
+		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
 	}
 
 	@Test
@@ -165,7 +168,7 @@ public class FsIntegrationTest {
 
 		eventloop.run();
 
-		assertArrayEquals(Files.readAllBytes(storage.resolve(resultFile)), CONTENT);
+		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
 	}
 
 	@Test
@@ -184,13 +187,12 @@ public class FsIntegrationTest {
 
 		ByteBuf test4 = wrapUtf8("Test4");
 
-		StreamProducer.concat(
-				StreamProducer.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")),
-				StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE)),
-				StreamProducer.closingWithError(new StacklessException("Test exception")),
-				StreamProducer.of(test4)
-		).streamTo(client.uploadStream(resultFile))
-				.getConsumerResult()
+		SerialSuppliers.concat(
+				SerialSupplier.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")),
+				SerialSupplier.of(ByteBuf.wrapForReading(BIG_FILE)),
+				SerialSupplier.ofException(new StacklessException("Test exception")),
+				SerialSupplier.of(test4)
+		).streamTo(client.uploadSerial(resultFile))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertFailure(StacklessException.class, "Test exception"));
 
@@ -203,9 +205,8 @@ public class FsIntegrationTest {
 	private ByteBuf download(String file) {
 		ByteBufQueue queue = new ByteBufQueue();
 
-		client.downloadStream(file)
-				.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(queue::add))))
-				.getProducerResult()
+		client.downloadSerial(file)
+				.streamTo(SerialConsumer.of(AsyncConsumer.of(queue::add)))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
 
@@ -237,8 +238,7 @@ public class FsIntegrationTest {
 	@Test
 	public void testDownloadNotExist() {
 		String file = "file_not_exist_downloaded.txt";
-		client.downloadStream(file).streamTo(StreamConsumer.idle())
-				.getProducerResult()
+		client.downloadSerial(file).streamTo(SerialConsumer.of($ -> Stage.complete()))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "File not found"));
 		eventloop.run();
@@ -252,7 +252,7 @@ public class FsIntegrationTest {
 		List<Stage<Void>> tasks = new ArrayList<>();
 
 		for (int i = 0; i < 10; i++) {
-			tasks.add(client.downloadStream(file, 0).streamTo(StreamFileWriter.create(executor, storage.resolve("file" + i))).getProducerResult());
+			tasks.add(client.downloadSerial(file).streamTo(SerialFileWriter.create(executor, storage.resolve("file" + i))));
 		}
 
 		Stages.all(tasks)
@@ -374,6 +374,6 @@ public class FsIntegrationTest {
 	}
 
 	private Stage<Void> upload(String resultFile, byte[] bytes) {
-		return StreamProducer.of(ByteBuf.wrapForReading(bytes)).streamTo(client.uploadStream(resultFile)).getConsumerResult();
+		return SerialSupplier.of(ByteBuf.wrapForReading(bytes)).streamTo(client.uploadSerial(resultFile));
 	}
 }

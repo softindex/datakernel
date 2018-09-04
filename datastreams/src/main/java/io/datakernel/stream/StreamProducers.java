@@ -18,7 +18,6 @@ package io.datakernel.stream;
 
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
 import io.datakernel.serial.SerialSupplier;
 
 import java.util.EnumSet;
@@ -32,7 +31,8 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings("StatementWithEmptyBody")
 public final class StreamProducers {
-	private StreamProducers() {}
+	private StreamProducers() {
+	}
 
 	/**
 	 * Represent producer which sends specified exception to consumer.

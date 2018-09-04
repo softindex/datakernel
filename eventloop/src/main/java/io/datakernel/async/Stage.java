@@ -31,7 +31,7 @@ public interface Stage<T> {
 	 *
 	 * @param value result of Stage
 	 */
-	static <T> CompleteStage<T> of(T value) {
+	static <T> CompleteStage<T> of(@Nullable T value) {
 		return value == null ? CompleteNullStage.instance() : new CompleteResultStage<>(value);
 	}
 

@@ -16,14 +16,16 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncConsumer;
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.serial.file.SerialFileReader;
+import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
 import org.junit.After;
@@ -44,9 +46,7 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.file.StreamFileReader.READ_OPTIONS;
-import static io.datakernel.stream.file.StreamFileReader.readFile;
 import static io.datakernel.stream.file.StreamFileWriter.CREATE_OPTIONS;
-import static io.datakernel.stream.file.StreamFileWriter.create;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -130,9 +130,10 @@ public class TestLocalFsClient {
 		Path inputFile = clientPath.resolve("c.txt");
 
 		AsyncFile file = AsyncFile.open(executor, inputFile, READ_OPTIONS);
-		client.upload("1/c.txt").whenResult(writer -> readFile(file).withBufferSize(bufferSize).streamTo(writer)
-				.getConsumerResult()
-				.whenComplete(assertComplete()));
+
+		client.upload("1/c.txt").whenResult(consumer ->
+				consumer.streamFrom(SerialFileReader.readFile(file).withBufferSize(bufferSize))
+						.whenComplete(assertComplete()));
 
 		eventloop.run();
 
@@ -154,7 +155,7 @@ public class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data - 7\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data - 8\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data - 9\n".getBytes())))
-						.streamTo(client.uploadStream("concurrent.txt", 1)).getConsumerResult(),
+						.streamTo(client.uploadSerial("concurrent.txt", 1)),
 
 				delayed(Arrays.asList(
 						ByteBuf.wrapForReading(" data - 1\n".getBytes()),
@@ -170,7 +171,7 @@ public class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes())))
-						.streamTo(client.uploadStream("concurrent.txt", 10)).getConsumerResult(),
+						.streamTo(client.uploadSerial("concurrent.txt", 10)),
 
 				delayed(Arrays.asList(
 						ByteBuf.wrapForReading(" - 1\n".getBytes()),
@@ -186,7 +187,7 @@ public class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes())))
-						.streamTo(client.uploadStream("concurrent.txt", 15)).getConsumerResult(),
+						.streamTo(client.uploadSerial("concurrent.txt", 15)),
 
 				delayed(Arrays.asList(
 						ByteBuf.wrapForReading("urrent data - 2\n".getBytes()),
@@ -201,7 +202,7 @@ public class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes())))
-						.streamTo(client.uploadStream("concurrent.txt", 24)).getConsumerResult(),
+						.streamTo(client.uploadSerial("concurrent.txt", 24)),
 
 				delayed(Arrays.asList(
 						ByteBuf.wrapForReading(" data - 1\n".getBytes()),
@@ -218,32 +219,30 @@ public class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data + new line\n".getBytes())))
-						.streamTo(client.uploadStream("concurrent.txt", 10)).getConsumerResult()
+						.streamTo(client.uploadSerial("concurrent.txt", 10))
 		)
 				.thenCompose($ ->
-						client.downloadStream("concurrent.txt")
-								.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(
-										buf -> {
-											String actual = new String(buf.asArray(), StandardCharsets.UTF_8);
-											String expected = "Concurrent data - 1\n" +
-													"Concurrent data - 2\n" +
-													"Concurrent data - 3\n" +
-													"Concurrent data - 4\n" +
-													"Concurrent data - 5\n" +
-													"Concurrent data - 6\n" +
-													"Concurrent data - 7\n" +
-													"Concurrent data - 8\n" +
-													"Concurrent data - 9\n" +
-													"Concurrent data #2\n" +
-													"Concurrent data #2\n" +
-													"Concurrent data #2\n" +
-													"Concurrent data #2\n" +
-													"Concurrent data + new line\n";
-											assertEquals(expected, actual);
+						client.downloadSerial("concurrent.txt")
+								.streamTo(SerialConsumer.of(AsyncConsumer.of(buf -> {
+									String actual = new String(buf.asArray(), StandardCharsets.UTF_8);
+									String expected = "Concurrent data - 1\n" +
+											"Concurrent data - 2\n" +
+											"Concurrent data - 3\n" +
+											"Concurrent data - 4\n" +
+											"Concurrent data - 5\n" +
+											"Concurrent data - 6\n" +
+											"Concurrent data - 7\n" +
+											"Concurrent data - 8\n" +
+											"Concurrent data - 9\n" +
+											"Concurrent data #2\n" +
+											"Concurrent data #2\n" +
+											"Concurrent data #2\n" +
+											"Concurrent data #2\n" +
+											"Concurrent data + new line\n";
+									assertEquals(expected, actual);
 
-											buf.recycle();
-										}))))
-								.getProducerResult())
+									buf.recycle();
+								}))))
 				.thenRunEx(() -> System.out.println("finished"))
 				.whenComplete(assertComplete());
 
@@ -251,15 +250,15 @@ public class TestLocalFsClient {
 
 	}
 
-	private StreamProducer<ByteBuf> delayed(List<ByteBuf> list) {
+	private SerialSupplier<ByteBuf> delayed(List<ByteBuf> list) {
 		Random random = new Random();
 		Iterator<ByteBuf> iterator = list.iterator();
-		return StreamProducer.ofSerialSupplier(SerialSupplier.of(() ->
+		return SerialSupplier.of(() ->
 				iterator.hasNext() ?
 						Stage.ofCallback(stage ->
 								eventloop.delay(random.nextInt(20) + 10, () ->
 										stage.set(iterator.next()))) :
-						Stage.of(null)));
+						Stage.of(null));
 	}
 
 	@Test
@@ -268,8 +267,7 @@ public class TestLocalFsClient {
 
 		AsyncFile open = AsyncFile.open(executor, outputFile, CREATE_OPTIONS);
 		client.download("2/b/d.txt")
-				.whenResult(reader -> reader.streamTo(create(open))
-						.getProducerResult()
+				.whenResult(reader -> reader.streamTo(SerialFileWriter.create(open))
 						.whenComplete(assertComplete()));
 
 		eventloop.run();
@@ -280,7 +278,7 @@ public class TestLocalFsClient {
 	@Test
 	public void testDownloadNonExistingFile() {
 		String fileName = "no_file.txt";
-		client.downloadStream(fileName)
+		client.downloadSerial(fileName)
 				.whenComplete((result, error) -> {
 					assertNotNull(error);
 					assertEquals(error.getClass(), RemoteFsException.class);

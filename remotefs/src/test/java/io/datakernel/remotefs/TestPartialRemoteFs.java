@@ -2,9 +2,9 @@ package io.datakernel.remotefs;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.test.TestUtils;
 import org.junit.After;
@@ -76,8 +76,7 @@ public class TestPartialRemoteFs {
 	@Test
 	public void justDownload() throws IOException {
 
-		client.downloadStream(FILE).streamTo(StreamFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.getProducerResult()
+		client.downloadSerial(FILE).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
 
@@ -93,11 +92,10 @@ public class TestPartialRemoteFs {
 		byte[] data = new byte[10 * (1 << 20)]; // 10 mb
 		new Random().nextBytes(data);
 
-		StreamProducer<ByteBuf> producer = StreamProducer.of(ByteBuf.wrapForReading(data));
-		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream("test_big_file.bin", ".upload");
+		SerialSupplier<ByteBuf> supplier = SerialSupplier.of(ByteBuf.wrapForReading(data));
+		SerialConsumer<ByteBuf> consumer = client.uploadSerial("test_big_file.bin", ".upload");
 
-		producer.streamTo(consumer)
-				.getConsumerResult()
+		supplier.streamTo(consumer)
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
 
@@ -109,8 +107,7 @@ public class TestPartialRemoteFs {
 	@Test
 	public void downloadPrefix() throws IOException {
 
-		client.downloadStream(FILE, 0, 12).streamTo(StreamFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.getProducerResult()
+		client.downloadSerial(FILE, 0, 12).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
 
@@ -122,8 +119,7 @@ public class TestPartialRemoteFs {
 	@Test
 	public void downloadSuffix() throws IOException {
 
-		client.downloadStream(FILE, 13).streamTo(StreamFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.getProducerResult()
+		client.downloadSerial(FILE, 13).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
 
@@ -135,8 +131,7 @@ public class TestPartialRemoteFs {
 	@Test
 	public void downloadPart() throws IOException {
 
-		client.downloadStream(FILE, 5, 10).streamTo(StreamFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.getProducerResult()
+		client.downloadSerial(FILE, 5, 10).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
 
@@ -148,8 +143,7 @@ public class TestPartialRemoteFs {
 	@Test
 	public void downloadOverSuffix() throws IOException {
 
-		client.downloadStream(FILE, 13, 123).streamTo(StreamFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.getProducerResult()
+		client.downloadSerial(FILE, 13, 123).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "Boundaries exceed file size"));
 
@@ -159,8 +153,7 @@ public class TestPartialRemoteFs {
 	@Test
 	public void downloadOver() throws IOException {
 
-		client.downloadStream(FILE, 123, 123).streamTo(StreamFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.getProducerResult()
+		client.downloadSerial(FILE, 123, 123).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "Offset exceeds file size"));
 

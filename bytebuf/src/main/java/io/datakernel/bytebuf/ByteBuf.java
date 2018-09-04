@@ -19,11 +19,11 @@ package io.datakernel.bytebuf;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.util.Recyclable;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 import static java.lang.Math.min;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class ByteBuf implements Recyclable, AutoCloseable {
 	static final class ByteBufSlice extends ByteBuf {
@@ -67,7 +67,7 @@ public class ByteBuf implements Recyclable, AutoCloseable {
 	// creators
 	private ByteBuf(byte[] array, int readPosition, int writePosition) {
 		assert readPosition >= 0 && readPosition <= writePosition && writePosition <= array.length
-			: "Wrong ByteBuf boundaries - readPos: " + readPosition + ", writePos: " + writePosition + ", array.length: " + array.length;
+				: "Wrong ByteBuf boundaries - readPos: " + readPosition + ", writePos: " + writePosition + ", array.length: " + array.length;
 		this.array = array;
 		this.readPosition = readPosition;
 		this.writePosition = writePosition;
@@ -605,11 +605,7 @@ public class ByteBuf implements Recyclable, AutoCloseable {
 			throw new IllegalArgumentException();
 		readPosition += length;
 
-		try {
-			return new String(array, readPosition - length, length, "UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException();
-		}
+		return new String(array, readPosition - length, length, UTF_8);
 	}
 	// endregion
 

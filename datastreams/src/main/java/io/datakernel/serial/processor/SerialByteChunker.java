@@ -25,7 +25,6 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.MemSize;
 
-import static io.datakernel.bytebuf.ByteBufPool.pack;
 import static java.lang.Math.min;
 
 public final class SerialByteChunker implements WithSerialToSerial<SerialByteChunker, ByteBuf, ByteBuf>, AsyncProcess {
@@ -96,7 +95,7 @@ public final class SerialByteChunker implements WithSerialToSerial<SerialByteChu
 								.whenException(this::closeWithError);
 						return;
 					}
-					bufs.add(pack(buf));
+					bufs.add(buf);
 					if (!bufs.hasRemainingBytes(minChunkSize)) {
 						doProcess();
 						return;

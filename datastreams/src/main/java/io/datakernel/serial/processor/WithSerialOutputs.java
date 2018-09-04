@@ -5,7 +5,7 @@ import io.datakernel.serial.SerialQueue;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialZeroBuffer;
 
-public interface WithSerialOutputs<B, T> {
+public interface WithSerialOutputs<B extends WithSerialOutputs<B, T>, T> {
 	void addOutput(SerialConsumer<T> output);
 
 	@SuppressWarnings("unchecked")
@@ -14,11 +14,11 @@ public interface WithSerialOutputs<B, T> {
 		return (B) this;
 	}
 
-	default SerialSupplier<T> getOutputSupplier() {
-		return getOutputSupplier(new SerialZeroBuffer<>());
+	default SerialSupplier<T> newOutputSupplier() {
+		return newOutputSupplier(new SerialZeroBuffer<>());
 	}
 
-	default SerialSupplier<T> getOutputSupplier(SerialQueue<T> queue) {
+	default SerialSupplier<T> newOutputSupplier(SerialQueue<T> queue) {
 		addOutput(queue.getConsumer());
 		return queue.getSupplier();
 	}

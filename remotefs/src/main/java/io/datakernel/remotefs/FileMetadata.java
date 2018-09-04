@@ -1,5 +1,7 @@
 package io.datakernel.remotefs;
 
+import io.datakernel.annotation.Nullable;
+
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
@@ -51,5 +53,22 @@ public class FileMetadata {
 	@Override
 	public int hashCode() {
 		return 31 * (31 * name.hashCode() + (int) (size ^ (size >>> 32))) + (int) (timestamp ^ (timestamp >>> 32));
+	}
+
+	@Nullable
+	public static FileMetadata getMoreCompleteFile(@Nullable FileMetadata first, @Nullable FileMetadata second) {
+		if (first == null) {
+			return second;
+		}
+		if (second == null) {
+			return first;
+		}
+		if (first.getSize() > second.getSize()) {
+			return first;
+		}
+		if (second.getSize() > first.getSize()) {
+			return second;
+		}
+		return second.getTimestamp() > first.getTimestamp() ? second : first;
 	}
 }

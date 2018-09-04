@@ -17,7 +17,7 @@ public interface WithSerialToStream<B extends WithSerialToStream<B, I, O>, I, O>
 	default Function<StreamConsumer<O>, SerialConsumer<I>> outputTransformer() {
 		return streamConsumer -> {
 			streamTo(streamConsumer);
-			return getInputConsumer();
+			return newInputConsumer();
 		};
 	}
 

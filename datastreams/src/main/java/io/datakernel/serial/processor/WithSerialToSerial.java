@@ -24,7 +24,7 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 	default Function<SerialConsumer<O>, SerialConsumer<I>> outputTransformer(SerialQueue<I> queue) {
 		return output -> {
 			setOutput(output);
-			SerialConsumer<I> inputConsumer = getInputConsumer(queue);
+			SerialConsumer<I> inputConsumer = newInputConsumer(queue);
 			if (this instanceof AsyncProcess) {
 				((AsyncProcess) this).process();
 			}

@@ -19,7 +19,6 @@ package io.datakernel.stream;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
@@ -136,7 +135,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	/** This method is useful for stream transformers that might add some capability to the stream */
 	protected static Set<StreamCapability> addCapabilities(@Nullable StreamConsumer<?> consumer,
-														   StreamCapability capability, StreamCapability... capabilities) {
+			StreamCapability capability, StreamCapability... capabilities) {
 		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
 		if (consumer != null) {
 			result.addAll(consumer.getCapabilities());

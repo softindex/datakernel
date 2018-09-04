@@ -21,7 +21,7 @@ import ch.qos.logback.classic.Logger;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.serial.SerialSupplier;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -78,18 +78,17 @@ public class TestTimeoutsSimpleFs {
 
 		ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
 		RemoteFsServer server = RemoteFsServer.create(eventloop, serverExecutor, storagePath)
-			.withSocketSettings(SocketSettings.create().withImplReadTimeout(Duration.ofMillis(1)))
-			.withAcceptOnce()
-			.withListenAddress(new InetSocketAddress("localhost", 7010));
+				.withSocketSettings(SocketSettings.create().withImplReadTimeout(Duration.ofMillis(1)))
+				.withAcceptOnce()
+				.withListenAddress(new InetSocketAddress("localhost", 7010));
 
 		server.listen();
 
 		CompletableFuture<Void> future =
-			StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE))
-				.streamTo(
-					client.uploadStream("fileName.txt"))
-				.getConsumerResult()
-				.toCompletableFuture();
+				SerialSupplier.of(ByteBuf.wrapForReading(BIG_FILE))
+						.streamTo(
+								client.uploadSerial("fileName.txt"))
+						.toCompletableFuture();
 
 		eventloop.run();
 

@@ -5,12 +5,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.processor.StreamFunction;
-import io.datakernel.stream.processor.StreamSplitter;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialSuppliers;
+import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
 
@@ -86,7 +83,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset) {
+	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		return mainClient.upload(filename, offset);
 	}
 
@@ -99,7 +96,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	 * @return stage for stream producer of byte buffers
 	 */
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length) {
+	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		checkNotNull(filename, "fileName");
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
@@ -133,7 +130,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 							.thenCompose(mainMetadata -> {
 								if (mainMetadata == null) {
 									return cacheClient.download(filename, offset, length)
-											.whenComplete((val, err) -> updateCacheStats(filename));
+											.whenComplete(($, e) -> updateCacheStats(filename));
 								}
 
 								long sizeInMain = mainMetadata.getSize();
@@ -154,39 +151,38 @@ public class CachedFsClient implements FsClient, EventloopService {
 				});
 	}
 
-	private Stage<StreamProducerWithResult<ByteBuf, Void>> downloadToCache(String fileName, long offset, long length, long sizeInCache) {
+	private Stage<SerialSupplier<ByteBuf>> downloadToCache(String fileName, long offset, long length, long sizeInCache) {
 		long size = length == -1 ? length : length + offset - sizeInCache;
 		return mainClient.download(fileName, sizeInCache, size)
-				.thenApply(producer -> {
+				.thenApply(supplier -> {
 					if (downloadingNowSize + size > cacheSizeLimit.toLong()) {
-						return producer;
+						return supplier;
 					}
 
-					StreamSplitter<ByteBuf> splitter = StreamSplitter.create();
-					Stage<Void> endOfStream = producer.streamTo(splitter.getInput()).getEndOfStream();
-					StreamProducer<ByteBuf> output = splitter.newOutput()
-							.with(StreamFunction.create(ByteBuf::slice))
-							.withLateBinding();
+					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create()
+							.withInput(supplier);
+
+					SerialSupplier<ByteBuf> output = splitter.newOutputSupplier().transform(ByteBuf::slice);
 
 					long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
 					downloadingNowSize += size;
-					splitter.newOutput()
-							.with(StreamFunction.create(ByteBuf::slice))
-							.streamTo(cacheClient.uploadStream(fileName, cacheOffset)
-									.whenResult(r -> cacheClient.list()
-											.whenResult($ -> updateCacheStats(fileName)
-													.whenResult($2 -> ensureSpace()
-															.whenResult($3 -> downloadingNowSize -= size)))));
 
-					splitter.newOutput().streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle))));
+					splitter.newOutputSupplier()
+							.transform(ByteBuf::slice)
+							.streamTo(cacheClient.uploadSerial(fileName, cacheOffset)
+									.whenEndOfStream(() -> cacheClient.list()
+											.thenCompose($ -> updateCacheStats(fileName))
+											.thenCompose($ -> ensureSpace())
+											.whenResult($ -> downloadingNowSize -= size)));
+
+					splitter.newOutputSupplier().streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
+
+					splitter.process();
 
 					if (sizeInCache == 0) {
-						return output.withResult(endOfStream).withLateBinding();
+						return output;
 					}
-					return StreamProducer.concat(cacheClient.downloadStream(fileName, offset, length), output)
-							.withResult(endOfStream)
-							.withLateBinding();
-
+					return SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, length), output);
 				});
 	}
 
@@ -212,20 +208,9 @@ public class CachedFsClient implements FsClient, EventloopService {
 				.thenApply(lists -> lists.stream().flatMap(List::stream))
 				.thenApply(list -> {
 					Map<String, FileMetadata> mapOfMeta = new HashMap<>();
-					list.forEach(metaNew -> mapOfMeta.compute(metaNew.getName(), (s, metaExisting) -> {
-						if (metaExisting == null) {
-							return metaNew;
-						}
-						if (metaNew.getSize() < metaExisting.getSize()) {
-							return metaExisting;
-						}
-						if (metaNew.getSize() > metaExisting.getSize()) {
-							return metaNew;
-						}
-
-						return metaNew.getTimestamp() > metaExisting.getTimestamp() ? metaNew : metaExisting;
-
-					}));
+					list.forEach(metaNew ->
+							mapOfMeta.compute(metaNew.getName(), (s, metaExisting) ->
+									FileMetadata.getMoreCompleteFile(metaExisting, metaNew)));
 					return new ArrayList<>(mapOfMeta.values());
 				});
 	}

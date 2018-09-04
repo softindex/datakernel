@@ -22,11 +22,11 @@ import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.serial.AbstractSerialConsumer;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.stream.processor.StreamCut;
+import io.datakernel.stream.processor.StreamCut.SizeCounter;
+import io.datakernel.stream.processor.StreamCut.SliceStrategy;
+import io.datakernel.stream.processor.StreamCut.Slicer;
 import io.datakernel.stream.processor.StreamLateBinder;
-import io.datakernel.stream.processor.StreamSkip;
-import io.datakernel.stream.processor.StreamSkip.Dropper;
-import io.datakernel.stream.processor.StreamSkip.SizeCounter;
-import io.datakernel.stream.processor.StreamSkip.SkipStrategy;
 import io.datakernel.stream.processor.StreamTransformer;
 
 import java.util.EnumSet;
@@ -78,7 +78,7 @@ public interface StreamConsumer<T> extends Cancellable {
 		return new StreamConsumers.OfSerialConsumerImpl<>(consumer);
 	}
 
-	static <T, R> StreamConsumer<T> ofProducer(Consumer<StreamProducer<T>> producerAcceptor) {
+	static <T> StreamConsumer<T> ofProducer(Consumer<StreamProducer<T>> producerAcceptor) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.idenity();
 		producerAcceptor.accept(forwarder.getOutput());
 		return forwarder.getInput();
@@ -199,16 +199,27 @@ public interface StreamConsumer<T> extends Cancellable {
 		return this;
 	}
 
-	default StreamConsumer<T> ignoreFirst(long skip, SizeCounter<T> sizeCounter, Dropper<T> dropper) {
-		return with(StreamSkip.create(skip, sizeCounter, dropper));
+	default StreamConsumer<T> skipFirst(long skip, SizeCounter<T> sizeCounter, Slicer<T> slicer) {
+		return with(StreamCut.create(skip, -1, sizeCounter, slicer));
 	}
 
-	default StreamConsumer<T> ignoreFirst(long skip, SkipStrategy<T> strategy) {
-		return with(StreamSkip.create(skip, strategy));
+	default StreamConsumer<T> skipFirst(long skip, SliceStrategy<T> strategy) {
+		return with(StreamCut.create(skip, -1, strategy));
 	}
 
-	default StreamConsumer<T> ignoreFirst(long skip) {
-		return with(StreamSkip.create(skip));
+	default StreamConsumer<T> skipFirst(long skip) {
+		return with(StreamCut.create(skip, -1));
 	}
 
+	default StreamConsumer<T> cut(long skip, long length, SizeCounter<T> sizeCounter, Slicer<T> slicer) {
+		return with(StreamCut.create(skip, length, sizeCounter, slicer));
+	}
+
+	default StreamConsumer<T> cut(long skip, long length, SliceStrategy<T> strategy) {
+		return with(StreamCut.create(skip, length, strategy));
+	}
+
+	default StreamConsumer<T> cut(long skip, long length) {
+		return with(StreamCut.create(skip, length));
+	}
 }

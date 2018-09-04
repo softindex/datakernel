@@ -29,7 +29,6 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.bytebuf.ByteBufPool.pack;
 import static io.datakernel.bytebuf.ByteBufPool.recycleIfEmpty;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
@@ -54,29 +53,29 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	// region builders
 	public static AsyncSslSocket wrapClientSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                                              String host, int port,
-	                                              SSLContext sslContext, Executor executor) {
+			String host, int port,
+			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine(host, port);
 		sslEngine.setUseClientMode(true);
 		return wrapSocket(eventloop, asyncTcpSocket, sslEngine, executor);
 	}
 
 	public static AsyncSslSocket wrapClientSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                                              SSLContext sslContext, Executor executor) {
+			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
 		sslEngine.setUseClientMode(true);
 		return wrapSocket(eventloop, asyncTcpSocket, sslEngine, executor);
 	}
 
 	public static AsyncSslSocket wrapServerSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                                              SSLContext sslContext, Executor executor) {
+			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
 		sslEngine.setUseClientMode(false);
 		return wrapSocket(eventloop, asyncTcpSocket, sslEngine, executor);
 	}
 
 	public static AsyncSslSocket wrapSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                                        SSLEngine engine, Executor executor) {
+			SSLEngine engine, Executor executor) {
 		AsyncSslSocket asyncSslSocket = AsyncSslSocket.create(eventloop, asyncTcpSocket, engine, executor);
 		asyncTcpSocket.setEventHandler(asyncSslSocket);
 		return asyncSslSocket;
@@ -90,7 +89,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	public static AsyncSslSocket create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                                    SSLEngine engine, Executor executor) {
+			SSLEngine engine, Executor executor) {
 		return new AsyncSslSocket(eventloop, asyncTcpSocket, engine, executor);
 	}
 	// endregion
@@ -349,7 +348,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			read = false;
 			ByteBuf readBuf = engine2app;
 			engine2app = ByteBuf.empty();
-			downstreamEventHandler.onRead(pack(readBuf));
+			downstreamEventHandler.onRead(readBuf);
 		}
 
 		if (engine2app != null && result != null && result.getStatus() == CLOSED) {

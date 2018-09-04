@@ -18,6 +18,7 @@ package io.datakernel.remotefs.stress;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
+import io.datakernel.serial.file.SerialFileWriter;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -31,9 +32,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.file.AsyncFile.open;
-import static io.datakernel.stream.file.StreamFileWriter.CREATE_OPTIONS;
-import static io.datakernel.stream.file.StreamFileWriter.create;
 
 public class StressDownload {
 	private static final int OPERATIONS_QUANTITY = 10 * 1024;
@@ -44,7 +42,7 @@ public class StressDownload {
 	private static Random rand = new Random();
 	public static final List<String> FILES = new ArrayList<>();
 
-	public static void main(String[] args) throws IOException, InterruptedException {
+	public static void main(String[] args) throws IOException {
 
 		Files.createDirectories(CLIENT_STORAGE);
 
@@ -64,7 +62,7 @@ public class StressDownload {
 			client.download(file, 0).whenComplete((producer, throwable) -> {
 				if (throwable == null) {
 					try {
-						producer.streamTo(create(open(executor, CLIENT_STORAGE.resolve(file), CREATE_OPTIONS)));
+						producer.streamTo(SerialFileWriter.create(executor, CLIENT_STORAGE.resolve(file)));
 					} catch (IOException e) {
 						failures[0]++;
 					}

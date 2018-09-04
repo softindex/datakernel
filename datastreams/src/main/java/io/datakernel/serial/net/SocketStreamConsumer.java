@@ -24,10 +24,10 @@ import io.datakernel.serial.SerialConsumer;
 
 final class SocketStreamConsumer implements SerialConsumer<ByteBuf> {
 	private final AsyncTcpSocket asyncTcpSocket;
-	private SettableStage<Void> write;
-
 	private final SettableStage<Void> endOfStream = new SettableStage<>();
-	boolean writeEndOfStream;
+
+	private SettableStage<Void> write;
+	private boolean writeEndOfStream;
 
 	SocketStreamConsumer(AsyncTcpSocket asyncTcpSocket) {
 		this.asyncTcpSocket = asyncTcpSocket;
@@ -59,6 +59,7 @@ final class SocketStreamConsumer implements SerialConsumer<ByteBuf> {
 	}
 
 	public void onWrite() {
+		assert write != null : "Received onWrite without writing anything";
 		write.set(null);
 		if (writeEndOfStream) {
 			endOfStream.trySet(null);
@@ -72,5 +73,4 @@ final class SocketStreamConsumer implements SerialConsumer<ByteBuf> {
 	public boolean isClosed() {
 		return endOfStream.isComplete();
 	}
-
 }

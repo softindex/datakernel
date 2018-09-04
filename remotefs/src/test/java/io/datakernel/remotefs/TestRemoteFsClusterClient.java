@@ -4,9 +4,8 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
@@ -84,8 +83,7 @@ public class TestRemoteFsClusterClient {
 		String content = "test content of the file";
 		String resultFile = "file.txt";
 
-		StreamProducer.of(ByteBuf.wrapForReading(content.getBytes(UTF_8))).streamTo(client.uploadStream(resultFile))
-				.getEndOfStream()
+		SerialSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8))).streamTo(client.uploadSerial(resultFile))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete());
 
@@ -110,11 +108,10 @@ public class TestRemoteFsClusterClient {
 
 		Files.write(serverStorages[numOfServer].resolve(file), content.getBytes(UTF_8));
 
-		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, 0);
-		StreamFileWriter consumer = StreamFileWriter.create(executor, clientStorage.resolve(file));
+		SerialSupplier<ByteBuf> producer = client.downloadSerial(file, 0);
+		SerialFileWriter consumer = SerialFileWriter.create(executor, clientStorage.resolve(file));
 
 		producer.streamTo(consumer)
-				.getEndOfStream()
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete());
 
@@ -144,7 +141,7 @@ public class TestRemoteFsClusterClient {
 
 		String[] files = {"file_1.txt", "file_2.txt", "file_3.txt", "other.txt"};
 
-		Stages.all(Arrays.stream(files).map(f -> StreamProducer.of(data.slice()).streamTo(client.uploadStream(f)).getEndOfStream()))
+		Stages.all(Arrays.stream(files).map(f -> SerialSupplier.of(data.slice()).streamTo(client.uploadSerial(f))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete());
 
@@ -165,7 +162,7 @@ public class TestRemoteFsClusterClient {
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));
 
 		Stages.runSequence(IntStream.range(0, 1000)
-				.mapToObj(i -> StreamProducer.of(data.slice()).streamTo(client.uploadStream("file_uploaded_" + i + ".txt")).getEndOfStream()))
+				.mapToObj(i -> SerialSupplier.of(data.slice()).streamTo(client.uploadSerial("file_uploaded_" + i + ".txt"))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete());
 
@@ -183,8 +180,7 @@ public class TestRemoteFsClusterClient {
 	public void testNotEnoughUploads() {
 		client.withReplicationCount(client.getClients().size()); // max possible replication
 
-		StreamProducer.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(client.uploadStream("file_uploaded.txt"))
-				.getConsumerResult()
+		SerialSupplier.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(client.uploadSerial("file_uploaded.txt"))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, "Didn't connect to enough partitions"));
 
@@ -196,7 +192,7 @@ public class TestRemoteFsClusterClient {
 
 		String fileName = "i_dont_exist.txt";
 
-		client.downloadStream(fileName)
+		client.downloadSerial(fileName)
 				.whenComplete((result, error) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, fileName));
 

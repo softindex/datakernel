@@ -142,22 +142,6 @@ public final class ByteBufPool {
 		}
 	}
 
-	public static ByteBuf pack(ByteBuf buf) {
-		int size = buf.readRemaining();
-		if (size == 0) {
-			buf.recycle();
-			return ByteBuf.empty();
-		}
-		if (buf.array.length < minSize || buf.array.length >= maxSize) return buf;
-		int targetSize = 1 << (32 - Integer.numberOfLeadingZeros(size - 1));
-		if (targetSize == buf.array.length) return buf;
-		ByteBuf newBuf = allocate(targetSize);
-		newBuf.put(buf);
-		buf.recycle();
-		assert newBuf == pack(newBuf);
-		return newBuf;
-	}
-
 	public static ByteBuf append(ByteBuf to, ByteBuf from) {
 		assert !to.isRecycled() && !from.isRecycled();
 		if (to.readRemaining() == 0) {

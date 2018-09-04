@@ -51,5 +51,4 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 		}
 		return buffer.take();
 	}
-
 }

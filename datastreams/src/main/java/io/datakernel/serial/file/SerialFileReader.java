@@ -48,6 +48,7 @@ public final class SerialFileReader implements SerialSupplier<ByteBuf> {
 	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
 	private long position = 0;
 	private long limit = Long.MAX_VALUE;
+	private boolean finished = false;
 
 	private SerialFileReader(AsyncFile asyncFile) {
 		this.asyncFile = asyncFile;
@@ -86,6 +87,9 @@ public final class SerialFileReader implements SerialSupplier<ByteBuf> {
 
 	@Override
 	public Stage<ByteBuf> get() {
+		if (finished) {
+			return Stage.of(null);
+		}
 		int bufSize = (int) Math.min(bufferSize, limit);
 		ByteBuf buf = ByteBufPool.allocateExact(bufSize);
 		return asyncFile.read(buf, position) // reads are synchronized at least on asyncFile, so if produce() is called twice, position wont be broken (i hope)
@@ -97,6 +101,7 @@ public final class SerialFileReader implements SerialSupplier<ByteBuf> {
 					int bytesRead = buf.readRemaining(); // bytes written (as they were read from file, thus the name) to be read by a consumer (thus the method)
 					if (bytesRead == 0) { // this happens when file size is exact multiple of buffer size
 						buf.recycle();
+						finished = true;
 						return Stage.of(null);
 					}
 					position += bytesRead;
@@ -104,7 +109,7 @@ public final class SerialFileReader implements SerialSupplier<ByteBuf> {
 						limit -= bytesRead; // bytesRead is always <= the limit (^ see the min call)
 					}
 					if (limit == 0L || bytesRead < bufSize) { // AsyncFile#read finishes either if file is done or buffer is filled
-						return Stage.of(null);
+						finished = true;
 					}
 					return Stage.of(buf);
 				})
@@ -133,7 +138,7 @@ public final class SerialFileReader implements SerialSupplier<ByteBuf> {
 
 	@Override
 	public String toString() {
-		return "StreamFileReader{" + asyncFile +
+		return "SerialFileReader{" + asyncFile +
 				", pos=" + position +
 				(limit == Long.MAX_VALUE ? "" : ", len=" + limit) +
 				'}';

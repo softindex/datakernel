@@ -32,7 +32,8 @@ import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.util.Recyclable.deepRecycle;
 
 public final class StreamConsumers {
-	private StreamConsumers() {}
+	private StreamConsumers() {
+	}
 
 	static final class ClosingWithErrorImpl<T> implements StreamConsumer<T> {
 		private final Throwable exception;

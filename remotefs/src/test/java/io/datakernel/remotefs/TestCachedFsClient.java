@@ -1,12 +1,10 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.serial.SerialConsumer;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.test.TestUtils;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.util.MemSize;
 import org.junit.After;
 import org.junit.Before;
@@ -85,8 +83,7 @@ public class TestCachedFsClient {
 				.thenCompose(producer -> {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
-							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
-							.getEndOfStream()
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.thenRunEx(server::close)
@@ -109,8 +106,7 @@ public class TestCachedFsClient {
 				.thenCompose(producer -> {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
-							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
-							.getEndOfStream()
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.thenRunEx(server::close)
@@ -131,8 +127,7 @@ public class TestCachedFsClient {
 				.thenCompose(producer -> {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
-							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
-							.getEndOfStream()
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.thenRunEx(server::close)
@@ -157,14 +152,11 @@ public class TestCachedFsClient {
 				.thenCompose(producer -> {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
-							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
-							.getEndOfStream()
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.thenRunEx(server::close)
-				.whenComplete((res, err) -> {
-					assertEquals("in", res);
-				})
+				.whenComplete((res, err) -> assertEquals("in", res))
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -177,8 +169,7 @@ public class TestCachedFsClient {
 				.thenCompose(producer -> {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
-							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
-							.getEndOfStream()
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.thenRunEx(server::close)
@@ -195,8 +186,7 @@ public class TestCachedFsClient {
 				.thenCompose(producer -> {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
-							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
-							.getEndOfStream()
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> assertEquals("in", res))
@@ -215,8 +205,7 @@ public class TestCachedFsClient {
 				.thenCompose(producer -> {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
-							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
-							.getEndOfStream()
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.thenRunEx(server::close)
@@ -235,8 +224,7 @@ public class TestCachedFsClient {
 				.thenCompose(producer -> {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
-							.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
-							.getEndOfStream()
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
 				})
 				.whenComplete((res, err) -> assertEquals("hi", res))
@@ -495,8 +483,7 @@ public class TestCachedFsClient {
 
 
 	private void initializeCacheDownloadFiles(int numberOfFiles, String prefix) throws IOException {
-		long size = initializeFiles(numberOfFiles, prefix);
-
+		initializeFiles(numberOfFiles, prefix);
 		downloadFiles(numberOfFiles, 1, prefix);
 	}
 
@@ -523,13 +510,11 @@ public class TestCachedFsClient {
 						.thenCompose(producer -> {
 							ByteBufQueue q = new ByteBufQueue();
 							return producer
-									.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(q::add))))
-									.getEndOfStream();
+									.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)));
 						})
 						.whenResult($ -> server.close());
 				eventloop.run();
 			}
 		}
-
 	}
 }

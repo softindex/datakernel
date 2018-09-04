@@ -25,9 +25,6 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
-import io.datakernel.stream.net.Messaging;
-import io.datakernel.stream.net.MessagingSerializer;
-import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -36,15 +33,13 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
-import static io.datakernel.stream.net.MessagingSerializers.ofJson;
-
 /**
  * An implementation of {@link AbstractServer} for RemoteFs.
  * It exposes some given {@link FsClient} to the Internet in pair with {@link RemoteFsClient}
  */
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
-	private static final MessagingSerializer<FsCommand, FsResponse> SERIALIZER =
-		ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
+	private static final io.datakernel.serial.net.MessagingSerializer<FsCommand, FsResponse> SERIALIZER =
+			io.datakernel.serial.net.MessagingSerializers.ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
 
 	private final Map<Class, MessagingHandler<FsCommand>> handlers = new HashMap<>();
 	private final FsClient client;
@@ -79,31 +74,32 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 
 	@Override
 	protected EventHandler createSocketHandler(AsyncTcpSocket socket) {
-		MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging = MessagingWithBinaryStreaming.create(socket, SERIALIZER);
+		io.datakernel.serial.net.MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging =
+				io.datakernel.serial.net.MessagingWithBinaryStreaming.create(socket, SERIALIZER);
 		messaging.receive()
-			.thenCompose(msg -> {
-				if (msg == null) {
-					logger.warn("unexpected end of stream: {}", this);
-					messaging.close();
-					return Stage.complete();
-				}
-				MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
-				if (handler == null) {
-					return Stage.ofException(new Exception("no handler for " + msg + " " + this));
-				}
-				return handler.onMessage(messaging, msg);
-			})
-			.whenComplete(handleRequestStage.recordStats())
-			.thenComposeEx(($, err) -> {
-				if (err == null) {
-					return Stage.complete();
-				}
-				logger.warn("got an error while handling message (" + err + ") : " + this);
-				String prefix = err.getClass() != RemoteFsException.class ? err.getClass().getSimpleName() + ": " : "";
-				return messaging.send(new ServerError(prefix + err.getMessage()))
-					.thenCompose($2 -> messaging.sendEndOfStream())
-					.thenRun(messaging::close);
-			});
+				.thenCompose(msg -> {
+					if (msg == null) {
+						logger.warn("unexpected end of stream: {}", this);
+						messaging.close();
+						return Stage.complete();
+					}
+					MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
+					if (handler == null) {
+						return Stage.ofException(new Exception("no handler for " + msg + " " + this));
+					}
+					return handler.onMessage(messaging, msg);
+				})
+				.whenComplete(handleRequestStage.recordStats())
+				.thenComposeEx(($, err) -> {
+					if (err == null) {
+						return Stage.complete();
+					}
+					logger.warn("got an error while handling message (" + err + ") : " + this);
+					String prefix = err.getClass() != RemoteFsException.class ? err.getClass().getSimpleName() + ": " : "";
+					return messaging.send(new ServerError(prefix + err.getMessage()))
+							.thenCompose($2 -> messaging.sendEndOfStream())
+							.thenRun(messaging::close);
+				});
 		return messaging;
 	}
 
@@ -111,46 +107,48 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		onMessage(Upload.class, (messaging, msg) -> {
 			String file = msg.getFileName();
 			logger.trace("receiving data for {}: {}", file, this);
-			return messaging.receiveBinaryStream().streamTo(client.uploadStream(file, msg.getOffset())).getConsumerResult()
-				.thenCompose($ -> messaging.send(new UploadFinished()))
-				.thenCompose($ -> messaging.sendEndOfStream())
-				.thenRun(messaging::close)
-				.whenComplete(uploadStage.recordStats())
-				.thenRun(() -> logger.trace("finished receiving data for {}: {}", file, this))
-				.toVoid();
+			return messaging.receiveBinaryStream()
+					.streamTo(client.uploadSerial(file, msg.getOffset()))
+					.thenCompose($ -> messaging.send(new UploadFinished()))
+					.thenCompose($ -> messaging.sendEndOfStream())
+					.thenRun(messaging::close)
+					.whenComplete(uploadStage.recordStats())
+					.thenRun(() -> logger.trace("finished receiving data for {}: {}", file, this))
+					.toVoid();
 		});
+
 		onMessage(Download.class, (messaging, msg) -> {
 			String fileName = msg.getFileName();
 			return client.list(fileName)
-				.thenCompose(list -> {
-					if (list.isEmpty()) {
-						return Stage.ofException(new RemoteFsException("File not found: " + fileName));
-					}
-					long size = list.get(0).getSize();
-					long length = msg.getLength();
-					long offset = msg.getOffset();
+					.thenCompose(list -> {
+						if (list.isEmpty()) {
+							return Stage.ofException(new RemoteFsException("File not found: " + fileName));
+						}
+						long size = list.get(0).getSize();
+						long length = msg.getLength();
+						long offset = msg.getOffset();
 
-					String repr = fileName + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "");
-					logger.trace("requested file {}: {}", repr, this);
+						String repr = fileName + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "");
+						logger.trace("requested file {}: {}", repr, this);
 
-					if (offset > size) {
-						return Stage.ofException(new RemoteFsException("Offset exceeds file size for " + repr));
-					}
-					if (length != -1 && offset + length > size) {
-						return Stage.ofException(new RemoteFsException("Boundaries exceed file size for " + repr));
-					}
+						if (offset > size) {
+							return Stage.ofException(new RemoteFsException("Offset exceeds file size for " + repr));
+						}
+						if (length != -1 && offset + length > size) {
+							return Stage.ofException(new RemoteFsException("Boundaries exceed file size for " + repr));
+						}
 
-					long fixedLength = length == -1 ? size - offset : length;
+						long fixedLength = length == -1 ? size - offset : length;
 
-					return messaging.send(new DownloadSize(fixedLength))
-						.thenCompose($ -> {
-							logger.trace("sending data for {}: {}", repr, this);
-							return client.downloadStream(fileName, offset, fixedLength).streamTo(messaging.sendBinaryStream())
-								.getConsumerResult()
-								.thenRun(() -> logger.trace("finished sending data for {}: {}", repr, this));
-						});
-				})
-				.whenComplete(downloadStage.recordStats());
+						return messaging.send(new DownloadSize(fixedLength))
+								.thenCompose($ -> {
+									logger.trace("sending data for {}: {}", repr, this);
+									return client.downloadSerial(fileName, offset, fixedLength)
+											.streamTo(messaging.sendBinaryStream())
+											.thenRun(() -> logger.trace("finished sending data for {}: {}", repr, this));
+								});
+					})
+					.whenComplete(downloadStage.recordStats());
 		});
 		onMessage(Move.class, (messaging, msg) -> client.move(msg.getChanges()).thenCompose(simple(messaging, MoveFinished::new)).whenComplete(moveStage.recordStats()));
 		onMessage(Copy.class, (messaging, msg) -> client.copy(msg.getChanges()).thenCompose(simple(messaging, CopyFinished::new)).whenComplete(copyStage.recordStats()));
@@ -158,13 +156,13 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		onMessage(Delete.class, (messaging, msg) -> client.delete(msg.getGlob()).thenCompose(simple(messaging, DeleteFinished::new)).whenComplete(deleteStage.recordStats()));
 	}
 
-	private static <T> Function<T, Stage<Void>> simple(Messaging<?, FsResponse> messaging, Function<T, FsResponse> res) {
+	private static <T> Function<T, Stage<Void>> simple(io.datakernel.serial.net.Messaging<?, FsResponse> messaging, Function<T, FsResponse> res) {
 		return item -> messaging.send(res.apply(item)).thenCompose($ -> messaging.sendEndOfStream());
 	}
 
 	@FunctionalInterface
 	private interface MessagingHandler<R extends FsCommand> {
-		Stage<Void> onMessage(Messaging<FsCommand, FsResponse> messaging, R item);
+		Stage<Void> onMessage(io.datakernel.serial.net.Messaging<FsCommand, FsResponse> messaging, R item);
 	}
 
 	@SuppressWarnings("unchecked")

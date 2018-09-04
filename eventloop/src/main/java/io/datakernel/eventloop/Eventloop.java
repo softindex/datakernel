@@ -48,7 +48,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.emptyIterator;
@@ -299,9 +298,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		if (channelKey.isValid()) {
 			cancelledKeys++;
 		}
+		SelectableChannel channel = channelKey.channel();
 		try {
-			channelKey.channel().close();
-		} catch (IOException ignored) {
+			channel.close();
+		} catch (IOException e) {
+			logger.warn("Failed to close channel {}", channel, e);
 		}
 	}
 
@@ -313,7 +314,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 		try {
 			channel.close();
-		} catch (IOException ignored) {
+		} catch (IOException e) {
+			logger.warn("Failed to close channel {}", channel, e);
 		}
 	}
 

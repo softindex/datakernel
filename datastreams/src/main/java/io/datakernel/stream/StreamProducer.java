@@ -19,11 +19,11 @@ package io.datakernel.stream;
 import io.datakernel.async.*;
 import io.datakernel.serial.AbstractSerialSupplier;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.stream.processor.StreamCut;
+import io.datakernel.stream.processor.StreamCut.SizeCounter;
+import io.datakernel.stream.processor.StreamCut.SliceStrategy;
+import io.datakernel.stream.processor.StreamCut.Slicer;
 import io.datakernel.stream.processor.StreamLateBinder;
-import io.datakernel.stream.processor.StreamSkip;
-import io.datakernel.stream.processor.StreamSkip.Dropper;
-import io.datakernel.stream.processor.StreamSkip.SizeCounter;
-import io.datakernel.stream.processor.StreamSkip.SkipStrategy;
 import io.datakernel.stream.processor.StreamTransformer;
 
 import java.util.Iterator;
@@ -396,15 +396,15 @@ public interface StreamProducer<T> extends Cancellable {
 		return this;
 	}
 
-	default StreamProducer<T> skipFirst(long skip, SizeCounter<T> sizeCounter, Dropper<T> dropper) {
-		return with(StreamSkip.create(skip, sizeCounter, dropper));
+	default StreamProducer<T> skipFirst(long skip, SizeCounter<T> sizeCounter, Slicer<T> slicer) {
+		return with(StreamCut.create(skip, -1, sizeCounter, slicer));
 	}
 
-	default StreamProducer<T> skipFirst(long skip, SkipStrategy<T> strategy) {
-		return with(StreamSkip.create(skip, strategy));
+	default StreamProducer<T> skipFirst(long skip, SliceStrategy<T> strategy) {
+		return with(StreamCut.create(skip, -1, strategy));
 	}
 
 	default StreamProducer<T> skipFirst(long skip) {
-		return with(StreamSkip.create(skip));
+		return with(StreamCut.create(skip, -1));
 	}
 }

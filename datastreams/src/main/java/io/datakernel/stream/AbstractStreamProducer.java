@@ -19,7 +19,6 @@ package io.datakernel.stream;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
@@ -68,6 +67,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		STARTED_ASYNC
 	}
 
+	@Nullable
 	private ProduceStatus produceStatus;
 
 	private Object tag;
@@ -121,7 +121,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		return currentDataReceiver;
 	}
 
-	@Nullable
 	public StreamDataReceiver<T> getLastDataReceiver() {
 		return lastDataReceiver;
 	}

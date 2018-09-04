@@ -18,8 +18,8 @@ package io.datakernel.remotefs;
 
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 
 import java.io.File;
 import java.util.*;
@@ -53,7 +53,7 @@ public interface FsClient {
 	 * @param offset   from which byte to write the uploaded data
 	 * @return stage for stream consumer of byte buffers
 	 */
-	Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, long offset);
+	Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset);
 
 	/**
 	 * Shortcut for uploading NEW file
@@ -61,7 +61,7 @@ public interface FsClient {
 	 * @param filename name of the file to upload
 	 * @return stage for stream consumer of byte buffers
 	 */
-	default Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename) {
+	default Stage<SerialConsumer<ByteBuf>> upload(String filename) {
 		return upload(filename, -1);
 	}
 
@@ -72,12 +72,11 @@ public interface FsClient {
 	 * @param tempFolder name of the temporary folder
 	 * @return stream consumer of byte buffers
 	 */
-	default Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String filename, String tempFolder) {
+	default Stage<SerialConsumer<ByteBuf>> upload(String filename, String tempFolder) {
 		String tempName = tempFolder + File.separator + filename;
 		return upload(tempName)
 				.thenApply(consumer ->
-						consumer.thenCompose($ ->
-								move(tempName, filename)));
+						consumer.thenCompose($ -> move(tempName, filename)));
 	}
 
 	/**
@@ -89,19 +88,19 @@ public interface FsClient {
 	 * @param filename name of the file to upload
 	 * @return stream consumer of byte buffers
 	 */
-	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String filename) {
-		return StreamConsumerWithResult.ofStage(upload(filename));
+	default SerialConsumer<ByteBuf> uploadSerial(String filename) {
+		return SerialConsumer.ofStage(upload(filename));
 	}
 
-	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String filename, long offset) {
-		return StreamConsumerWithResult.ofStage(upload(filename, offset));
+	default SerialConsumer<ByteBuf> uploadSerial(String filename, long offset) {
+		return SerialConsumer.ofStage(upload(filename, offset));
 	}
 
 	/**
 	 * Same shortcut, but for {@link #upload(String, String)}
 	 */
-	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String filename, String tempFolder) {
-		return StreamConsumerWithResult.ofStage(upload(filename, tempFolder));
+	default SerialConsumer<ByteBuf> uploadSerial(String filename, String tempFolder) {
+		return SerialConsumer.ofStage(upload(filename, tempFolder));
 	}
 
 	/**
@@ -116,7 +115,7 @@ public interface FsClient {
 	 * @see #download(String, long)
 	 * @see #download(String)
 	 */
-	Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset, long length);
+	Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length);
 
 	/**
 	 * Shortcut for downloading the whole file from given offset.
@@ -125,19 +124,19 @@ public interface FsClient {
 	 * @see #download(String, long, long)
 	 * @see #download(String)
 	 */
-	default Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename, long offset) {
+	default Stage<SerialSupplier<ByteBuf>> download(String filename, long offset) {
 		return download(filename, offset, -1);
 	}
 
 	/**
 	 * Shortcut for downloading the whole available file.
 	 *
+	 * @param filename name of the file to be downloaded
 	 * @return stream producer of byte buffers
 	 * @see #download(String, long)
 	 * @see #download(String, long, long)
-	 * @param filename
 	 */
-	default Stage<StreamProducerWithResult<ByteBuf, Void>> download(String filename) {
+	default Stage<SerialSupplier<ByteBuf>> download(String filename) {
 		return download(filename, 0, -1);
 	}
 
@@ -146,8 +145,8 @@ public interface FsClient {
 	 *
 	 * @see #download(String, long, long)
 	 */
-	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String filename, long offset, long length) {
-		return StreamProducerWithResult.ofStage(download(filename, offset, length));
+	default SerialSupplier<ByteBuf> downloadSerial(String filename, long offset, long length) {
+		return SerialSupplier.ofStage(download(filename, offset, length));
 	}
 
 	/**
@@ -155,18 +154,18 @@ public interface FsClient {
 	 *
 	 * @see #download(String, long)
 	 */
-	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String filename, long offset) {
-		return StreamProducerWithResult.ofStage(download(filename, offset));
+	default SerialSupplier<ByteBuf> downloadSerial(String filename, long offset) {
+		return SerialSupplier.ofStage(download(filename, offset));
 	}
 
 	/**
 	 * Same shortcut but for downloading the whole file.
 	 *
+	 * @param filename name of the file to be downloaded
 	 * @see #download(String)
-	 * @param filename
 	 */
-	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String filename) {
-		return StreamProducerWithResult.ofStage(download(filename));
+	default SerialSupplier<ByteBuf> downloadSerial(String filename) {
+		return SerialSupplier.ofStage(download(filename));
 	}
 
 	/**
@@ -186,7 +185,7 @@ public interface FsClient {
 		return move(changes)
 				.thenCompose(res -> {
 					if (res.size() < changes.size()) {
-						HashSet<String> set = new HashSet<>(changes.keySet());
+						Set<String> set = new HashSet<>(changes.keySet());
 						set.removeAll(res);
 						return Stage.ofException(new RemoteFsException("Those files were not moved: " + set));
 					}
@@ -197,6 +196,7 @@ public interface FsClient {
 	/**
 	 * Shortcut for {@link #strictMove} for a single file.
 	 * By default is is equivalent to calling strictMove(Collections.singletonMap(fileName, newFileName))
+	 *
 	 * @param filename    file to be moved
 	 * @param newFilename new file name
 	 */
@@ -222,7 +222,7 @@ public interface FsClient {
 		return copy(changes)
 				.thenCompose(res -> {
 					if (res.size() < changes.size()) {
-						HashSet<String> set = new HashSet<>(changes.keySet());
+						Set<String> set = new HashSet<>(changes.keySet());
 						set.removeAll(res);
 						return Stage.ofException(new RemoteFsException("Those files were not copied: " + set));
 					}
@@ -233,7 +233,8 @@ public interface FsClient {
 	/**
 	 * Shortcut for {@link #strictCopy} for a single file.
 	 * By default is is equivalent to calling strictCopy(Collections.singletonMap(fileName, newFileName))
-	 *  @param filename    file to be moved
+	 *
+	 * @param filename    file to be moved
 	 * @param newFilename new file name
 	 */
 	default Stage<Void> copy(String filename, String newFilename) {
