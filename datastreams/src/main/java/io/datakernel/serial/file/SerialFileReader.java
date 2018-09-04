@@ -36,8 +36,8 @@ import static java.nio.file.StandardOpenOption.READ;
 /**
  * This producer allows you to asynchronously read binary data from a file.
  */
-public final class StreamFileReader implements SerialSupplier<ByteBuf> {
-	private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
+public final class SerialFileReader implements SerialSupplier<ByteBuf> {
+	private static final Logger logger = LoggerFactory.getLogger(SerialFileReader.class);
 
 	public static final OpenOption[] READ_OPTIONS = new OpenOption[]{READ};
 
@@ -49,32 +49,32 @@ public final class StreamFileReader implements SerialSupplier<ByteBuf> {
 	private long position = 0;
 	private long limit = Long.MAX_VALUE;
 
-	private StreamFileReader(AsyncFile asyncFile) {
+	private SerialFileReader(AsyncFile asyncFile) {
 		this.asyncFile = asyncFile;
 	}
 
-	public static StreamFileReader readFile(ExecutorService executor, Path path) throws IOException {
-		return new StreamFileReader(AsyncFile.open(executor, path, READ_OPTIONS));
+	public static SerialFileReader readFile(ExecutorService executor, Path path) throws IOException {
+		return new SerialFileReader(AsyncFile.open(executor, path, READ_OPTIONS));
 	}
 
-	public static StreamFileReader readFile(AsyncFile asyncFile) {
-		return new StreamFileReader(asyncFile);
+	public static SerialFileReader readFile(AsyncFile asyncFile) {
+		return new SerialFileReader(asyncFile);
 	}
 
-	public StreamFileReader withBufferSize(MemSize bufferSize) {
+	public SerialFileReader withBufferSize(MemSize bufferSize) {
 		checkArgument(bufferSize.toInt() > 0, "Buffer size cannot be less than or equal to zero");
 
 		this.bufferSize = bufferSize.toInt();
 		return this;
 	}
 
-	public StreamFileReader withOffset(long offset) {
+	public SerialFileReader withOffset(long offset) {
 		checkArgument(offset >= 0, "Offset cannot be negative");
 		position = offset;
 		return this;
 	}
 
-	public StreamFileReader withLength(long length) {
+	public SerialFileReader withLength(long length) {
 		checkArgument(length >= 0, "Length cannot be less than zero");
 		this.limit = length;
 		return this;

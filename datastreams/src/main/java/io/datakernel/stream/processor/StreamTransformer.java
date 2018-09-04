@@ -26,6 +26,13 @@ public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, Stre
 		return StreamFunction.create(Function.identity());
 	}
 
+	default Function<StreamProducer<I>, StreamProducer<O>> transformer() {
+		return input -> {
+			input.streamTo(getInput());
+			return getOutput();
+		};
+	}
+
 	default <T> StreamTransformer<T, O> with(StreamConsumerModifier<I, T> consumerModifier) {
 		return new StreamTransformer<T, O>() {
 			private final StreamConsumer<T> input = consumerModifier.applyTo(StreamTransformer.this.getInput());

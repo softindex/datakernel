@@ -16,7 +16,10 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Cancellable;
+import io.datakernel.async.MaterializedStage;
+import io.datakernel.async.Stage;
 import io.datakernel.serial.AbstractSerialConsumer;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.stream.processor.StreamLateBinder;
@@ -24,10 +27,12 @@ import io.datakernel.stream.processor.StreamSkip;
 import io.datakernel.stream.processor.StreamSkip.Dropper;
 import io.datakernel.stream.processor.StreamSkip.SizeCounter;
 import io.datakernel.stream.processor.StreamSkip.SkipStrategy;
+import io.datakernel.stream.processor.StreamTransformer;
 
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
@@ -71,6 +76,16 @@ public interface StreamConsumer<T> extends Cancellable {
 
 	static <T> StreamConsumer<T> ofSerialConsumer(SerialConsumer<T> consumer) {
 		return new StreamConsumers.OfSerialConsumerImpl<>(consumer);
+	}
+
+	static <T, R> StreamConsumer<T> ofProducer(Consumer<StreamProducer<T>> producerAcceptor) {
+		StreamTransformer<T, T> forwarder = StreamTransformer.idenity();
+		producerAcceptor.accept(forwarder.getOutput());
+		return forwarder.getInput();
+	}
+
+	static <T, R> StreamConsumer<T> ofTransformer(Function<StreamProducer<T>, R> fn, Consumer<R> resultAcceptor) {
+		return ofProducer(producer -> resultAcceptor.accept(fn.apply(producer)));
 	}
 
 	default SerialConsumer<T> asSerialConsumer() {

@@ -15,13 +15,8 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 public final class CompleteExceptionallyStage<T> implements MaterializedStage<T> {
 	private final Throwable exception;
 
-	CompleteExceptionallyStage(Throwable exception) {
+	public CompleteExceptionallyStage(Throwable exception) {
 		this.exception = exception;
-	}
-
-	public static <T> CompleteExceptionallyStage<T> ofException(Throwable e) {
-		assert e != null;
-		return new CompleteExceptionallyStage<>(e);
 	}
 
 	@Override

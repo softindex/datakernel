@@ -52,8 +52,17 @@ public interface SerialSupplier<T> extends Cancellable {
 		return modifier.apply(this);
 	}
 
-	default <X> X with(Function<SerialSupplier<T>, X> fn) {
+	default <R> R andThen(Function<SerialSupplier<T>, R> fn) {
 		return fn.apply(this);
+	}
+
+	static <T, R> SerialSupplier<T> ofConsumer(Consumer<SerialConsumer<T>> supplierAcceptor, SerialQueue<T> queue) {
+		supplierAcceptor.accept(queue.getConsumer());
+		return queue.getSupplier();
+	}
+
+	static <T, R> SerialSupplier<T> ofTransformer(Function<SerialConsumer<T>, R> fn, Consumer<R> resultAcceptor, SerialQueue<T> queue) {
+		return ofConsumer(producer -> resultAcceptor.accept(fn.apply(producer)), queue);
 	}
 
 	static <T> SerialSupplier<T> of(AsyncSupplier<T> supplier) {

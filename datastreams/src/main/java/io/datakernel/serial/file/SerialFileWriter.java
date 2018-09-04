@@ -34,8 +34,8 @@ import static java.nio.file.StandardOpenOption.*;
 /**
  * This consumer allows you to asynchronously write binary data to a file.
  */
-public final class StreamFileWriter implements SerialConsumer<ByteBuf> {
-	private static final Logger logger = LoggerFactory.getLogger(StreamFileWriter.class);
+public final class SerialFileWriter implements SerialConsumer<ByteBuf> {
+	private static final Logger logger = LoggerFactory.getLogger(SerialFileWriter.class);
 
 	public static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW, APPEND};
 
@@ -48,25 +48,25 @@ public final class StreamFileWriter implements SerialConsumer<ByteBuf> {
 	private boolean started;
 
 	// region creators
-	private StreamFileWriter(AsyncFile asyncFile) {
+	private SerialFileWriter(AsyncFile asyncFile) {
 		this.asyncFile = asyncFile;
 	}
 
-	public static StreamFileWriter create(ExecutorService executor, Path path) throws IOException {
+	public static SerialFileWriter create(ExecutorService executor, Path path) throws IOException {
 		return create(AsyncFile.open(executor, path, CREATE_OPTIONS));
 	}
 
-	public static StreamFileWriter create(AsyncFile asyncFile) {
-		return new StreamFileWriter(asyncFile);
+	public static SerialFileWriter create(AsyncFile asyncFile) {
+		return new SerialFileWriter(asyncFile);
 	}
 
-	public StreamFileWriter withForceOnClose(boolean forceMetadata) {
+	public SerialFileWriter withForceOnClose(boolean forceMetadata) {
 		forceOnClose = true;
 		this.forceMetadata = forceMetadata;
 		return this;
 	}
 
-	public StreamFileWriter withOffset(long offset) {
+	public SerialFileWriter withOffset(long offset) {
 		startingOffset = offset;
 		return this;
 	}

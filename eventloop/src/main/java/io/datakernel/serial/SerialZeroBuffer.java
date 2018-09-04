@@ -2,7 +2,6 @@ package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.CompleteStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 
@@ -111,7 +110,7 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 			return take;
 		}
 
-		endOfStream = CompleteStage.of(null);
+		endOfStream = Stage.of(null);
 		return (Stage<T>) endOfStream;
 	}
 

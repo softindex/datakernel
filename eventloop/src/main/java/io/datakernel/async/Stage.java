@@ -19,13 +19,11 @@ import java.util.function.Function;
  * @see SettableStage
  */
 public interface Stage<T> {
-	CompleteStage<Void> COMPLETE = new CompleteStage<>(null);
-
 	/**
 	 * Creates successfully completed {@code Stage}
 	 */
-	static CompleteStage<Void> complete() {
-		return COMPLETE;
+	static CompleteNullStage<Void> complete() {
+		return CompleteNullStage.instance();
 	}
 
 	/**
@@ -33,8 +31,8 @@ public interface Stage<T> {
 	 *
 	 * @param value result of Stage
 	 */
-	static <T> Stage<T> of(T value) {
-		return new CompleteStage<>(value);
+	static <T> CompleteStage<T> of(T value) {
+		return value == null ? CompleteNullStage.instance() : new CompleteResultStage<>(value);
 	}
 
 	/**

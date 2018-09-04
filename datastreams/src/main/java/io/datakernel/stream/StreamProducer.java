@@ -24,6 +24,7 @@ import io.datakernel.stream.processor.StreamSkip;
 import io.datakernel.stream.processor.StreamSkip.Dropper;
 import io.datakernel.stream.processor.StreamSkip.SizeCounter;
 import io.datakernel.stream.processor.StreamSkip.SkipStrategy;
+import io.datakernel.stream.processor.StreamTransformer;
 
 import java.util.Iterator;
 import java.util.List;
@@ -132,7 +133,17 @@ public interface StreamProducer<T> extends Cancellable {
 		return modifier.applyTo(this);
 	}
 
-	default <R> R with(Function<StreamProducer<T>, R> fn) {
+	static <T, R> StreamProducer<T> ofConsumer(Consumer<StreamConsumer<T>> supplierAcceptor) {
+		StreamTransformer<T, T> forwarder = StreamTransformer.idenity();
+		supplierAcceptor.accept(forwarder.getInput());
+		return forwarder.getOutput();
+	}
+
+	static <T, R> StreamProducer<T> ofTransformer(Function<StreamConsumer<T>, R> fn, Consumer<R> resultAcceptor) {
+		return ofConsumer(producer -> resultAcceptor.accept(fn.apply(producer)));
+	}
+
+	default <R> R andThen(Function<StreamProducer<T>, R> fn) {
 		return fn.apply(this);
 	}
 

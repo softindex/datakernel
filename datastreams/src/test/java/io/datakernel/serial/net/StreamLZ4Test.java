@@ -79,10 +79,10 @@ public class StreamLZ4Test {
 		byte[] expected = byteBufsToByteArray(buffers);
 
 		CompletableFuture<List<ByteBuf>> future = SerialSupplier.ofIterable(buffers)
-				.with(SerialByteChunker.create(MemSize.of(64), MemSize.of(128)).transformer(new SerialZeroBuffer<>()))
-				.with(SerialLZ4Compressor.createFastCompressor().transformer(new SerialZeroBuffer<>()))
-				.with(SerialByteChunker.create(MemSize.of(64), MemSize.of(128)).transformer(new SerialZeroBuffer<>()))
-				.with(SerialLZ4Decompressor.create().transformer(new SerialZeroBuffer<>()))
+				.andThen(SerialByteChunker.create(MemSize.of(64), MemSize.of(128)).transformer(new SerialZeroBuffer<>()))
+				.andThen(SerialLZ4Compressor.createFastCompressor().transformer(new SerialZeroBuffer<>()))
+				.andThen(SerialByteChunker.create(MemSize.of(64), MemSize.of(128)).transformer(new SerialZeroBuffer<>()))
+				.andThen(SerialLZ4Decompressor.create().transformer(new SerialZeroBuffer<>()))
 				.toList()
 				.toCompletableFuture();
 
@@ -121,8 +121,8 @@ public class StreamLZ4Test {
 		buffers.add(buf);
 
 		CompletableFuture<List<ByteBuf>> result = SerialSupplier.ofIterable(buffers)
-				.with(compressor.transformer(new SerialZeroBuffer<>()))
-				.with(SerialLZ4Decompressor.create().transformer(new SerialZeroBuffer<>()))
+				.andThen(compressor.transformer(new SerialZeroBuffer<>()))
+				.andThen(SerialLZ4Decompressor.create().transformer(new SerialZeroBuffer<>()))
 				.toList()
 				.toCompletableFuture();
 

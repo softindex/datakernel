@@ -19,10 +19,16 @@ package io.datakernel.stream.processor;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
+import io.datakernel.serial.SerialBuffer;
+import io.datakernel.serial.SerialZeroBuffer;
+import io.datakernel.serial.file.SerialFileReader;
+import io.datakernel.serial.file.SerialFileWriter;
+import io.datakernel.serial.processor.*;
 import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
@@ -36,6 +42,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
@@ -68,7 +75,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 
 	// region creators
 	private StreamSorterStorageImpl(ExecutorService executorService, BufferSerializer<T> serializer,
-	                                Path path) {
+			Path path) {
 		this.executorService = executorService;
 		this.serializer = serializer;
 		this.path = path;
@@ -82,7 +89,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 * @param path            path in which will store received data
 	 */
 	public static <T> StreamSorterStorageImpl<T> create(ExecutorService executorService,
-	                                                    BufferSerializer<T> serializer, Path path) {
+			BufferSerializer<T> serializer, Path path) {
 		checkArgument(!path.getFileName().toString().contains("%d"));
 		try {
 			Files.createDirectories(path);
@@ -124,13 +131,19 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		int partition = PARTITION.incrementAndGet();
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, StreamFileWriter.CREATE_OPTIONS)
-				.thenApply(file -> StreamTransformer.<T>idenity()
-						.with(StreamBinarySerializer.create(serializer))
-						.with(StreamByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
-						.with(StreamLZ4Compressor.create(compressionLevel))
-						.with(StreamByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
-						.applyTo(StreamFileWriter.create(file).withFlushAsResult())
-						.thenApply($ -> partition)
+				.thenApply(file -> StreamConsumer.ofTransformer(
+						Function.<StreamProducer<T>>identity()
+								.andThen(SerialBinarySerializer.create(serializer)
+										.transformer(new SerialBuffer<>(1)))
+								.andThen(SerialByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize)
+										.transformer(new SerialBuffer<>(1)))
+								.andThen(SerialLZ4Compressor.create(compressionLevel)
+										.transformer(new SerialBuffer<>(1)))
+								.andThen(SerialByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize)
+										.transformer(new SerialBuffer<>(1))),
+						resultingStream ->
+								resultingStream.streamTo(SerialFileWriter.create(file)))
+						.withResult(Stage.of(partition))
 						.withLateBinding());
 	}
 
@@ -144,9 +157,11 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	public Stage<StreamProducerWithResult<T, Void>> read(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
-				.thenApply(file -> StreamFileReader.readFile(file).withBufferSize(readBlockSize)
-						.with(StreamLZ4Decompressor.create())
-						.with(StreamBinaryDeserializer.create(serializer))
+				.thenApply(file -> SerialFileReader.readFile(file).withBufferSize(readBlockSize)
+						.andThen(SerialLZ4Decompressor.create()
+								.transformer(new SerialZeroBuffer<>()))
+						.andThen(SerialBinaryDeserializer.create(serializer)
+								.transformer())
 						.withEndOfStreamAsResult()
 						.withLateBinding());
 	}

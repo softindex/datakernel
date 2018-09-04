@@ -87,9 +87,10 @@ public final class SerialByteChunker implements WithSerialToSerial<SerialByteChu
 						return;
 					}
 					if (buf == null) {
-						(bufs.hasRemaining() ?
-								output.accept(bufs.takeRemaining()) :
-								Stage.complete())
+						Stage.complete()
+								.thenCompose($ -> bufs.hasRemaining() ?
+										output.accept(bufs.takeRemaining()) :
+										Stage.complete())
 								.thenCompose($ -> output.accept(null))
 								.thenRun(() -> process.trySet(null))
 								.whenException(this::closeWithError);
