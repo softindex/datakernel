@@ -9,7 +9,7 @@ import io.datakernel.serial.SerialSupplier;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public class SerialCutter<T> implements AsyncProcess, WithSerialInput<SerialCutter<T>, T>, WithSerialOutput<SerialCutter<T>, T> {
+public class SerialCutter<T> implements AsyncProcess, WithSerialToSerial<SerialCutter<T>, T, T> {
 	private final SizeCounter<T> sizeCounter;
 	private final Slicer<T> slicer;
 	private final long offset;

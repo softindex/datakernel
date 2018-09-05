@@ -26,6 +26,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialZeroBuffer;
 import io.datakernel.serial.file.SerialFileReader;
 import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.serial.processor.SerialCutter;
@@ -41,6 +42,7 @@ import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Function;
 
 import static io.datakernel.serial.processor.SerialCutter.SliceStrategy.forByteBuf;
 import static io.datakernel.util.LogUtils.Level.TRACE;
@@ -123,18 +125,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 									}
 								}
 								long skip = size - offset;
-								SerialConsumer<ByteBuf> writer = SerialFileWriter.create(file)
+								return Stage.of(SerialFileWriter.create(file)
 										.withOffset(offset == -1 ? 0L : size)
 										.withForceOnClose(true)
-										.whenComplete(writeFinishStage.recordStats());
-								if (offset != -1 && skip != 0) {
-									SerialCutter<ByteBuf> cutter = SerialCutter.create(skip, forByteBuf())
-											.withOutput(writer);
-									SerialConsumer<ByteBuf> consumer = cutter.newInputConsumer();
-									cutter.process();
-									return Stage.of(consumer);
-								}
-								return Stage.of(writer);
+										.whenComplete(writeFinishStage.recordStats())
+										.compose(offset != -1 && skip != 0 ?
+												SerialCutter.create(skip, forByteBuf()).outputTransformer(new SerialZeroBuffer<>()) :
+												Function.identity()));
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
