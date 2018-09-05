@@ -60,8 +60,8 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 	private List<SettableStage<Void>> writeCallbacks = new ArrayList<>();
 	private boolean writeEndOfStreamRequest;
-	private SocketStreamProducer socketReader;
-	private SocketStreamConsumer socketWriter;
+	private SocketSerialProducer socketReader;
+	private SocketSerialConsumer socketWriter;
 
 	private Throwable closedException;
 
@@ -207,7 +207,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		logger.trace("sending binary data: {}", this);
 
-		socketWriter = new SocketStreamConsumer(socket);
+		socketWriter = new SocketSerialConsumer(socket);
 		return socketWriter;
 	}
 
@@ -223,7 +223,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		logger.trace("receiving binary data: {}", this);
 
-		socketReader = new SocketStreamProducer(socket);
+		socketReader = new SocketSerialProducer(socket);
 		if (readBuf != null || readEndOfStream) {
 			eventloop.post(() -> {
 				if (readBuf != null) {

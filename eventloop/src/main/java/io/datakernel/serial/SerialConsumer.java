@@ -185,9 +185,29 @@ public interface SerialConsumer<T> extends Cancellable {
 
 	default SerialConsumer<T> whenException(Consumer<Throwable> action) {
 		return new AbstractSerialConsumer<T>(this) {
+			boolean done = false;
+
+			private void fire(Throwable e) {
+				if (!done) {
+					done = true;
+					action.accept(e);
+				}
+			}
+
 			@Override
 			public Stage<Void> accept(T value) {
-				return SerialConsumer.this.accept(value).whenException(action);
+				return SerialConsumer.this.accept(value)
+						.whenComplete(($, e) -> {
+							if (e != null) {
+								fire(e);
+							}
+						});
+			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				super.closeWithError(e);
+				fire(e);
 			}
 		};
 	}
@@ -196,11 +216,24 @@ public interface SerialConsumer<T> extends Cancellable {
 
 	default SerialConsumer<T> whenComplete(BiConsumer<Void, Throwable> action) {
 		return new AbstractSerialConsumer<T>(this) {
+			boolean done = false;
+
+			private void fire(Throwable e) {
+				if (!done) {
+					done = true;
+					action.accept(null, e);
+				}
+			}
 
 			@Override
 			public Stage<Void> accept(T value) {
-				Stage<Void> result = SerialConsumer.this.accept(value);
-				return value != null ? result : result.whenComplete(action);
+				return SerialConsumer.this.accept(value).whenComplete(($, e) -> fire(e));
+			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				super.closeWithError(e);
+				fire(e);
 			}
 		};
 	}
@@ -219,8 +252,18 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
-				Stage<Void> result = SerialConsumer.this.accept(value);
-				return value != null ? result : result.thenComposeEx(action);
+				return SerialConsumer.this.accept(value)
+						.thenComposeEx(value != null ?
+								($, e) -> e != null ?
+										action.apply(null, e) :
+										Stage.complete() :
+								action);
+			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				Stage<Void> res = action.apply(null, e);
+				super.closeWithError(res.hasException() ? res.getException() : e);
 			}
 		};
 	}

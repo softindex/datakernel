@@ -30,8 +30,8 @@ import io.datakernel.stream.StreamProducer;
 public final class SocketStreamingConnection implements SocketStreaming, AsyncTcpSocket.EventHandler {
 	private final AsyncTcpSocket asyncTcpSocket;
 
-	private SocketStreamProducer socketReader;
-	private SocketStreamConsumer socketWriter;
+	private SocketSerialProducer socketReader;
+	private SocketSerialConsumer socketWriter;
 
 	// region creators
 	private SocketStreamingConnection(AsyncTcpSocket asyncTcpSocket) {
@@ -46,7 +46,7 @@ public final class SocketStreamingConnection implements SocketStreaming, AsyncTc
 	@Override
 	public SerialSupplier<ByteBuf> getSocketReader() {
 		if (socketReader == null) {
-			socketReader = new SocketStreamProducer(asyncTcpSocket);
+			socketReader = new SocketSerialProducer(asyncTcpSocket);
 			socketReader.getEndOfStream()
 					.whenException(this::onClosedWithError);
 			asyncTcpSocket.read(); // prefetch
@@ -57,7 +57,7 @@ public final class SocketStreamingConnection implements SocketStreaming, AsyncTc
 	@Override
 	public SerialConsumer<ByteBuf> getSocketWriter() {
 		if (socketWriter == null) {
-			socketWriter = new SocketStreamConsumer(asyncTcpSocket);
+			socketWriter = new SocketSerialConsumer(asyncTcpSocket);
 			socketWriter.getEndOfStream()
 					.whenException(this::onClosedWithError);
 		}

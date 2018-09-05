@@ -23,7 +23,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.serial.SerialSupplier;
 
-final class SocketStreamProducer implements SerialSupplier<ByteBuf> {
+final class SocketSerialProducer implements SerialSupplier<ByteBuf> {
 	private final AsyncTcpSocket asyncTcpSocket;
 	protected final ByteBufQueue readQueue = new ByteBufQueue();
 
@@ -33,7 +33,7 @@ final class SocketStreamProducer implements SerialSupplier<ByteBuf> {
 	private boolean readEndOfStream;
 
 	// region creators
-	public SocketStreamProducer(AsyncTcpSocket asyncTcpSocket) {
+	SocketSerialProducer(AsyncTcpSocket asyncTcpSocket) {
 		this.asyncTcpSocket = asyncTcpSocket;
 	}
 

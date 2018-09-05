@@ -22,14 +22,14 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.serial.SerialConsumer;
 
-final class SocketStreamConsumer implements SerialConsumer<ByteBuf> {
+final class SocketSerialConsumer implements SerialConsumer<ByteBuf> {
 	private final AsyncTcpSocket asyncTcpSocket;
 	private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 	private SettableStage<Void> write;
 	private boolean writeEndOfStream;
 
-	SocketStreamConsumer(AsyncTcpSocket asyncTcpSocket) {
+	SocketSerialConsumer(AsyncTcpSocket asyncTcpSocket) {
 		this.asyncTcpSocket = asyncTcpSocket;
 	}
 
