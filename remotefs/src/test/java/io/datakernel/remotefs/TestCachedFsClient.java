@@ -79,12 +79,9 @@ public class TestCachedFsClient {
 	@Test
 	public void testDownloadFileNotInCache() {
 		cacheRemote.download("test.txt")
-				.thenCompose(producer -> {
-					ByteBufQueue q = new ByteBufQueue();
-					return producer
-							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
-							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
-				})
+				.thenCompose(producer -> producer
+						.toCollector(ByteBufQueue.collector())
+						.thenApply(buf -> buf.asString(UTF_8)))
 				.thenRunEx(server::close)
 				.whenResult(s -> assertEquals(testTxtContent, s))
 				.whenResult(s -> {
@@ -345,7 +342,7 @@ public class TestCachedFsClient {
 					assertTrue(sizeLimit.toLong() >= cacheSize.toLong());
 					server.close();
 				})
-				.whenResult($ -> server.close());
+				.thenRunEx(() -> server.close());
 
 		eventloop.run();
 	}
@@ -455,7 +452,9 @@ public class TestCachedFsClient {
 		new Random().nextBytes(fileData);
 		Files.write(cacheStorage.resolve("bigFile.txt"), fileData);
 
-		cacheRemote.download("bigFile.txt").thenCompose($ -> cacheRemote.download("bigFile.txt").whenResult($2 -> server.close()));
+		cacheRemote.download("bigFile.txt")
+				.thenCompose($ -> cacheRemote.download("bigFile.txt"))
+				.thenRunEx(server::close);
 		eventloop.run();
 
 		server.listen();
@@ -464,7 +463,13 @@ public class TestCachedFsClient {
 		initializeCacheDownloadFiles(1, "testFile_");
 
 		cache.list()
-				.whenResult(list -> list.forEach(value -> assertTrue(value.getName().startsWith("test"))));
+				.whenResult(list ->
+						list.forEach(value ->
+						{
+							System.out.println(value);
+							assertTrue(value.getName().startsWith("test"));
+						}))
+				.thenRunEx(server::close);
 		eventloop.run();
 	}
 
@@ -506,12 +511,8 @@ public class TestCachedFsClient {
 			for (int i = 0; i < numberOfFiles; i++) {
 				server.listen();
 				cacheRemote.download(prefix + i)
-						.thenCompose(producer -> {
-							ByteBufQueue q = new ByteBufQueue();
-							return producer
-									.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)));
-						})
-						.whenResult($ -> server.close());
+						.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
+						.thenRunEx(server::close);
 				eventloop.run();
 			}
 		}

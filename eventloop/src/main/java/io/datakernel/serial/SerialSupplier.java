@@ -177,6 +177,16 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
+	default SerialSupplier<T> peek(Consumer<? super T> fn) {
+		return new AbstractSerialSupplier<T>(this) {
+			@Override
+			public Stage<T> get() {
+				return SerialSupplier.this.get()
+						.whenResult(fn);
+			}
+		};
+	}
+
 	@SuppressWarnings("unchecked")
 	default <V> SerialSupplier<V> transformAsync(Function<? super T, ? extends Stage<V>> fn) {
 		return new AbstractSerialSupplier<V>(this) {
@@ -186,6 +196,16 @@ public interface SerialSupplier<T> extends Cancellable {
 						.thenCompose(value -> value != null ?
 								fn.apply(value) :
 								Stage.of(null));
+			}
+		};
+	}
+
+	default SerialSupplier<T> peekAsync(AsyncConsumer<? super T> fn) {
+		return new AbstractSerialSupplier<T>(this) {
+			@Override
+			public Stage<T> get() {
+				return SerialSupplier.this.get()
+						.thenCompose(item -> fn.accept(item).thenApply($ -> item));
 			}
 		};
 	}

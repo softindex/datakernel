@@ -16,11 +16,11 @@ public interface WithSerialOutput<B extends WithSerialOutput<B, T>, T> {
 		return (B) this;
 	}
 
-	default SerialSupplier<T> getOutputSupplier() {
-		return getOutputSupplier(new SerialZeroBuffer<>());
+	default SerialSupplier<T> newOutputSupplier() {
+		return newOutputSupplier(new SerialZeroBuffer<>());
 	}
 
-	default SerialSupplier<T> getOutputSupplier(SerialQueue<T> queue) {
+	default SerialSupplier<T> newOutputSupplier(SerialQueue<T> queue) {
 		setOutput(queue.getConsumer());
 		return queue.getSupplier();
 	}

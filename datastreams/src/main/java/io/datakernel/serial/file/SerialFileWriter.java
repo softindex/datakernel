@@ -106,11 +106,8 @@ public final class SerialFileWriter implements SerialConsumer<ByteBuf> {
 		if (started) {
 			return Stage.complete();
 		}
-		if (startingOffset != -1) {
-			return asyncFile.seek(startingOffset);
-		}
 		started = true;
-		return Stage.complete();
+		return startingOffset != -1 ? asyncFile.seek(startingOffset) : Stage.complete();
 	}
 
 	@Override

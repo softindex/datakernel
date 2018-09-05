@@ -159,4 +159,25 @@ public class TestPartialRemoteFs {
 
 		eventloop.run();
 	}
+
+	@Test
+	public void overridingUpload() throws IOException {
+		enableLogging("io.datakernel.remotefs");
+
+		Path path = serverStorage.resolve("test_file.txt");
+		String content = "Hello! Ima slow green fox, running over an active dog";
+		String override = "over an active dog, that is the best dog ever possible in existense";
+		String updated = "Hello! Ima slow green fox, running over an active dog, that is the best dog ever possible in existense";
+
+		Files.write(path, content.getBytes(UTF_8));
+
+		SerialSupplier.of(ByteBuf.wrapForReading(override.getBytes(UTF_8)))
+				.streamTo(client.uploadSerial(path.getFileName().toString(), 35))
+				.whenComplete(($, err) -> server.close())
+				.whenComplete(assertComplete());
+
+		eventloop.run();
+
+		assertArrayEquals(updated.getBytes(UTF_8), Files.readAllBytes(path));
+	}
 }

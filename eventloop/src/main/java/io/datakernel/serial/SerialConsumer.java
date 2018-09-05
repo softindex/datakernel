@@ -18,6 +18,7 @@ package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
+import io.datakernel.util.Recyclable;
 
 import java.util.function.*;
 
@@ -63,6 +64,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>() {
 			@Override
 			public Stage<Void> accept(T value) {
+				Recyclable.deepRecycle(value);
 				return Stage.ofException(e);
 			}
 		};
@@ -91,6 +93,7 @@ public interface SerialConsumer<T> extends Cancellable {
 						this.consumer = consumer;
 						return consumer.accept(value);
 					} else {
+						Recyclable.deepRecycle(value);
 						return Stage.ofException(e);
 					}
 				});
@@ -131,6 +134,16 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
+	default SerialConsumer<T> peek(Consumer<? super T> fn) {
+		return new AbstractSerialConsumer<T>(this) {
+			@Override
+			public Stage<Void> accept(T value) {
+				fn.accept(value);
+				return SerialConsumer.this.accept(value);
+			}
+		};
+	}
+
 	default <V> SerialConsumer<V> transformAsync(Function<? super V, ? extends Stage<T>> fn) {
 		return new AbstractSerialConsumer<V>(this) {
 			@Override
@@ -139,6 +152,16 @@ public interface SerialConsumer<T> extends Cancellable {
 						fn.apply(value)
 								.thenCompose(SerialConsumer.this::accept) :
 						SerialConsumer.this.accept(null);
+			}
+		};
+	}
+
+	default SerialConsumer<T> peekAsync(AsyncConsumer<? super T> fn) {
+		return new AbstractSerialConsumer<T>(this) {
+			@Override
+			public Stage<Void> accept(T value) {
+				return fn.accept(value)
+						.thenCompose($ -> SerialConsumer.this.accept(value));
 			}
 		};
 	}

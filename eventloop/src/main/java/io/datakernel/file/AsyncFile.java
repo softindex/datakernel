@@ -79,12 +79,12 @@ public final class AsyncFile {
 	 */
 	public static Stage<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions) {
 		return Stage.ofCallable(executor, () -> doOpenChannel(path, openOptions))
-			.thenApply(channel -> new AsyncFile(executor, channel, path, null));
+				.thenApply(channel -> new AsyncFile(executor, channel, path, null));
 	}
 
 	public static Stage<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions, Object mutexLock) {
 		return Stage.ofCallable(executor, () -> doOpenChannel(path, openOptions))
-			.thenApply(channel -> new AsyncFile(executor, channel, path, mutexLock));
+				.thenApply(channel -> new AsyncFile(executor, channel, path, mutexLock));
 	}
 
 	private static FileChannel doOpenChannel(Path path, OpenOption[] openOptions) throws IOException {
@@ -164,10 +164,10 @@ public final class AsyncFile {
 	 */
 	public static Stage<ByteBuf> readFile(ExecutorService executor, Path path) {
 		return openAsync(executor, path, new OpenOption[]{READ})
-			.thenCompose(file -> file.read()
-				.thenCompose(buf -> file.close()
-					.whenException($ -> buf.recycle())
-					.thenApply($ -> buf)));
+				.thenCompose(file -> file.read()
+						.thenCompose(buf -> file.close()
+								.whenException($ -> buf.recycle())
+								.thenApply($ -> buf)));
 	}
 
 	/**
@@ -180,9 +180,9 @@ public final class AsyncFile {
 	 */
 	public static Stage<Void> writeNewFile(ExecutorService executor, Path path, ByteBuf buf) {
 		return openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW})
-			.thenCompose(file -> file.write(buf)
-				.thenCompose($ -> file.close()
-					.whenException($2 -> buf.recycle())));
+				.thenCompose(file -> file.write(buf)
+						.thenCompose($ -> file.close()
+								.whenException($2 -> buf.recycle())));
 	}
 
 	public Stage<Long> size() {
@@ -193,6 +193,10 @@ public final class AsyncFile {
 		return Stage.ofThrowingRunnable(executor, () -> channel.position(position));
 	}
 
+	public Stage<Long> tell() {
+		return Stage.ofCallable(executor, channel::position);
+	}
+
 	/**
 	 * Asynchronously writes all bytes of the buffer into this file at its internal position.
 	 *
@@ -201,8 +205,8 @@ public final class AsyncFile {
 	public Stage<Void> write(ByteBuf buf) {
 		return Stage.ofThrowingRunnable(executor, () -> {
 			synchronized (mutexLock) {
-				int writtenBytes;
 				try {
+					int writtenBytes;
 					do {
 						ByteBuffer byteBuffer = buf.toReadByteBuffer();
 						writtenBytes = channel.write(byteBuffer);
@@ -262,8 +266,8 @@ public final class AsyncFile {
 
 		ByteBuf buf = ByteBufPool.allocate((int) (size - position));
 		return read(buf, position)
-			.whenException($ -> buf.recycle())
-			.thenApply($ -> buf);
+				.whenException($ -> buf.recycle())
+				.thenApply($ -> buf);
 	}
 
 	/**

@@ -14,7 +14,7 @@ public interface WithStreamToSerial<B extends WithStreamToSerial<B, I, O>, I, O>
 	default Function<StreamProducer<I>, SerialSupplier<O>> transformer(SerialQueue<O> queue) {
 		return streamProducer -> {
 			streamProducer.streamTo(this);
-			return getOutputSupplier(queue);
+			return newOutputSupplier(queue);
 		};
 	}
 

@@ -13,7 +13,7 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 	default Function<SerialSupplier<I>, SerialSupplier<O>> transformer(SerialQueue<O> queue) {
 		return input -> {
 			setInput(input);
-			SerialSupplier<O> outputSupplier = getOutputSupplier(queue);
+			SerialSupplier<O> outputSupplier = newOutputSupplier(queue);
 			if (this instanceof AsyncProcess) {
 				((AsyncProcess) this).process();
 			}
