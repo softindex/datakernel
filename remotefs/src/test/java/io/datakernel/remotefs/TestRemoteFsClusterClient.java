@@ -4,6 +4,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.processor.ByteBufRule;
@@ -193,7 +194,8 @@ public class TestRemoteFsClusterClient {
 		String fileName = "i_dont_exist.txt";
 
 		client.downloadSerial(fileName)
-				.whenComplete((result, error) -> servers.forEach(AbstractServer::close))
+				.streamTo(SerialConsumer.idle())
+				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, fileName));
 
 		eventloop.run();

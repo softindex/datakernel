@@ -1,6 +1,9 @@
 package io.datakernel.remotefs;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.AsyncSuppliers;
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -175,7 +178,8 @@ public class CachedFsClient implements FsClient, EventloopService {
 											.thenCompose($ -> ensureSpace())
 											.whenResult($ -> downloadingNowSize -= size)));
 
-					splitter.newOutputSupplier().streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
+					// TODO - what?
+//					splitter.newOutputSupplier().streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
 
 					splitter.process();
 

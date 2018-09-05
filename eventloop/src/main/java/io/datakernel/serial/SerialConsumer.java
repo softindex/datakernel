@@ -37,6 +37,10 @@ public interface SerialConsumer<T> extends Cancellable {
 		return of(consumer, endOfStream -> Stage.complete());
 	}
 
+	static <T> SerialConsumer<T> idle() {
+		return of($ -> Stage.complete(), $ -> Stage.complete());
+	}
+
 	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer,
 			Function<Stage<Void>, ? extends Stage<Void>> endOfStreamHandler) {
 		SettableStage<Void> endOfStream = new SettableStage<>();

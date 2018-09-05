@@ -99,12 +99,9 @@ public class TestCachedFsClient {
 	@Test
 	public void testDownloadFileNotInCacheWithOffsetAndLength() {
 		cacheRemote.download("test.txt", 1, 2)
-				.thenCompose(producer -> {
-					ByteBufQueue q = new ByteBufQueue();
-					return producer
-							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
-							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
-				})
+				.thenCompose(producer -> producer
+						.toCollector(ByteBufQueue.collector())
+						.thenApply(buf -> buf.asString(UTF_8)))
 				.thenRunEx(server::close)
 				.whenComplete((res, err) -> {
 					assertEquals(res, "in");
@@ -120,12 +117,9 @@ public class TestCachedFsClient {
 		Files.write(cacheTestFile, "line1\nline2\nline3".getBytes(UTF_8));
 
 		cacheRemote.download("test.txt")
-				.thenCompose(producer -> {
-					ByteBufQueue q = new ByteBufQueue();
-					return producer
-							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
-							.thenApply($ -> new String(q.takeRemaining().asArray(), UTF_8));
-				})
+				.thenCompose(producer -> producer
+						.toCollector(ByteBufQueue.collector())
+						.thenApply(buf -> buf.asString(UTF_8)))
 				.thenRunEx(server::close)
 				.whenResult(s -> assertEquals(testTxtContent, s))
 				.thenRun(() -> {

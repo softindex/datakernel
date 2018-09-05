@@ -304,11 +304,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	public Stage<FileMetadata> getMetadata(String filename) {
 		return Stage.ofCallable(executor, () -> {
 			Path file = storageDir.resolve(filename);
-			if (!Files.isRegularFile(file)) {
-				//noinspection ReturnOfNull - cannot add @Nullable to Callable interface
-				return null;
+			if (Files.isRegularFile(file)) {
+				return getFileMeta(file);
 			}
-			return getFileMeta(file);
+			//noinspection ReturnOfNull - cannot add @Nullable to Callable interface
+			return null;
 		});
 	}
 
