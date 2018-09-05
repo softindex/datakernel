@@ -54,7 +54,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return fn.apply(this);
 	}
 
-	static <T, R> SerialSupplier<T> ofConsumer(Consumer<SerialConsumer<T>> supplierAcceptor, SerialQueue<T> queue) {
+	static <T> SerialSupplier<T> ofConsumer(Consumer<SerialConsumer<T>> supplierAcceptor, SerialQueue<T> queue) {
 		supplierAcceptor.accept(queue.getConsumer());
 		return queue.getSupplier();
 	}
@@ -237,9 +237,29 @@ public interface SerialSupplier<T> extends Cancellable {
 
 	default SerialSupplier<T> whenException(Consumer<Throwable> action) {
 		return new AbstractSerialSupplier<T>(this) {
+			boolean done = false;
+
 			@Override
 			public Stage<T> get() {
-				return SerialSupplier.this.get().whenException(action);
+				return SerialSupplier.this.get()
+						.whenComplete(($, e) -> {
+							if (e != null) {
+								fire(e);
+							}
+						});
+			}
+
+			private void fire(Throwable e) {
+				if (!done) {
+					done = true;
+					action.accept(e);
+				}
+			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				super.closeWithError(e);
+				fire(e);
 			}
 		};
 	}
@@ -248,17 +268,24 @@ public interface SerialSupplier<T> extends Cancellable {
 
 	default SerialSupplier<T> whenComplete(BiConsumer<Void, Throwable> action) {
 		return new AbstractSerialSupplier<T>(this) {
-			boolean done;
+			boolean done = false;
+
+			private void fire(Throwable e) {
+				if (!done) {
+					done = true;
+					action.accept(null, e);
+				}
+			}
 
 			@Override
 			public Stage<T> get() {
-				return SerialSupplier.this.get()
-						.whenComplete((value, e) -> {
-							if (value == null && !done) {
-								done = true;
-								action.accept(null, e);
-							}
-						});
+				return SerialSupplier.this.get().whenComplete(($, e) -> fire(e));
+			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				super.closeWithError(e);
+				fire(e);
 			}
 		};
 	}

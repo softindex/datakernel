@@ -263,7 +263,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			@Override
 			public void closeWithError(Throwable e) {
 				Stage<Void> res = action.apply(null, e);
-				super.closeWithError(res.hasException() ? res.getException() : e);
+				super.closeWithError(res.hasException() ? res.getException() : e); // ugh
 			}
 		};
 	}
