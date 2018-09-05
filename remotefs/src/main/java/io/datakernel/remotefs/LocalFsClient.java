@@ -298,7 +298,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Stage<FileMetadata> getMetadata(String filename) {
-		return Stage.ofCallable(executor, () -> getFileMeta(storageDir.resolve(filename)));
+		return Stage.ofCallable(executor, () -> {
+			Path file = storageDir.resolve(filename);
+			if (!Files.isRegularFile(file)) {
+				//noinspection ReturnOfNull - cannot add @Nullable to Callable interface
+				return null;
+			}
+			return getFileMeta(file);
+		});
 	}
 
 	@Override

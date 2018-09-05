@@ -2,7 +2,6 @@ package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.util.MemSize;
@@ -40,7 +39,7 @@ public class TestCachedFsClient {
 	private Path serverTestFile;
 	private ExecutorService executor;
 	private CachedFsClient cacheRemote;
-	private AbstractServer server;
+	private RemoteFsServer server;
 	private String testTxtContent;
 
 	private FsClient main;
