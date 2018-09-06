@@ -90,8 +90,8 @@ public class SerialSplitter<T> implements AsyncProcess, WithSerialInput<SerialSp
 						return;
 					}
 					if (item == null) {
-						outputs.forEach(o -> o.accept(null));
-						process.set(null);
+						Stages.all(outputs.stream().map(o -> o.accept(null)))
+								.whenComplete(process::set);
 						return;
 					}
 					Stages.all(outputs.stream().map(o -> o.accept(item)))

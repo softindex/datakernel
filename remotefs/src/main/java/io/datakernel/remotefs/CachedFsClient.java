@@ -163,30 +163,37 @@ public class CachedFsClient implements FsClient, EventloopService {
 					}
 
 					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create()
-							.withInput(supplier);
+							.withInput(supplier.transform(ByteBuf::slice));
 
-					SerialSupplier<ByteBuf> output = splitter.newOutputSupplier().transform(ByteBuf::slice);
+					SerialSupplier<ByteBuf> output = splitter.newOutputSupplier().transform(b -> {
+						ByteBuf slice = b.slice();
+						b.recycle();
+						return slice;
+					});
 
 					long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
 					downloadingNowSize += size;
 
-					splitter.newOutputSupplier()
-							.transform(ByteBuf::slice)
+					Stage<Void> stage = splitter.newOutputSupplier()
+							.transform(b -> {
+								ByteBuf slice = b.slice();
+								b.recycle();
+								return slice;
+							})
 							.streamTo(cacheClient.uploadSerial(fileName, cacheOffset)
 									.whenEndOfStream(() -> cacheClient.list()
 											.thenCompose($ -> updateCacheStats(fileName))
 											.thenCompose($ -> ensureSpace())
-											.whenResult($ -> downloadingNowSize -= size)));
-
-					// TODO - what?
-//					splitter.newOutputSupplier().streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
+											.whenResult($ -> downloadingNowSize -= size)))
+							.materialize();
 
 					splitter.process();
 
 					if (sizeInCache == 0) {
-						return output;
+						return output.thenCompose($ -> stage);
 					}
-					return SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, length), output);
+					return SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, sizeInCache), output)
+							.thenCompose($ -> stage);
 				});
 	}
 
