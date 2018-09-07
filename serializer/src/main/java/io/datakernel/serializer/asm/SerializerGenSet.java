@@ -24,7 +24,9 @@ import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.util.Preconditions;
 
-import java.util.*;
+import java.util.EnumSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
 
@@ -92,42 +94,16 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 		Class<?> targetInstance = isEnum ? EnumSet.class : LinkedHashSet.class;
 		Preconditions.check(targetType.isAssignableFrom(targetInstance));
 
-		if (isEnum) {
-			return deserializeEnumSet(version, staticMethods, compatibilityLevel);
-		}
-		return deserializeSimpleSet(version, staticMethods, compatibilityLevel);
+		return deserializeSet(version, staticMethods, compatibilityLevel, isEnum);
 	}
 
-	private Expression deserializeEnumSet(int version,
+	private Expression deserializeSet(int version,
 			SerializerBuilder.StaticMethods staticMethods,
-			CompatibilityLevel compatibilityLevel) {
-		Expression len = let(call(arg(0), "readVarInt"));
-		Expression container = let(newArray(Object[].class, (!nullable ? len : dec(len))));
-		Expression array = expressionFor(value(0), !nullable ? len : dec(len),
-				it -> setArrayItem(container, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel)));
-		Expression list = let(cast(callStatic(Arrays.class, "asList", container), Collection.class));
-		Expression enumSet = callStatic(EnumSet.class, "copyOf", list);
-
-		Expression readSet = sequence(container, array, list, enumSet);
-		Expression emptySet = callStatic(EnumSet.class, "noneOf", value(elementType));
-
-		if (nullable) {
-			return ifThenElse(cmpEq(len, value(0)),
-					nullRef(EnumSet.class),
-					ifThenElse(cmpEq(len, value(1)),
-							emptySet,
-							readSet));
-		}
-		return ifThenElse(cmpEq(len, value(0)),
-				emptySet,
-				readSet);
-	}
-
-	private Expression deserializeSimpleSet(int version,
-			SerializerBuilder.StaticMethods staticMethods,
-			CompatibilityLevel compatibilityLevel) {
+			CompatibilityLevel compatibilityLevel, boolean isEnum) {
 		Expression length = let(call(arg(0), "readVarInt"));
-		Expression container = let(constructor(LinkedHashSet.class, (!nullable ? length : dec(length))));
+		Expression container = isEnum ?
+				let(callStatic(EnumSet.class, "noneOf", value(elementType))) :
+				let(constructor(LinkedHashSet.class, (!nullable ? length : dec(length))));
 		Expression deserializeEach = expressionFor(value(0), !nullable ? length : dec(length),
 				it -> sequence(
 						call(container, "add", cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)),
@@ -136,7 +112,7 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 			return sequence(length, container, deserializeEach, container);
 		}
 		return ifThenElse(cmpEq(length, value(0)),
-				nullRef(LinkedHashSet.class),
+				nullRef(Set.class),
 				sequence(container, deserializeEach, container));
 	}
 
