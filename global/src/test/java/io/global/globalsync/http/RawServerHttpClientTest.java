@@ -1,5 +1,6 @@
 package io.global.globalsync.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpRequest;
@@ -24,6 +25,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -32,12 +34,13 @@ public class RawServerHttpClientTest {
 
 	@Test
 	public void test1() throws ExecutionException, InterruptedException {
-		PrivKey privKey = PrivKey.random();
-		PubKey pubKey = PubKey.ofPrivKey(privKey);
+		KeyPair keys = KeyPair.generate();
+		PrivKey privKey = keys.getPrivKey();
+		PubKey pubKey = keys.getPubKey();
 		RepositoryName repository = new RepositoryName(pubKey, "test");
 
 		SimKey simKey = SimKey.random();
-		RawCommit rootCommit = RawCommit.of(asList(),
+		RawCommit rootCommit = RawCommit.of(emptyList(),
 				EncryptedData.encrypt(new byte[0], simKey),
 				SimKeyHash.ofSimKey(simKey),
 				0, 0L);
@@ -48,7 +51,7 @@ public class RawServerHttpClientTest {
 
 		LinkedList<Object> parameters = new LinkedList<>();
 		RawServerServlet servlet = RawServerServlet.create(new RawServer() {
-			<T> Stage<T> resultOf(T result, Object... args) {
+			<T> Stage<T> resultOf(@Nullable T result, Object... args) {
 				parameters.add(result);
 				parameters.addAll(asList(args));
 				return Stage.of(result);

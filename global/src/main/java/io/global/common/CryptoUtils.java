@@ -19,6 +19,7 @@ import org.spongycastle.crypto.params.*;
 import org.spongycastle.crypto.parsers.ECIESPublicKeyParser;
 import org.spongycastle.crypto.signers.ECDSASigner;
 import org.spongycastle.crypto.signers.HMacDSAKCalculator;
+import org.spongycastle.math.ec.FixedPointCombMultiplier;
 import org.spongycastle.math.ec.FixedPointUtil;
 import org.spongycastle.util.Pack;
 
@@ -29,19 +30,24 @@ import java.util.Arrays;
 import static java.lang.System.arraycopy;
 
 public final class CryptoUtils {
-	private static final X9ECParameters CURVE_PARAMS = CustomNamedCurves.getByName("secp256k1");
+	public static final int SHA256_LENGTH = 32;
+	public static final int SHA256_BUFFER = 64;
 
 	public static final ECDomainParameters CURVE;
-
 	public static final BigInteger HALF_CURVE_ORDER;
 
-	public static final SecureRandom SECURE_RANDOM = new SecureRandom();
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+	private static final X9ECParameters CURVE_PARAMS = CustomNamedCurves.getByName("secp256k1");
+	private static final ECKeyPairGenerator KEY_PAIR_GENERATOR = new ECKeyPairGenerator();
+	private static final FixedPointCombMultiplier FIXED_POINT_COMB_MULTIPLIER = new FixedPointCombMultiplier();
 
 	static {
 		FixedPointUtil.precompute(CURVE_PARAMS.getG(), 12);
 		CURVE = new ECDomainParameters(CURVE_PARAMS.getCurve(),
 				CURVE_PARAMS.getG(), CURVE_PARAMS.getN(), CURVE_PARAMS.getH());
 		HALF_CURVE_ORDER = CURVE_PARAMS.getN().shiftRight(1);
+
+		KEY_PAIR_GENERATOR.init(new ECKeyGenerationParameters(CURVE, SECURE_RANDOM));
 	}
 
 	public static byte[] sha256(byte[] encryptedData) {
@@ -51,9 +57,6 @@ public final class CryptoUtils {
 		digest.doFinal(hash, 0);
 		return hash;
 	}
-
-	public static final int SHA256_LENGTH = 32;
-	public static final int SHA256_BUFFER = 64;
 
 	public static byte[] toSha256PackedState(SHA256Digest sha256Digest) {
 		byte[] encodedState = sha256Digest.getEncodedState();
@@ -84,6 +87,11 @@ public final class CryptoUtils {
 		return new SHA256Digest(encodedState);
 	}
 
+	// TODO: find something better
+	public static boolean areEqual(SHA256Digest first, SHA256Digest second) {
+		return Arrays.equals(toSha256PackedState(first), toSha256PackedState(second));
+	}
+
 	public static byte[] sha1(byte[] bytes) {
 		Digest digest = new SHA1Digest();
 		digest.update(bytes, 0, bytes.length);
@@ -92,7 +100,8 @@ public final class CryptoUtils {
 		return hash;
 	}
 
-	public static EncryptedData encryptAES(byte[] plainBytes, KeyParameter aesKey) {
+	@SuppressWarnings("deprecation")
+	public static EncryptedData encryptAES(byte[] plainBytes, CipherParameters aesKey) {
 		try {
 			BlockCipher blockCipher = new AESFastEngine();
 
@@ -113,8 +122,9 @@ public final class CryptoUtils {
 		}
 	}
 
-	public static byte[] decryptAes(EncryptedData dataToDecrypt, KeyParameter aesKey) throws CryptoException {
-		ParametersWithIV keyWithIv = new ParametersWithIV(new KeyParameter(aesKey.getKey()), dataToDecrypt.initializationVector);
+	@SuppressWarnings("deprecation")
+	public static byte[] decryptAES(EncryptedData dataToDecrypt, CipherParameters aesKey) throws CryptoException {
+		ParametersWithIV keyWithIv = new ParametersWithIV(aesKey, dataToDecrypt.initializationVector);
 
 		// Decrypt the message.
 		BufferedBlockCipher cipher = new PaddedBufferedBlockCipher(new CBCBlockCipher(new AESFastEngine()));
@@ -128,12 +138,9 @@ public final class CryptoUtils {
 		return Arrays.copyOf(decryptedBytes, length1 + length2);
 	}
 
-	public static byte[] encryptECIES(byte[] message, ECPublicKeyParameters publicKey) {
-		ECKeyPairGenerator gen = new ECKeyPairGenerator();
-		gen.init(new ECKeyGenerationParameters(CURVE, SECURE_RANDOM));
-
+	public static byte[] encryptECIES(byte[] message, ECPublicKeyParameters ecPublicKeyParameters) {
 		EphemeralKeyPairGenerator ephKeyGen = new EphemeralKeyPairGenerator(
-				gen,
+				KEY_PAIR_GENERATOR,
 				keyParameter ->
 						((ECPublicKeyParameters) keyParameter).getQ().getEncoded(true));
 
@@ -146,7 +153,7 @@ public final class CryptoUtils {
 		byte[] e = new byte[]{8, 7, 6, 5, 4, 3, 2, 1};
 		CipherParameters p = new IESParameters(d, e, 64);
 
-		i1.init(publicKey, p, ephKeyGen);
+		i1.init(ecPublicKeyParameters, p, ephKeyGen);
 
 		try {
 			return i1.processBlock(message, 0, message.length);
@@ -155,10 +162,7 @@ public final class CryptoUtils {
 		}
 	}
 
-	public static byte[] decryptECIES(byte[] encryptedMessage, BigInteger privateKey) throws CryptoException {
-		ECKeyPairGenerator gen = new ECKeyPairGenerator();
-		gen.init(new ECKeyGenerationParameters(CURVE, SECURE_RANDOM));
-
+	public static byte[] decryptECIES(byte[] encryptedMessage, ECPrivateKeyParameters ecPrivateKeyParameters) throws CryptoException {
 		IESEngine i2 = new IESEngine(
 				new ECDHBasicAgreement(),
 				new KDF2BytesGenerator(new SHA1Digest()),
@@ -168,27 +172,35 @@ public final class CryptoUtils {
 		byte[] e = new byte[]{8, 7, 6, 5, 4, 3, 2, 1};
 		CipherParameters p = new IESParameters(d, e, 64);
 
-		ECPrivateKeyParameters priKey = new ECPrivateKeyParameters(
-				privateKey, // d
-				CURVE);
-
-		i2.init(priKey, p, new ECIESPublicKeyParser(CURVE));
+		i2.init(ecPrivateKeyParameters, p, new ECIESPublicKeyParser(CURVE));
 
 		return i2.processBlock(encryptedMessage, 0, encryptedMessage.length);
 	}
 
-	public static boolean verify(byte[] data, ECDSASignature signature, ECPublicKeyParameters publicKey) {
+	public static boolean verify(byte[] data, ECDSASignature signature, ECPublicKeyParameters ecPublicKeyParameters) {
 		ECDSASigner signer = new ECDSASigner();
-		signer.init(false, publicKey);
+		signer.init(false, ecPublicKeyParameters);
 		return signer.verifySignature(data, signature.r, signature.s);
 	}
 
-	public static ECDSASignature sign(byte[] input, BigInteger privateKeyForSigning) {
+	public static ECDSASignature sign(byte[] input, ECPrivateKeyParameters ecPrivateKeyParameters) {
 		ECDSASigner signer = new ECDSASigner(new HMacDSAKCalculator(new SHA256Digest()));
-		ECPrivateKeyParameters privKey = new ECPrivateKeyParameters(privateKeyForSigning, CURVE);
-		signer.init(true, privKey);
+		signer.init(true, ecPrivateKeyParameters);
 		BigInteger[] components = signer.generateSignature(input);
 		return new ECDSASignature(components[0], components[1]).toCanonicalised();
 	}
 
+	public static CipherParameters generateCipherKey(int size) {
+		byte[] aesKeyBytes = new byte[size];
+		SECURE_RANDOM.nextBytes(aesKeyBytes);
+		return new KeyParameter(aesKeyBytes);
+	}
+
+	public static AsymmetricCipherKeyPair generateKeyPair() {
+		return KEY_PAIR_GENERATOR.generateKeyPair();
+	}
+
+	public static ECPublicKeyParameters computePubKey(ECPrivateKeyParameters privKey) {
+		return new ECPublicKeyParameters(FIXED_POINT_COMB_MULTIPLIER.multiply(CURVE.getG(), privKey.getD()), CURVE);
+	}
 }

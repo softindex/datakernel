@@ -3,14 +3,9 @@ package io.global.common;
 import io.global.globalsync.api.EncryptedData;
 import org.junit.Assert;
 import org.junit.Test;
+import org.spongycastle.crypto.CipherParameters;
 import org.spongycastle.crypto.CryptoException;
 import org.spongycastle.crypto.digests.SHA256Digest;
-import org.spongycastle.crypto.params.ECPublicKeyParameters;
-import org.spongycastle.crypto.params.KeyParameter;
-import org.spongycastle.math.ec.ECPoint;
-import org.spongycastle.math.ec.FixedPointCombMultiplier;
-
-import java.math.BigInteger;
 
 import static io.global.common.CryptoUtils.*;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
@@ -19,43 +14,38 @@ import static org.junit.Assert.*;
 public class CryptoUtilsTest {
 
 	@Test
-	public void testAES() throws CryptoException {
-		byte[] aesKeyBytes = new byte[16];
-		SECURE_RANDOM.nextBytes(aesKeyBytes);
-		KeyParameter aesKey = new KeyParameter(aesKeyBytes);
+	public void testSymmetricEncryption() throws CryptoException {
+		CipherParameters aesKey = generateCipherKey(16);
+
 		String message = "Hello!";
+
 		EncryptedData encryptedData = encryptAES(message.getBytes(ISO_8859_1), aesKey);
-		byte[] bytes = decryptAes(encryptedData, aesKey);
-		String decryptedString = new String(bytes, ISO_8859_1);
-		assertEquals(message, decryptedString);
+		byte[] decryptedData = decryptAES(encryptedData, aesKey);
+
+		assertEquals(message, new String(decryptedData, ISO_8859_1));
 	}
 
 	@Test
-	public void testECIES() throws CryptoException {
-		byte[] privKeyBytes = new byte[32];
-		SECURE_RANDOM.nextBytes(privKeyBytes);
-		BigInteger privKey = new BigInteger(1, privKeyBytes);
-		ECPoint pubKey = new FixedPointCombMultiplier().multiply(CURVE.getG(), privKey);
+	public void testAsymmetricEncryption() throws CryptoException {
+		KeyPair keyPair = KeyPair.generate();
+
 		String message = "Hello!";
-		byte[] encryptedData = encryptECIES(message.getBytes(ISO_8859_1),
-				new ECPublicKeyParameters(pubKey, CURVE));
-		byte[] bytes = decryptECIES(encryptedData, privKey);
-		String decryptedString = new String(bytes, ISO_8859_1);
-		assertEquals(message, decryptedString);
+
+		byte[] encryptedData = encryptECIES(message.getBytes(ISO_8859_1), keyPair.getPubKey().getEcPublicKey());
+		byte[] decryptedData = decryptECIES(encryptedData, keyPair.getPrivKey().getEcPrivateKey());
+
+		assertEquals(message, new String(decryptedData, ISO_8859_1));
 	}
 
 	@Test
 	public void testSign() {
-		byte[] privKeyBytes = new byte[32];
-		SECURE_RANDOM.nextBytes(privKeyBytes);
-		BigInteger privKey = new BigInteger(1, privKeyBytes);
-		ECPoint pubKey = new FixedPointCombMultiplier().multiply(CURVE.getG(), privKey);
+		KeyPair keyPair = KeyPair.generate();
+
 		String message = "Hello!";
-		ECDSASignature signature = sign(message.getBytes(ISO_8859_1), privKey);
-		assertTrue(verify(message.getBytes(ISO_8859_1), signature,
-				new ECPublicKeyParameters(pubKey, CURVE)));
-		assertFalse(verify((message + "!").getBytes(ISO_8859_1), signature,
-				new ECPublicKeyParameters(pubKey, CURVE)));
+		ECDSASignature signature = sign(message.getBytes(ISO_8859_1), keyPair.getPrivKey().getEcPrivateKey());
+
+		assertTrue(verify(message.getBytes(ISO_8859_1), signature, keyPair.getPubKey().getEcPublicKey()));
+		assertFalse(verify((message + "!").getBytes(ISO_8859_1), signature, keyPair.getPubKey().getEcPublicKey()));
 	}
 
 	@Test
@@ -76,5 +66,4 @@ public class CryptoUtilsTest {
 			Assert.assertArrayEquals(hash1, hash2);
 		}
 	}
-
 }

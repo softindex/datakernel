@@ -1,27 +1,25 @@
 package io.global.common;
 
-import java.math.BigInteger;
-import java.security.SecureRandom;
+import org.spongycastle.crypto.params.ECPrivateKeyParameters;
 
-import static io.global.common.CryptoUtils.SECURE_RANDOM;
+import java.math.BigInteger;
 
 public final class PrivKey {
-	public static final SecureRandom SECURE_RANDOM = new SecureRandom();
+	private final ECPrivateKeyParameters ecPrivateKey;
 
-	private final BigInteger privateKeyForSigning;
-
-	public PrivKey(BigInteger privateKeyForSigning) {
-		this.privateKeyForSigning = privateKeyForSigning;
+	public PrivKey(ECPrivateKeyParameters ecPrivateKey) {
+		this.ecPrivateKey = ecPrivateKey;
 	}
 
-	public BigInteger getPrivateKeyForSigning() {
-		return privateKeyForSigning;
+	public static PrivKey ofD(BigInteger d) {
+		return new PrivKey(new ECPrivateKeyParameters(d, CryptoUtils.CURVE));
 	}
 
-	public static PrivKey random() {
-		byte[] privKeyBytes = new byte[32];
-		SECURE_RANDOM.nextBytes(privKeyBytes);
-		BigInteger privKey = new BigInteger(1, privKeyBytes);
-		return new PrivKey(privKey);
+	public PubKey computePubKey() {
+		return new PubKey(CryptoUtils.computePubKey(ecPrivateKey));
+	}
+
+	public ECPrivateKeyParameters getEcPrivateKey() {
+		return ecPrivateKey;
 	}
 }

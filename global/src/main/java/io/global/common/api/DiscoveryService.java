@@ -1,11 +1,10 @@
-package io.global.globalfs.api;
+package io.global.common.api;
 
 import io.datakernel.async.Stage;
-import io.global.common.api.AnnounceData;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 
-public interface GlobalFsDiscoveryService {
+public interface DiscoveryService {
 	Stage<SignedData<AnnounceData>> findServers(PubKey pubKey);
 
 	Stage<Void> announce(SignedData<AnnounceData> announceData);

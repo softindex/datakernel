@@ -18,5 +18,4 @@ public final class GlobalFsName {
 	public String getFsName() {
 		return fsName;
 	}
-
 }

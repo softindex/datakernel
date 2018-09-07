@@ -27,14 +27,11 @@ public final class ECDSASignature {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		ECDSASignature that = (ECDSASignature) o;
-		if (!r.equals(that.r)) return false;
-		return s.equals(that.s);
+		return r.equals(that.r) && s.equals(that.s);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = r.hashCode();
-		result = 31 * result + s.hashCode();
-		return result;
+		return 31 * r.hashCode() + s.hashCode();
 	}
 }

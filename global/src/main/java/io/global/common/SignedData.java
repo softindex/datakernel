@@ -28,13 +28,13 @@ public final class SignedData<T extends Signable> {
 	}
 
 	public static <T extends Signable> SignedData<T> sign(T data, PrivKey privKey) {
-		return sign(data, privKey.getPrivateKeyForSigning());
+		byte[] dataBytes = data.toBytes();
+		ECDSASignature signature = CryptoUtils.sign(dataBytes, privKey.getEcPrivateKey());
+		return new SignedData<>(data, signature);
 	}
 
-	public static <T extends Signable> SignedData<T> sign(T data, BigInteger privateKeyForSigning) {
-		byte[] dataBytes = data.toBytes();
-		ECDSASignature signature = CryptoUtils.sign(dataBytes, privateKeyForSigning);
-		return new SignedData<>(data, signature);
+	public boolean verify(PubKey pubKey) {
+		return CryptoUtils.verify(data.toBytes(), signature, pubKey.getEcPublicKey());
 	}
 
 	public byte[] toBytes() {
@@ -59,14 +59,16 @@ public final class SignedData<T extends Signable> {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		SignedData<?> that = (SignedData<?>) o;
-		if (!data.equals(that.data)) return false;
-		return signature.equals(that.signature);
+		return data.equals(that.data) && signature.equals(that.signature);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = data.hashCode();
-		result = 31 * result + signature.hashCode();
-		return result;
+		return 31 * data.hashCode() + signature.hashCode();
+	}
+
+	@Override
+	public String toString() {
+		return "SignedData{" + data + '}';
 	}
 }

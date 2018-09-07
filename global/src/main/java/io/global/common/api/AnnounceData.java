@@ -14,12 +14,15 @@ public final class AnnounceData implements Signable {
 	private final PubKey pubKey;
 	private final Set<RawServerId> serverIds;
 
-	public AnnounceData(byte[] bytes,
-			long timestamp, PubKey pubKey, Set<RawServerId> serverIds) {
+	public AnnounceData(byte[] bytes, long timestamp, PubKey pubKey, Set<RawServerId> serverIds) {
 		this.bytes = bytes;
 		this.timestamp = timestamp;
 		this.pubKey = pubKey;
 		this.serverIds = serverIds;
+	}
+
+	public static AnnounceData fromBytes(byte[] bytes) {
+		throw new UnsupportedOperationException("stub");
 	}
 
 	@Override

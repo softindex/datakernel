@@ -33,7 +33,7 @@ public final class SimKey {
 
 	public static SimKey ofEncryptedSimKey(EncryptedSimKey encryptedSimKey, PrivKey privKey) {
 		try {
-			return SimKey.ofBytes(decryptECIES(encryptedSimKey.toBytes(), privKey.getPrivateKeyForSigning()));
+			return SimKey.ofBytes(decryptECIES(encryptedSimKey.toBytes(), privKey.getEcPrivateKey()));
 		} catch (CryptoException e) {
 			throw new RuntimeException(e);
 		}

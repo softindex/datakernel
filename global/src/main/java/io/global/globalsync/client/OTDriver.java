@@ -106,7 +106,7 @@ public final class OTDriver {
 								myRepositoryId.getRepositoryId(),
 								commit.getId(),
 								commit.getTimestamp()),
-						myRepositoryId.getPrivKey().getPrivateKeyForSigning())
+						myRepositoryId.getPrivKey())
 		);
 	}
 
@@ -140,7 +140,7 @@ public final class OTDriver {
 								null : new IOException())
 				.thenCompose(rawCommit -> ensureSimKey(myRepositoryId, originRepositoryIds, rawCommit.getSimKeyHash())
 						.thenTry(simKey -> {
-							ByteBuf buf = ByteBuf.wrapForReading(decryptAes(
+							ByteBuf buf = ByteBuf.wrapForReading(decryptAES(
 									rawCommit.getEncryptedDiffs(),
 									simKey.getAesKey()));
 							Map<CommitId, List<? extends D>> parents = new HashMap<>();
@@ -180,7 +180,7 @@ public final class OTDriver {
 
 					RawSnapshot rawSnapshot = signedSnapshot.getData();
 					return ensureSimKey(myRepositoryId, singleton(repositoryId), rawSnapshot.getSimKeyHash())
-							.thenTry(simKey -> decryptAes(rawSnapshot.encryptedDiffs, simKey.getAesKey()))
+							.thenTry(simKey -> decryptAES(rawSnapshot.encryptedDiffs, simKey.getAesKey()))
 							.thenTry(diffs -> myRepositoryId.getDiffsDeserializer().apply(diffs))
 							.thenApply(Optional::of);
 				});
@@ -195,7 +195,7 @@ public final class OTDriver {
 								revisionId,
 								encryptAES(myRepositoryId.getDiffsSerializer().apply(diffs), currentSimKey.getAesKey()),
 								new SimKeyHash(sha1(currentSimKey.toBytes()))),
-						myRepositoryId.getPrivKey().getPrivateKeyForSigning()));
+						myRepositoryId.getPrivKey()));
 	}
 
 }
