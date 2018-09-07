@@ -24,8 +24,7 @@ import org.junit.Test;
 import java.util.LinkedList;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.TestUtils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -46,7 +45,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertEquals(TEST_INT, consumer1.getList().get(0));
-		assertStatus(END_OF_STREAM, producer1);
+		assertEndOfStream(producer1);
 
 		StreamConsumerToList<String> consumer2 = StreamConsumerToList.create(new LinkedList<String>());
 		StreamProducer<String> producer2 = StreamProducer.of(TEST_STRING);
@@ -54,7 +53,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertEquals(TEST_STRING, consumer2.getList().get(0));
-		assertStatus(END_OF_STREAM, producer2);
+		assertEndOfStream(producer2);
 
 		StreamConsumerToList<DataItem1> consumer3 = StreamConsumerToList.create(new LinkedList<DataItem1>());
 		StreamProducer<DataItem1> producer3 = StreamProducer.of(TEST_OBJECT);
@@ -62,7 +61,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertEquals(TEST_OBJECT, consumer3.getList().get(0));
-		assertStatus(END_OF_STREAM, producer3);
+		assertEndOfStream(producer3);
 	}
 
 	@Test
@@ -73,7 +72,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertTrue(consumer3.getList().get(0) == null);
-		assertStatus(END_OF_STREAM, producer3);
+		assertEndOfStream(producer3);
 	}
 
 }

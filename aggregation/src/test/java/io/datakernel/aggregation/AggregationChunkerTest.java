@@ -22,7 +22,9 @@ import io.datakernel.async.Stage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamProducer;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -37,7 +39,8 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.TestUtils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertClosedWithError;
+import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -64,15 +67,15 @@ public class AggregationChunkerTest {
 			long chunkId;
 
 			@Override
-			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
+			public <T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Stage.of(StreamProducer.ofIterable(items));
 			}
 
 			@Override
-			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
-				return Stage.of(consumer.withEndOfStreamAsResult());
+				return Stage.of(consumer);
 			}
 
 			@Override
@@ -102,12 +105,15 @@ public class AggregationChunkerTest {
 		StreamProducer<KeyValuePair> producer = StreamProducer.of(
 				new KeyValuePair(3, 4, 6),
 				new KeyValuePair(3, 6, 7),
-				new KeyValuePair(1, 2, 1));
+				new KeyValuePair(1, 2, 1)
+		);
 		AggregationChunker chunker = AggregationChunker.create(
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
-		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker).getConsumerResult().toCompletableFuture();
+		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker)
+				.thenCompose($ -> chunker.getResult())
+				.toCompletableFuture();
 
 		eventloop.run();
 
@@ -117,11 +123,11 @@ public class AggregationChunkerTest {
 		assertEquals(new KeyValuePair(3, 6, 7), items.get(1));
 		assertEquals(new KeyValuePair(1, 2, 1), items.get(2));
 
-		assertStatus(StreamStatus.END_OF_STREAM, producer);
-//		assertStatus(StreamStatus.END_OF_STREAM, chunker);
+		assertEndOfStream(producer);
+//		assertEndOfStream(chunker);
 //		assertStatus(((StreamProducers.OfIterator) producer).getDownstream(), chunker);
 		for (StreamConsumer consumer : listConsumers) {
-			assertStatus(StreamStatus.END_OF_STREAM, consumer);
+			assertEndOfStream(consumer);
 		}
 	}
 
@@ -140,15 +146,15 @@ public class AggregationChunkerTest {
 			final List items = new ArrayList();
 
 			@Override
-			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
+			public <T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Stage.of(StreamProducer.ofIterable(items));
 			}
 
 			@Override
-			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
-				return Stage.of(consumer.withEndOfStreamAsResult());
+				return Stage.of(consumer);
 			}
 
 			@Override
@@ -198,17 +204,18 @@ public class AggregationChunkerTest {
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
-		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker).getConsumerResult().toCompletableFuture();
+		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker)
+				.thenCompose($ -> chunker.getResult())
+				.toCompletableFuture();
 
 		eventloop.run();
 
 		assertTrue(future.isCompletedExceptionally());
-		assertStatus(StreamStatus.CLOSED_WITH_ERROR, producer);
-//		assertStatus(StreamStatus.CLOSED_WITH_ERROR, chunker);
-		for (int i = 0; i < listConsumers.size() - 1; i++) {
-			assertStatus(StreamStatus.END_OF_STREAM, listConsumers.get(i));
+		assertClosedWithError(producer);
+//		assertClosedWithError(chunker);
+		for (StreamConsumer listConsumer : listConsumers) {
+			assertEndOfStream(listConsumer);
 		}
-		assertStatus(StreamStatus.CLOSED_WITH_ERROR, getLast(listConsumers));
 	}
 
 	private static <T> T getLast(List<T> list) {
@@ -230,20 +237,20 @@ public class AggregationChunkerTest {
 			final List items = new ArrayList();
 
 			@Override
-			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
+			public <T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Stage.of(StreamProducer.ofIterable(items));
 			}
 
 			@Override
-			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				if (chunkId == 1) {
 					StreamConsumerToList<T> toList = StreamConsumerToList.create(items);
 					listConsumers.add(toList);
-					return Stage.of(toList.withEndOfStreamAsResult());
+					return Stage.of(toList);
 				} else {
 					StreamConsumer<T> consumer = StreamConsumer.closingWithError(new Exception("Test Exception"));
 					listConsumers.add(consumer);
-					return Stage.of(consumer.withEndOfStreamAsResult());
+					return Stage.of(consumer);
 				}
 			}
 
@@ -281,15 +288,18 @@ public class AggregationChunkerTest {
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
-		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker).getConsumerResult().toCompletableFuture();
+		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker)
+				.thenCompose($ -> chunker.getResult())
+				.toCompletableFuture();
+
 		eventloop.run();
 
 		assertTrue(future.isCompletedExceptionally());
-		assertStatus(StreamStatus.CLOSED_WITH_ERROR, producer);
-//		assertStatus(StreamStatus.CLOSED_WITH_ERROR, chunker);
+		assertClosedWithError(producer);
+//		assertClosedWithError(chunker);
 		for (int i = 0; i < listConsumers.size() - 1; i++) {
-			assertStatus(StreamStatus.END_OF_STREAM, listConsumers.get(i));
+			assertEndOfStream(listConsumers.get(i));
 		}
-		assertStatus(StreamStatus.CLOSED_WITH_ERROR, getLast(listConsumers));
+		assertClosedWithError(getLast(listConsumers));
 	}
 }

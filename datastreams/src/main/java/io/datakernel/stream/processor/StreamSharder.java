@@ -16,6 +16,8 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
@@ -74,8 +76,8 @@ public final class StreamSharder<T> implements HasInput<T>, HasOutputs, StreamDa
 
 	protected final class InputConsumer extends AbstractStreamConsumer<T> {
 		@Override
-		protected void onEndOfStream() {
-			outputs.forEach(Output::sendEndOfStream);
+		protected Stage<Void> onProducerEndOfStream() {
+			return Stages.all(outputs.stream().map(Output::sendEndOfStream));
 		}
 
 		@Override

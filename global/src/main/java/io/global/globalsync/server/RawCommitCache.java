@@ -24,7 +24,6 @@ final class RawCommitCache implements AsyncConsumer<RawCommitEntry> {
 	public static RawCommitCache of(StreamProducer<RawCommitEntry> streamProducer) {
 		RawCommitCache streamingCache = new RawCommitCache();
 		streamProducer.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(streamingCache)))
-				.getEndOfStream()
 				.thenRun(streamingCache::onEndOfStream)
 				.whenException(streamingCache::onError);
 		return streamingCache;

@@ -19,17 +19,12 @@ package io.datakernel.stream.processor;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.serial.SerialBuffer;
-import io.datakernel.serial.SerialZeroBuffer;
 import io.datakernel.serial.file.SerialFileReader;
 import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.serial.processor.*;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,11 +37,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
-import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.file.StandardOpenOption.*;
 
 /**
  * This class uses for  splitting a single input stream into smaller partitions during merge sort,
@@ -127,23 +121,21 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<T, Integer>> write() {
-		int partition = PARTITION.incrementAndGet();
+	public Stage<Integer> newPartitionId() {
+		return Stage.of(PARTITION.incrementAndGet());
+	}
+
+	@Override
+	public Stage<StreamConsumer<T>> write(int partition) {
 		Path path = partitionPath(partition);
-		return AsyncFile.openAsync(executorService, path, StreamFileWriter.CREATE_OPTIONS)
-				.thenApply(file -> StreamConsumer.ofTransformer(
-						Function.<StreamProducer<T>>identity()
-								.andThen(SerialBinarySerializer.create(serializer)
-										.transformer(new SerialBuffer<>(1)))
-								.andThen(SerialByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize)
-										.transformer(new SerialBuffer<>(1)))
-								.andThen(SerialLZ4Compressor.create(compressionLevel)
-										.transformer(new SerialBuffer<>(1)))
-								.andThen(SerialByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize)
-										.transformer(new SerialBuffer<>(1))),
-						resultingStream ->
-								resultingStream.streamTo(SerialFileWriter.create(file)))
-						.withResult(Stage.of(partition))
+		return AsyncFile.openAsync(executorService, path, new OpenOption[]{WRITE, CREATE_NEW, APPEND})
+				.thenApply(file -> StreamConsumer.<T>ofProducer(
+						producer -> producer
+								.apply(SerialBinarySerializer.create(serializer))
+								.apply(SerialByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
+								.apply(SerialLZ4Compressor.create(compressionLevel))
+								.apply(SerialByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
+								.streamTo(SerialFileWriter.create(file)))
 						.withLateBinding());
 	}
 
@@ -154,15 +146,12 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 * @param partition index of partition to read
 	 */
 	@Override
-	public Stage<StreamProducerWithResult<T, Void>> read(int partition) {
+	public Stage<StreamProducer<T>> read(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
 				.thenApply(file -> SerialFileReader.readFile(file).withBufferSize(readBlockSize)
-						.andThen(SerialLZ4Decompressor.create()
-								.transformer(new SerialZeroBuffer<>()))
-						.andThen(SerialBinaryDeserializer.create(serializer)
-								.transformer())
-						.withEndOfStreamAsResult()
+						.apply(SerialLZ4Decompressor.create())
+						.apply(SerialBinaryDeserializer.create(serializer))
 						.withLateBinding());
 	}
 

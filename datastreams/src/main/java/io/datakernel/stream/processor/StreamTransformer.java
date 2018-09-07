@@ -22,11 +22,11 @@ import java.util.function.Function;
 
 public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, StreamModifier<I, O> {
 
-	static <X> StreamTransformer<X, X> idenity() {
+	static <X> StreamTransformer<X, X> identity() {
 		return StreamFunction.create(Function.identity());
 	}
 
-	default Function<StreamProducer<I>, StreamProducer<O>> transformer() {
+	default Function<StreamProducer<I>, StreamProducer<O>> fn() {
 		return input -> {
 			input.streamTo(getInput());
 			return getOutput();

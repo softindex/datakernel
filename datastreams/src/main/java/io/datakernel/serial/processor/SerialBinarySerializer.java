@@ -17,6 +17,7 @@
 package io.datakernel.serial.processor;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serial.SerialConsumer;
@@ -31,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.ArrayDeque;
 
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Math.max;
 
@@ -116,12 +116,6 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 	public void setOutput(SerialConsumer<ByteBuf> output) {
 		this.output = output;
 	}
-
-	@Override
-	public SerialConsumer<ByteBuf> getOutput() {
-		return output;
-	}
-
 	// endregion
 
 	@Override
@@ -130,9 +124,10 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	protected void onEndOfStream() {
+	protected Stage<Void> onProducerEndOfStream() {
 		input.flush();
 		produce();
+		return getAcknowledgement();
 	}
 
 	@Override
@@ -158,14 +153,18 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 		if (!bufs.isEmpty()) {
 			writing = true;
 			output.accept(bufs.poll())
-					.thenRun(() -> {
-						writing = false;
-						produce();
-					})
-					.whenException(this::closeWithError);
+					.whenComplete(($, e) -> {
+						if (e == null) {
+							writing = false;
+							produce();
+						} else {
+							this.closeWithError(e);
+						}
+					});
 		} else {
-			if (getStatus() == END_OF_STREAM) {
+			if (isProducerEndOfStream()) {
 				output.accept(null);
+				endOfStream();
 			} else {
 				getProducer().produce(input);
 			}

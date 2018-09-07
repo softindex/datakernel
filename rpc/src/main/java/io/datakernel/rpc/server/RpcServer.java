@@ -27,9 +27,9 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcStream;
+import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
@@ -71,8 +71,8 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
-	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = StreamBinarySerializer.DEFAULT_INITIAL_BUFFER_SIZE;
-	public static final MemSize DEFAULT_MAX_MESSAGE_SIZE = StreamBinarySerializer.MAX_SIZE;
+	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = SerialBinarySerializer.DEFAULT_INITIAL_BUFFER_SIZE;
+	public static final MemSize DEFAULT_MAX_MESSAGE_SIZE = SerialBinarySerializer.MAX_SIZE;
 
 	private MemSize initialBufferSize = DEFAULT_INITIAL_BUFFER_SIZE;
 	private MemSize maxMessageSize = DEFAULT_MAX_MESSAGE_SIZE;

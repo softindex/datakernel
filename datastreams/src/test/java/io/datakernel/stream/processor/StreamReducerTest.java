@@ -21,7 +21,6 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamStatus;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -31,13 +30,12 @@ import java.util.function.Function;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestStreamConsumers.decorator;
 import static io.datakernel.stream.TestStreamConsumers.randomlySuspending;
-import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
 import static io.datakernel.stream.processor.StreamReducers.mergeDeduplicateReducer;
 import static java.util.Arrays.asList;
 import static java.util.Collections.EMPTY_LIST;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("unchecked")
 public class StreamReducerTest {
@@ -54,13 +52,13 @@ public class StreamReducerTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		source.streamTo(streamReducer.newInput(Function.identity(), reducer));
-		streamReducer.getOutput().streamTo(consumer.with(randomlySuspending()));
+		streamReducer.getOutput().streamTo(consumer.apply(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
-		assertStatus(END_OF_STREAM, source);
-		assertStatus(END_OF_STREAM, streamReducer.getOutput());
-		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
+		assertEndOfStream(source);
+		assertEndOfStream(streamReducer.getOutput());
+		assertConsumersEndOfStream(streamReducer.getInputs());
 	}
 
 	@Test
@@ -91,21 +89,21 @@ public class StreamReducerTest {
 		source5.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source6.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
-		streamReducer.getOutput().streamTo(consumer.with(randomlySuspending()));
+		streamReducer.getOutput().streamTo(consumer.apply(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
-		assertStatus(END_OF_STREAM, source0);
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(END_OF_STREAM, source3);
-		assertStatus(END_OF_STREAM, source4);
-		assertStatus(END_OF_STREAM, source5);
-		assertStatus(END_OF_STREAM, source6);
-		assertStatus(END_OF_STREAM, source7);
+		assertEndOfStream(source0);
+		assertEndOfStream(source1);
+		assertEndOfStream(source2);
+		assertEndOfStream(source3);
+		assertEndOfStream(source4);
+		assertEndOfStream(source5);
+		assertEndOfStream(source6);
+		assertEndOfStream(source7);
 
-		assertStatus(END_OF_STREAM, streamReducer.getOutput());
-		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
+		assertEndOfStream(streamReducer.getOutput());
+		assertConsumersEndOfStream(streamReducer.getInputs());
 	}
 
 	@Test
@@ -133,7 +131,7 @@ public class StreamReducerTest {
 		source3.streamTo(streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
 
 		streamReducer.getOutput().streamTo(
-				consumer.with(decorator((context, dataReceiver) ->
+				consumer.apply(decorator((context, dataReceiver) ->
 						item -> {
 							list.add(item);
 							if (list.size() == 1) {
@@ -145,13 +143,14 @@ public class StreamReducerTest {
 
 //		assertEquals(1, list.size());
 
-		assertStatus(CLOSED_WITH_ERROR, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(END_OF_STREAM, source3);
+		assertClosedWithError(source1);
+		assertEndOfStream(source2);
+		assertEndOfStream(source3);
 
-		assertStatus(CLOSED_WITH_ERROR, streamReducer.getOutput());
-		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM, END_OF_STREAM},
-				consumerStatuses(streamReducer.getInputs()));
+		assertClosedWithError(streamReducer.getOutput());
+		assertClosedWithError(streamReducer.getInput(0));
+		assertClosedWithError(streamReducer.getInput(1));
+		assertClosedWithError(streamReducer.getInput(2));
 	}
 
 	@Test
@@ -178,10 +177,10 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 0);
-		assertStatus(CLOSED_WITH_ERROR, consumer);
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(CLOSED_WITH_ERROR, source2);
-		assertStatus(END_OF_STREAM, source3);
+		assertClosedWithError(consumer);
+		assertEndOfStream(source1);
+		assertClosedWithError(source2);
+		assertEndOfStream(source3);
 	}
 
 	private static final class KeyValue1 {
@@ -372,7 +371,7 @@ public class StreamReducerTest {
 				streamReducer.newInput(input -> input.key, KeyValue3.REDUCER_TO_ACCUMULATOR.inputToOutput()));
 
 		streamReducer.getOutput().streamTo(
-				consumer.with(randomlySuspending()));
+				consumer.apply(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(
@@ -380,9 +379,9 @@ public class StreamReducerTest {
 				new KeyValueResult(2, 0.0, 10.0, 20.0),
 				new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(END_OF_STREAM, source3);
+		assertEndOfStream(source1);
+		assertEndOfStream(source2);
+		assertEndOfStream(source3);
 	}
 
 	@Test
@@ -408,7 +407,7 @@ public class StreamReducerTest {
 				streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
 
 		streamReducer.getOutput().streamTo(
-				consumer.with(randomlySuspending()));
+				consumer.apply(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(
@@ -416,9 +415,9 @@ public class StreamReducerTest {
 				new KeyValueResult(2, 0.0, 10.0, 20.0),
 				new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(END_OF_STREAM, source3);
+		assertEndOfStream(source1);
+		assertEndOfStream(source2);
+		assertEndOfStream(source3);
 	}
 
 }

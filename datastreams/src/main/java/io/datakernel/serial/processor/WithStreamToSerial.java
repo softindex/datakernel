@@ -1,25 +1,28 @@
 package io.datakernel.serial.processor;
 
-import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialQueue;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialZeroBuffer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.function.Function;
 
-public interface WithStreamToSerial<B extends WithStreamToSerial<B, I, O>, I, O>
-		extends StreamConsumer<I>, WithSerialOutput<B, O> {
+public interface WithStreamToSerial<B extends WithStreamToSerial<B, I, O>, I, O> extends
+		StreamConsumer<I>, WithSerialOutput<B, O>,
+		Function<StreamProducer<I>, SerialSupplier<O>> {
 
-	default Function<StreamProducer<I>, SerialSupplier<O>> transformer(SerialQueue<O> queue) {
-		return streamProducer -> {
-			streamProducer.streamTo(this);
-			return newOutputSupplier(queue);
-		};
+	@Override
+	default SerialSupplier<O> apply(StreamProducer<I> streamProducer) {
+		streamProducer.streamTo(this);
+		return getOutputSupplier(new SerialZeroBuffer<>());
 	}
 
-	default Function<SerialConsumer<O>, StreamConsumer<I>> outputTransformer() {
-		return this::withOutput;
+	default Function<StreamProducer<I>, SerialSupplier<O>> toOutput(SerialQueue<O> queue) {
+		return streamProducer -> {
+			streamProducer.streamTo(this);
+			return getOutputSupplier(queue);
+		};
 	}
 
 }

@@ -19,12 +19,12 @@ package io.datakernel.serial.net;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
-import io.datakernel.stream.StreamConsumer;
+import io.datakernel.serial.SerialZeroBuffer;
+import io.datakernel.serial.processor.SerialBinaryDeserializer;
+import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.ByteBufRule;
-import io.datakernel.stream.processor.StreamBinaryDeserializer;
-import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
@@ -70,10 +70,10 @@ public final class SocketStreamingConnectionTest {
 
 		SimpleServer server = SimpleServer.create(eventloop,
 				asyncTcpSocket -> {
-					io.datakernel.stream.net.SocketStreamingConnection connection = io.datakernel.stream.net.SocketStreamingConnection.create(asyncTcpSocket);
+					SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
 
 					connection.getSocketReader()
-							.with(StreamBinaryDeserializer.create(INT_SERIALIZER))
+							.apply(SerialBinaryDeserializer.create(INT_SERIALIZER))
 							.streamTo(consumerToList);
 
 					return connection;
@@ -88,9 +88,9 @@ public final class SocketStreamingConnectionTest {
 					SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
 
 					StreamProducer.ofIterable(list)
-							.with(StreamBinarySerializer.create(INT_SERIALIZER)
+							.apply(SerialBinarySerializer.create(INT_SERIALIZER)
 									.withInitialBufferSize(MemSize.of(1)))
-							.streamTo(StreamConsumer.ofSerialConsumer(connection.getSocketWriter()));
+							.streamTo(connection.getSocketWriter());
 
 					asyncTcpSocket.setEventHandler(connection);
 					asyncTcpSocket.register();
@@ -128,17 +128,17 @@ public final class SocketStreamingConnectionTest {
 
 		future = eventloop.connect(address)
 				.whenResult(socketChannel -> {
-					StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(INT_SERIALIZER)
-							.withInitialBufferSize(MemSize.of(1));
-					StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(INT_SERIALIZER);
-
 					AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 					SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
-					streamSerializer.getOutput().streamTo(StreamConsumer.ofSerialConsumer(connection.getSocketWriter()));
-					StreamProducer.ofSerialSupplier(connection.getSocketReader()).streamTo(streamDeserializer.getInput());
 
-					StreamProducer.ofIterable(source).streamTo(streamSerializer.getInput());
-					streamDeserializer.getOutput().streamTo(consumerToList);
+					SerialBinarySerializer<Integer> streamSerializer = SerialBinarySerializer.create(INT_SERIALIZER).withInitialBufferSize(MemSize.of(1));
+					SerialBinaryDeserializer<Integer> streamDeserializer = SerialBinaryDeserializer.create(INT_SERIALIZER);
+
+					streamSerializer.streamTo(connection.getSocketWriter(), new SerialZeroBuffer<>());
+					connection.getSocketReader().streamTo(streamDeserializer);
+
+					StreamProducer.ofIterable(source).streamTo(streamSerializer);
+					streamDeserializer.streamTo(consumerToList);
 
 					asyncTcpSocket.setEventHandler(connection);
 					asyncTcpSocket.register();

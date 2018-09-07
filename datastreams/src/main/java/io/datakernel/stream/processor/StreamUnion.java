@@ -16,12 +16,11 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.Stage;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static io.datakernel.util.Preconditions.checkState;
 
 /**
  * It is {@link AbstractStreamTransformer_1_1} which unions all input streams and streams it
@@ -53,7 +52,6 @@ public final class StreamUnion<T> implements HasOutput<T>, HasInputs {
 	}
 
 	public StreamConsumer<T> newInput() {
-		checkState(output.getStatus().isOpen());
 		Input input = new Input();
 		inputs.add(input);
 		return input;
@@ -63,10 +61,11 @@ public final class StreamUnion<T> implements HasOutput<T>, HasInputs {
 
 	private final class Input extends AbstractStreamConsumer<T> {
 		@Override
-		protected void onEndOfStream() {
-			if (inputs.stream().allMatch(input -> input.getStatus() == StreamStatus.END_OF_STREAM)) {
+		protected Stage<Void> onProducerEndOfStream() {
+			if (inputs.stream().allMatch(Input::isProducerEndOfStream)) {
 				output.sendEndOfStream();
 			}
+			return output.getConsumer().getAcknowledgement();
 		}
 
 		@Override

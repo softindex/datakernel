@@ -18,8 +18,8 @@ package io.datakernel.logfs;
 
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 
 import java.util.List;
 
@@ -31,15 +31,15 @@ public interface LogFileSystem {
 
 	Stage<List<LogFile>> list(String logPartition);
 
-	Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition);
+	Stage<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition);
 
-	default StreamProducerWithResult<ByteBuf, Void> readStream(String logPartition, LogFile logFile, long startPosition) {
-		return StreamProducerWithResult.ofStage(read(logPartition, logFile, startPosition));
+	default SerialSupplier<ByteBuf> readStream(String logPartition, LogFile logFile, long startPosition) {
+		return SerialSupplier.ofStage(read(logPartition, logFile, startPosition));
 	}
 
-	Stage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile);
+	Stage<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile);
 
-	default StreamConsumerWithResult<ByteBuf, Void> writeStream(String logPartition, LogFile logFile) {
-		return StreamConsumerWithResult.ofStage(write(logPartition, logFile));
+	default SerialConsumer<ByteBuf> writeStream(String logPartition, LogFile logFile) {
+		return SerialConsumer.ofStage(write(logPartition, logFile));
 	}
 }

@@ -143,7 +143,7 @@ public abstract class CompleteStage<T> implements MaterializedStage<T> {
 	@Override
 	public final <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
 		if (other instanceof CompleteStage) {
-			return Stage.of(fn.apply(this.getResult(), ((CompleteStage<U>) other).getResult()));
+			return Stage.of(fn.apply(getResult(), ((CompleteStage<U>) other).getResult()));
 		}
 		return other.then(new NextStage<U, V>() {
 			@Override
@@ -170,7 +170,7 @@ public abstract class CompleteStage<T> implements MaterializedStage<T> {
 	@Override
 	public final MaterializedStage<T> async() {
 		SettableStage<T> result = new SettableStage<>();
-		getCurrentEventloop().post(() -> result.set(this.getResult()));
+		getCurrentEventloop().post(() -> result.set(getResult()));
 		return result;
 	}
 

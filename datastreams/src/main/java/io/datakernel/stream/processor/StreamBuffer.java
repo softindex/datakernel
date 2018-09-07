@@ -1,5 +1,6 @@
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.Stage;
 import io.datakernel.stream.*;
 
 import java.util.ArrayDeque;
@@ -17,9 +18,8 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 	private final int minBuffered;
 	private final int maxBuffered;
 
-	private boolean suspended = false;
-	private boolean finished = false;
-
+	private boolean suspended = false; // TODO
+	
 	// region creators
 	private StreamBuffer(int minBuffered, int maxBuffered) {
 		this.minBuffered = minBuffered;
@@ -44,12 +44,9 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected void onEndOfStream() {
-			if (!suspended) {
-				output.sendEndOfStream();
-				return;
-			}
-			finished = true;
+		protected Stage<Void> onProducerEndOfStream() {
+			output.tryProduce();
+			return output.getConsumer().getAcknowledgement();
 		}
 
 		@Override
@@ -86,7 +83,7 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 				suspended = false;
 				input.getProducer().produce(this);
 			}
-			if (finished) {
+			if (input.isProducerEndOfStream()) {
 				sendEndOfStream();
 			}
 		}

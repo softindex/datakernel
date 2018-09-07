@@ -16,19 +16,41 @@
 
 package io.datakernel.stream;
 
-import static org.junit.Assert.assertEquals;
+import java.util.List;
+
+import static org.junit.Assert.assertTrue;
 
 public class TestUtils {
-
-	public static void assertStatus(StreamStatus expectedStatus, StreamProducer<?> streamProducer) {
-		if (expectedStatus == StreamStatus.CLOSED_WITH_ERROR && streamProducer instanceof StreamProducers.ClosingWithErrorImpl)
-			return;
-		assertEquals(expectedStatus, ((AbstractStreamProducer<?>) streamProducer).getStatus());
+	public static void assertEndOfStream(StreamProducer<?> streamProducer) {
+		assertTrue(streamProducer.getEndOfStream().isResult());
 	}
 
-	public static void assertStatus(StreamStatus expectedStatus, StreamConsumer<?> streamConsumer) {
-		if (expectedStatus == StreamStatus.CLOSED_WITH_ERROR && streamConsumer instanceof StreamConsumers.ClosingWithErrorImpl)
-			return;
-		assertEquals(expectedStatus, ((AbstractStreamConsumer<?>) streamConsumer).getStatus());
+	public static void assertEndOfStream(StreamConsumer<?> streamConsumer) {
+		assertTrue(streamConsumer.getAcknowledgement().isResult());
 	}
+
+	public static void assertClosedWithError(StreamProducer<?> streamProducer) {
+		assertTrue(streamProducer.getEndOfStream().isException());
+	}
+
+	public static void assertClosedWithError(StreamConsumer<?> streamConsumer) {
+		assertTrue(streamConsumer.getAcknowledgement().isException());
+	}
+
+	public static void assertProducersEndOfStream(List<? extends StreamProducer<?>> streamProducers) {
+		assertTrue(streamProducers.stream().allMatch(v -> v.getEndOfStream().isResult()));
+	}
+
+	public static void assertConsumersEndOfStream(List<? extends StreamConsumer<?>> streamConsumers) {
+		assertTrue(streamConsumers.stream().allMatch(v -> v.getAcknowledgement().isResult()));
+	}
+
+	public static void assertProducersClosedWithError(List<? extends StreamProducer<?>> streamProducers) {
+		assertTrue(streamProducers.stream().allMatch(v -> v.getEndOfStream().isException()));
+	}
+
+	public static void assertConsumersClosedWithError(List<? extends StreamConsumer<?>> streamConsumers) {
+		assertTrue(streamConsumers.stream().allMatch(v -> v.getAcknowledgement().isException()));
+	}
+
 }

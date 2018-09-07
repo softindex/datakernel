@@ -16,6 +16,8 @@
 
 package io.datakernel.logfs.ot;
 
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.stream.*;
 
@@ -43,9 +45,9 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			resultsReducer.addStage(consumer.getResult(), List::addAll);
 			Splitter.Output<?> output = splitter.new Output<>();
 			splitter.outputs.add(output);
-			output.streamTo((StreamConsumer) consumer);
+			output.streamTo((StreamConsumer) consumer.getConsumer());
 		}
-		return splitter.getInput().withResult(resultsReducer.get());
+		return StreamConsumerWithResult.of(splitter.getInput(), resultsReducer.get());
 	}
 
 	protected abstract StreamDataReceiver<T> createSplitter();
@@ -84,8 +86,8 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 
 		final class Input extends AbstractStreamConsumer<T> {
 			@Override
-			protected void onEndOfStream() {
-				outputs.forEach(Output::sendEndOfStream);
+			protected Stage<Void> onProducerEndOfStream() {
+				return Stages.all(outputs.stream().map(Output::sendEndOfStream));
 			}
 
 			@Override

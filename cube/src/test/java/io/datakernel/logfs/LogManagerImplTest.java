@@ -4,11 +4,13 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.asm.BufferSerializers;
-import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -20,7 +22,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamProducer.ofIterable;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -44,13 +45,14 @@ public class LogManagerImplTest {
 		List<String> values = asList("test1", "test2", "test3");
 
 		StreamProducer.ofIterable(values)
-			.streamTo(StreamConsumerWithResult.ofStage(logManager.consumer(testPartition)));
+				.streamTo(StreamConsumer.ofStage(logManager.consumer(testPartition)));
 
 		eventloop.run();
 
-		StreamConsumerWithResult<String, List<String>> listConsumer = StreamConsumerWithResult.toList();
+		StreamConsumerToList<String> listConsumer = StreamConsumerToList.create();
 		logManager.producerStream(testPartition, new LogFile("", 0), 0, null)
-			.streamTo(listConsumer);
+				.getProducer()
+				.streamTo(listConsumer);
 
 		CompletableFuture<List<String>> listFuture = listConsumer.getResult().toCompletableFuture();
 		eventloop.run();
@@ -86,10 +88,10 @@ public class LogManagerImplTest {
 		}
 
 		@Override
-		public Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
+		public Stage<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
 			List<ByteBuf> byteBufs = getOffset(partitions.get(logPartition).get(logFile), startPosition);
-			StreamProducer<ByteBuf> producer = ofIterable(byteBufs);
-			return Stage.of(producer.withEndOfStreamAsResult());
+			SerialSupplier<ByteBuf> producer = SerialSupplier.ofIterable(byteBufs);
+			return Stage.of(producer);
 		}
 
 		private static List<ByteBuf> getOffset(List<ByteBuf> byteBufs, long startPosition) {
@@ -112,10 +114,10 @@ public class LogManagerImplTest {
 		}
 
 		@Override
-		public Stage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
-			StreamConsumerWithResult<ByteBuf, List<ByteBuf>> listConsumer = StreamConsumerWithResult.toList();
+		public Stage<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
+			StreamConsumerToList<ByteBuf> listConsumer = StreamConsumerToList.create();
 			listConsumer.getResult().whenResult(byteBufs -> partitions.get(logPartition).get(logFile).addAll(byteBufs));
-			return Stage.of(listConsumer.withEndOfStreamAsResult());
+			return Stage.of(listConsumer.asSerialConsumer());
 		}
 	}
 

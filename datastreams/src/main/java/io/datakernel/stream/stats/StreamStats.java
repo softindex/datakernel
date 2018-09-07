@@ -1,8 +1,14 @@
 package io.datakernel.stream.stats;
 
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialConsumerModifier;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialSupplierModifier;
 import io.datakernel.stream.*;
 
-public interface StreamStats<T> extends StreamConsumerModifier<T, T>, StreamProducerModifier<T, T> {
+public interface StreamStats<T> extends
+		StreamProducerModifier<T, T>, StreamConsumerModifier<T, T>,
+		SerialSupplierModifier<T, T>, SerialConsumerModifier<T, T> {
 	StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver);
 
 	void onStarted();
@@ -17,12 +23,22 @@ public interface StreamStats<T> extends StreamConsumerModifier<T, T>, StreamProd
 
 	@Override
 	default StreamConsumer<T> applyTo(StreamConsumer<T> consumer) {
-		return consumer.with(StreamStatsForwarder.create(this));
+		return consumer.apply(StreamStatsForwarder.create(this));
 	}
 
 	@Override
 	default StreamProducer<T> applyTo(StreamProducer<T> producer) {
-		return producer.with(StreamStatsForwarder.create(this));
+		return producer.apply(StreamStatsForwarder.create(this));
+	}
+
+	@Override
+	default SerialSupplier<T> applyTo(SerialSupplier<T> supplier) {
+		return supplier; // TODO
+	}
+
+	@Override
+	default SerialConsumer<T> applyTo(SerialConsumer<T> consumer) {
+		return consumer; // TODO
 	}
 
 	static <T> StreamStatsBasic<T> basic() {

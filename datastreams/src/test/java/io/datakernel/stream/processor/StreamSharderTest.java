@@ -28,10 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.TestUtils.assertProducerStatuses;
-import static io.datakernel.stream.TestUtils.assertStatus;
+import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -52,18 +49,18 @@ public class StreamSharderTest {
 
 		source.streamTo(streamSharder.getInput());
 
-		streamSharder.newOutput().streamTo(consumer1.with(TestStreamConsumers.randomlySuspending()));
-		streamSharder.newOutput().streamTo(consumer2.with(TestStreamConsumers.randomlySuspending()));
+		streamSharder.newOutput().streamTo(consumer1.apply(TestStreamConsumers.randomlySuspending()));
+		streamSharder.newOutput().streamTo(consumer2.apply(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(2, 4), consumer1.getList());
 		assertEquals(asList(1, 3), consumer2.getList());
 
-		assertStatus(END_OF_STREAM, source);
-		assertStatus(END_OF_STREAM, streamSharder.getInput());
-		assertProducerStatuses(END_OF_STREAM, streamSharder.getOutputs());
-		assertStatus(END_OF_STREAM, consumer1);
-		assertStatus(END_OF_STREAM, consumer2);
+		assertEndOfStream(source);
+		assertEndOfStream(streamSharder.getInput());
+		assertEndOfStream(streamSharder.getOutput(0));
+		assertEndOfStream(consumer1);
+		assertEndOfStream(consumer2);
 	}
 
 	@Test
@@ -77,19 +74,19 @@ public class StreamSharderTest {
 		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
 
 		source.streamTo(streamSharder.getInput());
-		streamSharder.newOutput().streamTo(consumer1.with(TestStreamConsumers.randomlySuspending()));
-		streamSharder.newOutput().streamTo(consumer2.with(TestStreamConsumers.randomlySuspending()));
+		streamSharder.newOutput().streamTo(consumer1.apply(TestStreamConsumers.randomlySuspending()));
+		streamSharder.newOutput().streamTo(consumer2.apply(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(2, 4), consumer1.getList());
 		assertEquals(asList(1, 3), consumer2.getList());
 
-		assertStatus(END_OF_STREAM, source);
-		assertStatus(END_OF_STREAM, source);
-		assertStatus(END_OF_STREAM, streamSharder.getInput());
-		assertProducerStatuses(END_OF_STREAM, streamSharder.getOutputs());
-		assertStatus(END_OF_STREAM, consumer1);
-		assertStatus(END_OF_STREAM, consumer2);
+		assertEndOfStream(source);
+		assertEndOfStream(source);
+		assertEndOfStream(streamSharder.getInput());
+		assertEndOfStream(streamSharder.getOutput(0));
+		assertEndOfStream(consumer1);
+		assertEndOfStream(consumer2);
 	}
 
 	@Test
@@ -109,7 +106,7 @@ public class StreamSharderTest {
 		source.streamTo(streamSharder.getInput());
 		streamSharder.newOutput().streamTo(consumer1);
 		streamSharder.newOutput().streamTo(
-				consumer2.with(TestStreamConsumers.decorator((context, dataReceiver) ->
+				consumer2.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (item == 3) {
@@ -121,12 +118,12 @@ public class StreamSharderTest {
 
 		assertTrue(list1.size() == 1);
 		assertTrue(list2.size() == 2);
-		assertStatus(CLOSED_WITH_ERROR, source);
-		assertStatus(CLOSED_WITH_ERROR, source);
-		assertStatus(CLOSED_WITH_ERROR, streamSharder.getInput());
-		assertProducerStatuses(CLOSED_WITH_ERROR, streamSharder.getOutputs());
-		assertStatus(CLOSED_WITH_ERROR, consumer1);
-		assertStatus(CLOSED_WITH_ERROR, consumer2);
+		assertClosedWithError(source);
+		assertClosedWithError(source);
+		assertClosedWithError(streamSharder.getInput());
+		assertProducersClosedWithError(streamSharder.getOutputs());
+		assertClosedWithError(consumer1);
+		assertClosedWithError(consumer2);
 	}
 
 	@Test
@@ -148,17 +145,17 @@ public class StreamSharderTest {
 		StreamConsumer<Integer> consumer2 = StreamConsumerToList.create(list2);
 
 		source.streamTo(streamSharder.getInput());
-		streamSharder.newOutput().streamTo(consumer1.with(TestStreamConsumers.oneByOne()));
-		streamSharder.newOutput().streamTo(consumer2.with(TestStreamConsumers.oneByOne()));
+		streamSharder.newOutput().streamTo(consumer1.apply(TestStreamConsumers.oneByOne()));
+		streamSharder.newOutput().streamTo(consumer2.apply(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 
 		assertTrue(list1.size() == 1);
 		assertTrue(list2.size() == 2);
 
-		assertStatus(CLOSED_WITH_ERROR, streamSharder.getInput());
-		assertProducerStatuses(CLOSED_WITH_ERROR, streamSharder.getOutputs());
-		assertStatus(CLOSED_WITH_ERROR, consumer1);
-		assertStatus(CLOSED_WITH_ERROR, consumer2);
+		assertClosedWithError(streamSharder.getInput());
+		assertProducersClosedWithError(streamSharder.getOutputs());
+		assertClosedWithError(consumer1);
+		assertClosedWithError(consumer2);
 	}
 }

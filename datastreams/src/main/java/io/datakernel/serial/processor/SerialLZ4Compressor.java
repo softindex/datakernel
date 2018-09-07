@@ -108,18 +108,8 @@ public final class SerialLZ4Compressor implements WithSerialToSerial<SerialLZ4Co
 	}
 
 	@Override
-	public SerialSupplier<ByteBuf> getInput() {
-		return input;
-	}
-
-	@Override
 	public void setOutput(SerialConsumer<ByteBuf> output) {
 		this.output = output;
-	}
-
-	@Override
-	public SerialConsumer<ByteBuf> getOutput() {
-		return output;
 	}
 
 	@Override

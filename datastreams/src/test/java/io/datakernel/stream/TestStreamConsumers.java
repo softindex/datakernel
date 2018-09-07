@@ -2,7 +2,6 @@ package io.datakernel.stream;
 
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.Random;
@@ -15,10 +14,10 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 public class TestStreamConsumers {
 	public static <T> StreamConsumerModifier<T, T> decorator(Decorator<T> decorator) {
 		return consumer -> new ForwardingStreamConsumer<T>(consumer) {
-			final SettableStage<Void> endOfStream = new SettableStage<>();
+			final SettableStage<Void> acknowledgement = new SettableStage<>();
 
 			{
-				consumer.getEndOfStream().whenComplete(endOfStream::trySet);
+				consumer.getAcknowledgement().whenComplete(acknowledgement::trySet);
 			}
 
 			@Override
@@ -43,7 +42,7 @@ public class TestStreamConsumers {
 
 							@Override
 							public void closeWithError(Throwable error) {
-								endOfStream.trySetException(error);
+								acknowledgement.trySetException(error);
 							}
 						};
 						dataReceiverHolder[0] = decorator.decorate(context, dataReceiver);
@@ -53,14 +52,14 @@ public class TestStreamConsumers {
 			}
 
 			@Override
-			public MaterializedStage<Void> getEndOfStream() {
-				return endOfStream;
+			public MaterializedStage<Void> getAcknowledgement() {
+				return acknowledgement;
 			}
 
 			@Override
 			public void closeWithError(Throwable e) {
 				super.closeWithError(e);
-				endOfStream.trySetException(e);
+				acknowledgement.trySetException(e);
 			}
 		};
 	}

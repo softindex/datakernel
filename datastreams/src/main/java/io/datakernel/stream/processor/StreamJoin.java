@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.Stage;
 import io.datakernel.stream.*;
 
 import java.util.ArrayDeque;
@@ -23,7 +24,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
@@ -199,8 +199,9 @@ public final class StreamJoin<K, L, R, V> implements HasOutput<V>, HasInputs {
 		}
 
 		@Override
-		protected void onEndOfStream() {
+		protected Stage<Void> onProducerEndOfStream() {
 			output.tryProduce();
+			return output.getEndOfStream();
 		}
 
 		@Override
@@ -257,7 +258,7 @@ public final class StreamJoin<K, L, R, V> implements HasOutput<V>, HasInputs {
 				}
 			}
 			if (isReceiverReady()) {
-				if (left.getStatus() == END_OF_STREAM && right.getStatus() == END_OF_STREAM) {
+				if (left.isProducerEndOfStream() && right.isProducerEndOfStream()) {
 					sendEndOfStream();
 				} else {
 					left.getProducer().produce(left);

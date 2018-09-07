@@ -16,13 +16,12 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.*;
+import io.datakernel.async.Cancellable;
+import io.datakernel.async.MaterializedStage;
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.serial.AbstractSerialSupplier;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.StreamCut;
-import io.datakernel.stream.processor.StreamCut.SizeCounter;
-import io.datakernel.stream.processor.StreamCut.SliceStrategy;
-import io.datakernel.stream.processor.StreamCut.Slicer;
 import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.stream.processor.StreamTransformer;
 
@@ -72,83 +71,17 @@ public interface StreamProducer<T> extends Cancellable {
 	Set<StreamCapability> getCapabilities();
 
 	@SuppressWarnings("unchecked")
-	default StreamCompletion streamTo(StreamConsumer<T> consumer) {
+	default Stage<Void> streamTo(StreamConsumer<T> consumer) {
 		StreamProducer<T> producer = this;
 		producer.setConsumer(consumer);
 		consumer.setProducer(producer);
-		Stage<Void> producerEndOfStream = producer.getEndOfStream();
-		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
-		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
-		return new StreamCompletion() {
-			@Override
-			public Stage<Void> getProducerEndOfStream() {
-				return producerEndOfStream;
-			}
-
-			@Override
-			public Stage<Void> getConsumerEndOfStream() {
-				return consumerEndOfStream;
-			}
-
-			@Override
-			public Stage<Void> getEndOfStream() {
-				return endOfStream;
-			}
-		};
-	}
-
-	@SuppressWarnings("unchecked")
-	default <Y> StreamConsumerResult<Y> streamTo(StreamConsumerWithResult<T, Y> consumer) {
-		StreamProducer<T> producer = this;
-		producer.setConsumer(consumer);
-		consumer.setProducer(producer);
-		Stage<Void> producerEndOfStream = producer.getEndOfStream();
-		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
-		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
-		Stage<Y> consumerResult = consumer.getResult();
-		return new StreamConsumerResult<Y>() {
-			@Override
-			public Stage<Y> getConsumerResult() {
-				return consumerResult;
-			}
-
-			@Override
-			public Stage<Void> getProducerEndOfStream() {
-				return producerEndOfStream;
-			}
-
-			@Override
-			public Stage<Void> getConsumerEndOfStream() {
-				return consumerEndOfStream;
-			}
-
-			@Override
-			public Stage<Void> getEndOfStream() {
-				return endOfStream;
-			}
-		};
-	}
-
-	default <R> StreamProducer<R> with(StreamProducerModifier<T, R> modifier) {
-		return modifier.applyTo(this);
+		return Stages.all(producer.getEndOfStream(), consumer.getAcknowledgement());
 	}
 
 	static <T, R> StreamProducer<T> ofConsumer(Consumer<StreamConsumer<T>> supplierAcceptor) {
-		StreamTransformer<T, T> forwarder = StreamTransformer.idenity();
+		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
 		supplierAcceptor.accept(forwarder.getInput());
 		return forwarder.getOutput();
-	}
-
-	static <T, R> StreamProducer<T> ofTransformer(Function<StreamConsumer<T>, R> fn, Consumer<R> resultAcceptor) {
-		return ofConsumer(producer -> resultAcceptor.accept(fn.apply(producer)));
-	}
-
-	default <R> R andThen(Function<StreamProducer<T>, R> fn) {
-		return fn.apply(this);
-	}
-
-	default StreamProducer<T> withLateBinding() {
-		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder.create());
 	}
 
 	/**
@@ -233,6 +166,18 @@ public interface StreamProducer<T> extends Cancellable {
 		return new StreamProducers.OfSerialSupplierImpl<>(supplier);
 	}
 
+	default <R> StreamProducer<R> apply(StreamProducerModifier<T, R> modifier) {
+		return apply((Function<StreamProducer<T>, StreamProducer<R>>) modifier::applyTo);
+	}
+
+	default <R> R apply(Function<StreamProducer<T>, R> fn) {
+		return fn.apply(this);
+	}
+
+	default StreamProducer<T> withLateBinding() {
+		return getCapabilities().contains(LATE_BINDING) ? this : apply(StreamLateBinder.create());
+	}
+
 	@SuppressWarnings("unchecked")
 	default SerialSupplier<T> asSerialSupplier() {
 		StreamConsumerEndpoint<T> endpoint = new StreamConsumerEndpoint<>();
@@ -289,101 +234,14 @@ public interface StreamProducer<T> extends Cancellable {
 		return concat(asList(producers));
 	}
 
-	default <X> StreamProducerWithResult<T, X> withResultAsyncSupplier(AsyncSupplier<X> result) {
-		return withResult(this.getEndOfStream().thenCompose($ -> result.get()));
-	}
-
-	default <X> StreamProducerWithResult<T, X> withResultSupplier(Supplier<X> result) {
-		return withResult(this.getEndOfStream().thenCompose($ -> Stage.of(result.get())));
-	}
-
-	default <X> StreamProducerWithResult<T, X> withResult(Stage<X> result) {
-		MaterializedStage<Void> endOfStream = getEndOfStream();
-		MaterializedStage<X> safeResult = result.combine(endOfStream, (x, $) -> x).materialize();
-		return new StreamProducerWithResult<T, X>() {
-			@Override
-			public void setConsumer(StreamConsumer<T> consumer) {
-				StreamProducer.this.setConsumer(consumer);
-			}
-
-			@Override
-			public void produce(StreamDataReceiver<T> dataReceiver) {
-				StreamProducer.this.produce(dataReceiver);
-			}
-
-			@Override
-			public void suspend() {
-				StreamProducer.this.suspend();
-			}
-
-			@Override
-			public MaterializedStage<Void> getEndOfStream() {
-				return endOfStream;
-			}
-
-			@Override
-			public MaterializedStage<X> getResult() {
-				return safeResult;
-			}
-
-			@Override
-			public Set<StreamCapability> getCapabilities() {
-				return StreamProducer.this.getCapabilities();
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				StreamProducer.this.closeWithError(e);
-			}
-		};
-	}
-
-	default StreamProducerWithResult<T, Void> withEndOfStreamAsResult() {
-		MaterializedStage<Void> endOfStream = getEndOfStream();
-		return new StreamProducerWithResult<T, Void>() {
-			@Override
-			public void setConsumer(StreamConsumer<T> consumer) {
-				StreamProducer.this.setConsumer(consumer);
-			}
-
-			@Override
-			public void produce(StreamDataReceiver<T> dataReceiver) {
-				StreamProducer.this.produce(dataReceiver);
-			}
-
-			@Override
-			public void suspend() {
-				StreamProducer.this.suspend();
-			}
-
-			@Override
-			public MaterializedStage<Void> getEndOfStream() {
-				return endOfStream;
-			}
-
-			@Override
-			public MaterializedStage<Void> getResult() {
-				return endOfStream;
-			}
-
-			@Override
-			public Set<StreamCapability> getCapabilities() {
-				return StreamProducer.this.getCapabilities();
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				StreamProducer.this.closeWithError(e);
-			}
-		};
-	}
-
 	default Stage<List<T>> toList() {
 		return toCollector(Collectors.toList());
 	}
 
 	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {
-		return streamTo(StreamConsumerWithResult.toCollector(collector)).getConsumerResult();
+		StreamConsumerToCollector<T, A, R> consumerToCollector = new StreamConsumerToCollector<>(collector);
+		this.streamTo(consumerToCollector);
+		return consumerToCollector.getResult();
 	}
 
 	default StreamProducer<T> whenEndOfStream(Runnable runnable) {
@@ -396,15 +254,13 @@ public interface StreamProducer<T> extends Cancellable {
 		return this;
 	}
 
-	default StreamProducer<T> skipFirst(long skip, SizeCounter<T> sizeCounter, Slicer<T> slicer) {
-		return with(StreamCut.create(skip, -1, sizeCounter, slicer));
+	default StreamProducer<T> thenRun(Runnable runnable) {
+		getEndOfStream().thenRun(runnable);
+		return this;
 	}
 
-	default StreamProducer<T> skipFirst(long skip, SliceStrategy<T> strategy) {
-		return with(StreamCut.create(skip, -1, strategy));
-	}
-
-	default StreamProducer<T> skipFirst(long skip) {
-		return with(StreamCut.create(skip, -1));
+	default StreamProducer<T> thenRunEx(Runnable runnable) {
+		getEndOfStream().thenRunEx(runnable);
+		return this;
 	}
 }

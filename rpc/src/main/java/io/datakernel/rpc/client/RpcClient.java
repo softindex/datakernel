@@ -38,9 +38,9 @@ import io.datakernel.rpc.client.sender.RpcStrategy;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.rpc.server.RpcServer;
+import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
@@ -78,8 +78,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
 	public static final Duration DEFAULT_RECONNECT_INTERVAL = Duration.ofSeconds(1);
-	public static final MemSize DEFAULT_PACKET_SIZE = StreamBinarySerializer.DEFAULT_INITIAL_BUFFER_SIZE;
-	public static final MemSize MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
+	public static final MemSize DEFAULT_PACKET_SIZE = SerialBinarySerializer.DEFAULT_INITIAL_BUFFER_SIZE;
+	public static final MemSize MAX_PACKET_SIZE = SerialBinarySerializer.MAX_SIZE;
 
 	private Logger logger = getLogger(this.getClass());
 

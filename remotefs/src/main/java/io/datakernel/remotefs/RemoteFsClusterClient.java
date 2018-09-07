@@ -256,16 +256,16 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create().lenient();
 
 					Stage<List<Try<Void>>> uploadResults = Stages.collect(toList(), successes.stream()
-							.map(s -> splitter.newOutputSupplier().streamTo(s.consumer.transform(ByteBuf::slice)).toTry()));
+							.map(s -> splitter.addOutput().streamTo(s.consumer.transform(ByteBuf::slice)).toTry()));
 
 					if (logger.isTraceEnabled()) {
 						logger.trace("uploading file {} to {}, {}", filename, successes.stream().map(s -> s.id.toString()).collect(joining(", ", "[", "]")), this);
 					}
 
 					// and also dont forget to recycle original bytebufs
-					splitter.newOutputSupplier().streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
+					splitter.addOutput().streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
 
-					SerialConsumer<ByteBuf> consumer = splitter.newInputConsumer();
+					SerialConsumer<ByteBuf> consumer = splitter.getInputConsumer();
 					splitter.process();
 
 					//noinspection RedundantTypeArguments - that <Void> 3 lines below is needed badly for Java, uughh

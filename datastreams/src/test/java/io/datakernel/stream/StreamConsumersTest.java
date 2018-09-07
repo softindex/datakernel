@@ -1,9 +1,10 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.serial.SerialConsumer;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.TestUtils.CountTransformer;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.stream.processor.StreamTransformer;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -16,6 +17,7 @@ import java.util.stream.IntStream;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestStreamConsumers.errorDecorator;
 import static io.datakernel.stream.TestStreamConsumers.suspendDecorator;
+import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
@@ -35,33 +37,100 @@ public class StreamConsumersTest {
 		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed());
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		producer.streamTo(consumer.with(errorDecorator(item -> item.equals(5) ? new IllegalArgumentException() : null)));
+		producer.streamTo(consumer.apply(errorDecorator(item -> item.equals(5) ? new IllegalArgumentException() : null)));
 		eventloop.run();
 
-		assertEquals(((AbstractStreamProducer<Integer>) producer).getStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertEquals(consumer.getStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertThat(consumer.getException(), instanceOf(IllegalArgumentException.class));
+		assertClosedWithError(producer);
+		assertClosedWithError(consumer);
+		assertThat(consumer.getAcknowledgement().getException(), instanceOf(IllegalArgumentException.class));
 	}
 
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
-		StreamProducerWithResult<Integer, Void> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
-				.withEndOfStreamAsResult();
+		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed());
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
-		StreamConsumerWithResult<Integer, List<Integer>> errorConsumer =
-				consumer.with(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
+		StreamConsumer<Integer> errorConsumer =
+				consumer.apply(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		CompletableFuture<Void> producerFuture = producer.streamTo(errorConsumer)
-				.getProducerResult()
 				.whenComplete(($, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))
 				.thenApplyEx(($, throwable) -> (Void) null)
 				.toCompletableFuture();
 		eventloop.run();
 
 		producerFuture.get();
-		assertEquals(consumer.getStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertThat(consumer.getException(), instanceOf(IllegalArgumentException.class));
+		assertClosedWithError(consumer);
+		assertThat(consumer.getAcknowledgement().getException(), instanceOf(IllegalArgumentException.class));
+	}
+
+	private static class CountTransformer<T> implements StreamTransformer<T, T> {
+		private final AbstractStreamConsumer<T> input;
+		private final AbstractStreamProducer<T> output;
+
+		private boolean isEndOfStream = false;
+		private int suspended = 0;
+		private int resumed = 0;
+
+		public CountTransformer() {
+			this.input = new Input();
+			this.output = new Output();
+		}
+
+		@Override
+		public StreamConsumer<T> getInput() {
+			return input;
+		}
+
+		@Override
+		public StreamProducer<T> getOutput() {
+			return output;
+		}
+
+		public boolean isEndOfStream() {
+			return isEndOfStream;
+		}
+
+		public int getSuspended() {
+			return suspended;
+		}
+
+		public int getResumed() {
+			return resumed;
+		}
+
+		protected final class Input extends AbstractStreamConsumer<T> {
+			@Override
+			protected Stage<Void> onProducerEndOfStream() {
+				isEndOfStream = true;
+				return output.sendEndOfStream();
+			}
+
+			@Override
+			protected void onError(Throwable t) {
+				output.closeWithError(t);
+			}
+
+		}
+
+		protected final class Output extends AbstractStreamProducer<T> {
+			@Override
+			protected void onSuspended() {
+				suspended++;
+				input.getProducer().suspend();
+			}
+
+			@Override
+			protected void onError(Throwable t) {
+				input.closeWithError(t);
+			}
+
+			@Override
+			protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+				resumed++;
+				input.getProducer().produce(dataReceiver);
+			}
+		}
 	}
 
 	@Test
@@ -73,7 +142,7 @@ public class StreamConsumersTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 		StreamConsumer<Integer> errorConsumer = consumer
-				.with(suspendDecorator(
+				.apply(suspendDecorator(
 						k -> true,
 						context -> eventloop.delay(10, context::resume)
 				));
@@ -93,10 +162,10 @@ public class StreamConsumersTest {
 
 		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
 		CountTransformer<Integer> transformer = new CountTransformer<>();
-		StreamConsumerWithResult<Integer, List<Integer>> consumer = StreamConsumerToList.create();
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		producer.with(transformer).streamTo(
-				consumer.with(suspendDecorator(
+		producer.apply(transformer).streamTo(
+				consumer.apply(suspendDecorator(
 						item -> true,
 						context -> eventloop.delay(10, context::resume))));
 

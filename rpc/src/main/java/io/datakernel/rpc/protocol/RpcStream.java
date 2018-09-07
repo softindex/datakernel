@@ -16,16 +16,17 @@
 
 package io.datakernel.rpc.protocol;
 
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.serial.net.SocketStreamingConnection;
+import io.datakernel.serial.processor.SerialBinaryDeserializer;
+import io.datakernel.serial.processor.SerialBinarySerializer;
+import io.datakernel.serial.processor.SerialLZ4Compressor;
+import io.datakernel.serial.processor.SerialLZ4Decompressor;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.net.SocketStreamingConnection;
-import io.datakernel.stream.processor.StreamBinaryDeserializer;
-import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamLZ4Compressor;
-import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import io.datakernel.util.MemSize;
 
 import java.time.Duration;
@@ -102,8 +103,9 @@ public final class RpcStream {
 			}
 
 			@Override
-			protected void onEndOfStream() {
+			protected Stage<Void> onProducerEndOfStream() {
 				RpcStream.this.listener.onReadEndOfStream();
+				return Stage.complete();
 			}
 
 			@Override
@@ -111,30 +113,29 @@ public final class RpcStream {
 			}
 		};
 
-		StreamBinarySerializer<RpcMessage> serializer = StreamBinarySerializer.create(messageSerializer)
+		SerialBinarySerializer<RpcMessage> serializer = SerialBinarySerializer.create(messageSerializer)
 				.withInitialBufferSize(initialBufferSize)
 				.withMaxMessageSize(maxMessageSize)
 				.withAutoFlushInterval(autoFlushInterval)
 				.withSkipSerializationErrors();
-		StreamBinaryDeserializer<RpcMessage> deserializer = StreamBinaryDeserializer.create(messageSerializer);
+		SerialBinaryDeserializer<RpcMessage> deserializer = SerialBinaryDeserializer.create(messageSerializer);
 
-		StreamLZ4Decompressor decompressor;
-		StreamLZ4Compressor compressor;
 		if (compression) {
-			compressor = StreamLZ4Compressor.fastCompressor();
-			decompressor = StreamLZ4Decompressor.create();
-			connection.getSocketReader().streamTo(decompressor.getInput());
-			decompressor.getOutput().streamTo(deserializer.getInput());
+			SerialLZ4Decompressor decompressor = SerialLZ4Decompressor.create();
+			SerialLZ4Compressor compressor = SerialLZ4Compressor.createFastCompressor();
 
-			serializer.getOutput().streamTo(compressor.getInput());
-			compressor.getOutput().streamTo(connection.getSocketWriter());
+			connection.getSocketReader().streamTo(decompressor);
+			decompressor.streamTo(deserializer);
+
+			serializer.streamTo(compressor);
+			compressor.streamTo(connection.getSocketWriter());
 		} else {
-			connection.getSocketReader().streamTo(deserializer.getInput());
-			serializer.getOutput().streamTo(connection.getSocketWriter());
+			connection.getSocketReader().streamTo(deserializer);
+			serializer.streamTo(connection.getSocketWriter());
 		}
 
-		deserializer.getOutput().streamTo(receiver);
-		sender.streamTo(serializer.getInput());
+		deserializer.streamTo(receiver);
+		sender.streamTo(serializer);
 	}
 
 	public void setListener(Listener listener) {

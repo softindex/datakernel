@@ -29,9 +29,8 @@ import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestStreamConsumers.randomlySuspending;
-import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.TestUtils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertClosedWithError;
+import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -47,12 +46,12 @@ public class StreamProducerConcatTest {
 				StreamProducer.of(1, 2, 3),
 				StreamProducer.of(4, 5, 6))
 				.streamTo(
-						consumer.with(randomlySuspending()));
+						consumer.apply(randomlySuspending()));
 
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
-		assertEquals(END_OF_STREAM, consumer.getStatus());
+		assertEndOfStream(consumer);
 	}
 
 	@Test
@@ -68,12 +67,12 @@ public class StreamProducerConcatTest {
 				StreamProducer.closingWithError(new ExpectedException("Test Exception")),
 				StreamProducer.of(1, 2, 3))
 				.streamTo(
-						consumer.with(randomlySuspending()));
+						consumer.apply(randomlySuspending()));
 
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
-		assertStatus(CLOSED_WITH_ERROR, consumer);
+		assertClosedWithError(consumer);
 	}
 
 	@Test
@@ -104,7 +103,7 @@ public class StreamProducerConcatTest {
 				StreamProducer.of(4, 5, 6),
 				StreamProducer.closingWithError(new ExpectedException("Test Exception")))
 				.streamTo(
-						consumer.with(TestStreamConsumers.oneByOne()));
+						consumer.apply(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 

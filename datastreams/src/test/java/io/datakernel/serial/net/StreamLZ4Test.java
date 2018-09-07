@@ -20,7 +20,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialZeroBuffer;
 import io.datakernel.serial.processor.SerialByteChunker;
 import io.datakernel.serial.processor.SerialLZ4Compressor;
 import io.datakernel.serial.processor.SerialLZ4Decompressor;
@@ -79,10 +78,10 @@ public class StreamLZ4Test {
 		byte[] expected = byteBufsToByteArray(buffers);
 
 		CompletableFuture<List<ByteBuf>> future = SerialSupplier.ofIterable(buffers)
-				.andThen(SerialByteChunker.create(MemSize.of(64), MemSize.of(128)).transformer(new SerialZeroBuffer<>()))
-				.andThen(SerialLZ4Compressor.createFastCompressor().transformer(new SerialZeroBuffer<>()))
-				.andThen(SerialByteChunker.create(MemSize.of(64), MemSize.of(128)).transformer(new SerialZeroBuffer<>()))
-				.andThen(SerialLZ4Decompressor.create().transformer(new SerialZeroBuffer<>()))
+				.apply(SerialByteChunker.create(MemSize.of(64), MemSize.of(128)))
+				.apply(SerialLZ4Compressor.createFastCompressor())
+				.apply(SerialByteChunker.create(MemSize.of(64), MemSize.of(128)))
+				.apply(SerialLZ4Decompressor.create())
 				.toList()
 				.toCompletableFuture();
 
@@ -121,8 +120,8 @@ public class StreamLZ4Test {
 		buffers.add(buf);
 
 		CompletableFuture<List<ByteBuf>> result = SerialSupplier.ofIterable(buffers)
-				.andThen(compressor.transformer(new SerialZeroBuffer<>()))
-				.andThen(SerialLZ4Decompressor.create().transformer(new SerialZeroBuffer<>()))
+				.apply(compressor)
+				.apply(SerialLZ4Decompressor.create())
 				.toList()
 				.toCompletableFuture();
 

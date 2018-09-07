@@ -16,28 +16,20 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.serial.AbstractSerialConsumer;
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.stream.processor.StreamCut;
-import io.datakernel.stream.processor.StreamCut.SizeCounter;
-import io.datakernel.stream.processor.StreamCut.SliceStrategy;
-import io.datakernel.stream.processor.StreamCut.Slicer;
 import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.stream.processor.StreamTransformer;
 
-import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static java.util.Collections.emptySet;
 
 /**
  * It represents an object which can asynchronous receive streams of data.
@@ -53,21 +45,16 @@ public interface StreamConsumer<T> extends Cancellable {
 	 */
 	void setProducer(StreamProducer<T> producer);
 
-	MaterializedStage<Void> getEndOfStream();
+	MaterializedStage<Void> getAcknowledgement();
 
 	Set<StreamCapability> getCapabilities();
 
-	default <R> StreamConsumer<R> with(StreamConsumerModifier<T, R> modifier) {
-		StreamConsumer<T> consumer = this;
-		return modifier.applyTo(consumer);
-	}
-
-	default StreamConsumer<T> withLateBinding() {
-		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder.create());
-	}
-
 	static <T> StreamConsumer<T> idle() {
-		return new StreamConsumers.IdleImpl<>();
+		return new StreamConsumers.Idle<>();
+	}
+
+	static <T> StreamConsumer<T> skip() {
+		return new StreamConsumers.Skip<>();
 	}
 
 	static <T> StreamConsumer<T> closingWithError(Throwable exception) {
@@ -79,13 +66,21 @@ public interface StreamConsumer<T> extends Cancellable {
 	}
 
 	static <T> StreamConsumer<T> ofProducer(Consumer<StreamProducer<T>> producerAcceptor) {
-		StreamTransformer<T, T> forwarder = StreamTransformer.idenity();
+		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
 		producerAcceptor.accept(forwarder.getOutput());
 		return forwarder.getInput();
 	}
 
-	static <T, R> StreamConsumer<T> ofTransformer(Function<StreamProducer<T>, R> fn, Consumer<R> resultAcceptor) {
-		return ofProducer(producer -> resultAcceptor.accept(fn.apply(producer)));
+	default <R> StreamConsumer<R> apply(StreamConsumerModifier<T, R> modifier) {
+		return apply((Function<StreamConsumer<T>, StreamConsumer<R>>) modifier::applyTo);
+	}
+
+	default <R> R apply(Function<StreamConsumer<T>, R> fn) {
+		return fn.apply(this);
+	}
+
+	default StreamConsumer<T> withLateBinding() {
+		return getCapabilities().contains(LATE_BINDING) ? this : apply(StreamLateBinder.create());
 	}
 
 	default SerialConsumer<T> asSerialConsumer() {
@@ -118,108 +113,14 @@ public interface StreamConsumer<T> extends Cancellable {
 		return lateBounder.getInput();
 	}
 
-	default <X> StreamConsumerWithResult<T, X> withResultAsyncSupplier(AsyncSupplier<X> result) {
-		return withResult(this.getEndOfStream().thenCompose($ -> result.get()));
-	}
-
-	default <X> StreamConsumerWithResult<T, X> withResultSupplier(Supplier<X> result) {
-		return withResult(this.getEndOfStream().thenCompose($ -> Stage.of(result.get())));
-	}
-
-	default <X> StreamConsumerWithResult<T, X> withResult(Stage<X> result) {
-		MaterializedStage<Void> endOfStream = getEndOfStream();
-		MaterializedStage<X> safeResult = result.combine(endOfStream, (x, $) -> x).materialize();
-		return new StreamConsumerWithResult<T, X>() {
-			@Override
-			public void setProducer(StreamProducer<T> producer) {
-				StreamConsumer.this.setProducer(producer);
-			}
-
-			@Override
-			public MaterializedStage<Void> getEndOfStream() {
-				return endOfStream;
-			}
-
-			@Override
-			public MaterializedStage<X> getResult() {
-				return safeResult;
-			}
-
-			@Override
-			public Set<StreamCapability> getCapabilities() {
-				return StreamConsumer.this.getCapabilities().contains(LATE_BINDING) ?
-						EnumSet.of(LATE_BINDING) : emptySet();
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				StreamConsumer.this.closeWithError(e);
-			}
-		};
-	}
-
-	default StreamConsumerWithResult<T, Void> withEndOfStreamAsResult() {
-		MaterializedStage<Void> endOfStream = getEndOfStream();
-		return new StreamConsumerWithResult<T, Void>() {
-			@Override
-			public void setProducer(StreamProducer<T> producer) {
-				StreamConsumer.this.setProducer(producer);
-			}
-
-			@Override
-			public MaterializedStage<Void> getEndOfStream() {
-				return endOfStream;
-			}
-
-			@Override
-			public MaterializedStage<Void> getResult() {
-				return endOfStream;
-			}
-
-			@Override
-			public Set<StreamCapability> getCapabilities() {
-				return StreamConsumer.this.getCapabilities().contains(LATE_BINDING) ?
-						EnumSet.of(LATE_BINDING) : emptySet();
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				StreamConsumer.this.closeWithError(e);
-			}
-		};
-	}
-
 	default StreamConsumer<T> whenEndOfStream(Runnable runnable) {
-		getEndOfStream().whenResult($ -> runnable.run());
+		getAcknowledgement().whenResult($ -> runnable.run());
 		return this;
 	}
 
 	default StreamConsumer<T> whenException(Consumer<Throwable> consumer) {
-		getEndOfStream().whenException(consumer);
+		getAcknowledgement().whenException(consumer);
 		return this;
 	}
 
-	default StreamConsumer<T> skipFirst(long skip, SizeCounter<T> sizeCounter, Slicer<T> slicer) {
-		return with(StreamCut.create(skip, -1, sizeCounter, slicer));
-	}
-
-	default StreamConsumer<T> skipFirst(long skip, SliceStrategy<T> strategy) {
-		return with(StreamCut.create(skip, -1, strategy));
-	}
-
-	default StreamConsumer<T> skipFirst(long skip) {
-		return with(StreamCut.create(skip, -1));
-	}
-
-	default StreamConsumer<T> cut(long skip, long length, SizeCounter<T> sizeCounter, Slicer<T> slicer) {
-		return with(StreamCut.create(skip, length, sizeCounter, slicer));
-	}
-
-	default StreamConsumer<T> cut(long skip, long length, SliceStrategy<T> strategy) {
-		return with(StreamCut.create(skip, length, strategy));
-	}
-
-	default StreamConsumer<T> cut(long skip, long length) {
-		return with(StreamCut.create(skip, length));
-	}
 }

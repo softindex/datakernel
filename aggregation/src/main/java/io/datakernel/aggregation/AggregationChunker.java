@@ -20,7 +20,6 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.*;
@@ -28,7 +27,7 @@ import io.datakernel.stream.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>> {
+public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> implements StreamConsumer<T> {
 	private final StreamConsumerSwitcher<T> switcher;
 	private final SettableStage<List<AggregationChunk>> result = new SettableStage<>();
 
@@ -57,10 +56,10 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		this.storage = storage;
 		this.classLoader = classLoader;
 		this.chunksAccumulator = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(switcher.getEndOfStream(), (accumulator, $) -> {});
+				.withStage(switcher.getAcknowledgement(), (accumulator, $) -> {});
 		this.chunkSize = chunkSize;
 		chunksAccumulator.get().whenComplete(result::trySet);
-		getEndOfStream().whenException(result::trySetException);
+		getAcknowledgement().whenException(result::trySetException);
 	}
 
 	public static <C, T> AggregationChunker<C, T> create(AggregationStructure aggregation, List<String> fields,
@@ -75,12 +74,11 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		return chunker;
 	}
 
-	@Override
 	public MaterializedStage<List<AggregationChunk>> getResult() {
 		return result;
 	}
 
-	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, AggregationChunk>, StreamDataReceiver<T> {
+	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumer<T>, StreamDataReceiver<T> {
 		private final SettableStage<AggregationChunk> result = new SettableStage<>();
 		private final C chunkId;
 		private final int chunkSize;
@@ -93,13 +91,13 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 
 		boolean switched;
 
-		public ChunkWriter(StreamConsumerWithResult<T, Void> actualConsumer,
+		public ChunkWriter(StreamConsumer<T> actualConsumer,
 				C chunkId, int chunkSize, PartitionPredicate<T> partitionPredicate) {
 			super(actualConsumer);
 			this.chunkId = chunkId;
 			this.chunkSize = chunkSize;
 			this.partitionPredicate = partitionPredicate;
-			actualConsumer.getResult()
+			actualConsumer.getAcknowledgement()
 					.thenApply($ -> count == 0 ?
 							null :
 							AggregationChunk.create(chunkId,
@@ -108,7 +106,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 									PrimaryKey.ofObject(last, aggregation.getKeys()),
 									count))
 					.whenComplete(result::trySet);
-			getEndOfStream().whenException(result::trySetException);
+			getAcknowledgement().whenException(result::trySetException);
 		}
 
 		@Override
@@ -137,27 +135,30 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 			}
 		}
 
-		@Override
 		public MaterializedStage<AggregationChunk> getResult() {
 			return result;
 		}
 	}
 
 	private void startNewChunk() {
-		StreamConsumerWithResult<T, AggregationChunk> consumer = StreamConsumerWithResult.ofStage(
+		StreamConsumer<T> consumer = StreamConsumer.ofStage(
 				storage.createId()
 						.thenCompose(chunkId -> storage.write(aggregation, fields, recordClass, chunkId, classLoader)
-								.thenApply(streamConsumer ->
-										new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate)
-												.withLateBinding())));
+								.thenApply(streamConsumer -> {
+									ChunkWriter chunkWriter = new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate);
+
+									chunksAccumulator.addStage(
+											chunkWriter.getResult(),
+											(accumulator, newChunk) -> {
+												if (newChunk != null && newChunk.getCount() != 0) {
+													accumulator.add(newChunk);
+												}
+											});
+
+									return chunkWriter.withLateBinding();
+								})));
 
 		switcher.switchTo(consumer);
-
-		chunksAccumulator.addStage(consumer.getResult(), (accumulator, newChunk) -> {
-			if (newChunk != null && newChunk.getCount() != 0) {
-				accumulator.add(newChunk);
-			}
-		});
 	}
 
 }

@@ -32,6 +32,12 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	public SettableStage() {
 	}
 
+	public static <T> SettableStage<T> ofStage(Stage<T> stage) {
+		SettableStage<T> result = new SettableStage<>();
+		stage.whenComplete(result::set);
+		return result;
+	}
+
 	@Override
 	public boolean isComplete() {
 		return exception != NO_EXCEPTION;

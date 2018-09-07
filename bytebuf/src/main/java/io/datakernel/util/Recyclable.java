@@ -16,7 +16,6 @@ public interface Recyclable {
 		} else if (object instanceof Iterator) {
 			Iterator it = (Iterator) object;
 			while (it.hasNext()) {
-				Object next = it.next();
 				deepRecycle(it.next());
 			}
 		} else if (object instanceof Collection) {

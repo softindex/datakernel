@@ -25,6 +25,7 @@ import java.util.function.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.Recyclable.deepRecycle;
 
@@ -46,21 +47,9 @@ public interface SerialSupplier<T> extends Cancellable {
 		return stage;
 	}
 
-	default SerialSupplier<T> with(UnaryOperator<SerialSupplier<T>> modifier) {
-		return modifier.apply(this);
-	}
-
-	default <R> R andThen(Function<SerialSupplier<T>, R> fn) {
-		return fn.apply(this);
-	}
-
 	static <T> SerialSupplier<T> ofConsumer(Consumer<SerialConsumer<T>> supplierAcceptor, SerialQueue<T> queue) {
 		supplierAcceptor.accept(queue.getConsumer());
 		return queue.getSupplier();
-	}
-
-	static <T, R> SerialSupplier<T> ofTransformer(Function<SerialConsumer<T>, R> fn, Consumer<R> resultAcceptor, SerialQueue<T> queue) {
-		return ofConsumer(producer -> resultAcceptor.accept(fn.apply(producer)), queue);
 	}
 
 	static <T> SerialSupplier<T> of(AsyncSupplier<T> supplier) {
@@ -146,6 +135,14 @@ public interface SerialSupplier<T> extends Cancellable {
 				materializedStage.whenResult(supplier -> supplier.closeWithError(e));
 			}
 		};
+	}
+
+	default <R> SerialSupplier<R> apply(SerialSupplierModifier<T, R> modifier) {
+		return apply((Function<SerialSupplier<T>, SerialSupplier<R>>) modifier::applyTo);
+	}
+
+	default <R> R apply(Function<SerialSupplier<T>, R> fn) {
+		return fn.apply(this);
 	}
 
 	default SerialSupplier<T> async() {
@@ -350,6 +347,13 @@ public interface SerialSupplier<T> extends Cancellable {
 
 	default Stage<Void> streamTo(SerialConsumer<T> consumer) {
 		return SerialSuppliers.stream(this, consumer);
+	}
+
+	default void streamTo(SerialInput<T> to) {
+		to.setInput(this);
+		if (to instanceof AsyncProcess) {
+			getCurrentEventloop().post(((AsyncProcess) to)::process);
+		}
 	}
 
 	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {

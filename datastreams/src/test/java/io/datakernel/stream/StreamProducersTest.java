@@ -29,7 +29,7 @@ public class StreamProducersTest {
 	@Test
 	public void testErrorDecorator() {
 		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
-				.with(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
+				.apply(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
@@ -37,28 +37,26 @@ public class StreamProducersTest {
 
 		eventloop.run();
 
-		assertEquals(consumer.getStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertThat(consumer.getException(), instanceOf(IllegalArgumentException.class));
+		TestUtils.assertClosedWithError(consumer);
+		assertThat(consumer.getAcknowledgement().getException(), instanceOf(IllegalArgumentException.class));
 	}
 
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
-		StreamProducerWithResult<Integer, Void> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
-				.withEndOfStreamAsResult()
-				.with(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
+		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
+				.apply(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		CompletableFuture<Void> future = producer.streamTo(consumer)
-				.getProducerResult()
 				.whenComplete(($, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))
 				.thenApplyEx(($, throwable) -> (Void) null)
 				.toCompletableFuture();
 		eventloop.run();
 
 		future.get();
-		assertEquals(consumer.getStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertThat(consumer.getException(), instanceOf(IllegalArgumentException.class));
+		TestUtils.assertClosedWithError(consumer);
+		assertThat(consumer.getAcknowledgement().getException(), instanceOf(IllegalArgumentException.class));
 	}
 
 	@Test

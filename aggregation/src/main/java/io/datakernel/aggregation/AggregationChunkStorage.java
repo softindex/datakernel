@@ -19,8 +19,8 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.Stage;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
 import java.util.Set;
@@ -37,12 +37,12 @@ public interface AggregationChunkStorage<C> extends IdGenerator<C> {
 	 * @param chunkId     id of chunk
 	 * @return StreamProducer, which will stream read records to its wired consumer.
 	 */
-	<T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
+	<T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader);
 
-	default <T> StreamProducerWithResult<T, Void> readStream(AggregationStructure aggregation, List<String> fields,
+	default <T> StreamProducer<T> readStream(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
-		return StreamProducerWithResult.ofStage(read(aggregation, fields, recordClass, chunkId, classLoader));
+		return StreamProducer.ofStage(read(aggregation, fields, recordClass, chunkId, classLoader));
 	}
 
 	/**
@@ -53,12 +53,12 @@ public interface AggregationChunkStorage<C> extends IdGenerator<C> {
 	 * @param recordClass class of chunk record
 	 * @param chunkId     id of chunk
 	 */
-	<T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
+	<T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader);
 
-	default <T> StreamConsumerWithResult<T, Void> writeStream(AggregationStructure aggregation, List<String> fields,
+	default <T> StreamConsumer<T> writeStream(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
-		return StreamConsumerWithResult.ofStage(write(aggregation, fields, recordClass, chunkId, classLoader));
+		return StreamConsumer.ofStage(write(aggregation, fields, recordClass, chunkId, classLoader));
 	}
 
 	Stage<Void> finish(Set<C> chunkIds);

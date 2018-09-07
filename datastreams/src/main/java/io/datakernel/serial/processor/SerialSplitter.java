@@ -5,6 +5,7 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 
 import java.util.ArrayList;
@@ -35,14 +36,10 @@ public class SerialSplitter<T> implements AsyncProcess, WithSerialInput<SerialSp
 	}
 
 	@Override
-	public SerialSupplier<T> getInput() {
-		return input;
-	}
-
-	@Override
-	public void addOutput(SerialConsumer<T> output) {
-		checkState(process == null, "Can't comfigure splitter while it is running");
-		outputs.add(output);
+	public SerialOutput<T> addOutput() {
+		int index = outputs.size();
+		outputs.add(null);
+		return output -> outputs.set(index, output);
 	}
 
 	public void setLenient(boolean lenient) {

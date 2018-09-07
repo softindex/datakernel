@@ -18,8 +18,8 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.util.MemSize;
@@ -31,16 +31,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
-import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.TestUtils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertClosedWithError;
+import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -58,33 +56,30 @@ public class StreamSorterTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3, 4, 5, 6, 7);
-		StreamProducer<Integer> source2 = StreamProducer.of(111);
+//		StreamProducer<Integer> source2 = StreamProducer.of(111);
 
 		StreamSorterStorageImpl<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.getRoot().toPath())
 				.withWriteBlockSize(MemSize.of(64));
 
-		StreamConsumerWithResult<Integer, Integer> writer1 = storage.writeStream();
-		StreamConsumerWithResult<Integer, Integer> writer2 = storage.writeStream();
+		StreamConsumer<Integer> writer1 = storage.writeStream(1);
+//		StreamConsumer<Integer> writer2 = storage.writeStream(2);
 		source1.streamTo(writer1);
-		source2.streamTo(writer2);
-
-		CompletableFuture<Integer> chunk1 = writer1.getResult().toCompletableFuture();
-		CompletableFuture<Integer> chunk2 = writer2.getResult().toCompletableFuture();
+//		source2.streamTo(writer2);
 
 		eventloop.run();
 
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
+		assertEndOfStream(source1);
+//		assertEndOfStream(source2);
 
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
-		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
-		storage.readStream(chunk1.get()).streamTo(consumer1.with(TestStreamConsumers.oneByOne()));
-		storage.readStream(chunk2.get()).streamTo(consumer2.with(TestStreamConsumers.randomlySuspending()));
+//		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
+		storage.readStream(1).streamTo(consumer1.apply(TestStreamConsumers.oneByOne()));
+//		storage.readStream(2).streamTo(consumer2.with(TestStreamConsumers.randomlySuspending()));
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer1.getList());
-		assertEquals(asList(111), consumer2.getList());
+//		assertEquals(asList(111), consumer2.getList());
 
-		storage.cleanup(Arrays.asList(chunk1.get(), chunk2.get()));
+		storage.cleanup(Arrays.asList(1, 2));
 		eventloop.run();
 	}
 
@@ -102,13 +97,13 @@ public class StreamSorterTest {
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
 		source.streamTo(sorter.getInput());
-		sorter.getOutput().streamTo(consumerToList.with(TestStreamConsumers.randomlySuspending()));
+		sorter.getOutput().streamTo(consumerToList.apply(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 
-		assertStatus(END_OF_STREAM, source);
-//		assertStatus(END_OF_STREAM, sorter.getOutput());
-		assertStatus(END_OF_STREAM, sorter.getInput());
+		assertEndOfStream(source);
+//		assertEndOfStream(sorter.getOutput());
+		assertEndOfStream(sorter.getInput());
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
 	}
 
@@ -128,7 +123,7 @@ public class StreamSorterTest {
 
 		source.streamTo(sorter.getInput());
 		sorter.getOutput().streamTo(
-				consumer.with(TestStreamConsumers.decorator((context, dataReceiver) ->
+				consumer.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (list.size() == 2) {
@@ -139,10 +134,10 @@ public class StreamSorterTest {
 		eventloop.run();
 
 //		assertTrue(list.size() == 2);
-		assertStatus(END_OF_STREAM, source);
-//		assertStatus(CLOSED_WITH_ERROR, sorter.getOutput());
-		assertStatus(END_OF_STREAM, sorter.getInput());
-		assertStatus(CLOSED_WITH_ERROR, consumer);
+		assertEndOfStream(source);
+//		assertClosedWithError(sorter.getOutput());
+		assertEndOfStream(sorter.getInput());
+		assertClosedWithError(consumer);
 	}
 
 	@Test
@@ -168,8 +163,8 @@ public class StreamSorterTest {
 
 		assertTrue(consumerToList.getList().size() == 0);
 
-		assertStatus(CLOSED_WITH_ERROR, consumerToList);
-//		assertStatus(CLOSED_WITH_ERROR, sorter.getOutput());
-		assertStatus(CLOSED_WITH_ERROR, sorter.getInput());
+		assertClosedWithError(consumerToList);
+//		assertClosedWithError(sorter.getOutput());
+		assertClosedWithError(sorter.getInput());
 	}
 }

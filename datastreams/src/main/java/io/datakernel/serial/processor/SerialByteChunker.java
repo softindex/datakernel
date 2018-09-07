@@ -53,18 +53,8 @@ public final class SerialByteChunker implements WithSerialToSerial<SerialByteChu
 	}
 
 	@Override
-	public SerialSupplier<ByteBuf> getInput() {
-		return input;
-	}
-
-	@Override
 	public void setOutput(SerialConsumer<ByteBuf> output) {
 		this.output = output;
-	}
-
-	@Override
-	public SerialConsumer<ByteBuf> getOutput() {
-		return output;
 	}
 	// endregion
 

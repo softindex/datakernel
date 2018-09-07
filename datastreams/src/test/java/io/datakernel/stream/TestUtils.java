@@ -16,126 +16,41 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.stream.processor.StreamTransformer;
-
-import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TestUtils {
-
-	public static StreamStatus[] producerStatuses(List<? extends StreamProducer<?>> streamProducers) {
-		StreamStatus[] result = new StreamStatus[streamProducers.size()];
-		for (int i = 0; i < streamProducers.size(); i++) {
-			StreamProducer<?> streamProducer = streamProducers.get(i);
-			result[i] = ((AbstractStreamProducer<?>) streamProducer).getStatus();
-		}
-		return result;
+	public static void assertEndOfStream(StreamProducer<?> streamProducer) {
+		assertTrue(streamProducer.getEndOfStream().isResult());
 	}
 
-	public static StreamStatus[] consumerStatuses(List<? extends StreamConsumer<?>> streamConsumers) {
-		StreamStatus[] result = new StreamStatus[streamConsumers.size()];
-		for (int i = 0; i < streamConsumers.size(); i++) {
-			StreamConsumer<?> streamConsumer = streamConsumers.get(i);
-			result[i] = ((AbstractStreamConsumer<?>) streamConsumer).getStatus();
-		}
-		return result;
+	public static void assertEndOfStream(StreamConsumer<?> streamConsumer) {
+		assertTrue(streamConsumer.getAcknowledgement().isResult());
 	}
 
-	public static void assertConsumerStatuses(StreamStatus expected, List<? extends StreamConsumer<?>> streamConsumers) {
-		StreamStatus[] statuses = consumerStatuses(streamConsumers);
-		for (StreamStatus status : statuses) {
-			assertEquals("Expected " + expected + ", actual: " + Arrays.toString(statuses), expected, status);
-		}
+	public static void assertClosedWithError(StreamProducer<?> streamProducer) {
+		assertTrue(streamProducer.getEndOfStream().isException());
 	}
 
-	public static void assertProducerStatuses(StreamStatus expected, List<? extends StreamProducer<?>> streamProducers) {
-		StreamStatus[] statuses = producerStatuses(streamProducers);
-		for (StreamStatus status : statuses) {
-			assertEquals("Expected " + expected + ", actual: " + Arrays.toString(statuses), expected, status);
-		}
+	public static void assertClosedWithError(StreamConsumer<?> streamConsumer) {
+		assertTrue(streamConsumer.getAcknowledgement().isException());
 	}
 
-	public static void assertStatus(StreamStatus expectedStatus, StreamProducer<?> streamProducer) {
-		if (expectedStatus == StreamStatus.CLOSED_WITH_ERROR && streamProducer instanceof StreamProducers.ClosingWithErrorImpl)
-			return;
-		assertEquals(expectedStatus, ((AbstractStreamProducer<?>) streamProducer).getStatus());
+	public static void assertProducersEndOfStream(List<? extends StreamProducer<?>> streamProducers) {
+		assertTrue(streamProducers.stream().allMatch(v -> v.getEndOfStream().isResult()));
 	}
 
-	public static void assertStatus(StreamStatus expectedStatus, StreamConsumer<?> streamConsumer) {
-		if (expectedStatus == StreamStatus.CLOSED_WITH_ERROR && streamConsumer instanceof StreamConsumers.ClosingWithErrorImpl)
-			return;
-		assertEquals(expectedStatus, ((AbstractStreamConsumer<?>) streamConsumer).getStatus());
+	public static void assertConsumersEndOfStream(List<? extends StreamConsumer<?>> streamConsumers) {
+		assertTrue(streamConsumers.stream().allMatch(v -> v.getAcknowledgement().isResult()));
 	}
 
-	public static class CountTransformer<T> implements StreamTransformer<T, T> {
-		private final AbstractStreamConsumer<T> input;
-		private final AbstractStreamProducer<T> output;
+	public static void assertProducersClosedWithError(List<? extends StreamProducer<?>> streamProducers) {
+		assertTrue(streamProducers.stream().allMatch(v -> v.getEndOfStream().isException()));
+	}
 
-		private boolean isEndOfStream = false;
-		private int suspended = 0;
-		private int resumed = 0;
-
-		public CountTransformer() {
-			this.input = new Input();
-			this.output = new Output();
-		}
-
-		@Override
-		public StreamConsumer<T> getInput() {
-			return input;
-		}
-
-		@Override
-		public StreamProducer<T> getOutput() {
-			return output;
-		}
-
-		public boolean isEndOfStream() {
-			return isEndOfStream;
-		}
-
-		public int getSuspended() {
-			return suspended;
-		}
-
-		public int getResumed() {
-			return resumed;
-		}
-
-		protected final class Input extends AbstractStreamConsumer<T> {
-			@Override
-			protected void onEndOfStream() {
-				isEndOfStream = true;
-				output.sendEndOfStream();
-			}
-
-			@Override
-			protected void onError(Throwable t) {
-				output.closeWithError(t);
-			}
-
-		}
-
-		protected final class Output extends AbstractStreamProducer<T> {
-			@Override
-			protected void onSuspended() {
-				suspended++;
-				input.getProducer().suspend();
-			}
-
-			@Override
-			protected void onError(Throwable t) {
-				input.closeWithError(t);
-			}
-
-			@Override
-			protected void onProduce(StreamDataReceiver<T> dataReceiver) {
-				resumed++;
-				input.getProducer().produce(dataReceiver);
-			}
-		}
+	public static void assertConsumersClosedWithError(List<? extends StreamConsumer<?>> streamConsumers) {
+		assertTrue(streamConsumers.stream().allMatch(v -> v.getAcknowledgement().isException()));
 	}
 
 }

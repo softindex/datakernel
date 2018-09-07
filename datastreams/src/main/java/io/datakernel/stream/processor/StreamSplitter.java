@@ -16,6 +16,8 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
@@ -83,8 +85,8 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 		}
 
 		@Override
-		protected void onEndOfStream() {
-			outputs.forEach(Output::sendEndOfStream);
+		protected Stage<Void> onProducerEndOfStream() {
+			return Stages.all(outputs.stream().map(Output::sendEndOfStream));
 		}
 
 		@Override

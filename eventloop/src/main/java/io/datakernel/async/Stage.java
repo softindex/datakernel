@@ -263,6 +263,12 @@ public interface Stage<T> {
 	 */
 	Stage<T> async();
 
+	default MaterializedStage<T> post() {
+		SettableStage<T> result = new SettableStage<>();
+		whenComplete(result::post);
+		return result;
+	}
+
 	default MaterializedStage<T> materialize() {
 		if (isMaterialized()) return (MaterializedStage<T>) this;
 		SettableStage<T> cb = new SettableStage<>();

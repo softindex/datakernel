@@ -1,5 +1,6 @@
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.ForwardingStreamProducer;
 import io.datakernel.stream.StreamConsumerToList;
@@ -15,7 +16,6 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestStreamConsumers.decorator;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -24,31 +24,34 @@ public class StreamSuspendBufferTest {
 	private static final Logger logger = LoggerFactory.getLogger(StreamSuspendBufferTest.class);
 
 	private void testImmediateSuspend(StreamProducerModifier<String, String> suspendingModifier) {
-
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<String> items = IntStream.range(0, 100).mapToObj(i -> "test_" + i).collect(toList());
 
+		SettableStage<List<String>> result = new SettableStage<>();
+
 		boolean[] suspended = {false};
 		StreamProducer.ofIterable(items)
-				.with(suspendingModifier)
-				.with(StreamBuffer.create())
+				.apply(suspendingModifier)
+				.apply(StreamBuffer.create())
 				.streamTo(StreamConsumerToList.<String>create()
-						.with(decorator((context, receiver) -> item -> {
-							receiver.onData(item);
-							logger.info("Received: " + item);
-							assertFalse("Should not be suspended when receiving new item!", suspended[0]);
-							suspended[0] = true;
-							context.suspend();
-							eventloop.post(() -> {
-								suspended[0] = false;
-								context.resume();
-							});
-						})))
-				.getConsumerResult()
-				.whenComplete(assertComplete(list -> assertEquals(items, list)));
+						.withResultAcceptor(v -> v.whenComplete(result::set))
+						.apply(decorator((context, receiver) ->
+								item -> {
+									receiver.onData(item);
+//									logger.info("Received: " + item);
+									assertFalse("Should not be suspended when receiving new item!", suspended[0]);
+									suspended[0] = true;
+									context.suspend();
+									eventloop.post(() -> {
+										suspended[0] = false;
+										context.resume();
+									});
+								})));
 
 		eventloop.run();
+
+		assertEquals(items, result.getResult());
 	}
 
 	private static <T> StreamProducerModifier<T, T> suspend(BiConsumer<Integer, StreamProducer<T>> suspend) {

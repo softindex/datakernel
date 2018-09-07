@@ -17,7 +17,7 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.Stage;
-import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducerWithResult;
 
 /**
@@ -30,10 +30,10 @@ public interface LogManager<T> {
 	 * @param logPartition log partition name
 	 * @return StreamConsumer, which will write records, streamed from wired producer.
 	 */
-	Stage<StreamConsumerWithResult<T, Void>> consumer(String logPartition);
+	Stage<StreamConsumer<T>> consumer(String logPartition);
 
-	default StreamConsumerWithResult<T, Void> consumerStream(String logPartition) {
-		return StreamConsumerWithResult.ofStage(consumer(logPartition));
+	default StreamConsumer<T> consumerStream(String logPartition) {
+		return StreamConsumer.ofStage(consumer(logPartition));
 	}
 
 	/**
@@ -45,13 +45,14 @@ public interface LogManager<T> {
 	 * @return StreamProducer, which will stream read items to its wired consumer.
 	 */
 	Stage<StreamProducerWithResult<T, LogPosition>> producer(String logPartition,
-	                                                         LogFile startLogFile, long startPosition,
-	                                                         LogFile endLogFile);
+			LogFile startLogFile, long startPosition,
+			LogFile endLogFile);
 
 	default StreamProducerWithResult<T, LogPosition> producerStream(String logPartition,
-	                                                                LogFile startLogFile, long startPosition,
-	                                                                LogFile endLogFile) {
-		return StreamProducerWithResult.ofStage(producer(logPartition, startLogFile, startPosition, endLogFile));
+			LogFile startLogFile, long startPosition,
+			LogFile endLogFile) {
+		return StreamProducerWithResult.ofStage(
+				producer(logPartition, startLogFile, startPosition, endLogFile));
 	}
 
 }

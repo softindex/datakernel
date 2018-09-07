@@ -18,6 +18,7 @@ package io.datakernel.logfs.ot;
 
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -116,10 +117,10 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
 		producer.getResult().whenComplete(stageProducer.recordStats());
 		consumer.getResult().whenComplete(stageConsumer.recordStats());
-		return producer.streamTo(consumer)
-				.getResult()
+		return producer.getProducer().streamTo(consumer.getConsumer())
+				.thenCompose($ -> Stages.toTuple(producer.getResult(), consumer.getResult()))
 				.whenComplete(stageProcessLog.recordStats())
-				.thenApply(result -> LogDiff.of(result.getProducerResult(), result.getConsumerResult()))
+				.thenApply(result -> LogDiff.of(result.getValue1(), result.getValue2()))
 				.whenResult(logDiff ->
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.getPositions()));
 	}
@@ -137,16 +138,17 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 
 			LogPosition logPositionFrom = logPosition;
 			StreamProducerWithResult<T, LogPosition> producer = logManager.producerStream(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
-			producer.streamTo(streamUnion.newInput());
+			producer.getProducer().streamTo(streamUnion.newInput());
 			result.addStage(producer.getResult(), (accumulator, logPositionTo) -> {
 				if (!logPositionTo.equals(logPositionFrom)) {
 					accumulator.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));
 				}
 			});
 		}
-		return streamUnion.getOutput()
-				.with(detailed ? streamStatsDetailed : streamStatsBasic)
-				.withResult(result.get());
+		return StreamProducerWithResult.of(
+				streamUnion.getOutput()
+						.apply(detailed ? streamStatsDetailed : streamStatsBasic),
+				result.get());
 	}
 
 	private String logName(String partition) {

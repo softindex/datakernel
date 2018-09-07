@@ -1,24 +1,19 @@
 package io.datakernel.serial.processor;
 
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialQueue;
+import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialZeroBuffer;
 
-public interface WithSerialInputs<B, T> {
-	void addInput(SerialSupplier<T> input);
+public interface WithSerialInputs<B extends WithSerialInputs<B, T>, T> {
+	SerialInput<T> addInput();
 
-	default void withInput(SerialSupplier<T> input) {
+	default void addInput(SerialSupplier<T> input) {
+		addInput().setInput(input);
+	}
+
+	@SuppressWarnings("unchecked")
+	default B withInput(SerialSupplier<T> input) {
 		addInput(input);
-	}
-
-	default SerialConsumer<T> getInputConsumer() {
-		return getInputConsumer(new SerialZeroBuffer<>());
-	}
-
-	default SerialConsumer<T> getInputConsumer(SerialQueue<T> queue) {
-		addInput(queue.getSupplier());
-		return queue.getConsumer();
+		return (B) this;
 	}
 
 }

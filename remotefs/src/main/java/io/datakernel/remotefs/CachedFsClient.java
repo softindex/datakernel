@@ -165,7 +165,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create()
 							.withInput(supplier.transform(ByteBuf::slice));
 
-					SerialSupplier<ByteBuf> output = splitter.newOutputSupplier().transform(b -> {
+					SerialSupplier<ByteBuf> output = splitter.addOutput().getOutputSupplier().transform(b -> {
 						ByteBuf slice = b.slice();
 						b.recycle();
 						return slice;
@@ -174,7 +174,8 @@ public class CachedFsClient implements FsClient, EventloopService {
 					long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
 					downloadingNowSize += size;
 
-					Stage<Void> stage = splitter.newOutputSupplier()
+					Stage<Void> stage = splitter.addOutput()
+							.getOutputSupplier()
 							.transform(b -> {
 								ByteBuf slice = b.slice();
 								b.recycle();

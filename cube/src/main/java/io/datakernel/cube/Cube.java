@@ -462,7 +462,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	public <T> LogDataConsumer<T, CubeDiff> logStreamConsumer(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
 			AggregationPredicate predicate) {
 		return () -> this.consume(inputClass, dimensionFields, measureFields, predicate)
-				.thenApply(Collections::singletonList);
+				.transformResult(result -> result.thenApply(Collections::singletonList));
 	}
 
 	public <T> StreamConsumerWithResult<T, CubeDiff> consume(Class<T> inputClass) {
@@ -507,12 +507,12 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			StreamProducer<T> output = streamSplitter.newOutput();
 			if (!dataInputFilterPredicate.equals(AggregationPredicates.alwaysTrue())) {
 				Predicate<T> filterPredicate = createFilterPredicate(inputClass, dataInputFilterPredicate, getClassLoader(), fieldTypes);
-				output = output.with(StreamFilter.create(filterPredicate));
+				output = output.apply(StreamFilter.create(filterPredicate));
 			}
 			Stage<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
 			tracker.addStage(consume, (accumulator, diff) -> accumulator.put(aggregationId, diff));
 		}
-		return streamSplitter.getInput().withResult(tracker.get().thenApply(CubeDiff::of));
+		return StreamConsumerWithResult.of(streamSplitter.getInput(), tracker.get().thenApply(CubeDiff::of));
 	}
 
 	Map<String, AggregationPredicate> getCompatibleAggregationsForDataInput(Map<String, String> dimensionFields,
@@ -617,7 +617,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				 */
 				StreamMap.MapperProjection mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
 						compatibleMeasures, queryClassLoader);
-				queryResultProducer = aggregationProducer.with(StreamMap.create(mapper));
+				queryResultProducer = aggregationProducer.apply(StreamMap.create(mapper));
 				break;
 			}
 

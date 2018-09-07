@@ -241,7 +241,7 @@ public final class RawServer_Repository {
 				.thenCompose(headsInfo -> StreamProducer.ofStage(
 						getStreamProducer(headsInfo.bases, headsInfo.heads))
 						.streamTo(server.uploadStream(repositoryId))
-						.getEndOfStream());
+						.getAcknowledgement());
 	}
 
 	private Set<CommitId> rawHeadsToCommitIds(Set<SignedData<RawCommitHead>> rawHeads) {

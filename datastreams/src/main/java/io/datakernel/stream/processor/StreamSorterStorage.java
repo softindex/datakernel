@@ -17,8 +17,8 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.async.Stage;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
 
@@ -30,15 +30,17 @@ import java.util.List;
  * @param <T> type of storing data
  */
 public interface StreamSorterStorage<T> {
+	Stage<Integer> newPartitionId();
+
 	/**
 	 * Method for writing to storage partition of elements
 	 *
 	 * @return partition number
 	 */
-	Stage<StreamConsumerWithResult<T, Integer>> write();
+	Stage<StreamConsumer<T>> write(int partition);
 
-	default StreamConsumerWithResult<T, Integer> writeStream() {
-		return StreamConsumerWithResult.ofStage(write());
+	default StreamConsumer<T> writeStream(int partition) {
+		return StreamConsumer.ofStage(write(partition));
 	}
 
 	/**
@@ -47,10 +49,10 @@ public interface StreamSorterStorage<T> {
 	 * @param partition index of partition
 	 * @return producer for streaming to storage
 	 */
-	Stage<StreamProducerWithResult<T, Void>> read(int partition);
+	Stage<StreamProducer<T>> read(int partition);
 
-	default StreamProducerWithResult<T, Void> readStream(int partition) {
-		return StreamProducerWithResult.ofStage(read(partition));
+	default StreamProducer<T> readStream(int partition) {
+		return StreamProducer.ofStage(read(partition));
 	}
 
 	/**

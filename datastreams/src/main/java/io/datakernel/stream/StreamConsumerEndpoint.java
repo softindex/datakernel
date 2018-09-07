@@ -36,8 +36,8 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	protected void onEndOfStream() {
-		buffer.put(null);
+	protected Stage<Void> onProducerEndOfStream() {
+		return buffer.put(null);
 	}
 
 	@Override

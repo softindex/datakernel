@@ -23,7 +23,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>>, StreamDataReceiver<T> {
+public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataReceiver<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final AggregationChunkStorage<C> storage;
@@ -65,11 +65,10 @@ public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<
 		this.chunkSize = chunkSize;
 		this.aggregation = aggregation;
 		this.resultsTracker = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(this.getEndOfStream(), (accumulator, $) -> {});
+				.withStage(this.getAcknowledgement(), (accumulator, $) -> {});
 		this.classLoader = classLoader;
 	}
 
-	@Override
 	public MaterializedStage<List<AggregationChunk>> getResult() {
 		return resultsTracker.get().materialize();
 	}
@@ -120,7 +119,10 @@ public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<
 		AggregationChunker<C, T> chunker = AggregationChunker.create(aggregation, measures, recordClass,
 				partitionPredicate, storage, classLoader, chunkSize);
 
-		resultsTracker.addStage(producer.streamTo(chunker).getConsumerResult(), List::addAll)
+		resultsTracker.addStage(
+				producer.streamTo(chunker)
+						.thenCompose($ -> chunker.getResult()),
+				List::addAll)
 				.thenRun(this::suspendOrResume);
 	}
 
@@ -135,8 +137,9 @@ public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<
 	}
 
 	@Override
-	public void onEndOfStream() {
+	protected Stage<Void> onProducerEndOfStream() {
 		doFlush();
+		return resultsTracker.get().toVoid();
 	}
 
 	@Override

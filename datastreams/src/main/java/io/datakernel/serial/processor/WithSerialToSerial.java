@@ -1,19 +1,26 @@
 package io.datakernel.serial.processor;
 
 import io.datakernel.async.AsyncProcess;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialQueue;
-import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.*;
 
-import java.util.function.Function;
+public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O> extends
+		WithSerialInput<B, I>, WithSerialOutput<B, O>,
+		SerialSupplierModifier<I, O>, SerialConsumerModifier<O, I> {
 
-public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
-		extends WithSerialInput<B, I>, WithSerialOutput<B, O> {
+	@Override
+	default SerialSupplier<O> applyTo(SerialSupplier<I> supplier) {
+		return serialSupplierModifier(new SerialZeroBuffer<>()).applyTo(supplier);
+	}
 
-	default Function<SerialSupplier<I>, SerialSupplier<O>> transformer(SerialQueue<O> queue) {
+	@Override
+	default SerialConsumer<I> applyTo(SerialConsumer<O> consumer) {
+		return serialConsumerModifier(new SerialZeroBuffer<>()).applyTo(consumer);
+	}
+
+	default SerialSupplierModifier<I, O> serialSupplierModifier(SerialQueue<O> queue) {
 		return input -> {
 			setInput(input);
-			SerialSupplier<O> outputSupplier = newOutputSupplier(queue);
+			SerialSupplier<O> outputSupplier = getOutputSupplier(queue);
 			if (this instanceof AsyncProcess) {
 				((AsyncProcess) this).process();
 			}
@@ -21,14 +28,14 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 		};
 	}
 
-	default Function<SerialConsumer<O>, SerialConsumer<I>> outputTransformer(SerialQueue<I> queue) {
+	default SerialConsumerModifier<O, I> serialConsumerModifier(SerialQueue<I> queue) {
 		return output -> {
 			setOutput(output);
-			SerialConsumer<I> inputConsumer = newInputConsumer(queue);
+			SerialConsumer<I> outputSupplier = getInputConsumer(queue);
 			if (this instanceof AsyncProcess) {
 				((AsyncProcess) this).process();
 			}
-			return inputConsumer;
+			return outputSupplier;
 		};
 	}
 

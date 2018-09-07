@@ -21,11 +21,11 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serial.file.SerialFileReader;
 import io.datakernel.serial.file.SerialFileWriter;
+import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -193,8 +193,8 @@ class StressClient {
 		obj.ip = InetAddress.getLocalHost();
 
 		StreamProducer<TestObject> producer = StreamProducer.ofIterable(Collections.singletonList(obj));
-		StreamBinarySerializer<TestObject> serializer = StreamBinarySerializer.create(bufferSerializer)
-				.withInitialBufferSize(StreamBinarySerializer.MAX_SIZE);
+		SerialBinarySerializer<TestObject> serializer = SerialBinarySerializer.create(bufferSerializer)
+				.withInitialBufferSize(SerialBinarySerializer.MAX_SIZE);
 
 //		producer.with(serializer).streamTo(
 //				client.uploadStream("someName" + i));

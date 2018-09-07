@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamConsumer;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamProducer;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -63,7 +66,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		this.input = new Input();
 
-		this.temporaryStreams.addStage(input.getEndOfStream(), (accumulator, $) -> {});
+		this.temporaryStreams.addStage(input.getAcknowledgement(), (accumulator, $) -> {});
 		Stage<StreamProducer<T>> outputStreamStage = this.temporaryStreams.get()
 				.thenApply(streamIds -> {
 					input.list.sort(itemComparator);
@@ -74,9 +77,11 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 						StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, deduplicate);
 						listProducer.streamTo(streamMerger.newInput());
 						streamIds.forEach(streamId ->
-								StreamProducerWithResult.ofStage(storage.read(streamId))
+								StreamProducer.ofStage(storage.read(streamId))
 										.streamTo(streamMerger.newInput()));
-						return streamMerger.getOutput().withLateBinding();
+						return streamMerger
+								.getOutput()
+								.withLateBinding();
 					}
 				});
 		this.output = StreamProducer.ofStage(outputStreamStage);
@@ -119,9 +124,10 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		private Stage<Integer> writeToTemporaryStorage(List<T> sortedList) {
 			return temporaryStreams.addStage(
-					storage.write().thenCompose(consumer -> StreamProducer.ofIterable(sortedList)
-							.streamTo(consumer)
-							.getConsumerResult()),
+					storage.newPartitionId()
+							.thenCompose(partitionId -> storage.write(partitionId)
+									.thenCompose(consumer -> StreamProducer.ofIterable(sortedList).streamTo(consumer)
+											.thenApply($ -> partitionId))),
 					List::add);
 		}
 
@@ -134,8 +140,8 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected void onEndOfStream() {
-			// do nothing
+		protected Stage<Void> onProducerEndOfStream() {
+			return Stage.complete();
 		}
 
 		@Override

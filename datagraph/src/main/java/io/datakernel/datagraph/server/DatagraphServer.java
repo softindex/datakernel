@@ -27,27 +27,28 @@ import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialQueue;
+import io.datakernel.serial.SerialZeroBuffer;
+import io.datakernel.serial.net.MessagingSerializer;
+import io.datakernel.serial.net.MessagingWithBinaryStreaming;
+import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.net.MessagingSerializer;
-import io.datakernel.stream.net.MessagingWithBinaryStreaming;
-import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.util.MemSize;
 
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.stream.net.MessagingSerializers.ofJson;
+import static io.datakernel.serial.net.MessagingSerializers.ofJson;
 
 /**
  * Server for processing JSON commands.
  */
 public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	private final DatagraphEnvironment environment;
-	private final Map<StreamId, StreamLateBinder<ByteBuf>> pendingStreams = new HashMap<>();
+	private final Map<StreamId, SerialQueue<ByteBuf>> pendingStreams = new HashMap<>();
 	private final MessagingSerializer<DatagraphCommand, DatagraphResponse> serializer;
 	private final Map<Class, CommandHandler> handlers = new HashMap<>();
 
@@ -81,17 +82,17 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		@Override
 		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
 			StreamId streamId = command.getStreamId();
-			StreamLateBinder<ByteBuf> forwarder = pendingStreams.remove(streamId);
+			SerialQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
 			if (forwarder != null) {
 				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 			} else {
 				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-				forwarder = StreamLateBinder.create();
+				forwarder = new SerialZeroBuffer<>();
 				pendingStreams.put(streamId, forwarder);
 			}
-			StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
-			forwarder.getOutput().streamTo(consumer);
-			consumer.getResult().whenComplete(($, throwable) -> {
+			SerialConsumer<ByteBuf> consumer = messaging.sendBinaryStream();
+			forwarder.getSupplier().streamTo(consumer);
+			consumer.whenComplete(($, throwable) -> {
 				if (throwable != null) {
 					logger.warn("Exception occurred while trying to send data");
 				}
@@ -115,20 +116,20 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	public <T> StreamConsumer<T> upload(StreamId streamId, Class<T> type) {
 		BufferSerializer<T> serializer = environment.getInstance(DatagraphSerialization.class).getSerializer(type);
 
-		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(serializer)
+		SerialBinarySerializer<T> streamSerializer = SerialBinarySerializer.create(serializer)
 				.withInitialBufferSize(MemSize.kilobytes(256))
 				.withAutoFlushInterval(Duration.ofSeconds(1));
 
-		StreamLateBinder<ByteBuf> forwarder = pendingStreams.remove(streamId);
+		SerialQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
 		if (forwarder == null) {
 			logger.info("onUpload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-			forwarder = StreamLateBinder.create();
+			forwarder = new SerialZeroBuffer<>();
 			pendingStreams.put(streamId, forwarder);
 		} else {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 		}
-		streamSerializer.getOutput().streamTo(forwarder.getInput());
-		return streamSerializer.getInput();
+		streamSerializer.streamTo(forwarder.getConsumer());
+		return streamSerializer;
 	}
 
 	@Override

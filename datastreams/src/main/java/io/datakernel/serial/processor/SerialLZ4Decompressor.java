@@ -85,18 +85,8 @@ public final class SerialLZ4Decompressor implements WithSerialToSerial<SerialLZ4
 	}
 
 	@Override
-	public SerialSupplier<ByteBuf> getInput() {
-		return input;
-	}
-
-	@Override
 	public void setOutput(SerialConsumer<ByteBuf> output) {
 		this.output = output;
-	}
-
-	@Override
-	public SerialConsumer<ByteBuf> getOutput() {
-		return output;
 	}
 	// endregion
 

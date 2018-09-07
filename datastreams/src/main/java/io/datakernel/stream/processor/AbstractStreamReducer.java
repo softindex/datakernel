@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.Stage;
 import io.datakernel.stream.*;
 
 import java.util.*;
@@ -143,12 +144,13 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 		}
 
 		@Override
-		protected void onEndOfStream() {
+		protected Stage<Void> onProducerEndOfStream() {
 			streamsOpen--;
 			if (headItem == null) {
 				streamsAwaiting--;
 			}
 			produce();
+			return output.getConsumer().getAcknowledgement();
 		}
 
 		@Override
@@ -192,7 +194,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 				input.headKey = input.keyFunction.apply(input.headItem);
 				priorityQueue.offer(input);
 			} else {
-				if (input.getStatus().isOpen()) {
+				if (!input.isProducerEndOfStream()) {
 					streamsAwaiting++;
 					break;
 				}

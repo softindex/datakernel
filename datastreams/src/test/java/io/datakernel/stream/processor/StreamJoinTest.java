@@ -29,9 +29,8 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.TestUtils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertClosedWithError;
+import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -147,7 +146,7 @@ public class StreamJoinTest {
 		source2.streamTo(streamJoin.getRight());
 
 		streamJoin.getOutput().streamTo(
-				consumer.with(TestStreamConsumers.randomlySuspending()));
+				consumer.apply(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 
@@ -159,8 +158,8 @@ public class StreamJoinTest {
 						new DataItemMasterDetail(30, 20, "masterC", "detailY"),
 						new DataItemMasterDetail(40, 20, "masterD", "detailY")},
 				result.toArray(new DataItemMasterDetail[result.size()]));
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
+		assertEndOfStream(source1);
+		assertEndOfStream(source2);
 	}
 
 	@Test
@@ -202,7 +201,7 @@ public class StreamJoinTest {
 		source2.streamTo(streamJoin.getRight());
 
 		streamJoin.getOutput().streamTo(
-				consumer.with(TestStreamConsumers.decorator((context, dataReceiver) ->
+				consumer.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (list.size() == 1) {
@@ -212,8 +211,8 @@ public class StreamJoinTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 1);
-		assertStatus(CLOSED_WITH_ERROR, source1);
-		assertStatus(END_OF_STREAM, source2);
+		assertClosedWithError(source1);
+		assertEndOfStream(source2);
 	}
 
 	@Test
@@ -257,11 +256,11 @@ public class StreamJoinTest {
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
 
-		streamJoin.getOutput().streamTo(consumer.with(TestStreamConsumers.oneByOne()));
+		streamJoin.getOutput().streamTo(consumer.apply(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 		assertTrue(list.size() == 0);
-		assertStatus(CLOSED_WITH_ERROR, source1);
-		assertStatus(CLOSED_WITH_ERROR, source2);
+		assertClosedWithError(source1);
+		assertClosedWithError(source2);
 	}
 }

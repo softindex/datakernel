@@ -23,10 +23,10 @@ import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.file.StreamFileReader;
-import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.file.SerialFileReader;
+import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.stats.StreamRegistry;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsDetailed;
@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.serial.file.SerialFileWriter.CREATE_OPTIONS;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.nio.file.StandardOpenOption.READ;
 
@@ -145,24 +146,21 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
+	public Stage<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
-			.whenComplete(stageRead.recordStats())
-			.thenApply(file -> StreamFileReader.readFile(file).withBufferSize(readBlockSize).withOffset(startPosition)
-				.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
-				.with(streamReadStats)
-				.withEndOfStreamAsResult()
-				.withLateBinding());
+				.whenComplete(stageRead.recordStats())
+				.thenApply(file -> SerialFileReader.readFile(file).withBufferSize(readBlockSize).withOffset(startPosition)
+						.apply(streamReads.forSerialSupplier(logPartition + ":" + logFile + "@" + startPosition))
+						.apply(streamReadStats));
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
-		return AsyncFile.openAsync(executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS)
-			.whenComplete(stageWrite.recordStats())
-			.thenApply(file -> StreamFileWriter.create(file).withForceOnClose(true).withFlushAsResult()
-				.with(streamWrites.newEntry(logPartition + ":" + logFile))
-				.with(streamWriteStats)
-				.withLateBinding());
+	public Stage<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
+		return AsyncFile.openAsync(executorService, path(logPartition, logFile), CREATE_OPTIONS)
+				.whenComplete(stageWrite.recordStats())
+				.thenApply(file -> SerialFileWriter.create(file).withForceOnClose(true)
+						.apply(streamWrites.forSerialConsumer(logPartition + ":" + logFile))
+						.apply(streamWriteStats));
 	}
 
 	@Override

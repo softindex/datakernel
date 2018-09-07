@@ -30,9 +30,8 @@ import java.util.List;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestStreamConsumers.decorator;
 import static io.datakernel.stream.TestStreamConsumers.randomlySuspending;
-import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.TestUtils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertClosedWithError;
+import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -46,14 +45,14 @@ public class StreamFilterTest {
 		StreamFilter<Integer> filter = StreamFilter.create(input -> input % 2 == 1);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		producer.with(filter).streamTo(
-				consumer.with(randomlySuspending()));
+		producer.apply(filter).streamTo(
+				consumer.apply(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(1, 3), consumer.getList());
-		assertStatus(END_OF_STREAM, producer);
-		assertStatus(END_OF_STREAM, filter.getInput());
-		assertStatus(END_OF_STREAM, filter.getOutput());
+		assertEndOfStream(producer);
+		assertEndOfStream(filter.getInput());
+		assertEndOfStream(filter.getOutput());
 	}
 
 	@Test
@@ -65,8 +64,8 @@ public class StreamFilterTest {
 		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		source.with(streamFilter).streamTo(
-				consumer.with(decorator((context, dataReceiver) ->
+		source.apply(streamFilter).streamTo(
+				consumer.apply(decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (item == 3) {
@@ -77,10 +76,10 @@ public class StreamFilterTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3), list);
-		assertStatus(CLOSED_WITH_ERROR, source);
-		assertStatus(CLOSED_WITH_ERROR, consumer);
-		assertStatus(CLOSED_WITH_ERROR, streamFilter.getInput());
-		assertStatus(CLOSED_WITH_ERROR, streamFilter.getOutput());
+		assertClosedWithError(source);
+		assertClosedWithError(consumer);
+		assertClosedWithError(streamFilter.getInput());
+		assertClosedWithError(streamFilter.getOutput());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -97,15 +96,15 @@ public class StreamFilterTest {
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList consumer = StreamConsumerToList.create(list);
 
-		source.with(streamFilter).streamTo(
-				consumer.with(TestStreamConsumers.oneByOne()));
+		source.apply(streamFilter).streamTo(
+				consumer.apply(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 
 		assertTrue(list.size() == 3);
-		assertStatus(CLOSED_WITH_ERROR, consumer);
-		assertStatus(CLOSED_WITH_ERROR, streamFilter.getInput());
-		assertStatus(CLOSED_WITH_ERROR, streamFilter.getOutput());
+		assertClosedWithError(consumer);
+		assertClosedWithError(streamFilter.getInput());
+		assertClosedWithError(streamFilter.getOutput());
 	}
 
 }

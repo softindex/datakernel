@@ -8,10 +8,11 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
-public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, List<T>>, StreamDataReceiver<T> {
+public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataReceiver<T> {
 	protected final List<T> list;
 	private final SettableStage<List<T>> resultStage = new SettableStage<>();
 
@@ -25,6 +26,11 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 
 	public static <T> StreamConsumerToList<T> create() {
 		return new StreamConsumerToList<>();
+	}
+
+	public StreamConsumerToList<T> withResultAcceptor(Consumer<Stage<List<T>>> resultAcceptor) {
+		resultAcceptor.accept(resultStage);
+		return this;
 	}
 
 	public static <T> StreamConsumerToList<T> create(List<T> list) {
@@ -42,8 +48,9 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 	}
 
 	@Override
-	protected void onEndOfStream() {
+	protected Stage<Void> onProducerEndOfStream() {
 		resultStage.set(list);
+		return Stage.complete();
 	}
 
 	@Override
@@ -51,7 +58,6 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 		resultStage.setException(t);
 	}
 
-	@Override
 	public MaterializedStage<List<T>> getResult() {
 		return resultStage;
 	}

@@ -21,13 +21,15 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.serial.processor.SerialBinaryDeserializer;
+import io.datakernel.serial.processor.SerialBinarySerializer;
+import io.datakernel.serial.processor.SerialLZ4Compressor;
+import io.datakernel.serial.processor.SerialLZ4Decompressor;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.processor.*;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
@@ -42,7 +44,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static io.datakernel.stream.StreamProducers.endOfStreamOnError;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
@@ -63,7 +64,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	private LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
-	                       DateTimeFormatter dateTimeFormatter) {
+			DateTimeFormatter dateTimeFormatter) {
 		this.eventloop = eventloop;
 		this.fileSystem = fileSystem;
 		this.serializer = serializer;
@@ -71,12 +72,12 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	public static <T> LogManagerImpl<T> create(Eventloop eventloop, LogFileSystem fileSystem,
-	                                           BufferSerializer<T> serializer) {
+			BufferSerializer<T> serializer) {
 		return new LogManagerImpl<>(eventloop, fileSystem, serializer);
 	}
 
 	public static <T> LogManagerImpl<T> create(Eventloop eventloop, LogFileSystem fileSystem,
-	                                           BufferSerializer<T> serializer, DateTimeFormatter dateTimeFormatter) {
+			BufferSerializer<T> serializer, DateTimeFormatter dateTimeFormatter) {
 		return new LogManagerImpl<>(eventloop, fileSystem, serializer, dateTimeFormatter);
 	}
 
@@ -96,32 +97,34 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<T, Void>> consumer(String logPartition) {
+	public Stage<StreamConsumer<T>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
 
-		return Stage.of(StreamTransformer.<T>idenity()
-				.with(StreamBinarySerializer.create(serializer)
-						.withAutoFlushInterval(autoFlushInterval)
-						.withInitialBufferSize(bufferSize)
-						.withSkipSerializationErrors())
-				.with(StreamLZ4Compressor.fastCompressor())
-				.applyTo(LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition))
+		return Stage.of(StreamConsumer.<T>ofProducer(
+				producer -> producer
+						.apply(SerialBinarySerializer.create(serializer)
+								.withAutoFlushInterval(autoFlushInterval)
+								.withInitialBufferSize(bufferSize)
+								.withSkipSerializationErrors())
+						.apply(SerialLZ4Compressor.createFastCompressor())
+						.streamTo(LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition)))
 				.withLateBinding());
 	}
 
 	@Override
 	public Stage<StreamProducerWithResult<T, LogPosition>> producer(String logPartition,
-	                                                                LogFile startLogFile, long startOffset,
-	                                                                LogFile endLogFile) {
+			LogFile startLogFile, long startOffset,
+			LogFile endLogFile) {
 		validateLogPartition(logPartition);
 		LogPosition startPosition = LogPosition.create(startLogFile, startOffset);
-		return fileSystem.list(logPartition)
-				.thenApply(logFiles -> {
+		SettableStage<LogPosition> positionStage = new SettableStage<>();
+		SettableStage<StreamProducerWithResult<T, LogPosition>> resultStage = new SettableStage<>();
+		fileSystem.list(logPartition)
+				.whenResult(logFiles -> {
 					List<LogFile> logFilesToRead = logFiles.stream().filter(logFile -> isFileInRange(logFile, startPosition, endLogFile)).collect(Collectors.toList());
 					Collections.sort(logFilesToRead);
 
 					Iterator<LogFile> it = logFilesToRead.iterator();
-					SettableStage<LogPosition> positionStage = new SettableStage<>();
 
 					Iterator<StreamProducer<T>> producers = new Iterator<StreamProducer<T>>() {
 						private int n;
@@ -160,27 +163,28 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 								inputStreamPosition = 0L;
 								sw.reset().start();
 								return fileStream
-										.with(StreamLZ4Decompressor.create()
-												.withInspector(new StreamLZ4Decompressor.Inspector() {
+										.apply(SerialLZ4Decompressor.create()
+												.withInspector(new SerialLZ4Decompressor.Inspector() {
 													@Override
-													public void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf) {
+													public void onInputBuf(SerialLZ4Decompressor self, ByteBuf buf) {
 													}
 
 													@Override
-													public void onBlock(StreamLZ4Decompressor self, StreamLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
-														inputStreamPosition += StreamLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
+													public void onBlock(SerialLZ4Decompressor self, SerialLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
+														inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
 													}
 												}))
-										.with(endOfStreamOnError(throwable -> throwable instanceof TruncatedDataException))
-										.with(StreamBinaryDeserializer.create(serializer))
-										.whenComplete(this::log)
+//										.with(endOfStreamOnError(throwable -> throwable instanceof TruncatedDataException)) // TODO
+										.apply(SerialBinaryDeserializer.create(serializer))
+										.thenRun(() -> log(null))
+										.whenException(this::log)
 										.withLateBinding();
 							});
 
 							return StreamProducer.ofStage(stage);
 						}
 
-						private void log(Void $, Throwable throwable) {
+						private void log(Throwable throwable) {
 							if (throwable == null && logger.isTraceEnabled()) {
 								logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
 										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
@@ -191,10 +195,11 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 						}
 					};
 
-					return StreamProducer.concat(producers)
-							.withResult(positionStage)
-							.withLateBinding();
-				});
+					StreamProducer<T> producer = StreamProducer.concat(producers);
+					resultStage.set(StreamProducerWithResult.of(producer, positionStage));
+				})
+				.whenException(resultStage::setException);
+		return resultStage;
 	}
 
 	private static void validateLogPartition(String logPartition) {

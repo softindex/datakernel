@@ -2,7 +2,7 @@ package io.datakernel.logfs.ot;
 
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamConsumerWithResult.toList;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -32,10 +31,10 @@ public class LogDataConsumerSplitterTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
-	private <T> void assertStreamResult(List<T> values, StreamConsumer<T> consumer, Stage<List<T>> result)
+	private <T> void assertStreamResult(List<T> values, StreamConsumerWithResult<T, List<T>> consumer, Stage<List<T>> result)
 			throws ExecutionException, InterruptedException {
 
-		StreamProducer.ofIterable(values).streamTo(consumer);
+		StreamProducer.ofIterable(values).streamTo(consumer.getConsumer());
 		CompletableFuture<List<T>> future = result.toCompletableFuture();
 		eventloop.run();
 		assertEquals(values, future.get());
@@ -43,12 +42,16 @@ public class LogDataConsumerSplitterTest {
 
 	@Test
 	public void testConsumes() throws ExecutionException, InterruptedException {
-		List<StreamConsumerWithResult<Integer, List<Integer>>> consumers =
-				asList(toList(), toList());
+		List<StreamConsumerToList<Integer>> consumers = asList(
+				StreamConsumerToList.create(),
+				StreamConsumerToList.create());
 
-		Iterator<StreamConsumerWithResult<Integer, List<Integer>>> iterator = consumers.iterator();
+		Iterator<StreamConsumerToList<Integer>> iterator = consumers.iterator();
 		LogDataConsumerSplitter<Integer, Integer> splitter =
-				new LogDataConsumerSplitterStub<>(iterator::next);
+				new LogDataConsumerSplitterStub<>(() -> {
+					StreamConsumerToList<Integer> next = iterator.next();
+					return StreamConsumerWithResult.of(next, next.getResult());
+				});
 
 		assertStreamResult(VALUES_1, splitter.consume(), consumers.get(0).getResult());
 		assertStreamResult(VALUES_2, splitter.consume(), consumers.get(1).getResult());
@@ -56,13 +59,16 @@ public class LogDataConsumerSplitterTest {
 
 	@Test
 	public void testConsumersWithSuspend() throws ExecutionException, InterruptedException {
-		List<StreamConsumerWithResult<Integer, List<Integer>>> consumers = asList(
-				StreamConsumerWithResult.toList(),
-				StreamConsumerWithResult.toList());
+		List<StreamConsumerToList<Integer>> consumers = asList(
+				StreamConsumerToList.create(),
+				StreamConsumerToList.create());
 
-		Iterator<StreamConsumerWithResult<Integer, List<Integer>>> iterator = consumers.iterator();
+		Iterator<StreamConsumerToList<Integer>> iterator = consumers.iterator();
 		LogDataConsumerSplitter<Integer, Integer> splitter =
-				new LogDataConsumerSplitterStub<>(iterator::next);
+				new LogDataConsumerSplitterStub<>(() -> {
+					StreamConsumerToList<Integer> next = iterator.next();
+					return StreamConsumerWithResult.of(next, next.getResult());
+				});
 
 		assertStreamResult(VALUES_1, splitter.consume(), consumers.get(0).getResult());
 		assertStreamResult(VALUES_2, splitter.consume(), consumers.get(1).getResult());
@@ -77,8 +83,7 @@ public class LogDataConsumerSplitterTest {
 			}
 		};
 
-		StreamProducer.ofIterable(VALUES_1).streamTo(
-				splitter.consume());
+		StreamProducer.ofIterable(VALUES_1).streamTo(splitter.consume().getConsumer());
 	}
 
 	private static class LogDataConsumerSplitterStub<T, D> extends LogDataConsumerSplitter<T, D> {

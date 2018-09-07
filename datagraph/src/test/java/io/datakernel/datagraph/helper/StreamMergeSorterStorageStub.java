@@ -18,10 +18,9 @@ package io.datakernel.datagraph.helper;
 
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.processor.StreamSorterStorage;
 
 import java.util.ArrayList;
@@ -39,19 +38,24 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 	}
 
 	@Override
-	public Stage<StreamConsumerWithResult<T, Integer>> write() {
-		List<T> list = new ArrayList<>();
+	public Stage<Integer> newPartitionId() {
 		int newPartition = partition++;
-		storage.put(newPartition, list);
-		StreamConsumerToList<T> consumer = StreamConsumerToList.create(list);
-		return Stage.of(consumer.withResult(Stage.of(newPartition)).withLateBinding());
+		return Stage.of(newPartition);
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<T, Void>> read(int partition) {
+	public Stage<StreamConsumer<T>> write(int partition) {
+		List<T> list = new ArrayList<>();
+		storage.put(partition, list);
+		StreamConsumerToList<T> consumer = StreamConsumerToList.create(list);
+		return Stage.of(consumer.withLateBinding());
+	}
+
+	@Override
+	public Stage<StreamProducer<T>> read(int partition) {
 		List<T> iterable = storage.get(partition);
 		StreamProducer<T> producer = StreamProducer.ofIterable(iterable);
-		return Stage.of(producer.withEndOfStreamAsResult().withLateBinding());
+		return Stage.of(producer.withLateBinding());
 	}
 
 	@Override

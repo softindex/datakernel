@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -27,11 +30,10 @@ import java.util.Collections;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("unchecked")
 public class StreamUnionTest {
@@ -58,23 +60,23 @@ public class StreamUnionTest {
 		source4.streamTo(streamUnion.newInput());
 		source5.streamTo(streamUnion.newInput());
 		source6.streamTo(streamUnion.newInput());
-		streamUnion.getOutput().streamTo(consumer.with(TestStreamConsumers.randomlySuspending()));
+		streamUnion.getOutput().streamTo(consumer.apply(TestStreamConsumers.randomlySuspending()));
 		eventloop.run();
 
 		List<Integer> result = consumer.getList();
 		Collections.sort(result);
 		assertEquals(asList(1, 2, 3, 4, 5, 6), result);
 
-		assertStatus(END_OF_STREAM, source0);
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(END_OF_STREAM, source3);
-		assertStatus(END_OF_STREAM, source4);
-		assertStatus(END_OF_STREAM, source5);
-		assertStatus(END_OF_STREAM, source6);
+		assertEndOfStream(source0);
+		assertEndOfStream(source1);
+		assertEndOfStream(source2);
+		assertEndOfStream(source3);
+		assertEndOfStream(source4);
+		assertEndOfStream(source5);
+		assertEndOfStream(source6);
 
-		assertStatus(END_OF_STREAM, streamUnion.getOutput());
-		assertConsumerStatuses(END_OF_STREAM, streamUnion.getInputs());
+		assertEndOfStream(streamUnion.getOutput());
+		assertConsumersEndOfStream(streamUnion.getInputs());
 	}
 
 	@Test
@@ -94,7 +96,7 @@ public class StreamUnionTest {
 		source1.streamTo(streamUnion.newInput());
 		source2.streamTo(streamUnion.newInput());
 
-		streamUnion.getOutput().streamTo(consumer.with(TestStreamConsumers.decorator((context, dataReceiver) ->
+		streamUnion.getOutput().streamTo(consumer.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (item == 1) {
@@ -105,13 +107,14 @@ public class StreamUnionTest {
 		eventloop.run();
 
 		assertEquals(Arrays.asList(6, 7, 4, 5, 1), list);
-		assertStatus(CLOSED_WITH_ERROR, source0);
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
+		assertClosedWithError(source0);
+		assertEndOfStream(source1);
+		assertEndOfStream(source2);
 
-		assertStatus(CLOSED_WITH_ERROR, streamUnion.getOutput());
-		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM, END_OF_STREAM},
-				consumerStatuses(streamUnion.getInputs()));
+		assertClosedWithError(streamUnion.getOutput());
+		assertClosedWithError(streamUnion.getInput(0));
+		assertClosedWithError(streamUnion.getInput(1));
+		assertClosedWithError(streamUnion.getInput(2));
 	}
 
 	@Test
@@ -135,12 +138,12 @@ public class StreamUnionTest {
 		source0.streamTo(streamUnion.newInput());
 		source1.streamTo(streamUnion.newInput());
 
-		streamUnion.getOutput().streamTo(consumer.with(TestStreamConsumers.oneByOne()));
+		streamUnion.getOutput().streamTo(consumer.apply(TestStreamConsumers.oneByOne()));
 		eventloop.run();
 
 		assertTrue(list.size() == 3);
-		assertStatus(CLOSED_WITH_ERROR, streamUnion.getOutput());
-		assertConsumerStatuses(CLOSED_WITH_ERROR, streamUnion.getInputs());
+		assertClosedWithError(streamUnion.getOutput());
+		assertConsumersClosedWithError(streamUnion.getInputs());
 	}
 
 }

@@ -34,7 +34,6 @@ public final class StreamProducerEndpoint<T> extends AbstractStreamProducer<T> {
 	@SuppressWarnings({"unchecked", "ConstantConditions"})
 	@Override
 	protected void produce(AsyncProduceController async) {
-		assert getStatus().isOpen();
 		while (!buffer.isEmpty()) {
 			Try<T> stage = buffer.poll();
 			if (stage.isSuccess()) {

@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.Stage;
 import io.datakernel.stream.*;
 
 import java.util.function.Predicate;
@@ -63,15 +64,14 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 
 	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
-		protected void onEndOfStream() {
-			output.sendEndOfStream();
+		protected Stage<Void> onProducerEndOfStream() {
+			return output.sendEndOfStream();
 		}
 
 		@Override
 		protected void onError(Throwable t) {
 			output.closeWithError(t);
 		}
-
 	}
 
 	protected final class Output extends AbstractStreamProducer<T> {

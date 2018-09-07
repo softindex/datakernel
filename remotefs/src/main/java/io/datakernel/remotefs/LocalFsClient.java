@@ -25,12 +25,11 @@ import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialConsumerModifier;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialZeroBuffer;
 import io.datakernel.serial.file.SerialFileReader;
 import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.serial.processor.SerialCutter;
-import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +41,6 @@ import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.function.Function;
 
 import static io.datakernel.serial.processor.SerialCutter.SliceStrategy.forByteBuf;
 import static io.datakernel.util.LogUtils.Level.TRACE;
@@ -129,9 +127,9 @@ public final class LocalFsClient implements FsClient, EventloopService {
 										.withOffset(offset == -1 ? 0L : size)
 										.withForceOnClose(true)
 										.whenComplete(writeFinishStage.recordStats())
-										.compose(offset != -1 && skip != 0 ?
-												SerialCutter.create(skip, forByteBuf()).outputTransformer(new SerialZeroBuffer<>()) :
-												Function.identity()));
+										.apply(offset != -1 && skip != 0 ?
+												SerialCutter.create(skip, forByteBuf()) :
+												SerialConsumerModifier.identity()));
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
@@ -161,7 +159,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					if (length != -1 && offset + length > size) {
 						return Stage.ofException(new RemoteFsException("Boundaries exceed file for " + repr));
 					}
-					return AsyncFile.openAsync(executor, path, StreamFileReader.READ_OPTIONS, this)
+					return AsyncFile.openAsync(executor, path, SerialFileReader.READ_OPTIONS, this)
 							.thenApply(file -> {
 								logger.trace("reading from file {}: {}", repr, this);
 								return SerialFileReader.readFile(file)

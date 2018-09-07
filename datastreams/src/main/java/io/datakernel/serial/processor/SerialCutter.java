@@ -126,16 +126,6 @@ public class SerialCutter<T> implements AsyncProcess, WithSerialToSerial<SerialC
 		this.output = output;
 	}
 
-	@Override
-	public SerialSupplier<T> getInput() {
-		return input;
-	}
-
-	@Override
-	public SerialConsumer<T> getOutput() {
-		return output;
-	}
-
 	/**
 	 * Represents offset strategy to be used when skipping data elements.
 	 *

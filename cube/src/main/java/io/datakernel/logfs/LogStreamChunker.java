@@ -16,88 +16,131 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.MaterializedStage;
+import io.datakernel.async.AsyncProcess;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialInput;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.time.CurrentTimeProvider;
 
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
-public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> implements StreamConsumerWithResult<ByteBuf, Void>, StreamDataReceiver<ByteBuf> {
+public final class LogStreamChunker implements SerialInput<ByteBuf>, AsyncProcess {
 	private final CurrentTimeProvider currentTimeProvider;
 	private final DateTimeFormatter datetimeFormat;
 	private final LogFileSystem fileSystem;
 	private final String logPartition;
 
-	private final StreamConsumerSwitcher<ByteBuf> switcher;
-	private final SettableStage<Void> result = new SettableStage<>();
+	private SerialSupplier<ByteBuf> input;
+	private SerialConsumer<ByteBuf> currentConsumer;
 
 	private String currentChunkName;
-	private StreamDataReceiver<ByteBuf> dataReceiver;
-	private StreamConsumerWithResult<ByteBuf, Void> currentConsumer;
 
-	private LogStreamChunker(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat, String logPartition,
-			StreamConsumerSwitcher<ByteBuf> switcher) {
-		super(switcher);
+	private SettableStage<Void> process;
+
+	private LogStreamChunker(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat, String logPartition) {
 		this.currentTimeProvider = currentTimeProvider;
 		this.datetimeFormat = datetimeFormat;
 		this.fileSystem = fileSystem;
 		this.logPartition = logPartition;
-		this.switcher = switcher;
-		getEndOfStream().thenCompose($ -> currentConsumer.getResult()).whenComplete(result::trySet);
 	}
 
-	public static LogStreamChunker create(LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
-			String logPartition) {
+	public static LogStreamChunker create(LogFileSystem fileSystem, DateTimeFormatter datetimeFormat, String logPartition) {
 		return create(Eventloop.getCurrentEventloop(), fileSystem, datetimeFormat, logPartition);
 	}
 
-	static LogStreamChunker create(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
-			String logPartition) {
-		StreamConsumerSwitcher<ByteBuf> switcher = StreamConsumerSwitcher.create();
-		LogStreamChunker chunker = new LogStreamChunker(currentTimeProvider, fileSystem, datetimeFormat, logPartition, switcher);
-		long timestamp = currentTimeProvider.currentTimeMillis();
-		String chunkName = datetimeFormat.format(Instant.ofEpochMilli(timestamp));
-		chunker.startNewChunk(chunkName, Stage.complete());
-		return chunker;
+	static LogStreamChunker create(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat, String logPartition) {
+		return new LogStreamChunker(currentTimeProvider, fileSystem, datetimeFormat, logPartition);
 	}
 
 	@Override
-	public void onData(ByteBuf item) {
-		String chunkName = datetimeFormat.format(Instant.ofEpochMilli(currentTimeProvider.currentTimeMillis()));
-		if (!chunkName.equals(currentChunkName)) {
-			startNewChunk(chunkName, currentConsumer.getResult());
+	public void setInput(SerialSupplier<ByteBuf> input) {
+		this.input = input;
+	}
+
+	@Override
+	public Stage<Void> process() {
+		if (process == null) {
+			process = new SettableStage<>();
+			doProcess();
 		}
+		return process;
+	}
 
-		dataReceiver.onData(item);
+	private void doProcess() {
+		input.get()
+				.whenResult(buf -> {
+					if (process.isComplete()) {
+						if (buf != null) buf.recycle();
+						return;
+					}
+					if (buf != null) {
+						ensureConsumer()
+								.thenRun(() -> {
+									if (process.isComplete()) {
+										buf.recycle();
+										return;
+									}
+
+									currentConsumer.accept(buf)
+											.thenRun(() -> {
+												if (process.isComplete()) return;
+												doProcess();
+											})
+											.whenException(this::closeWithError);
+								})
+								.whenException(e -> buf.recycle())
+								.whenException(this::closeWithError);
+					} else {
+						flush()
+								.thenRun(() -> process.set(null))
+								.whenException(this::closeWithError);
+					}
+				})
+				.whenException(this::closeWithError);
+	}
+
+	private Stage<Void> ensureConsumer() {
+		String chunkName = datetimeFormat.format(Instant.ofEpochMilli(currentTimeProvider.currentTimeMillis()));
+		return chunkName.equals(currentChunkName) ?
+				Stage.complete() :
+				startNewChunk(chunkName);
+	}
+
+	private Stage<Void> startNewChunk(String chunkName) {
+		return flush()
+				.thenCompose($ -> {
+					if (process.isComplete()) return Stage.complete();
+					currentChunkName = chunkName;
+					return fileSystem.makeUniqueLogFile(logPartition, chunkName)
+							.thenCompose(newLogFile -> fileSystem.write(logPartition, newLogFile)
+									.whenResult(newConsumer -> {
+										if (process.isComplete()) {
+											newConsumer.cancel();
+											return;
+										}
+										this.currentConsumer = newConsumer;
+									}))
+							.toVoid();
+				});
+	}
+
+	private Stage<Void> flush() {
+		if (currentConsumer == null) return Stage.complete();
+		return currentConsumer.accept(null)
+				.thenRun(() -> currentConsumer = null);
 	}
 
 	@Override
-	public void setProducer(StreamProducer<ByteBuf> producer) {
-		super.setProducer(new ForwardingStreamProducer<ByteBuf>(producer) {
-			@Override
-			public void produce(StreamDataReceiver<ByteBuf> dataReceiver) {
-				LogStreamChunker.this.dataReceiver = dataReceiver;
-				super.produce(LogStreamChunker.this);
-			}
-		});
-	}
-
-	private void startNewChunk(String newChunkName, Stage<Void> previousFile) {
-		currentChunkName = newChunkName;
-		currentConsumer = StreamConsumerWithResult.ofStage(previousFile
-				.thenCompose($ -> fileSystem.makeUniqueLogFile(logPartition, newChunkName))
-				.thenCompose(logFile -> fileSystem.write(logPartition, logFile)));
-
-		switcher.switchTo(currentConsumer);
-	}
-
-	@Override
-	public MaterializedStage<Void> getResult() {
-		return result;
+	public void closeWithError(Throwable e) {
+		input.closeWithError(e);
+		if (currentConsumer != null) {
+			currentConsumer.closeWithError(e);
+		}
+		process.setException(e);
 	}
 }

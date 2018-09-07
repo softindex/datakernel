@@ -19,8 +19,10 @@ package io.datakernel.stream;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
+import io.datakernel.util.Recyclable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +30,6 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
-import static io.datakernel.stream.StreamStatus.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.emptySet;
@@ -46,9 +47,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 	@Nullable
 	private StreamConsumer<T> consumer;
-
-	private StreamStatus status = OPEN;
-	private Throwable exception;
 
 	private final SettableStage<Void> endOfStream = new SettableStage<>();
 
@@ -87,8 +85,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 				LATE_BINDING_ERROR_MESSAGE, this);
 		this.consumer = consumer;
 		onWired();
-		consumer.getEndOfStream()
-//				.thenRun(this::endOfStream)
+		consumer.getAcknowledgement()
 				.whenException(this::closeWithError);
 	}
 
@@ -161,7 +158,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		}
 	}
 
-	protected final void postProduce() {
+	public final void postProduce() {
 		if (produceStatus != null)
 			return; // recursive call from downstream - just hot-switch to another receiver
 		produceStatus = ProduceStatus.POSTED;
@@ -180,13 +177,15 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		if (logger.isTraceEnabled()) logger.trace("Start producing: {}", this);
 		assert dataReceiver != null;
 
-		if (currentDataReceiver == dataReceiver)
-			return;
-		if (status.isClosed())
-			return;
+		if (currentDataReceiver == dataReceiver) return;
+		if (endOfStream.isComplete()) return;
 		currentDataReceiver = dataReceiver;
 		lastDataReceiver = dataReceiver;
 		onProduce(dataReceiver);
+	}
+
+	protected boolean isClosed() {
+		return endOfStream.isComplete();
 	}
 
 	protected void onSuspended() {
@@ -201,46 +200,33 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		onSuspended();
 	}
 
-	public void sendEndOfStream() {
-		if (status.isClosed())
-			return;
-		status = END_OF_STREAM;
+	public Stage<Void> sendEndOfStream() {
+		if (endOfStream.isComplete()) return endOfStream;
 		currentDataReceiver = null;
-		lastDataReceiver = item -> {};
-		eventloop.post(this::cleanup);
+		lastDataReceiver = Recyclable::deepRecycle;
 		endOfStream.set(null);
+		eventloop.post(this::cleanup);
+		return consumer.getAcknowledgement();
 	}
 
 	@Override
 	public final void closeWithError(Throwable e) {
-		if (status.isClosed())
-			return;
-		status = CLOSED_WITH_ERROR;
-		currentDataReceiver = null;
-		lastDataReceiver = item -> {};
-		exception = e;
+		if (endOfStream.isComplete()) return;
 		if (!(e instanceof ExpectedException)) {
 			if (logger.isWarnEnabled()) {
-				logger.warn("StreamProducer {} closed with error {}", this, exception.toString());
+				logger.warn("StreamProducer {} closed with error {}", this, e.toString());
 			}
 		}
-		onError(e);
-		eventloop.post(this::cleanup);
+		currentDataReceiver = null;
+		lastDataReceiver = Recyclable::deepRecycle;
 		endOfStream.setException(e);
+		eventloop.post(this::cleanup);
+		onError(e);
 	}
 
 	protected abstract void onError(Throwable t);
 
 	protected void cleanup() {
-	}
-
-	public final StreamStatus getStatus() {
-		return status;
-	}
-
-	@Nullable
-	public final Throwable getException() {
-		return exception;
 	}
 
 	@Override

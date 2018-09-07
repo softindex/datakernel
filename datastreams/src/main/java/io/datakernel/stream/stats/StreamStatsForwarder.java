@@ -1,5 +1,6 @@
 package io.datakernel.stream.stats;
 
+import io.datakernel.async.Stage;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamTransformer;
 
@@ -40,9 +41,9 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected void onEndOfStream() {
+		protected Stage<Void> onProducerEndOfStream() {
 			stats.onEndOfStream();
-			output.sendEndOfStream();
+			return output.sendEndOfStream();
 		}
 
 		@Override

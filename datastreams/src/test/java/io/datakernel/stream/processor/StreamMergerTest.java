@@ -19,7 +19,6 @@ package io.datakernel.stream.processor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamStatus;
 import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
@@ -29,11 +28,10 @@ import java.util.List;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamMergerTest {
 
@@ -52,17 +50,17 @@ public class StreamMergerTest {
 		source1.streamTo(merger.newInput());
 		source2.streamTo(merger.newInput());
 
-		merger.getOutput().streamTo(consumer.with(TestStreamConsumers.randomlySuspending()));
+		merger.getOutput().streamTo(consumer.apply(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(3, 4, 6, 7), consumer.getList());
 
-		assertStatus(END_OF_STREAM, source0);
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(END_OF_STREAM, consumer);
-		assertStatus(END_OF_STREAM, merger.getOutput());
-		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
+		assertEndOfStream(source0);
+		assertEndOfStream(source1);
+		assertEndOfStream(source2);
+		assertEndOfStream(consumer);
+		assertEndOfStream(merger.getOutput());
+		assertConsumersEndOfStream(merger.getInputs());
 	}
 
 	@Test
@@ -80,17 +78,17 @@ public class StreamMergerTest {
 		source1.streamTo(merger.newInput());
 		source2.streamTo(merger.newInput());
 
-		merger.getOutput().streamTo(consumer.with(TestStreamConsumers.randomlySuspending()));
+		merger.getOutput().streamTo(consumer.apply(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(3, 3, 4, 6, 7), consumer.getList());
 
-		assertStatus(END_OF_STREAM, source0);
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(END_OF_STREAM, consumer);
-		assertStatus(END_OF_STREAM, merger.getOutput());
-		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
+		assertEndOfStream(source0);
+		assertEndOfStream(source1);
+		assertEndOfStream(source2);
+		assertEndOfStream(consumer);
+		assertEndOfStream(merger.getOutput());
+		assertConsumersEndOfStream(merger.getInputs());
 	}
 
 	@Test
@@ -120,7 +118,7 @@ public class StreamMergerTest {
 		source1.streamTo(merger.newInput());
 		source2.streamTo(merger.newInput());
 
-		merger.getOutput().streamTo(consumer.with(TestStreamConsumers.randomlySuspending()));
+		merger.getOutput().streamTo(consumer.apply(TestStreamConsumers.randomlySuspending()));
 
 		eventloop.run();
 
@@ -131,11 +129,11 @@ public class StreamMergerTest {
 				d2  //DataItem1(0,6,1,3)
 		), consumer.getList());
 
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(END_OF_STREAM, consumer);
-		assertStatus(END_OF_STREAM, merger.getOutput());
-		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
+		assertEndOfStream(source1);
+		assertEndOfStream(source2);
+		assertEndOfStream(consumer);
+		assertEndOfStream(merger.getOutput());
+		assertConsumersEndOfStream(merger.getInputs());
 	}
 
 	@Test
@@ -153,7 +151,7 @@ public class StreamMergerTest {
 		source2.streamTo(merger.newInput());
 
 		merger.getOutput().streamTo(
-				consumer.with(TestStreamConsumers.decorator((context, dataReceiver) ->
+				consumer.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
 							if (item == 8) {
@@ -164,12 +162,12 @@ public class StreamMergerTest {
 		eventloop.run();
 
 //		assertEquals(5, list.size());
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(CLOSED_WITH_ERROR, consumer);
-		assertStatus(CLOSED_WITH_ERROR, merger.getOutput());
-		assertArrayEquals(new StreamStatus[]{END_OF_STREAM, END_OF_STREAM},
-				consumerStatuses(merger.getInputs()));
+		assertEndOfStream(source1);
+		assertEndOfStream(source2);
+		assertClosedWithError(consumer);
+		assertClosedWithError(merger.getOutput());
+		assertClosedWithError(merger.getInput(0));
+		assertClosedWithError(merger.getInput(1));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -199,15 +197,15 @@ public class StreamMergerTest {
 		source2.streamTo(merger.newInput());
 
 		merger.getOutput().streamTo(
-				consumer.with(TestStreamConsumers.oneByOne()));
+				consumer.apply(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
-		assertStatus(CLOSED_WITH_ERROR, consumer);
-		assertStatus(CLOSED_WITH_ERROR, merger.getOutput());
-		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
-				consumerStatuses(merger.getInputs()));
+		assertClosedWithError(consumer);
+		assertClosedWithError(merger.getOutput());
+		assertClosedWithError(merger.getInput(0));
+		assertClosedWithError(merger.getInput(1));
 	}
 
 }

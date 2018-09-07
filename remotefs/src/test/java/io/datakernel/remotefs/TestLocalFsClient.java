@@ -24,7 +24,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.file.SerialFileReader;
 import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
@@ -45,8 +44,9 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.file.StreamFileReader.READ_OPTIONS;
-import static io.datakernel.stream.file.StreamFileWriter.CREATE_OPTIONS;
+import static io.datakernel.serial.file.SerialFileReader.READ_OPTIONS;
+import static io.datakernel.serial.file.SerialFileReader.readFile;
+import static io.datakernel.serial.file.SerialFileWriter.CREATE_OPTIONS;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -132,7 +132,8 @@ public class TestLocalFsClient {
 		AsyncFile file = AsyncFile.open(executor, inputFile, READ_OPTIONS);
 
 		client.upload("1/c.txt").whenResult(consumer ->
-				consumer.streamFrom(SerialFileReader.readFile(file).withBufferSize(bufferSize))
+				readFile(file).withBufferSize(bufferSize)
+						.streamTo(consumer)
 						.whenComplete(assertComplete()));
 
 		eventloop.run();

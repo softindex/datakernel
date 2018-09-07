@@ -123,7 +123,7 @@ public final class StreamProducers {
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
-			consumer.getEndOfStream()
+			consumer.getAcknowledgement()
 					.whenException(endOfStream::trySetException);
 		}
 

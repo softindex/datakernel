@@ -55,11 +55,6 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamProducer<T>
 	public void setInput(SerialSupplier<ByteBuf> input) {
 		this.input = input;
 	}
-
-	@Override
-	public SerialSupplier<ByteBuf> getInput() {
-		return input;
-	}
 	// endregion
 
 	@Override
@@ -97,7 +92,7 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamProducer<T>
 			if (isReceiverReady()) {
 				input.get()
 						.whenResult(buf -> {
-							if (getStatus().isClosed()) {
+							if (isClosed()) {
 								buf.recycle();
 								return;
 							}
@@ -113,6 +108,8 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamProducer<T>
 							}
 						})
 						.whenException(this::closeWithError);
+			} else {
+				async.end();
 			}
 		} catch (ParseException e) {
 			closeWithError(e);

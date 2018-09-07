@@ -19,6 +19,7 @@ package io.datakernel.stream;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
@@ -28,7 +29,6 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
-import static io.datakernel.stream.StreamStatus.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.emptySet;
@@ -46,12 +46,11 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	private StreamProducer<T> producer;
 
-	private StreamStatus status = OPEN;
-	private Throwable exception;
-
-	private final SettableStage<Void> endOfStream = new SettableStage<>();
+	private final SettableStage<Void> acknowledgement = new SettableStage<>();
 
 	private Object tag;
+
+	private boolean producerEndOfStream;
 
 	/**
 	 * Sets wired producer. It will sent data to this consumer
@@ -68,8 +67,13 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		this.producer = producer;
 		onWired();
 		producer.getEndOfStream()
-				.thenRun(this::endOfStream)
-				.whenException(this::closeWithError);
+				.whenException(this::closeWithError)
+				.post()
+				.thenRun(() -> producerEndOfStream = true)
+				.thenRun(() -> onProducerEndOfStream()
+						.whenException(this::closeWithError)
+						.post()
+						.thenRun(this::endOfStream));
 	}
 
 	protected void onWired() {
@@ -88,31 +92,28 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	protected final void endOfStream() {
-		if (status.isClosed())
-			return;
-		status = END_OF_STREAM;
-
-		onEndOfStream();
+		if (acknowledgement.isComplete()) return;
+		acknowledgement.set(null);
 		eventloop.post(this::cleanup);
-		endOfStream.set(null);
 	}
 
-	protected abstract void onEndOfStream();
+	protected abstract Stage<Void> onProducerEndOfStream();
+
+	public final boolean isProducerEndOfStream() {
+		return producerEndOfStream;
+	}
 
 	@Override
-	public final void closeWithError(Throwable t) {
-		if (status.isClosed())
-			return;
-		status = CLOSED_WITH_ERROR;
-		exception = t;
-		if (!(t instanceof ExpectedException)) {
+	public final void closeWithError(Throwable e) {
+		if (acknowledgement.isComplete()) return;
+		acknowledgement.setException(e);
+		if (!(e instanceof ExpectedException)) {
 			if (logger.isWarnEnabled()) {
-				logger.warn("StreamConsumer {} closed with error {}", this, t.toString());
+				logger.warn("StreamConsumer {} closed with error {}", this, e.toString());
 			}
 		}
-		onError(t);
+		onError(e);
 		eventloop.post(this::cleanup);
-		endOfStream.setException(t);
 	}
 
 	protected abstract void onError(Throwable t);
@@ -120,20 +121,14 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected void cleanup() {
 	}
 
-	public final StreamStatus getStatus() {
-		return status;
-	}
-
-	public final Throwable getException() {
-		return exception;
-	}
-
 	@Override
-	public final MaterializedStage<Void> getEndOfStream() {
-		return endOfStream;
+	public final MaterializedStage<Void> getAcknowledgement() {
+		return acknowledgement;
 	}
 
-	/** This method is useful for stream transformers that might add some capability to the stream */
+	/**
+	 * This method is useful for stream transformers that might add some capability to the stream
+	 */
 	protected static Set<StreamCapability> addCapabilities(@Nullable StreamConsumer<?> consumer,
 			StreamCapability capability, StreamCapability... capabilities) {
 		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);

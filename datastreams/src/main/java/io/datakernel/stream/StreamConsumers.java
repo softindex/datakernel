@@ -20,6 +20,7 @@ import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.util.Recyclable;
 import io.datakernel.util.ThrowingConsumer;
 
 import java.util.ArrayDeque;
@@ -28,7 +29,6 @@ import java.util.Set;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.util.Recyclable.deepRecycle;
 
 public final class StreamConsumers {
@@ -37,7 +37,7 @@ public final class StreamConsumers {
 
 	static final class ClosingWithErrorImpl<T> implements StreamConsumer<T> {
 		private final Throwable exception;
-		private final SettableStage<Void> endOfStream = new SettableStage<>();
+		private final SettableStage<Void> acknowledgement = new SettableStage<>();
 
 		ClosingWithErrorImpl(Throwable exception) {
 			this.exception = exception;
@@ -45,12 +45,12 @@ public final class StreamConsumers {
 
 		@Override
 		public void setProducer(StreamProducer<T> producer) {
-			getCurrentEventloop().post(() -> endOfStream.trySetException(exception));
+			getCurrentEventloop().post(() -> acknowledgement.trySetException(exception));
 		}
 
 		@Override
-		public MaterializedStage<Void> getEndOfStream() {
-			return endOfStream;
+		public MaterializedStage<Void> getAcknowledgement() {
+			return acknowledgement;
 		}
 
 		@Override
@@ -60,7 +60,7 @@ public final class StreamConsumers {
 
 		@Override
 		public void closeWithError(Throwable e) {
-			endOfStream.trySetException(e);
+			acknowledgement.trySetException(e);
 		}
 	}
 
@@ -85,14 +85,15 @@ public final class StreamConsumers {
 			});
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
-		protected void onEndOfStream() {
+		protected Stage<Void> onProducerEndOfStream() {
 			try {
 				consumer.accept(null);
+				return Stage.complete();
 			} catch (RuntimeException e) {
 				throw e;
-			} catch (Throwable ignored) {
+			} catch (Throwable e) {
+				return Stage.ofException(e);
 			}
 		}
 
@@ -106,7 +107,7 @@ public final class StreamConsumers {
 		}
 	}
 
-	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, Void>, StreamDataReceiver<T> {
+	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataReceiver<T> {
 		private final SerialConsumer<T> consumer;
 		private final ArrayDeque<T> deque = new ArrayDeque<>();
 		private final SettableStage<Void> result = new SettableStage<>();
@@ -132,10 +133,10 @@ public final class StreamConsumers {
 			produce();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
-		protected void onEndOfStream() {
+		protected Stage<Void> onProducerEndOfStream() {
 			produce();
+			return Stage.complete();
 		}
 
 		private void produce() {
@@ -154,7 +155,7 @@ public final class StreamConsumers {
 				});
 				return;
 			}
-			if (getStatus() == END_OF_STREAM) {
+			if (isProducerEndOfStream()) {
 				consumer.accept(null)
 						.whenComplete(result::trySet);
 			} else {
@@ -173,11 +174,6 @@ public final class StreamConsumers {
 		public Set<StreamCapability> getCapabilities() {
 			return EnumSet.of(LATE_BINDING);
 		}
-
-		@Override
-		public MaterializedStage<Void> getResult() {
-			return result;
-		}
 	}
 
 	/**
@@ -185,18 +181,17 @@ public final class StreamConsumers {
 	 *
 	 * @param <T> type of received data
 	 */
-	static final class IdleImpl<T> implements StreamConsumer<T> {
-		private final SettableStage<Void> endOfStream = new SettableStage<>();
+	static final class Idle<T> implements StreamConsumer<T> {
+		private final SettableStage<Void> acknowledgement = new SettableStage<>();
 
 		@Override
 		public void setProducer(StreamProducer<T> producer) {
-			producer.getEndOfStream().whenComplete(endOfStream::trySet);
-			producer.produce($ -> {});
+			producer.getEndOfStream().whenComplete(acknowledgement::trySet);
 		}
 
 		@Override
-		public MaterializedStage<Void> getEndOfStream() {
-			return endOfStream;
+		public MaterializedStage<Void> getAcknowledgement() {
+			return acknowledgement;
 		}
 
 		@Override
@@ -206,7 +201,32 @@ public final class StreamConsumers {
 
 		@Override
 		public void closeWithError(Throwable e) {
-			endOfStream.trySetException(e);
+			acknowledgement.trySetException(e);
+		}
+	}
+
+	static final class Skip<T> implements StreamConsumer<T> {
+		private final SettableStage<Void> acknowledgement = new SettableStage<>();
+
+		@Override
+		public void setProducer(StreamProducer<T> producer) {
+			producer.getEndOfStream().whenComplete(acknowledgement::trySet);
+			producer.produce(Recyclable::deepRecycle);
+		}
+
+		@Override
+		public MaterializedStage<Void> getAcknowledgement() {
+			return acknowledgement;
+		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			return EnumSet.of(LATE_BINDING);
+		}
+
+		@Override
+		public void closeWithError(Throwable e) {
+			acknowledgement.trySetException(e);
 		}
 	}
 

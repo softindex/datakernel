@@ -27,10 +27,9 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.*;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducerModifier;
-import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.processor.*;
+import io.datakernel.serial.processor.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
@@ -148,42 +147,42 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
+	public <T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId,
 			DefiningClassLoader classLoader) {
 		return client.download(getPath(chunkId))
 				.whenComplete(stageOpenR.recordStats())
 				.thenApply(producer -> producer
-						.with(readFile)
-						.with(StreamLZ4Decompressor.create())
-						.with(readDecompress)
-						.with(StreamBinaryDeserializer.create(
+						.apply(readFile)
+						.apply(SerialLZ4Decompressor.create())
+						.apply(readDecompress)
+						.apply(SerialBinaryDeserializer.create(
 								createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader)))
-						.with((StreamProducerModifier<T, T>) (detailed ? readDeserializeDetailed : readDeserialize))
-						.withEndOfStreamAsResult()
+						.apply((StreamStats<T>) (detailed ? readDeserializeDetailed : readDeserialize))
 						.withLateBinding());
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
+	public <T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId,
 			DefiningClassLoader classLoader) {
 		return client.upload(getTempPath(chunkId))
 				.whenComplete(stageOpenW.recordStats())
-				.thenApply(consumer -> StreamTransformer.<T>idenity()
-						.with((StreamProducerModifier<T, T>) (detailed ? writeSerializeDetailed : writeSerialize))
-						.with(StreamBinarySerializer.create(
-								createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader))
-								.withInitialBufferSize(bufferSize))
-						.with(writeCompress)
-						.with(StreamLZ4Compressor.fastCompressor())
-						.with(writeChunker)
-						.with(StreamByteChunker.create(
-								bufferSize.map(bytes -> bytes / 2),
-								bufferSize.map(bytes -> bytes * 2)))
-						.with(writeFile)
-						.applyTo(consumer));
+				.thenApply(consumer -> StreamConsumer.ofProducer(
+						producer -> producer
+								.apply((StreamStats<T>) (detailed ? writeSerializeDetailed : writeSerialize))
+								.apply(SerialBinarySerializer.create(
+										createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader))
+										.withInitialBufferSize(bufferSize))
+								.apply(writeCompress)
+								.apply(SerialLZ4Compressor.createFastCompressor())
+								.apply(writeChunker)
+								.apply(SerialByteChunker.create(
+										bufferSize.map(bytes -> bytes / 2),
+										bufferSize.map(bytes -> bytes * 2)))
+								.apply(writeFile)
+								.streamTo(consumer)));
 	}
 
 	@Override

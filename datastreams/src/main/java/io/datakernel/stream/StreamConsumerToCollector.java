@@ -11,7 +11,7 @@ import java.util.stream.Collector;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
-public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, R> {
+public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private final Collector<T, A, R> collector;
 	private final SettableStage<R> resultStage = new SettableStage<>();
 	private A accumulator;
@@ -28,10 +28,11 @@ public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamCons
 	}
 
 	@Override
-	protected void onEndOfStream() {
+	protected Stage<Void> onProducerEndOfStream() {
 		R result = collector.finisher().apply(accumulator);
 		accumulator = null;
 		resultStage.set(result);
+		return Stage.complete();
 	}
 
 	@Override
@@ -39,7 +40,6 @@ public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamCons
 		resultStage.setException(t);
 	}
 
-	@Override
 	public MaterializedStage<R> getResult() {
 		return resultStage;
 	}

@@ -25,14 +25,6 @@ import java.util.function.*;
 public interface SerialConsumer<T> extends Cancellable {
 	Stage<Void> accept(@Nullable T value);
 
-	default SerialConsumer<T> with(UnaryOperator<SerialConsumer<T>> modifier) {
-		return modifier.apply(this);
-	}
-
-	default <R> R compose(Function<SerialConsumer<T>, R> fn) {
-		return fn.apply(this);
-	}
-
 	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer) {
 		return of(consumer, endOfStream -> Stage.complete());
 	}
@@ -79,10 +71,6 @@ public interface SerialConsumer<T> extends Cancellable {
 		return queue.getConsumer();
 	}
 
-	static <T, R> SerialConsumer<T> ofTransformer(Function<SerialSupplier<T>, R> fn, Consumer<R> resultAcceptor, SerialQueue<T> queue) {
-		return ofSupplier(producer -> resultAcceptor.accept(fn.apply(producer)), queue);
-	}
-
 	static <T> SerialConsumer<T> ofStage(Stage<? extends SerialConsumer<T>> stage) {
 		MaterializedStage<? extends SerialConsumer<T>> materializedStage = stage.materialize();
 		return new SerialConsumer<T>() {
@@ -109,6 +97,14 @@ public interface SerialConsumer<T> extends Cancellable {
 				materializedStage.whenResult(supplier -> supplier.closeWithError(e));
 			}
 		};
+	}
+
+	default <R> SerialConsumer<R> apply(SerialConsumerModifier<T, R> modifier) {
+		return apply((Function<SerialConsumer<T>, SerialConsumer<R>>) modifier::applyTo);
+	}
+
+	default <R> R apply(Function<SerialConsumer<T>, R> fn) {
+		return fn.apply(this);
 	}
 
 	default SerialConsumer<T> async() {
@@ -295,7 +291,4 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
-	default Stage<Void> streamFrom(SerialSupplier<T> supplier) {
-		return supplier.streamTo(this);
-	}
 }

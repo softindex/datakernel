@@ -1,5 +1,7 @@
 package io.datakernel.stream;
 
+import io.datakernel.async.Stage;
+
 import java.util.Iterator;
 
 /**
@@ -19,7 +21,7 @@ class StreamProducerConcat<T> extends AbstractStreamProducer<T> {
 
 	private class InternalConsumer extends AbstractStreamConsumer<T> {
 		@Override
-		protected void onEndOfStream() {
+		protected Stage<Void> onProducerEndOfStream() {
 			eventloop.post(() -> {
 				producer = null;
 				internalConsumer = null;
@@ -27,6 +29,7 @@ class StreamProducerConcat<T> extends AbstractStreamProducer<T> {
 					onProduce(getCurrentDataReceiver());
 				}
 			});
+			return getConsumer().getAcknowledgement();
 		}
 
 		@Override

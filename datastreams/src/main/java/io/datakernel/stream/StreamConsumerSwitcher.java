@@ -24,18 +24,17 @@ import io.datakernel.eventloop.Eventloop;
 import java.util.ArrayList;
 import java.util.Set;
 
-import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Collections.emptySet;
 
 public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private InternalProducer currentInternalProducer;
+	private int pendingConsumers = 0;
 
 	private StreamConsumerSwitcher() {
 	}
 
 	public static <T> StreamConsumerSwitcher<T> create() {
-		return create(StreamConsumer.idle());
+		return new StreamConsumerSwitcher<>();
 	}
 
 	public static <T> StreamConsumerSwitcher<T> create(StreamConsumer<T> consumer) {
@@ -50,8 +49,11 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	protected final void onEndOfStream() {
-		switchTo(StreamConsumer.idle());
+	protected Stage<Void> onProducerEndOfStream() {
+		if (currentInternalProducer != null) {
+			currentInternalProducer.sendEndOfStream();
+		}
+		return getAcknowledgement();
 	}
 
 	@Override
@@ -65,13 +67,13 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	}
 
 	public void switchTo(StreamConsumer<T> newConsumer) {
-		if (getStatus() == CLOSED_WITH_ERROR) {
+		if (getProducer() != null && getProducer().getEndOfStream().isException()) {
 			if (currentInternalProducer != null) {
-				currentInternalProducer.sendError(getException());
+				currentInternalProducer.sendError(getAcknowledgement().getException());
 			}
 			currentInternalProducer = new InternalProducer(eventloop, StreamConsumer.idle());
-			StreamProducer.<T>closingWithError(getException()).streamTo(newConsumer);
-		} else if (getStatus() == END_OF_STREAM) {
+			StreamProducer.<T>closingWithError(getAcknowledgement().getException()).streamTo(newConsumer);
+		} else if (getProducer() != null && getProducer().getEndOfStream().isComplete()) {
 			if (currentInternalProducer != null) {
 				currentInternalProducer.sendEndOfStream();
 			}
@@ -98,14 +100,20 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		public InternalProducer(Eventloop eventloop, StreamConsumer<T> consumer) {
 			this.eventloop = eventloop;
 			this.consumer = consumer;
+			pendingConsumers++;
 		}
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
 			assert consumer == this.consumer;
-			consumer.getEndOfStream()
-//					.thenRun(this::onEndOfStream)
-					.whenException(this::closeWithError);
+			consumer.getAcknowledgement()
+					.whenException(this::closeWithError)
+					.post()
+					.thenRun(() -> {
+						if (--pendingConsumers == 0) {
+							StreamConsumerSwitcher.this.endOfStream();
+						}
+					});
 		}
 
 		@Override
