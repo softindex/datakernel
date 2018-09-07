@@ -29,7 +29,6 @@ import io.datakernel.serial.SerialConsumerModifier;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.file.SerialFileReader;
 import io.datakernel.serial.file.SerialFileWriter;
-import io.datakernel.serial.processor.SerialCutter;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +41,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.serial.processor.SerialCutter.SliceStrategy.forByteBuf;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -128,7 +126,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 										.withForceOnClose(true)
 										.whenComplete(writeFinishStage.recordStats())
 										.apply(offset != -1 && skip != 0 ?
-												SerialCutter.create(skip, forByteBuf()) :
+												SerialByteBufCutter.create(skip) :
 												SerialConsumerModifier.identity()));
 							});
 				})

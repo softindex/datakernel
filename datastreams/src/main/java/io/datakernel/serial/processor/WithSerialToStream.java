@@ -14,5 +14,4 @@ public interface WithSerialToStream<B extends WithSerialToStream<B, I, O>, I, O>
 		setInput(supplier);
 		return this;
 	}
-
 }

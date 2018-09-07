@@ -17,7 +17,6 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.async.Stage;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serial.file.SerialFileReader;
 import io.datakernel.serial.file.SerialFileWriter;
@@ -57,7 +56,6 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 
 	private static final AtomicInteger PARTITION = new AtomicInteger();
 
-	private final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final ExecutorService executorService;
 	private final BufferSerializer<T> serializer;
 	private final Path path;

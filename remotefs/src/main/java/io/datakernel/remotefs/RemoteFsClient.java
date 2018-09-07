@@ -35,6 +35,7 @@ import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.List;
@@ -150,20 +151,18 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 
 										logger.trace("download size for file {} is {}: {}", filename, receivingSize, this);
 
-//										StreamStatsDetailed<ByteBuf> stats = StreamStats.detailed(forByteBufs());
+										long[] size = {0};
 										return Stage.of(messaging.receiveBinaryStream()
-//												.with(stats)
+												.peek(b -> size[0] += b != null ? b.readRemaining() : 0)
 												.thenCompose($ -> {
-//													assert stats.getTotalSize() != null;
 													messaging.sendEndOfStream();
-//													if (stats.getTotalSize() == receivingSize) {
-													messaging.close();
-													//noinspection RedundantTypeArguments - might need this back when the if is restored
-													return Stage.<Void>of(null);
-//													}
-//													return Stage.ofException(new IOException("Invalid stream size for file " + filename +
-//															" (offset " + offset + ", length " + length + "), expected: " + receivingSize +
-//															" actual: " + stats.getTotalSize()));
+													if (size[0] == receivingSize) {
+														messaging.close();
+														return Stage.of(null);
+													}
+													return Stage.ofException(new IOException("Invalid stream size for file " + filename +
+															" (offset " + offset + ", length " + length + "), expected: " + receivingSize +
+															" actual: " + size[0]));
 												})
 												.whenException(e -> {
 													messaging.close();
