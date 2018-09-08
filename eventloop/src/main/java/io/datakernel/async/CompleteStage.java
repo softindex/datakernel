@@ -145,12 +145,7 @@ public abstract class CompleteStage<T> implements MaterializedStage<T> {
 		if (other instanceof CompleteStage) {
 			return Stage.of(fn.apply(getResult(), ((CompleteStage<U>) other).getResult()));
 		}
-		return other.then(new NextStage<U, V>() {
-			@Override
-			protected void onComplete(U result) {
-				complete(fn.apply(CompleteStage.this.getResult(), result));
-			}
-		});
+		return other.thenApply(otherResult -> fn.apply(CompleteStage.this.getResult(), otherResult));
 	}
 
 	@Override

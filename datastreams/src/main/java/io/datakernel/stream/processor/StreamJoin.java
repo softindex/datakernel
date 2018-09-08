@@ -258,7 +258,7 @@ public final class StreamJoin<K, L, R, V> implements HasOutput<V>, HasInputs {
 				}
 			}
 			if (isReceiverReady()) {
-				if (left.isProducerEndOfStream() && right.isProducerEndOfStream()) {
+				if (left.getEndOfStream().isResult() && right.getEndOfStream().isResult()) {
 					sendEndOfStream();
 				} else {
 					left.getProducer().produce(left);

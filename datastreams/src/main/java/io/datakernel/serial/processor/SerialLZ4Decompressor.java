@@ -53,8 +53,6 @@ public final class SerialLZ4Decompressor implements WithSerialToSerial<SerialLZ4
 	private SettableStage<Void> process;
 
 	public interface Inspector {
-		void onInputBuf(SerialLZ4Decompressor self, ByteBuf buf);
-
 		void onBlock(SerialLZ4Decompressor self, Header header, ByteBuf inputBuf, ByteBuf outputBuf);
 	}
 
@@ -168,7 +166,8 @@ public final class SerialLZ4Decompressor implements WithSerialToSerial<SerialLZ4
 		ByteBuf inputBuf = bufs.takeExactSize(header.compressedLen);
 		ByteBuf outputBuf;
 		try {
-			outputBuf = readBody(decompressor, checksum, header, inputBuf.array(), inputBuf.readPosition());
+			outputBuf = decompress(decompressor, checksum, header, inputBuf.array(), inputBuf.readPosition());
+			if (inspector != null) inspector.onBlock(this, header, inputBuf, outputBuf);
 		} catch (ParseException e) {
 			closeWithError(e);
 			return;
@@ -228,7 +227,7 @@ public final class SerialLZ4Decompressor implements WithSerialToSerial<SerialLZ4
 		}
 	}
 
-	private static ByteBuf readBody(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
+	private static ByteBuf decompress(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
 			byte[] bytes, int off) throws ParseException {
 		ByteBuf outputBuf = ByteBufPool.allocate(header.originalLen);
 		outputBuf.writePosition(header.originalLen);

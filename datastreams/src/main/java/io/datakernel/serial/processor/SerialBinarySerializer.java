@@ -162,9 +162,9 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 						}
 					});
 		} else {
-			if (isProducerEndOfStream()) {
-				output.accept(null);
-				endOfStream();
+			if (getEndOfStream().isResult()) {
+				output.accept(null)
+						.thenRun(this::acknowledge);
 			} else {
 				getProducer().produce(input);
 			}

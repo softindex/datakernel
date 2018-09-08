@@ -227,6 +227,10 @@ public final class StreamProducers {
 		}
 	}
 
+	public static <T> StreamProducerModifier<T, T> endOfStreamOnError() {
+		return endOfStreamOnError(e -> true);
+	}
+
 	public static <T> StreamProducerModifier<T, T> endOfStreamOnError(Predicate<Throwable> endOfStreamPredicate) {
 		return producer -> new ForwardingStreamProducer<T>(producer) {
 			final SettableStage<Void> endOfStream = new SettableStage<>();
@@ -254,26 +258,6 @@ public final class StreamProducers {
 			public void closeWithError(Throwable e) {
 				super.closeWithError(e);
 				endOfStream.trySetException(e);
-			}
-		};
-	}
-
-	public static <T> StreamProducerModifier<T, T> endOfStreamOnError() {
-		return endOfStreamOnError(throwable -> true);
-	}
-
-	public static <T> StreamProducerModifier<T, T> noEndOfStream() {
-		return producer -> new ForwardingStreamProducer<T>(producer) {
-			final SettableStage<Void> endOfStream = new SettableStage<>();
-
-			{
-				producer.getEndOfStream()
-						.whenException(endOfStream::setException);
-			}
-
-			@Override
-			public MaterializedStage<Void> getEndOfStream() {
-				return endOfStream;
 			}
 		};
 	}

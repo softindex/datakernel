@@ -155,7 +155,7 @@ public final class StreamConsumers {
 				});
 				return;
 			}
-			if (isProducerEndOfStream()) {
+			if (getEndOfStream().isResult()) {
 				consumer.accept(null)
 						.whenComplete(result::trySet);
 			} else {

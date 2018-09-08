@@ -62,7 +62,7 @@ public final class StreamUnion<T> implements HasOutput<T>, HasInputs {
 	private final class Input extends AbstractStreamConsumer<T> {
 		@Override
 		protected Stage<Void> onProducerEndOfStream() {
-			if (inputs.stream().allMatch(Input::isProducerEndOfStream)) {
+			if (inputs.stream().allMatch(input -> input.getEndOfStream().isResult())) {
 				output.sendEndOfStream();
 			}
 			return output.getConsumer().getAcknowledgement();

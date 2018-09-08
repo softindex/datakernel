@@ -18,6 +18,7 @@ package io.datakernel.stream;
 
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.MaterializedStage;
+import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.serial.AbstractSerialConsumer;
 import io.datakernel.serial.SerialConsumer;
@@ -72,7 +73,7 @@ public interface StreamConsumer<T> extends Cancellable {
 	}
 
 	default <R> StreamConsumer<R> apply(StreamConsumerModifier<T, R> modifier) {
-		return apply((Function<StreamConsumer<T>, StreamConsumer<R>>) modifier::applyTo);
+		return apply((Function<StreamConsumer<T>, StreamConsumer<R>>) modifier::apply);
 	}
 
 	default <R> R apply(Function<StreamConsumer<T>, R> fn) {
@@ -113,14 +114,24 @@ public interface StreamConsumer<T> extends Cancellable {
 		return lateBounder.getInput();
 	}
 
-	default StreamConsumer<T> whenEndOfStream(Runnable runnable) {
-		getAcknowledgement().whenResult($ -> runnable.run());
-		return this;
-	}
+	default StreamConsumer<T> withAcknowledgement(Function<Stage<Void>, Stage<Void>> fn) {
+		Stage<Void> acknowledgement = getAcknowledgement();
+		Stage<Void> suppliedAcknowledgement = fn.apply(acknowledgement);
+		if (acknowledgement == suppliedAcknowledgement) return this;
+		SettableStage<Void> newAcknowledgement = new SettableStage<>();
+		suppliedAcknowledgement.whenComplete(newAcknowledgement::trySet);
+		return new ForwardingStreamConsumer<T>(this) {
+			@Override
+			public MaterializedStage<Void> getAcknowledgement() {
+				return newAcknowledgement;
+			}
 
-	default StreamConsumer<T> whenException(Consumer<Throwable> consumer) {
-		getAcknowledgement().whenException(consumer);
-		return this;
+			@Override
+			public void closeWithError(Throwable e) {
+				super.closeWithError(e);
+				newAcknowledgement.trySetException(e);
+			}
+		};
 	}
 
 }

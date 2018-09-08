@@ -45,7 +45,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final long createTick = eventloop.tick();
 
-	@Nullable
 	private StreamConsumer<T> consumer;
 
 	private final SettableStage<Void> endOfStream = new SettableStage<>();

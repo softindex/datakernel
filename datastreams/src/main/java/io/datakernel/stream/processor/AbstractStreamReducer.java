@@ -194,7 +194,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 				input.headKey = input.keyFunction.apply(input.headItem);
 				priorityQueue.offer(input);
 			} else {
-				if (!input.isProducerEndOfStream()) {
+				if (!input.getEndOfStream().isResult()) {
 					streamsAwaiting++;
 					break;
 				}

@@ -101,11 +101,16 @@ public class AggregationGroupReducerTest {
 
 		int aggregationChunkSize = 2;
 
-		StreamProducer<InvertedIndexRecord> producer = StreamProducer.of(new InvertedIndexRecord("fox", 1),
-				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3),
-				new InvertedIndexRecord("brown", 3), new InvertedIndexRecord("lazy", 4),
-				new InvertedIndexRecord("dog", 1), new InvertedIndexRecord("quick", 1),
-				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10));
+		StreamProducer<InvertedIndexRecord> producer = StreamProducer.of(
+				new InvertedIndexRecord("fox", 1),
+				new InvertedIndexRecord("brown", 2),
+				new InvertedIndexRecord("fox", 3),
+				new InvertedIndexRecord("brown", 3),
+				new InvertedIndexRecord("lazy", 4),
+				new InvertedIndexRecord("dog", 1),
+				new InvertedIndexRecord("quick", 1),
+				new InvertedIndexRecord("fox", 4),
+				new InvertedIndexRecord("brown", 10));
 
 		AggregationGroupReducer<Long, InvertedIndexRecord> groupReducer = new AggregationGroupReducer<>(aggregationChunkStorage,
 				structure, asList("documents"),

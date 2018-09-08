@@ -111,7 +111,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 					.post()
 					.thenRun(() -> {
 						if (--pendingConsumers == 0) {
-							StreamConsumerSwitcher.this.endOfStream();
+							StreamConsumerSwitcher.this.acknowledge();
 						}
 					});
 		}

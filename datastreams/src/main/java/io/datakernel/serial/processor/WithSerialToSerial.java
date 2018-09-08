@@ -8,13 +8,13 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 		SerialSupplierModifier<I, O>, SerialConsumerModifier<O, I> {
 
 	@Override
-	default SerialSupplier<O> applyTo(SerialSupplier<I> supplier) {
-		return serialSupplierModifier(new SerialZeroBuffer<>()).applyTo(supplier);
+	default SerialSupplier<O> apply(SerialSupplier<I> supplier) {
+		return serialSupplierModifier(new SerialZeroBuffer<>()).apply(supplier);
 	}
 
 	@Override
-	default SerialConsumer<I> applyTo(SerialConsumer<O> consumer) {
-		return serialConsumerModifier(new SerialZeroBuffer<>()).applyTo(consumer);
+	default SerialConsumer<I> apply(SerialConsumer<O> consumer) {
+		return serialConsumerModifier(new SerialZeroBuffer<>()).apply(consumer);
 	}
 
 	default SerialSupplierModifier<I, O> serialSupplierModifier(SerialQueue<O> queue) {

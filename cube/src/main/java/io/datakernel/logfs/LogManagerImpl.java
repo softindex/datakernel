@@ -21,6 +21,7 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.serial.processor.SerialBinarySerializer;
@@ -44,6 +45,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static io.datakernel.serial.SerialSuppliers.endOfStreamOnError;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
@@ -166,18 +168,14 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 										.apply(SerialLZ4Decompressor.create()
 												.withInspector(new SerialLZ4Decompressor.Inspector() {
 													@Override
-													public void onInputBuf(SerialLZ4Decompressor self, ByteBuf buf) {
-													}
-
-													@Override
 													public void onBlock(SerialLZ4Decompressor self, SerialLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
 														inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
 													}
 												}))
-//										.with(endOfStreamOnError(throwable -> throwable instanceof TruncatedDataException)) // TODO
+										.apply(endOfStreamOnError(throwable -> throwable instanceof TruncatedDataException)) // TODO
 										.apply(SerialBinaryDeserializer.create(serializer))
-										.thenRun(() -> log(null))
-										.whenException(this::log)
+										.withEndOfStream(endOfStream ->
+												endOfStream.whenComplete(($, e) -> log(e)))
 										.withLateBinding();
 							});
 
@@ -195,7 +193,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 						}
 					};
 
-					StreamProducer<T> producer = StreamProducer.concat(producers);
+					StreamProducer<T> producer = StreamProducer.concat(producers).withLateBinding();
 					resultStage.set(StreamProducerWithResult.of(producer, positionStage));
 				})
 				.whenException(resultStage::setException);

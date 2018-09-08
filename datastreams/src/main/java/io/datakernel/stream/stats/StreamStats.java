@@ -22,22 +22,22 @@ public interface StreamStats<T> extends
 	void onError(Throwable throwable);
 
 	@Override
-	default StreamConsumer<T> applyTo(StreamConsumer<T> consumer) {
+	default StreamConsumer<T> apply(StreamConsumer<T> consumer) {
 		return consumer.apply(StreamStatsForwarder.create(this));
 	}
 
 	@Override
-	default StreamProducer<T> applyTo(StreamProducer<T> producer) {
+	default StreamProducer<T> apply(StreamProducer<T> producer) {
 		return producer.apply(StreamStatsForwarder.create(this));
 	}
 
 	@Override
-	default SerialSupplier<T> applyTo(SerialSupplier<T> supplier) {
+	default SerialSupplier<T> apply(SerialSupplier<T> supplier) {
 		return supplier; // TODO
 	}
 
 	@Override
-	default SerialConsumer<T> applyTo(SerialConsumer<T> consumer) {
+	default SerialConsumer<T> apply(SerialConsumer<T> consumer) {
 		return consumer; // TODO
 	}
 

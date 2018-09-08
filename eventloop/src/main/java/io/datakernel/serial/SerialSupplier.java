@@ -138,7 +138,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	}
 
 	default <R> SerialSupplier<R> apply(SerialSupplierModifier<T, R> modifier) {
-		return apply((Function<SerialSupplier<T>, SerialSupplier<R>>) modifier::applyTo);
+		return apply((Function<SerialSupplier<T>, SerialSupplier<R>>) modifier::apply);
 	}
 
 	default <R> R apply(Function<SerialSupplier<T>, R> fn) {
@@ -282,6 +282,27 @@ public interface SerialSupplier<T> extends Cancellable {
 	}
 
 	//** Methods below accept lambdas with dummy void argument for API compatibility **//
+
+	default SerialSupplier<T> withEndOfStream(Function<Stage<Void>, Stage<Void>> fn) {
+		return new AbstractSerialSupplier<T>(this) {
+			@SuppressWarnings("unchecked")
+			@Override
+			public Stage<T> get() {
+				return SerialSupplier.this.get()
+						.thenComposeEx((item, e) -> {
+							if (e == null) {
+								if (item != null) {
+									return Stage.of(item);
+								} else {
+									return (Stage<T>) fn.apply(Stage.of(null));
+								}
+							} else {
+								return (Stage<T>) fn.apply(Stage.ofException(e));
+							}
+						});
+			}
+		};
+	}
 
 	default SerialSupplier<T> whenComplete(BiConsumer<Void, Throwable> action) {
 		return new AbstractSerialSupplier<T>(this) {

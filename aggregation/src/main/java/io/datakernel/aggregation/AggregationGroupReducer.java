@@ -65,7 +65,7 @@ public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<
 		this.chunkSize = chunkSize;
 		this.aggregation = aggregation;
 		this.resultsTracker = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(this.getAcknowledgement(), (accumulator, $) -> {});
+				.withStage(this.getEndOfStream(), (accumulator, $) -> {});
 		this.classLoader = classLoader;
 	}
 

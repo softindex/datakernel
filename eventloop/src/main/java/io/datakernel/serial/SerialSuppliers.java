@@ -8,6 +8,7 @@ import io.datakernel.util.CollectionUtils;
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collector;
 
 public final class SerialSuppliers {
@@ -142,6 +143,31 @@ public final class SerialSuppliers {
 						result.trySetException(e1);
 					}
 				});
+	}
+
+	public static <T> SerialSupplierModifier<T, T> endOfStreamOnError() {
+		return endOfStreamOnError(e -> true);
+	}
+
+	public static <T> SerialSupplierModifier<T, T> endOfStreamOnError(Predicate<Throwable> endOfStreamPredicate) {
+		return supplier ->
+				new AbstractSerialSupplier<T>(supplier) {
+					@Override
+					public Stage<T> get() {
+						return supplier.get()
+								.thenComposeEx((item, e) -> {
+									if (e == null) {
+										return Stage.of(item);
+									} else {
+										if (endOfStreamPredicate.test(e)) {
+											return Stage.of(null);
+										} else {
+											return Stage.ofException(e);
+										}
+									}
+								});
+					}
+				};
 	}
 
 }

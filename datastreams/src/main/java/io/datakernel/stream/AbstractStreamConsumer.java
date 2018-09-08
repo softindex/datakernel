@@ -46,11 +46,10 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	private StreamProducer<T> producer;
 
+	private final SettableStage<Void> endOfStream = new SettableStage<>();
 	private final SettableStage<Void> acknowledgement = new SettableStage<>();
 
 	private Object tag;
-
-	private boolean producerEndOfStream;
 
 	/**
 	 * Sets wired producer. It will sent data to this consumer
@@ -67,13 +66,13 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		this.producer = producer;
 		onWired();
 		producer.getEndOfStream()
+				.whenComplete(endOfStream::set)
 				.whenException(this::closeWithError)
 				.post()
-				.thenRun(() -> producerEndOfStream = true)
 				.thenRun(() -> onProducerEndOfStream()
 						.whenException(this::closeWithError)
 						.post()
-						.thenRun(this::endOfStream));
+						.thenRun(this::acknowledge));
 	}
 
 	protected void onWired() {
@@ -91,17 +90,13 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		return producer;
 	}
 
-	protected final void endOfStream() {
+	protected final void acknowledge() {
 		if (acknowledgement.isComplete()) return;
 		acknowledgement.set(null);
 		eventloop.post(this::cleanup);
 	}
 
 	protected abstract Stage<Void> onProducerEndOfStream();
-
-	public final boolean isProducerEndOfStream() {
-		return producerEndOfStream;
-	}
 
 	@Override
 	public final void closeWithError(Throwable e) {
@@ -119,6 +114,10 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected abstract void onError(Throwable t);
 
 	protected void cleanup() {
+	}
+
+	public MaterializedStage<Void> getEndOfStream() {
+		return endOfStream;
 	}
 
 	@Override

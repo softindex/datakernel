@@ -83,7 +83,7 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 				suspended = false;
 				input.getProducer().produce(this);
 			}
-			if (input.isProducerEndOfStream()) {
+			if (input.getEndOfStream().isResult()) {
 				sendEndOfStream();
 			}
 		}

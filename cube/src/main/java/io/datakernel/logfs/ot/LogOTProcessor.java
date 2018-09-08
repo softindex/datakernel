@@ -115,10 +115,10 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 
 		StreamProducerWithResult<T, Map<String, LogPositionDiff>> producer = getProducer();
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
-		producer.getResult().whenComplete(stageProducer.recordStats());
-		consumer.getResult().whenComplete(stageConsumer.recordStats());
 		return producer.getProducer().streamTo(consumer.getConsumer())
-				.thenCompose($ -> Stages.toTuple(producer.getResult(), consumer.getResult()))
+				.thenCompose($ -> Stages.toTuple(
+						producer.getResult().whenComplete(stageProducer.recordStats()),
+						consumer.getResult().whenComplete(stageConsumer.recordStats())))
 				.whenComplete(stageProcessLog.recordStats())
 				.thenApply(result -> LogDiff.of(result.getValue1(), result.getValue2()))
 				.whenResult(logDiff ->
