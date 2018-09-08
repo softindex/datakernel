@@ -13,7 +13,7 @@ import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public class SerialSplitter<T> implements AsyncProcess, WithSerialInput<SerialSplitter<T>, T>, WithSerialOutputs<SerialSplitter<T>, T> {
+public final class SerialSplitter<T> implements AsyncProcess, WithSerialInput<SerialSplitter<T>, T>, WithSerialOutputs<SerialSplitter<T>, T> {
 	private SerialSupplier<T> input;
 	private final List<SerialConsumer<T>> outputs = new ArrayList<>();
 
@@ -70,8 +70,8 @@ public class SerialSplitter<T> implements AsyncProcess, WithSerialInput<SerialSp
 			return;
 		}
 		if (lenient) {
-			outputs.replaceAll(o ->
-					o.whenException(e -> {
+			outputs.replaceAll(output ->
+					output.whenException(e -> {
 						if (lenientExceptions.size() < outputs.size()) {
 							lenientExceptions.add(e);
 							return;
@@ -87,11 +87,11 @@ public class SerialSplitter<T> implements AsyncProcess, WithSerialInput<SerialSp
 						return;
 					}
 					if (item == null) {
-						Stages.all(outputs.stream().map(o -> o.accept(null)))
-								.whenComplete(process::set);
+						Stages.all(outputs.stream().map(output -> output.accept(null)))
+								.whenComplete(process::trySet);
 						return;
 					}
-					Stages.all(outputs.stream().map(o -> o.accept(item)))
+					Stages.all(outputs.stream().map(output -> output.accept(item)))
 							.async()
 							.whenComplete(($, e2) -> {
 								if (e2 == null) {

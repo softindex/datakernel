@@ -18,14 +18,12 @@ package io.datakernel.serial.net;
 
 import com.google.gson.TypeAdapter;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
-import io.datakernel.util.MemSize;
+import io.datakernel.util.ByteBufPoolAppendable;
 
 import java.io.IOException;
 
-import static io.datakernel.bytebuf.ByteBufStrings.putUtf8;
 import static io.datakernel.util.gson.GsonAdapters.fromJson;
 import static io.datakernel.util.gson.GsonAdapters.toJson;
 
@@ -72,45 +70,4 @@ public final class MessagingSerializers {
 		};
 	}
 
-	static class ByteBufPoolAppendable implements Appendable {
-		static final MemSize INITIAL_BUF_SIZE = MemSize.kilobytes(2);
-		ByteBuf container;
-
-		ByteBufPoolAppendable() {
-			this(INITIAL_BUF_SIZE);
-		}
-
-		ByteBufPoolAppendable(MemSize size) {
-			this.container = ByteBufPool.allocate(size);
-		}
-
-		ByteBufPoolAppendable(int size) {
-			this.container = ByteBufPool.allocate(size);
-		}
-
-		@Override
-		public Appendable append(CharSequence csq) {
-			container = ByteBufPool.ensureWriteRemaining(container, csq.length() * 3);
-			for (int i = 0; i < csq.length(); i++) {
-				putUtf8(container, csq.charAt(i));
-			}
-			return this;
-		}
-
-		@Override
-		public Appendable append(CharSequence csq, int start, int end) {
-			return append(csq.subSequence(start, end));
-		}
-
-		@Override
-		public Appendable append(char c) {
-			container = ByteBufPool.ensureWriteRemaining(container, 3);
-			putUtf8(container, c);
-			return this;
-		}
-
-		public ByteBuf get() {
-			return container;
-		}
-	}
 }

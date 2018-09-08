@@ -4,33 +4,20 @@
 		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>io.datakernel</groupId>
 		<artifactId>datakernel</artifactId>
+		<groupId>io.datakernel</groupId>
 		<version>2.5.12-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>datakernel-datastreams</artifactId>
+	<artifactId>datakernel-serial</artifactId>
 
-	<name>DataKernel: DataStreams</name>
-	<description>
-		Composable asynchronous/reactive streams with powerful data processing capabilities.
-	</description>
+	<name>DataKernel: Serial IO</name>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
 			<artifactId>datakernel-eventloop</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-serial</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-serializer</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 
@@ -52,4 +39,5 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
 </project>
