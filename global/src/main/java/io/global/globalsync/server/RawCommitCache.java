@@ -5,8 +5,7 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.exception.ToDoException;
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.serial.SerialSupplier;
 import io.global.globalsync.api.CommitId;
 import io.global.globalsync.api.RawCommit;
 
@@ -21,9 +20,9 @@ final class RawCommitCache implements AsyncConsumer<RawCommitEntry> {
 	public RawCommitCache() {
 	}
 
-	public static RawCommitCache of(StreamProducer<RawCommitEntry> streamProducer) {
+	public static RawCommitCache of(SerialSupplier<RawCommitEntry> streamProducer) {
 		RawCommitCache streamingCache = new RawCommitCache();
-		streamProducer.streamTo(StreamConsumer.ofSerialConsumer(SerialConsumer.of(streamingCache)))
+		streamProducer.streamTo(SerialConsumer.of(streamingCache))
 				.thenRun(streamingCache::onEndOfStream)
 				.whenException(streamingCache::onError);
 		return streamingCache;

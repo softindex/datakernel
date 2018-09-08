@@ -4,8 +4,8 @@ import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.*;
 import io.global.globalsync.api.*;
@@ -73,7 +73,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<StreamProducer<CommitEntry>> download(RepositoryName repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+	public Stage<SerialSupplier<CommitEntry>> download(RepositoryName repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 		return ensureRepositoryDb(repositoryId)
 				.getStreamProducer(bases, heads);
 	}
@@ -84,7 +84,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<StreamConsumer<CommitEntry>> upload(RepositoryName repositoryId) {
+	public Stage<SerialConsumer<CommitEntry>> upload(RepositoryName repositoryId) {
 		return ensureRepositoryDb(repositoryId)
 				.getStreamConsumer()
 				.thenApply(identity());

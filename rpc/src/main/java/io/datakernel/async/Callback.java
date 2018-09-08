@@ -3,20 +3,11 @@ package io.datakernel.async;
 import io.datakernel.annotation.Nullable;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
 
 public interface Callback<T> {
 	void set(@Nullable T result);
 
 	void setException(Throwable t);
-
-	default void set(@Nullable T result, @Nullable Throwable throwable) {
-		if (throwable == null) {
-			set(result);
-		} else {
-			setException(throwable);
-		}
-	}
 
 	Callback<Object> IGNORE_CALLBACK = new Callback<Object>() {
 		@Override
@@ -33,20 +24,6 @@ public interface Callback<T> {
 		return (Callback<T>) IGNORE_CALLBACK;
 	}
 
-	static <T> Callback<T> forBiConsumer(BiConsumer<T, Throwable> biConsumer) {
-		return new Callback<T>() {
-			@Override
-			public void set(T result) {
-				biConsumer.accept(result, null);
-			}
-
-			@Override
-			public void setException(Throwable t) {
-				biConsumer.accept(null, t);
-			}
-		};
-	}
-
 	static <T> Callback<T> forFuture(CompletableFuture<T> future) {
 		return new Callback<T>() {
 			@Override
@@ -57,19 +34,6 @@ public interface Callback<T> {
 			@Override
 			public void setException(Throwable t) {
 				future.completeExceptionally(t);
-			}
-		};
-	}
-
-	static <T> Callback<T> assertNoExceptions() {
-		return new Callback<T>() {
-			@Override
-			public void set(T result) {
-			}
-
-			@Override
-			public void setException(Throwable t) {
-				throw new AssertionError(t);
 			}
 		};
 	}

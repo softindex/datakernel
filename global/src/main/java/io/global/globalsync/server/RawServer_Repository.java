@@ -3,8 +3,6 @@ package io.global.globalsync.server;
 import io.datakernel.async.*;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducer;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.SignedData;
 import io.global.globalsync.api.*;
@@ -89,7 +87,7 @@ public final class RawServer_Repository {
 		return Stage.ofCallback(this::doCatchUp);
 	}
 
-	private void doCatchUp(Callback<Void> cb) {
+	private void doCatchUp(SettableStage<Void> cb) {
 		long timestampBegin = now.currentTimeMillis();
 		fetch()
 				.thenCompose($ -> commitStorage.markCompleteCommits())
@@ -136,7 +134,7 @@ public final class RawServer_Repository {
 				.map(head -> commitStorage.loadCommit(head)
 						.whenResult(optional -> optional.ifPresent(rawCommit ->
 								queue.add(new RawCommitEntry(head, rawCommit))))))
-				.thenCallback((Void $, Callback<Set<CommitId>> cb) ->
+				.<Set<CommitId>>thenCallback(($, cb) ->
 						doExcludeParents(
 								queue,
 								queue.stream().mapToLong(entry -> entry.rawCommit.getLevel()).min().orElse(0L),
@@ -147,7 +145,7 @@ public final class RawServer_Repository {
 
 	private void doExcludeParents(PriorityQueue<RawCommitEntry> queue, long minLevel,
 			Set<CommitId> resultHeads,
-			Callback<Set<CommitId>> cb) {
+			SettableStage<Set<CommitId>> cb) {
 		RawCommitEntry entry = queue.poll();
 		if (entry == null || entry.rawCommit.getLevel() < minLevel) {
 			cb.set(resultHeads);
@@ -188,8 +186,7 @@ public final class RawServer_Repository {
 	public Stage<Void> fetch(RawServer server) {
 		return extractHeadInfo()
 				.thenCompose(headsInfo -> server.downloadStream(repositoryId, headsInfo.bases, headsInfo.heads)
-						.streamTo(StreamConsumerWithResult.ofStage(getStreamConsumer()))
-						.getConsumerResult());
+						.streamTo(SerialConsumer.ofStage(getStreamConsumer())));
 	}
 
 	public Stage<HeadsInfo> extractHeadInfo() {
@@ -206,13 +203,13 @@ public final class RawServer_Repository {
 													queue.add(new RawCommitEntry(head, rawCommit));
 												}
 										))))
-						.thenCallback((Object $, Callback<Set<CommitId>> cb) ->
+						.<Set<CommitId>>thenCallback(($, cb) ->
 								extractHeadInfoImpl(queue, new HashSet<CommitId>(), cb))
 						.whenResult(headsInfo.bases::addAll)
 						.thenApply($ -> headsInfo));
 	}
 
-	private void extractHeadInfoImpl(PriorityQueue<RawCommitEntry> queue, Set<CommitId> bases, Callback<Set<CommitId>> cb) {
+	private void extractHeadInfoImpl(PriorityQueue<RawCommitEntry> queue, Set<CommitId> bases, SettableStage<Set<CommitId>> cb) {
 		RawCommitEntry entry = queue.poll();
 		if (entry == null) {
 			cb.set(bases);
@@ -238,23 +235,22 @@ public final class RawServer_Repository {
 
 	private Stage<Void> push(RawServer server) {
 		return server.getHeadsInfo(repositoryId)
-				.thenCompose(headsInfo -> StreamProducer.ofStage(
+				.thenCompose(headsInfo -> SerialSupplier.ofStage(
 						getStreamProducer(headsInfo.bases, headsInfo.heads))
-						.streamTo(server.uploadStream(repositoryId))
-						.getAcknowledgement());
+						.streamTo(server.uploadStream(repositoryId)));
 	}
 
 	private Set<CommitId> rawHeadsToCommitIds(Set<SignedData<RawCommitHead>> rawHeads) {
 		return rawHeads.stream().map(rawHead -> rawHead.getData().commitId).collect(toSet());
 	}
 
-	public Stage<StreamConsumerWithResult<CommitEntry, Void>> getStreamConsumer() {
+	public Stage<SerialConsumer<CommitEntry>> getStreamConsumer() {
 		return commitStorage.getHeads(repositoryId)
 				.thenApply(Map::keySet)
 				.thenApply(thisHeads -> {
 					Set<CommitId> excludedHeads = new HashSet<>();
 					Set<SignedData<RawCommitHead>> addedHeads = new HashSet<>();
-					return StreamConsumerWithResult.ofSerialConsumer(SerialConsumer.of(
+					return SerialConsumer.of(
 							(CommitEntry entry) -> {
 								for (CommitId parentId : entry.getRawCommit().getParents()) {
 									if (thisHeads.contains(parentId)) {
@@ -265,7 +261,7 @@ public final class RawServer_Repository {
 									addedHeads.add(entry.getRawHead());
 								}
 								return commitStorage.saveCommit(entry.commitId, entry.rawCommit).toVoid();
-							}))
+							})
 							.thenCompose($ ->
 									commitStorage.markCompleteCommits()
 											.thenCompose($2 ->
@@ -273,7 +269,7 @@ public final class RawServer_Repository {
 				});
 	}
 
-	public Stage<StreamProducer<CommitEntry>> getStreamProducer(Set<CommitId> thatBases, Set<CommitId> thatHeads) {
+	public Stage<SerialSupplier<CommitEntry>> getStreamProducer(Set<CommitId> thatBases, Set<CommitId> thatHeads) {
 		checkArgument(!hasIntersection(thatBases, thatHeads));
 		Set<CommitId> skipCommits = new HashSet<>(thatHeads);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
@@ -288,7 +284,7 @@ public final class RawServer_Repository {
 						.thenApply(supplier -> supplier.transform(
 								entry -> new CommitEntry(entry.commitId, entry.rawCommit, thisHeads.get(entry.commitId))))
 						.thenApply(supplier -> AsyncSuppliers.prefetch(DOWNLOAD_PREFETCH_COUNT, supplier))
-						.thenApply(supplier -> StreamProducer.ofSerialSupplier(SerialSupplier.of(supplier))));
+						.thenApply(SerialSupplier::of));
 	}
 
 	private Stage<RawCommitEntry> getNextStreamEntry(PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
@@ -298,7 +294,7 @@ public final class RawServer_Repository {
 
 	private void getNextStreamEntry(PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
 			Set<CommitId> thatBases, Set<CommitId> thatHeads,
-			Callback<RawCommitEntry> cb) {
+			SettableStage<RawCommitEntry> cb) {
 		if (queue.isEmpty() || queue.stream().map(RawCommitEntry::getCommitId).allMatch(skipCommits::contains)) {
 			cb.set(null);
 			return;

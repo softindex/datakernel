@@ -334,7 +334,7 @@ public interface Stage<T> {
 	 */
 	<U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn);
 
-	default <U> Stage<U> thenCallback(BiConsumer<? super T, Callback<U>> fn) {
+	default <U> Stage<U> thenCallback(BiConsumer<? super T, SettableStage<U>> fn) {
 		return thenCompose(value -> {
 			SettableStage<U> cb = new SettableStage<>();
 			fn.accept(value, cb);

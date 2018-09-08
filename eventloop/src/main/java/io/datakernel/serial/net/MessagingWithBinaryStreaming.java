@@ -17,7 +17,6 @@
 package io.datakernel.serial.net;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
@@ -27,8 +26,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
 import io.datakernel.util.Taggable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +36,7 @@ import java.util.List;
 import static io.datakernel.util.Preconditions.checkState;
 
 /**
- * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},
+ * Represent the TCP connection which  processes received items with {@link SerialSupplier} and {@link SerialConsumer},
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
 public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.EventHandler, Messaging<I, O>, Taggable {
@@ -56,7 +53,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	private boolean readEndOfStream;
 
 	@Nullable
-	private Callback<I> receiveMessageCallback;
+	private SettableStage<I> receiveMessageCallback;
 
 	private List<SettableStage<Void>> writeCallbacks = new ArrayList<>();
 	private boolean writeEndOfStreamRequest;
@@ -139,8 +136,8 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		}
 	}
 
-	private Callback<I> takeReadCallback() {
-		Callback<I> callback = this.receiveMessageCallback;
+	private SettableStage<I> takeReadCallback() {
+		SettableStage<I> callback = this.receiveMessageCallback;
 		receiveMessageCallback = null;
 		assert callback != null;
 		return callback;

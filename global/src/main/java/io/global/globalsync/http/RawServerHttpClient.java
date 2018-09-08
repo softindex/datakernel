@@ -5,8 +5,8 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.exception.ToDoException;
 import io.datakernel.http.*;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializer;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -99,12 +99,12 @@ public class RawServerHttpClient implements RawServer {
 	}
 
 	@Override
-	public Stage<StreamProducer<CommitEntry>> download(RepositoryName repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+	public Stage<SerialSupplier<CommitEntry>> download(RepositoryName repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Stage<StreamConsumer<CommitEntry>> upload(RepositoryName repositoryId) {
+	public Stage<SerialConsumer<CommitEntry>> upload(RepositoryName repositoryId) {
 		throw new UnsupportedOperationException();
 	}
 
@@ -119,9 +119,9 @@ public class RawServerHttpClient implements RawServer {
 	@Override
 	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepositoryName repositoryId, CommitId id) {
 		return httpClient.request(request(GET, LOAD_SNAPSHOT, apiQuery(repositoryId, map("id", urlEncodeCommitId(id)))))
-				.thenCompose(r -> {
+				.<Optional<SignedData<RawSnapshot>>>thenCompose(r -> {
 					if (r.getCode() != 200)
-						return Stage.<Optional<SignedData<RawSnapshot>>>ofException(HttpException.ofCode(r.getCode()));
+						return Stage.ofException(HttpException.ofCode(r.getCode()));
 					if (!r.getBody().canRead()) return Stage.of(Optional.empty());
 					try {
 						return Stage.of(Optional.of(

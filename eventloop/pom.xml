@@ -29,7 +29,14 @@
             <artifactId>datakernel-common</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
+
+	    <dependency>
+		    <groupId>com.google.code.gson</groupId>
+		    <artifactId>gson</artifactId>
+		    <optional>true</optional>
+	    </dependency>
+
+	    <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-test</artifactId>
             <version>${project.version}</version>

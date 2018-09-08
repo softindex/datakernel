@@ -2,12 +2,12 @@ package io.global.globalsync.api;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.SimKeyHash;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
 
 import java.util.Map;
 import java.util.Optional;
@@ -90,18 +90,18 @@ public interface RawServer {
 
 	Stage<HeadsInfo> getHeadsInfo(RepositoryName repositoryId);
 
-	Stage<StreamProducer<CommitEntry>> download(RepositoryName repositoryId,
+	Stage<SerialSupplier<CommitEntry>> download(RepositoryName repositoryId,
 			Set<CommitId> bases, Set<CommitId> heads);
 
-	default StreamProducer<CommitEntry> downloadStream(RepositoryName repositoryId,
+	default SerialSupplier<CommitEntry> downloadStream(RepositoryName repositoryId,
 			Set<CommitId> bases, Set<CommitId> heads) {
-		return StreamProducer.ofStage(download(repositoryId, bases, heads));
+		return SerialSupplier.ofStage(download(repositoryId, bases, heads));
 	}
 
-	Stage<StreamConsumer<CommitEntry>> upload(RepositoryName repositoryId);
+	Stage<SerialConsumer<CommitEntry>> upload(RepositoryName repositoryId);
 
-	default StreamConsumer<CommitEntry> uploadStream(RepositoryName repositoryId) {
-		return StreamConsumer.ofStage(upload(repositoryId));
+	default SerialConsumer<CommitEntry> uploadStream(RepositoryName repositoryId) {
+		return SerialConsumer.ofStage(upload(repositoryId));
 	}
 
 	Stage<Void> saveSnapshot(RepositoryName repositoryId, SignedData<RawSnapshot> encryptedSnapshot);

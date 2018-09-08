@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
@@ -108,7 +107,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (inspector != null) inspector.onHttpError(this, result == null, e);
 		readQueue.recycle();
 		if (result != null) {
-			Callback<HttpResponse> callback = this.result;
+			SettableStage<HttpResponse> callback = this.result;
 			eventloop.post(() -> callback.setException(e));
 			this.result = null;
 		}

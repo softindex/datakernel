@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
@@ -27,9 +28,19 @@ public interface IRpcClient {
 	RpcOverloadException RPC_OVERLOAD_EXCEPTION = new RpcOverloadException();
 
 	default <I, O> Stage<O> sendRequest(I request, int timeout) {
-		SettableStage<O> result = new SettableStage<>();
-		sendRequest(request, timeout, result);
-		return result;
+		SettableStage<O> resultStage = new SettableStage<>();
+		sendRequest(request, timeout, new Callback<O>() {
+			@Override
+			public void set(@Nullable O result) {
+				resultStage.set(result);
+			}
+
+			@Override
+			public void setException(Throwable e) {
+				resultStage.setException(e);
+			}
+		});
+		return resultStage;
 	}
 
 	<I, O> void sendRequest(I request, int timeout, Callback<O> cb);

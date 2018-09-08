@@ -20,11 +20,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
 
 /**
- * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},
+ * Represent the TCP connection which  processes received items with {@link SerialSupplier} and {@link SerialConsumer},
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
 public final class SocketStreamingConnection implements SocketStreaming, AsyncTcpSocket.EventHandler {

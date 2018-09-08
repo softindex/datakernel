@@ -19,7 +19,7 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
  *
  * @param <T> Result type
  */
-public final class SettableStage<T> extends AbstractStage<T> implements MaterializedStage<T>, Callback<T> {
+public final class SettableStage<T> extends AbstractStage<T> implements MaterializedStage<T> {
 	private static final Throwable NO_EXCEPTION = new StacklessException();
 
 	@SuppressWarnings("unchecked")
@@ -67,12 +67,19 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	 * Sets the result of this {@code SettableStage} and completes it.
 	 * <p>AssertionError is thrown when you try to set result for  already completed stage.</p>
 	 */
-	@Override
 	public void set(@Nullable T result) {
 		assert !isComplete();
 		this.result = result;
 		this.exception = null;
 		complete(result);
+	}
+
+	public void set(@Nullable T result, @Nullable Throwable throwable) {
+		if (throwable == null) {
+			set(result);
+		} else {
+			setException(throwable);
+		}
 	}
 
 	/**
@@ -81,7 +88,6 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	 *
 	 * @param throwable exception
 	 */
-	@Override
 	public void setException(Throwable throwable) {
 		assert !isComplete();
 		result = null;

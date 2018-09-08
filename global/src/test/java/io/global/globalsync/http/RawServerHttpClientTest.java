@@ -6,8 +6,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.IAsyncHttpClient;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.global.common.*;
 import io.global.globalsync.api.*;
 import io.global.globalsync.api.RawServer.HeadsDelta;
@@ -78,12 +78,12 @@ public class RawServerHttpClientTest {
 			}
 
 			@Override
-			public Stage<StreamProducer<CommitEntry>> download(RepositoryName repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+			public Stage<SerialSupplier<CommitEntry>> download(RepositoryName repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 				throw new UnsupportedOperationException();
 			}
 
 			@Override
-			public Stage<StreamConsumer<CommitEntry>> upload(RepositoryName repositoryId) {
+			public Stage<SerialConsumer<CommitEntry>> upload(RepositoryName repositoryId) {
 				throw new UnsupportedOperationException();
 			}
 
