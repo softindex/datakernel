@@ -262,10 +262,9 @@ public final class RawServer_Repository {
 								}
 								return commitStorage.saveCommit(entry.commitId, entry.rawCommit).toVoid();
 							})
-							.thenCompose($ ->
-									commitStorage.markCompleteCommits()
-											.thenCompose($2 ->
-													this.updateHeads(new HeadsDelta(addedHeads, excludedHeads))));
+							.withAcknowledgement(stage -> stage
+									.thenCompose($ -> commitStorage.markCompleteCommits())
+									.thenCompose($ -> updateHeads(new HeadsDelta(addedHeads, excludedHeads))));
 				});
 	}
 

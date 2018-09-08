@@ -20,7 +20,10 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.util.Recyclable;
 
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public interface SerialConsumer<T> extends Cancellable {
 	Stage<Void> accept(@Nullable T value);
@@ -125,21 +128,32 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
-	default <V> SerialConsumer<V> transform(Function<? super V, ? extends T> fn) {
-		return new AbstractSerialConsumer<V>(this) {
-			@Override
-			public Stage<Void> accept(V value) {
-				return SerialConsumer.this.accept(value != null ? fn.apply(value) : null);
-			}
-		};
-	}
-
 	default SerialConsumer<T> peek(Consumer<? super T> fn) {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
 				fn.accept(value);
 				return SerialConsumer.this.accept(value);
+			}
+		};
+	}
+
+	default SerialConsumer<T> peekAsync(AsyncConsumer<? super T> fn) {
+		return new AbstractSerialConsumer<T>(this) {
+			@Override
+			public Stage<Void> accept(T value) {
+				return fn.accept(value)
+						.whenException(this::closeWithError)
+						.thenCompose($ -> SerialConsumer.this.accept(value));
+			}
+		};
+	}
+
+	default <V> SerialConsumer<V> transform(Function<? super V, ? extends T> fn) {
+		return new AbstractSerialConsumer<V>(this) {
+			@Override
+			public Stage<Void> accept(V value) {
+				return SerialConsumer.this.accept(value != null ? fn.apply(value) : null);
 			}
 		};
 	}
@@ -152,18 +166,6 @@ public interface SerialConsumer<T> extends Cancellable {
 						fn.apply(value)
 								.thenCompose(SerialConsumer.this::accept) :
 						SerialConsumer.this.accept(null);
-			}
-		};
-	}
-
-	default SerialConsumer<T> peekAsync(AsyncConsumer<? super T> fn) {
-		return new AbstractSerialConsumer<T>(this) {
-			@Override
-			public Stage<Void> accept(T value) {
-				return Stages.all(
-						SerialConsumer.this.accept(value),
-						fn.accept(value)
-								.whenException(this::closeWithError));
 			}
 		};
 	}
@@ -185,25 +187,13 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
-				if (value != null) {
-					return predicate.test(value)
-							.thenCompose(test -> test ?
-									SerialConsumer.this.accept(value) :
-									Stage.complete());
-				} else {
+				if (value == null) {
 					return Stage.complete();
 				}
-			}
-		};
-	}
-
-	default SerialConsumer<T> whenEndOfStream(Runnable action) {
-		return new AbstractSerialConsumer<T>(this) {
-			@Override
-			public Stage<Void> accept(T value) {
-				Stage<Void> result = SerialConsumer.this.accept(value);
-				if (value == null) action.run();
-				return result;
+				return predicate.test(value)
+						.thenCompose(test -> test ?
+								SerialConsumer.this.accept(value) :
+								Stage.complete());
 			}
 		};
 	}
@@ -237,25 +227,22 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
-	//** Methods below accept lambdas with dummy void argument for API compatibility **//
-
 	default SerialConsumer<T> withAcknowledgement(Function<Stage<Void>, Stage<Void>> fn) {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(@Nullable T value) {
-				if (value != null) {
-					return SerialConsumer.this.accept(value)
-							.thenComposeEx(($, e) -> {
-								if (e == null) return Stage.complete();
-								return fn.apply(Stage.ofException(e));
-							});
-				} else {
+				if (value == null) {
 					return fn.apply(SerialConsumer.this.accept(null));
 				}
+				return SerialConsumer.this.accept(value)
+						.thenComposeEx(($, e) -> e != null ?
+								fn.apply(Stage.ofException(e)) :
+								Stage.complete());
 			}
 		};
 	}
 
+	//** whenComplete lambda has dummy void argument for API compatibility **//
 	default SerialConsumer<T> whenComplete(BiConsumer<Void, Throwable> action) {
 		return new AbstractSerialConsumer<T>(this) {
 			boolean done = false;
@@ -279,35 +266,4 @@ public interface SerialConsumer<T> extends Cancellable {
 			}
 		};
 	}
-
-	default SerialConsumer<T> thenCompose(Function<Void, Stage<Void>> action) {
-		return new AbstractSerialConsumer<T>(this) {
-			@Override
-			public Stage<Void> accept(T value) {
-				Stage<Void> result = SerialConsumer.this.accept(value);
-				return value != null ? result : result.thenCompose(action);
-			}
-		};
-	}
-
-	default SerialConsumer<T> thenComposeEx(BiFunction<Void, Throwable, Stage<Void>> action) {
-		return new AbstractSerialConsumer<T>(this) {
-			@Override
-			public Stage<Void> accept(T value) {
-				return SerialConsumer.this.accept(value)
-						.thenComposeEx(value != null ?
-								($, e) -> e != null ?
-										action.apply(null, e) :
-										Stage.complete() :
-								action);
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				Stage<Void> res = action.apply(null, e);
-				super.closeWithError(res.hasException() ? res.getException() : e); // ugh
-			}
-		};
-	}
-
 }

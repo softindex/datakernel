@@ -1,9 +1,6 @@
 package io.datakernel.remotefs;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.AsyncSuppliers;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -174,27 +171,24 @@ public class CachedFsClient implements FsClient, EventloopService {
 					long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
 					downloadingNowSize += size;
 
-					Stage<Void> stage = splitter.addOutput()
+					MaterializedStage<Void> cacheAppendProcess = splitter.addOutput()
 							.getOutputSupplier()
 							.transform(b -> {
 								ByteBuf slice = b.slice();
 								b.recycle();
 								return slice;
 							})
-							.streamTo(cacheClient.uploadSerial(fileName, cacheOffset)
-									.whenEndOfStream(() -> cacheClient.list()
-											.thenCompose($ -> updateCacheStats(fileName))
-											.thenCompose($ -> ensureSpace())
-											.whenResult($ -> downloadingNowSize -= size)))
+							.streamTo(cacheClient.uploadSerial(fileName, cacheOffset))
+//							.thenCompose($ -> cacheClient.list())
+							.thenCompose($ -> updateCacheStats(fileName))
+							.thenCompose($ -> ensureSpace())
+							.whenResult($ -> downloadingNowSize -= size)
 							.materialize();
 
 					splitter.process();
 
-					if (sizeInCache == 0) {
-						return output.thenCompose($ -> stage);
-					}
-					return SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, sizeInCache), output)
-							.thenCompose($ -> stage);
+					return (sizeInCache == 0 ? output : SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, sizeInCache), output))
+							.withAcknowledgement(stage -> stage.thenCompose($ -> cacheAppendProcess));
 				});
 	}
 

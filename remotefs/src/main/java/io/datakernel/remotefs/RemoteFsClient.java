@@ -102,33 +102,31 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 		return connect(address)
 				.thenCompose(messaging ->
 						messaging.send(new Upload(filename, offset))
-								.thenApply($ ->
-										messaging.sendBinaryStream()
+								.thenApply($ -> messaging.sendBinaryStream()
+										.withAcknowledgement(stage -> stage
+												.thenCompose($2 -> messaging.receive())
+												.thenCompose(msg -> {
+													messaging.close();
+													if (msg instanceof UploadFinished) {
+														return Stage.complete();
+													}
+													if (msg instanceof ServerError) {
+														return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
+													}
+													if (msg != null) {
+														return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
+													}
+													return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
+												})
 												.whenException(e -> {
 													messaging.close();
 													logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
 												})
-												.thenCompose($2 ->
-														messaging.receive()
-																.whenException(e -> {
-																	messaging.close();
-																	logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
-																})
-																.thenCompose(msg -> {
-																	messaging.close();
-																	if (msg instanceof UploadFinished) {
-																		return Stage.complete();
-																	}
-																	if (msg instanceof ServerError) {
-																		return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
-																	}
-																	if (msg != null) {
-																		return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
-																	}
-																	return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
-																})
-																.whenComplete(uploadFinishStage.recordStats()))
-								)
+												.whenComplete(uploadFinishStage.recordStats()))
+										.whenException(e -> {
+											messaging.close();
+											logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
+										}))
 								.whenException(e -> {
 									messaging.close();
 									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
@@ -153,8 +151,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 
 										long[] size = {0};
 										return Stage.of(messaging.receiveBinaryStream()
-												.peek(b -> size[0] += b != null ? b.readRemaining() : 0)
-												.thenCompose($ -> {
+												.peek(b -> size[0] += b != null ? b.readRemaining() : 0).withAcknowledgement(stage -> stage.thenCompose($1 -> ((Function<Void, Stage<Void>>) $ -> {
 													messaging.sendEndOfStream();
 													if (size[0] == receivingSize) {
 														messaging.close();
@@ -163,7 +160,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 													return Stage.ofException(new IOException("Invalid stream size for file " + filename +
 															" (offset " + offset + ", length " + length + "), expected: " + receivingSize +
 															" actual: " + size[0]));
-												})
+												}).apply(null)))
 												.whenException(e -> {
 													messaging.close();
 													logger.warn("Error while downloading file " + filename +

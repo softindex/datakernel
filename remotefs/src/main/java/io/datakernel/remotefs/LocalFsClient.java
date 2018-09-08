@@ -119,8 +119,6 @@ public final class LocalFsClient implements FsClient, EventloopService {
 									if (offset > size) {
 										return Stage.ofException(new RemoteFsException("Trying to append at offset greater than the file size"));
 									}
-								} else if (size != null) {
-									return Stage.ofException(new RemoteFsException("File already exists"));
 								}
 								return Stage.of(SerialFileWriter.create(file)
 										.withOffset(offset == -1 ? 0L : size)

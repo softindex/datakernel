@@ -194,16 +194,20 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 		return false;
 	}
 
+	private void markIfDead(Object partitionId, Throwable throwable) {
+		// marking as dead only on lower level connection and other I/O exceptions,
+		// remotefs exceptions are the ones actually received with an ServerError response (so the node is obviously not dead)
+		if (throwable.getClass() != RemoteFsException.class) {
+			markDead(partitionId, throwable);
+		}
+	}
+
 	private <T> BiFunction<T, Throwable, Stage<T>> wrapDeath(Object partitionId) {
 		return (res, err) -> {
 			if (err == null) {
 				return Stage.of(res);
 			}
-			// marking as dead only on lower level connection and other I/O exceptions,
-			// remotefs exceptions are the ones actually received with an ServerError response (so the node is obviously not dead)
-			if (err.getClass() != RemoteFsException.class) {
-				markDead(partitionId, err);
-			}
+			markIfDead(partitionId, err);
 			return Stage.ofException(new PartitionException(partitionId, err));
 		};
 	}
@@ -241,7 +245,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				.map(id -> aliveClients.get(id)
 						.upload(filename, offset)
 						.thenComposeEx(wrapDeath(id))
-						.thenApply(consumer -> new ConsumerWithId(id, consumer.thenComposeEx(wrapDeath(id))))
+						.thenApply(consumer -> new ConsumerWithId(id, consumer.whenException(e -> markIfDead(id, e))))
 						.toTry()))
 				.thenCompose(tries -> {
 					List<ConsumerWithId> successes = tries.stream()
@@ -269,23 +273,25 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					splitter.process();
 
 					//noinspection RedundantTypeArguments - that <Void> 3 lines below is needed badly for Java, uughh
-					return Stage.of(consumer
-							.thenCompose($ ->
-									uploadResults.<Void>thenCompose(ackTries -> {
-										long successCount = ackTries.stream().filter(Try::isSuccess).count();
-										// check number of uploads only here, so even if there were less connections
-										// than replicationCount, they will still upload
-										if (ackTries.size() < replicationCount) {
-											return ofFailure("Didn't connect to enough partitions uploading " +
-													filename + ", only " + successCount + " finished uploads", ackTries);
-										}
-										if (successCount < replicationCount) {
-											return ofFailure("Couldn't finish uploadind file " +
-													filename + ", only " + successCount + " acknowlegdes received", ackTries);
-										}
-										return Stage.complete();
-									}))
-							.whenComplete(uploadFinishStage.recordStats()));
+					// check number of uploads only here, so even if there were less connections
+					// than replicationCount, they will still upload
+					return Stage.of(consumer.withAcknowledgement(stage -> stage
+							.thenCompose($ -> uploadResults)
+							.thenCompose(ackTries -> {
+								long successCount = ackTries.stream().filter(Try::isSuccess).count();
+								// check number of uploads only here, so even if there were less connections
+								// than replicationCount, they will still upload
+								if (ackTries.size() < replicationCount) {
+									return ofFailure("Didn't connect to enough partitions uploading " +
+											filename + ", only " + successCount + " finished uploads", ackTries);
+								}
+								if (successCount < replicationCount) {
+									return ofFailure("Couldn't finish uploadind file " +
+											filename + ", only " + successCount + " acknowlegdes received", ackTries);
+								}
+								return Stage.complete();
+							})
+							.whenComplete(uploadFinishStage.recordStats())));
 				})
 				.whenComplete(uploadStartStage.recordStats());
 	}
@@ -351,7 +357,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 										.whenException(err -> logger.warn("Failed to connect to server with key " + partitionId + " to download file " + filename, err))
 										.thenComposeEx(wrapDeath(partitionId))
 										.thenApply(supplier -> supplier
-												.thenComposeEx(wrapDeath(partitionId))
+												.whenException(e -> markIfDead(partitionId, e))
 												.whenComplete(downloadFinishStage.recordStats()));
 							}));
 				})

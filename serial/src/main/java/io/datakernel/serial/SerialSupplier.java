@@ -21,7 +21,10 @@ import io.datakernel.async.*;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -137,6 +140,25 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
+	default Stage<Void> streamTo(SerialConsumer<T> consumer) {
+		return SerialSuppliers.stream(this, consumer);
+	}
+
+	default void streamTo(SerialInput<T> to) {
+		to.setInput(this);
+		if (to instanceof AsyncProcess) {
+			getCurrentEventloop().post(((AsyncProcess) to)::process);
+		}
+	}
+
+	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {
+		return SerialSuppliers.toCollector(this, collector);
+	}
+
+	default Stage<List<T>> toList() {
+		return toCollector(Collectors.toList());
+	}
+
 	default <R> SerialSupplier<R> apply(SerialSupplierModifier<T, R> modifier) {
 		return apply((Function<SerialSupplier<T>, SerialSupplier<R>>) modifier::apply);
 	}
@@ -236,25 +258,16 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
-	default SerialSupplier<T> whenEndOfStream(Runnable action) {
-		return new AbstractSerialSupplier<T>(this) {
-			boolean done;
-
-			@Override
-			public Stage<T> get() {
-				return SerialSupplier.this.get().whenComplete((value, e) -> {
-					if (e == null && value == null && !done) {
-						done = true;
-						action.run();
-					}
-				});
-			}
-		};
-	}
-
 	default SerialSupplier<T> whenException(Consumer<Throwable> action) {
 		return new AbstractSerialSupplier<T>(this) {
 			boolean done = false;
+
+			void fire(Throwable e) {
+				if (!done) {
+					done = true;
+					action.accept(e);
+				}
+			}
 
 			@Override
 			public Stage<T> get() {
@@ -266,13 +279,6 @@ public interface SerialSupplier<T> extends Cancellable {
 						});
 			}
 
-			private void fire(Throwable e) {
-				if (!done) {
-					done = true;
-					action.accept(e);
-				}
-			}
-
 			@Override
 			public void closeWithError(Throwable e) {
 				super.closeWithError(e);
@@ -281,34 +287,30 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
-	//** Methods below accept lambdas with dummy void argument for API compatibility **//
-
-	default SerialSupplier<T> withEndOfStream(Function<Stage<Void>, Stage<Void>> fn) {
+	default SerialSupplier<T> withAcknowledgement(Function<Stage<Void>, Stage<Void>> fn) {
 		return new AbstractSerialSupplier<T>(this) {
 			@SuppressWarnings("unchecked")
 			@Override
 			public Stage<T> get() {
 				return SerialSupplier.this.get()
 						.thenComposeEx((item, e) -> {
-							if (e == null) {
-								if (item != null) {
-									return Stage.of(item);
-								} else {
-									return (Stage<T>) fn.apply(Stage.of(null));
-								}
-							} else {
+							if (e != null) {
 								return (Stage<T>) fn.apply(Stage.ofException(e));
 							}
+							return item != null ?
+									Stage.of(item) :
+									(Stage<T>) fn.apply(Stage.of(null));
 						});
 			}
 		};
 	}
 
+	//** whenComplete lambda has dummy void argument for API compatibility **//
 	default SerialSupplier<T> whenComplete(BiConsumer<Void, Throwable> action) {
 		return new AbstractSerialSupplier<T>(this) {
 			boolean done = false;
 
-			private void fire(Throwable e) {
+			void fire(Throwable e) {
 				if (!done) {
 					done = true;
 					action.accept(null, e);
@@ -317,7 +319,12 @@ public interface SerialSupplier<T> extends Cancellable {
 
 			@Override
 			public Stage<T> get() {
-				return SerialSupplier.this.get().whenComplete(($, e) -> fire(e));
+				return SerialSupplier.this.get()
+						.whenComplete((item, e) -> {
+							if (item == null) {
+								fire(e);
+							}
+						});
 			}
 
 			@Override
@@ -327,62 +334,4 @@ public interface SerialSupplier<T> extends Cancellable {
 			}
 		};
 	}
-
-	default SerialSupplier<T> thenCompose(Function<Void, Stage<Void>> action) {
-		return new AbstractSerialSupplier<T>(this) {
-			boolean done;
-
-			@SuppressWarnings("unchecked")
-			@Override
-			public Stage<T> get() {
-				return SerialSupplier.this.get()
-						.thenCompose(value -> {
-							if (value == null && !done) {
-								done = true;
-								return (Stage<T>) action.apply(null); // value is null anyway
-							}
-							return Stage.of(value);
-						});
-			}
-		};
-	}
-
-	default SerialSupplier<T> thenComposeEx(BiFunction<Void, Throwable, Stage<Void>> action) {
-		return new AbstractSerialSupplier<T>(this) {
-			boolean done;
-
-			@SuppressWarnings("unchecked")
-			@Override
-			public Stage<T> get() {
-				return SerialSupplier.this.get()
-						.thenComposeEx((value, e) -> {
-							if (value == null && !done) {
-								done = true;
-								return (Stage<T>) action.apply(null, e); // value is null anyway
-							}
-							return Stage.of(value, e);
-						});
-			}
-		};
-	}
-
-	default Stage<Void> streamTo(SerialConsumer<T> consumer) {
-		return SerialSuppliers.stream(this, consumer);
-	}
-
-	default void streamTo(SerialInput<T> to) {
-		to.setInput(this);
-		if (to instanceof AsyncProcess) {
-			getCurrentEventloop().post(((AsyncProcess) to)::process);
-		}
-	}
-
-	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {
-		return SerialSuppliers.toCollector(this, collector);
-	}
-
-	default Stage<List<T>> toList() {
-		return toCollector(Collectors.toList());
-	}
-
 }
