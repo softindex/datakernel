@@ -132,7 +132,7 @@ public final class SerialLZ4Decompressor implements WithSerialToSerial<SerialLZ4
 		if (!bufs.hasRemainingBytes(HEADER_LENGTH)) {
 			ensureData()
 					.thenRun(this::processHeader)
-					.whenException(this::closeWithError); ;
+					.whenException(this::closeWithError);
 			return;
 		}
 		try (ByteBuf headerBuf = bufs.takeExactSize(HEADER_LENGTH)) {
