@@ -1,14 +1,15 @@
 package io.datakernel.logfs;
 
+import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.asm.BufferSerializers;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Before;
@@ -45,7 +46,7 @@ public class LogManagerImplTest {
 		List<String> values = asList("test1", "test2", "test3");
 
 		StreamProducer.ofIterable(values)
-				.streamTo(StreamConsumer.ofStage(logManager.consumer(testPartition)));
+				.streamTo(logManager.consumerStream(testPartition));
 
 		eventloop.run();
 
@@ -90,34 +91,24 @@ public class LogManagerImplTest {
 		@Override
 		public Stage<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
 			List<ByteBuf> byteBufs = getOffset(partitions.get(logPartition).get(logFile), startPosition);
-			SerialSupplier<ByteBuf> producer = SerialSupplier.ofIterable(byteBufs);
-			return Stage.of(producer);
+			return Stage.of(SerialSupplier.ofIterable(byteBufs));
 		}
 
 		private static List<ByteBuf> getOffset(List<ByteBuf> byteBufs, long startPosition) {
-			if (startPosition == 0) return byteBufs;
-
-			ArrayList<ByteBuf> offset = new ArrayList<>();
-			for (ByteBuf byteBuf : byteBufs) {
-				if (startPosition == 0) {
-					offset.add(byteBuf);
-				} else if (startPosition >= byteBuf.readRemaining()) {
-					startPosition -= byteBuf.readRemaining();
-				} else {
-					byteBuf.moveReadPosition(((int) startPosition));
-					startPosition = 0;
-					offset.add(byteBuf);
-				}
+			ByteBufQueue bufs = new ByteBufQueue();
+			byteBufs.forEach(buf -> bufs.add(buf.slice()));
+			bufs.skip((int) startPosition);
+			List<ByteBuf> result = new ArrayList<>();
+			while (!bufs.isEmpty()) {
+				result.add(bufs.take());
 			}
-
-			return offset;
+			return result;
 		}
 
 		@Override
 		public Stage<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
-			StreamConsumerToList<ByteBuf> listConsumer = StreamConsumerToList.create();
-			listConsumer.getResult().whenResult(byteBufs -> partitions.get(logPartition).get(logFile).addAll(byteBufs));
-			return Stage.of(listConsumer.asSerialConsumer());
+			List<ByteBuf> bufs = partitions.get(logPartition).get(logFile);
+			return Stage.of(SerialConsumer.of(AsyncConsumer.of(bufs::add)));
 		}
 	}
 

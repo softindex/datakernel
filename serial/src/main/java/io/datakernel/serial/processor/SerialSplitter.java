@@ -61,15 +61,15 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 	protected void doProcess() {
 		if (isProcessComplete()) return;
 		if (lenient) {
-			outputs.replaceAll(output ->
-					output.whenException(e -> {
+			outputs.replaceAll(output -> output.withAcknowledgement(acknowledgement ->
+					acknowledgement.whenException(e -> {
 						if (lenientExceptions.size() < outputs.size()) {
 							lenientExceptions.add(e);
 							return;
 						}
 						lenientExceptions.forEach(e::addSuppressed);
 						closeWithError(e);
-					}));
+					})));
 		}
 		input.get()
 				.whenComplete((item, e) -> {

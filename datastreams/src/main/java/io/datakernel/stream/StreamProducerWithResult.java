@@ -56,6 +56,7 @@ public final class StreamProducerWithResult<T, X> {
 	}
 
 	public static <T, X> StreamProducerWithResult<T, X> ofStage(Stage<StreamProducerWithResult<T, X>> stage) {
+		if (stage.hasResult()) return stage.getResult();
 		return of(
 				StreamProducer.ofStage(stage.thenApply(StreamProducerWithResult::getProducer)),
 				stage.thenCompose(StreamProducerWithResult::getResult));

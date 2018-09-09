@@ -19,7 +19,7 @@ package io.datakernel.logfs;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
-import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static io.datakernel.serial.SerialSuppliers.endOfStreamOnError;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
@@ -163,19 +162,19 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 							if (logger.isTraceEnabled())
 								logger.trace("Read log file `{}` from: {}", currentLogFile, position);
 
-							fileSystem.read(logPartition, currentLogFile, position)
-									.thenCompose(s -> s.toCollector(ByteBufQueue.collector()))
-									.thenApply(b -> b.asString(UTF_8))
-									.whenResult(System.out::println);
-
 							return StreamProducer.ofStage(fileSystem.read(logPartition, currentLogFile, position)
 									.thenApply(fileStream -> {
 										inputStreamPosition = 0L;
 										sw.reset().start();
 										return fileStream
 												.apply(SerialLZ4Decompressor.create()
-														.withInspector((self, header, inputBuf, outputBuf) -> inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen))
-												.apply(endOfStreamOnError(throwable -> throwable instanceof TruncatedDataException)) // TODO
+														.withInspector(new SerialLZ4Decompressor.Inspector() {
+															@Override
+															public void onBlock(SerialLZ4Decompressor self, SerialLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
+																inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
+															}
+														}))
+												.apply(endOfStreamOnError(throwable -> throwable instanceof TruncatedDataException))
 												.apply(SerialBinaryDeserializer.create(serializer))
 												.withEndOfStream(endOfStream ->
 														endOfStream.whenComplete(($, e) -> log(e)))

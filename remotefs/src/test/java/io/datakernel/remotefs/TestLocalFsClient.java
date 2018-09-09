@@ -280,11 +280,12 @@ public class TestLocalFsClient {
 	public void testDownloadNonExistingFile() {
 		String fileName = "no_file.txt";
 		client.downloadSerial(fileName)
-				.whenComplete((result, error) -> {
-					assertNotNull(error);
-					assertEquals(error.getClass(), RemoteFsException.class);
-					assertTrue(error.getMessage().contains(fileName));
-				});
+				.withEndOfStream(endOfStream ->
+						endOfStream.whenComplete((result, error) -> {
+							assertNotNull(error);
+							assertEquals(error.getClass(), RemoteFsException.class);
+							assertTrue(error.getMessage().contains(fileName));
+						}));
 
 		eventloop.run();
 	}

@@ -5,7 +5,7 @@ import io.datakernel.async.Cancellable;
 
 public abstract class AbstractSerialConsumer<T> implements SerialConsumer<T> {
 	@Nullable
-	private Cancellable cancellable;
+	Cancellable cancellable;
 
 	protected AbstractSerialConsumer() {
 		this.cancellable = null;

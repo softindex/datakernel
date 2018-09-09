@@ -20,7 +20,6 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.util.Recyclable;
 
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -72,6 +71,7 @@ public interface SerialConsumer<T> extends Cancellable {
 	}
 
 	static <T> SerialConsumer<T> ofStage(Stage<? extends SerialConsumer<T>> stage) {
+		if (stage.hasResult()) return stage.getResult();
 		MaterializedStage<? extends SerialConsumer<T>> materializedStage = stage.materialize();
 		return new SerialConsumer<T>() {
 			SerialConsumer<T> consumer;
@@ -129,7 +129,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
-				fn.accept(value);
+				if (value != null) fn.accept(value);
 				return SerialConsumer.this.accept(value);
 			}
 		};
@@ -139,9 +139,9 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
-				return fn.accept(value)
-						.whenException(this::closeWithError)
-						.thenCompose($ -> SerialConsumer.this.accept(value));
+				return value != null ?
+						Stages.all(SerialConsumer.this.accept(value), fn.accept(value)) :
+						SerialConsumer.this.accept(value);
 			}
 		};
 	}
@@ -184,83 +184,68 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
-				if (value == null) {
+				if (value != null) {
+					return predicate.test(value)
+							.thenCompose(test -> test ?
+									SerialConsumer.this.accept(value) :
+									Stage.complete());
+				} else {
 					return Stage.complete();
 				}
-				return predicate.test(value)
-						.thenCompose(test -> test ?
-								SerialConsumer.this.accept(value) :
-								Stage.complete());
-			}
-		};
-	}
-
-	default SerialConsumer<T> whenException(Consumer<Throwable> action) {
-		return new AbstractSerialConsumer<T>(this) {
-			boolean done = false;
-
-			private void fire(Throwable e) {
-				if (!done) {
-					done = true;
-					action.accept(e);
-				}
-			}
-
-			@Override
-			public Stage<Void> accept(T value) {
-				return SerialConsumer.this.accept(value)
-						.whenComplete(($, e) -> {
-							if (e != null) {
-								fire(e);
-							}
-						});
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				super.closeWithError(e);
-				fire(e);
 			}
 		};
 	}
 
 	default SerialConsumer<T> withAcknowledgement(Function<Stage<Void>, Stage<Void>> fn) {
-		return new AbstractSerialConsumer<T>(this) {
+		SettableStage<Void> endOfStream = new SettableStage<>();
+		MaterializedStage<Void> suppliedEndOfStream = fn.apply(endOfStream).materialize();
+		return new SerialConsumer<T>() {
 			@Override
 			public Stage<Void> accept(@Nullable T value) {
-				if (value == null) {
-					return fn.apply(SerialConsumer.this.accept(null));
+				if (value != null) {
+					return SerialConsumer.this.accept(value)
+							.thenComposeEx(($, e) -> {
+								if (e == null) return Stage.complete();
+								endOfStream.trySetException(e);
+								return suppliedEndOfStream;
+							});
+				} else {
+					endOfStream.trySet(null);
+					return suppliedEndOfStream;
 				}
-				return SerialConsumer.this.accept(value)
-						.thenComposeEx(($, e) -> e != null ?
-								fn.apply(Stage.ofException(e)) :
-								Stage.complete());
-			}
-		};
-	}
-
-	//** whenComplete lambda has dummy void argument for API compatibility **//
-	default SerialConsumer<T> whenComplete(BiConsumer<Void, Throwable> action) {
-		return new AbstractSerialConsumer<T>(this) {
-			boolean done = false;
-
-			private void fire(Throwable e) {
-				if (!done) {
-					done = true;
-					action.accept(null, e);
-				}
-			}
-
-			@Override
-			public Stage<Void> accept(T value) {
-				return SerialConsumer.this.accept(value).whenComplete(($, e) -> fire(e));
 			}
 
 			@Override
 			public void closeWithError(Throwable e) {
-				super.closeWithError(e);
-				fire(e);
+				endOfStream.trySetException(e);
 			}
 		};
 	}
+
+	default SerialConsumer<T> whenCancelled(Consumer<Throwable> whenClosed) {
+		if (this instanceof AbstractSerialConsumer) {
+			AbstractSerialConsumer<T> abstractSerialConsumer = (AbstractSerialConsumer<T>) this;
+			Cancellable cancellable = abstractSerialConsumer.cancellable;
+			abstractSerialConsumer.cancellable = (cancellable == null) ?
+					whenClosed::accept :
+					e -> {
+						cancellable.closeWithError(e);
+						whenClosed.accept(e);
+					};
+			return this;
+		}
+		return new SerialConsumer<T>() {
+			@Override
+			public Stage<Void> accept(@Nullable T value) {
+				return SerialConsumer.this.accept(value);
+			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				SerialConsumer.this.closeWithError(e);
+				whenClosed.accept(e);
+			}
+		};
+	}
+
 }

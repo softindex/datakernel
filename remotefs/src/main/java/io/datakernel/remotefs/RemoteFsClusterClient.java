@@ -245,7 +245,9 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				.map(id -> aliveClients.get(id)
 						.upload(filename, offset)
 						.thenComposeEx(wrapDeath(id))
-						.thenApply(consumer -> new ConsumerWithId(id, consumer.whenException(e -> markIfDead(id, e))))
+						.thenApply(consumer -> new ConsumerWithId(id,
+								consumer.withAcknowledgement(acknowledgement ->
+										acknowledgement.whenException(e -> markIfDead(id, e)))))
 						.toTry()))
 				.thenCompose(tries -> {
 					List<ConsumerWithId> successes = tries.stream()
@@ -357,8 +359,9 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 										.whenException(err -> logger.warn("Failed to connect to server with key " + partitionId + " to download file " + filename, err))
 										.thenComposeEx(wrapDeath(partitionId))
 										.thenApply(supplier -> supplier
-												.whenException(e -> markIfDead(partitionId, e))
-												.whenComplete(downloadFinishStage.recordStats()));
+												.withEndOfStream(endOfStream -> endOfStream
+														.whenException(e -> markIfDead(partitionId, e))
+														.whenComplete(downloadFinishStage.recordStats())));
 							}));
 				})
 				.whenComplete(downloadStartStage.recordStats());

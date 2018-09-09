@@ -92,12 +92,13 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 			}
 			SerialConsumer<ByteBuf> consumer = messaging.sendBinaryStream();
 			forwarder.getSupplier().streamTo(consumer);
-			consumer.whenComplete(($, throwable) -> {
-				if (throwable != null) {
-					logger.warn("Exception occurred while trying to send data");
-				}
-				messaging.close();
-			});
+			consumer.withAcknowledgement(acknowledgement ->
+					acknowledgement.whenComplete(($, throwable) -> {
+						if (throwable != null) {
+							logger.warn("Exception occurred while trying to send data");
+						}
+						messaging.close();
+					}));
 		}
 	}
 

@@ -120,13 +120,15 @@ public final class LocalFsClient implements FsClient, EventloopService {
 										return Stage.ofException(new RemoteFsException("Trying to append at offset greater than the file size"));
 									}
 								}
-								return Stage.of(SerialFileWriter.create(file)
-										.withOffset(offset == -1 ? 0L : size)
-										.withForceOnClose(true)
-										.whenComplete(writeFinishStage.recordStats())
-										.apply(offset != -1 && offset != size ?
-												SerialByteBufCutter.create(size - offset) :
-												SerialConsumerModifier.identity()));
+								return Stage.of(
+										SerialFileWriter.create(file)
+												.withOffset(offset == -1 ? 0L : size)
+												.withForceOnClose(true)
+												.withAcknowledgement(acknowledgement ->
+														acknowledgement.whenComplete(writeFinishStage.recordStats()))
+												.apply(offset != -1 && offset != size ?
+														SerialByteBufCutter.create(size - offset) :
+														SerialConsumerModifier.identity()));
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
@@ -163,7 +165,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 										.withBufferSize(readerBufferSize)
 										.withOffset(offset)
 										.withLength(length == -1 ? Long.MAX_VALUE : length)
-										.whenComplete(readFinishStage.recordStats());
+										.withEndOfStream(endOfStream ->
+												endOfStream.whenComplete(readFinishStage.recordStats()));
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))

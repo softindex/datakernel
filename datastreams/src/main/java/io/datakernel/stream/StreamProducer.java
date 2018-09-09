@@ -16,7 +16,10 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.*;
+import io.datakernel.async.Cancellable;
+import io.datakernel.async.MaterializedStage;
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.serial.AbstractSerialSupplier;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.StreamLateBinder;
@@ -192,9 +195,10 @@ public interface StreamProducer<T> extends Cancellable {
 			"it must be bound in the same tick when it is created. " +
 			"Alternatively, use .withLateBinding() modifier";
 
-	static <T> StreamProducer<T> ofStage(Stage<? extends StreamProducer<T>> producerStage) {
+	static <T> StreamProducer<T> ofStage(Stage<? extends StreamProducer<T>> stage) {
+		if (stage.hasResult()) return stage.getResult();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
-		producerStage.whenComplete((producer, throwable) -> {
+		stage.whenComplete((producer, throwable) -> {
 			if (throwable == null) {
 				checkArgument(producer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, producer);
@@ -245,18 +249,11 @@ public interface StreamProducer<T> extends Cancellable {
 		Stage<Void> endOfStream = getEndOfStream();
 		Stage<Void> suppliedEndOfStream = fn.apply(endOfStream);
 		if (endOfStream == suppliedEndOfStream) return this;
-		SettableStage<Void> newEndOfStream = new SettableStage<>();
-		suppliedEndOfStream.whenComplete(newEndOfStream::trySet);
+		MaterializedStage<Void> newEndOfStream = suppliedEndOfStream.materialize();
 		return new ForwardingStreamProducer<T>(this) {
 			@Override
 			public MaterializedStage<Void> getEndOfStream() {
 				return newEndOfStream;
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				super.closeWithError(e);
-				newEndOfStream.trySetException(e);
 			}
 		};
 	}

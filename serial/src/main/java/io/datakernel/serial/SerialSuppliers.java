@@ -153,11 +153,9 @@ public final class SerialSuppliers {
 
 	public static <T> SerialSupplierModifier<T, T> endOfStreamOnError(Predicate<Throwable> endOfStreamPredicate) {
 		return supplier -> supplier.withEndOfStream(endOfStream ->
-				endOfStream.thenComposeEx(($, e) -> {
-					if (e == null) return Stage.complete();
-					if (endOfStreamPredicate.test(e)) return Stage.complete();
-					return Stage.ofException(e);
-				}));
+				endOfStream.thenComposeEx(($, e) -> (e == null || endOfStreamPredicate.test(e)) ?
+						Stage.complete() :
+						Stage.ofException(e)));
 	}
 
 	public static Stage<Void> sendByteBufQueue(ByteBufQueue bufs, SerialConsumer<ByteBuf> output) {

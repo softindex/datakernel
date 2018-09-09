@@ -21,12 +21,12 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	}
 
 	protected void completeProcess() {
-		process.set(null);
+		process.trySet(null);
 	}
 
 	protected void completeProcess(@Nullable Throwable e) {
 		if (e == null) {
-			process.set(null);
+			process.trySet(null);
 		} else {
 			closeWithError(e);
 		}
