@@ -93,6 +93,11 @@ public final class ByteBufQueue implements Recyclable {
 		return buf;
 	}
 
+	public ByteBuf poll() {
+		if (!hasRemaining()) return null;
+		return take();
+	}
+
 	/**
 	 * Creates and returns ByteBufSlice that contains {@code maxSize} bytes from queue's first ByteBuf
 	 * if latter contains enough bytes. Otherwise creates and returns ByteBuf that contains all bytes

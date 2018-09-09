@@ -17,6 +17,9 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.AsyncProcess;
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -25,13 +28,15 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.stream.*;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialSuppliers;
+import io.datakernel.http.stream2.BufsConsumerChunkedEncoder;
+import io.datakernel.http.stream2.BufsConsumerDelimiter;
+import io.datakernel.serial.*;
 import io.datakernel.util.MemSize;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.serial.SerialConsumer.recycle;
+import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
@@ -76,7 +81,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	private boolean isChunked = false;
 	private int chunkSize = 0;
 
-	protected BufsConsumer bodyReader;
+	protected SettableStage<Void> bodyReader;
 	protected SerialSupplier<ByteBuf> bodyWriter;
 
 	protected int contentLength;
@@ -159,10 +164,9 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
 			if (!httpMessage.useGzip) {
-				BufsConsumerEndpoint endpoint = new BufsConsumerEndpoint(1);
-				BufsConsumer bufsConsumer = new BufsConsumerChunkedEncoder(endpoint);
-				copyBufs(httpMessage.bodySupplier, bufsConsumer, new ByteBufQueue());
-				return SerialSuppliers.concat(SerialSupplier.of(buf), endpoint.getSupplier());
+				BufsConsumerChunkedEncoder bufsConsumer = new BufsConsumerChunkedEncoder();
+				httpMessage.bodySupplier.streamTo(bufsConsumer);
+				return SerialSuppliers.concat(SerialSupplier.of(buf), bufsConsumer.getOutputSupplier());
 			} else {
 				// TODO
 				throw new UnsupportedOperationException();
@@ -179,24 +183,6 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		this.bodyWriter = writer(httpMessage);
 		writeBody();
 		httpMessage.recycle();
-	}
-
-	private static void copyBufs(SerialSupplier<ByteBuf> bufsSupplier, BufsConsumer bufsConsumer, ByteBufQueue bufs) {
-		bufsSupplier.get()
-				.whenResult(buf -> {
-					if (buf != null) bufs.add(buf);
-					bufsConsumer.push(bufs, buf == null)
-							.async()
-							.whenResult(done -> {
-								if (!done) copyBufs(bufsSupplier, bufsConsumer, bufs);
-							})
-							.whenException(e -> {bufsSupplier.closeWithError(e);
-								bufs.recycle();
-							});
-				})
-				.whenException(e -> {bufsConsumer.closeWithError(e);
-					bufs.recycle();
-				});
 	}
 
 	@Override
@@ -311,21 +297,12 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 //		if (readQueue.isEmpty()) return;
 		reading = BODY_SUSPENDED;
-		bodyReader.push(readQueue, false)
-				.whenComplete((readingComplete, e) -> {
-					if (e == null) {
-						if (!readingComplete) {
-							reading = BODY;
-							asyncTcpSocket.read();
-						} else {
-							reading = NOTHING;
-							bodyReader = null;
-							onBodyReceived();
-						}
-					} else {
-						closeWithError(e);
-					}
-				});
+
+		SettableStage<Void> bodyReader = this.bodyReader;
+		if (bodyReader != null) {
+			this.bodyReader = null;
+			bodyReader.set(null);
+		}
 	}
 
 	@Override
@@ -390,34 +367,56 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 				if (reading == FIRSTLINE)
 					throw new ParseException("Empty response from server");
 				reading = BODY;
-				this.bodyReader = startReadingBody();
+				startReadingBody();
 				break;
 			}
 		}
 
-		assert !isClosed();
-		readBody();
+		if (!isClosed()) {
+			readBody();
+		}
 	}
 
-	private BufsConsumer startReadingBody() {
-		BufsConsumerEndpoint endpoint = new BufsConsumerEndpoint(1);
-		BufsConsumer consumer = endpoint;
+	private void startReadingBody() {
+		ByteBufsInput input = null;
+		SerialOutput<ByteBuf> output = null;
+		AsyncProcess bodyReader = null;
 
 		if (isGzipped) {
-			consumer = new BufsConsumerGunzip(consumer, null, 10);
+//			consumer = new BufsConsumerGzipInflater(consumer, null, 10);
 		}
 
 		if (isChunked) {
-			consumer = new BufsConsumerChunkedDecoder(consumer);
+//			consumer = new BufsConsumerChunkedDecoder(consumer);
 		} else {
-			consumer = new BufsConsumerDelimiter(consumer, contentLength);
+			BufsConsumerDelimiter consumerDelimiter = BufsConsumerDelimiter.create(contentLength);
+			bodyReader = consumerDelimiter;
+			input = consumerDelimiter;
+			output = consumerDelimiter;
 		}
 
-		onHeadersReceived(endpoint.getSupplier());
+		input.setInput(ByteBufsSupplier.ofProvidedQueue(
+				readQueue,
+				() -> {
+					if (this.bodyReader == null) {
+						this.bodyReader = new SettableStage<>();
+						asyncTcpSocket.read();
+					}
+					return this.bodyReader;
+				},
+				Stage::complete,
+				this::closeWithError));
 
-		endpoint.skipRemaining();
+		RecyclingSupplier supplier = new RecyclingSupplier(output.getOutputSupplier(new SerialZeroBuffer<>()));
+		onHeadersReceived(supplier);
+		supplier.recycleUnused();
 
-		return consumer;
+		bodyReader.process()
+				.whenComplete(($, e) -> {
+					reading = NOTHING;
+					this.bodyReader = null;
+					onBodyReceived();
+				});
 	}
 
 	private static void check(boolean expression, ParseException e) throws ParseException {
@@ -463,4 +462,27 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		return "";
 	}
 
+	static final class RecyclingSupplier extends AbstractSerialSupplier<ByteBuf> {
+		final SerialSupplier<ByteBuf> supplier;
+		Boolean recycling;
+
+		public RecyclingSupplier(SerialSupplier<ByteBuf> supplier) {
+			super(supplier);
+			this.supplier = supplier;
+		}
+
+		@Override
+		public Stage<ByteBuf> get() {
+			checkState(recycling != Boolean.TRUE);
+			recycling = Boolean.FALSE;
+			return supplier.get();
+		}
+
+		void recycleUnused() {
+			if (recycling == null) {
+				recycling = Boolean.TRUE;
+				supplier.streamTo(recycle());
+			}
+		}
+	}
 }

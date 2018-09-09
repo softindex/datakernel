@@ -16,8 +16,7 @@
 
 package io.datakernel.serial.processor;
 
-import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -27,15 +26,14 @@ import io.datakernel.util.MemSize;
 
 import static java.lang.Math.min;
 
-public final class SerialByteChunker implements WithSerialToSerial<SerialByteChunker, ByteBuf, ByteBuf>, AsyncProcess {
+public final class SerialByteChunker extends AbstractAsyncProcess
+		implements WithSerialToSerial<SerialByteChunker, ByteBuf, ByteBuf> {
 	private SerialSupplier<ByteBuf> input;
 	private SerialConsumer<ByteBuf> output;
 
 	private final int minChunkSize;
 	private final int maxChunkSize;
 	private final ByteBufQueue bufs = new ByteBufQueue();
-
-	private SettableStage<Void> process;
 
 	// region creators
 	private SerialByteChunker(int minChunkSize, int maxChunkSize) {
@@ -59,19 +57,11 @@ public final class SerialByteChunker implements WithSerialToSerial<SerialByteChu
 	// endregion
 
 	@Override
-	public Stage<Void> process() {
-		if (process == null) {
-			process = new SettableStage<>();
-			doProcess();
-		}
-		return process;
-	}
-
-	private void doProcess() {
-		if (process.isComplete()) return;
+	protected void doProcess() {
+		if (isProcessComplete()) return;
 		input.get()
 				.whenResult(buf -> {
-					if (process.isComplete()) {
+					if (isProcessComplete()) {
 						buf.recycle();
 						return;
 					}
@@ -81,7 +71,7 @@ public final class SerialByteChunker implements WithSerialToSerial<SerialByteChu
 										output.accept(bufs.takeRemaining()) :
 										Stage.complete())
 								.thenCompose($ -> output.accept(null))
-								.thenRun(() -> process.trySet(null))
+								.thenRun(this::completeProcess)
 								.whenException(this::closeWithError);
 						return;
 					}
@@ -107,11 +97,10 @@ public final class SerialByteChunker implements WithSerialToSerial<SerialByteChu
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
+	protected void doCloseWithError(Throwable e) {
 		bufs.recycle();
 		input.closeWithError(e);
 		output.closeWithError(e);
-		process.trySetException(e);
 	}
 
 }

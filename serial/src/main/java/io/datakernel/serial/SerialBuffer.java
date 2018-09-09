@@ -15,7 +15,9 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	private final int bufferMinSize;
 	private final int bufferMaxSize;
 
+	@Nullable
 	private SettableStage<Void> put;
+	@Nullable
 	private SettableStage<T> take;
 
 	private boolean endOfStreamReceived;

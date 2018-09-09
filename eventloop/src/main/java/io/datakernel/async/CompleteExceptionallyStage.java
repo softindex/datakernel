@@ -90,7 +90,7 @@ public final class CompleteExceptionallyStage<T> implements MaterializedStage<T>
 	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Stage<U> thenApply(Function<? super T, ? extends U> fn) {
-		return mold();
+		return (CompleteExceptionallyStage<U>) this;
 	}
 
 	@Override
@@ -112,7 +112,7 @@ public final class CompleteExceptionallyStage<T> implements MaterializedStage<T>
 	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {
-		return mold();
+		return (CompleteExceptionallyStage<U>) this;
 	}
 
 	@Override
@@ -140,22 +140,25 @@ public final class CompleteExceptionallyStage<T> implements MaterializedStage<T>
 	@SuppressWarnings("unchecked")
 	@Override
 	public Stage<T> thenException(Function<? super T, Throwable> fn) {
-		return mold();
+		return this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
-		return mold();
+		return (CompleteExceptionallyStage<U>) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
-		return mold();
+		return (CompleteExceptionallyStage<V>) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Stage<Void> both(Stage<?> other) {
-		return mold();
+		return (CompleteExceptionallyStage<Void>) this;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -179,7 +182,7 @@ public final class CompleteExceptionallyStage<T> implements MaterializedStage<T>
 	@SuppressWarnings("unchecked")
 	@Override
 	public Stage<Void> toVoid() {
-		return mold();
+		return (CompleteExceptionallyStage<Void>) this;
 	}
 
 	@Override

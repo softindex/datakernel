@@ -1,7 +1,6 @@
 package io.global.globalfs.api;
 
-import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
@@ -10,14 +9,13 @@ import io.datakernel.serial.processor.WithSerialToSerial;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public abstract class ByteBufsToFramesTransformer implements AsyncProcess, WithSerialToSerial<ByteBufsToFramesTransformer, ByteBuf, DataFrame> {
+public abstract class ByteBufsToFramesTransformer extends AbstractAsyncProcess
+		implements WithSerialToSerial<ByteBufsToFramesTransformer, ByteBuf, DataFrame> {
 	protected long position;
 	protected long nextCheckpoint;
 
 	protected SerialSupplier<ByteBuf> input;
 	protected SerialConsumer<DataFrame> output;
-
-	private SettableStage<Void> process;
 
 	public ByteBufsToFramesTransformer(long offset) {
 		this.position = nextCheckpoint = offset;
@@ -33,16 +31,6 @@ public abstract class ByteBufsToFramesTransformer implements AsyncProcess, WithS
 	public void setOutput(SerialConsumer<DataFrame> output) {
 		checkState(this.output == null, "Output is already set");
 		this.output = output;
-	}
-
-	@Override
-	public void closeWithError(Throwable e) {
-		if (input != null) {
-			input.closeWithError(e);
-		}
-		if (output != null) {
-			output.closeWithError(e);
-		}
 	}
 
 	protected Stage<Void> postByteBuf(ByteBuf buf) {
@@ -76,18 +64,20 @@ public abstract class ByteBufsToFramesTransformer implements AsyncProcess, WithS
 
 	protected abstract void iteration();
 
-	protected final void finish() {
-		process.set(null);
+	@Override
+	protected void doProcess() {
+		postNextCheckpoint()
+				.thenRun(this::iteration);
 	}
 
 	@Override
-	public Stage<Void> process() {
-		if (process != null) {
-			return process;
+	protected final void doCloseWithError(Throwable e) {
+		if (input != null) {
+			input.closeWithError(e);
 		}
-		process = new SettableStage<>();
-		postNextCheckpoint()
-				.thenRun(this::iteration);
-		return process;
+		if (output != null) {
+			output.closeWithError(e);
+		}
 	}
+
 }

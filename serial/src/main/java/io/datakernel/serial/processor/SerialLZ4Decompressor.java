@@ -16,16 +16,13 @@
 
 package io.datakernel.serial.processor;
 
-import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.exception.ExpectedException;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
 import net.jpountz.lz4.LZ4Exception;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
@@ -35,22 +32,20 @@ import net.jpountz.xxhash.XXHashFactory;
 
 import static io.datakernel.serial.processor.SerialLZ4Compressor.*;
 
-public final class SerialLZ4Decompressor implements WithSerialToSerial<SerialLZ4Decompressor, ByteBuf, ByteBuf>, AsyncProcess {
+public final class SerialLZ4Decompressor extends AbstractAsyncProcess
+		implements WithSerialToSerial<SerialLZ4Decompressor, ByteBuf, ByteBuf>, WithByteBufsInput<SerialLZ4Decompressor> {
 	public static final int HEADER_LENGTH = SerialLZ4Compressor.HEADER_LENGTH;
 
 	private final LZ4FastDecompressor decompressor;
 	private final StreamingXXHash32 checksum;
 
-	private SerialSupplier<ByteBuf> input;
+	private ByteBufQueue bufs;
+	private ByteBufsSupplier input;
 	private SerialConsumer<ByteBuf> output;
-
-	private final ByteBufQueue bufs = new ByteBufQueue();
 
 	private final Header header = new Header();
 
 	private Inspector inspector;
-
-	private SettableStage<Void> process;
 
 	public interface Inspector {
 		void onBlock(SerialLZ4Decompressor self, Header header, ByteBuf inputBuf, ByteBuf outputBuf);
@@ -78,63 +73,33 @@ public final class SerialLZ4Decompressor implements WithSerialToSerial<SerialLZ4
 	}
 
 	@Override
-	public void setInput(SerialSupplier<ByteBuf> input) {
+	public void setInput(ByteBufsSupplier input) {
 		this.input = input;
+		this.bufs = this.input.bufs;
 	}
 
 	@Override
 	public void setOutput(SerialConsumer<ByteBuf> output) {
 		this.output = output;
 	}
+
 	// endregion
 
-	private Stage<Void> ensureData() {
-		return input.get()
-				.thenCompose(buf -> {
-					if (process.isComplete()) return Stage.ofException(new ExpectedException());
-					if (buf != null) {
-						bufs.add(buf);
-						return Stage.complete();
-					} else {
-						return Stage.ofException(new ParseException("Unexpected end-of-stream"));
-					}
-				});
-	}
-
-	private Stage<Void> ensureEndOfStream() {
-		if (!bufs.isEmpty()) {
-			return Stage.ofException(new ParseException("Unexpected data after LZ4 EOS"));
-		}
-		return input.get()
-				.thenCompose(buf -> {
-					if (process.isComplete()) return Stage.ofException(new ExpectedException());
-					if (buf != null) {
-						buf.recycle();
-						return Stage.ofException(new ParseException("Unexpected data after LZ4 EOS"));
-					} else {
-						return Stage.complete();
-					}
-				});
-	}
-
 	@Override
-	public Stage<Void> process() {
-		if (process == null) {
-			process = new SettableStage<>();
-			processHeader();
-		}
-		return process;
+	protected void doProcess() {
+		processHeader();
 	}
 
 	public void processHeader() {
-		if (process.isComplete()) return;
+		if (isProcessComplete()) return;
 
 		if (!bufs.hasRemainingBytes(HEADER_LENGTH)) {
-			ensureData()
+			input.get()
 					.thenRun(this::processHeader)
 					.whenException(this::closeWithError);
 			return;
 		}
+
 		try (ByteBuf headerBuf = bufs.takeExactSize(HEADER_LENGTH)) {
 			readHeader(header, headerBuf.array(), headerBuf.readPosition());
 		} catch (ParseException e) {
@@ -147,17 +112,17 @@ public final class SerialLZ4Decompressor implements WithSerialToSerial<SerialLZ4
 			return;
 		}
 
-		ensureEndOfStream()
+		input.markEndOfStream()
 				.thenCompose($ -> output.accept(null))
-				.thenRun(() -> process.trySet(null))
+				.thenRun(this::completeProcess)
 				.whenException(this::closeWithError);
 	}
 
 	public void processBody() {
-		if (process.isComplete()) return;
+		if (isProcessComplete()) return;
 
 		if (!bufs.hasRemainingBytes(header.compressedLen)) {
-			ensureData()
+			input.get()
 					.thenRun(this::processBody)
 					.whenException(this::closeWithError);
 			return;
@@ -181,12 +146,10 @@ public final class SerialLZ4Decompressor implements WithSerialToSerial<SerialLZ4
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
-		if (process.isComplete()) return;
-		bufs.recycle();
+	protected void doCloseWithError(Throwable e) {
+		if (isProcessComplete()) return;
 		input.closeWithError(e);
 		output.closeWithError(e);
-		process.trySetException(e);
 	}
 
 	public final static class Header {

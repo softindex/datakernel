@@ -18,6 +18,7 @@ package io.datakernel.stream;
 
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.serial.SerialSupplier;
 
 import java.util.EnumSet;
@@ -232,34 +233,12 @@ public final class StreamProducers {
 	}
 
 	public static <T> StreamProducerModifier<T, T> endOfStreamOnError(Predicate<Throwable> endOfStreamPredicate) {
-		return producer -> new ForwardingStreamProducer<T>(producer) {
-			final SettableStage<Void> endOfStream = new SettableStage<>();
-
-			{
-				producer.getEndOfStream().whenComplete(($, throwable) -> {
-					if (throwable == null) {
-						endOfStream.trySet(null);
-					} else {
-						if (endOfStreamPredicate.test(throwable)) {
-							endOfStream.trySet(null);
-						} else {
-							endOfStream.trySetException(throwable);
-						}
-					}
-				});
-			}
-
-			@Override
-			public MaterializedStage<Void> getEndOfStream() {
-				return endOfStream;
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				super.closeWithError(e);
-				endOfStream.trySetException(e);
-			}
-		};
+		return producer -> producer.withEndOfStream(endOfStream ->
+				endOfStream.thenComposeEx(($, e) -> {
+					if (e == null) return Stage.complete();
+					if (endOfStreamPredicate.test(e)) return Stage.complete();
+					return Stage.ofException(e);
+				}));
 	}
 
 }

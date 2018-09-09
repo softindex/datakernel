@@ -1,7 +1,6 @@
 package io.global.globalfs.api;
 
-import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
@@ -16,7 +15,9 @@ import java.io.IOException;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public abstract class FramesToByteBufsTransformer implements AsyncProcess, WithSerialToSerial<FramesToByteBufsTransformer, DataFrame, ByteBuf> {
+public abstract class FramesToByteBufsTransformer
+		extends AbstractAsyncProcess
+		implements WithSerialToSerial<FramesToByteBufsTransformer, DataFrame, ByteBuf> {
 	private final PubKey pubKey;
 
 	protected SerialSupplier<DataFrame> input;
@@ -25,8 +26,6 @@ public abstract class FramesToByteBufsTransformer implements AsyncProcess, WithS
 
 	private boolean first = true;
 	private SHA256Digest digest;
-
-	private SettableStage<Void> process = new SettableStage<>();
 
 	public FramesToByteBufsTransformer(PubKey pubKey) {
 		this.pubKey = pubKey;
@@ -45,13 +44,22 @@ public abstract class FramesToByteBufsTransformer implements AsyncProcess, WithS
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
-		if (input != null) {
-			input.closeWithError(e);
-		}
-		if (output != null) {
-			output.closeWithError(e);
-		}
+	protected void doProcess() {
+		input.get()
+				.whenResult(frame -> {
+					if (frame == null) {
+						output.accept(null);
+						return;
+					}
+					handleFrame(frame)
+							.whenComplete(($, e) -> {
+								if (e != null) {
+									input.closeWithError(e);
+									return;
+								}
+								doProcess();
+							});
+				});
 	}
 
 	protected Stage<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {
@@ -89,30 +97,13 @@ public abstract class FramesToByteBufsTransformer implements AsyncProcess, WithS
 	}
 
 	@Override
-	public Stage<Void> process() {
-		if (process != null) {
-			return process;
+	protected final void doCloseWithError(Throwable e) {
+		if (input != null) {
+			input.closeWithError(e);
 		}
-		process = new SettableStage<>();
-		doProcess();
-		return process;
+		if (output != null) {
+			output.closeWithError(e);
+		}
 	}
 
-	public void doProcess() {
-		input.get()
-				.whenResult(frame -> {
-					if (frame == null) {
-						output.accept(null);
-						return;
-					}
-					handleFrame(frame)
-							.whenComplete(($, e) -> {
-								if (e != null) {
-									input.closeWithError(e);
-									return;
-								}
-								doProcess();
-							});
-				});
-	}
 }

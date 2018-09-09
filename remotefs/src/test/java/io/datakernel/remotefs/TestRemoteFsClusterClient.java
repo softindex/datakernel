@@ -194,7 +194,7 @@ public class TestRemoteFsClusterClient {
 		String fileName = "i_dont_exist.txt";
 
 		client.downloadSerial(fileName)
-				.streamTo(SerialConsumer.idle())
+				.streamTo(SerialConsumer.recycle())
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, fileName));
 

@@ -125,7 +125,9 @@ public abstract class CompleteStage<T> implements MaterializedStage<T> {
 
 	@Override
 	public final Stage<T> thenException(Function<? super T, Throwable> fn) {
-		return Stage.ofException(fn.apply(getResult()));
+		Throwable maybeException = fn.apply(getResult());
+		if (maybeException == null) return this;
+		return Stage.ofException(maybeException);
 	}
 
 	@Override

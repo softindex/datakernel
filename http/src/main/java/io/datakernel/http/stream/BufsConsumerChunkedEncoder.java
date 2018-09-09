@@ -7,9 +7,10 @@ import io.datakernel.bytebuf.ByteBufQueue;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
-import static java.lang.Integer.numberOfLeadingZeros;
 
 public final class BufsConsumerChunkedEncoder implements BufsConsumer {
+	private static final byte[] LAST_CHUNK = {48, 13, 10, 13, 10};
+
 	private final BufsConsumer next;
 	private final ByteBufQueue outputBufs = new ByteBufQueue();
 
@@ -21,21 +22,42 @@ public final class BufsConsumerChunkedEncoder implements BufsConsumer {
 	public Stage<Boolean> push(ByteBufQueue inputBufs, boolean endOfStream) {
 		while (!inputBufs.isEmpty()) {
 			ByteBuf buf = inputBufs.take();
-			ByteBuf headerBuf = headerBuf(buf);
-			outputBufs.add(headerBuf);
-			outputBufs.add(buf);
+			ByteBuf chunkBuf = toChunkBuf(buf);
+			outputBufs.add(chunkBuf);
 		}
 		if (endOfStream) {
-			ByteBuf endOfStreamBuf = ByteBufPool.allocate(4);
-			byte[] array = endOfStreamBuf.array();
-			array[0] = CR;
-			array[1] = LF;
-			array[2] = CR;
-			array[3] = LF;
-			endOfStreamBuf.writePosition(4);
-			outputBufs.add(endOfStreamBuf);
+			writeLastChunk();
 		}
-		return null;
+
+		return next.push(outputBufs, endOfStream)
+				.whenException(this::closeWithError);
+	}
+
+	private void writeLastChunk() {
+		ByteBuf endOfStreamBuf = ByteBufPool.allocate(5);
+		// writing "0\r\n\r\n" aka last-chunk
+		endOfStreamBuf.write(LAST_CHUNK);
+		endOfStreamBuf.writePosition(5);
+		outputBufs.add(endOfStreamBuf);
+	}
+
+	private static ByteBuf toChunkBuf(ByteBuf buf) {
+		int bufSize = buf.readRemaining();
+		char[] hexRepr = Integer.toHexString(bufSize).toCharArray();
+		int hexLen = hexRepr.length;
+		ByteBuf chunkBuf = ByteBufPool.allocate(hexLen + 2 + bufSize + 2);
+		byte[] chunkArray = chunkBuf.array();
+		for (int i = 0; i < hexLen; i++) {
+			chunkArray[i] = (byte) hexRepr[i];
+		}
+		chunkArray[hexLen] = CR;
+		chunkArray[hexLen + 1] = LF;
+		chunkBuf.writePosition(hexLen + 2);
+		chunkBuf.put(buf);
+		buf.recycle();
+		chunkBuf.writeByte(CR);
+		chunkBuf.writeByte(LF);
+		return chunkBuf;
 	}
 
 	@Override
@@ -43,23 +65,4 @@ public final class BufsConsumerChunkedEncoder implements BufsConsumer {
 		outputBufs.recycle();
 		next.closeWithError(e);
 	}
-
-	static ByteBuf headerBuf(ByteBuf buf) {
-		int bufSize = buf.readRemaining();
-		int bufSizeBits = 32 - numberOfLeadingZeros(bufSize - 1);
-		int bufSizeBytes = (bufSizeBits + 1) >>> 3;
-
-		ByteBuf headerBuf = ByteBufPool.allocate(16);
-		byte[] headersArray = headerBuf.array();
-
-		for (int i = 0; i < bufSizeBytes * 2; i++) {
-			byte b = (byte) ((bufSize >>> (bufSizeBytes - i)) * 0xF);
-			headersArray[i] = (byte) (b <= 9 ? '0' + b : 'A' + b - 10);
-		}
-		headersArray[bufSizeBytes] = CR;
-		headersArray[bufSizeBytes + 1] = LF;
-		headerBuf.writePosition(bufSizeBytes + 2);
-		return headerBuf;
-	}
-
 }

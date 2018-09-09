@@ -18,6 +18,7 @@ package io.datakernel.async;
 
 import java.util.function.*;
 
+@FunctionalInterface
 public interface AsyncSupplier<T> {
 	Stage<T> get();
 

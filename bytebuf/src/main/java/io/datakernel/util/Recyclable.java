@@ -19,10 +19,10 @@ public interface Recyclable {
 				deepRecycle(it.next());
 			}
 		} else if (object instanceof Collection) {
-			deepRecycle(object);
+			deepRecycle(((Collection) object).iterator());
 			((Collection) object).clear();
 		} else if (object instanceof Iterable) {
-			deepRecycle(object);
+			deepRecycle(((Iterable) object).iterator());
 		} else if (object instanceof Map) {
 			deepRecycle(((Map) object).values());
 			((Map) object).clear();

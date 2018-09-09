@@ -42,7 +42,7 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
-final class GzipProcessorUtils {
+public final class GzipProcessorUtils {
 	// rfc 1952 section 2.3.1
 	private static final byte[] GZIP_HEADER = {(byte) 0x1f, (byte) 0x8b, Deflater.DEFLATED, 0, 0, 0, 0, 0, 0, 0};
 	private static final int GZIP_HEADER_SIZE = GZIP_HEADER.length;
@@ -72,7 +72,7 @@ final class GzipProcessorUtils {
 
 	private GzipProcessorUtils() {}
 
-	static ByteBuf fromGzip(ByteBuf src, int maxMessageSize) throws ParseException {
+	public static ByteBuf fromGzip(ByteBuf src, int maxMessageSize) throws ParseException {
 		assert src.readRemaining() > 0;
 
 		int expectedSize = readExpectedInputSize(src);
@@ -98,7 +98,7 @@ final class GzipProcessorUtils {
 		return dst;
 	}
 
-	static ByteBuf toGzip(ByteBuf src) {
+	public static ByteBuf toGzip(ByteBuf src) {
 		assert src.readRemaining() > 0;
 
 		Deflater compressor = ensureCompressor();

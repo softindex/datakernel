@@ -188,7 +188,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 					splitter.process();
 
 					return (sizeInCache == 0 ? output : SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, sizeInCache), output))
-							.withAcknowledgement(stage -> stage.thenCompose($ -> cacheAppendProcess));
+							.withEndOfStream(stage -> stage.thenCompose($ -> cacheAppendProcess));
 				});
 	}
 

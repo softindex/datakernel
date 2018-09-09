@@ -287,7 +287,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
-	default SerialSupplier<T> withAcknowledgement(Function<Stage<Void>, Stage<Void>> fn) {
+	default SerialSupplier<T> withEndOfStream(Function<Stage<Void>, Stage<Void>> fn) {
 		return new AbstractSerialSupplier<T>(this) {
 			@SuppressWarnings("unchecked")
 			@Override

@@ -16,8 +16,7 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -29,7 +28,7 @@ import io.datakernel.time.CurrentTimeProvider;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
-public final class LogStreamChunker implements SerialInput<ByteBuf>, AsyncProcess {
+public final class LogStreamChunker extends AbstractAsyncProcess implements SerialInput<ByteBuf> {
 	private final CurrentTimeProvider currentTimeProvider;
 	private final DateTimeFormatter datetimeFormat;
 	private final LogFileSystem fileSystem;
@@ -39,8 +38,6 @@ public final class LogStreamChunker implements SerialInput<ByteBuf>, AsyncProces
 	private SerialConsumer<ByteBuf> currentConsumer;
 
 	private String currentChunkName;
-
-	private SettableStage<Void> process;
 
 	private LogStreamChunker(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat, String logPartition) {
 		this.currentTimeProvider = currentTimeProvider;
@@ -63,32 +60,24 @@ public final class LogStreamChunker implements SerialInput<ByteBuf>, AsyncProces
 	}
 
 	@Override
-	public Stage<Void> process() {
-		if (process == null) {
-			process = new SettableStage<>();
-			doProcess();
-		}
-		return process;
-	}
-
-	private void doProcess() {
+	protected void doProcess() {
 		input.get()
 				.whenResult(buf -> {
-					if (process.isComplete()) {
+					if (isProcessComplete()) {
 						if (buf != null) buf.recycle();
 						return;
 					}
 					if (buf != null) {
 						ensureConsumer()
 								.thenRun(() -> {
-									if (process.isComplete()) {
+									if (isProcessComplete()) {
 										buf.recycle();
 										return;
 									}
 
 									currentConsumer.accept(buf)
 											.thenRun(() -> {
-												if (process.isComplete()) return;
+												if (isProcessComplete()) return;
 												doProcess();
 											})
 											.whenException(this::closeWithError);
@@ -97,7 +86,7 @@ public final class LogStreamChunker implements SerialInput<ByteBuf>, AsyncProces
 								.whenException(this::closeWithError);
 					} else {
 						flush()
-								.thenRun(() -> process.set(null))
+								.thenRun(this::completeProcess)
 								.whenException(this::closeWithError);
 					}
 				})
@@ -114,12 +103,12 @@ public final class LogStreamChunker implements SerialInput<ByteBuf>, AsyncProces
 	private Stage<Void> startNewChunk(String chunkName) {
 		return flush()
 				.thenCompose($ -> {
-					if (process.isComplete()) return Stage.complete();
+					if (isProcessComplete()) return Stage.complete();
 					currentChunkName = chunkName;
 					return fileSystem.makeUniqueLogFile(logPartition, chunkName)
 							.thenCompose(newLogFile -> fileSystem.write(logPartition, newLogFile)
 									.whenResult(newConsumer -> {
-										if (process.isComplete()) {
+										if (isProcessComplete()) {
 											newConsumer.cancel();
 											return;
 										}
@@ -136,11 +125,10 @@ public final class LogStreamChunker implements SerialInput<ByteBuf>, AsyncProces
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
+	protected void doCloseWithError(Throwable e) {
 		input.closeWithError(e);
 		if (currentConsumer != null) {
 			currentConsumer.closeWithError(e);
 		}
-		process.setException(e);
 	}
 }

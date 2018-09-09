@@ -16,15 +16,13 @@
 
 package io.datakernel.serial.processor;
 
-import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.xxhash.StreamingXXHash32;
@@ -32,7 +30,8 @@ import net.jpountz.xxhash.XXHashFactory;
 
 import java.time.Duration;
 
-public final class SerialLZ4Compressor implements WithSerialToSerial<SerialLZ4Compressor, ByteBuf, ByteBuf>, AsyncProcess {
+public final class SerialLZ4Compressor extends AbstractAsyncProcess
+		implements WithSerialToSerial<SerialLZ4Compressor, ByteBuf, ByteBuf> {
 	static final byte[] MAGIC = new byte[]{'L', 'Z', '4', 'B', 'l', 'o', 'c', 'k'};
 	static final int MAGIC_LENGTH = MAGIC.length;
 
@@ -58,13 +57,11 @@ public final class SerialLZ4Compressor implements WithSerialToSerial<SerialLZ4Co
 	private SerialSupplier<ByteBuf> input;
 	private SerialConsumer<ByteBuf> output;
 
-	private SettableStage<Void> process;
-
-	public interface Inspector extends AbstractStreamTransformer_1_1.Inspector {
+	public interface Inspector {
 		void onBuf(ByteBuf in, ByteBuf out);
 	}
 
-	public static class JmxInspector extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector {
+	public static class JmxInspector implements Inspector {
 		public static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 		private final ValueStats bytesIn = ValueStats.create(SMOOTHING_WINDOW);
@@ -113,15 +110,7 @@ public final class SerialLZ4Compressor implements WithSerialToSerial<SerialLZ4Co
 	}
 
 	@Override
-	public Stage<Void> process() {
-		if (process == null) {
-			process = new SettableStage<>();
-			doProcess();
-		}
-		return process;
-	}
-
-	private void doProcess() {
+	protected void doProcess() {
 		input.get()
 				.whenResult(buf -> {
 					if (buf != null) {
@@ -134,7 +123,7 @@ public final class SerialLZ4Compressor implements WithSerialToSerial<SerialLZ4Co
 						Stage.complete()
 								.thenCompose($ -> output.accept(createEndOfStreamBlock()))
 								.thenCompose($ -> output.accept(null))
-								.thenRun(() -> process.trySet(null))
+								.thenRun(this::completeProcess)
 								.whenException(this::closeWithError);
 					}
 				})
@@ -142,10 +131,9 @@ public final class SerialLZ4Compressor implements WithSerialToSerial<SerialLZ4Co
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
+	protected void doCloseWithError(Throwable e) {
 		input.closeWithError(e);
 		output.closeWithError(e);
-		process.trySetException(e);
 	}
 
 	// endregion

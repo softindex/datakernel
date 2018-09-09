@@ -76,10 +76,11 @@ public class AsyncHttpClientTest {
 		Duration TIMEOUT = Duration.ofMillis(1);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop); // .withConnectTimeout(TIMEOUT);
 
 		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://google.com"))
-				.thenTry(response -> decodeUtf8(response.getBody()))
+				.thenTry(response ->
+						decodeUtf8(response.getBody()))
 				.thenRunEx(httpClient::stop)
 				.toCompletableFuture();
 

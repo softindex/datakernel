@@ -1,5 +1,6 @@
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.util.*;
 
@@ -112,15 +113,14 @@ public final class Stages {
 		}
 
 		@Override
-		protected void onComplete(T result) {
-			if (--countdown == 0) {
-				complete(null);
+		protected void onComplete(@Nullable T result, Throwable e) {
+			if (e == null) {
+				if (--countdown == 0) {
+					complete(null);
+				}
+			} else {
+				tryCompleteExceptionally(e);
 			}
-		}
-
-		@Override
-		protected void onCompleteExceptionally(Throwable throwable) {
-			tryCompleteExceptionally(throwable);
 		}
 	}
 
@@ -202,14 +202,13 @@ public final class Stages {
 		}
 
 		@Override
-		protected void onComplete(T result) {
-			tryComplete(result);
-		}
-
-		@Override
-		protected void onCompleteExceptionally(Throwable throwable) {
-			if (--errors == 0) {
-				completeExceptionally(throwable);
+		protected void onComplete(@Nullable T result, Throwable e) {
+			if (e == null) {
+				tryComplete(result);
+			} else {
+				if (--errors == 0) {
+					completeExceptionally(e);
+				}
 			}
 		}
 	}
@@ -278,14 +277,14 @@ public final class Stages {
 		}
 
 		@Override
-		protected void onComplete(T result) {
-			processComplete(result, 0);
+		protected void onComplete(@Nullable T result, Throwable e) {
+			if (e == null) {
+				processComplete(result, 0);
+			} else {
+				tryCompleteExceptionally(e);
+			}
 		}
 
-		@Override
-		protected void onCompleteExceptionally(Throwable throwable) {
-			tryCompleteExceptionally(throwable);
-		}
 	}
 
 	/**
@@ -368,8 +367,12 @@ public final class Stages {
 		}
 
 		@Override
-		protected void onComplete(T result) {
-			processComplete(result, 0);
+		protected void onComplete(@Nullable T result, Throwable e) {
+			if (e == null) {
+				processComplete(result, 0);
+			} else {
+				processException(e, 0);
+			}
 		}
 
 		void processComplete(T stageResult, int index) {
@@ -396,12 +399,7 @@ public final class Stages {
 			}
 			complete(finished);
 		}
-
-		@Override
-		protected void onCompleteExceptionally(Throwable throwable) {
-			processException(throwable, 0);
-		}
-
+		
 		void processException(Throwable throwable, int index) {
 			if (isComplete()) {
 				return;

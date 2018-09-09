@@ -29,17 +29,11 @@ public interface SerialConsumer<T> extends Cancellable {
 	Stage<Void> accept(@Nullable T value);
 
 	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer) {
-		return of(consumer, endOfStream -> Stage.complete());
+		return of(consumer, e -> {});
 	}
 
-	static <T> SerialConsumer<T> idle() {
-		return of($ -> Stage.complete(), $ -> Stage.complete());
-	}
-
-	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer,
-			Function<Stage<Void>, ? extends Stage<Void>> endOfStreamHandler) {
+	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer, Cancellable cancellable) {
 		SettableStage<Void> endOfStream = new SettableStage<>();
-		Stage<Void> endOfStreamAck = endOfStreamHandler.apply(endOfStream);
 		return new SerialConsumer<T>() {
 			final AsyncConsumer<T> thisConsumer = consumer;
 
@@ -48,15 +42,18 @@ public interface SerialConsumer<T> extends Cancellable {
 				if (value != null) {
 					return thisConsumer.accept(value);
 				}
-				endOfStream.trySet(null);
-				return endOfStreamAck;
+				return Stage.complete();
 			}
 
 			@Override
 			public void closeWithError(Throwable e) {
-				endOfStream.trySetException(e);
+				cancellable.closeWithError(e);
 			}
 		};
+	}
+
+	static <T> SerialConsumer<T> recycle() {
+		return of(AsyncConsumer.of(Recyclable::deepRecycle));
 	}
 
 	static <T> SerialConsumer<T> ofException(Throwable e) {

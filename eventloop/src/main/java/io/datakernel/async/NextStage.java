@@ -59,24 +59,14 @@ public abstract class NextStage<T, R> extends AbstractStage<R> implements BiCons
 		return this;
 	}
 
-	protected abstract void onComplete(@Nullable T result);
-
-	protected void onCompleteExceptionally(Throwable throwable) {
-		completeExceptionally(throwable);
-	}
+	protected abstract void onComplete(T result, Throwable e);
 
 	@Override
-	public final void accept(@Nullable T t, @Nullable Throwable throwable) {
+	public final void accept(@Nullable T result, @Nullable Throwable e) {
 		if (prev != null) {
-			prev.accept(t, throwable);
+			prev.accept(result, e);
 		}
-		if (throwable == null) {
-			onComplete(t);
-		} else {
-			onCompleteExceptionally(throwable);
-		}
+		onComplete(result, e);
 	}
-
-
 
 }

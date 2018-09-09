@@ -151,7 +151,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 
 										long[] size = {0};
 										return Stage.of(messaging.receiveBinaryStream()
-												.peek(b -> size[0] += b != null ? b.readRemaining() : 0).withAcknowledgement(stage -> stage.thenCompose($1 -> ((Function<Void, Stage<Void>>) $ -> {
+												.peek(b -> size[0] += b != null ? b.readRemaining() : 0).withEndOfStream(stage -> stage.thenCompose($1 -> ((Function<Void, Stage<Void>>) $ -> {
 													messaging.sendEndOfStream();
 													if (size[0] == receivingSize) {
 														messaging.close();
