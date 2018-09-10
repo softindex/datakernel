@@ -8,8 +8,6 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.processor.WithByteBufsInput;
 import io.datakernel.serial.processor.WithSerialToSerial;
 
-import static io.datakernel.serial.SerialSuppliers.sendByteBufQueue;
-
 public final class BufsConsumerDelimiter extends AbstractAsyncProcess
 		implements WithSerialToSerial<BufsConsumerDelimiter, ByteBuf, ByteBuf>, WithByteBufsInput<BufsConsumerDelimiter> {
 
@@ -43,7 +41,7 @@ public final class BufsConsumerDelimiter extends AbstractAsyncProcess
 						if (e1 == null) {
 							ByteBufQueue outputBufs = new ByteBufQueue();
 							remaining -= input.bufs.drainTo(outputBufs, remaining);
-							sendByteBufQueue(outputBufs, output)
+							output.acceptAll(outputBufs.asIterator())
 									.whenComplete(($2, e2) -> {
 										if (isProcessComplete()) return;
 										if (e2 == null) {

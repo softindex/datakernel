@@ -1,7 +1,6 @@
 package io.datakernel.http.stream2;
 
 import io.datakernel.async.AbstractAsyncProcess;
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serial.SerialConsumer;
@@ -48,9 +47,7 @@ public final class BufsConsumerChunkedEncoder extends AbstractAsyncProcess
 										}
 									});
 						} else {
-							Stage.complete()
-									.thenCompose($ -> output.accept(getLastChunk()))
-									.thenCompose($ -> output.accept(null))
+							output.accept(getLastChunk(), null)
 									.whenComplete(($, e2) -> {
 										if (isProcessComplete()) return;
 										if (e2 == null) {

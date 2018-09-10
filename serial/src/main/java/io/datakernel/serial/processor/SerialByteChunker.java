@@ -65,7 +65,25 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 						buf.recycle();
 						return;
 					}
-					if (buf == null) {
+					if (buf != null) {
+						bufs.add(buf);
+						if (!bufs.hasRemainingBytes(minChunkSize)) {
+							doProcess();
+							return;
+						}
+
+						int exactSize = 0;
+						for (int i = 0; i != bufs.remainingBufs(); i++) {
+							exactSize += bufs.peekBuf(i).readRemaining();
+							if (exactSize >= minChunkSize) {
+								break;
+							}
+						}
+						ByteBuf out = bufs.takeExactSize(min(exactSize, maxChunkSize));
+						output.accept(out)
+								.thenRun(this::doProcess)
+								.whenException(this::closeWithError);
+					} else {
 						Stage.complete()
 								.thenCompose($ -> bufs.hasRemaining() ?
 										output.accept(bufs.takeRemaining()) :
@@ -73,25 +91,7 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 								.thenCompose($ -> output.accept(null))
 								.thenRun(this::completeProcess)
 								.whenException(this::closeWithError);
-						return;
 					}
-					bufs.add(buf);
-					if (!bufs.hasRemainingBytes(minChunkSize)) {
-						doProcess();
-						return;
-					}
-
-					int exactSize = 0;
-					for (int i = 0; i != bufs.remainingBufs(); i++) {
-						exactSize += bufs.peekBuf(i).readRemaining();
-						if (exactSize >= minChunkSize) {
-							break;
-						}
-					}
-					ByteBuf out = bufs.takeExactSize(min(exactSize, maxChunkSize));
-					output.accept(out)
-							.thenRun(this::doProcess)
-							.whenException(this::closeWithError);
 				})
 				.whenException(this::closeWithError);
 	}

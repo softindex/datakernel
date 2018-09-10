@@ -104,26 +104,23 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 				.thenCompose(messaging ->
 						messaging.send(new Upload(filename, offset))
 								.thenApply($ -> messaging.sendBinaryStream()
-										.withAcknowledgement(acknowledgement -> acknowledgement
-												.thenCompose($2 -> messaging.receive())
-												.thenCompose(msg -> {
-													messaging.close();
-													if (msg instanceof UploadFinished) {
-														return Stage.complete();
-													}
-													if (msg instanceof ServerError) {
-														return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
-													}
-													if (msg != null) {
-														return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
-													}
-													return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
-												})
-												.whenException(e -> {
-													messaging.close();
-													logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
-												})
-												.whenComplete(uploadFinishStage.recordStats())))
+										.withAcknowledgement(acknowledgement ->
+												acknowledgement
+														.thenCompose($2 -> messaging.receive())
+														.thenCompose(msg -> {
+															messaging.close();
+															if (msg instanceof UploadFinished) {
+																return Stage.complete();
+															}
+															if (msg instanceof ServerError) {
+																return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
+															}
+															if (msg != null) {
+																return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
+															}
+															return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
+														})
+														.whenComplete(uploadFinishStage.recordStats())))
 								.whenException(e -> {
 									messaging.close();
 									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);

@@ -18,13 +18,11 @@ package io.datakernel.stream;
 
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
 import io.datakernel.serial.SerialSupplier;
 
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
@@ -226,19 +224,6 @@ public final class StreamProducers {
 		public Set<StreamCapability> getCapabilities() {
 			return EnumSet.of(LATE_BINDING);
 		}
-	}
-
-	public static <T> StreamProducerModifier<T, T> endOfStreamOnError() {
-		return endOfStreamOnError(e -> true);
-	}
-
-	public static <T> StreamProducerModifier<T, T> endOfStreamOnError(Predicate<Throwable> endOfStreamPredicate) {
-		return producer -> producer.withEndOfStream(endOfStream ->
-				endOfStream.thenComposeEx(($, e) -> {
-					if (e == null) return Stage.complete();
-					if (endOfStreamPredicate.test(e)) return Stage.complete();
-					return Stage.ofException(e);
-				}));
 	}
 
 }

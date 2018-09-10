@@ -23,6 +23,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.serial.SerialSupplierModifier;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serial.processor.SerialLZ4Compressor;
@@ -44,7 +45,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static io.datakernel.serial.SerialSuppliers.endOfStreamOnError;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
@@ -174,7 +174,11 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 																inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
 															}
 														}))
-												.apply(endOfStreamOnError(throwable -> throwable instanceof TruncatedDataException))
+												.apply((SerialSupplierModifier<ByteBuf, ByteBuf>) supplier ->
+														supplier.withEndOfStream(endOfStream ->
+																endOfStream.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
+																		Stage.complete() :
+																		Stage.ofException(e))))
 												.apply(SerialBinaryDeserializer.create(serializer))
 												.withEndOfStream(endOfStream ->
 														endOfStream.whenComplete(($, e) -> log(e)))

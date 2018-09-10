@@ -18,9 +18,11 @@ package io.datakernel.bytebuf;
 
 import io.datakernel.util.Recyclable;
 
+import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
 
+import static io.datakernel.util.CollectionUtils.emptyIterator;
 import static java.lang.System.arraycopy;
 
 public final class ByteBufQueue implements Recyclable {
@@ -50,7 +52,7 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	private int next(int i) {
-		return ++i >= bufs.length ? 0 : i;
+		return (i + 1) % bufs.length;
 	}
 
 	private void doPoll() {
@@ -385,6 +387,44 @@ public final class ByteBufQueue implements Recyclable {
 			s -= buf.readRemaining();
 		}
 		return maxSize - s;
+	}
+
+	public Iterator<ByteBuf> asIterator() {
+		if (!hasRemaining()) return emptyIterator();
+		ByteBufIterator iterator = new ByteBufIterator(this);
+		first = last = 0;
+		return iterator;
+	}
+
+	private static class ByteBufIterator implements Iterator<ByteBuf>, Recyclable {
+		final ByteBuf[] bufs;
+		int first;
+		final int last;
+
+		private ByteBufIterator(ByteBufQueue queue) {
+			bufs = queue.bufs;
+			first = queue.first;
+			last = queue.last;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return first != last;
+		}
+
+		@Override
+		public ByteBuf next() {
+			ByteBuf buf = bufs[first];
+			first = (first + 1) % bufs.length;
+			return buf;
+		}
+
+		@Override
+		public void recycle() {
+			while (hasNext()) {
+				next().recycle();
+			}
+		}
 	}
 
 	/**

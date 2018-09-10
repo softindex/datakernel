@@ -20,12 +20,63 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.util.Recyclable;
 
+import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static io.datakernel.util.CollectionUtils.asIterator;
+import static io.datakernel.util.Recyclable.deepRecycle;
+
 public interface SerialConsumer<T> extends Cancellable {
 	Stage<Void> accept(@Nullable T value);
+
+	default Stage<Void> accept(T item1, T item2) {
+		return accept(item1)
+				.thenComposeEx(($, e) -> {
+					if (e == null) {
+						return accept(item2);
+					} else {
+						deepRecycle(item2);
+						return Stage.ofException(e);
+					}
+				});
+	}
+
+	@SuppressWarnings("unchecked")
+	default Stage<Void> accept(T item1, T item2, T... items) {
+		return accept(item1)
+				.thenComposeEx(($, e) -> {
+					if (e == null) {
+						return accept(item1);
+					} else {
+						deepRecycle(item1);
+						for (T item : items) {
+							deepRecycle(item);
+						}
+						return Stage.ofException(e);
+					}
+				})
+				.thenComposeEx(($, e) -> {
+					if (e == null) {
+						return accept(item2);
+					} else {
+						for (T item : items) {
+							deepRecycle(item);
+						}
+						return Stage.ofException(e);
+					}
+				})
+				.thenCompose($ -> acceptAll(asIterator(items)));
+	}
+
+	default Stage<Void> acceptAll(Iterator<? extends T> it) {
+		return SerialConsumers.acceptAll(this, it);
+	}
+
+	default Stage<Void> acceptAll(Iterable<T> iterable) {
+		return acceptAll(iterable.iterator());
+	}
 
 	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer) {
 		return of(consumer, e -> {});
@@ -59,7 +110,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>() {
 			@Override
 			public Stage<Void> accept(T value) {
-				Recyclable.deepRecycle(value);
+				deepRecycle(value);
 				return Stage.ofException(e);
 			}
 		};
@@ -85,7 +136,7 @@ public interface SerialConsumer<T> extends Cancellable {
 						this.consumer = consumer;
 						return consumer.accept(value);
 					} else {
-						Recyclable.deepRecycle(value);
+						deepRecycle(value);
 						return Stage.ofException(e);
 					}
 				});
@@ -197,8 +248,9 @@ public interface SerialConsumer<T> extends Cancellable {
 	}
 
 	default SerialConsumer<T> withAcknowledgement(Function<Stage<Void>, Stage<Void>> fn) {
-		SettableStage<Void> endOfStream = new SettableStage<>();
-		MaterializedStage<Void> suppliedEndOfStream = fn.apply(endOfStream).materialize();
+		SettableStage<Void> acknowledgement = new SettableStage<>();
+		SettableStage<Void> newAcknowledgement = new SettableStage<>();
+		fn.apply(acknowledgement).whenComplete(newAcknowledgement::trySet);
 		return new SerialConsumer<T>() {
 			@Override
 			public Stage<Void> accept(@Nullable T value) {
@@ -206,18 +258,18 @@ public interface SerialConsumer<T> extends Cancellable {
 					return SerialConsumer.this.accept(value)
 							.thenComposeEx(($, e) -> {
 								if (e == null) return Stage.complete();
-								endOfStream.trySetException(e);
-								return suppliedEndOfStream;
+								acknowledgement.trySetException(e);
+								return newAcknowledgement;
 							});
 				} else {
-					endOfStream.trySet(null);
-					return suppliedEndOfStream;
+					acknowledgement.trySet(null);
+					return newAcknowledgement;
 				}
 			}
 
 			@Override
 			public void closeWithError(Throwable e) {
-				endOfStream.trySetException(e);
+				newAcknowledgement.trySetException(e);
 			}
 		};
 	}

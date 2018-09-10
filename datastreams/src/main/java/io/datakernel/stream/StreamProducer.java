@@ -16,10 +16,7 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.*;
 import io.datakernel.serial.AbstractSerialSupplier;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.StreamLateBinder;
@@ -249,11 +246,18 @@ public interface StreamProducer<T> extends Cancellable {
 		Stage<Void> endOfStream = getEndOfStream();
 		Stage<Void> suppliedEndOfStream = fn.apply(endOfStream);
 		if (endOfStream == suppliedEndOfStream) return this;
-		MaterializedStage<Void> newEndOfStream = suppliedEndOfStream.materialize();
+		SettableStage<Void> newEndOfStream = new SettableStage<>();
+		suppliedEndOfStream.whenComplete(newEndOfStream::trySet);
 		return new ForwardingStreamProducer<T>(this) {
 			@Override
 			public MaterializedStage<Void> getEndOfStream() {
 				return newEndOfStream;
+			}
+
+			@Override
+			public void closeWithError(Throwable e) {
+				super.closeWithError(e);
+				newEndOfStream.trySetException(e);
 			}
 		};
 	}

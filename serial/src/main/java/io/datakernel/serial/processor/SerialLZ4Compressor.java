@@ -17,7 +17,6 @@
 package io.datakernel.serial.processor;
 
 import io.datakernel.async.AbstractAsyncProcess;
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.jmx.ValueStats;
@@ -120,9 +119,7 @@ public final class SerialLZ4Compressor extends AbstractAsyncProcess
 								.thenRun(this::doProcess)
 								.whenException(this::closeWithError);
 					} else {
-						Stage.complete()
-								.thenCompose($ -> output.accept(createEndOfStreamBlock()))
-								.thenCompose($ -> output.accept(null))
+						output.accept(createEndOfStreamBlock(), null)
 								.thenRun(this::completeProcess)
 								.whenException(this::closeWithError);
 					}

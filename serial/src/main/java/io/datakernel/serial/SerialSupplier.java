@@ -267,7 +267,8 @@ public interface SerialSupplier<T> extends Cancellable {
 
 	default SerialSupplier<T> withEndOfStream(Function<Stage<Void>, Stage<Void>> fn) {
 		SettableStage<Void> endOfStream = new SettableStage<>();
-		MaterializedStage<Void> newEndOfStream = fn.apply(endOfStream).materialize();
+		SettableStage<Void> newEndOfStream = new SettableStage<>();
+		fn.apply(endOfStream).whenComplete(newEndOfStream::trySet);
 		return new SerialSupplier<T>() {
 			@SuppressWarnings("unchecked")
 			@Override
@@ -287,7 +288,7 @@ public interface SerialSupplier<T> extends Cancellable {
 
 			@Override
 			public void closeWithError(Throwable e) {
-				endOfStream.trySetException(e);
+				newEndOfStream.trySetException(e);
 			}
 		};
 	}

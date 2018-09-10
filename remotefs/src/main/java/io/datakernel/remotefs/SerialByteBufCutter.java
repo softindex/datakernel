@@ -49,43 +49,39 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 		input.get()
 				.async()
 				.whenComplete((item, e) -> {
-					if (e != null) {
+					if (e == null) {
+						if (item != null) {
+							int size = item.readRemaining();
+							position += size;
+							if (position <= offset) {
+								item.recycle();
+								doProcess();
+								return;
+							}
+							if (position - size < offset) {
+								item.moveReadPosition(size - (int) (position - offset));
+							}
+							output.accept(item)
+									.whenComplete(($, e2) -> {
+										if (e2 == null) {
+											doProcess();
+										} else {
+											closeWithError(e2);
+										}
+									});
+						} else {
+							output.accept(null)
+									.whenComplete(($, e2) -> completeProcess(e));
+						}
+					} else {
 						closeWithError(e);
-						return;
 					}
-					if (item == null) {
-						output.accept(null);
-						completeProcess();
-						return;
-					}
-					int size = item.readRemaining();
-					position += size;
-					if (position <= offset) {
-						item.recycle();
-						doProcess();
-						return;
-					}
-					if (position - size < offset) {
-						item.moveReadPosition(size - (int) (position - offset));
-					}
-					output.accept(item)
-							.whenComplete(($, e2) -> {
-								if (e2 != null) {
-									closeWithError(e2);
-								} else {
-									doProcess();
-								}
-							});
 				});
 	}
 
 	@Override
 	protected void doCloseWithError(Throwable e) {
-		if (input != null) {
-			input.closeWithError(e);
-		}
-		if (output != null) {
-			output.closeWithError(e);
-		}
+		input.closeWithError(e);
+		output.closeWithError(e);
 	}
 }

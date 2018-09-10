@@ -55,53 +55,48 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 	protected void beforeProcess() {
 		checkState(input != null, "No splitter input");
 		checkState(!outputs.isEmpty(), "No splitter outputs");
+		if (lenient) {
+			outputs.replaceAll(output ->
+					output.withAcknowledgement(acknowledgement ->
+							acknowledgement.whenException(e -> {
+								if (lenientExceptions.size() < outputs.size()) {
+									lenientExceptions.add(e);
+									return;
+								}
+								lenientExceptions.forEach(e::addSuppressed);
+								closeWithError(e);
+							})));
+		}
 	}
 
 	@Override
 	protected void doProcess() {
 		if (isProcessComplete()) return;
-		if (lenient) {
-			outputs.replaceAll(output -> output.withAcknowledgement(acknowledgement ->
-					acknowledgement.whenException(e -> {
-						if (lenientExceptions.size() < outputs.size()) {
-							lenientExceptions.add(e);
-							return;
-						}
-						lenientExceptions.forEach(e::addSuppressed);
-						closeWithError(e);
-					})));
-		}
 		input.get()
 				.whenComplete((item, e) -> {
-					if (e != null) {
+					if (e == null) {
+						if (item != null) {
+							Stages.all(outputs.stream().map(output -> output.accept(item)))
+									.whenComplete(($, e2) -> {
+										if (e2 == null) {
+											doProcess();
+										} else if (!lenient) {
+											closeWithError(e2);
+										}
+									});
+						} else {
+							Stages.all(outputs.stream().map(output -> output.accept(null)))
+									.whenComplete(($, e1) -> completeProcess(e1));
+						}
+					} else {
 						closeWithError(e);
-						return;
 					}
-					if (item == null) {
-						Stages.all(
-								outputs.stream()
-										.map(output -> output.accept(null)))
-								.whenComplete(($, e1) -> completeProcess(e1));
-						return;
-					}
-					Stages.all(
-							outputs.stream()
-									.map(output -> output.accept(item)))
-							.async()
-							.whenComplete(($, e2) -> {
-								if (e2 == null) {
-									doProcess();
-								} else if (!lenient) {
-									closeWithError(e2);
-								}
-							});
 				});
-
 	}
 
 	@Override
 	protected void doCloseWithError(Throwable e) {
 		input.closeWithError(e);
-		outputs.forEach(o -> o.closeWithError(e));
+		outputs.forEach(output -> output.closeWithError(e));
 	}
 }

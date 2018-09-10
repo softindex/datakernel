@@ -3,19 +3,15 @@ package io.datakernel.serial;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.util.CollectionUtils;
 
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collector;
 
 public final class SerialSuppliers {
-	private SerialSuppliers() {
-	}
+	private SerialSuppliers() {}
 
 	public static <T> SerialSupplier<T> of(T item) {
 		return new AbstractSerialSupplier<T>() {
@@ -145,40 +141,6 @@ public final class SerialSuppliers {
 						result.trySetException(e1);
 					}
 				});
-	}
-
-	public static <T> SerialSupplierModifier<T, T> endOfStreamOnError() {
-		return endOfStreamOnError(e -> true);
-	}
-
-	public static <T> SerialSupplierModifier<T, T> endOfStreamOnError(Predicate<Throwable> endOfStreamPredicate) {
-		return supplier -> supplier.withEndOfStream(endOfStream ->
-				endOfStream.thenComposeEx(($, e) -> (e == null || endOfStreamPredicate.test(e)) ?
-						Stage.complete() :
-						Stage.ofException(e)));
-	}
-
-	public static Stage<Void> sendByteBufQueue(ByteBufQueue bufs, SerialConsumer<ByteBuf> output) {
-		SettableStage<Void> result = new SettableStage<>();
-		sendByteBufQueueImpl(bufs, output, result);
-		return result;
-	}
-
-	private static void sendByteBufQueueImpl(ByteBufQueue bufs, SerialConsumer<ByteBuf> output, SettableStage<Void> cb) {
-		while (!bufs.isEmpty()) {
-			Stage<Void> accept = output.accept(bufs.take());
-			if (accept.isResult()) continue;
-			accept.whenComplete(($, e) -> {
-				if (e == null) {
-					sendByteBufQueueImpl(bufs, output, cb);
-				} else {
-					bufs.recycle();
-					cb.setException(e);
-				}
-			});
-			return;
-		}
-		cb.set(null);
 	}
 
 }

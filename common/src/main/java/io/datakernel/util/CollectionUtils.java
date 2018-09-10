@@ -86,7 +86,7 @@ public class CollectionUtils {
 	}
 
 	public static <T> Iterator<T> nullToEmpty(@Nullable Iterator<T> iterator) {
-		return iterator != null ? iterator : emptyIterator();
+		return iterator != null ? iterator : Collections.emptyIterator();
 	}
 
 	public static <T> List<T> list() {
@@ -159,7 +159,7 @@ public class CollectionUtils {
 		return coll.stream().allMatch(item -> item.getClass() == ref);
 	}
 
-	public static <T> Iterator<T> asIterator() {
+	public static <T> Iterator<T> emptyIterator() {
 		return new Iterator<T>() {
 			@Override
 			public boolean hasNext() {
@@ -222,6 +222,24 @@ public class CollectionUtils {
 			public T next() {
 				if (!hasNext()) throw new NoSuchElementException();
 				return items[i++];
+			}
+		};
+	}
+
+	@SafeVarargs
+	public static <T> Iterator<T> asIterator(T head, T... tail) {
+		return new Iterator<T>() {
+			int i = 0;
+
+			@Override
+			public boolean hasNext() {
+				return i <= tail.length;
+			}
+
+			@Override
+			public T next() {
+				if (!hasNext()) throw new NoSuchElementException();
+				return i == 0 ? head : tail[(i++) - 1];
 			}
 		};
 	}
