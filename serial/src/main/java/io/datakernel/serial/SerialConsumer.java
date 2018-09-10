@@ -137,7 +137,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			}
 
 			@Override
-			protected void onClose(Throwable e) {
+			protected void onClosed(Throwable e) {
 				exception = e;
 				materializedStage.whenResult(supplier -> supplier.closeWithError(e));
 			}
@@ -263,7 +263,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			}
 
 			@Override
-			protected void onClose(Throwable e) {
+			protected void onClosed(Throwable e) {
 				acknowledgement.trySetException(e);
 			}
 		};

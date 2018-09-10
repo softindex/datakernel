@@ -19,7 +19,7 @@ package io.datakernel.serial.file;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.AbstractSerialConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +33,7 @@ import static java.nio.file.StandardOpenOption.*;
 /**
  * This consumer allows you to asynchronously write binary data to a file.
  */
-public final class SerialFileWriter implements SerialConsumer<ByteBuf> {
+public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(SerialFileWriter.class);
 
 	public static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW, APPEND};
@@ -71,8 +71,8 @@ public final class SerialFileWriter implements SerialConsumer<ByteBuf> {
 	// endregion
 
 	@Override
-	public void closeWithError(Throwable e) {
-		close();
+	protected void onClosed(Throwable e) {
+		closeFile();
 	}
 
 	@Override
@@ -85,13 +85,13 @@ public final class SerialFileWriter implements SerialConsumer<ByteBuf> {
 						return Stage.ofException(e);
 					}
 					if (buf == null) {
-						return close();
+						return closeFile();
 					}
 					return asyncFile.write(buf);
 				});
 	}
 
-	private Stage<Void> close() {
+	private Stage<Void> closeFile() {
 		return (forceOnClose ? asyncFile.forceAndClose(forceMetadata) : asyncFile.close())
 				.whenComplete(($, e) -> {
 					if (e == null) {

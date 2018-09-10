@@ -16,7 +16,6 @@
 
 package io.datakernel.serial.processor;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -32,7 +31,7 @@ import net.jpountz.xxhash.XXHashFactory;
 
 import static io.datakernel.serial.processor.SerialLZ4Compressor.*;
 
-public final class SerialLZ4Decompressor extends AbstractAsyncProcess
+public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 		implements WithSerialToSerial<SerialLZ4Decompressor, ByteBuf, ByteBuf>, WithByteBufsInput<SerialLZ4Decompressor> {
 	public static final int HEADER_LENGTH = SerialLZ4Compressor.HEADER_LENGTH;
 
@@ -74,13 +73,13 @@ public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 
 	@Override
 	public void setInput(ByteBufsSupplier input) {
-		this.input = input;
+		this.input = sanitize(input);
 		this.bufs = this.input.bufs;
 	}
 
 	@Override
 	public void setOutput(SerialConsumer<ByteBuf> output) {
-		this.output = output;
+		this.output = sanitize(output);
 	}
 
 	// endregion
@@ -91,12 +90,9 @@ public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 	}
 
 	public void processHeader() {
-		if (isProcessComplete()) return;
-
 		if (!bufs.hasRemainingBytes(HEADER_LENGTH)) {
 			input.needMoreData()
-					.thenRun(this::processHeader)
-					.whenException(this::closeWithError);
+					.thenRun(this::processHeader);
 			return;
 		}
 
@@ -114,17 +110,13 @@ public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 
 		input.endOfStream()
 				.thenCompose($ -> output.accept(null))
-				.thenRun(this::completeProcess)
-				.whenException(this::closeWithError);
+				.thenRun(this::completeProcess);
 	}
 
 	public void processBody() {
-		if (isProcessComplete()) return;
-
 		if (!bufs.hasRemainingBytes(header.compressedLen)) {
 			input.needMoreData()
-					.thenRun(this::processBody)
-					.whenException(this::closeWithError);
+					.thenRun(this::processBody);
 			return;
 		}
 
@@ -141,8 +133,7 @@ public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 		}
 
 		output.accept(outputBuf)
-				.thenRun(this::processHeader)
-				.whenException(this::closeWithError);
+				.thenRun(this::processHeader);
 	}
 
 	@Override

@@ -58,13 +58,8 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 
 	@Override
 	protected void doProcess() {
-		if (isProcessComplete()) return;
 		input.get()
 				.whenResult(buf -> {
-					if (isProcessComplete()) {
-						buf.recycle();
-						return;
-					}
 					if (buf != null) {
 						bufs.add(buf);
 						if (!bufs.hasRemainingBytes(minChunkSize)) {
@@ -81,19 +76,14 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 						}
 						ByteBuf out = bufs.takeExactSize(min(exactSize, maxChunkSize));
 						output.accept(out)
-								.thenRun(this::doProcess)
-								.whenException(this::closeWithError);
+								.thenRun(this::doProcess);
 					} else {
 						Stage.complete()
-								.thenCompose($ -> bufs.hasRemaining() ?
-										output.accept(bufs.takeRemaining()) :
-										Stage.complete())
+								.thenCompose($ -> bufs.hasRemaining() ? output.accept(bufs.takeRemaining()) : Stage.complete())
 								.thenCompose($ -> output.accept(null))
-								.thenRun(this::completeProcess)
-								.whenException(this::closeWithError);
+								.thenRun(this::completeProcess);
 					}
-				})
-				.whenException(this::closeWithError);
+				});
 	}
 
 	@Override

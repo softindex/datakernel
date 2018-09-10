@@ -9,7 +9,7 @@ public abstract class AbstractSerialSupplier<T> implements SerialSupplier<T> {
 	};
 
 	@Nullable
-	Cancellable cancellable;
+	private Cancellable cancellable;
 
 	protected AbstractSerialSupplier() {
 		this.cancellable = null;

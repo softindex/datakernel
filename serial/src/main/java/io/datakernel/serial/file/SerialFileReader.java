@@ -20,7 +20,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.AbstractSerialSupplier;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +36,7 @@ import static java.nio.file.StandardOpenOption.READ;
 /**
  * This producer allows you to asynchronously read binary data from a file.
  */
-public final class SerialFileReader implements SerialSupplier<ByteBuf> {
+public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(SerialFileReader.class);
 
 	public static final OpenOption[] READ_OPTIONS = new OpenOption[]{READ};
@@ -115,17 +115,17 @@ public final class SerialFileReader implements SerialSupplier<ByteBuf> {
 				})
 				.whenComplete((result, e) -> {
 					if (result == null || e != null) {
-						cleanup();
+						closeFile();
 					}
 				});
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
-		cleanup();
+	protected void onClosed(Throwable e) {
+		closeFile();
 	}
 
-	private void cleanup() {
+	private void closeFile() {
 		asyncFile.close()
 				.whenComplete(($, e) -> {
 					if (e == null) {

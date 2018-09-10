@@ -9,7 +9,7 @@ public abstract class AbstractSerialConsumer<T> implements SerialConsumer<T> {
 	};
 
 	@Nullable
-	Cancellable cancellable;
+	private Cancellable cancellable;
 
 	protected AbstractSerialConsumer() {
 		this.cancellable = null;
@@ -19,7 +19,7 @@ public abstract class AbstractSerialConsumer<T> implements SerialConsumer<T> {
 		this.cancellable = cancellable;
 	}
 
-	protected void onClose(Throwable e) {
+	protected void onClosed(Throwable e) {
 	}
 
 	@Override
@@ -27,7 +27,7 @@ public abstract class AbstractSerialConsumer<T> implements SerialConsumer<T> {
 		if (cancellable == CANCELLED) return;
 		Cancellable cancellable = this.cancellable;
 		this.cancellable = CANCELLED;
-		onClose(e);
+		onClosed(e);
 		if (cancellable != null) {
 			cancellable.closeWithError(e);
 		}
