@@ -118,11 +118,11 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 													}
 													return Stage.ofException(new RemoteFsException());
 												})
-												.whenComplete(uploadFinishStage.recordStats()))
-										.whenCancelled(e -> {
-											messaging.close();
-											logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
-										}))
+												.whenException(e -> {
+													messaging.close();
+													logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
+												})
+												.whenComplete(uploadFinishStage.recordStats())))
 								.whenException(e -> {
 									messaging.close();
 									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);

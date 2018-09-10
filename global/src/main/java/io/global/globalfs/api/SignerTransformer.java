@@ -48,7 +48,7 @@ public class SignerTransformer extends ByteBufsToFramesTransformer {
 				.whenResult(buf -> {
 					if (buf == null) {
 						if (lastPostedCheckpoint) {
-							output.accept(null);
+							output.accept(null).thenRun(this::completeProcess);
 						} else {
 							nextCheckpoint = position;
 							postNextCheckpoint()

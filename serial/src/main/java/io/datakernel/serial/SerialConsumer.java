@@ -243,15 +243,16 @@ public interface SerialConsumer<T> extends Cancellable {
 
 	default SerialConsumer<T> withAcknowledgement(Function<Stage<Void>, Stage<Void>> fn) {
 		SettableStage<Void> acknowledgement = new SettableStage<>();
-		SettableStage<Void> newAcknowledgement = new SettableStage<>();
-		fn.apply(acknowledgement).whenComplete(newAcknowledgement::trySet);
+		MaterializedStage<Void> newAcknowledgement = fn.apply(acknowledgement).materialize();
 		return new AbstractSerialConsumer<T>() {
 			@Override
 			public Stage<Void> accept(@Nullable T value) {
 				if (value != null) {
 					return SerialConsumer.this.accept(value)
 							.thenComposeEx(($, e) -> {
-								if (e == null) return Stage.complete();
+								if (e == null) {
+									return Stage.complete();
+								}
 								acknowledgement.trySetException(e);
 								return newAcknowledgement;
 							});
@@ -263,35 +264,8 @@ public interface SerialConsumer<T> extends Cancellable {
 
 			@Override
 			protected void onClose(Throwable e) {
-				newAcknowledgement.trySetException(e);
+				acknowledgement.trySetException(e);
 			}
 		};
 	}
-
-	default SerialConsumer<T> whenCancelled(Consumer<Throwable> whenClosed) {
-		if (this instanceof AbstractSerialConsumer) {
-			AbstractSerialConsumer<T> abstractSerialConsumer = (AbstractSerialConsumer<T>) this;
-			Cancellable cancellable = abstractSerialConsumer.cancellable;
-			abstractSerialConsumer.cancellable = (cancellable == null) ?
-					whenClosed::accept :
-					e -> {
-						cancellable.closeWithError(e);
-						whenClosed.accept(e);
-					};
-			return this;
-		}
-		return new SerialConsumer<T>() {
-			@Override
-			public Stage<Void> accept(@Nullable T value) {
-				return SerialConsumer.this.accept(value);
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				SerialConsumer.this.closeWithError(e);
-				whenClosed.accept(e);
-			}
-		};
-	}
-
 }

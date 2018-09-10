@@ -267,8 +267,7 @@ public interface SerialSupplier<T> extends Cancellable {
 
 	default SerialSupplier<T> withEndOfStream(Function<Stage<Void>, Stage<Void>> fn) {
 		SettableStage<Void> endOfStream = new SettableStage<>();
-		SettableStage<Void> newEndOfStream = new SettableStage<>();
-		fn.apply(endOfStream).whenComplete(newEndOfStream::trySet);
+		MaterializedStage<Void> newEndOfStream = fn.apply(endOfStream).materialize();
 		return new AbstractSerialSupplier<T>() {
 			@SuppressWarnings("unchecked")
 			@Override
@@ -288,35 +287,8 @@ public interface SerialSupplier<T> extends Cancellable {
 
 			@Override
 			protected void onClosed(Throwable e) {
-				newEndOfStream.trySetException(e);
+				endOfStream.trySetException(e);
 			}
 		};
 	}
-
-	default SerialSupplier<T> whenCancelled(Consumer<Throwable> whenCancelled) {
-		if (this instanceof AbstractSerialSupplier) {
-			AbstractSerialSupplier<T> abstractSerialSupplier = (AbstractSerialSupplier<T>) this;
-			Cancellable cancellable = abstractSerialSupplier.cancellable;
-			abstractSerialSupplier.cancellable = (cancellable == null) ?
-					whenCancelled::accept :
-					e -> {
-						cancellable.closeWithError(e);
-						whenCancelled.accept(e);
-					};
-			return this;
-		}
-		return new SerialSupplier<T>() {
-			@Override
-			public Stage<T> get() {
-				return SerialSupplier.this.get();
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				SerialSupplier.this.closeWithError(e);
-				whenCancelled.accept(e);
-			}
-		};
-	}
-
 }
