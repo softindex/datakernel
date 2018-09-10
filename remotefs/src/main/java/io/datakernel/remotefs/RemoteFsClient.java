@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import static io.datakernel.serial.net.MessagingSerializers.ofJson;
 import static io.datakernel.util.LogUtils.Level.TRACE;
@@ -104,23 +103,22 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 				.thenCompose(messaging ->
 						messaging.send(new Upload(filename, offset))
 								.thenApply($ -> messaging.sendBinaryStream()
-										.withAcknowledgement(acknowledgement ->
-												acknowledgement
-														.thenCompose($2 -> messaging.receive())
-														.thenCompose(msg -> {
-															messaging.close();
-															if (msg instanceof UploadFinished) {
-																return Stage.complete();
-															}
-															if (msg instanceof ServerError) {
-																return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
-															}
-															if (msg != null) {
-																return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
-															}
-															return Stage.ofException(new RemoteFsException());
-														})
-														.whenComplete(uploadFinishStage.recordStats()))
+										.withAcknowledgement(acknowledgement -> acknowledgement
+												.thenCompose($2 -> messaging.receive())
+												.thenCompose(msg -> {
+													messaging.close();
+													if (msg instanceof UploadFinished) {
+														return Stage.complete();
+													}
+													if (msg instanceof ServerError) {
+														return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
+													}
+													if (msg != null) {
+														return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
+													}
+													return Stage.ofException(new RemoteFsException());
+												})
+												.whenComplete(uploadFinishStage.recordStats()))
 										.whenCancelled(e -> {
 											messaging.close();
 											logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
@@ -148,16 +146,18 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 										logger.trace("download size for file {} is {}: {}", filename, receivingSize, this);
 
 										long[] size = {0};
-										return Stage.of(doReceiveBinaryStream(messaging, receivingSize,
-												() -> new IOException("Invalid stream size for file " + filename +
-														" (offset " + offset + ", length " + length + "), expected: " + receivingSize +
-														" actual: " + size[0])))
-												.whenException(e -> {
-													messaging.close();
-													logger.warn("Error while downloading file " + filename +
-															" (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
-												})
-												.whenComplete(downloadFinishStage.recordStats());
+										return Stage.of(messaging.receiveBinaryStream()
+												.peek(buf -> size[0] += buf.readRemaining())
+												.withEndOfStream(endOfStream -> endOfStream
+														.thenCompose($ -> messaging.sendEndOfStream())
+														.thenException($ -> size[0] != receivingSize ?
+																new IOException("Invalid stream size for file " + filename +
+																		" (offset " + offset + ", length " + length +
+																		"), expected: " + receivingSize +
+																		" actual: " + size[0]) :
+																null)
+														.whenComplete(downloadFinishStage.recordStats())
+														.thenRun(messaging::close)));
 									}
 									if (msg instanceof ServerError) {
 										return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
@@ -174,20 +174,6 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 								}))
 				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))
 				.whenComplete(downloadStartStage.recordStats());
-	}
-
-	private SerialSupplier<ByteBuf> doReceiveBinaryStream(MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging,
-			long expectedSize, Supplier<Throwable> exception) {
-		long[] size = new long[1];
-		return messaging.receiveBinaryStream()
-				.peek(buf -> size[0] += buf.readRemaining())
-				.withEndOfStream(endOfStream -> endOfStream.thenCompose($ ->
-						messaging.sendEndOfStream()
-								.thenException($1 -> (size[0] == expectedSize) ? null : exception.get())
-								.thenRun(messaging::close)))
-				.whenCancelled(e -> {
-					messaging.close();
-				});
 	}
 
 	@Override

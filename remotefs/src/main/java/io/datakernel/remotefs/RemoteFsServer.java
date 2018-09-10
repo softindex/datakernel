@@ -25,12 +25,17 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
+import io.datakernel.serial.net.Messaging;
+import io.datakernel.serial.net.MessagingSerializer;
+import io.datakernel.serial.net.MessagingSerializers;
+import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -38,8 +43,8 @@ import java.util.function.Function;
  * It exposes some given {@link FsClient} to the Internet in pair with {@link RemoteFsClient}
  */
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
-	private static final io.datakernel.serial.net.MessagingSerializer<FsCommand, FsResponse> SERIALIZER =
-			io.datakernel.serial.net.MessagingSerializers.ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
+	private static final MessagingSerializer<FsCommand, FsResponse> SERIALIZER =
+			MessagingSerializers.ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
 
 	private final Map<Class, MessagingHandler<FsCommand>> handlers = new HashMap<>();
 	private final FsClient client;
@@ -74,8 +79,8 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 
 	@Override
 	protected EventHandler createSocketHandler(AsyncTcpSocket socket) {
-		io.datakernel.serial.net.MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging =
-				io.datakernel.serial.net.MessagingWithBinaryStreaming.create(socket, SERIALIZER);
+		MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging =
+				MessagingWithBinaryStreaming.create(socket, SERIALIZER);
 		messaging.receive()
 				.thenCompose(msg -> {
 					if (msg == null) {
@@ -150,23 +155,28 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					})
 					.whenComplete(downloadStage.recordStats());
 		});
-		onMessage(Move.class, (messaging, msg) -> client.move(msg.getChanges()).thenCompose(simple(messaging, MoveFinished::new)).whenComplete(moveStage.recordStats()));
-		onMessage(Copy.class, (messaging, msg) -> client.copy(msg.getChanges()).thenCompose(simple(messaging, CopyFinished::new)).whenComplete(copyStage.recordStats()));
-		onMessage(List.class, (messaging, msg) -> client.list(msg.getGlob()).thenCompose(simple(messaging, ListFinished::new)).whenComplete(listStage.recordStats()));
-		onMessage(Delete.class, (messaging, msg) -> client.delete(msg.getGlob()).thenCompose(simple(messaging, DeleteFinished::new)).whenComplete(deleteStage.recordStats()));
+		simpleHandler(Move.class, Move::getChanges, FsClient::move, MoveFinished::new, moveStage);
+		simpleHandler(Copy.class, Copy::getChanges, FsClient::copy, CopyFinished::new, copyStage);
+		simpleHandler(List.class, List::getGlob, FsClient::list, ListFinished::new, listStage);
+		simpleHandler(Delete.class, Delete::getGlob, FsClient::delete, DeleteFinished::new, deleteStage);
 	}
 
-	private static <T> Function<T, Stage<Void>> simple(io.datakernel.serial.net.Messaging<?, FsResponse> messaging, Function<T, FsResponse> res) {
-		return item -> messaging.send(res.apply(item)).thenCompose($ -> messaging.sendEndOfStream());
+	private <T extends FsCommand, E, R> void simpleHandler(Class<T> cls,
+			Function<T, E> extractor, BiFunction<FsClient, E, Stage<R>> action,
+			Function<R, FsResponse> res, StageStats stats) {
+		onMessage(cls, (messaging, msg) -> action.apply(client, extractor.apply(msg))
+				.thenCompose(item -> messaging.send(res.apply(item)))
+				.thenCompose($ -> messaging.sendEndOfStream())
+				.whenComplete(stats.recordStats()));
 	}
 
 	@FunctionalInterface
-	private interface MessagingHandler<R extends FsCommand> {
-		Stage<Void> onMessage(io.datakernel.serial.net.Messaging<FsCommand, FsResponse> messaging, R item);
+	private interface MessagingHandler<T extends FsCommand> {
+		Stage<Void> onMessage(Messaging<FsCommand, FsResponse> messaging, T item);
 	}
 
 	@SuppressWarnings("unchecked")
-	private <R extends FsCommand> void onMessage(Class<R> type, MessagingHandler<R> handler) {
+	private <T extends FsCommand> void onMessage(Class<T> type, MessagingHandler<T> handler) {
 		handlers.put(type, (MessagingHandler<FsCommand>) handler);
 	}
 

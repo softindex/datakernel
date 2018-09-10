@@ -83,7 +83,6 @@ public interface SerialConsumer<T> extends Cancellable {
 	}
 
 	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer, Cancellable cancellable) {
-		SettableStage<Void> endOfStream = new SettableStage<>();
 		return new AbstractSerialConsumer<T>(cancellable) {
 			final AsyncConsumer<T> thisConsumer = consumer;
 
@@ -187,7 +186,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			public Stage<Void> accept(T value) {
 				return value != null ?
 						Stages.all(SerialConsumer.this.accept(value), fn.accept(value)) :
-						SerialConsumer.this.accept(value);
+						SerialConsumer.this.accept(null);
 			}
 		};
 	}

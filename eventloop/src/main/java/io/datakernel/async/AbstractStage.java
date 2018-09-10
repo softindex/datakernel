@@ -215,8 +215,11 @@ abstract class AbstractStage<T> implements Stage<T> {
 			protected void onComplete(T result, Throwable e) {
 				if (e == null) {
 					Throwable maybeException = fn.apply(result);
-					if (maybeException == null) complete(result);
-					completeExceptionally(maybeException);
+					if (maybeException == null) {
+						complete(result);
+					} else {
+						completeExceptionally(maybeException);
+					}
 				} else {
 					completeExceptionally(e);
 				}
