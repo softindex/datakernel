@@ -18,7 +18,6 @@ package io.datakernel.stream;
 
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.serial.AbstractSerialConsumer;
 import io.datakernel.serial.SerialConsumer;
@@ -119,18 +118,11 @@ public interface StreamConsumer<T> extends Cancellable {
 		Stage<Void> acknowledgement = getAcknowledgement();
 		Stage<Void> suppliedAcknowledgement = fn.apply(acknowledgement);
 		if (acknowledgement == suppliedAcknowledgement) return this;
-		SettableStage<Void> newAcknowledgement = new SettableStage<>();
-		suppliedAcknowledgement.whenComplete(newAcknowledgement::trySet);
+		MaterializedStage<Void> newAcknowledgement = suppliedAcknowledgement.materialize();
 		return new ForwardingStreamConsumer<T>(this) {
 			@Override
 			public MaterializedStage<Void> getAcknowledgement() {
 				return newAcknowledgement;
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				super.closeWithError(e);
-				newAcknowledgement.trySetException(e);
 			}
 		};
 	}

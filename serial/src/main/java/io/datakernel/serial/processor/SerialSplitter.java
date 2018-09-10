@@ -29,7 +29,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 
 	@Override
 	public void setInput(SerialSupplier<T> input) {
-		checkState(!isProcessStarted(), "Can't comfigure splitter while it is running");
+		checkState(!isProcessStarted(), "Can't configure splitter while it is running");
 		this.input = input;
 	}
 
