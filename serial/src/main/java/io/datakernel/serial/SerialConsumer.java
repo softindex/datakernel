@@ -84,7 +84,7 @@ public interface SerialConsumer<T> extends Cancellable {
 
 	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer, Cancellable cancellable) {
 		SettableStage<Void> endOfStream = new SettableStage<>();
-		return new SerialConsumer<T>() {
+		return new AbstractSerialConsumer<T>(cancellable) {
 			final AsyncConsumer<T> thisConsumer = consumer;
 
 			@Override
@@ -93,11 +93,6 @@ public interface SerialConsumer<T> extends Cancellable {
 					return thisConsumer.accept(value);
 				}
 				return Stage.complete();
-			}
-
-			@Override
-			public void closeWithError(Throwable e) {
-				cancellable.closeWithError(e);
 			}
 		};
 	}
@@ -124,7 +119,7 @@ public interface SerialConsumer<T> extends Cancellable {
 	static <T> SerialConsumer<T> ofStage(Stage<? extends SerialConsumer<T>> stage) {
 		if (stage.hasResult()) return stage.getResult();
 		MaterializedStage<? extends SerialConsumer<T>> materializedStage = stage.materialize();
-		return new SerialConsumer<T>() {
+		return new AbstractSerialConsumer<T>() {
 			SerialConsumer<T> consumer;
 			Throwable exception;
 
@@ -143,7 +138,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			}
 
 			@Override
-			public void closeWithError(Throwable e) {
+			protected void onClose(Throwable e) {
 				exception = e;
 				materializedStage.whenResult(supplier -> supplier.closeWithError(e));
 			}
@@ -251,7 +246,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		SettableStage<Void> acknowledgement = new SettableStage<>();
 		SettableStage<Void> newAcknowledgement = new SettableStage<>();
 		fn.apply(acknowledgement).whenComplete(newAcknowledgement::trySet);
-		return new SerialConsumer<T>() {
+		return new AbstractSerialConsumer<T>() {
 			@Override
 			public Stage<Void> accept(@Nullable T value) {
 				if (value != null) {
@@ -262,13 +257,13 @@ public interface SerialConsumer<T> extends Cancellable {
 								return newAcknowledgement;
 							});
 				} else {
-					acknowledgement.trySet(null);
+					SerialConsumer.this.accept(null).whenComplete(acknowledgement::trySet);
 					return newAcknowledgement;
 				}
 			}
 
 			@Override
-			public void closeWithError(Throwable e) {
+			protected void onClose(Throwable e) {
 				newAcknowledgement.trySetException(e);
 			}
 		};

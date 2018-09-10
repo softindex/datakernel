@@ -118,9 +118,13 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 															if (msg != null) {
 																return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
 															}
-															return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
+															return Stage.ofException(new RemoteFsException());
 														})
-														.whenComplete(uploadFinishStage.recordStats())))
+														.whenComplete(uploadFinishStage.recordStats()))
+										.whenCancelled(e -> {
+											messaging.close();
+											logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
+										}))
 								.whenException(e -> {
 									messaging.close();
 									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
@@ -180,7 +184,10 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 				.withEndOfStream(endOfStream -> endOfStream.thenCompose($ ->
 						messaging.sendEndOfStream()
 								.thenException($1 -> (size[0] == expectedSize) ? null : exception.get())
-								.thenRun(messaging::close)));
+								.thenRun(messaging::close)))
+				.whenCancelled(e -> {
+					messaging.close();
+				});
 	}
 
 	@Override

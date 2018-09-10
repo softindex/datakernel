@@ -19,16 +19,16 @@ public abstract class ByteBufsSupplier implements Cancellable {
 
 	protected ByteBufsSupplier() {this.bufs = new ByteBufQueue();}
 
-	public abstract Stage<Void> get();
+	public abstract Stage<Void> needMoreData();
 
-	public abstract Stage<Void> markEndOfStream();
+	public abstract Stage<Void> endOfStream();
 
 	public static ByteBufsSupplier ofSupplier(SerialSupplier<ByteBuf> input) {
 		return new ByteBufsSupplier() {
 			private boolean closed;
 
 			@Override
-			public Stage<Void> get() {
+			public Stage<Void> needMoreData() {
 				return input.get()
 						.thenCompose(buf -> {
 							if (closed) {
@@ -45,8 +45,9 @@ public abstract class ByteBufsSupplier implements Cancellable {
 			}
 
 			@Override
-			public Stage<Void> markEndOfStream() {
+			public Stage<Void> endOfStream() {
 				if (!bufs.isEmpty()) {
+					bufs.recycle();
 					return Stage.ofException(UNEXPECTED_DATA_EXCEPTION);
 				}
 				return input.get()
@@ -74,22 +75,16 @@ public abstract class ByteBufsSupplier implements Cancellable {
 	}
 
 	public static ByteBufsSupplier ofProvidedQueue(ByteBufQueue queue,
-			AsyncSupplier<Void> get, AsyncSupplier<Void> markEndOfStream, Cancellable cancellable) {
+			AsyncSupplier<Void> get, AsyncSupplier<Void> complete, Cancellable cancellable) {
 		return new ByteBufsSupplier(queue) {
-			boolean firstTime = true;
-
 			@Override
-			public Stage<Void> get() {
-				if (firstTime && !queue.isEmpty()) {
-					firstTime = false;
-					return Stage.complete();
-				}
+			public Stage<Void> needMoreData() {
 				return get.get();
 			}
 
 			@Override
-			public Stage<Void> markEndOfStream() {
-				return markEndOfStream.get();
+			public Stage<Void> endOfStream() {
+				return complete.get();
 			}
 
 			@Override

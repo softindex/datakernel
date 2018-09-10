@@ -15,5 +15,4 @@ public interface WithSerialOutputs<B extends WithSerialOutputs<B, T>, T> {
 		addOutput(output);
 		return (B) this;
 	}
-
 }

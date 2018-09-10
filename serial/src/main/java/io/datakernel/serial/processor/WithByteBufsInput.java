@@ -7,7 +7,6 @@ import io.datakernel.serial.SerialSupplier;
 
 public interface WithByteBufsInput<B extends WithByteBufsInput<B> & WithSerialInput<B, ByteBuf>>
 		extends ByteBufsInput, WithSerialInput<B, ByteBuf> {
-
 	@Override
 	default void setInput(SerialSupplier<ByteBuf> input) {
 		setInput(ByteBufsSupplier.ofSupplier(input));

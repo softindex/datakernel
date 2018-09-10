@@ -99,14 +99,14 @@ public interface SerialSupplier<T> extends Cancellable {
 	}
 
 	static <T> SerialSupplier<T> ofIterator(Iterator<? extends T> iterator) {
-		return new SerialSupplier<T>() {
+		return new AbstractSerialSupplier<T>() {
 			@Override
 			public Stage<T> get() {
 				return Stage.of(iterator.hasNext() ? iterator.next() : null);
 			}
 
 			@Override
-			public void closeWithError(Throwable e) {
+			protected void onClosed(Throwable e) {
 				deepRecycle(iterator);
 			}
 		};
@@ -115,7 +115,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	static <T> SerialSupplier<T> ofStage(Stage<? extends SerialSupplier<T>> stage) {
 		if (stage.hasResult()) return stage.getResult();
 		MaterializedStage<? extends SerialSupplier<T>> materializedStage = stage.materialize();
-		return new SerialSupplier<T>() {
+		return new AbstractSerialSupplier<T>() {
 			SerialSupplier<T> supplier;
 			Throwable exception;
 
@@ -133,7 +133,7 @@ public interface SerialSupplier<T> extends Cancellable {
 			}
 
 			@Override
-			public void closeWithError(Throwable e) {
+			protected void onClosed(Throwable e) {
 				exception = e;
 				materializedStage.whenResult(supplier -> supplier.closeWithError(e));
 			}
@@ -269,7 +269,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		SettableStage<Void> endOfStream = new SettableStage<>();
 		SettableStage<Void> newEndOfStream = new SettableStage<>();
 		fn.apply(endOfStream).whenComplete(newEndOfStream::trySet);
-		return new SerialSupplier<T>() {
+		return new AbstractSerialSupplier<T>() {
 			@SuppressWarnings("unchecked")
 			@Override
 			public Stage<T> get() {
@@ -287,7 +287,7 @@ public interface SerialSupplier<T> extends Cancellable {
 			}
 
 			@Override
-			public void closeWithError(Throwable e) {
+			protected void onClosed(Throwable e) {
 				newEndOfStream.trySetException(e);
 			}
 		};

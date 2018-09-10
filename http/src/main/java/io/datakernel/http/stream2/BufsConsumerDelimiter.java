@@ -35,7 +35,7 @@ public final class BufsConsumerDelimiter extends AbstractAsyncProcess
 	@Override
 	protected void doProcess() {
 		if (remaining != 0) {
-			input.get()
+			input.needMoreData()
 					.whenComplete(($1, e1) -> {
 						if (isProcessComplete()) return;
 						if (e1 == null) {
@@ -55,7 +55,7 @@ public final class BufsConsumerDelimiter extends AbstractAsyncProcess
 						}
 					});
 		} else {
-			input.markEndOfStream()
+			input.endOfStream()
 					.whenComplete(($1, e1) -> {
 						if (isProcessComplete()) return;
 						if (e1 == null) {

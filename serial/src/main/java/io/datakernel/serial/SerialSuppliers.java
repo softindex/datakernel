@@ -37,7 +37,7 @@ public final class SerialSuppliers {
 	}
 
 	public static <T> SerialSupplier<T> concat(Iterator<? extends SerialSupplier<? extends T>> iterator) {
-		return new SerialSupplier<T>() {
+		return new AbstractSerialSupplier<T>() {
 			SerialSupplier<? extends T> current = SerialSupplier.of();
 
 			@Override
@@ -65,7 +65,7 @@ public final class SerialSuppliers {
 			}
 
 			@Override
-			public void closeWithError(Throwable e) {
+			protected void onClosed(Throwable e) {
 				current.closeWithError(e);
 				while (iterator.hasNext()) {
 					iterator.next().closeWithError(e);

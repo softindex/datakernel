@@ -191,8 +191,8 @@ public class FsIntegrationTest {
 				SerialSupplier.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")),
 				SerialSupplier.of(ByteBuf.wrapForReading(BIG_FILE)),
 				SerialSupplier.ofException(new StacklessException("Test exception")),
-				SerialSupplier.of(test4)
-		).streamTo(client.uploadSerial(resultFile))
+				SerialSupplier.of(test4))
+				.streamTo(client.uploadSerial(resultFile))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertFailure(StacklessException.class, "Test exception"));
 
