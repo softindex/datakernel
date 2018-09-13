@@ -41,7 +41,7 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 	@Override
 	protected void beforeProcess() {
 		checkState(input != null, "Input was not set");
-		checkState(output != null, "Input was not set");
+		checkState(output != null, "Output was not set");
 	}
 
 	@Override

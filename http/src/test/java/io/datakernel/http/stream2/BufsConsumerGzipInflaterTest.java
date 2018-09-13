@@ -1,34 +1,34 @@
-package io.datakernel.http.stream;
+package io.datakernel.http.stream2;
 
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
-import io.datakernel.http.TestUtils.AssertingBufsConsumer;
+import io.datakernel.http.TestUtils.AssertingConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
 import java.util.zip.Deflater;
 
 import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
-import static io.datakernel.http.stream.BufsConsumerGzipInflater.COMPRESSION_RATIO_TOO_LARGE;
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.http.stream2.BufsConsumerGzipInflater.COMPRESSION_RATIO_TOO_LARGE;
+import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_DATA_EXCEPTION;
+import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 import static java.lang.Math.min;
 import static java.util.Arrays.copyOfRange;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
-public class BufsConsumerGunzipTest {
+public class BufsConsumerGzipInflaterTest {
 	@Rule
 	public ByteBufRule rule = new ByteBufRule();
 
@@ -43,16 +43,16 @@ public class BufsConsumerGunzipTest {
 			"Taciti sapien fringilla u\nVitae ",
 			"Etiam egestas ac augue dui dapibus, aliquam adipiscing porttitor magna at, libero elit faucibus purus"
 	};
-	public final AssertingBufsConsumer consumer = new AssertingBufsConsumer();
-	public final ByteBufQueue queue = new ByteBufQueue();
-	public BufsConsumerGzipInflater gunzip = new BufsConsumerGzipInflater(consumer);
 	public final Random random = new Random();
+	public final List<ByteBuf> list = new ArrayList<>();
 	public final Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+	public final AssertingConsumer consumer = new AssertingConsumer();
+	public BufsConsumerGzipInflater gunzip = BufsConsumerGzipInflater.create();
 
 	@Before
 	public void setUp() {
-		queue.recycle();
 		consumer.reset();
+		gunzip.setOutput(consumer);
 	}
 
 	@Test
@@ -66,19 +66,13 @@ public class BufsConsumerGunzipTest {
 		byte[] deflated = deflate(builder.toString().getBytes());
 		int chunk = 10;
 		for (int i = 0; i < deflated.length; i += chunk) {
-			boolean lastchunk = (i + chunk > deflated.length);
 			byte[] bytes = copyOfRange(deflated, i, min(deflated.length, i + chunk));
 			ByteBuf buf = ByteBufPool.allocate(bytes.length);
 			buf.put(bytes);
-			queue.add(buf);
-			gunzip.push(queue, lastchunk)
-					.whenComplete(assertComplete(r -> {
-						if (lastchunk) {
-							assertTrue(r);
-						}
-					}));
+			list.add(buf);
 		}
 
+		doTest(null);
 	}
 
 	@Test
@@ -88,24 +82,17 @@ public class BufsConsumerGunzipTest {
 		byte[] deflated = deflate(text.getBytes());
 		int chunk = new Random().nextInt(1000) + 512;
 		for (int i = 0; i < deflated.length; i += chunk) {
-			boolean lastchunk = (i + chunk > deflated.length);
 			byte[] bytes = copyOfRange(deflated, i, min(deflated.length, i + chunk));
 			ByteBuf buf = ByteBufPool.allocate(bytes.length);
 			buf.put(bytes);
-			queue.add(buf);
-			gunzip.push(queue, lastchunk)
-					.whenComplete(assertComplete(r -> {
-						if (lastchunk) {
-							assertTrue(r);
-						}
-					}));
+			list.add(buf);
 		}
+
+		doTest(null);
 	}
 
 	@Test
 	public void shouldCorrectlyProcessHeader() {
-		gunzip = new BufsConsumerGzipInflater(new BufsConsumerEndpoint(0));
-
 		byte flag = (byte) 0b00011111;
 		short fextra = 5;
 		short fextraReversed = Short.reverseBytes(fextra);
@@ -129,18 +116,12 @@ public class BufsConsumerGunzipTest {
 		ByteBuf buf2 = ByteBufPool.allocate(headerPart2.length);
 		buf1.put(headerPart1);
 		buf2.put(headerPart2);
+		list.add(buf1);
+		list.add(buf2);
+		list.add(null);
+		consumer.setExpectedException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
 
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf1))
-				.thenCompose($ -> gunzip.push(queue, false))
-				.whenComplete(assertComplete(Assert::assertFalse))
-				.thenRunEx(() -> queue.add(buf2))
-				.thenCompose($ -> gunzip.push(queue, false))
-				.whenComplete(assertComplete($ -> assertTrue(queue.isEmpty())));
-		future.complete(null);
-
-		eventloop.run();
+		doTest(UNEXPECTED_END_OF_STREAM_EXCEPTION);
 	}
 
 	@Test
@@ -154,14 +135,9 @@ public class BufsConsumerGunzipTest {
 		byte[] bytes = deflate(finalMessage.toString().getBytes());
 		ByteBuf buf = ByteBufPool.allocate(bytes.length);
 		buf.put(bytes);
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf))
-				.thenCompose($ -> gunzip.push(queue, false))
-				.whenComplete(assertComplete(Assert::assertTrue));
-		future.complete(null);
+		list.add(buf);
 
-		eventloop.run();
+		doTest(null);
 	}
 
 	@Test
@@ -171,7 +147,7 @@ public class BufsConsumerGunzipTest {
 			finalMessage.append(s);
 		}
 		consumer.setExpectedByteArray(finalMessage.toString().getBytes());
-		consumer.setExpectedException(BufsConsumerGzipInflater.COMPRESSED_DATA_WAS_NOT_READ_FULLY);
+		consumer.setExpectedException(UNEXPECTED_DATA_EXCEPTION);
 
 		byte[] data = deflate(finalMessage.toString().getBytes());
 		byte[] withExtraData = new byte[data.length + 3];
@@ -181,20 +157,15 @@ public class BufsConsumerGunzipTest {
 		System.arraycopy(data, 0, withExtraData, 0, data.length);
 		ByteBuf buf = ByteBufPool.allocate(withExtraData.length);
 		buf.put(withExtraData);
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf))
-				.thenCompose($ -> gunzip.push(queue, false))
-				.whenComplete(assertFailure())
-				.thenRunEx(queue::recycle);
-		future.complete(null);
+		list.add(buf);
 
-		eventloop.run();
+		doTest(UNEXPECTED_DATA_EXCEPTION);
 	}
 
 	@Test
 	public void testWithEmptyBuf() {
 		String message = "abcd";
+		consumer.setExpectedByteArray(message.getBytes());
 		byte[] deflated = deflate(message.getBytes());
 		byte[] partOne = copyOfRange(deflated, 0, 4);
 		byte[] partTwo = copyOfRange(deflated, 4, deflated.length);
@@ -203,19 +174,11 @@ public class BufsConsumerGunzipTest {
 		ByteBuf empty = ByteBufPool.allocate(100);
 		buf1.put(partOne);
 		buf2.put(partTwo);
-		consumer.setExpectedByteArray(message.getBytes());
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf1))
-				.thenCompose($ -> gunzip.push(queue, false))
-				.thenRun(() -> queue.add(empty))
-				.thenCompose($ -> gunzip.push(queue, false))
-				.thenRun(() -> queue.add(buf2))
-				.thenCompose($ -> gunzip.push(queue, true))
-				.whenComplete(assertComplete(Assert::assertTrue));
-		future.complete(null);
+		list.add(buf1);
+		list.add(empty);
+		list.add(buf2);
 
-		eventloop.run();
+		doTest(null);
 	}
 
 	public byte[] deflate(byte[] array) {
@@ -232,22 +195,12 @@ public class BufsConsumerGunzipTest {
 		String largeText = generateLargeText();
 		ByteBuf raw = toGzip(wrapAscii(largeText));
 		consumer.setExpectedString(largeText);
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> {
-					queue.add(raw.slice(100));
-					raw.moveReadPosition(100);
-				})
-				.thenCompose($ -> gunzip.push(queue, false))
-				.thenRun(() -> {
-					queue.add(raw.slice());
-					raw.recycle();
-				})
-				.thenCompose($ -> gunzip.push(queue, true))
-				.whenComplete(assertComplete(Assert::assertTrue));
-		future.complete(null);
+		list.add(raw.slice(100));
+		raw.moveReadPosition(100);
+		list.add(raw.slice());
+		raw.recycle();
 
-		eventloop.run();
+		doTest(null);
 	}
 
 	@Test
@@ -255,36 +208,39 @@ public class BufsConsumerGunzipTest {
 		String largeText = generateLargeText();
 		ByteBuf raw = toGzip(wrapAscii(largeText));
 		consumer.setExpectedString(largeText);
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(raw))
-				.thenCompose($ -> gunzip.push(queue, true))
-				.whenComplete(assertComplete(Assert::assertTrue));
-		future.complete(null);
+		list.add(raw);
 
-		eventloop.run();
+		doTest(null);
 	}
 
 	@Test
 	public void shouldThrowExceptionIfZipBomb() {
-		// 10MB byte array of zeros
-		byte[] zeroData = new byte[10 * 1024 * 1024];
+		// 10KB byte array of zeros
+		byte[] zeroData = new byte[10 * 1024];
 		ByteBuf gzipped = toGzip(wrapForReading(zeroData));
 		consumer.setExpectedException(COMPRESSION_RATIO_TOO_LARGE);
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(gzipped))
-				.thenCompose($ -> gunzip.push(queue, true))
-				.whenComplete(assertFailure())
-				.whenComplete(($, $2) -> queue.recycle());
-		future.complete(null);
+		list.add(gzipped);
+
+		doTest(COMPRESSION_RATIO_TOO_LARGE);
+	}
+
+	private void doTest(Exception exception) {
+		gunzip.setInput(SerialSupplier.ofIterable(list));
+		eventloop.post(() -> gunzip.process().whenComplete(($, e) -> {
+			if (exception == null){
+				assertNull(e);
+			} else {
+				assertEquals(exception, e);
+			}
+		}));
 
 		eventloop.run();
 	}
 
+
 	private static String generateLargeText() {
 		Random charRandom = new Random(1L);
-		int charactersCount = 1_000_000;
+		int charactersCount = 100_000;
 		StringBuilder sb = new StringBuilder(charactersCount);
 		for (int i = 0; i < charactersCount; i++) {
 			int charCode = charRandom.nextInt(255);

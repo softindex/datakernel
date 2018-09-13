@@ -1,13 +1,11 @@
-package io.datakernel.http.stream;
+package io.datakernel.http.stream2;
 
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -19,13 +17,15 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.http.TestUtils.AssertingConsumer;
-import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.CHUNK_SIZE_EXCEEDS_MAXIMUM_SIZE;
-import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.http.stream2.BufsConsumerChunkedDecoder.MALFORMED_CHUNK;
+import static io.datakernel.http.stream2.BufsConsumerChunkedDecoder.MALFORMED_CHUNK_LENGTH;
+import static io.datakernel.serial.ByteBufsSupplier.ofSupplier;
+import static io.datakernel.serial.SerialSupplier.ofIterable;
 import static java.lang.System.arraycopy;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class BufsConsumerChunkedDecoderTest {
 	@Rule
@@ -44,13 +44,16 @@ public class BufsConsumerChunkedDecoderTest {
 	public final Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 	public final AssertingConsumer consumer = new AssertingConsumer();
 	public final ByteBufQueue queue = new ByteBufQueue();
+	public final List<ByteBuf> list = new ArrayList<>();
+	public final BufsConsumerChunkedDecoder chunkedDecoder = BufsConsumerChunkedDecoder.create();
 	public final Random random = new Random();
-	public final BufsConsumerChunkedDecoder chunkedDecoder = new BufsConsumerChunkedDecoder(consumer);
 
 	@Before
 	public void setUp() {
 		queue.recycle();
+		list.clear();
 		consumer.reset();
+		chunkedDecoder.setOutput(consumer);
 	}
 
 	@Test
@@ -67,14 +70,9 @@ public class BufsConsumerChunkedDecoderTest {
 			byte[] encoded = encode(plainText[i].getBytes(), lastchunk);
 			ByteBuf buf = ByteBufPool.allocate(encoded.length);
 			buf.put(encoded);
-			queue.add(buf);
-			chunkedDecoder.push(queue, lastchunk)
-					.whenComplete(assertComplete(r -> {
-						if (lastchunk) {
-							assertTrue(r);
-						}
-					}));
+			list.add(buf);
 		}
+		doTest(null);
 	}
 
 	@Test
@@ -105,32 +103,28 @@ public class BufsConsumerChunkedDecoderTest {
 			byte[] encoded = encode(randomData.get(i), lastchunk);
 			ByteBuf buf = ByteBufPool.allocate(encoded.length);
 			buf.put(encoded);
-			queue.add(buf);
-			chunkedDecoder.push(queue, lastchunk)
-					.whenComplete(assertComplete(r -> {
-						if (lastchunk) {
-							assertTrue(r);
-						}
-					}));
+			list.add(buf);
 		}
+
+		doTest(null);
 	}
 
 	@Test
-	public void itShouldIgnoreChunkExtAfterNotLastChunk() {
+	public void shouldIgnoreChunkExtAfterNotLastChunk() {
 		consumer.setExpectedByteArray("ababcde".getBytes());
 		String message = "2\r\nab\r\n5;name=value\r\nabcde\r\n0\r\n\r\n";
-		decodeOneString(message, false);
+		decodeOneString(message, null);
 	}
 
 	@Test
-	public void itShouldIgnoreChunkExtAfterLastChunk() {
+	public void shouldIgnoreChunkExtAfterLastChunk() {
 		consumer.setExpectedByteArray("ababcde".getBytes());
 		String message = "2\r\nab\r\n5\r\nabcde\r\n0;name=value\r\n\r\n";
-		decodeOneString(message, false);
+		decodeOneString(message, null);
 	}
 
 	@Test
-	public void itShouldIgnoreChunkExtAfterChunkInAnotherBuf() {
+	public void shouldIgnoreChunkExtAfterChunkInAnotherBuf() {
 		consumer.setExpectedByteArray("ababcde".getBytes());
 		String message1 = "2\r\nab\r\n5\r\nabcde\r\n0";
 		String message2 = ";name=value\r\n\r\n";
@@ -138,7 +132,7 @@ public class BufsConsumerChunkedDecoderTest {
 	}
 
 	@Test
-	public void itShouldIgnoreChunkExtAfterChunkSemicolonInSameBuf() {
+	public void shouldIgnoreChunkExtAfterChunkSemicolonInSameBuf() {
 		consumer.setExpectedByteArray("ababcde".getBytes());
 		String message1 = "2\r\nab\r\n5\r\nabcde\r\n0;";
 		String message2 = "name=value\r\n\r\n";
@@ -146,7 +140,7 @@ public class BufsConsumerChunkedDecoderTest {
 	}
 
 	@Test
-	public void itShouldWorkWithSizeCRLFInNextBuf() {
+	public void shouldWorkWithSizeCRLFInNextBuf() {
 		consumer.setExpectedByteArray("ababcde".getBytes());
 		String message1 = "2\r\nab\r\n5";
 		String message2 = "\r\nabcde\r\n0;name=value\r\n\r\n";
@@ -154,7 +148,7 @@ public class BufsConsumerChunkedDecoderTest {
 	}
 
 	@Test
-	public void itShouldWorkWithSizeCRLFInSameBuf() {
+	public void shouldWorkWithSizeCRLFInSameBuf() {
 		consumer.setExpectedByteArray("ababcde".getBytes());
 		String message1 = "2\r\nab\r\n5\r\n";
 		String message2 = "abcde\r\n0;name=value\r\n\r\n";
@@ -162,7 +156,7 @@ public class BufsConsumerChunkedDecoderTest {
 	}
 
 	@Test
-	public void itShouldWorkWithCRLFInDifferentBufs() {
+	public void shouldWorkWithCRLFInDifferentBufs() {
 		consumer.setExpectedByteArray("ababcde".getBytes());
 		String message1 = "2\r\nab\r\n5;abcd\r";
 		String message2 = "\nabcde\r\n0;name=value\r\n\r\n";
@@ -180,16 +174,24 @@ public class BufsConsumerChunkedDecoderTest {
 
 	@Test
 	public void shouldThrowChunkSizeException() {
-		consumer.setExpectedException(CHUNK_SIZE_EXCEEDS_MAXIMUM_SIZE);
-		String message = Integer.toHexString(1025);
-		decodeOneString(message, true);
+		consumer.setExpectedException(MALFORMED_CHUNK_LENGTH);
+		String message = Integer.toHexString(1025) + "\r\n";
+		decodeOneString(message, MALFORMED_CHUNK_LENGTH);
 	}
 
 	@Test
-	public void itShouldIgnoreTrailerPart() {
+	public void shouldThrowMalformedChunkException() {
+		consumer.setExpectedException(MALFORMED_CHUNK);
+		String message = Integer.toHexString(1);
+		message += "\r\nssss\r\n";
+		decodeOneString(message, MALFORMED_CHUNK);
+	}
+
+	@Test
+	public void shouldIgnoreTrailerPart() {
 		consumer.setExpectedByteArray("ababcde".getBytes());
 		String message = "2\r\nab\r\n5\r\nabcde\r\n0\r\ntrailer1\r\ntrailer2\r\n\r\n";
-		decodeOneString(message, false);
+		decodeOneString(message, null);
 	}
 
 	@Test
@@ -210,24 +212,13 @@ public class BufsConsumerChunkedDecoderTest {
 		decodeThreeStrings(message1, message2, message3);
 	}
 
-	private void decodeOneString(String message, boolean exception) {
+	private void decodeOneString(String message, Exception exception) {
 		byte[] bytes = message.getBytes();
 		ByteBuf buf = ByteBufPool.allocate(bytes.length);
 		buf.put(bytes);
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf))
-				.thenCompose($ -> chunkedDecoder.push(queue, true))
-				.whenComplete((r, e) -> {
-					if (exception) {
-						assertNotNull(e);
-					} else {
-						assertNull(e);
-						assertTrue(r);
-					}
-				});
-		future.complete(null);
-		eventloop.run();
+		list.add(buf);
+
+		doTest(exception);
 	}
 
 	private void decodeTwoStrings(String message1, String message2) {
@@ -237,15 +228,10 @@ public class BufsConsumerChunkedDecoderTest {
 		ByteBuf buf2 = ByteBufPool.allocate(bytes2.length);
 		buf1.put(bytes1);
 		buf2.put(bytes2);
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf1))
-				.thenCompose($ -> chunkedDecoder.push(queue, false))
-				.thenRun(() -> queue.add(buf2))
-				.thenCompose($ -> chunkedDecoder.push(queue, true))
-				.whenComplete(assertComplete(Assert::assertTrue));
-		future.complete(null);
-		eventloop.run();
+		list.add(buf1);
+		list.add(buf2);
+
+		doTest(null);
 	}
 
 	private void decodeThreeStrings(String message1, String message2, String message3) {
@@ -258,16 +244,24 @@ public class BufsConsumerChunkedDecoderTest {
 		buf1.put(bytes1);
 		buf2.put(bytes2);
 		buf3.put(bytes3);
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf1))
-				.thenCompose($ -> chunkedDecoder.push(queue, false))
-				.thenRun(() -> queue.add(buf2))
-				.thenCompose($ -> chunkedDecoder.push(queue, false))
-				.thenRun(() -> queue.add(buf3))
-				.thenCompose($ -> chunkedDecoder.push(queue, true))
-				.whenComplete(assertComplete(Assert::assertTrue));
-		future.complete(null);
+		list.add(buf1);
+		list.add(buf2);
+		list.add(buf3);
+
+		doTest(null);
+	}
+
+	private void doTest(Exception exception) {
+		chunkedDecoder.setInput(ofSupplier(ofIterable(list)));
+		eventloop.post(() -> chunkedDecoder.process()
+				.whenComplete(($, e) -> {
+					if (exception == null) {
+						assertNull(e);
+					} else {
+						assertEquals(exception, e);
+					}
+				}));
+
 		eventloop.run();
 	}
 

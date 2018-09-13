@@ -1,14 +1,12 @@
-package io.datakernel.http.stream;
+package io.datakernel.http.stream2;
 
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
-import io.datakernel.http.TestUtils.AssertingBufsConsumer;
+import io.datakernel.http.TestUtils.AssertingConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -18,27 +16,25 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
 import java.util.zip.GZIPOutputStream;
 
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static org.junit.Assert.assertTrue;
 
-public class BufsConsumerGzipTest {
+public class BufsConsumerGzipDeflaterTest {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
-	public final AssertingBufsConsumer consumer = new AssertingBufsConsumer();
-	public BufsConsumerGzipDeflater gzip = new BufsConsumerGzipDeflater(consumer);
-	public final ByteBufQueue queue = new ByteBufQueue();
+	public final AssertingConsumer consumer = new AssertingConsumer();
+	public BufsConsumerGzipDeflater gzip = BufsConsumerGzipDeflater.create();
+	public final ArrayList<ByteBuf> list = new ArrayList<>();
 	public final Random random = new Random();
 	public final Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 
 	@Before
 	public void setUp() {
-		queue.recycle();
 		consumer.reset();
+		gzip.setOutput(consumer);
 	}
 
 	@Test
@@ -51,18 +47,13 @@ public class BufsConsumerGzipTest {
 		byte[] expected = compressWithGzipOutputStream(arrays.toArray(new byte[0][0]));
 		consumer.setExpectedByteArray(expected);
 
-		for (int i = 0; i < strings.length; i++) {
-			ByteBuf buf = ByteBufPool.allocate(strings[i].length());
-			buf.put(strings[i].getBytes());
-			queue.add(buf);
-			boolean finish = i == strings.length - 1;
-			gzip.push(queue, finish)
-					.whenResult(r -> {
-						if (finish) {
-							assertTrue(r);
-						}
-					});
+		for (String string : strings) {
+			ByteBuf buf = ByteBufPool.allocate(string.length());
+			buf.put(string.getBytes());
+			list.add(buf);
 		}
+
+		doTest();
 	}
 
 	// GzipParseUtils compatibility tests
@@ -74,22 +65,15 @@ public class BufsConsumerGzipTest {
 		ByteBuf buf2 = ByteBufPool.allocate(data.length);
 		buf.put(data);
 		buf2.put(data);
-		ByteBuf temp = toGzip(buf);
-		byte[] bytes = temp.asArray();
-		temp.recycle();
-		consumer.setExpectedByteArray(bytes);
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf2))
-				.thenCompose($ -> gzip.push(queue, true))
-				.whenComplete(assertComplete(Assert::assertTrue));
-		future.complete(null);
-		eventloop.run();
+		list.add(buf2);
+		ByteBuf expected = toGzip(buf);
+		consumer.setExpectedBuf(expected);
+		doTest();
 	}
 
 	@Test
 	public void testCompressMultipleBufs() {
-		byte[] data = new byte[1_000_000];
+		byte[] data = new byte[100_000];
 		random.nextBytes(data);
 		ByteBuf buf1 = ByteBufPool.allocate(data.length);
 		ByteBuf buf2 = ByteBufPool.allocate(data.length);
@@ -99,18 +83,21 @@ public class BufsConsumerGzipTest {
 		consumer.setExpectedBuf(gzipped);
 		int bufSize = 100;
 		for (int i = 0; i < data.length; i += bufSize) {
-			queue.add(buf2.slice(bufSize));
+			list.add(buf2.slice(bufSize));
 			buf2.moveReadPosition(bufSize);
-			boolean last = !buf2.canRead();
-			gzip.push(queue, last)
-					.whenComplete(assertComplete(r -> {
-						if (last) {
-							buf2.recycle();
-							assertTrue(r);
-						}
-					}));
 		}
+		buf2.recycle();
+
+		doTest();
 	}
+
+	private void doTest() {
+		gzip.setInput(SerialSupplier.ofIterable(list));
+		eventloop.post(() ->gzip.process().whenComplete(assertComplete()));
+
+		eventloop.run();
+	}
+
 
 	private byte[] compressWithGzipOutputStream(byte[]... arrays) {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();

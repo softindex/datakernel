@@ -16,11 +16,12 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.stream.BufsConsumer;
+import io.datakernel.serial.SerialConsumer;
 
 import java.io.*;
 
@@ -65,11 +66,13 @@ public class TestUtils {
 		}
 	}
 
-	public static class AssertingBufsConsumer implements BufsConsumer {
+	public static class AssertingConsumer implements BufsConsumer, SerialConsumer<ByteBuf> {
+		public  boolean executed = false;
 		private byte[] expectedByteArray;
 		private String expectedString;
 		private ByteBuf expectedBuf;
-		private ParseException expectedException;
+		private Exception expectedException;
+		private ByteBufQueue queue = new ByteBufQueue();
 
 		public void setExpectedByteArray(byte[] expectedByteArray) {
 			this.expectedByteArray = expectedByteArray;
@@ -83,16 +86,18 @@ public class TestUtils {
 			this.expectedBuf = expectedBuf;
 		}
 
-		public void setExpectedException(ParseException expectedException) {
+		public void setExpectedException(Exception expectedException) {
 			this.expectedException = expectedException;
 		}
 
 		public void reset() {
-			expectedBuf =null;
+			expectedBuf = null;
 			expectedByteArray = null;
 			expectedException = null;
 			expectedString = null;
+			executed = false;
 		}
+
 		@Override
 		public Stage<Boolean> push(ByteBufQueue inputBufs, boolean endOfStream) {
 			if (endOfStream) {
@@ -111,6 +116,7 @@ public class TestUtils {
 				}
 
 				actualBuf.recycle();
+				executed = true;
 				return Stage.of(true)
 						.whenComplete(assertComplete());
 			} else {
@@ -120,9 +126,38 @@ public class TestUtils {
 		}
 
 		@Override
+		public Stage<Void> accept(@Nullable ByteBuf value) {
+			if (value != null) {
+				queue.add(value);
+			} else {
+				ByteBuf actualBuf = queue.takeRemaining();
+				if (expectedByteArray != null) {
+					byte[] actualByteArray = actualBuf.asArray();
+					assertArrayEquals(expectedByteArray, actualByteArray);
+				}
+				if (expectedString != null) {
+					String actualString = decodeAscii(actualBuf);
+					assertEquals(expectedString, actualString);
+				}
+				if (expectedBuf != null) {
+					assertEquals(expectedBuf, actualBuf);
+					expectedBuf.recycle();
+				}
+				executed = true;
+				actualBuf.recycle();
+			}
+			return Stage.complete().async();
+		}
+
+		@Override
 		public void closeWithError(Throwable e) {
-			if (expectedException != null){
-				assertEquals(e, expectedException);
+			executed = true;
+			queue.recycle();
+			if (expectedBuf != null) {
+				expectedBuf.recycle();
+			}
+			if (expectedException != null) {
+				assertEquals(expectedException, e);
 				return;
 			}
 			throw new AssertionError(e);

@@ -36,7 +36,6 @@ public final class BufsConsumerGzipDeflater implements BufsConsumer {
 		this.next = next;
 		this.deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
 		this.maxBufSize = DEFAULT_MAX_BUF_SIZE;
-		deflater.reset();
 	}
 	// endregion
 

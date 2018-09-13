@@ -133,14 +133,16 @@ public final class BufsConsumerChunkedDecoder implements BufsConsumer {
 			} else if (c >= '0' && c <= '9') {
 				chunkSize = (chunkSize << 4) + (c - '0');
 				inputBufs.getByte();
+				validateChunkSize();
 			} else if (c >= 'a' && c <= 'f') {
 				chunkSize = (chunkSize << 4) + (c - 'a' + 10);
 				inputBufs.getByte();
+				validateChunkSize();
 			} else if (c >= 'A' && c <= 'F') {
 				chunkSize = (chunkSize << 4) + (c - 'A' + 10);
 				inputBufs.getByte();
-			} else if (c == ';' || c == CR) {
 				validateChunkSize();
+			} else if (c == ';' || c == CR) {
 				reading = SKIPPING_EXT;
 				return true;
 			} else {

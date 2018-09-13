@@ -49,6 +49,7 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	@Override
 	public final void closeWithError(Throwable e) {
 		if (isProcessComplete()) return;
+		processComplete = true;
 		doCloseWithError(e);
 		process.trySetException(e);
 	}

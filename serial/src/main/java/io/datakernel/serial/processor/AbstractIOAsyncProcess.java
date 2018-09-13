@@ -16,19 +16,7 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 			@Override
 			public Stage<T> get() {
 				assert !isProcessComplete();
-				return supplier.get()
-						.thenComposeEx((item, e) -> {
-							if (isProcessComplete()) {
-								deepRecycle(item);
-								return Stage.ofException(ASYNC_PROCESS_IS_COMPLETE);
-							}
-							if (e == null) {
-								return Stage.of(item);
-							} else {
-								closeWithError(e);
-								return Stage.ofException(e);
-							}
-						});
+				return handle(supplier.get());
 			}
 
 			@Override
@@ -43,25 +31,13 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 		return new AbstractSerialConsumer<T>() {
 			@Override
 			public Stage<Void> accept(@Nullable T item) {
-				assert !isProcessComplete();
-				return consumer.accept(item)
-						.thenComposeEx(($, e) -> {
-							if (isProcessComplete()) {
-								return Stage.ofException(ASYNC_PROCESS_IS_COMPLETE);
-							}
-							if (e == null) {
-								return Stage.complete();
-							} else {
-								closeWithError(e);
-								return Stage.ofException(e);
-							}
-						});
+				return handle(consumer.accept(item));
 			}
 
 			@Override
 			protected void onClosed(Throwable e) {
 				consumer.closeWithError(e);
-				closeWithError(e);
+				AbstractIOAsyncProcess.this.closeWithError(e);
 			}
 		};
 	}
@@ -70,24 +46,12 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 		return new ByteBufsSupplier() {
 			@Override
 			public Stage<Void> needMoreData() {
-				assert !isProcessComplete();
-				return supplier.needMoreData()
-						.thenComposeEx(($, e) -> {
-							if (isProcessComplete()) {
-								return Stage.ofException(ASYNC_PROCESS_IS_COMPLETE);
-							}
-							if (e == null) {
-								return Stage.complete();
-							} else {
-								closeWithError(e);
-								return Stage.ofException(e);
-							}
-						});
+				return handle(supplier.needMoreData());
 			}
 
 			@Override
 			public Stage<Void> endOfStream() {
-				return supplier.endOfStream();
+				return handle(supplier.endOfStream());
 			}
 
 			@Override
@@ -96,6 +60,23 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 				AbstractIOAsyncProcess.this.closeWithError(e);
 			}
 		};
+	}
+
+	private <T> Stage<T> handle(Stage<T> stage) {
+		assert !isProcessComplete();
+		return stage
+				.thenComposeEx((item, e) -> {
+					if (isProcessComplete()) {
+						deepRecycle(item);
+						return Stage.ofException(ASYNC_PROCESS_IS_COMPLETE);
+					}
+					if (e == null) {
+						return Stage.of(item);
+					} else {
+						closeWithError(e);
+						return Stage.ofException(e);
+					}
+				});
 	}
 
 }

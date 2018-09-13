@@ -93,9 +93,8 @@ public final class BufsConsumerGzipInflater implements BufsConsumer {
 					if (inflater.needsInput()) {
 						if (!src.canRead()) {
 							inputBufs.take().recycle();
-							break;
+							continue;
 						}
-
 						inflater.setInput(src.array(), src.readPosition(), src.readRemaining());
 					}
 
@@ -190,14 +189,14 @@ public final class BufsConsumerGzipInflater implements BufsConsumer {
 		}
 
 		if ((reading & FNAME) > 0) {
-			if (!skipToTerminatorByte(inputBufs)) {
+			if (!skipTerminatorByte(inputBufs)) {
 				return false;
 			}
 			reading -= FNAME;
 		}
 
 		if ((reading & FCOMMENT) > 0) {
-			if (!skipToTerminatorByte(inputBufs)) {
+			if (!skipTerminatorByte(inputBufs)) {
 				return false;
 			}
 			reading -= FCOMMENT;
@@ -215,7 +214,7 @@ public final class BufsConsumerGzipInflater implements BufsConsumer {
 	}
 
 	// region skip header fields
-	private boolean skipToTerminatorByte(ByteBufQueue inputBufs) throws ParseException {
+	private boolean skipTerminatorByte(ByteBufQueue inputBufs) throws ParseException {
 		while (inputBufs.hasRemaining()) {
 			if (inputBufs.getByte() == 0) {
 				currentlySkipped = 0;

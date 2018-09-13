@@ -164,7 +164,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
 			if (!httpMessage.useGzip) {
-				BufsConsumerChunkedEncoder bufsConsumer = new BufsConsumerChunkedEncoder();
+				BufsConsumerChunkedEncoder bufsConsumer = BufsConsumerChunkedEncoder.create();
 				httpMessage.bodySupplier.streamTo(bufsConsumer);
 				return SerialSuppliers.concat(SerialSupplier.of(buf), bufsConsumer.getOutputSupplier());
 			} else {

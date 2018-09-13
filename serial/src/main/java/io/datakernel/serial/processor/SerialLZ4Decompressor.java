@@ -74,7 +74,7 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 	@Override
 	public void setInput(ByteBufsSupplier input) {
 		this.input = sanitize(input);
-		this.bufs = this.input.bufs;
+		this.bufs = input.bufs;
 	}
 
 	@Override
@@ -138,7 +138,6 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 
 	@Override
 	protected void doCloseWithError(Throwable e) {
-		if (isProcessComplete()) return;
 		input.closeWithError(e);
 		output.closeWithError(e);
 	}

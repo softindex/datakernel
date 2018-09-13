@@ -1,74 +1,66 @@
 package io.datakernel.http.stream2;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
+import static io.datakernel.util.Preconditions.checkState;
 
-public final class BufsConsumerChunkedEncoder extends AbstractAsyncProcess
+public final class BufsConsumerChunkedEncoder extends AbstractIOAsyncProcess
 		implements WithSerialToSerial<BufsConsumerChunkedEncoder, ByteBuf, ByteBuf> {
-	private static final byte[] LAST_CHUNK = {48, 13, 10, 13, 10};
+	private final ByteBuf LAST_CHUNK = ByteBuf.wrapForReading(new byte[]{48, 13, 10, 13, 10});
 
 	private SerialSupplier<ByteBuf> input;
 	private SerialConsumer<ByteBuf> output;
 
+	// region creators
+	private BufsConsumerChunkedEncoder() {}
+
+	public static BufsConsumerChunkedEncoder create(){
+		return new BufsConsumerChunkedEncoder();
+	}
+
 	@Override
 	public void setInput(SerialSupplier<ByteBuf> input) {
-		this.input = input;
+		checkState(this.input == null, "Input already set");
+		this.input = sanitize(input);
 	}
 
 	@Override
 	public void setOutput(SerialConsumer<ByteBuf> output) {
-		this.output = output;
+		checkState(this.output == null, "Output already set");
+		this.output = sanitize(output);
+	}
+	// endregion
+
+	@Override
+	protected void beforeProcess() {
+		checkState(input != null, "Input was not set");
+		checkState(output != null, "Output was not set");
 	}
 
 	@Override
 	protected void doProcess() {
 		input.get()
-				.whenComplete((buf, e1) -> {
-					if (isProcessComplete()) {
-						if (buf != null) buf.recycle();
-						return;
-					}
-					if (e1 == null) {
+				.whenResult(buf -> {
 						if (buf != null) {
-							output.accept(encodeBuf(buf))
-									.whenComplete(($, e2) -> {
-										if (isProcessComplete()) return;
-										if (e2 == null) {
-											doProcess();
-										} else {
-											closeWithError(e2);
-										}
-									});
+							if (buf.canRead()) {
+								output.accept(encodeBuf(buf))
+										.thenRun(this::doProcess);
+							} else {
+								buf.recycle();
+								doProcess();
+							}
 						} else {
-							output.accept(getLastChunk(), null)
-									.whenComplete(($, e2) -> {
-										if (isProcessComplete()) return;
-										if (e2 == null) {
-											completeProcess();
-										} else {
-											closeWithError(e2);
-										}
-									});
+							output.accept(LAST_CHUNK, null)
+									.thenRun(this::completeProcess);
 						}
-					} else {
-						closeWithError(e1);
-					}
 				});
-	}
-
-	private static ByteBuf getLastChunk() {
-		ByteBuf endOfStreamBuf = ByteBufPool.allocate(5);
-		// writing "0\r\n\r\n" aka last-chunk
-		endOfStreamBuf.write(LAST_CHUNK);
-		endOfStreamBuf.writePosition(5);
-		return endOfStreamBuf;
 	}
 
 	private static ByteBuf encodeBuf(ByteBuf buf) {

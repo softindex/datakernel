@@ -1,21 +1,20 @@
-package io.datakernel.http.stream;
+package io.datakernel.http.stream2;
 
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.http.TestUtils.AssertingConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.test.TestUtils.assertComplete;
 
@@ -23,15 +22,15 @@ public class BufsConsumerChunkedEncoderTest {
 	@Rule
 	public final ByteBufRule byteBufRule = new ByteBufRule();
 	private final Random RANDOM = new Random();
-	private final ByteBufQueue queue = new ByteBufQueue();
+	private final List<ByteBuf> list = new ArrayList<>();
 	private final Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 	private final AssertingConsumer consumer = new AssertingConsumer();
-	private final BufsConsumerChunkedEncoder encoder = new BufsConsumerChunkedEncoder(consumer);
+	private final BufsConsumerChunkedEncoder chunkedEncoder = BufsConsumerChunkedEncoder.create();
 
 	@Before
 	public void setUp() {
-		queue.recycle();
 		consumer.reset();
+		chunkedEncoder.setOutput(consumer);
 	}
 
 	@Test
@@ -39,21 +38,14 @@ public class BufsConsumerChunkedEncoderTest {
 		byte[] chunkData = new byte[100];
 		RANDOM.nextBytes(chunkData);
 		ByteBuf buf = ByteBufPool.allocate(chunkData.length);
-		buf.put(chunkData);
 		ByteBuf expected = ByteBufPool.allocate(200);
+		buf.put(chunkData);
+		list.add(buf);
 		expected.put((Integer.toHexString(100) + "\r\n").getBytes());
 		expected.put(chunkData);
 		expected.put("\r\n0\r\n\r\n".getBytes());
-		consumer.setExpectedByteArray(expected.asArray());
-		expected.recycle();
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf))
-				.thenCompose($ -> encoder.push(queue, true))
-				.whenComplete(assertComplete(Assert::assertTrue));
-		future.complete(null);
-
-		eventloop.run();
+		consumer.setExpectedBuf(expected);
+		doTest();
 	}
 
 	@Test
@@ -64,21 +56,14 @@ public class BufsConsumerChunkedEncoderTest {
 		buf.put(chunkData);
 		ByteBuf expected = ByteBufPool.allocate(200);
 		ByteBuf empty = ByteBufPool.allocate(100);
+		list.add(buf);
+		list.add(empty);
 		expected.put((Integer.toHexString(100) + "\r\n").getBytes());
 		expected.put(chunkData);
 		expected.put("\r\n0\r\n\r\n".getBytes());
-		consumer.setExpectedByteArray(expected.asArray());
-		expected.recycle();
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf))
-				.thenCompose($ -> encoder.push(queue, false))
-				.thenRun(() -> queue.add(empty))
-				.thenCompose($ -> encoder.push(queue, true))
-				.whenComplete(assertComplete(Assert::assertTrue));
-		future.complete(null);
+		consumer.setExpectedBuf(expected);
 
-		eventloop.run();
+		doTest();
 	}
 
 	@Test
@@ -88,13 +73,15 @@ public class BufsConsumerChunkedEncoderTest {
 		consumer.setExpectedByteArray(BufsConsumerChunkedDecoderTest.encode(chunkData, true));
 		ByteBuf buf = ByteBufPool.allocate(chunkData.length);
 		buf.put(chunkData);
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		Stage.ofCompletionStage(future)
-				.thenRun(() -> queue.add(buf))
-				.thenCompose($ -> encoder.push(queue, true))
-				.whenComplete(assertComplete(Assert::assertTrue));
-		future.complete(null);
+		list.add(buf);
+		doTest();
+	}
 
+	private void doTest() {
+		chunkedEncoder.setInput(SerialSupplier.ofIterable(list));
+		eventloop.post(() -> chunkedEncoder.process()
+				.whenComplete(assertComplete()));
 		eventloop.run();
 	}
+
 }
