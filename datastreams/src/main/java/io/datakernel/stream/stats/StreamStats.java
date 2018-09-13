@@ -7,8 +7,8 @@ import io.datakernel.serial.SerialSupplierModifier;
 import io.datakernel.stream.*;
 
 public interface StreamStats<T> extends
-		StreamProducerModifier<T, T>, StreamConsumerModifier<T, T>,
-		SerialSupplierModifier<T, T>, SerialConsumerModifier<T, T> {
+		StreamProducerModifier<T, StreamProducer<T>>, StreamConsumerModifier<T, StreamConsumer<T>>,
+		SerialSupplierModifier<T, SerialSupplier<T>>, SerialConsumerModifier<T, SerialConsumer<T>> {
 	StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver);
 
 	void onStarted();

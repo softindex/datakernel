@@ -5,7 +5,9 @@ import io.datakernel.stream.StreamConsumerModifier;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerModifier;
 
-public interface StreamModifier<I, O> extends StreamProducerModifier<I, O>, StreamConsumerModifier<O, I> {
+public interface StreamModifier<I, O> extends
+		StreamProducerModifier<I, StreamProducer<O>>,
+		StreamConsumerModifier<O, StreamConsumer<I>> {
 
 	static <T> StreamModifier<T, T> identity() {
 		return new StreamModifier<T, T>() {

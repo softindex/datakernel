@@ -525,7 +525,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			Aggregation aggregation = container.aggregation;
 
 			Set<String> dimensions = dimensionFields.keySet();
-			if (!aggregation.getKeys().stream().allMatch(dimensions::contains)) continue;
+			if (!dimensions.containsAll(aggregation.getKeys())) continue;
 
 			Map<String, String> aggregationMeasureFields = entriesToMap(filterEntryKeys(measureFields.entrySet().stream(), container.measures::contains));
 			if (aggregationMeasureFields.isEmpty()) continue;
@@ -575,7 +575,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return queryRawStream(dimensions, storedMeasures, where, resultClass, queryClassLoader, compatibleAggregations);
 	}
 
-	private <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
+	private <T, K extends Comparable, S, A> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
 			Class<T> resultClass, DefiningClassLoader queryClassLoader,
 			List<AggregationContainer> compatibleAggregations) throws QueryException {
 		List<AggregationContainerWithScore> containerWithScores = new ArrayList<>();
@@ -586,11 +586,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 		sort(containerWithScores);
 
-		Class<?> resultKeyClass = createKeyClass(
+		Class<K> resultKeyClass = createKeyClass(
 				keysToMap(dimensions.stream(), dimensionTypes::get),
 				queryClassLoader);
 
-		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(Comparable::compareTo);
+		StreamReducer<K, T, A> streamReducer = StreamReducer.create(Comparable::compareTo);
 		StreamProducer<T> queryResultProducer = streamReducer.getOutput();
 
 		storedMeasures = new ArrayList<>(storedMeasures);
@@ -601,12 +601,12 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				continue;
 			storedMeasures.removeAll(compatibleMeasures);
 
-			Class<?> aggregationClass = createRecordClass(
+			Class<S> aggregationClass = createRecordClass(
 					keysToMap(dimensions.stream(), dimensionTypes::get),
 					keysToMap(compatibleMeasures.stream(), m -> measures.get(m).getFieldType()),
 					queryClassLoader);
 
-			StreamProducer<?> aggregationProducer = aggregationContainer.aggregation.query(
+			StreamProducer<S> aggregationProducer = aggregationContainer.aggregation.query(
 					AggregationQuery.create(dimensions, compatibleMeasures, where),
 					aggregationClass, queryClassLoader);
 
@@ -615,18 +615,18 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				If query is fulfilled from the single aggregation,
 				just use mapper instead of reducer to copy requested fields.
 				 */
-				StreamMap.MapperProjection mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
+				StreamMap.MapperProjection<S, T> mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
 						compatibleMeasures, queryClassLoader);
 				queryResultProducer = aggregationProducer.apply(StreamMap.create(mapper));
 				break;
 			}
 
-			Function keyFunction = AggregationUtils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
+			Function<S, K> keyFunction = AggregationUtils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
 
-			StreamReducers.Reducer reducer = aggregationContainer.aggregation.aggregationReducer(aggregationClass, resultClass,
+			StreamReducers.Reducer<K, S, T, A> reducer = aggregationContainer.aggregation.aggregationReducer(aggregationClass, resultClass,
 					dimensions, compatibleMeasures, queryClassLoader);
 
-			StreamConsumer streamReducerInput = streamReducer.newInput(keyFunction, reducer);
+			StreamConsumer<S> streamReducerInput = streamReducer.newInput(keyFunction, reducer);
 
 			aggregationProducer.streamTo(streamReducerInput);
 		}
@@ -643,7 +643,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		List<AggregationContainer> compatibleAggregations = new ArrayList<>();
 		for (AggregationContainer aggregationContainer : aggregations.values()) {
 			List<String> keys = aggregationContainer.aggregation.getKeys();
-			if (!allDimensions.stream().allMatch(keys::contains)) continue;
+			if (!keys.containsAll(allDimensions)) continue;
 
 			List<String> compatibleMeasures = storedMeasures.stream().filter(aggregationContainer.measures::contains).collect(toList());
 			if (compatibleMeasures.isEmpty()) continue;
@@ -753,7 +753,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				new LinkedHashSet<>(cubeQuery.getMeasures()),
 				cubeQuery.getWhere().getDimensions()));
 		long queryStarted = eventloop.currentTimeMillis();
-		return new RequestContext().execute(queryClassLoader, cubeQuery)
+		return new RequestContext<>().execute(queryClassLoader, cubeQuery)
 				.whenComplete((queryResult, throwable) -> {
 					if (throwable == null) {
 						queryTimes.recordValue((int) (eventloop.currentTimeMillis() - queryStarted));
@@ -775,7 +775,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return classLoaderCache.getOrCreate(key);
 	}
 
-	private class RequestContext {
+	private class RequestContext<R> {
 		DefiningClassLoader queryClassLoader;
 		CubeQuery query;
 
@@ -792,12 +792,12 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		Set<String> resultStoredMeasures = new LinkedHashSet<>();
 		Set<String> resultComputedMeasures = new LinkedHashSet<>();
 
-		Class<?> resultClass;
-		Predicate<?> havingPredicate;
+		Class<R> resultClass;
+		Predicate<R> havingPredicate;
 		List<String> resultOrderings = new ArrayList<>();
-		Comparator<?> comparator;
-		MeasuresFunction measuresFunction;
-		TotalsFunction totalsFunction;
+		Comparator<R> comparator;
+		MeasuresFunction<R> measuresFunction;
+		TotalsFunction<R, R> totalsFunction;
 
 		List<String> recordAttributes = new ArrayList<>();
 		List<String> recordMeasures = new ArrayList<>();
@@ -827,7 +827,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			recordFunction = createRecordFunction();
 
 			return queryRawStream(new ArrayList<>(resultDimensions), new ArrayList<>(resultStoredMeasures),
-					queryPredicate, (Class<Object>) resultClass, queryClassLoader, compatibleAggregations)
+					queryPredicate, resultClass, queryClassLoader, compatibleAggregations)
 					.toList()
 					.thenCompose(this::processResults);
 		}
@@ -930,7 +930,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 					.buildClassAndCreateNewInstance();
 		}
 
-		MeasuresFunction createMeasuresFunction() {
+		MeasuresFunction<R> createMeasuresFunction() {
 			ClassBuilder<MeasuresFunction> builder = ClassBuilder.create(queryClassLoader, MeasuresFunction.class);
 			List<Expression> computeSequence = new ArrayList<>();
 
@@ -944,7 +944,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 					.buildClassAndCreateNewInstance();
 		}
 
-		private Predicate createHavingPredicate() {
+		private Predicate<R> createHavingPredicate() {
 			if (queryHaving == AggregationPredicates.alwaysTrue()) return o -> true;
 			if (queryHaving == AggregationPredicates.alwaysFalse()) return o -> false;
 
@@ -955,7 +955,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		@SuppressWarnings("unchecked")
-		Comparator<Object> createComparator() {
+		Comparator<R> createComparator() {
 			if (query.getOrderings().isEmpty())
 				return (o1, o2) -> 0;
 
@@ -980,8 +980,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		@SuppressWarnings("unchecked")
-		Stage<QueryResult> processResults(List<Object> results) {
-			Object totals;
+		Stage<QueryResult> processResults(List<R> results) {
+			R totals;
 			try {
 				totals = resultClass.newInstance();
 			} catch (InstantiationException | IllegalAccessException e) {
@@ -991,12 +991,12 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			if (results.isEmpty()) {
 				totalsFunction.zero(totals);
 			} else {
-				Iterator<Object> iterator = results.iterator();
-				Object first = iterator.next();
+				Iterator<R> iterator = results.iterator();
+				R first = iterator.next();
 				measuresFunction.computeMeasures(first);
 				totalsFunction.init(totals, first);
 				while (iterator.hasNext()) {
-					Object next = iterator.next();
+					R next = iterator.next();
 					measuresFunction.computeMeasures(next);
 					totalsFunction.accumulate(totals, next);
 				}
@@ -1027,15 +1027,15 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 					.thenApply($ -> processResults2(results, totals, filterAttributes));
 		}
 
-		QueryResult processResults2(List<Object> results, Object totals, Map<String, Object> filterAttributes) {
-			results = results.stream().filter(((Predicate<Object>) havingPredicate)).collect(toList());
+		QueryResult processResults2(List<R> results, R totals, Map<String, Object> filterAttributes) {
+			results = results.stream().filter(havingPredicate).collect(toList());
 
 			int totalCount = results.size();
 
 			results = applyLimitAndOffset(results);
 
 			List<Record> resultRecords = new ArrayList<>(results.size());
-			for (Object result : results) {
+			for (R result : results) {
 				Record record = Record.create(recordScheme);
 				recordFunction.copyAttributes(result, record);
 				recordFunction.copyMeasures(result, record);
@@ -1122,7 +1122,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			return results.subList(start, end);
 		}
 
-		TotalsFunction createTotalsFunction() {
+		TotalsFunction<R, R> createTotalsFunction() {
 			ExpressionSequence zeroSequence = ExpressionSequence.create();
 			ExpressionSequence initSequence = ExpressionSequence.create();
 			ExpressionSequence accumulateSequence = ExpressionSequence.create();

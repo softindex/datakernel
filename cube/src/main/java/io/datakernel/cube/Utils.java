@@ -33,14 +33,14 @@ public final class Utils {
 	private Utils() {
 	}
 
-	public static Class<?> createResultClass(Collection<String> attributes, Collection<String> measures,
+	public static <R> Class<R> createResultClass(Collection<String> attributes, Collection<String> measures,
 			Cube cube, DefiningClassLoader classLoader) {
-		ClassBuilder<Object> builder = ClassBuilder.create(classLoader, Object.class);
+		ClassBuilder<R> builder = ClassBuilder.create(classLoader, Object.class);
 		for (String attribute : attributes) {
-			builder = builder.withField(attribute.replace('.', '$'), cube.getAttributeInternalType(attribute));
+			builder.withField(attribute.replace('.', '$'), cube.getAttributeInternalType(attribute));
 		}
 		for (String measure : measures) {
-			builder = builder.withField(measure, cube.getMeasureInternalType(measure));
+			builder.withField(measure, cube.getMeasureInternalType(measure));
 		}
 		return builder.build();
 	}

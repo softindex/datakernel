@@ -159,13 +159,10 @@ public interface SerialSupplier<T> extends Cancellable {
 		return toCollector(Collectors.toList());
 	}
 
-	default <R> SerialSupplier<R> apply(SerialSupplierModifier<T, R> modifier) {
-		return apply((Function<SerialSupplier<T>, SerialSupplier<R>>) modifier::apply);
+	default <R> R apply(SerialSupplierModifier<T, R> modifier) {
+		return modifier.apply(this);
 	}
 
-	default <R> R apply(Function<SerialSupplier<T>, R> fn) {
-		return fn.apply(this);
-	}
 
 	default SerialSupplier<T> async() {
 		return new AbstractSerialSupplier<T>(this) {

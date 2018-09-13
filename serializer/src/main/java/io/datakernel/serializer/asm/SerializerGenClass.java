@@ -433,11 +433,12 @@ public class SerializerGenClass implements SerializerGen {
 		return constructor(targetType, param);
 	}
 
+	@SuppressWarnings("unchecked")
 	private Expression deserializeInterface(Class<?> targetType,
 	                                        int version,
 	                                        SerializerBuilder.StaticMethods staticMethods,
 	                                        CompatibilityLevel compatibilityLevel) {
-		ClassBuilder<?> asmFactory = ClassBuilder.create(staticMethods.getDefiningClassLoader(), targetType);
+		ClassBuilder<?> asmFactory = ClassBuilder.create(staticMethods.getDefiningClassLoader(), (Class<Object>) targetType);
 		for (String fieldName : fields.keySet()) {
 			FieldGen fieldGen = fields.get(fieldName);
 

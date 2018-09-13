@@ -55,7 +55,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 
 	private final DefiningClassLoader classLoader;
 
-	private final Class<T> mainClass;
+	private final Class<? super T> mainClass;
 	private final List<Class<?>> otherClasses;
 	private Path bytecodeSaveDir;
 
@@ -128,17 +128,17 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	 * @param classLoader class loader
 	 * @param type        type of dynamic class
 	 */
-	private ClassBuilder(DefiningClassLoader classLoader, Class<T> type) {
+	private ClassBuilder(DefiningClassLoader classLoader, Class<? super T> type) {
 		this(classLoader, type, Collections.EMPTY_LIST);
 	}
 
-	private ClassBuilder(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
+	private ClassBuilder(DefiningClassLoader classLoader, Class<? super T> mainType, List<Class<?>> types) {
 		this.classLoader = classLoader;
 		this.mainClass = mainType;
 		this.otherClasses = types;
 	}
 
-	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<T> type) {
+	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<? super T> type) {
 		return new ClassBuilder<>(classLoader, type);
 	}
 

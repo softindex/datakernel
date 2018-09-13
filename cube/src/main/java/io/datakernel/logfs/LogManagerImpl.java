@@ -23,7 +23,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.serial.SerialSupplierModifier;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serial.processor.SerialLZ4Compressor;
@@ -174,7 +173,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 																inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
 															}
 														}))
-												.apply((SerialSupplierModifier<ByteBuf, ByteBuf>) supplier ->
+												.apply(supplier ->
 														supplier.withEndOfStream(endOfStream ->
 																endOfStream.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
 																		Stage.complete() :

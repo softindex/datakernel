@@ -94,7 +94,7 @@ public class StreamFilterTest {
 		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumerToList consumer = StreamConsumerToList.create(list);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		source.apply(streamFilter).streamTo(
 				consumer.apply(TestStreamConsumers.oneByOne()));

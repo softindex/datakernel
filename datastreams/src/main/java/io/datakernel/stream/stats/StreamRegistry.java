@@ -2,7 +2,9 @@ package io.datakernel.stream.stats;
 
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialConsumerModifier;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialSupplierModifier;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.StreamModifier;
@@ -12,7 +14,6 @@ import io.datakernel.util.IntrusiveLinkedList;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.Function;
 
 import static java.lang.System.currentTimeMillis;
 
@@ -60,23 +61,13 @@ public final class StreamRegistry<V> implements Iterable<V> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> Function<SerialSupplier<T>, SerialSupplier<T>> forSerialSupplier(V value) { // TODO
-		return new Function<SerialSupplier<T>, SerialSupplier<T>>() {
-			@Override
-			public SerialSupplier<T> apply(SerialSupplier<T> supplier) {
-				return supplier;
-			}
-		};
+	public <T> SerialSupplierModifier<T, SerialSupplier<T>> forSerialSupplier(V value) { // TODO
+		return supplier -> supplier;
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> Function<SerialConsumer<T>, SerialConsumer<T>> forSerialConsumer(V value) { // TODO
-		return new Function<SerialConsumer<T>, SerialConsumer<T>>() {
-			@Override
-			public SerialConsumer<T> apply(SerialConsumer<T> supplier) {
-				return supplier;
-			}
-		};
+	public <T> SerialConsumerModifier<T, SerialConsumer<T>> forSerialConsumer(V value) { // TODO
+		return consumer -> consumer;
 	}
 
 	public <T> StreamConsumer<T> newEntry(StreamConsumer<T> consumer, V value) {

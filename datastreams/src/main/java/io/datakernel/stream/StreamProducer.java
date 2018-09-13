@@ -166,12 +166,8 @@ public interface StreamProducer<T> extends Cancellable {
 		return new StreamProducers.OfSerialSupplierImpl<>(supplier);
 	}
 
-	default <R> StreamProducer<R> apply(StreamProducerModifier<T, R> modifier) {
-		return apply((Function<StreamProducer<T>, StreamProducer<R>>) modifier::apply);
-	}
-
-	default <R> R apply(Function<StreamProducer<T>, R> fn) {
-		return fn.apply(this);
+	default <R> R apply(StreamProducerModifier<T, R> modifier) {
+		return modifier.apply(this);
 	}
 
 	default StreamProducer<T> withLateBinding() {

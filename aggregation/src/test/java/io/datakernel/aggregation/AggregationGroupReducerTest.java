@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
@@ -88,15 +89,15 @@ public class AggregationGroupReducerTest {
 		};
 
 		Class<InvertedIndexRecord> inputClass = InvertedIndexRecord.class;
-		Class<?> keyClass = createKeyClass(
-				keysToMap(asList("word").stream(), structure.getKeyTypes()::get),
+		Class<Comparable> keyClass = createKeyClass(
+				keysToMap(Stream.of("word"), structure.getKeyTypes()::get),
 				classLoader);
 		Class<InvertedIndexRecord> aggregationClass = createRecordClass(structure, asList("word"), asList("documents"), classLoader);
 
-		Function<InvertedIndexRecord, Comparable<?>> keyFunction = createKeyFunction(inputClass, keyClass,
+		Function<InvertedIndexRecord, Comparable> keyFunction = createKeyFunction(inputClass, keyClass,
 				asList("word"), classLoader);
 
-		Aggregate aggregate = createPreaggregator(structure, inputClass, aggregationClass,
+		Aggregate<InvertedIndexRecord, Object> aggregate = createPreaggregator(structure, inputClass, aggregationClass,
 				singletonMap("word", "word"), singletonMap("documents", "documentId"), classLoader);
 
 		int aggregationChunkSize = 2;
@@ -112,7 +113,7 @@ public class AggregationGroupReducerTest {
 				new InvertedIndexRecord("fox", 4),
 				new InvertedIndexRecord("brown", 10));
 
-		AggregationGroupReducer<Long, InvertedIndexRecord> groupReducer = new AggregationGroupReducer<>(aggregationChunkStorage,
+		AggregationGroupReducer<Long, InvertedIndexRecord, Comparable> groupReducer = new AggregationGroupReducer<>(aggregationChunkStorage,
 				structure, asList("documents"),
 				aggregationClass, singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader);
 

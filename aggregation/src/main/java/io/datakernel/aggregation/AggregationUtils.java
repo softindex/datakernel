@@ -59,25 +59,26 @@ public class AggregationUtils {
 	private AggregationUtils() {
 	}
 
-	public static Class<?> createKeyClass(Map<String, FieldType> keys, DefiningClassLoader classLoader) {
+	public static <K extends Comparable> Class<K> createKeyClass(Map<String, FieldType> keys, DefiningClassLoader classLoader) {
 		List<String> keyList = new ArrayList<>(keys.keySet());
-		return ClassBuilder.create(classLoader, Comparable.class)
+		return ClassBuilder.<K>create(classLoader, Comparable.class)
 				.initialize(cb ->
 						keys.forEach((key, value) ->
 								cb.withField(key, value.getInternalDataType())))
 				.withMethod("compareTo", compareTo(keyList))
 				.withMethod("equals", asEquals(keyList))
 				.withMethod("hashCode", hashCodeOfThis(keyList))
-				.withMethod("toString", asString(keyList)).build();
+				.withMethod("toString", asString(keyList))
+				.build();
 	}
 
-	public static Comparator createKeyComparator(Class<?> recordClass, List<String> keys, DefiningClassLoader classLoader) {
+	public static <K extends Comparable, R> Comparator<R> createKeyComparator(Class<R> recordClass, List<String> keys, DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Comparator.class)
 				.withMethod("compare", compare(recordClass, keys))
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static StreamMap.MapperProjection createMapper(Class<?> recordClass, Class<?> resultClass,
+	public static <T, R> StreamMap.MapperProjection<T, R> createMapper(Class<T> recordClass, Class<R> resultClass,
 			List<String> keys, List<String> fields,
 			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, StreamMap.MapperProjection.class)
@@ -94,7 +95,7 @@ public class AggregationUtils {
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static Function createKeyFunction(Class<?> recordClass, Class<?> keyClass,
+	public static <K extends Comparable, R> Function<R, K> createKeyFunction(Class<R> recordClass, Class<K> keyClass,
 			List<String> keys,
 			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
@@ -166,7 +167,7 @@ public class AggregationUtils {
 		return SerializerBuilder.create(classLoader).build(serializerGenClass);
 	}
 
-	public static StreamReducers.Reducer aggregationReducer(AggregationStructure aggregation, Class<?> inputClass, Class<?> outputClass,
+	public static <K extends Comparable, I, O, A> StreamReducers.Reducer<K, I, O, A> aggregationReducer(AggregationStructure aggregation, Class<I> inputClass, Class<O> outputClass,
 			List<String> keys, List<String> fields,
 			DefiningClassLoader classLoader) {
 
@@ -202,7 +203,7 @@ public class AggregationUtils {
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static Aggregate createPreaggregator(AggregationStructure aggregation, Class<?> inputClass, Class<?> outputClass,
+	public static <I, O> Aggregate<O, Object> createPreaggregator(AggregationStructure aggregation, Class<I> inputClass, Class<O> outputClass,
 			Map<String, String> keyFields, Map<String, String> measureFields,
 			DefiningClassLoader classLoader) {
 

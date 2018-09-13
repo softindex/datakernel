@@ -29,6 +29,7 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
+import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -200,7 +201,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return structure.getPartitioningKey();
 	}
 
-	public StreamReducers.Reducer aggregationReducer(Class<?> inputClass, Class<?> outputClass,
+	public <K extends Comparable, I, O, A> StreamReducers.Reducer<K, I, O, A> aggregationReducer(Class<I> inputClass, Class<O> outputClass,
 			List<String> keys, List<String> measures,
 			DefiningClassLoader classLoader) {
 		return AggregationUtils.aggregationReducer(structure, inputClass, outputClass,
@@ -215,30 +216,31 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	 * @return consumer for streaming data to aggregation
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> Stage<AggregationDiff> consume(StreamProducer<T> producer,
+	public <T, C, K extends Comparable> Stage<AggregationDiff> consume(StreamProducer<T> producer,
 			Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields) {
 		checkArgument(new HashSet<>(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
 		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(), getMeasureTypes().keySet()));
 
 		logger.info("Started consuming data in aggregation {}. Keys: {} Measures: {}", this, keyFields.keySet(), measureFields.keySet());
 
-		Class<?> keyClass = createKeyClass(
+		Class<K> keyClass = createKeyClass(
 				keysToMap(getKeys().stream(), structure.getKeyTypes()::get),
 				classLoader);
 		Set<String> measureFieldKeys = measureFields.keySet();
 		List<String> measures = this.getMeasureTypes().keySet().stream().filter(measureFieldKeys::contains).collect(toList());
 
-		Class<?> accumulatorClass = createRecordClass(structure, getKeys(), measures, classLoader);
+		Class<T> recordClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
-		Aggregate aggregate = createPreaggregator(structure, inputClass, accumulatorClass,
+		Aggregate<T, Object> aggregate = createPreaggregator(structure, inputClass, recordClass,
 				keyFields, measureFields,
 				classLoader);
 
-		AggregationGroupReducer<Object, T> groupReducer = new AggregationGroupReducer<>(aggregationChunkStorage,
+		Function<T, K> keyFunction = createKeyFunction(inputClass, keyClass, getKeys(), classLoader);
+		AggregationGroupReducer<C, T, K> groupReducer = new AggregationGroupReducer<>(aggregationChunkStorage,
 				structure, measures,
-				accumulatorClass,
-				createPartitionPredicate(accumulatorClass, getPartitioningKey(), classLoader),
-				createKeyFunction(inputClass, keyClass, getKeys(), classLoader),
+				recordClass,
+				createPartitionPredicate(recordClass, getPartitioningKey(), classLoader),
+				keyFunction,
 				aggregate, chunkSize, classLoader);
 
 		return producer.streamTo(groupReducer)
@@ -358,8 +360,8 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return new QueryPlan(sequences);
 	}
 
-	private <T> StreamProducer<T> consolidatedProducer(List<String> queryKeys,
-			List<String> measures, Class<T> resultClass,
+	private <R, S> StreamProducer<R> consolidatedProducer(List<String> queryKeys,
+			List<String> measures, Class<R> resultClass,
 			AggregationPredicate where,
 			List<AggregationChunk> individualChunks,
 			DefiningClassLoader queryClassLoader) {
@@ -369,15 +371,15 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 
 		boolean alreadySorted = this.getKeys().subList(0, min(this.getKeys().size(), queryKeys.size())).equals(queryKeys);
 
-		List<SequenceStream> sequenceStreams = new ArrayList<>();
+		List<SequenceStream<S>> sequenceStreams = new ArrayList<>();
 
 		for (QueryPlan.Sequence sequence : plan.getSequences()) {
-			Class<Object> sequenceClass = createRecordClass(structure,
+			Class<S> sequenceClass = createRecordClass(structure,
 					this.getKeys(),
 					sequence.getChunksFields(),
 					classLoader);
 
-			StreamProducer<Object> stream = sequenceStream(where, sequence.getChunks(), sequenceClass, queryClassLoader);
+			StreamProducer<S> stream = sequenceStream(where, sequence.getChunks(), sequenceClass, queryClassLoader);
 			if (!alreadySorted) {
 				stream = sortStream(stream, sequenceClass, queryKeys, sequence.getQueryFields(), classLoader);
 			}
@@ -388,20 +390,20 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return mergeSequences(queryKeys, measures, resultClass, sequenceStreams, queryClassLoader);
 	}
 
-	static final class SequenceStream<T> {
-		final StreamProducer<T> stream;
+	static final class SequenceStream<S> {
+		final StreamProducer<S> stream;
 		final List<String> fields;
-		final Class<T> type;
+		final Class<S> type;
 
-		private SequenceStream(StreamProducer<T> stream, List<String> fields, Class<T> type) {
+		private SequenceStream(StreamProducer<S> stream, List<String> fields, Class<S> type) {
 			this.stream = stream;
 			this.fields = fields;
 			this.type = type;
 		}
 	}
 
-	private <T> StreamProducer<T> mergeSequences(List<String> queryKeys, List<String> measures,
-			Class<?> resultClass, List<SequenceStream> sequences,
+	private <S, R, K extends Comparable> StreamProducer<R> mergeSequences(List<String> queryKeys, List<String> measures,
+			Class<R> resultClass, List<SequenceStream<S>> sequences,
 			DefiningClassLoader classLoader) {
 		if (sequences.size() == 1 && new HashSet<>(queryKeys).equals(new HashSet<>(getKeys()))) {
 			/*
@@ -409,35 +411,38 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 			using StreamReducer, because all records have unique keys and all we need to do is copy requested measures
 			from record class to result class.
 			 */
-			SequenceStream sequence = sequences.get(0);
-			StreamMap.MapperProjection mapper = createMapper(sequence.type, resultClass,
+			SequenceStream<S> sequence = sequences.get(0);
+			StreamMap.MapperProjection<S, R> mapper = createMapper(sequence.type, resultClass,
 					queryKeys, measures.stream().filter(sequence.fields::contains).collect(toList()),
 					classLoader);
-			return sequence.stream.apply(StreamMap.create(mapper)).apply(stats.mergeMapOutput);
+			StreamProducer<S> stream = sequence.stream;
+			StreamMap<S, R> modifier = StreamMap.create(mapper);
+			return stream.apply(modifier).apply((StreamStats<R>) stats.mergeMapOutput);
 		}
 
-		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(Comparable::compareTo);
+		StreamReducer<K, R, Object> streamReducer = StreamReducer.create(Comparable::compareTo);
 		if (reducerBufferSize != 0 && reducerBufferSize != DEFAULT_REDUCER_BUFFER_SIZE) {
 			streamReducer = streamReducer.withBufferSize(reducerBufferSize);
 		}
 
-		Class<?> keyClass = createKeyClass(
+		Class<K> keyClass = createKeyClass(
 				keysToMap(queryKeys.stream(), structure.getKeyTypes()::get),
 				this.classLoader);
 
-		for (SequenceStream sequence : sequences) {
-			Function extractKeyFunction = createKeyFunction(sequence.type, keyClass, queryKeys, this.classLoader);
+		for (SequenceStream<S> sequence : sequences) {
+			Function<S, K> extractKeyFunction = createKeyFunction(sequence.type, keyClass, queryKeys, this.classLoader);
 
-			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(structure, sequence.type, resultClass,
+			StreamReducers.Reducer<K, S, R, Object> reducer = AggregationUtils.aggregationReducer(structure,
+					sequence.type, resultClass,
 					queryKeys, measures.stream().filter(sequence.fields::contains).collect(toList()),
 					classLoader);
 
 			sequence.stream.streamTo(
 					streamReducer.newInput(extractKeyFunction, reducer)
-							.apply(stats.mergeReducerInput));
+							.apply((StreamStats<S>) stats.mergeReducerInput));
 		}
 
-		return streamReducer.getOutput().apply(stats.mergeReducerOutput);
+		return streamReducer.getOutput().apply((StreamStats<R>) stats.mergeReducerOutput);
 	}
 
 	private <T> StreamProducer<T> sequenceStream(AggregationPredicate where,

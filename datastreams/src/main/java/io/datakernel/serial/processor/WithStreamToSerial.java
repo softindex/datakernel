@@ -5,12 +5,13 @@ import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialZeroBuffer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducerModifier;
 
 import java.util.function.Function;
 
 public interface WithStreamToSerial<B extends WithStreamToSerial<B, I, O>, I, O> extends
 		StreamConsumer<I>, WithSerialOutput<B, O>,
-		Function<StreamProducer<I>, SerialSupplier<O>> {
+		StreamProducerModifier<I, SerialSupplier<O>> {
 
 	@Override
 	default SerialSupplier<O> apply(StreamProducer<I> streamProducer) {

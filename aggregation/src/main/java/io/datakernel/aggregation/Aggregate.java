@@ -19,14 +19,14 @@ package io.datakernel.aggregation;
 /**
  * Accumulates records using arithmetic summation.
  */
-public interface Aggregate {
+public interface Aggregate<T, A> {
 	/**
 	 * Creates an object which holds arithmetic sum of accumulated records.
 	 *
 	 * @param record record whose fields are to be accumulated
 	 * @return accumulator object
 	 */
-	Object createAccumulator(Object record);
+	A createAccumulator(T record);
 
 	/**
 	 * Performs the following operation: accumulator = accumulator + record.
@@ -34,5 +34,5 @@ public interface Aggregate {
 	 * @param accumulator accumulator which holds the current sum of records
 	 * @param record      record to add to the accumulator
 	 */
-	void accumulate(Object accumulator, Object record);
+	void accumulate(A accumulator, T record);
 }

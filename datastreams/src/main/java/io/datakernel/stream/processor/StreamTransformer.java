@@ -16,7 +16,10 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.stream.*;
+import io.datakernel.stream.HasInput;
+import io.datakernel.stream.HasOutput;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
 
 import java.util.function.Function;
 
@@ -24,45 +27,6 @@ public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, Stre
 
 	static <X> StreamTransformer<X, X> identity() {
 		return StreamFunction.create(Function.identity());
-	}
-
-	default Function<StreamProducer<I>, StreamProducer<O>> fn() {
-		return input -> {
-			input.streamTo(getInput());
-			return getOutput();
-		};
-	}
-
-	default <T> StreamTransformer<T, O> with(StreamConsumerModifier<I, T> consumerModifier) {
-		return new StreamTransformer<T, O>() {
-			private final StreamConsumer<T> input = consumerModifier.apply(StreamTransformer.this.getInput());
-
-			@Override
-			public StreamConsumer<T> getInput() {
-				return input;
-			}
-
-			@Override
-			public StreamProducer<O> getOutput() {
-				return StreamTransformer.this.getOutput();
-			}
-		};
-	}
-
-	default <T> StreamTransformer<I, T> with(StreamProducerModifier<O, T> producerModifier) {
-		return new StreamTransformer<I, T>() {
-			private final StreamProducer<T> output = producerModifier.apply(StreamTransformer.this.getOutput());
-
-			@Override
-			public StreamConsumer<I> getInput() {
-				return StreamTransformer.this.getInput();
-			}
-
-			@Override
-			public StreamProducer<T> getOutput() {
-				return output;
-			}
-		};
 	}
 
 	@Override

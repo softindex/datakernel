@@ -2,9 +2,9 @@ package io.datakernel.serial;
 
 @FunctionalInterface
 public interface SerialConsumerModifier<T, R> {
-	SerialConsumer<R> apply(SerialConsumer<T> consumer);
+	R apply(SerialConsumer<T> consumer);
 
-	static <T> SerialConsumerModifier<T, T> identity() {
+	static <T> SerialConsumerModifier<T, SerialConsumer<T>> identity() {
 		return consumer -> consumer;
 	}
 }

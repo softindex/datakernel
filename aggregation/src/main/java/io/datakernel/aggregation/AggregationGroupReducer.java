@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataReceiver<T> {
+public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataReceiver<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final AggregationChunkStorage<C> storage;
@@ -43,18 +43,18 @@ public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<
 	private final List<String> measures;
 	private final PartitionPredicate<T> partitionPredicate;
 	private final Class<T> recordClass;
-	private final Function<T, Comparable<?>> keyFunction;
-	private final Aggregate aggregate;
+	private final Function<T, K> keyFunction;
+	private final Aggregate<T, Object> aggregate;
 	private final StagesAccumulator<List<AggregationChunk>> resultsTracker;
 	private final DefiningClassLoader classLoader;
 	private final int chunkSize;
 
-	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
+	private final HashMap<K, Object> map = new HashMap<>();
 
 	public AggregationGroupReducer(AggregationChunkStorage<C> storage,
 			AggregationStructure aggregation, List<String> measures,
 			Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
-			Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
+			Function<T, K> keyFunction, Aggregate<T, Object> aggregate,
 			int chunkSize, DefiningClassLoader classLoader) {
 		this.storage = storage;
 		this.measures = measures;
@@ -75,7 +75,7 @@ public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<
 
 	@Override
 	public void onData(T item) {
-		Comparable<?> key = keyFunction.apply(item);
+		K key = keyFunction.apply(item);
 		Object accumulator = map.get(key);
 		if (accumulator != null) {
 			aggregate.accumulate(accumulator, item);
@@ -101,17 +101,17 @@ public final class AggregationGroupReducer<C, T> extends AbstractStreamConsumer<
 
 		suspendOrResume();
 
-		List<Map.Entry<Comparable<?>, Object>> entryList = new ArrayList<>(map.entrySet());
+		List<Map.Entry<K, Object>> entryList = new ArrayList<>(map.entrySet());
 		map.clear();
 
 		entryList.sort((o1, o2) -> {
-			Comparable<Object> key1 = (Comparable<Object>) o1.getKey();
-			Comparable<Object> key2 = (Comparable<Object>) o2.getKey();
+			K key1 = o1.getKey();
+			K key2 = o2.getKey();
 			return key1.compareTo(key2);
 		});
 
 		List<T> list = new ArrayList<>(entryList.size());
-		for (Map.Entry<Comparable<?>, Object> entry : entryList) {
+		for (Map.Entry<K, Object> entry : entryList) {
 			list.add((T) entry.getValue());
 		}
 

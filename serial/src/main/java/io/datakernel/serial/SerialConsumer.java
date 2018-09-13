@@ -144,12 +144,8 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
-	default <R> SerialConsumer<R> apply(SerialConsumerModifier<T, R> modifier) {
-		return apply((Function<SerialConsumer<T>, SerialConsumer<R>>) modifier::apply);
-	}
-
-	default <R> R apply(Function<SerialConsumer<T>, R> fn) {
-		return fn.apply(this);
+	default <R> R apply(SerialConsumerModifier<T, R> modifier) {
+		return modifier.apply(this);
 	}
 
 	default SerialConsumer<T> async() {

@@ -5,7 +5,7 @@ import io.datakernel.serial.*;
 
 public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O> extends
 		WithSerialInput<B, I>, WithSerialOutput<B, O>,
-		SerialSupplierModifier<I, O>, SerialConsumerModifier<O, I> {
+		SerialSupplierModifier<I, SerialSupplier<O>>, SerialConsumerModifier<O, SerialConsumer<I>> {
 	@Override
 	default SerialSupplier<O> apply(SerialSupplier<I> supplier) {
 		return serialSupplierModifier(new SerialZeroBuffer<>()).apply(supplier);
@@ -16,7 +16,7 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 		return serialConsumerModifier(new SerialZeroBuffer<>()).apply(consumer);
 	}
 
-	default SerialSupplierModifier<I, O> serialSupplierModifier(SerialQueue<O> queue) {
+	default SerialSupplierModifier<I, SerialSupplier<O>> serialSupplierModifier(SerialQueue<O> queue) {
 		return input -> {
 			setInput(input);
 			SerialSupplier<O> outputSupplier = getOutputSupplier(queue);
@@ -27,7 +27,7 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 		};
 	}
 
-	default SerialConsumerModifier<O, I> serialConsumerModifier(SerialQueue<I> queue) {
+	default SerialConsumerModifier<O, SerialConsumer<I>> serialConsumerModifier(SerialQueue<I> queue) {
 		return output -> {
 			setOutput(output);
 			SerialConsumer<I> outputSupplier = getInputConsumer(queue);

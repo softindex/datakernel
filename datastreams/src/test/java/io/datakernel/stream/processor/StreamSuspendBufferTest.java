@@ -23,7 +23,7 @@ import static org.junit.Assert.assertFalse;
 public class StreamSuspendBufferTest {
 	private static final Logger logger = LoggerFactory.getLogger(StreamSuspendBufferTest.class);
 
-	private void testImmediateSuspend(StreamProducerModifier<String, String> suspendingModifier) {
+	private void testImmediateSuspend(StreamProducerModifier<String, StreamProducer<String>> suspendingModifier) {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<String> items = IntStream.range(0, 100).mapToObj(i -> "test_" + i).collect(toList());
@@ -54,7 +54,7 @@ public class StreamSuspendBufferTest {
 		assertEquals(items, result.getResult());
 	}
 
-	private static <T> StreamProducerModifier<T, T> suspend(BiConsumer<Integer, StreamProducer<T>> suspend) {
+	private static <T> StreamProducerModifier<T, StreamProducer<T>> suspend(BiConsumer<Integer, StreamProducer<T>> suspend) {
 		return p -> new ForwardingStreamProducer<T>(p) {
 			private int counter = 0;
 

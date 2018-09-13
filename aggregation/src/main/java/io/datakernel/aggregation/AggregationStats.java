@@ -5,10 +5,10 @@ import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 
 public class AggregationStats {
-	final StreamStatsBasic mergeMapInput = StreamStats.basic();
-	final StreamStatsBasic mergeMapOutput = StreamStats.basic();
-	final StreamStatsBasic mergeReducerInput = StreamStats.basic();
-	final StreamStatsBasic mergeReducerOutput = StreamStats.basic();
+	final StreamStatsBasic<?> mergeMapInput = StreamStats.basic();
+	final StreamStatsBasic<?> mergeMapOutput = StreamStats.basic();
+	final StreamStatsBasic<?> mergeReducerInput = StreamStats.basic();
+	final StreamStatsBasic<?> mergeReducerOutput = StreamStats.basic();
 
 	@JmxAttribute
 	public StreamStatsBasic getMergeReducerInput() {
