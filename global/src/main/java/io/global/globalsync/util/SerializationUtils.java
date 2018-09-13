@@ -119,7 +119,7 @@ public final class SerializationUtils {
 	}
 
 	public static int sizeof(BigInteger bigInteger) {
-		return bigInteger.bitCount() / 8 + 2;
+		return bigInteger.bitLength() / 8 + 2;
 	}
 
 	public static void writeBigInteger(ByteBuf buf, BigInteger bigInteger) {
