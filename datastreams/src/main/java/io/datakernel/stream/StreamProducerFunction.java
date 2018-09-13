@@ -1,10 +1,10 @@
 package io.datakernel.stream;
 
 @FunctionalInterface
-public interface StreamProducerModifier<T, R> {
+public interface StreamProducerFunction<T, R> {
 	R apply(StreamProducer<T> producer);
 
-	static <T> StreamProducerModifier<T, StreamProducer<T>> identity() {
+	static <T> StreamProducerFunction<T, StreamProducer<T>> identity() {
 		return producer -> producer;
 	}
 }

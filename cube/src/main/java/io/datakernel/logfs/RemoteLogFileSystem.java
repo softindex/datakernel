@@ -76,7 +76,7 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 	public Stage<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
 		return client.download(path(logPartition, logFile), startPosition)
 				.thenApply(stream -> stream
-						.apply(streamReads.forSerialSupplier(logPartition + ":" + logFile + "@" + startPosition))
+						.apply(streamReads.register(logPartition + ":" + logFile + "@" + startPosition))
 						.apply(streamReadStats))
 				.whenComplete(stageRead.recordStats());
 	}
@@ -86,7 +86,7 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 		String fileName = path(logPartition, logFile);
 		return client.upload(fileName)
 				.thenApply(stream -> stream
-						.apply(streamWrites.forSerialConsumer(logPartition + ":" + logFile))
+						.apply(streamWrites.register(logPartition + ":" + logFile))
 						.apply(streamWriteStats))
 				.whenComplete(stageWrite.recordStats());
 	}

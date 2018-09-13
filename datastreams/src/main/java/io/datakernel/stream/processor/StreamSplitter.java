@@ -33,7 +33,7 @@ import static io.datakernel.util.Preconditions.checkState;
  * @param <T>
  */
 @SuppressWarnings("unchecked")
-public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamDataReceiver<T> {
+public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, StreamDataReceiver<T> {
 	private final Input input;
 	private final List<Output> outputs = new ArrayList<>();
 

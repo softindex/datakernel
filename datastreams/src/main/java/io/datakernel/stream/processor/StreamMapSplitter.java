@@ -11,7 +11,7 @@ import java.util.function.BiConsumer;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class StreamMapSplitter<I> implements HasInput<I>, HasOutputs, StreamDataReceiver<I> {
+public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs, StreamDataReceiver<I> {
 	private final Input input;
 	private final List<Output<?>> outputs = new ArrayList<>();
 	private final BiConsumer<I, StreamDataReceiver[]> action;

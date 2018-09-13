@@ -16,14 +16,14 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.stream.HasInput;
-import io.datakernel.stream.HasOutput;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.*;
 
 import java.util.function.Function;
 
-public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, StreamModifier<I, O> {
+public interface StreamTransformer<I, O> extends
+		StreamInput<I>, StreamOutput<O>,
+		StreamProducerFunction<I, StreamProducer<O>>,
+		StreamConsumerFunction<O, StreamConsumer<I>> {
 
 	static <X> StreamTransformer<X, X> identity() {
 		return StreamFunction.create(Function.identity());

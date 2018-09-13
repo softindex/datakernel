@@ -62,7 +62,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		return (StreamDataReceiver<X>) receivers.next();
 	}
 
-	final class Splitter implements HasInput<T>, HasOutputs {
+	final class Splitter implements StreamInput<T>, StreamOutputs {
 		private final Input input;
 		private final List<Output<?>> outputs = new ArrayList<>();
 

@@ -38,7 +38,7 @@ import static java.util.Arrays.asList;
  * @param <R> type of data from right stream
  * @param <V> type of output data
  */
-public final class StreamJoin<K, L, R, V> implements HasOutput<V>, HasInputs {
+public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<V> {
 
 	/**
 	 * It is primary interface of joiner. It contains methods which will join streams

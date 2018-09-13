@@ -28,7 +28,7 @@ import java.util.List;
  *
  * @param <T> type of output data
  */
-public final class StreamUnion<T> implements HasOutput<T>, HasInputs {
+public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 	private final List<Input> inputs = new ArrayList<>();
 	private final Output output;
 

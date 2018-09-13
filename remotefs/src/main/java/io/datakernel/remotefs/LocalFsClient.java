@@ -25,7 +25,7 @@ import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialConsumerModifier;
+import io.datakernel.serial.SerialConsumerFunction;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.file.SerialFileReader;
 import io.datakernel.serial.file.SerialFileWriter;
@@ -128,7 +128,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 														acknowledgement.whenComplete(writeFinishStage.recordStats()))
 												.apply(offset != -1 && offset != size ?
 														SerialByteBufCutter.create(size - offset) :
-														SerialConsumerModifier.identity()));
+														SerialConsumerFunction.identity()));
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))

@@ -49,8 +49,8 @@ public interface SerialSupplier<T> extends Cancellable {
 		return stage;
 	}
 
-	static <T> SerialSupplier<T> ofConsumer(Consumer<SerialConsumer<T>> supplierAcceptor, SerialQueue<T> queue) {
-		supplierAcceptor.accept(queue.getConsumer());
+	static <T> SerialSupplier<T> ofConsumer(Consumer<SerialConsumer<T>> consumer, SerialQueue<T> queue) {
+		consumer.accept(queue.getConsumer());
 		return queue.getSupplier();
 	}
 
@@ -159,8 +159,8 @@ public interface SerialSupplier<T> extends Cancellable {
 		return toCollector(Collectors.toList());
 	}
 
-	default <R> R apply(SerialSupplierModifier<T, R> modifier) {
-		return modifier.apply(this);
+	default <R> R apply(SerialSupplierFunction<T, R> fn) {
+		return fn.apply(this);
 	}
 
 

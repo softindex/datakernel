@@ -6,7 +6,7 @@ import io.datakernel.async.SettableStage;
 import java.util.function.Function;
 
 public class TestStreamProducers {
-	public static <T> StreamProducerModifier<T, StreamProducer<T>> decorator(Decorator<T> decorator) {
+	public static <T> StreamProducerFunction<T, StreamProducer<T>> decorator(Decorator<T> decorator) {
 		return producer -> new ForwardingStreamProducer<T>(producer) {
 			final SettableStage<Void> endOfStream = new SettableStage<>();
 
@@ -36,7 +36,7 @@ public class TestStreamProducers {
 		};
 	}
 
-	public static <T> StreamProducerModifier<T, StreamProducer<T>> errorDecorator(Function<T, Throwable> errorFunction) {
+	public static <T> StreamProducerFunction<T, StreamProducer<T>> errorDecorator(Function<T, Throwable> errorFunction) {
 		return decorator((context, dataReceiver) ->
 				item -> {
 					Throwable error = errorFunction.apply(item);

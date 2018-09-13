@@ -18,10 +18,10 @@ package io.datakernel.stream;
 
 import java.util.List;
 
-public interface HasInputs {
-	List<? extends StreamConsumer<?>> getInputs();
+public interface StreamOutputs {
+	List<? extends StreamProducer<?>> getOutputs();
 
-	default StreamConsumer<?> getInput(int index) {
-		return getInputs().get(index);
+	default StreamProducer<?> getOutput(int index) {
+		return getOutputs().get(index);
 	}
 }

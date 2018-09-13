@@ -78,9 +78,9 @@ public interface StreamProducer<T> extends Cancellable {
 		return Stages.all(producer.getEndOfStream(), consumer.getAcknowledgement());
 	}
 
-	static <T, R> StreamProducer<T> ofConsumer(Consumer<StreamConsumer<T>> supplierAcceptor) {
+	static <T, R> StreamProducer<T> ofConsumer(Consumer<StreamConsumer<T>> consumer) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
-		supplierAcceptor.accept(forwarder.getInput());
+		consumer.accept(forwarder.getInput());
 		return forwarder.getOutput();
 	}
 
@@ -166,8 +166,8 @@ public interface StreamProducer<T> extends Cancellable {
 		return new StreamProducers.OfSerialSupplierImpl<>(supplier);
 	}
 
-	default <R> R apply(StreamProducerModifier<T, R> modifier) {
-		return modifier.apply(this);
+	default <R> R apply(StreamProducerFunction<T, R> fn) {
+		return fn.apply(this);
 	}
 
 	default StreamProducer<T> withLateBinding() {

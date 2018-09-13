@@ -71,8 +71,8 @@ public interface StreamConsumer<T> extends Cancellable {
 		return forwarder.getInput();
 	}
 
-	default <R> R apply(StreamConsumerModifier<T, R> modifier) {
-		return modifier.apply(this);
+	default <R> R apply(StreamConsumerFunction<T, R> fn) {
+		return fn.apply(this);
 	}
 
 	default StreamConsumer<T> withLateBinding() {

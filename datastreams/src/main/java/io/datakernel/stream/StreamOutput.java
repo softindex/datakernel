@@ -16,12 +16,6 @@
 
 package io.datakernel.stream;
 
-import java.util.List;
-
-public interface HasOutputs {
-	List<? extends StreamProducer<?>> getOutputs();
-
-	default StreamProducer<?> getOutput(int index) {
-		return getOutputs().get(index);
-	}
+public interface StreamOutput<O> {
+	StreamProducer<O> getOutput();
 }

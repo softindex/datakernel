@@ -35,7 +35,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
  * @param <A> type of accumulator
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, HasInputs {
+public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, StreamOutput<O> {
 	public static final int DEFAULT_BUFFER_SIZE = 2000;
 
 	private final List<Input> inputs = new ArrayList<>();

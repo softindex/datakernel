@@ -106,43 +106,45 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	@Override
 	public Stage<List<LogFile>> list(String logPartition) {
 		Eventloop eventloop = getCurrentEventloop();
-		return Stage.ofCallable(executorService, () -> {
-			List<LogFile> entries = new ArrayList<>();
+		return Stage.ofCallable(executorService,
+				() -> {
+					List<LogFile> entries = new ArrayList<>();
 
-			Files.createDirectories(dir);
-			Files.walkFileTree(dir, new FileVisitor<Path>() {
-				@Override
-				public FileVisitResult preVisitDirectory(Path dir1, BasicFileAttributes attrs) throws IOException {
-					return FileVisitResult.CONTINUE;
-				}
+					Files.createDirectories(dir);
+					Files.walkFileTree(dir, new FileVisitor<Path>() {
+						@Override
+						public FileVisitResult preVisitDirectory(Path dir1, BasicFileAttributes attrs) throws IOException {
+							return FileVisitResult.CONTINUE;
+						}
 
-				@Override
-				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-					PartitionAndFile partitionAndFile = parse(file.getFileName().toString());
-					if (partitionAndFile != null && partitionAndFile.logPartition.equals(logPartition)) {
-						entries.add(partitionAndFile.logFile);
-					}
-					return FileVisitResult.CONTINUE;
-				}
+						@Override
+						public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+							PartitionAndFile partitionAndFile = parse(file.getFileName().toString());
+							if (partitionAndFile != null && partitionAndFile.logPartition.equals(logPartition)) {
+								entries.add(partitionAndFile.logFile);
+							}
+							return FileVisitResult.CONTINUE;
+						}
 
-				@Override
-				public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-					if (exc != null) {
-						logger.error("visitFileFailed error", exc);
-					}
-					return FileVisitResult.CONTINUE;
-				}
+						@Override
+						public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+							if (exc != null) {
+								logger.error("visitFileFailed error", exc);
+							}
+							return FileVisitResult.CONTINUE;
+						}
 
-				@Override
-				public FileVisitResult postVisitDirectory(Path dir1, IOException exc) throws IOException {
-					if (exc != null) {
-						logger.error("postVisitDirectory error", exc);
-					}
-					return FileVisitResult.CONTINUE;
-				}
-			});
-			return entries;
-		}).whenComplete(stageList.recordStats());
+						@Override
+						public FileVisitResult postVisitDirectory(Path dir1, IOException exc) throws IOException {
+							if (exc != null) {
+								logger.error("postVisitDirectory error", exc);
+							}
+							return FileVisitResult.CONTINUE;
+						}
+					});
+					return entries;
+				})
+				.whenComplete(stageList.recordStats());
 	}
 
 	@Override
@@ -150,7 +152,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
 				.whenComplete(stageRead.recordStats())
 				.thenApply(file -> SerialFileReader.readFile(file).withBufferSize(readBlockSize).withOffset(startPosition)
-						.apply(streamReads.forSerialSupplier(logPartition + ":" + logFile + "@" + startPosition))
+						.apply(streamReads.register(logPartition + ":" + logFile + "@" + startPosition))
 						.apply(streamReadStats));
 	}
 
@@ -159,7 +161,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), CREATE_OPTIONS)
 				.whenComplete(stageWrite.recordStats())
 				.thenApply(file -> SerialFileWriter.create(file).withForceOnClose(true)
-						.apply(streamWrites.forSerialConsumer(logPartition + ":" + logFile))
+						.apply(streamWrites.register(logPartition + ":" + logFile))
 						.apply(streamWriteStats));
 	}
 

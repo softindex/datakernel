@@ -31,7 +31,7 @@ import java.util.List;
  * @param <T> type of input items
  */
 @SuppressWarnings("unchecked")
-public final class StreamSharder<T> implements HasInput<T>, HasOutputs, StreamDataReceiver<T> {
+public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, StreamDataReceiver<T> {
 	private final Sharder<T> sharder;
 
 	private final InputConsumer input;

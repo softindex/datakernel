@@ -1,19 +1,22 @@
 package io.datakernel.stream.stats;
 
+import io.datakernel.async.Stage;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialConsumerModifier;
+import io.datakernel.serial.SerialConsumerFunction;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialSupplierModifier;
+import io.datakernel.serial.SerialSupplierFunction;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerFunction;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.processor.StreamModifier;
+import io.datakernel.stream.StreamProducerFunction;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.IntrusiveLinkedList;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Function;
 
 import static java.lang.System.currentTimeMillis;
 
@@ -21,7 +24,7 @@ public final class StreamRegistry<V> implements Iterable<V> {
 	private final IntrusiveLinkedList<Entry<V>> list = new IntrusiveLinkedList<>();
 	private int limit = 10;
 
-	public static class Entry<T> {
+	private static class Entry<T> {
 		private final long timestamp;
 		private final T operation;
 
@@ -45,43 +48,61 @@ public final class StreamRegistry<V> implements Iterable<V> {
 		return this;
 	}
 
-	@SuppressWarnings("unchecked")
-	public <T> StreamModifier<T, T> newEntry(V value) {
-		return new StreamModifier<T, T>() {
-			@Override
-			public StreamConsumer<T> apply(StreamConsumer<T> consumer) {
-				return newEntry(consumer, value);
-			}
+	public final class RegisterFunction<T> implements
+			SerialSupplierFunction<T, SerialSupplier<T>>,
+			SerialConsumerFunction<T, SerialConsumer<T>>,
+			StreamProducerFunction<T, StreamProducer<T>>,
+			StreamConsumerFunction<T, StreamConsumer<T>> {
+		private final V value;
 
-			@Override
-			public StreamProducer<T> apply(StreamProducer<T> producer) {
-				return newEntry(producer, value);
-			}
-		};
+		private RegisterFunction(V value) {this.value = value;}
+
+		@Override
+		public StreamConsumer<T> apply(StreamConsumer<T> consumer) {
+			return register(consumer, value);
+		}
+
+		@Override
+		public StreamProducer<T> apply(StreamProducer<T> producer) {
+			return register(producer, value);
+		}
+
+		@Override
+		public SerialConsumer<T> apply(SerialConsumer<T> consumer) {
+			return register(consumer, value);
+		}
+
+		@Override
+		public SerialSupplier<T> apply(SerialSupplier<T> supplier) {
+			return register(supplier, value);
+		}
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> SerialSupplierModifier<T, SerialSupplier<T>> forSerialSupplier(V value) { // TODO
-		return supplier -> supplier;
+	public <T> RegisterFunction<T> register(V value) {
+		return new RegisterFunction<>(value);
 	}
 
-	@SuppressWarnings("unchecked")
-	public <T> SerialConsumerModifier<T, SerialConsumer<T>> forSerialConsumer(V value) { // TODO
-		return consumer -> consumer;
+	public <T> SerialSupplier<T> register(SerialSupplier<T> supplier, V value) {
+		return supplier.withEndOfStream(subscribe(value));
 	}
 
-	public <T> StreamConsumer<T> newEntry(StreamConsumer<T> consumer, V value) {
+	public <T> SerialConsumer<T> register(SerialConsumer<T> consumer, V value) {
+		return consumer.withAcknowledgement(subscribe(value));
+	}
+
+	public <T> StreamConsumer<T> register(StreamConsumer<T> consumer, V value) {
+		return consumer.withAcknowledgement(subscribe(value));
+	}
+
+	public <T> StreamProducer<T> register(StreamProducer<T> producer, V value) {
+		return producer.withEndOfStream(subscribe(value));
+	}
+
+	private Function<Stage<Void>, Stage<Void>> subscribe(V value) {
 		Entry<V> entry = new Entry<>(value);
 		IntrusiveLinkedList.Node<Entry<V>> node = list.addFirstValue(entry);
-		consumer.getAcknowledgement().whenComplete(($, throwable) -> list.removeNode(node));
-		return consumer;
-	}
-
-	public <T> StreamProducer<T> newEntry(StreamProducer<T> producer, V value) {
-		Entry<V> entry = new Entry<>(value);
-		IntrusiveLinkedList.Node<Entry<V>> node = list.addFirstValue(entry);
-		producer.getEndOfStream().whenComplete(($, throwable) -> list.removeNode(node));
-		return producer;
+		return stage -> stage.thenRunEx(() -> list.removeNode(node));
 	}
 
 	@Override

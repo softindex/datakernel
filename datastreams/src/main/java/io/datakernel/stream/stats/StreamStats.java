@@ -1,14 +1,14 @@
 package io.datakernel.stream.stats;
 
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialConsumerModifier;
+import io.datakernel.serial.SerialConsumerFunction;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialSupplierModifier;
+import io.datakernel.serial.SerialSupplierFunction;
 import io.datakernel.stream.*;
 
 public interface StreamStats<T> extends
-		StreamProducerModifier<T, StreamProducer<T>>, StreamConsumerModifier<T, StreamConsumer<T>>,
-		SerialSupplierModifier<T, SerialSupplier<T>>, SerialConsumerModifier<T, SerialConsumer<T>> {
+		StreamProducerFunction<T, StreamProducer<T>>, StreamConsumerFunction<T, StreamConsumer<T>>,
+		SerialSupplierFunction<T, SerialSupplier<T>>, SerialConsumerFunction<T, SerialConsumer<T>> {
 	StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver);
 
 	void onStarted();

@@ -27,7 +27,7 @@ import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class ShardingStreamSplitter<I, K> implements HasInput<I>, HasOutputs, StreamDataReceiver<I> {
+public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, StreamOutputs, StreamDataReceiver<I> {
 	private final Input input;
 	private final List<Output> outputs = new ArrayList<>();
 	private final MultiSharder<K> sharder;
