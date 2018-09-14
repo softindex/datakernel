@@ -1,5 +1,6 @@
 package io.datakernel.async;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -18,7 +19,8 @@ public interface IndexedCollector<T, A, R> {
 	}
 
 	default R resultOf(T value1) {
-		return resultOf(Collections.singletonList(value1));
+		//noinspection ArraysAsListWithZeroOrOneArgument - using asList instead of singletonList() to allow mutability
+		return resultOf(Arrays.asList(value1));
 	}
 
 	default R resultOf(T value1, T value2) {
@@ -54,44 +56,6 @@ public interface IndexedCollector<T, A, R> {
 		};
 	}
 
-	IndexedCollector<Object, Object[], Object[]> TO_ARRAY = new IndexedCollector<Object, Object[], Object[]>() {
-		@Override
-		public Object[] accumulator(int stages) {
-			return new Object[stages];
-		}
-
-		@Override
-		public void accumulate(Object[] accumulator, int stageIndex, Object stageResult) {
-			accumulator[stageIndex] = stageResult;
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public Object[] finish(Object[] accumulator) {
-			return accumulator;
-		}
-
-		@Override
-		public Object[] resultOf() {
-			return new Object[0];
-		}
-
-		@Override
-		public Object[] resultOf(Object value1) {
-			return new Object[]{value1};
-		}
-
-		@Override
-		public Object[] resultOf(Object value1, Object value2) {
-			return new Object[]{value1, value2};
-		}
-
-		@Override
-		public Object[] resultOf(List<?> values) {
-			return values.toArray(new Object[values.size()]);
-		}
-	};
-
 	IndexedCollector<Object, Object[], List<Object>> TO_LIST = new IndexedCollector<Object, Object[], List<Object>>() {
 		@Override
 		public Object[] accumulator(int stages) {
@@ -116,7 +80,7 @@ public interface IndexedCollector<T, A, R> {
 
 		@Override
 		public List<Object> resultOf(Object value1) {
-			return Collections.singletonList(value1);
+			return Arrays.asList(value1);
 		}
 
 		@Override
@@ -137,7 +101,49 @@ public interface IndexedCollector<T, A, R> {
 	}
 
 	@SuppressWarnings("unchecked")
-	static <T> IndexedCollector<T, T[], T[]> toArray() {
-		return (IndexedCollector) TO_ARRAY;
+	static <T> IndexedCollector<T, T[], T[]> toArray(Class<T> type) {
+		return (IndexedCollector) new IndexedCollector<Object, Object[], Object[]>() {
+
+			@Override
+			public T[] accumulator(int stages) {
+				return (T[]) Array.newInstance(type, stages);
+			}
+
+			@Override
+			public void accumulate(Object[] accumulator, int stageIndex, Object stageResult) {
+				accumulator[stageIndex] = stageResult;
+			}
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public T[] finish(Object[] accumulator) {
+				return (T[]) accumulator;
+			}
+
+			@Override
+			public T[] resultOf() {
+				return (T[]) Array.newInstance(type, 0);
+			}
+
+			@Override
+			public T[] resultOf(Object value1) {
+				T[] array = (T[]) Array.newInstance(type, 1);
+				array[0] = (T) value1;
+				return array;
+			}
+
+			@Override
+			public T[] resultOf(Object value1, Object value2) {
+				T[] array = (T[]) Array.newInstance(type, 2);
+				array[0] = (T) value1;
+				array[1] = (T) value2;
+				return array;
+			}
+
+			@Override
+			public T[] resultOf(List<?> values) {
+				return (T[]) values.toArray();
+			}
+		};
 	}
 }

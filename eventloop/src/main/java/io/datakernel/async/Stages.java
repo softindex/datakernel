@@ -3,7 +3,8 @@ package io.datakernel.async;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.util.*;
 
-import java.util.Collections;
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -428,7 +429,7 @@ public final class Stages {
 	 * @see Stages#toList(Stage[])
 	 */
 	public static <T> Stage<List<T>> toList(Stage<? extends T> stage1) {
-		return stage1.thenApply(Collections::singletonList);
+		return stage1.thenApply(Arrays::asList);
 	}
 
 	/**
@@ -464,40 +465,49 @@ public final class Stages {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Stage<T[]> toArray() {
-		return Stage.of((T[]) new Object[0]);
+	public static <T> Stage<T[]> toArray(Class<T> type) {
+		return Stage.of((T[]) Array.newInstance(type, 0));
 	}
 
 	/**
-	 * @see Stages#toArray(List)
+	 * @see Stages#toArray(Class, List)
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stage<T[]> toArray(Stage<? extends T> stage1) {
-		return stage1.thenApply(value -> (T[]) new Object[]{value});
+	public static <T> Stage<T[]> toArray(Class<T> type, Stage<? extends T> stage1) {
+		return stage1.thenApply(value -> {
+			T[] array = (T[]) Array.newInstance(type, 1);
+			array[0] = value;
+			return array;
+		});
 	}
 
 	/**
-	 * @see Stages#toArray(List)
+	 * @see Stages#toArray(Class, List)
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stage<T[]> toArray(Stage<? extends T> stage1, Stage<? extends T> stage2) {
-		return stage1.combine(stage2, (value1, value2) -> (T[]) new Object[]{value1, value2});
+	public static <T> Stage<T[]> toArray(Class<T> type, Stage<? extends T> stage1, Stage<? extends T> stage2) {
+		return stage1.combine(stage2, (value1, value2) -> {
+			T[] array = (T[]) Array.newInstance(type, 2);
+			array[0] = value1;
+			array[1] = value2;
+			return array;
+		});
 	}
 
 	/**
-	 * @see Stages#toArray(List)
+	 * @see Stages#toArray(Class, List)
 	 */
 	@SafeVarargs
-	public static <T> Stage<T[]> toArray(Stage<? extends T>... stages) {
-		return toArray(asList(stages));
+	public static <T> Stage<T[]> toArray(Class<T> type, Stage<? extends T>... stages) {
+		return toArray(type, asList(stages));
 	}
 
 	/**
-	 * @see Stages#toArray(List)
+	 * @see Stages#toArray(Class, List)
 	 */
-	public static <T> Stage<T[]> toArray(Stream<? extends Stage<? extends T>> stages) {
+	public static <T> Stage<T[]> toArray(Class<T> type, Stream<? extends Stage<? extends T>> stages) {
 		List<Stage<? extends T>> list = stages.collect(Collectors.toList());
-		return toArray(list);
+		return toArray(type, list);
 	}
 
 	/**
@@ -505,8 +515,8 @@ public final class Stages {
 	 *
 	 * @see Stages#collect(List, IndexedCollector)
 	 */
-	public static <T> Stage<T[]> toArray(List<? extends Stage<? extends T>> stages) {
-		return collect(stages, IndexedCollector.toArray());
+	public static <T> Stage<T[]> toArray(Class<T> type, List<? extends Stage<? extends T>> stages) {
+		return collect(stages, IndexedCollector.toArray(type));
 	}
 
 	public static <T1, R> Stage<R> toTuple(TupleConstructor1<T1, R> constructor, Stage<? extends T1> stage1) {
@@ -524,8 +534,8 @@ public final class Stages {
 			Stage<? extends T1> stage1,
 			Stage<? extends T2> stage2,
 			Stage<? extends T3> stage3) {
-		return toArray(stage1, stage2, stage3)
-				.thenApply(array -> constructor.create((T1) array[0], (T2) array[1], (T3) array[2]));
+		return toList(stage1, stage2, stage3)
+				.thenApply(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -534,8 +544,8 @@ public final class Stages {
 			Stage<? extends T2> stage2,
 			Stage<? extends T3> stage3,
 			Stage<? extends T4> stage4) {
-		return toArray(stage1, stage2, stage3, stage4)
-				.thenApply(array -> constructor.create((T1) array[0], (T2) array[1], (T3) array[2], (T4) array[3]));
+		return toList(stage1, stage2, stage3, stage4)
+				.thenApply(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -545,8 +555,8 @@ public final class Stages {
 			Stage<? extends T3> stage3,
 			Stage<? extends T4> stage4,
 			Stage<? extends T5> stage5) {
-		return toArray(stage1, stage2, stage3, stage4, stage5)
-				.thenApply(array -> constructor.create((T1) array[0], (T2) array[1], (T3) array[2], (T4) array[3], (T5) array[4]));
+		return toList(stage1, stage2, stage3, stage4, stage5)
+				.thenApply(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -557,8 +567,8 @@ public final class Stages {
 			Stage<? extends T4> stage4,
 			Stage<? extends T5> stage5,
 			Stage<? extends T6> stage6) {
-		return toArray(stage1, stage2, stage3, stage4, stage5, stage6)
-				.thenApply(array -> constructor.create((T1) array[0], (T2) array[1], (T3) array[2], (T4) array[3], (T5) array[4], (T6) array[4]));
+		return toList(stage1, stage2, stage3, stage4, stage5, stage6)
+				.thenApply(list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4), (T6) list.get(5)));
 	}
 
 	public static <T1> Stage<Tuple1<T1>> toTuple(Stage<? extends T1> stage1) {
@@ -574,8 +584,8 @@ public final class Stages {
 			Stage<? extends T1> stage1,
 			Stage<? extends T2> stage2,
 			Stage<? extends T3> stage3) {
-		return toArray(stage1, stage2, stage3)
-				.thenApply(array -> new Tuple3<>((T1) array[0], (T2) array[1], (T3) array[2]));
+		return toList(stage1, stage2, stage3)
+				.thenApply(list -> new Tuple3<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -584,8 +594,8 @@ public final class Stages {
 			Stage<? extends T2> stage2,
 			Stage<? extends T3> stage3,
 			Stage<? extends T4> stage4) {
-		return toArray(stage1, stage2, stage3, stage4)
-				.thenApply(array -> new Tuple4<>((T1) array[0], (T2) array[1], (T3) array[2], (T4) array[3]));
+		return toList(stage1, stage2, stage3, stage4)
+				.thenApply(list -> new Tuple4<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -595,8 +605,8 @@ public final class Stages {
 			Stage<? extends T3> stage3,
 			Stage<? extends T4> stage4,
 			Stage<? extends T5> stage5) {
-		return toArray(stage1, stage2, stage3, stage4, stage5)
-				.thenApply(array -> new Tuple5<>((T1) array[0], (T2) array[1], (T3) array[2], (T4) array[3], (T5) array[4]));
+		return toList(stage1, stage2, stage3, stage4, stage5)
+				.thenApply(list -> new Tuple5<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -607,8 +617,8 @@ public final class Stages {
 			Stage<? extends T4> stage4,
 			Stage<? extends T5> stage5,
 			Stage<? extends T6> stage6) {
-		return toArray(stage1, stage2, stage3, stage4, stage5, stage6)
-				.thenApply(array -> new Tuple6<>((T1) array[0], (T2) array[1], (T3) array[2], (T4) array[3], (T5) array[4], (T6) array[5]));
+		return toList(stage1, stage2, stage3, stage4, stage5, stage6)
+				.thenApply(list -> new Tuple6<>((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4), (T6) list.get(5)));
 	}
 
 	/**
