@@ -18,7 +18,8 @@ public class DiscoveryServlet {
 		return MiddlewareServlet.create()
 				.with("/announce", req -> {
 					try {
-						return service.announce(SignedData.ofBytes(req.getBody().asArray(), AnnounceData::fromBytes))
+						// fixme - this is a prototype of a prototype
+						return service.announce(null, SignedData.ofBytes(req.getBody().asArray(), AnnounceData::fromBytes))
 								.thenApply($ -> HttpResponse.ok200());
 					} catch (IOException e) {
 						return Stage.ofException(e);

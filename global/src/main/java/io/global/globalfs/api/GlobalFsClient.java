@@ -6,6 +6,7 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.PubKey;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,4 +37,11 @@ public interface GlobalFsClient {
 	Stage<Set<String>> copy(GlobalFsName name, Map<String, String> changes);
 
 	Stage<Set<String>> move(GlobalFsName name, Map<String, String> changes);
+
+	Settings getSettings();
+
+	interface Settings {
+
+		Duration getLatencyMargin();
+	}
 }

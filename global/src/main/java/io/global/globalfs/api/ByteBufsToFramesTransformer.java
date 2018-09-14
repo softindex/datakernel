@@ -79,5 +79,4 @@ public abstract class ByteBufsToFramesTransformer extends AbstractAsyncProcess
 			output.closeWithError(e);
 		}
 	}
-
 }

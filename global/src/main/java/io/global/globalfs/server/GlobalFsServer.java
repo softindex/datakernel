@@ -12,7 +12,6 @@ public class GlobalFsServer extends AbstractServer<GlobalFsServer> {
 
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-
 		throw new UnsupportedOperationException("todo");
 	}
 }

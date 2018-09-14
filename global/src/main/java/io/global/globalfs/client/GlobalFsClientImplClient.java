@@ -63,4 +63,9 @@ public class GlobalFsClientImplClient implements GlobalFsClient {
 	public Stage<Set<String>> move(GlobalFsName name, Map<String, String> changes) {
 		throw new UnsupportedOperationException("GlobalFsClientImplClient#move is not implemented yet");
 	}
+
+	@Override
+	public Settings getSettings() {
+		throw new UnsupportedOperationException("GlobalFsClientImplClient#getSettings is not implemented yet");
+	}
 }

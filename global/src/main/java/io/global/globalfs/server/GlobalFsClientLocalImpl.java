@@ -17,31 +17,34 @@ import java.util.Map;
 import java.util.Set;
 
 public final class GlobalFsClientLocalImpl implements GlobalFsClient {
-	private final Map<PubKey, PublicKeyFsGroup> publicKeyGroups = new HashMap<>();
+	private final Map<PubKey, GlobalFsNamespace> publicKeyGroups = new HashMap<>();
 
 	private final RawServerId id;
 	private final DiscoveryService discoveryService;
 	private final RawClientFactory clientFactory;
 	private final FileSystemFactory fileSystemFactory;
+	private final Settings settings;
 
 	public GlobalFsClientLocalImpl(
 			RawServerId id,
 			DiscoveryService discoveryService,
 			RawClientFactory clientFactory,
-			FileSystemFactory fileSystemFactory
+			FileSystemFactory fileSystemFactory,
+			Settings settings
 	) {
 		this.id = id;
 		this.discoveryService = discoveryService;
 		this.clientFactory = clientFactory;
 		this.fileSystemFactory = fileSystemFactory;
+		this.settings = settings;
 	}
 
-	private PublicKeyFsGroup getPublicKeyFsGroup(PubKey pubKey) {
-		return publicKeyGroups.computeIfAbsent(pubKey, $ -> new PublicKeyFsGroup(this, pubKey));
+	private GlobalFsNamespace getNamespace(PubKey pubKey) {
+		return publicKeyGroups.computeIfAbsent(pubKey, $ -> new GlobalFsNamespace(this, pubKey));
 	}
 
 	private GlobalFsFileSystem getFileSystem(GlobalFsName name) {
-		return getPublicKeyFsGroup(name.getPubKey()).getFileSystem(name.getFsName());
+		return getNamespace(name.getPubKey()).getFileSystem(name.getFsName());
 	}
 
 	// region getters
@@ -60,6 +63,11 @@ public final class GlobalFsClientLocalImpl implements GlobalFsClient {
 	public FileSystemFactory getFileSystemFactory() {
 		return fileSystemFactory;
 	}
+
+	@Override
+	public Settings getSettings() {
+		return settings;
+	}
 	// endregion
 
 	@Override
@@ -69,7 +77,7 @@ public final class GlobalFsClientLocalImpl implements GlobalFsClient {
 
 	@Override
 	public Stage<SerialSupplier<DataFrame>> download(GlobalFsName name, String filename, long offset, long limit) {
-		PublicKeyFsGroup group = getPublicKeyFsGroup(name.getPubKey());
+		GlobalFsNamespace group = getNamespace(name.getPubKey());
 		return group.getFileSystem(name.getFsName()).download(filename, offset, limit)
 				.thenComposeEx((result, e) -> {
 					if (e == null) {

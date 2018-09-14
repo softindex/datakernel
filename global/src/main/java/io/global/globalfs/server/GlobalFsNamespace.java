@@ -11,10 +11,9 @@ import io.global.globalfs.api.GlobalFsClient;
 import io.global.globalfs.api.GlobalFsFileSystem;
 import io.global.globalfs.api.GlobalFsName;
 
-import java.time.Duration;
 import java.util.*;
 
-public class PublicKeyFsGroup {
+public class GlobalFsNamespace {
 	private final Map<String, GlobalFsFileSystem> fileSystems = new HashMap<>();
 
 	private final GlobalFsClientLocalImpl server;
@@ -29,11 +28,10 @@ public class PublicKeyFsGroup {
 					.map(Stage::toTry)));
 
 	private long serverDiscoveryTimestamp;
-	private Settings settings;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public PublicKeyFsGroup(GlobalFsClientLocalImpl server, PubKey pubKey) {
+	public GlobalFsNamespace(GlobalFsClientLocalImpl server, PubKey pubKey) {
 		this.server = server;
 		this.pubKey = pubKey;
 
@@ -59,10 +57,6 @@ public class PublicKeyFsGroup {
 	}
 	// endregion
 
-	public GlobalFsName getNameFor(String fsName) {
-		return new GlobalFsName(pubKey, fsName);
-	}
-
 	public Set<String> getFsNames() {
 		return Collections.unmodifiableSet(fileSystems.keySet());
 	}
@@ -73,7 +67,7 @@ public class PublicKeyFsGroup {
 	}
 
 	private boolean areDiscoveredServersValid() {
-		return serverDiscoveryTimestamp >= now.currentTimeMillis() - settings.getLatencyMargin().toMillis();
+		return serverDiscoveryTimestamp >= now.currentTimeMillis() - server.getSettings().getLatencyMargin().toMillis();
 	}
 
 	public Stage<List<GlobalFsClient>> getServers() {
@@ -85,9 +79,5 @@ public class PublicKeyFsGroup {
 
 	public Stage<Void> fetch() {
 		return fetch.get();
-	}
-
-	public interface Settings {
-		Duration getLatencyMargin();
 	}
 }

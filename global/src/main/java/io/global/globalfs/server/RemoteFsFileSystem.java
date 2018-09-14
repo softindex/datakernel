@@ -4,29 +4,28 @@ import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.time.CurrentTimeProvider;
+import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.globalfs.api.*;
+import io.global.globalsync.util.SerializationUtils;
 
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.Preconditions.checkState;
 
 public class RemoteFsFileSystem implements GlobalFsFileSystem {
-	private final PublicKeyFsGroup group;
+	private final GlobalFsNamespace group;
 	private final FsClient fsClient;
 	private final CheckpointStorage checkpointStorage;
 	private final GlobalFsName name;
-	private Settings settings;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
@@ -35,7 +34,7 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 
 	private final AsyncSupplier<Void> catchUp = reuse(() -> Stage.ofCallback(this::catchUpIteration));
 
-	public RemoteFsFileSystem(PublicKeyFsGroup group, GlobalFsName name, FsClient fsClient, CheckpointStorage checkpointStorage) {
+	public RemoteFsFileSystem(GlobalFsNamespace group, GlobalFsName name, FsClient fsClient, CheckpointStorage checkpointStorage) {
 		this.group = group;
 		this.fsClient = fsClient;
 		this.checkpointStorage = checkpointStorage;
@@ -43,7 +42,7 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 	}
 
 	// region getters
-	public PublicKeyFsGroup getGroup() {
+	public GlobalFsNamespace getGroup() {
 		return group;
 	}
 
@@ -70,7 +69,7 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 		fetch()
 				.thenRun(() -> {
 					long timestampEnd = now.currentTimeMillis();
-					if (timestampEnd - started > settings.getLatencyMargin().toMillis()) {
+					if (timestampEnd - started > group.getServer().getSettings().getLatencyMargin().toMillis()) {
 						callback.set(null);
 					} else {
 						catchUpIteration(callback);
@@ -161,7 +160,29 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 		return fsClient.move(changes);
 	}
 
-	public interface Settings {
-		Duration getLatencyMargin();
+	private static final Base64.Encoder base64 = Base64.getEncoder().withoutPadding();
+
+	public static FileSystemFactory usingSingleClient(FsClient mainClient, String dataFolderName, String checkpointFolderName) {
+		return (group, name) -> {
+			PubKey pubKey = name.getPubKey();
+			byte[] bytes = new byte[SerializationUtils.sizeof(pubKey)];
+			SerializationUtils.writePubKey(ByteBuf.wrapForWriting(bytes), pubKey);
+
+			String namespace = base64.encodeToString(bytes);
+			String fs = base64.encodeToString(name.getFsName().getBytes(StandardCharsets.UTF_8));
+
+			FsClient data = mainClient.subfolder(dataFolderName);
+			FsClient checkpoints = mainClient.subfolder(checkpointFolderName);
+
+			return new RemoteFsFileSystem(
+					group, name,
+					data.subfolder(namespace).subfolder(fs),
+					new CheckpointStorageFs(checkpoints.subfolder(namespace).subfolder(fs))
+			);
+		};
+	}
+
+	public static FileSystemFactory usingSingleClient(FsClient mainClient) {
+		return usingSingleClient(mainClient, "data", "checkpoints");
 	}
 }

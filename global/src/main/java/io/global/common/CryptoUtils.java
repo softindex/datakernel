@@ -89,7 +89,7 @@ public final class CryptoUtils {
 
 	// TODO: find something better
 	public static boolean areEqual(SHA256Digest first, SHA256Digest second) {
-		return Arrays.equals(toSha256PackedState(first), toSha256PackedState(second));
+		return Arrays.equals(first.getEncodedState(), second.getEncodedState());
 	}
 
 	public static byte[] sha1(byte[] bytes) {

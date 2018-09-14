@@ -5,5 +5,5 @@ import io.global.globalfs.api.GlobalFsName;
 
 @FunctionalInterface
 public interface FileSystemFactory {
-	GlobalFsFileSystem create(PublicKeyFsGroup group, GlobalFsName name);
+	GlobalFsFileSystem create(GlobalFsNamespace group, GlobalFsName name);
 }

@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
@@ -59,12 +60,12 @@ public class GlobalFsAdapterTest {
 
 		//noinspection ConstantConditions - all these nulls
 		GlobalFsClient client = new GlobalFsClientLocalImpl(null, null, null, (group, name) ->
-				new RemoteFsFileSystem(group, name, serverStorage, new RuntimeCheckpointStorage()));
+				new RemoteFsFileSystem(group, name, serverStorage, new RuntimeCheckpointStorage()), null);
 
 		adapter = new GlobalFsAdapter(
 				client,
 				globalName,
-				pp -> pp + 38,//ThreadLocalRandom.current().nextInt(5, 50),
+				pp -> pp + ThreadLocalRandom.current().nextInt(5, 50),
 				keys.getPrivKey());
 	}
 
@@ -92,9 +93,7 @@ public class GlobalFsAdapterTest {
 				ByteBuf.wrapForReading("hello, this is a test buffer data #14\n".getBytes(UTF_8)),
 				ByteBuf.wrapForReading("hello, this is a test buffer data #15\n".getBytes(UTF_8))
 		).streamTo(adapter.uploadSerial("test1.txt", 0))
-				.thenCompose($ ->
-						adapter.downloadSerial("test1.txt", 10, 380 - 10 - 19)
-								.toCollector(ByteBufQueue.collector()))
+				.thenCompose($ -> adapter.downloadSerial("test1.txt", 10, 380 - 10 - 19).toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf ->
 						assertEquals("s is a test buffer data #01\n" +
 										"hello, this is a test buffer data #02\n" +
@@ -107,8 +106,7 @@ public class GlobalFsAdapterTest {
 										"hello, this is a test buffer data #09\n" +
 										"hello, this is a te",
 								buf.asString(UTF_8))))
-				.thenCompose($ -> adapter.downloadSerial("test1.txt", 64, 259)
-						.toCollector(ByteBufQueue.collector()))
+				.thenCompose($ -> adapter.downloadSerial("test1.txt", 64, 259).toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf ->
 						assertEquals("er data #02\n" +
 										"hello, this is a test buffer data #03\n" +
@@ -119,8 +117,7 @@ public class GlobalFsAdapterTest {
 										"hello, this is a test buffer data #08\n" +
 										"hello, this is a te",
 								buf.asString(UTF_8))))
-				.thenCompose($ -> adapter.downloadSerial("test1.txt", 228, 37)
-						.toCollector(ByteBufQueue.collector()))
+				.thenCompose($ -> adapter.downloadSerial("test1.txt", 228, 37).toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf ->
 						assertEquals("hello, this is a test buffer data #07", buf.asString(UTF_8))));
 

@@ -30,7 +30,7 @@ public final class SerializationUtils {
 		buf.write(bytes);
 	}
 
-	public static byte[] readBytes(ByteBuf buf) throws IOException {
+	public static byte[] readBytes(ByteBuf buf) {
 		int size = buf.readVarInt();
 		byte[] bytes = new byte[size];
 		buf.read(bytes);

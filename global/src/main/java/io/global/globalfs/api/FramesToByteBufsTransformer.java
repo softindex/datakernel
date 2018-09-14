@@ -48,13 +48,14 @@ public abstract class FramesToByteBufsTransformer
 		input.get()
 				.whenResult(frame -> {
 					if (frame == null) {
-						output.accept(null);
+						output.accept(null)
+								.thenRun(this::completeProcess);
 						return;
 					}
 					handleFrame(frame)
 							.whenComplete(($, e) -> {
 								if (e != null) {
-									input.closeWithError(e);
+									closeWithError(e);
 									return;
 								}
 								doProcess();
@@ -105,5 +106,4 @@ public abstract class FramesToByteBufsTransformer
 			output.closeWithError(e);
 		}
 	}
-
 }
