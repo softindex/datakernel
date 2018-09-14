@@ -112,9 +112,9 @@ public final class Triggers implements ConcurrentJmxMBean, Initializable<Trigger
 				suppressedResults.remove(trigger);
 			}
 			for (Trigger trigger : newResults.keySet()) {
-				TriggerResult oldResult = cachedResults.get(trigger);
 				TriggerResult newResult = newResults.get(trigger);
-				if (!newResult.hasTimestamp() || oldResult != null) {
+				if (!newResult.hasTimestamp()) {
+					TriggerResult oldResult = cachedResults.get(trigger);
 					newResult = TriggerResult.create(
 							oldResult == null ? currentTime : oldResult.getTimestamp(),
 							newResult.getThrowable(),

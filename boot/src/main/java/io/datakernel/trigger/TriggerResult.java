@@ -63,11 +63,6 @@ public final class TriggerResult {
 				new TriggerResult(timestamp, null, null) : NONE;
 	}
 
-	public static TriggerResult ofTimestamp(long timestamp, Predicate<Long> predicate) {
-		return timestamp != 0L && predicate.test(timestamp) ?
-				new TriggerResult(timestamp, null, null) : NONE;
-	}
-
 	public static TriggerResult ofTimestamp(long timestamp, boolean condition) {
 		return timestamp != 0L && condition ?
 				new TriggerResult(timestamp, null, null) : NONE;
@@ -75,17 +70,12 @@ public final class TriggerResult {
 
 	public static TriggerResult ofInstant(@Nullable Instant instant) {
 		return instant != null ?
-				new TriggerResult(0L, null, instant.toEpochMilli()) : NONE;
-	}
-
-	public static TriggerResult ofInstant(@Nullable Instant instant, Predicate<Instant> predicate) {
-		return instant != null && predicate.test(instant) ?
-				new TriggerResult(0L, null, instant.toEpochMilli()) : NONE;
+				create(instant, null, null) : NONE;
 	}
 
 	public static TriggerResult ofInstant(Instant instant, boolean condition) {
 		return instant != null && condition ?
-				create(0L, null, instant) : NONE;
+				create(instant, null, null) : NONE;
 	}
 
 	public static TriggerResult ofError(Throwable throwable) {

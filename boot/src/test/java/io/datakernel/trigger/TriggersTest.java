@@ -1,17 +1,21 @@
 package io.datakernel.trigger;
 
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.time.CurrentTimeProvider;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.datakernel.trigger.Severity.HIGH;
 import static org.junit.Assert.*;
 
 public class TriggersTest {
 
 	private Triggers triggers;
+	private long timestamp;
 
 	@Before
 	public void setUp() {
@@ -27,6 +31,7 @@ public class TriggersTest {
 		triggers.addTrigger(Severity.DISASTER, "AnotherComponent", "name", TriggerResult::create);
 		triggers.addTrigger(Severity.WARNING, "Component", "nameOne", TriggerResult::create);
 		triggers.addTrigger(Severity.INFORMATION, "Component", "name", TriggerResult::create);
+		timestamp = 10000;
 	}
 
 	@Test
@@ -59,9 +64,10 @@ public class TriggersTest {
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", TriggerResult::create);
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", TriggerResult::create);
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", () -> {
- 			if (!condition[0])
- 				return TriggerResult.none();
- 			return TriggerResult.create();
+			if (!condition[0]) {
+				return TriggerResult.none();
+			}
+			return TriggerResult.create();
 		});
 
 		assertEquals(3, triggers.getResults().size());
@@ -71,7 +77,7 @@ public class TriggersTest {
 		triggers.now = CurrentTimeProvider.ofTimeSequence(triggers.now.currentTimeMillis() + 10, 10);
 		triggers.getResults();
 		condition[0] = true;
-		triggers.now = CurrentTimeProvider.ofTimeSequence(triggers.now.currentTimeMillis() + 1000,10 );
+		triggers.now = CurrentTimeProvider.ofTimeSequence(triggers.now.currentTimeMillis() + 1000, 10);
 		assertEquals(1, triggers.getResults().size());
 	}
 
@@ -81,8 +87,9 @@ public class TriggersTest {
 		triggers.now = CurrentTimeProvider.ofTimeSequence(System.currentTimeMillis(), Triggers.CACHE_TIMEOUT.toMillis());
 		boolean[] condition = {true};
 		triggers.addTrigger(Severity.HIGH, "Component", "nameOne", () -> {
-			if (!condition[0])
+			if (!condition[0]) {
 				return TriggerResult.none();
+			}
 			return TriggerResult.create();
 		});
 		List<Triggers.TriggerWithResult> results = triggers.getResults();
@@ -93,7 +100,7 @@ public class TriggersTest {
 		triggers.now = CurrentTimeProvider.ofTimeSequence(triggers.now.currentTimeMillis() + 10, 10);
 		triggers.getResults();
 		condition[0] = true;
-		triggers.now = CurrentTimeProvider.ofTimeSequence(triggers.now.currentTimeMillis() + 1000,10 );
+		triggers.now = CurrentTimeProvider.ofTimeSequence(triggers.now.currentTimeMillis() + 1000, 10);
 		assertEquals(1, triggers.getResults().size());
 	}
 
@@ -168,6 +175,83 @@ public class TriggersTest {
 		Arrays.stream(triggers.getMultilineSuppressedResults().split("\n"))
 				.forEach(suppressed -> assertFalse(resultsAfterSuppression.contains(suppressed)));
 	}
+
+	@Test
+	public void testWithoutTimestamp() {
+		triggers = Triggers.create();
+		triggers.now = CurrentTimeProvider.ofTimeSequence(timestamp, Triggers.CACHE_TIMEOUT.toMillis() + 1);
+
+		triggers.addTrigger(HIGH, Eventloop.class.getName(), "ProcessDelay", TriggerResult::create);
+
+		long currentTimestamp = this.timestamp;
+		List<Triggers.TriggerWithResult> results = triggers.getResults();
+		assertEquals(1, results.size());
+		assertEquals(currentTimestamp, results.get(0).getTriggerResult().getTimestamp());
+
+		results = triggers.getResults();
+		assertEquals(1, results.size());
+		assertEquals(currentTimestamp, results.get(0).getTriggerResult().getTimestamp());
+	}
+
+	@Test
+	public void testOfTimestamp() {
+		triggers = Triggers.create();
+		triggers.now = CurrentTimeProvider.ofTimeSequence(timestamp, Triggers.CACHE_TIMEOUT.toMillis() + 1);
+
+		triggers.addTrigger(HIGH, Eventloop.class.getName(), "ProcessDelay", () -> TriggerResult.ofTimestamp(increaseTimestampAndGet()));
+
+		long currentTimestamp = this.timestamp;
+		List<Triggers.TriggerWithResult> results = triggers.getResults();
+		assertEquals(1, results.size());
+		assertEquals(currentTimestamp + 10000, results.get(0).getTriggerResult().getTimestamp());
+
+		results = triggers.getResults();
+		assertEquals(1, results.size());
+		assertEquals(currentTimestamp + 20000, results.get(0).getTriggerResult().getTimestamp());
+	}
+
+	@Test
+	public void testOfInstant() {
+		triggers = Triggers.create();
+		triggers.now = CurrentTimeProvider.ofTimeSequence(timestamp, Triggers.CACHE_TIMEOUT.toMillis() + 1);
+
+		triggers.addTrigger(HIGH, Eventloop.class.getName(), "ProcessDelay", () -> TriggerResult.ofInstant(Instant.ofEpochMilli(increaseTimestampAndGet())));
+
+		long currentTimestamp = this.timestamp;
+		List<Triggers.TriggerWithResult> results = triggers.getResults();
+		assertEquals(1, results.size());
+		assertEquals(currentTimestamp + 10000, results.get(0).getTriggerResult().getTimestamp());
+
+		results = triggers.getResults();
+		assertEquals(1, results.size());
+		assertEquals(currentTimestamp + 20000, results.get(0).getTriggerResult().getTimestamp());
+	}
+
+	@Test
+	public void testOfValueWithPredicate() {
+		triggers = Triggers.create();
+		int increment = 100;
+		triggers.now = CurrentTimeProvider.ofTimeSequence(timestamp, Triggers.CACHE_TIMEOUT.toMillis() + increment);
+		triggers.addTrigger(HIGH, Eventloop.class.getName(), "ProcessDelay", () -> TriggerResult.ofValue(increaseTimestampAndGet(), time -> time > 1000));
+
+		long currentTimestamp = timestamp;
+		List<Triggers.TriggerWithResult> results = triggers.getResults();
+
+		assertEquals(1, results.size());
+		assertEquals(currentTimestamp, results.get(0).getTriggerResult().getTimestamp());
+		assertEquals(currentTimestamp + 10000, results.get(0).getTriggerResult().getValue());
+
+		results = triggers.getResults();
+		assertEquals(1, results.size());
+		assertEquals(currentTimestamp, results.get(0).getTriggerResult().getTimestamp());
+		assertEquals(currentTimestamp + 20000, results.get(0).getTriggerResult().getValue());
+	}
+
+	private long increaseTimestampAndGet() {
+		timestamp += 10000;
+		return timestamp;
+	}
+
 
 	private void initializeTriggers() {
 		triggers = Triggers.create();
