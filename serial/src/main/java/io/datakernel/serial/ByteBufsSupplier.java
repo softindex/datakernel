@@ -1,5 +1,6 @@
 package io.datakernel.serial;
 
+import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.Stage;
@@ -15,13 +16,39 @@ public abstract class ByteBufsSupplier implements Cancellable {
 
 	public final ByteBufQueue bufs;
 
-	protected ByteBufsSupplier(ByteBufQueue bufs) {this.bufs = bufs;}
+	protected ByteBufsSupplier(ByteBufQueue bufs) {
+		this.bufs = bufs;
+	}
 
-	protected ByteBufsSupplier() {this.bufs = new ByteBufQueue();}
+	protected ByteBufsSupplier() {
+		this.bufs = new ByteBufQueue();
+	}
 
 	public abstract Stage<Void> needMoreData();
 
 	public abstract Stage<Void> endOfStream();
+
+	public final Stage<Void> loop(AsyncPredicate<ByteBufQueue> supplier) {
+		return needMoreData()
+				.thenRun(() -> doLoop(supplier));
+	}
+
+	private Stage<Void> doLoop(AsyncPredicate<ByteBufQueue> supplier) {
+		return supplier.test(bufs)
+				.thenComposeEx((finished, e) -> {
+					if (e == null) {
+						if (finished) {
+							return endOfStream();
+						}
+						return needMoreData()
+								.post() // post instead of async not to overflow memory with giant promise graph
+								.thenRun(() -> doLoop(supplier));
+					} else {
+						closeWithError(e);
+						return Stage.ofException(e);
+					}
+				});
+	}
 
 	public static ByteBufsSupplier ofSupplier(SerialSupplier<ByteBuf> input) {
 		return new ByteBufsSupplier() {
