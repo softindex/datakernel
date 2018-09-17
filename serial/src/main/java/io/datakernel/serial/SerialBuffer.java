@@ -4,14 +4,16 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
-import io.datakernel.functional.Try;
-
-import java.util.ArrayDeque;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
+import static java.lang.Integer.numberOfLeadingZeros;
 
 public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
-	private final ArrayDeque<T> deque = new ArrayDeque<>();
+	@SuppressWarnings("unchecked")
+	private Object[] elements;
+	private int tail;
+	private int head;
+
 	private final int bufferMinSize;
 	private final int bufferMaxSize;
 
@@ -20,8 +22,7 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	@Nullable
 	private SettableStage<T> take;
 
-	private boolean endOfStreamReceived;
-	private Stage<?> endOfStream;
+	private Throwable exception;
 
 	public SerialBuffer(int bufferSize) {
 		this(0, bufferSize);
@@ -30,22 +31,23 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	public SerialBuffer(int bufferMinSize, int bufferMaxSize) {
 		this.bufferMinSize = bufferMinSize + 1;
 		this.bufferMaxSize = bufferMaxSize;
+		this.elements = new Object[32 - numberOfLeadingZeros(bufferMaxSize + 1)];
 	}
 
 	public boolean isSaturated() {
-		return deque.size() > bufferMaxSize;
+		return size() > bufferMaxSize;
 	}
 
 	public boolean willBeSaturated() {
-		return deque.size() >= bufferMaxSize;
+		return size() >= bufferMaxSize;
 	}
 
 	public boolean isExhausted() {
-		return deque.size() < bufferMinSize;
+		return size() < bufferMinSize;
 	}
 
 	public boolean willBeExhausted() {
-		return deque.size() <= bufferMinSize;
+		return size() <= bufferMinSize;
 	}
 
 	public boolean isPendingPut() {
@@ -57,39 +59,52 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	}
 
 	public int size() {
-		return deque.size();
+		return (tail - head) & (elements.length - 1);
 	}
 
 	public boolean isEmpty() {
-		return deque.isEmpty();
-	}
-
-	public boolean isEndOfStream() {
-		return endOfStreamReceived && deque.isEmpty();
+		return tail == head;
 	}
 
 	@SuppressWarnings("unchecked")
 	public void add(@Nullable T value) {
-		if (endOfStream == null) {
-			if (take != null) {
-				assert deque.isEmpty();
-				SettableStage<T> take = this.take;
-				this.take = null;
-				take.set(value);
-				return;
-			}
-
-			if (value != null) {
-				assert !endOfStreamReceived;
-				deque.add(value);
-				return;
-			}
-
-			endOfStreamReceived = true;
+		if (take != null) {
+			assert isEmpty();
+			SettableStage<T> take = this.take;
+			this.take = null;
+			take.set(value);
 			return;
 		}
 
-		deepRecycle(value);
+		doAdd(value);
+	}
+
+	private void doAdd(@Nullable T value) {
+		elements[tail] = value;
+		tail = (tail + 1) & (elements.length - 1);
+		if (tail == head) {
+			doubleCapacity();
+		}
+	}
+
+	private void doubleCapacity() {
+		assert head == tail;
+		int r = elements.length - head;
+		Object[] newElements = new Object[elements.length << 1];
+		System.arraycopy(elements, head, newElements, 0, r);
+		System.arraycopy(elements, 0, newElements, r, head);
+		elements = newElements;
+		head = 0;
+		tail = elements.length;
+	}
+
+	private T doPoll() {
+		assert head != tail;
+		@SuppressWarnings("unchecked")
+		T result = (T) elements[head];
+		elements[head] = null;     // Must null out slot
+		head = (head + 1) & (elements.length - 1);
+		return result;
 	}
 
 	@Override
@@ -97,32 +112,22 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	public Stage<Void> put(@Nullable T value) {
 		assert put == null;
 
-		if (endOfStream == null) {
-			if (take != null) {
-				assert deque.isEmpty();
-				SettableStage<T> take = this.take;
-				this.take = null;
-				take.set(value);
-				return Stage.complete();
-			}
-
-			if (value != null) {
-				assert !endOfStreamReceived;
-				deque.add(value);
-				if (isSaturated()) {
-					put = new SettableStage<>();
-					return put;
-				} else {
-					return Stage.complete();
-				}
-			}
-
-			endOfStreamReceived = true;
+		if (take != null) {
+			assert isEmpty();
+			SettableStage<T> take = this.take;
+			this.take = null;
+			take.set(value);
 			return Stage.complete();
 		}
 
-		deepRecycle(value);
-		return (Stage<Void>) endOfStream;
+		doAdd(value);
+
+		if (isSaturated()) {
+			put = new SettableStage<>();
+			return put;
+		} else {
+			return Stage.complete();
+		}
 	}
 
 	@Override
@@ -130,60 +135,44 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	public Stage<T> take() {
 		assert take == null;
 
-		if (endOfStream != null) return (Stage<T>) endOfStream;
-
 		if (put != null && willBeExhausted()) {
-			assert !deque.isEmpty();
-			T item = deque.poll();
+			assert !isEmpty();
+			T item = doPoll();
 			SettableStage<Void> put = this.put;
 			this.put = null;
 			put.set(null);
 			return Stage.of(item);
 		}
 
-		if (!deque.isEmpty()) {
-			return Stage.of(deque.poll());
+		if (!isEmpty()) {
+			return Stage.of(doPoll());
 		}
 
-		if (!endOfStreamReceived) {
-			take = new SettableStage<>();
-			return take;
-		}
-
-		endOfStream = Stage.of(null);
-		return (Stage<T>) endOfStream;
+		take = new SettableStage<>();
+		return take;
 	}
 
 	@Nullable
 	@SuppressWarnings("unchecked")
-	public Try<T> poll() {
-		if (endOfStream != null) {
-			return (Try<T>) endOfStream.getTry();
-		}
-
+	public T poll() {
 		if (put != null && willBeExhausted()) {
-			assert !deque.isEmpty();
-			T item = deque.poll();
+			T item = doPoll();
 			SettableStage<Void> put = this.put;
 			this.put = null;
 			put.set(null);
-			return Try.of(item);
+			return item;
 		}
 
-		if (!deque.isEmpty()) {
-			return Try.of(deque.poll());
-		}
+		return !isEmpty() ? doPoll() : null;
+	}
 
-		if (!endOfStreamReceived) {
-			return null;
-		}
-
-		endOfStream = Stage.of(null);
-		return (Try<T>) endOfStream.getTry();
+	public Throwable getException() {
+		return exception;
 	}
 
 	@Override
 	public void closeWithError(Throwable e) {
+		this.exception = e;
 		if (put != null) {
 			put.setException(e);
 			put = null;
@@ -192,9 +181,9 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 			take.setException(e);
 			take = null;
 		}
-		deepRecycle(deque);
-		deque.clear();
-
-		endOfStream = Stage.ofException(e);
+		for (int i = head; i != tail; i = (i + 1) & (elements.length - 1)) {
+			deepRecycle(elements[i]);
+		}
+		elements = null;
 	}
 }

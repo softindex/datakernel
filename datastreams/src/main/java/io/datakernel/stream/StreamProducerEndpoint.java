@@ -1,7 +1,6 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.Stage;
-import io.datakernel.functional.Try;
 import io.datakernel.serial.SerialBuffer;
 
 public final class StreamProducerEndpoint<T> extends AbstractStreamProducer<T> {
@@ -34,18 +33,17 @@ public final class StreamProducerEndpoint<T> extends AbstractStreamProducer<T> {
 	@SuppressWarnings({"unchecked", "ConstantConditions"})
 	@Override
 	protected void produce(AsyncProduceController async) {
-		while (!buffer.isEmpty()) {
-			Try<T> stage = buffer.poll();
-			if (stage.isSuccess()) {
-				T item = stage.getResult();
+		if (buffer.getException() == null) {
+			while (!buffer.isEmpty()) {
+				T item = buffer.poll();
 				if (item != null) {
 					send(item);
 				} else {
 					sendEndOfStream();
 				}
-			} else {
-				closeWithError(stage.getException());
 			}
+		} else {
+			closeWithError(buffer.getException());
 		}
 	}
 

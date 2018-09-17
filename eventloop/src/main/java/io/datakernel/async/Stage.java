@@ -22,8 +22,9 @@ public interface Stage<T> {
 	/**
 	 * Creates successfully completed {@code Stage}
 	 */
+	@SuppressWarnings("unchecked")
 	static CompleteNullStage<Void> complete() {
-		return CompleteNullStage.instance();
+		return (CompleteNullStage<Void>) CompleteNullStage.INSTANCE;
 	}
 
 	/**
@@ -40,7 +41,7 @@ public interface Stage<T> {
 	 *
 	 * @param exception Throwable
 	 */
-	static <T> Stage<T> ofException(Throwable exception) {
+	static <T> CompleteExceptionallyStage<T> ofException(Throwable exception) {
 		return new CompleteExceptionallyStage<>(exception);
 	}
 

@@ -93,11 +93,10 @@ public class BufsConsumerGzipDeflaterTest {
 
 	private void doTest() {
 		gzip.setInput(SerialSupplier.ofIterable(list));
-		eventloop.post(() ->gzip.process().whenComplete(assertComplete()));
+		eventloop.post(() -> gzip.start().whenComplete(assertComplete()));
 
 		eventloop.run();
 	}
-
 
 	private byte[] compressWithGzipOutputStream(byte[]... arrays) {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();

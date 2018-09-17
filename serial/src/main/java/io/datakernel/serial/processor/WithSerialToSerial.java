@@ -21,7 +21,7 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 			setInput(input);
 			SerialSupplier<O> outputSupplier = getOutputSupplier(queue);
 			if (this instanceof AsyncProcess) {
-				((AsyncProcess) this).process();
+				((AsyncProcess) this).start();
 			}
 			return outputSupplier;
 		};
@@ -32,7 +32,7 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 			setOutput(output);
 			SerialConsumer<I> outputSupplier = getInputConsumer(queue);
 			if (this instanceof AsyncProcess) {
-				((AsyncProcess) this).process();
+				((AsyncProcess) this).start();
 			}
 			return outputSupplier;
 		};

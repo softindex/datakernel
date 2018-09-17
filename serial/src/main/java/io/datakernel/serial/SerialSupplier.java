@@ -147,7 +147,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	default void streamTo(SerialInput<T> to) {
 		to.setInput(this);
 		if (to instanceof AsyncProcess) {
-			getCurrentEventloop().post(((AsyncProcess) to)::process);
+			getCurrentEventloop().post(((AsyncProcess) to)::start);
 		}
 	}
 

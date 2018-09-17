@@ -36,7 +36,7 @@ public class HttpMessageTest {
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	private static void assertHttpMessageEquals(String expected, HttpMessage message) {
-		ByteBuf buf = AbstractHttpConnection.writer(message).toCollector(ByteBufQueue.collector()).getResult();
+		ByteBuf buf = AbstractHttpConnection.createWriter(message).toCollector(ByteBufQueue.collector()).getResult();
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
 		buf.recycle();
 		message.recycle();

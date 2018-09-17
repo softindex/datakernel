@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.Initializable;
@@ -78,7 +77,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	public HttpResponse withBodyGzipCompression() {
-//		super.setBodyGzipCompression(); // FIXME
+		super.setBodyGzipCompression();
 		return this;
 	}
 

@@ -25,10 +25,10 @@ public interface SerialOutput<T> {
 		this.setOutput(queue.getConsumer());
 		to.setInput(queue.getSupplier());
 		if (this instanceof AsyncProcess) {
-			getCurrentEventloop().post(((AsyncProcess) this)::process);
+			getCurrentEventloop().post(((AsyncProcess) this)::start);
 		}
 		if (to instanceof AsyncProcess) {
-			getCurrentEventloop().post(((AsyncProcess) to)::process);
+			getCurrentEventloop().post(((AsyncProcess) to)::start);
 		}
 	}
 
@@ -40,7 +40,7 @@ public interface SerialOutput<T> {
 		this.setOutput(queue.getConsumer());
 		Stage<Void> result = queue.getSupplier().streamTo(to);
 		if (this instanceof AsyncProcess) {
-			((AsyncProcess) this).process();
+			((AsyncProcess) this).start();
 		}
 		return result;
 	}

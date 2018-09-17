@@ -17,13 +17,13 @@ import java.util.zip.Inflater;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.lang.Math.max;
 import static java.lang.Math.min;
 
 public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 		implements WithSerialToSerial<BufsConsumerGzipInflater, ByteBuf, ByteBuf>, WithByteBufsInput<BufsConsumerGzipInflater> {
-	public static final int DEFAULT_HEADER_FIELD_LENGTH = 1024; //1 Kb
-	public static final int DEFAULT_COMPRESSION_RATIO = 20; // Compression ratio of 20 : 1
-	public static final int DEFAULT_MAX_BUF_SIZE = 512;
+	public static final int MAX_HEADER_FIELD_LENGTH = 4096; //4 Kb
+	public static final int DEFAULT_BUF_SIZE = 512;
 	// region exceptions
 	public static final ParseException ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED = new ParseException("Decompressed data size is not equal to input size from GZIP trailer");
 	public static final ParseException CRC32_VALUE_DIFFERS = new ParseException("CRC32 value of uncompressed data differs");
@@ -31,7 +31,6 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 	public static final ParseException UNSUPPORTED_COMPRESSION_METHOD = new ParseException("Unsupported compression method. Deflate compression required");
 	public static final ParseException FEXTRA_TOO_LARGE = new ParseException("FEXTRA part of a header is larger than maximum allowed length");
 	public static final ParseException FNAME_FCOMMENT_TOO_LARGE = new ParseException("FNAME or FEXTRA header is larger than maximum allowed length");
-	public static final ParseException COMPRESSION_RATIO_TOO_LARGE = new ParseException("Compression ratio of gzip exceeds maximum allowed ratio");
 	public static final ParseException MALFORMED_FLAG = new ParseException("Flag byte of a header is malformed. Reserved bits are set");
 	// endregion
 	// rfc 1952 section 2.3.1
@@ -44,9 +43,6 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 
 	private final CRC32 crc32 = new CRC32();
 
-	private int maxBufSize = DEFAULT_MAX_BUF_SIZE;
-	private int maxHeaderFieldLength = DEFAULT_HEADER_FIELD_LENGTH;
-	private int maxCompressionRatio = DEFAULT_COMPRESSION_RATIO;
 	private Inflater inflater = new Inflater(true);
 
 	private ByteBufQueue bufs;
@@ -63,24 +59,6 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 	public BufsConsumerGzipInflater withInflater(Inflater inflater){
 		checkArgument(inflater != null, "Cannot use null Inflater");
 		this.inflater = inflater;
-		return this;
-	}
-
-	public BufsConsumerGzipInflater withMaxBufSize(int maxBufSize){
-		checkArgument(maxBufSize > 0, "Cannot use buf size that is less than 0");
-		this.maxBufSize = maxBufSize;
-		return this;
-	}
-
-	public BufsConsumerGzipInflater withMaxHeaderFieldLength(int maxHeaderFieldLength){
-		checkArgument(maxHeaderFieldLength > 0, "Cannot use header field length that is less than 0");
-		this.maxHeaderFieldLength = maxHeaderFieldLength;
-		return this;
-	}
-
-	public BufsConsumerGzipInflater withMaxCompressionratio(int maxCompressionRatio){
-		checkArgument(maxCompressionRatio > 0, "Cannot use negative compression raio");
-		this.maxCompressionRatio = maxCompressionRatio;
 		return this;
 	}
 
@@ -164,7 +142,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 			inflater.setInput(src.array(), src.readPosition(), src.readRemaining());
 			try {
 				inflate(queue);
-			} catch (ParseException | DataFormatException e) {
+			} catch (DataFormatException e) {
 				queue.recycle();
 				closeWithError(e);
 				return;
@@ -199,11 +177,11 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 				.thenRun(this::completeProcess);
 	}
 
-	private void inflate(ByteBufQueue queue) throws ParseException, DataFormatException {
+	private void inflate(ByteBufQueue queue) throws DataFormatException {
 		ByteBuf src = bufs.peekBuf();
 		assert src != null;
 		while (true) {
-			ByteBuf buf = ByteBufPool.allocate(maxBufSize);
+			ByteBuf buf = ByteBufPool.allocate(max(src.readRemaining(), DEFAULT_BUF_SIZE));
 			int beforeInflation = inflater.getTotalIn();
 			int len = inflater.inflate(buf.array(), 0, buf.writeRemaining());
 			buf.moveWritePosition(len);
@@ -214,10 +192,6 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 				}
 				buf.recycle();
 				return;
-			}
-			if (inflater.getBytesWritten() / inflater.getBytesRead() > maxCompressionRatio) {
-				buf.recycle();
-				throw COMPRESSION_RATIO_TOO_LARGE;
 			}
 			crc32.update(buf.asArray());
 			queue.add(buf);
@@ -232,14 +206,14 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 	// region skip header fields
 	private boolean skipTerminatorByte(byte[] flag, int part) throws ParseException {
 		int remainingBytes = bufs.remainingBytes();
-		for (int i = 0; i < min(remainingBytes, maxHeaderFieldLength); i++) {
+		for (int i = 0; i < min(remainingBytes, MAX_HEADER_FIELD_LENGTH); i++) {
 			if (bufs.peekByte(i) == 0) {
 				bufs.skip(i + 1);
 				flag[0] -= part;
 				return true;
 			}
 		}
-		if (remainingBytes > maxHeaderFieldLength) {
+		if (remainingBytes > MAX_HEADER_FIELD_LENGTH) {
 			throw FNAME_FCOMMENT_TOO_LARGE;
 		}
 
@@ -258,7 +232,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 				| ((bufs.getByte() & 0xFF)));
 
 		short reversedSubFieldDataSize = Short.reverseBytes(subFieldDataSize);
-		if (reversedSubFieldDataSize > maxHeaderFieldLength) {
+		if (reversedSubFieldDataSize > MAX_HEADER_FIELD_LENGTH) {
 			throw FEXTRA_TOO_LARGE;
 		}
 

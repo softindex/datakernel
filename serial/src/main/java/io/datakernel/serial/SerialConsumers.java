@@ -11,6 +11,7 @@ public final class SerialConsumers {
 	private SerialConsumers() {}
 
 	public static <T> Stage<Void> acceptAll(SerialConsumer<T> output, Iterator<? extends T> it) {
+		if (!it.hasNext()) return Stage.complete();
 		SettableStage<Void> result = new SettableStage<>();
 		acceptAllImpl(output, it, result);
 		return result;

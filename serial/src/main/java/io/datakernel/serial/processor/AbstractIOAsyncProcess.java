@@ -11,12 +11,11 @@ import static io.datakernel.util.Recyclable.deepRecycle;
 public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 	public static final StacklessException ASYNC_PROCESS_IS_COMPLETE = new StacklessException("AsyncProcess is complete");
 
-	protected <T> SerialSupplier<T> sanitize(SerialSupplier<T> supplier) {
+	protected final <T> SerialSupplier<T> sanitize(SerialSupplier<T> supplier) {
 		return new AbstractSerialSupplier<T>() {
 			@Override
 			public Stage<T> get() {
-				assert !isProcessComplete();
-				return handle(supplier.get());
+				return sanitize(supplier.get());
 			}
 
 			@Override
@@ -27,11 +26,11 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 		};
 	}
 
-	protected <T> SerialConsumer<T> sanitize(SerialConsumer<T> consumer) {
+	protected final <T> SerialConsumer<T> sanitize(SerialConsumer<T> consumer) {
 		return new AbstractSerialConsumer<T>() {
 			@Override
 			public Stage<Void> accept(@Nullable T item) {
-				return handle(consumer.accept(item));
+				return sanitize(consumer.accept(item));
 			}
 
 			@Override
@@ -42,16 +41,16 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 		};
 	}
 
-	protected ByteBufsSupplier sanitize(ByteBufsSupplier supplier) {
+	protected final ByteBufsSupplier sanitize(ByteBufsSupplier supplier) {
 		return new ByteBufsSupplier() {
 			@Override
 			public Stage<Void> needMoreData() {
-				return handle(supplier.needMoreData());
+				return sanitize(supplier.needMoreData());
 			}
 
 			@Override
 			public Stage<Void> endOfStream() {
-				return handle(supplier.endOfStream());
+				return sanitize(supplier.endOfStream());
 			}
 
 			@Override
@@ -62,16 +61,16 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 		};
 	}
 
-	private <T> Stage<T> handle(Stage<T> stage) {
+	protected final <T> Stage<T> sanitize(Stage<T> stage) {
 		assert !isProcessComplete();
 		return stage
-				.thenComposeEx((item, e) -> {
+				.thenComposeEx((value, e) -> {
 					if (isProcessComplete()) {
-						deepRecycle(item);
+						deepRecycle(value);
 						return Stage.ofException(ASYNC_PROCESS_IS_COMPLETE);
 					}
 					if (e == null) {
-						return Stage.of(item);
+						return Stage.of(value);
 					} else {
 						closeWithError(e);
 						return Stage.ofException(e);

@@ -20,7 +20,6 @@ import java.util.zip.Deflater;
 import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
-import static io.datakernel.http.stream2.BufsConsumerGzipInflater.COMPRESSION_RATIO_TOO_LARGE;
 import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_DATA_EXCEPTION;
 import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 import static java.lang.Math.min;
@@ -213,21 +212,10 @@ public class BufsConsumerGzipInflaterTest {
 		doTest(null);
 	}
 
-	@Test
-	public void shouldThrowExceptionIfZipBomb() {
-		// 10KB byte array of zeros
-		byte[] zeroData = new byte[10 * 1024];
-		ByteBuf gzipped = toGzip(wrapForReading(zeroData));
-		consumer.setExpectedException(COMPRESSION_RATIO_TOO_LARGE);
-		list.add(gzipped);
-
-		doTest(COMPRESSION_RATIO_TOO_LARGE);
-	}
-
 	private void doTest(Exception exception) {
 		gunzip.setInput(SerialSupplier.ofIterable(list));
-		eventloop.post(() -> gunzip.process().whenComplete(($, e) -> {
-			if (exception == null){
+		eventloop.post(() -> gunzip.start().whenComplete(($, e) -> {
+			if (exception == null) {
 				assertNull(e);
 			} else {
 				assertEquals(exception, e);
@@ -236,7 +224,6 @@ public class BufsConsumerGzipInflaterTest {
 
 		eventloop.run();
 	}
-
 
 	private static String generateLargeText() {
 		Random charRandom = new Random(1L);

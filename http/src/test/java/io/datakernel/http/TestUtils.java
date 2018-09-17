@@ -20,13 +20,11 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.http.stream.BufsConsumer;
 import io.datakernel.serial.SerialConsumer;
 
 import java.io.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
@@ -66,8 +64,8 @@ public class TestUtils {
 		}
 	}
 
-	public static class AssertingConsumer implements BufsConsumer, SerialConsumer<ByteBuf> {
-		public  boolean executed = false;
+	public static class AssertingConsumer implements SerialConsumer<ByteBuf> {
+		public boolean executed = false;
 		private byte[] expectedByteArray;
 		private String expectedString;
 		private ByteBuf expectedBuf;
@@ -96,33 +94,6 @@ public class TestUtils {
 			expectedException = null;
 			expectedString = null;
 			executed = false;
-		}
-
-		@Override
-		public Stage<Boolean> push(ByteBufQueue inputBufs, boolean endOfStream) {
-			if (endOfStream) {
-				ByteBuf actualBuf = inputBufs.takeRemaining();
-				if (expectedByteArray != null) {
-					byte[] actualByteArray = actualBuf.asArray();
-					assertArrayEquals(expectedByteArray, actualByteArray);
-				}
-				if (expectedString != null) {
-					String actualString = decodeAscii(actualBuf);
-					assertEquals(expectedString, actualString);
-				}
-				if (expectedBuf != null) {
-					assertEquals(expectedBuf, actualBuf);
-					expectedBuf.recycle();
-				}
-
-				actualBuf.recycle();
-				executed = true;
-				return Stage.of(true)
-						.whenComplete(assertComplete());
-			} else {
-				return Stage.of(false)
-						.whenComplete(assertComplete());
-			}
 		}
 
 		@Override

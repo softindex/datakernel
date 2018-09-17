@@ -94,6 +94,7 @@ public abstract class ByteBufsSupplier implements Cancellable {
 
 			@Override
 			public void closeWithError(Throwable e) {
+				if (closed) return;
 				closed = true;
 				bufs.recycle();
 				input.closeWithError(e);

@@ -49,10 +49,16 @@ public final class BufsConsumerDelimiter extends AbstractIOAsyncProcess
 
 	@Override
 	protected void doProcess() {
+		if (remaining == 0) {
+			input.endOfStream()
+					.thenCompose($2 -> output.accept(null))
+					.thenRun(this::completeProcess);
+			return;
+		}
 		ByteBufQueue outputBufs = new ByteBufQueue();
 		remaining -= bufs.drainTo(outputBufs, remaining);
 		output.acceptAll(outputBufs.asIterator())
-				.whenResult($1 -> {
+				.whenResult($ -> {
 					if (remaining != 0) {
 						input.needMoreData()
 								.thenRun(this::doProcess);

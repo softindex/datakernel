@@ -163,7 +163,7 @@ public abstract class HttpMessage {
 					.thenComposeEx((buf, e) -> {
 						this.body = buf;
 						this.bodySupplier = null;
-						return Stage.of(this);
+						return e == null ? Stage.of(this) : Stage.ofException(e);
 					});
 		}
 		return Stage.of(this);

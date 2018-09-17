@@ -253,7 +253,7 @@ public class BufsConsumerChunkedDecoderTest {
 
 	private void doTest(Exception exception) {
 		chunkedDecoder.setInput(ofSupplier(ofIterable(list)));
-		eventloop.post(() -> chunkedDecoder.process()
+		eventloop.post(() -> chunkedDecoder.start()
 				.whenComplete(($, e) -> {
 					if (exception == null) {
 						assertNull(e);

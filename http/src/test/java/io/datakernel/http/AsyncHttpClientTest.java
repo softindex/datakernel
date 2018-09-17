@@ -76,7 +76,7 @@ public class AsyncHttpClientTest {
 		Duration TIMEOUT = Duration.ofMillis(1);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop); // .withConnectTimeout(TIMEOUT);
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
 
 		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://google.com"))
 				.thenTry(response ->
@@ -179,11 +179,9 @@ public class AsyncHttpClientTest {
 	public void testActiveRequestsCounter() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		AsyncServlet slowloris = request -> {
-			request.recycleHeaders();
-			return new SettableStage<>();
-		};
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, slowloris)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				request ->
+						new SettableStage<>())
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
 		server.listen();
@@ -208,13 +206,12 @@ public class AsyncHttpClientTest {
 					inspector.getTotalRequests().refresh(eventloop.currentTimeMillis());
 					inspector.getHttpTimeouts().refresh(eventloop.currentTimeMillis());
 
-//					System.out.println(inspector.getTotalRequests().getTotalCount());
-//					System.out.println();
-//					System.out.println(inspector.getHttpTimeouts().getTotalCount());
-//					System.out.println(inspector.getResolveErrors().getTotal());
-//					System.out.println(inspector.getConnectErrors().getTotal());
-//					System.out.println(inspector.responsesErrors);
-//					System.out.println(inspector.responses);
+					System.out.println(inspector.getTotalRequests().getTotalCount());
+					System.out.println();
+					System.out.println(inspector.getHttpTimeouts().getTotalCount());
+					System.out.println(inspector.getResolveErrors().getTotal());
+					System.out.println(inspector.getConnectErrors().getTotal());
+					System.out.println(inspector.getTotalResponses());
 
 					assertEquals(0, inspector.getActiveRequests());
 				})

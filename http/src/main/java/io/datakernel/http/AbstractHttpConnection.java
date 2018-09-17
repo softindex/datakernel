@@ -28,8 +28,7 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.stream2.BufsConsumerChunkedEncoder;
-import io.datakernel.http.stream2.BufsConsumerDelimiter;
+import io.datakernel.http.stream2.*;
 import io.datakernel.serial.*;
 import io.datakernel.util.MemSize;
 
@@ -79,14 +78,12 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	private boolean isGzipped = false;
 
 	private boolean isChunked = false;
-	private int chunkSize = 0;
 
 	protected SettableStage<Void> bodyReader;
 	protected SerialSupplier<ByteBuf> bodyWriter;
 
 	protected int contentLength;
 	private int maxHeaders;
-	private int maxChunkHeaderChars;
 	protected final char[] headerChars;
 
 	@Nullable
@@ -136,8 +133,16 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	protected final void closeWithError(Throwable e) {
 		if (isClosed()) return;
-		asyncTcpSocket.close();
 		onClosedWithError(e);
+		asyncTcpSocket.close();
+		if (bodyWriter != null) {
+			bodyWriter.closeWithError(e);
+			bodyWriter = null;
+		}
+		if (bodyReader != null) {
+			bodyReader.setException(e);
+			bodyReader = null;
+		}
 	}
 
 	protected void reset() {
@@ -146,7 +151,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		isChunked = false;
 	}
 
-	public static SerialSupplier<ByteBuf> writer(HttpMessage httpMessage) {
+	static SerialSupplier<ByteBuf> createWriter(HttpMessage httpMessage) {
 		if (httpMessage.body != null) {
 			ByteBuf body = httpMessage.body;
 			assert httpMessage.bodySupplier == null;
@@ -155,21 +160,40 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + body.readRemaining());
 				httpMessage.writeTo(buf);
 				buf.put(body);
+				body.recycle();
+				httpMessage.body = null;
 				return SerialSupplier.of(buf);
 			} else {
-				// TODO
-				throw new UnsupportedOperationException();
+				ByteBuf gzippedBody = GzipProcessorUtils.toGzip(body);
+				httpMessage.setHeader(HttpHeaders.asBytes(HttpHeaders.CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
+				httpMessage.setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, gzippedBody.readRemaining()));
+				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + gzippedBody.readRemaining());
+				httpMessage.writeTo(buf);
+				buf.put(gzippedBody);
+				gzippedBody.recycle();
+				httpMessage.body = null;
+				return SerialSupplier.of(buf);
 			}
 		} else if (httpMessage.bodySupplier != null) {
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
 			if (!httpMessage.useGzip) {
-				BufsConsumerChunkedEncoder bufsConsumer = BufsConsumerChunkedEncoder.create();
-				httpMessage.bodySupplier.streamTo(bufsConsumer);
-				return SerialSuppliers.concat(SerialSupplier.of(buf), bufsConsumer.getOutputSupplier());
+				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
+				chunker.setInput(httpMessage.bodySupplier);
+				SerialSupplier<ByteBuf> result = SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutputSupplier());
+				chunker.start();
+				return result;
 			} else {
-				// TODO
-				throw new UnsupportedOperationException();
+				BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
+				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
+				deflater.setInput(httpMessage.bodySupplier);
+				SerialQueue<ByteBuf> queue = new SerialZeroBuffer<>();
+				deflater.setOutput(queue.getConsumer());
+				chunker.setInput(queue.getSupplier());
+				SerialSupplier<ByteBuf> result = SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutputSupplier());
+				deflater.start();
+				chunker.start();
+				return result;
 			}
 		} else {
 			httpMessage.setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, 0));
@@ -180,7 +204,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	}
 
 	protected void writeHttpMessage(HttpMessage httpMessage) {
-		this.bodyWriter = writer(httpMessage);
+		this.bodyWriter = createWriter(httpMessage);
 		writeBody();
 		httpMessage.recycle();
 	}
@@ -378,44 +402,61 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	}
 
 	private void startReadingBody() {
-		ByteBufsInput input = null;
-		SerialOutput<ByteBuf> output = null;
-		AsyncProcess bodyReader = null;
+		ByteBufsInput input;
+		AsyncProcess transferDecoder;
+		SerialOutput<ByteBuf> transferDecoderOutput;
 
-		if (isGzipped) {
-//			consumer = new BufsConsumerGzipInflater(consumer, null, 10);
+		if (!isChunked) {
+			BufsConsumerDelimiter decoder = BufsConsumerDelimiter.create(contentLength);
+			transferDecoder = decoder;
+			input = decoder;
+			transferDecoderOutput = decoder;
+		} else {
+			BufsConsumerChunkedDecoder decoder = BufsConsumerChunkedDecoder.create();
+			transferDecoder = decoder;
+			input = decoder;
+			transferDecoderOutput = decoder;
 		}
 
-		if (isChunked) {
-//			consumer = new BufsConsumerChunkedDecoder(consumer);
+		AsyncProcess contentDecoder;
+		SerialOutput<ByteBuf> contentDecoderOutput;
+
+		if (!isGzipped) {
+			contentDecoder = null;
+			contentDecoderOutput = transferDecoderOutput;
 		} else {
-			BufsConsumerDelimiter consumerDelimiter = BufsConsumerDelimiter.create(contentLength);
-			bodyReader = consumerDelimiter;
-			input = consumerDelimiter;
-			output = consumerDelimiter;
+			BufsConsumerGzipInflater decoder = BufsConsumerGzipInflater.create();
+			contentDecoder = decoder;
+			contentDecoderOutput = decoder;
+			SerialQueue<ByteBuf> queue = new SerialZeroBuffer<>();
+			transferDecoderOutput.setOutput(queue.getConsumer());
+			decoder.setInput(queue.getSupplier());
 		}
 
 		input.setInput(ByteBufsSupplier.ofProvidedQueue(
 				readQueue,
 				() -> {
-					if (this.bodyReader == null) {
-						this.bodyReader = new SettableStage<>();
-						asyncTcpSocket.read();
-					}
-					return this.bodyReader;
+					assert bodyReader == null;
+					bodyReader = new SettableStage<>();
+					asyncTcpSocket.read();
+					return bodyReader;
 				},
 				Stage::complete,
 				this::closeWithError));
 
-		RecyclingSupplier supplier = new RecyclingSupplier(output.getOutputSupplier(new SerialZeroBuffer<>()));
+		RecyclingSupplier supplier = new RecyclingSupplier(contentDecoderOutput.getOutputSupplier(new SerialZeroBuffer<>()));
 		onHeadersReceived(supplier);
-		supplier.recycleUnused();
+		supplier.recycleIfNotUsed();
 
-		bodyReader.process()
+		transferDecoder.start().both(contentDecoder != null ? contentDecoder.start() : Stage.complete())
 				.whenComplete(($, e) -> {
 					reading = NOTHING;
 					this.bodyReader = null;
-					onBodyReceived();
+					if (e == null) {
+						onBodyReceived();
+					} else {
+						closeWithError(e);
+					}
 				});
 	}
 
@@ -441,7 +482,6 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 				", reading=" + readingToString(reading) +
 				", isGzipped=" + isGzipped +
 				", isChunked=" + isChunked +
-				", chunkSize=" + chunkSize +
 				", contentLengthRemaining=" + contentLength +
 				", poolTimestamp=" + poolTimestamp;
 	}
@@ -478,7 +518,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 			return supplier.get();
 		}
 
-		void recycleUnused() {
+		void recycleIfNotUsed() {
 			if (recycling == null) {
 				recycling = Boolean.TRUE;
 				supplier.streamTo(recycle());

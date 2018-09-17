@@ -18,6 +18,19 @@ public interface SerialQueue<T> extends Cancellable {
 		};
 	}
 
+	default SerialConsumer<T> getConsumer(Stage<Void> acknowledge) {
+		return new AbstractSerialConsumer<T>(this) {
+			@Override
+			public Stage<Void> accept(T value) {
+				if (value != null) {
+					return put(value);
+				}
+				put(null);
+				return acknowledge;
+			}
+		};
+	}
+
 	default SerialSupplier<T> getSupplier() {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override

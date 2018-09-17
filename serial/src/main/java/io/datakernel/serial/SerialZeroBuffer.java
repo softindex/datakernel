@@ -9,49 +9,21 @@ import static io.datakernel.util.Recyclable.deepRecycle;
 
 public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	@Nullable
-	private Stage<?> endOfStream;
-	@Nullable
 	private T value;
 
 	private SettableStage<Void> put;
 	private SettableStage<T> take;
 
-	private boolean endOfStreamReceived;
-
-	public boolean isSaturated() {
-		return !isEmpty(); // size() > 0;
+	public boolean isWaiting() {
+		return take != null || put != null;
 	}
 
-	public boolean willBeSaturated() {
-		return true; // size() >= 0;
-	}
-
-	public boolean isExhausted() {
-		return isEmpty(); // size() < 1;
-	}
-
-	public boolean willBeExhausted() {
-		return true; // size() <= 1;
-	}
-
-	public boolean isPendingPut() {
+	public boolean isWaitingPut() {
 		return put != null;
 	}
 
-	public boolean isPendingTake() {
+	public boolean isWaitingTake() {
 		return take != null;
-	}
-
-	public int size() {
-		return value != null ? 1 : 0;
-	}
-
-	public boolean isEmpty() {
-		return value == null;
-	}
-
-	public boolean isEndOfStream() {
-		return endOfStreamReceived && isEmpty();
 	}
 
 	@Override
@@ -59,36 +31,22 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	public Stage<Void> put(@Nullable T value) {
 		assert put == null;
 
-		if (endOfStream == null) {
-			if (take != null) {
-				assert isEmpty();
-				SettableStage<T> take = this.take;
-				this.take = null;
-				take.set(value);
-				return Stage.complete();
-			}
-
-			if (value != null) {
-				assert !endOfStreamReceived;
-				this.value = value;
-				put = new SettableStage<>();
-				return put;
-			}
-
-			endOfStreamReceived = true;
+		if (take != null) {
+			SettableStage<T> take = this.take;
+			this.take = null;
+			take.set(value);
 			return Stage.complete();
 		}
 
-		deepRecycle(value);
-		return (Stage<Void>) endOfStream;
+		this.value = value;
+		this.put = new SettableStage<>();
+		return put;
 	}
 
-	@Override
 	@SuppressWarnings("unchecked")
+	@Override
 	public Stage<T> take() {
 		assert take == null;
-
-		if (endOfStream != null) return (Stage<T>) endOfStream;
 
 		if (put != null) {
 			T value = this.value;
@@ -99,21 +57,11 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 			return Stage.of(value);
 		}
 
-		if (!isEmpty()) {
-			T value = this.value;
-			this.value = null;
-			return Stage.of(value);
-		}
-
-		if (!endOfStreamReceived) {
-			take = new SettableStage<>();
-			return take;
-		}
-
-		endOfStream = Stage.of(null);
-		return (Stage<T>) endOfStream;
+		this.take = new SettableStage<>();
+		return take;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void closeWithError(Throwable e) {
 		if (put != null) {
@@ -126,7 +74,5 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 		}
 		deepRecycle(value);
 		value = null;
-
-		endOfStream = Stage.ofException(e);
 	}
 }

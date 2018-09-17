@@ -3,8 +3,9 @@ package io.datakernel.async;
 import io.datakernel.annotation.Nullable;
 
 public abstract class AbstractAsyncProcess implements AsyncProcess {
+	private boolean processStarted;
 	private boolean processComplete;
-	private SettableStage<Void> process;
+	private SettableStage<Void> processResult = new SettableStage<>();
 
 	protected void beforeProcess() {
 	}
@@ -13,7 +14,7 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	}
 
 	public boolean isProcessStarted() {
-		return process != null;
+		return processStarted;
 	}
 
 	public boolean isProcessComplete() {
@@ -21,27 +22,32 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	}
 
 	protected void completeProcess() {
-		process.trySet(null);
+		completeProcess(null);
 	}
 
 	protected void completeProcess(@Nullable Throwable e) {
+		processComplete = true;
 		if (e == null) {
-			process.trySet(null);
+			processResult.trySet(null);
 		} else {
 			closeWithError(e);
 		}
 	}
 
 	@Override
-	public final Stage<Void> process() {
-		if (process == null) {
-			process = new SettableStage<>();
-			process.thenRunEx(() -> processComplete = true);
+	public Stage<Void> getResult() {
+		return processResult;
+	}
+
+	@Override
+	public final Stage<Void> start() {
+		if (!processStarted) {
+			processStarted = true;
 			beforeProcess();
 			doProcess();
 			afterProcess();
 		}
-		return process;
+		return processResult;
 	}
 
 	protected abstract void doProcess();
@@ -51,7 +57,7 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 		if (isProcessComplete()) return;
 		processComplete = true;
 		doCloseWithError(e);
-		process.trySetException(e);
+		processResult.trySetException(e);
 	}
 
 	@Override
