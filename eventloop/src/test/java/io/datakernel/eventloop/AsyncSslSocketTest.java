@@ -1,25 +1,12 @@
-/*
- * Copyright (C) 2015 SoftIndex LLC.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package io.datakernel.eventloop;
 
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.serial.ByteBufsParser;
+import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -27,371 +14,205 @@ import org.junit.Test;
 import javax.net.ssl.*;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Executor;
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.junit.Assert.*;
+import static io.datakernel.serial.ByteBufsSupplier.of;
+import static io.datakernel.test.TestUtils.assertComplete;
+import static org.junit.Assert.assertEquals;
 
 public class AsyncSslSocketTest {
 	// region fields
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 	private static final String KEYSTORE_PATH = "./src/test/resources/keystore.jks";
 	private static final String KEYSTORE_PASS = "testtest";
 	private static final String KEY_PASS = "testtest";
 
 	private static final String TRUSTSTORE_PATH = "./src/test/resources/truststore.jks";
 	private static final String TRUSTSTORE_PASS = "testtest";
+	private static final String TEST_STRING = "Hello world";
 
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-	private AsyncSslSocket serverSslSocket;
-	private AsyncSslSocket clientSslSocket;
+	private static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 37832);
+	private SimpleServer server;
+	private SSLContext sslContext;
+	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(TEST_STRING.length())
+			.andThen(buf -> {
+				byte[] bytes = buf.asArray();
+				buf.recycle();
+				return bytes;
+			})
+			.andThen(ByteBufStrings::decodeAscii);
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	private static final ByteBufsParser<String> PARSER_LARGE = ByteBufsParser.ofFixedSize(100_000 + 25_000 * TEST_STRING.length())
+			.andThen(buf -> {
+				byte[] bytes = buf.asArray();
+				buf.recycle();
+				return bytes;
+			})
+			.andThen(ByteBufStrings::decodeAscii);
+	private StringBuilder sentData;
 
-	private AssertingEventHandler clientEventHandler = new AssertingEventHandler();
-	private AssertingEventHandler serverEventHandler = new AssertingEventHandler();
-	private AsyncTcpSocketStub clientSocketStub;
 	// endregion
 
 	// region initialization
 	@Before
 	public void init() throws Exception {
-		Executor executor = new ExecutorStub();
 		KeyManager[] keyManagers = createKeyManagers(new File(KEYSTORE_PATH), KEYSTORE_PASS, KEY_PASS);
 		TrustManager[] trustManagers = createTrustManagers(new File(TRUSTSTORE_PATH), TRUSTSTORE_PASS);
-		SSLContext sslContext = createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom());
-
-		SSLEngine serverSSLEngine = sslContext.createSSLEngine();
-		serverSSLEngine.setUseClientMode(false);
-		AsyncTcpSocketStub serverSocketStub = new AsyncTcpSocketStub("server", eventloop);
-		serverSslSocket = AsyncSslSocket.create(eventloop, serverSocketStub, serverSSLEngine, executor);
-		serverSocketStub.setEventHandler(serverSslSocket);
-		serverSslSocket.setEventHandler(serverEventHandler);
-
-		SSLEngine clientSSLEngine = sslContext.createSSLEngine();
-		clientSSLEngine.setUseClientMode(true);
-		clientSocketStub = new AsyncTcpSocketStub("client", eventloop);
-		clientSslSocket = AsyncSslSocket.create(eventloop, clientSocketStub, clientSSLEngine, executor);
-		clientSocketStub.setEventHandler(clientSslSocket);
-		clientSslSocket.setEventHandler(clientEventHandler);
-
-		// connect client and server stub sockets directly
-		clientSocketStub.connect(serverSocketStub);
+		sslContext = createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom());
+		sentData = new StringBuilder();
 	}
 	// endregion
 
-	@After
-	public void checkAssertions() {
-		assertNull(clientEventHandler.expectedRead);
-		assertNull(clientEventHandler.expectedException);
-		assertFalse(clientEventHandler.expectEndOfStream);
-
-		assertNull(serverEventHandler.expectedRead);
-		assertNull(serverEventHandler.expectedException);
-		assertFalse(serverEventHandler.expectEndOfStream);
-	}
-
-	// region tests
 	@Test
-	public void performsSimpleMessageExchange() {
-		serverEventHandler.expectRead("Hello");
-		clientEventHandler.expectRead("World");
+	public void testWrite() throws IOException {
+		server = SimpleServer.create(eventloop,
+				serverSsl -> PARSER.parse(of(serverSsl.reader()))
+						.whenComplete(assertComplete(result -> {
+							System.out.println(result);
+							assertEquals(TEST_STRING, result);
+						}))
+						.thenRunEx(serverSsl::close))
+				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
+				.withAcceptOnce(true);
 
-		eventloop.post(() -> {
-			serverSslSocket.onRegistered();
-			clientSslSocket.onRegistered();
+		server.listen();
 
-			serverSslSocket.read();
-			clientSslSocket.read();
+		eventloop.connect(ADDRESS)
+				.whenResult(socketChannel -> {
+					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(eventloop, clientTcp, sslContext, Runnable::run);
 
-			clientSslSocket.write(wrapAscii("Hello"));
-			serverSslSocket.write(wrapAscii("World"));
-		});
+					clientSsl.write(wrapAscii(TEST_STRING))
+							.thenRunEx(() -> close(clientSsl, clientTcp));
+				});
 
 		eventloop.run();
 	}
 
 	@Test
-	public void sendsLargeAmountOfDataFromClientToServer() {
-		StringBuilder sentData = new StringBuilder();
-		EventHandlerDataAccumulator serverDataAccumulator = new EventHandlerDataAccumulator(serverSslSocket);
-		serverSslSocket.setEventHandler(serverDataAccumulator);
+	public void testRead() throws IOException {
+		server = SimpleServer.create(eventloop,
+				serverSsl -> serverSsl.write(wrapAscii(TEST_STRING))
+						.whenComplete(assertComplete()))
+				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
+				.withAcceptOnce(true);
 
-		sendData(sentData, serverSslSocket, clientSslSocket);
+		server.listen();
 
-		eventloop.run();
+		eventloop.connect(ADDRESS)
+				.whenResult(socketChannel -> {
+					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(eventloop, clientTcp, sslContext, Runnable::run);
 
-		assertThat("received bytes amount", serverDataAccumulator.getAccumulatedData().length(), greaterThan(0));
-		assertEquals(sentData.toString(), serverDataAccumulator.getAccumulatedData());
-	}
-
-	private void sendData(StringBuilder sentData, AsyncSslSocket serverSslSocket, AsyncSslSocket clientSslSocket) {
-		eventloop.post(() -> {
-			serverSslSocket.onRegistered();
-			clientSslSocket.onRegistered();
-
-			serverSslSocket.read();
-
-			// send large message
-			String largeMessage = generateLargeString(100_000);
-			sentData.append(largeMessage);
-			clientSslSocket.write(wrapAscii(largeMessage));
-
-			// send lots of small messages
-			String smallMsg = "data_012345";
-			for (int i = 0; i < 25_000; i++) {
-				sentData.append(smallMsg);
-				clientSslSocket.write(wrapAscii(smallMsg));
-			}
-		});
-	}
-
-	@Test
-	public void sendsLargeAmountOfDataFromServerToClient() {
-		StringBuilder sentData = new StringBuilder();
-		EventHandlerDataAccumulator clientDataAccumulator = new EventHandlerDataAccumulator(clientSslSocket);
-		clientSslSocket.setEventHandler(clientDataAccumulator);
-
-		sendData(sentData, clientSslSocket, serverSslSocket);
-
-		eventloop.run();
-
-		assertTrue(clientDataAccumulator.getAccumulatedData().length() > 0);
-		assertEquals(sentData.toString(), clientDataAccumulator.getAccumulatedData());
-	}
-
-	@Test
-	public void getsSSLExceptionWhenOtherSideWasClosedWithoutSpecifiedHandshakeMessage() {
-		clientEventHandler.expectRead("World");
-		serverEventHandler.expectRead("Hello");
-
-		clientEventHandler.expectException(SSLException.class);
-
-		eventloop.post(() -> {
-			serverSslSocket.onRegistered();
-			clientSslSocket.onRegistered();
-
-			serverSslSocket.read();
-			clientSslSocket.read();
-
-			clientSslSocket.write(wrapAscii("Hello"));
-			serverSslSocket.write(wrapAscii("World"));
-
-			eventloop.delay(200, () -> {
-				// write endOfStream directly to client stub socket
-				clientSocketStub.onReadEndOfStream();
-			});
-		});
+					ByteBufsSupplier supplier = of(clientSsl.reader());
+					PARSER.parse(supplier)
+							.whenComplete(assertComplete(result -> {
+								System.out.println(result);
+								assertEquals(TEST_STRING, result);
+							}))
+							.thenRunEx(() -> close(clientSsl, clientTcp))
+							.thenRunEx(server::close);
+				});
 
 		eventloop.run();
 	}
 
 	@Test
-	public void otherSideEventHandler_ReceivesEndOfStream_InCaseOfProperClosing() {
-		serverEventHandler.expectRead("Hello");
-		clientEventHandler.expectRead("World");
-		serverEventHandler.expectEndOfStream();
+	public void testLoopBack() throws IOException {
+		server = SimpleServer.create(eventloop,
+				serverSsl -> PARSER.parse(of(serverSsl.reader()))
+						.thenCompose(result -> {
+							assertEquals(TEST_STRING, result);
+							return serverSsl.write(wrapAscii(result));
+						})
+						.whenComplete(assertComplete()))
+				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
+				.withAcceptOnce(true);
 
-		eventloop.post(() -> {
-			serverSslSocket.onRegistered();
-			clientSslSocket.onRegistered();
+		server.listen();
 
-			serverSslSocket.read();
-			clientSslSocket.read();
+		eventloop.connect(ADDRESS)
+				.whenResult(socketChannel -> {
+					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(eventloop, clientTcp, sslContext, Runnable::run);
 
-			clientSslSocket.write(wrapAscii("Hello"));
-			serverSslSocket.write(wrapAscii("World"));
-			eventloop.delay(100, () -> clientSslSocket.close());
-		});
+					clientSsl.write(wrapAscii(TEST_STRING))
+							.thenCompose($ -> {
+								ByteBufsSupplier supplier = of(clientSsl.reader());
+								return PARSER.parse(supplier);
+							})
+							.whenComplete(assertComplete(result -> {
+								System.out.println(result);
+								assertEquals(TEST_STRING, result);
+							}))
+							.thenRunEx(() -> close(clientSsl, clientTcp));
+				});
 
 		eventloop.run();
 	}
-	// endregion
 
-	// region stub classes
-	public static final class AsyncTcpSocketStub implements AsyncTcpSocket {
-		private String desc;
+	@Test
+	public void sendsLargeAmountOfDataFromClientToServer() throws IOException {
+		server = SimpleServer.create(eventloop,
+				serverSsl -> PARSER_LARGE.parse(of(serverSsl.reader()))
+						.whenComplete(assertComplete(result -> assertEquals(result, sentData.toString())))
+						.thenRunEx(serverSsl::close))
+				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
+				.withAcceptOnce(true);
 
-		private Eventloop eventloop;
+		server.listen();
 
-		private AsyncTcpSocketStub otherSide;
-		private EventHandler downstreamEventHandler;
+		eventloop.connect(ADDRESS)
+				.whenResult(socketChannel -> {
+					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(eventloop, clientTcp, sslContext, Runnable::run);
 
-		private boolean writeEndOfStream = false;
+					sendData(clientSsl)
+							.whenComplete(assertComplete())
+							.thenRunEx(() -> close(clientSsl, clientTcp));
+				});
 
-		public void connect(AsyncTcpSocketStub otherSide) {
-			this.otherSide = otherSide;
-			otherSide.otherSide = this;
-		}
-
-		public AsyncTcpSocketStub(String desc, Eventloop eventloop) {
-			this.desc = desc;
-			this.eventloop = eventloop;
-		}
-
-		public void onRead(ByteBuf buf) {
-			downstreamEventHandler.onRead(buf);
-		}
-
-		public void onReadEndOfStream() {
-			downstreamEventHandler.onReadEndOfStream();
-		}
-
-		@Override
-		public void setEventHandler(EventHandler eventHandler) {
-			this.downstreamEventHandler = eventHandler;
-		}
-
-		@Override
-		public void read() {
-		}
-
-		@Override
-		public void write(ByteBuf buf) {
-			assert !writeEndOfStream;
-
-			if (otherSide == null) {
-				buf.recycle();
-				return;
-			}
-
-			AsyncTcpSocketStub cached = otherSide;
-
-			eventloop.postLater(() -> cached.onRead(buf));
-			downstreamEventHandler.onWrite();
-		}
-
-		@Override
-		public void writeEndOfStream() {
-			assert !writeEndOfStream;
-
-			AsyncTcpSocketStub cached = otherSide;
-			writeEndOfStream = true;
-			eventloop.postLater(cached::onReadEndOfStream);
-		}
-
-		@Override
-		public void close() {
-			if (otherSide != null) {
-				otherSide.otherSide = null;
-				otherSide = null;
-			}
-		}
-
-		@Override
-		public InetSocketAddress getRemoteSocketAddress() {
-			return null;
-		}
-
-		@Override
-		public String toString() {
-			return "desc: " + desc;
-		}
+		eventloop.run();
 	}
 
-	public static final class ExecutorStub implements Executor {
+	@Test
+	public void sendsLargeAmountOfDataFromServerToClient() throws IOException {
+		server = SimpleServer.create(eventloop,
+				serverSsl -> sendData(serverSsl)
+						.whenComplete(assertComplete())
+						.thenRunEx(serverSsl::close))
+				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
+				.withAcceptOnce(true);
 
-		@Override
-		public void execute(Runnable command) {
-			command.run();
-		}
+		server.listen();
+
+		eventloop.connect(ADDRESS)
+				.whenResult(socketChannel -> {
+					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(eventloop, clientTcp, sslContext, Runnable::run);
+
+					ByteBufsSupplier supplier = of(clientSsl.reader());
+					PARSER_LARGE.parse(supplier)
+							.whenComplete(assertComplete(result -> assertEquals(result, sentData.toString())))
+							.thenRunEx(() -> close(clientSsl, clientTcp));
+				});
+
+		eventloop.run();
 	}
-
-	public static final class EventHandlerDataAccumulator implements EventHandler {
-		StringBuilder data = new StringBuilder();
-		AsyncTcpSocket upstream;
-
-		public EventHandlerDataAccumulator(AsyncTcpSocket upstream) {
-			this.upstream = upstream;
-		}
-
-		@Override
-		public void onRegistered() {
-
-		}
-
-		@Override
-		public void onRead(ByteBuf buf) {
-			data.append(extractMessageFromByteBuf(buf));
-			upstream.read();
-		}
-
-		@Override
-		public void onReadEndOfStream() {
-
-		}
-
-		@Override
-		public void onWrite() {
-
-		}
-
-		@Override
-		public void onClosedWithError(Throwable e) {
-
-		}
-
-		public String getAccumulatedData() {
-			return data.toString();
-		}
-	}
-
-	public static final class AssertingEventHandler implements EventHandler {
-		private String expectedRead;
-		private Class<?> expectedException;
-		private boolean expectEndOfStream;
-
-		public void expectRead(String message) {
-			this.expectedRead = message;
-		}
-
-		public void expectException(Class<?> type) {
-			this.expectedException = type;
-		}
-
-		public void expectEndOfStream() {
-			this.expectEndOfStream = true;
-		}
-
-		@Override
-		public void onRegistered() {
-
-		}
-
-		@Override
-		public void onRead(ByteBuf buf) {
-			if (expectedRead != null && expectedRead.equals(extractMessageFromByteBuf(buf))) {
-				expectedRead = null;
-			}
-		}
-
-		@Override
-		public void onReadEndOfStream() {
-			expectEndOfStream = false;
-		}
-
-		@Override
-		public void onWrite() {
-
-		}
-
-		@Override
-		public void onClosedWithError(Throwable e) {
-			if (expectedException != null && expectedException.equals(e.getCause().getClass())) {
-				expectedException = null;
-			}
-		}
-	}
-	// endregion
 
 	// region helper methods
 	public static TrustManager[] createTrustManagers(File path, String pass) throws Exception {
@@ -422,12 +243,6 @@ public class AsyncSslSocketTest {
 		return instance;
 	}
 
-	public static String extractMessageFromByteBuf(ByteBuf buf) {
-		String result = new String(buf.array(), buf.readPosition(), buf.readRemaining());
-		buf.recycle();
-		return result;
-	}
-
 	public static String generateLargeString(int size) {
 		StringBuilder builder = new StringBuilder();
 		Random random = new Random();
@@ -442,6 +257,55 @@ public class AsyncSslSocketTest {
 			}
 		}
 		return builder.toString();
+	}
+
+	void close(AsyncTcpSocket... sockets) {
+		for (AsyncTcpSocket socket : sockets) {
+			socket.close();
+		}
+	}
+
+	private Stage<Void> sendData(AsyncTcpSocket socket) {
+		String largeData = generateLargeString(100_000);
+		ByteBuf largeBuf = wrapAscii(largeData);
+		sentData.append(largeData);
+		Stage<Void> write = socket.write(largeBuf);
+
+		Stage<Void> loop = Stages.loop(25_000, i -> i != 0,
+				i -> {
+					String smallData = "data_012345";
+					sentData.append(smallData);
+					return socket.write(wrapAscii(smallData))
+							.thenApply($ -> i - 1);
+				});
+
+		return Stages.all(write, loop);
+	}
+	// endregion
+
+	// region ExecutorServiceStub
+	@SuppressWarnings({"ReturnOfNull", "ConstantConditions"}) // stub class
+	private static class ExecutorServiceStub extends AbstractExecutorService {
+		@Override
+		public void execute(Runnable command) {
+			command.run();
+		}
+
+		// NOP below
+		@Override
+		public void shutdown() {}
+
+		@Override
+		public List<Runnable> shutdownNow() {return null;}
+
+		@Override
+		public boolean isShutdown() {return false;}
+
+		@Override
+		public boolean isTerminated() {return false;}
+
+		@Override
+		public boolean awaitTermination(long timeout, TimeUnit unit) {return false;}
 	}
 	// endregion
 }
