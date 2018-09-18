@@ -301,9 +301,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		while (true) {
 			if (result != null && result.getStatus() == CLOSED) {
 				upstream.close();
-				net2engine.recycle();
-				app2engine.recycle();
-				net2engine = app2engine = null;
+				recycleByteBufs();
 				break;
 			}
 			handshakeStatus = engine.getHandshakeStatus();

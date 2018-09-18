@@ -19,13 +19,8 @@ package io.datakernel.eventloop;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.hamcrest.BaseMatcher;
-import org.hamcrest.Description;
-import org.hamcrest.Matcher;
-import org.jmock.Expectations;
-import org.jmock.integration.junit4.JUnitRuleMockery;
+import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -41,13 +36,11 @@ import java.security.SecureRandom;
 import java.util.Random;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.bytebuf.ByteBufPool.getCreatedItems;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItems;
+import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.*;
 
-@Ignore
 public class AsyncSslSocketTest {
 	// region fields
 	private static final String KEYSTORE_PATH = "./src/test/resources/keystore.jks";
@@ -64,10 +57,8 @@ public class AsyncSslSocketTest {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
-	@Rule
-	public JUnitRuleMockery context = new JUnitRuleMockery();
-	private EventHandler clientEventHandler = context.mock(EventHandler.class, "clientEventHandler");
-	private EventHandler serverEventHandler = context.mock(EventHandler.class, "serverEventHandler");
+	private AssertingEventHandler clientEventHandler = new AssertingEventHandler();
+	private AssertingEventHandler serverEventHandler = new AssertingEventHandler();
 	private AsyncTcpSocketStub clientSocketStub;
 	// endregion
 
@@ -98,21 +89,22 @@ public class AsyncSslSocketTest {
 	}
 	// endregion
 
+	@After
+	public void checkAssertions() {
+		assertNull(clientEventHandler.expectedRead);
+		assertNull(clientEventHandler.expectedException);
+		assertFalse(clientEventHandler.expectEndOfStream);
+
+		assertNull(serverEventHandler.expectedRead);
+		assertNull(serverEventHandler.expectedException);
+		assertFalse(serverEventHandler.expectEndOfStream);
+	}
+
 	// region tests
 	@Test
 	public void performsSimpleMessageExchange() {
-		context.checking(new Expectations() {{
-			oneOf(serverEventHandler).onRead(with(bytebufOfMessage("Hello")));
-			oneOf(clientEventHandler).onRead(with(bytebufOfMessage("World")));
-
-			allowing(serverEventHandler).onReadEndOfStream();
-			allowing(serverEventHandler).onWrite();
-			allowing(clientEventHandler).onReadEndOfStream();
-			allowing(clientEventHandler).onWrite();
-
-			allowing(serverEventHandler).onRegistered();
-			allowing(clientEventHandler).onRegistered();
-		}});
+		serverEventHandler.expectRead("Hello");
+		clientEventHandler.expectRead("World");
 
 		eventloop.post(() -> {
 			serverSslSocket.onRegistered();
@@ -121,14 +113,11 @@ public class AsyncSslSocketTest {
 			serverSslSocket.read();
 			clientSslSocket.read();
 
-			clientSslSocket.write(createByteBufFromString("Hello"));
-			serverSslSocket.write(createByteBufFromString("World"));
+			clientSslSocket.write(wrapAscii("Hello"));
+			serverSslSocket.write(wrapAscii("World"));
 		});
 
 		eventloop.run();
-
-		System.out.println("created: " + getCreatedItems());
-		System.out.println("in pool: " + getPoolItems());
 	}
 
 	@Test
@@ -136,10 +125,6 @@ public class AsyncSslSocketTest {
 		StringBuilder sentData = new StringBuilder();
 		EventHandlerDataAccumulator serverDataAccumulator = new EventHandlerDataAccumulator(serverSslSocket);
 		serverSslSocket.setEventHandler(serverDataAccumulator);
-
-		context.checking(new Expectations() {{
-			ignoring(clientEventHandler);
-		}});
 
 		sendData(sentData, serverSslSocket, clientSslSocket);
 
@@ -159,13 +144,13 @@ public class AsyncSslSocketTest {
 			// send large message
 			String largeMessage = generateLargeString(100_000);
 			sentData.append(largeMessage);
-			clientSslSocket.write(createByteBufFromString(largeMessage));
+			clientSslSocket.write(wrapAscii(largeMessage));
 
 			// send lots of small messages
 			String smallMsg = "data_012345";
 			for (int i = 0; i < 25_000; i++) {
 				sentData.append(smallMsg);
-				clientSslSocket.write(createByteBufFromString(smallMsg));
+				clientSslSocket.write(wrapAscii(smallMsg));
 			}
 		});
 	}
@@ -175,10 +160,6 @@ public class AsyncSslSocketTest {
 		StringBuilder sentData = new StringBuilder();
 		EventHandlerDataAccumulator clientDataAccumulator = new EventHandlerDataAccumulator(clientSslSocket);
 		clientSslSocket.setEventHandler(clientDataAccumulator);
-
-		context.checking(new Expectations() {{
-			ignoring(serverEventHandler);
-		}});
 
 		sendData(sentData, clientSslSocket, serverSslSocket);
 
@@ -190,20 +171,10 @@ public class AsyncSslSocketTest {
 
 	@Test
 	public void getsSSLExceptionWhenOtherSideWasClosedWithoutSpecifiedHandshakeMessage() {
-		context.checking(new Expectations() {{
-			// check first messages
-			oneOf(clientEventHandler).onRead(with(bytebufOfMessage("World")));
-			oneOf(serverEventHandler).onRead(with(bytebufOfMessage("Hello")));
-			// check error
-			oneOf(clientEventHandler).onClosedWithError(with(any(SSLException.class)));
+		clientEventHandler.expectRead("World");
+		serverEventHandler.expectRead("Hello");
 
-			allowing(serverEventHandler).onWrite();
-			allowing(clientEventHandler).onWrite();
-
-			allowing(clientEventHandler).onRegistered();
-			allowing(serverEventHandler).onRegistered();
-			allowing(serverEventHandler).onClosedWithError(with(any(Exception.class)));
-		}});
+		clientEventHandler.expectException(SSLException.class);
 
 		eventloop.post(() -> {
 			serverSslSocket.onRegistered();
@@ -212,10 +183,10 @@ public class AsyncSslSocketTest {
 			serverSslSocket.read();
 			clientSslSocket.read();
 
-			clientSslSocket.write(createByteBufFromString("Hello"));
-			serverSslSocket.write(createByteBufFromString("World"));
+			clientSslSocket.write(wrapAscii("Hello"));
+			serverSslSocket.write(wrapAscii("World"));
 
-			eventloop.delay(100, () -> {
+			eventloop.delay(200, () -> {
 				// write endOfStream directly to client stub socket
 				clientSocketStub.onReadEndOfStream();
 			});
@@ -226,18 +197,9 @@ public class AsyncSslSocketTest {
 
 	@Test
 	public void otherSideEventHandler_ReceivesEndOfStream_InCaseOfProperClosing() {
-		context.checking(new Expectations() {{
-			// check first messages
-			oneOf(serverEventHandler).onRead(with(bytebufOfMessage("Hello")));
-			oneOf(clientEventHandler).onRead(with(bytebufOfMessage("World")));
-			// check error
-			oneOf(serverEventHandler).onReadEndOfStream();
-
-			allowing(clientEventHandler).onRegistered();
-			allowing(serverEventHandler).onRegistered();
-			allowing(clientEventHandler).onWrite();
-			allowing(serverEventHandler).onWrite();
-		}});
+		serverEventHandler.expectRead("Hello");
+		clientEventHandler.expectRead("World");
+		serverEventHandler.expectEndOfStream();
 
 		eventloop.post(() -> {
 			serverSslSocket.onRegistered();
@@ -246,8 +208,8 @@ public class AsyncSslSocketTest {
 			serverSslSocket.read();
 			clientSslSocket.read();
 
-			clientSslSocket.write(createByteBufFromString("Hello"));
-			serverSslSocket.write(createByteBufFromString("World"));
+			clientSslSocket.write(wrapAscii("Hello"));
+			serverSslSocket.write(wrapAscii("World"));
 			eventloop.delay(100, () -> clientSslSocket.close());
 		});
 
@@ -382,6 +344,53 @@ public class AsyncSslSocketTest {
 			return data.toString();
 		}
 	}
+
+	public static final class AssertingEventHandler implements EventHandler {
+		private String expectedRead;
+		private Class<?> expectedException;
+		private boolean expectEndOfStream;
+
+		public void expectRead(String message) {
+			this.expectedRead = message;
+		}
+
+		public void expectException(Class<?> type) {
+			this.expectedException = type;
+		}
+
+		public void expectEndOfStream() {
+			this.expectEndOfStream = true;
+		}
+
+		@Override
+		public void onRegistered() {
+
+		}
+
+		@Override
+		public void onRead(ByteBuf buf) {
+			if (expectedRead != null && expectedRead.equals(extractMessageFromByteBuf(buf))) {
+				expectedRead = null;
+			}
+		}
+
+		@Override
+		public void onReadEndOfStream() {
+			expectEndOfStream = false;
+		}
+
+		@Override
+		public void onWrite() {
+
+		}
+
+		@Override
+		public void onClosedWithError(Throwable e) {
+			if (expectedException != null && expectedException.equals(e.getCause().getClass())) {
+				expectedException = null;
+			}
+		}
+	}
 	// endregion
 
 	// region helper methods
@@ -413,10 +422,6 @@ public class AsyncSslSocketTest {
 		return instance;
 	}
 
-	public static ByteBuf createByteBufFromString(String message) {
-		return ByteBuf.wrapForReading(message.getBytes());
-	}
-
 	public static String extractMessageFromByteBuf(ByteBuf buf) {
 		String result = new String(buf.array(), buf.readPosition(), buf.readRemaining());
 		buf.recycle();
@@ -437,23 +442,6 @@ public class AsyncSslSocketTest {
 			}
 		}
 		return builder.toString();
-	}
-	// endregion
-
-	// region custom matchers
-	public static Matcher<ByteBuf> bytebufOfMessage(String message) {
-		return new BaseMatcher<ByteBuf>() {
-			@Override
-			public boolean matches(Object item) {
-				String extractedMessage = extractMessageFromByteBuf((ByteBuf) item);
-				return extractedMessage.equals(message);
-			}
-
-			@Override
-			public void describeTo(Description description) {
-				description.appendText("Message: " + message);
-			}
-		};
 	}
 	// endregion
 }
