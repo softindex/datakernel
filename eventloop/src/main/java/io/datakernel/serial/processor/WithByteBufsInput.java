@@ -9,7 +9,7 @@ public interface WithByteBufsInput<B extends WithByteBufsInput<B> & WithSerialIn
 		extends ByteBufsInput, WithSerialInput<B, ByteBuf> {
 	@Override
 	default void setInput(SerialSupplier<ByteBuf> input) {
-		setInput(ByteBufsSupplier.ofSupplier(input));
+		setInput(ByteBufsSupplier.of(input));
 	}
 
 	@SuppressWarnings("unchecked")

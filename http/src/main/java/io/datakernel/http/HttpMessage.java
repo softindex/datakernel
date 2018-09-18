@@ -144,6 +144,12 @@ public abstract class HttpMessage {
 		return checkNotNull(body);
 	}
 
+	public ByteBuf detachBody() {
+		ByteBuf body = checkNotNull(this.body);
+		this.body = null;
+		return body;
+	}
+
 	public Stage<ByteBuf> getBodyStage() {
 		if (body != null) return Stage.of(body);
 		if (bodySupplier != null) {

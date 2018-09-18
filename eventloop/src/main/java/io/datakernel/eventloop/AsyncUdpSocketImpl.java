@@ -33,11 +33,11 @@ import java.nio.channels.SelectionKey;
 import java.time.Duration;
 import java.util.ArrayDeque;
 
-import static io.datakernel.eventloop.AsyncTcpSocketImpl.OP_POSTPONED;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEventHandler {
 	private static final MemSize DEFAULT_UDP_BUFFER_SIZE = MemSize.kilobytes(16);
+	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
 
 	private final Eventloop eventloop;
 

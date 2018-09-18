@@ -53,7 +53,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> implement
 	// endregion
 
 	@Override
-	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
+	protected void start(AsyncTcpSocket asyncTcpSocket) {
 		throw new UnsupportedOperationException();
 	}
 

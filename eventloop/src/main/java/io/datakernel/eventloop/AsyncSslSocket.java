@@ -16,6 +16,9 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.annotation.Nullable;
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.net.CloseWithoutNotifyException;
@@ -25,7 +28,6 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import javax.net.ssl.SSLException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 
@@ -35,21 +37,19 @@ import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
 
 @SuppressWarnings("AssertWithSideEffects")
-public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler {
+public final class AsyncSslSocket implements AsyncTcpSocket {
 	private final Eventloop eventloop;
 	private final SSLEngine engine;
 	private final Executor executor;
 	private final AsyncTcpSocket upstream;
-
-	private AsyncTcpSocket.EventHandler downstreamEventHandler;
 
 	private ByteBuf net2engine = ByteBuf.empty();
 	private ByteBuf engine2app = ByteBuf.empty();
 	private ByteBuf app2engine = ByteBuf.empty();
 
 	private boolean syncPosted = false;
-	private boolean read = false;
-	private boolean write = false;
+	private SettableStage<ByteBuf> read;
+	private SettableStage<Void> write;
 
 	// region builders
 	public static AsyncSslSocket wrapClientSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
@@ -57,28 +57,21 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine(host, port);
 		sslEngine.setUseClientMode(true);
-		return wrapSocket(eventloop, asyncTcpSocket, sslEngine, executor);
+		return create(eventloop, asyncTcpSocket, sslEngine, executor);
 	}
 
 	public static AsyncSslSocket wrapClientSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
 			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
 		sslEngine.setUseClientMode(true);
-		return wrapSocket(eventloop, asyncTcpSocket, sslEngine, executor);
+		return create(eventloop, asyncTcpSocket, sslEngine, executor);
 	}
 
 	public static AsyncSslSocket wrapServerSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
 			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
 		sslEngine.setUseClientMode(false);
-		return wrapSocket(eventloop, asyncTcpSocket, sslEngine, executor);
-	}
-
-	public static AsyncSslSocket wrapSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-			SSLEngine engine, Executor executor) {
-		AsyncSslSocket asyncSslSocket = AsyncSslSocket.create(eventloop, asyncTcpSocket, engine, executor);
-		asyncTcpSocket.setEventHandler(asyncSslSocket);
-		return asyncSslSocket;
+		return create(eventloop, asyncTcpSocket, sslEngine, executor);
 	}
 
 	private AsyncSslSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLEngine engine, Executor executor) {
@@ -94,9 +87,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 	// endregion
 
-	@Override
-	public void onRegistered() {
-		downstreamEventHandler.onRegistered();
+	private void start() {
 		try {
 			engine.beginHandshake();
 			doSync();
@@ -104,78 +95,74 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			upstream.close();
 			eventloop.post(() -> {
 				if (engine2app != null) {
-					downstreamEventHandler.onClosedWithError(e);
+					closeWithError(e);
 				}
 				recycleByteBufs();
 			});
 		}
 	}
 
-	@Override
-	public void onRead(ByteBuf buf) {
-		net2engine = ByteBufPool.append(net2engine, buf);
-		sync();
-	}
-
-	@Override
-	public void onReadEndOfStream() {
-		if (engine.isInboundDone()) return;
-		try {
-			engine.closeInbound();
-		} catch (SSLException e) {
-			if (app2engine != null) {
-				downstreamEventHandler.onClosedWithError(new CloseWithoutNotifyException(e));
+	private <T> Stage<T> sanitize(Stage<T> stage) {
+		return stage.async().thenComposeEx((value, e) -> {
+			if (e == null) {
+				return Stage.of(value);
+			} else {
+				if (engine2app != null) {
+					closeWithError(e);
+				}
+				recycleByteBufs();
+				return Stage.ofException(e);
 			}
-			upstream.close();
-			recycleByteBufs();
-		}
+		});
 	}
 
 	@Override
-	public void onWrite() {
-		if (engine.isOutboundDone()) {
-			upstream.close();
-			recycleByteBufs();
-			return;
-		}
-		if (engine2app != null && !app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write) {
-			write = false;
-			downstreamEventHandler.onWrite();
-		}
+	public void closeWithError(Throwable e) {
+		upstream.closeWithError(e);
 	}
 
 	@Override
-	public void onClosedWithError(Throwable e) {
-		if (engine2app != null) {
-			downstreamEventHandler.onClosedWithError(e);
-		}
-		recycleByteBufs();
-	}
-
-	@Override
-	public void setEventHandler(EventHandler eventHandler) {
-		this.downstreamEventHandler = eventHandler;
-	}
-
-	@Override
-	public void read() {
-		read = true;
+	public Stage<ByteBuf> read() {
+		if (read != null) return read;
+		read = new SettableStage<>();
 		if (!net2engine.canRead() && !engine2app.canRead()) {
-			upstream.read();
+			doRead();
 		}
 		postSync();
+		return read;
+	}
+
+	private void doRead() {
+		sanitize(upstream.read())
+				.whenResult(buf -> {
+					if (buf != null) {
+						net2engine = ByteBufPool.append(net2engine, buf);
+						sync();
+					} else {
+						if (engine.isInboundDone()) return;
+						try {
+							engine.closeInbound();
+						} catch (SSLException e) {
+							if (app2engine != null) {
+								closeWithError(new CloseWithoutNotifyException(e));
+							}
+							upstream.close();
+							recycleByteBufs();
+						}
+					}
+				});
 	}
 
 	@Override
-	public void write(ByteBuf buf) {
-		write = true;
+	public Stage<Void> write(@Nullable ByteBuf buf) {
+		if (buf == null) {
+			throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");
+		}
 		app2engine = ByteBufPool.append(app2engine, buf);
+		if (write != null) return write;
+		write = new SettableStage<>();
 		postSync();
-	}
-
-	@Override
-	public void writeEndOfStream() {
-		throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");
+		return write;
 	}
 
 	@Override
@@ -194,11 +181,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		if (engine2app != null) engine2app.recycle();
 		if (app2engine != null) app2engine.recycle();
 		net2engine = engine2app = app2engine = null;
-	}
-
-	@Override
-	public InetSocketAddress getRemoteSocketAddress() {
-		return upstream.getRemoteSocketAddress();
 	}
 
 	private SSLEngineResult tryToUnwrap() throws SSLException {
@@ -253,11 +235,27 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 		dstBuf.ofWriteByteBuffer(dstBuffer);
 		if (dstBuf.canRead()) {
-			upstream.write(dstBuf);
+			doWrite(dstBuf);
 		} else {
 			dstBuf.recycle();
 		}
 		return result;
+	}
+
+	private void doWrite(ByteBuf dstBuf) {
+		sanitize(upstream.write(dstBuf))
+				.thenRun(() -> {
+					if (engine.isOutboundDone()) {
+						upstream.close();
+						recycleByteBufs();
+						return;
+					}
+					if (engine2app != null && !app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write != null) {
+						SettableStage<Void> write = this.write;
+						this.write = null;
+						write.set(null);
+					}
+				});
 	}
 
 	private void executeTasks() {
@@ -288,7 +286,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		} catch (SSLException e) {
 			upstream.close();
 			if (engine2app != null) {
-				downstreamEventHandler.onClosedWithError(e);
+				closeWithError(e);
 			}
 			recycleByteBufs();
 		}
@@ -310,7 +308,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			} else if (handshakeStatus == NEED_UNWRAP) {
 				result = tryToUnwrap();
 				if (result.getStatus() == BUFFER_UNDERFLOW) {
-					upstream.read();
+					doRead();
 					break;
 				}
 			} else if (handshakeStatus == NEED_TASK) {
@@ -318,7 +316,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 				return;
 			} else if (handshakeStatus == NOT_HANDSHAKING) {
 				if (result != null && result.getHandshakeStatus() == FINISHED) {
-					upstream.read();
+					doRead();
 				}
 
 				// read data from net
@@ -327,7 +325,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 						result = tryToUnwrap();
 					} while (net2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
 					if (result.getStatus() == BUFFER_UNDERFLOW) {
-						upstream.read();
+						doRead();
 					}
 				}
 
@@ -342,15 +340,18 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 				break;
 		}
 
-		if (engine2app != null && read && engine2app.canRead()) {
-			read = false;
+		if (engine2app != null && read != null && engine2app.canRead()) {
+			SettableStage<ByteBuf> read = this.read;
+			this.read = null;
 			ByteBuf readBuf = engine2app;
 			engine2app = ByteBuf.empty();
-			downstreamEventHandler.onRead(readBuf);
+			read.set(readBuf);
 		}
 
 		if (engine2app != null && result != null && result.getStatus() == CLOSED) {
-			downstreamEventHandler.onReadEndOfStream();
+			SettableStage<ByteBuf> read = this.read;
+			this.read = null;
+			read.set(null);
 		}
 	}
 

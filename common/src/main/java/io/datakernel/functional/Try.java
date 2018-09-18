@@ -88,6 +88,10 @@ public final class Try<T> {
 		return result;
 	}
 
+	public T getResultOrNull() {
+		return result;
+	}
+
 	public Throwable getException() {
 		assert !isSuccess();
 		return throwable;

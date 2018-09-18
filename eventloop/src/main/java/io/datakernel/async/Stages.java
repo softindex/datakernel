@@ -9,10 +9,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
+import java.util.function.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -399,7 +396,7 @@ public final class Stages {
 			}
 			complete(finished);
 		}
-		
+
 		void processException(Throwable throwable, int index) {
 			if (isComplete()) {
 				return;
@@ -926,6 +923,45 @@ public final class Stages {
 
 	public static <T> BiPredicate<T, Throwable> isError() {
 		return ($, e) -> e != null;
+	}
+
+	public static Stage<Void> repeat(Supplier<Stage<Void>> supplier) {
+		SettableStage<Void> cb = new SettableStage<>();
+		repeatImpl(supplier, cb);
+		return cb;
+	}
+
+	private static void repeatImpl(Supplier<Stage<Void>> supplier, SettableStage<Void> cb) {
+		supplier.get()
+				.whenComplete(($, e) -> {
+					if (e == null) {
+						repeatImpl(supplier, cb);
+					} else {
+						cb.setException(e);
+					}
+				});
+	}
+
+	public static <T> Stage<Void> loop(T seed, Predicate<T> test, Function<T, Stage<T>> next) {
+		if (!test.test(seed)) return Stage.complete();
+		SettableStage<Void> cb = new SettableStage<>();
+		loopImpl(seed, test, next, cb);
+		return cb;
+	}
+
+	private static <T> void loopImpl(T seed, Predicate<T> test, Function<T, Stage<T>> next, SettableStage<Void> cb) {
+		next.apply(seed)
+				.whenComplete((newSeed, e) -> {
+					if (e == null) {
+						if (test.test(newSeed)) {
+							loopImpl(newSeed, test, next, cb);
+						} else {
+							cb.set(null);
+						}
+					} else {
+						cb.setException(e);
+					}
+				});
 	}
 
 }

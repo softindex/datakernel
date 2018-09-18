@@ -1,8 +1,8 @@
 package io.datakernel.serial;
 
-import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Cancellable;
+import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -28,29 +28,7 @@ public abstract class ByteBufsSupplier implements Cancellable {
 
 	public abstract Stage<Void> endOfStream();
 
-	public final Stage<Void> loop(AsyncPredicate<ByteBufQueue> supplier) {
-		return needMoreData()
-				.thenRun(() -> doLoop(supplier));
-	}
-
-	private Stage<Void> doLoop(AsyncPredicate<ByteBufQueue> supplier) {
-		return supplier.test(bufs)
-				.thenComposeEx((finished, e) -> {
-					if (e == null) {
-						if (finished) {
-							return endOfStream();
-						}
-						return needMoreData()
-								.post() // post instead of async not to overflow memory with giant promise graph
-								.thenRun(() -> doLoop(supplier));
-					} else {
-						closeWithError(e);
-						return Stage.ofException(e);
-					}
-				});
-	}
-
-	public static ByteBufsSupplier ofSupplier(SerialSupplier<ByteBuf> input) {
+	public static ByteBufsSupplier of(SerialSupplier<ByteBuf> input) {
 		return new ByteBufsSupplier() {
 			private boolean closed;
 
@@ -121,4 +99,67 @@ public abstract class ByteBufsSupplier implements Cancellable {
 			}
 		};
 	}
+
+	public final <T> Stage<T> parse(ByteBufsParser<T> parser) {
+		if (!bufs.isEmpty()) {
+			T result;
+			try {
+				result = parser.tryParse(bufs);
+			} catch (Exception e) {
+				return Stage.ofException(e);
+			}
+			if (result != null) {
+				return Stage.of(result);
+			}
+		}
+		SettableStage<T> cb = new SettableStage<>();
+		doParse(parser, cb);
+		return cb;
+	}
+
+	private <T> void doParse(ByteBufsParser<T> parser, SettableStage<T> cb) {
+		needMoreData()
+				.whenComplete(($, e) -> {
+					if (e == null) {
+						T result;
+						try {
+							result = parser.tryParse(bufs);
+						} catch (Exception e2) {
+							closeWithError(e2);
+							cb.setException(e2);
+							return;
+						}
+						if (result == null) {
+							doParse(parser, cb);
+							return;
+						}
+						cb.set(result);
+					} else {
+						cb.setException(e);
+					}
+				});
+	}
+
+	public final <T> Stage<T> parseRemaining(ByteBufsParser<T> parser) {
+		return parse(parser)
+				.thenCompose(result -> {
+					if (!bufs.isEmpty()) {
+						closeWithError(UNEXPECTED_DATA_EXCEPTION);
+						return Stage.ofException(UNEXPECTED_DATA_EXCEPTION);
+					}
+					return endOfStream().thenApply($ -> result);
+				});
+	}
+
+	public final <T> SerialSupplier<T> parseStream(ByteBufsParser<T> parser) {
+		return SerialSupplier.of(
+				() -> parse(parser)
+						.thenComposeEx((value, e) -> {
+							if (e == null) return Stage.of(value);
+							if (e == UNEXPECTED_END_OF_STREAM_EXCEPTION && bufs.isEmpty()) return Stage.of(null);
+							return Stage.ofException(e);
+						}),
+				this);
+	}
+
 }

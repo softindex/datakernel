@@ -16,24 +16,23 @@
 
 package io.datakernel.eventloop;
 
-public final class SimpleServer extends AbstractServer<SimpleServer> {
-	private final SocketHandlerProvider socketHandlerProvider;
+import java.util.function.Consumer;
 
-	private SimpleServer(Eventloop eventloop, SocketHandlerProvider socketHandlerProvider) {
+public final class SimpleServer extends AbstractServer<SimpleServer> {
+	private final Consumer<AsyncTcpSocket> socketConsumer;
+
+	private SimpleServer(Eventloop eventloop, Consumer<AsyncTcpSocket> socketConsumer) {
 		super(eventloop);
-		this.socketHandlerProvider = socketHandlerProvider;
+		this.socketConsumer = socketConsumer;
 	}
 
-	public static SimpleServer create(Eventloop eventloop, SocketHandlerProvider socketHandlerProvider) {
-		return new SimpleServer(eventloop, socketHandlerProvider);
+	public static SimpleServer create(Eventloop eventloop, Consumer<AsyncTcpSocket> socketConsumer) {
+		return new SimpleServer(eventloop, socketConsumer);
 	}
 
 	@Override
-	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		return socketHandlerProvider.createSocketHandler(asyncTcpSocket);
+	protected void start(AsyncTcpSocket asyncTcpSocket) {
+		socketConsumer.accept(asyncTcpSocket);
 	}
 
-	public interface SocketHandlerProvider {
-		AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket socket);
-	}
 }

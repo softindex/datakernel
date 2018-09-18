@@ -16,8 +16,9 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.serial.ByteBufsParser;
+import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -27,19 +28,26 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.async.Stages.loop;
+import static io.datakernel.async.Stages.repeat;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class PingPongSocketConnectionTest {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 9022);
 	private final int ITERATIONS = 3;
-	private final String RESPONSE_MSG = "PONG";
-	private final String REQUEST_MSG = "PING";
+	private static final String REQUEST_MSG = "PING";
+	private static final String RESPONSE_MSG = "PONG";
+
+	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
+			.andThen(buf -> {
+				byte[] bytes = buf.asArray();
+				buf.recycle();
+				return bytes;
+			})
+			.andThen(ByteBufStrings::decodeAscii);
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
@@ -48,111 +56,34 @@ public class PingPongSocketConnectionTest {
 	public void test() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
-			@Override
-			public AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				return new ServerConnection(asyncTcpSocket);
-			}
-		};
+		SimpleServer server = SimpleServer.create(eventloop,
+				socket -> {
+					ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(socket.reader());
+					repeat(() ->
+							PARSER.parse(bufsSupplier)
+									.whenResult(System.out::println)
+									.thenCompose($ -> socket.write(wrapAscii(RESPONSE_MSG))))
+							.thenRunEx(socket::close);
+				})
+				.withListenAddress(ADDRESS)
+				.withAcceptOnce();
 
-		SimpleServer ppServer = SimpleServer.create(eventloop, socketHandlerProvider).withListenAddress(ADDRESS);
+		server.listen();
 
-		ppServer.listen();
-
-		eventloop.connect(ADDRESS).whenComplete((socketChannel, throwable) -> {
-			if (throwable == null) {
-				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				asyncTcpSocket.setEventHandler(new ClientConnection(asyncTcpSocket, ppServer));
-				asyncTcpSocket.register();
-			} else {
-				fail("Exception: " + throwable);
-			}
-		});
+		eventloop.connect(ADDRESS)
+				.whenResult(socketChannel -> {
+					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(socket.reader());
+					loop(3, i -> i != 0,
+							i -> socket.write(wrapAscii(REQUEST_MSG))
+									.thenCompose($ -> PARSER.parse(bufsSupplier)
+											.whenResult(System.out::println)
+											.thenApply($2 -> i - 1)))
+							.thenRunEx(socket::close);
+				})
+				.whenException(e -> { throw new RuntimeException(e); });
 
 		eventloop.run();
 	}
 
-	private class ServerConnection implements AsyncTcpSocket.EventHandler {
-		private final AsyncTcpSocket asyncTcpSocket;
-		int counter;
-
-		ServerConnection(AsyncTcpSocket asyncTcpSocket) {
-			this.asyncTcpSocket = asyncTcpSocket;
-			counter = 0;
-		}
-
-		@Override
-		public void onRegistered() {
-			asyncTcpSocket.read();
-		}
-
-		@Override
-		public void onReadEndOfStream() {
-			asyncTcpSocket.close();
-			assertEquals(ITERATIONS, counter);
-		}
-
-		@Override
-		public void onRead(ByteBuf buf) {
-			assertEquals(REQUEST_MSG, decodeAscii(buf));
-			buf.recycle();
-			counter++;
-			asyncTcpSocket.write(wrapAscii(RESPONSE_MSG));
-		}
-
-		@Override
-		public void onWrite() {
-			asyncTcpSocket.read();
-		}
-
-		@Override
-		public void onClosedWithError(Throwable e) {
-			e.printStackTrace();
-			fail();
-		}
-	}
-
-	private class ClientConnection implements AsyncTcpSocket.EventHandler {
-		private final AsyncTcpSocketImpl clientTcpSocket;
-		private final AbstractServer server;
-		int counter;
-
-		ClientConnection(AsyncTcpSocketImpl clientTcpSocket, AbstractServer server) {
-			this.clientTcpSocket = clientTcpSocket;
-			this.server = server;
-			counter = 0;
-		}
-
-		@Override
-		public void onRegistered() {
-			clientTcpSocket.write(wrapAscii(REQUEST_MSG));
-		}
-
-		@Override
-		public void onRead(ByteBuf buf) {
-			assertEquals(RESPONSE_MSG, decodeAscii(buf));
-			if (++counter == ITERATIONS) {
-				clientTcpSocket.close();
-				server.close();
-			} else {
-				clientTcpSocket.write(wrapAscii(REQUEST_MSG));
-			}
-			buf.recycle();
-		}
-
-		@Override
-		public void onReadEndOfStream() {
-		}
-
-		@Override
-		public void onWrite() {
-			clientTcpSocket.read();
-		}
-
-		@Override
-		public void onClosedWithError(Throwable e) {
-			e.printStackTrace();
-			fail();
-		}
-	}
 }

@@ -41,7 +41,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapServerSocket;
-import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.check;
@@ -325,11 +324,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
 				.withInspector(getSocketInspector(remoteAddress, localAddress, ssl));
 		AsyncTcpSocket asyncTcpSocket = ssl ? wrapServerSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-		asyncTcpSocket.setEventHandler(createSocketHandler(asyncTcpSocket));
-		asyncTcpSocketImpl.register();
+		start(asyncTcpSocket);
 	}
 
-	protected abstract EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket);
+	protected abstract void start(AsyncTcpSocket asyncTcpSocket);
 
 	private boolean isInetAddressAny(InetSocketAddress listenAddress) {
 		return listenAddress.getAddress().isAnyLocalAddress();

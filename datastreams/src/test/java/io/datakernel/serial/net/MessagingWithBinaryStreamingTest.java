@@ -20,7 +20,6 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
-import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.stream.StreamConsumerToList;
@@ -38,15 +37,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.stream.LongStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serial.net.MessagingSerializers.ofJson;
 import static io.datakernel.serializer.asm.BufferSerializers.LONG_SERIALIZER;
 import static io.datakernel.util.gson.GsonAdapters.INTEGER_JSON;
 import static io.datakernel.util.gson.GsonAdapters.STRING_JSON;
+import static java.util.stream.Collectors.toList;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class MessagingWithBinaryStreamingTest {
 	private static final int LISTEN_PORT = 4821;
@@ -70,32 +71,28 @@ public class MessagingWithBinaryStreamingTest {
 		MessagingSerializer<Integer, Integer> serializer =
 				ofJson(INTEGER_JSON);
 
-		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
+		SimpleServer server = SimpleServer.create(eventloop,
+				new Consumer<AsyncTcpSocket>() {
+					void pong(Messaging<Integer, Integer> messaging) {
+						messaging.receive()
+								.whenResult(msg -> {
+									if (msg != null) {
+										messaging.send(msg);
+										pong(messaging);
+									} else {
+										messaging.close();
+									}
+								})
+								.whenException(e -> messaging.close());
+					}
 
-			@Override
-			public AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				MessagingWithBinaryStreaming<Integer, Integer> messaging =
-						MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
-				pong(messaging);
-				return messaging;
-			}
-
-			void pong(Messaging<Integer, Integer> messaging) {
-				messaging.receive()
-						.whenResult(msg -> {
-							if (msg != null) {
-								messaging.send(msg);
-								pong(messaging);
-							} else {
-								messaging.close();
-							}
-						})
-						.whenException(e -> messaging.close());
-			}
-
-		};
-
-		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
+					@Override
+					public void accept(AsyncTcpSocket asyncTcpSocket) {
+						MessagingWithBinaryStreaming<Integer, Integer> messaging =
+								MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+						pong(messaging);
+					}
+				})
 				.withListenAddress(address)
 				.withAcceptOnce();
 
@@ -128,8 +125,6 @@ public class MessagingWithBinaryStreamingTest {
 							MessagingWithBinaryStreaming<Integer, Integer> messaging =
 									MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 							ping(3, messaging);
-							asyncTcpSocket.setEventHandler(messaging);
-							asyncTcpSocket.register();
 						} else {
 							fail("Test Exception: " + throwable);
 						}
@@ -151,49 +146,40 @@ public class MessagingWithBinaryStreamingTest {
 		MessagingSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
-		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
-			MessagingWithBinaryStreaming<String, String> messaging =
-					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		SimpleServer server = SimpleServer.create(eventloop,
+				socket -> {
+					MessagingWithBinaryStreaming<String, String> messaging =
+							MessagingWithBinaryStreaming.create(socket, serializer);
 
-			messaging.receive()
-					.whenResult(msg -> {
-						if (msg != null) {
-							assertEquals("start", msg);
-							StreamProducer.ofIterable(source)
-									.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
-											.withInitialBufferSize(MemSize.of(1)))
-									.streamTo(messaging.sendBinaryStream());
-						}
-					});
-
-			return messaging;
-		};
-
-		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
+					messaging.receive()
+							.whenResult(msg -> {
+								if (msg != null) {
+									assertEquals("start", msg);
+									StreamProducer.ofIterable(source)
+											.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
+													.withInitialBufferSize(MemSize.of(1)))
+											.streamTo(messaging.sendBinaryStream());
+								}
+							});
+				})
 				.withListenAddress(address)
 				.withAcceptOnce();
 
 		server.listen();
 
-		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
-			if (throwable == null) {
-				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				MessagingWithBinaryStreaming<String, String> messaging =
-						MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		eventloop.connect(address)
+				.whenResult(socketChannel -> {
+					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					MessagingWithBinaryStreaming<String, String> messaging =
+							MessagingWithBinaryStreaming.create(socket, serializer);
 
-				messaging.send("start");
-				messaging.sendEndOfStream();
+					messaging.send("start");
+					messaging.sendEndOfStream();
 
-				messaging.receiveBinaryStream()
-						.apply(SerialBinaryDeserializer.create(LONG_SERIALIZER))
-						.streamTo(consumerToList);
-
-				asyncTcpSocket.setEventHandler(messaging);
-				asyncTcpSocket.register();
-			} else {
-				fail("Test Exception: " + throwable);
-			}
-		});
+					messaging.receiveBinaryStream()
+							.apply(SerialBinaryDeserializer.create(LONG_SERIALIZER))
+							.streamTo(consumerToList);
+				});
 
 		eventloop.run();
 		assertEquals(source, consumerToList.getList());
@@ -214,51 +200,41 @@ public class MessagingWithBinaryStreamingTest {
 		MessagingSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
-		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
-			MessagingWithBinaryStreaming<String, String> messaging =
-					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		SimpleServer server = SimpleServer.create(eventloop,
+				socket -> {
+					MessagingWithBinaryStreaming<String, String> messaging =
+							MessagingWithBinaryStreaming.create(socket, serializer);
 
-			messaging.receive()
-					.whenResult(msg -> {
-						if (msg != null) {
-							assertEquals("start", msg);
+					messaging.receive()
+							.whenResult(msg -> {
+								if (msg != null) {
+									assertEquals("start", msg);
 
-							messaging.receiveBinaryStream()
-									.apply(SerialBinaryDeserializer.create(LONG_SERIALIZER))
-									.streamTo(consumerToList);
+									messaging.receiveBinaryStream()
+											.apply(SerialBinaryDeserializer.create(LONG_SERIALIZER))
+											.streamTo(consumerToList);
 
-							messaging.sendEndOfStream();
-						}
-					});
-
-			return messaging;
-		};
-
-		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
+									messaging.sendEndOfStream();
+								}
+							});
+				})
 				.withListenAddress(address)
 				.withAcceptOnce();
 
 		server.listen();
 
 		eventloop.connect(address)
-				.whenComplete((socketChannel, throwable) -> {
-					if (throwable == null) {
-						AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-						MessagingWithBinaryStreaming<String, String> messaging =
-								MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+				.whenResult(socketChannel -> {
+					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					MessagingWithBinaryStreaming<String, String> messaging =
+							MessagingWithBinaryStreaming.create(socket, serializer);
 
-						messaging.send("start");
+					messaging.send("start");
 
-						StreamProducer.ofIterable(source)
-								.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
-										.withInitialBufferSize(MemSize.of(1)))
-								.streamTo(messaging.sendBinaryStream());
-
-						asyncTcpSocket.setEventHandler(messaging);
-						asyncTcpSocket.register();
-					} else {
-						fail("Test Exception: " + throwable);
-					}
+					StreamProducer.ofIterable(source)
+							.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
+									.withInitialBufferSize(MemSize.of(1)))
+							.streamTo(messaging.sendBinaryStream());
 				});
 
 		eventloop.run();
@@ -283,75 +259,56 @@ public class MessagingWithBinaryStreamingTest {
 		MessagingSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
-		SocketHandlerProvider socketHandlerProvider = (AsyncTcpSocket asyncTcpSocket) -> {
-			MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		SimpleServer server = SimpleServer.create(eventloop,
+				socket -> {
+					MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 
-			messaging.receive()
-					.whenResult(msg -> {
-						if (msg != null) {
-							assertEquals("start", msg);
+					messaging.receive()
+							.whenResult(msg -> {
+								if (msg != null) {
+									assertEquals("start", msg);
 
-							messaging.receiveBinaryStream()
-									.apply(SerialBinaryDeserializer.create(LONG_SERIALIZER))
-									.streamTo(consumerToList)
-									.thenRun(() -> {
-										messaging.send("ack");
-										messaging.sendEndOfStream();
-									});
-						}
-					});
-
-			return messaging;
-		};
-
-		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
+									messaging.receiveBinaryStream()
+											.apply(SerialBinaryDeserializer.create(LONG_SERIALIZER))
+											.streamTo(consumerToList)
+											.thenRun(() -> {
+												messaging.send("ack");
+												messaging.sendEndOfStream();
+											});
+								}
+							});
+				})
 				.withListenAddress(address)
 				.withAcceptOnce();
 
 		server.listen();
 
-		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
-			if (throwable == null) {
-				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				MessagingWithBinaryStreaming<String, String> messaging =
-						MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		CompletableFuture<String> future2 = eventloop.connect(address)
+				.thenCompose(socketChannel -> {
+					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					MessagingWithBinaryStreaming<String, String> messaging =
+							MessagingWithBinaryStreaming.create(socket, serializer);
 
-				messaging.send("start");
+					messaging.send("start");
 
-				StreamProducer.ofIterable(source)
-						.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
-								.withInitialBufferSize(MemSize.of(1)))
-						.streamTo(messaging.sendBinaryStream());
+					StreamProducer.ofIterable(source)
+							.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
+									.withInitialBufferSize(MemSize.of(1)))
+							.streamTo(messaging.sendBinaryStream());
 
-				messaging.receive()
-						.whenResult(msg -> {
-							if (msg != null) {
-								assertEquals("ack", msg);
-								messaging.close();
-								ack[0] = true;
-							}
-						});
-
-				asyncTcpSocket.setEventHandler(messaging);
-				asyncTcpSocket.register();
-			} else {
-				fail("Test Exception: " + throwable);
-			}
-		});
+					return messaging.receive()
+							.thenRun(messaging::close);
+				})
+				.toCompletableFuture();
 
 		eventloop.run();
 
 		assertEquals(source, future.get());
-		assertTrue(ack[0]);
+		assertEquals("ack", future2.get());
 	}
 
 	@Test
 	public void testGsonMessagingUpload() throws Exception {
-		List<Long> source = new ArrayList<>();
-		for (long i = 0; i < 100; i++) {
-			source.add(i);
-		}
-
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
@@ -360,55 +317,46 @@ public class MessagingWithBinaryStreamingTest {
 		MessagingSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
-		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
-			MessagingWithBinaryStreaming<String, String> messaging =
-					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		SimpleServer server = SimpleServer.create(eventloop,
+				socket -> {
+					MessagingWithBinaryStreaming<String, String> messaging =
+							MessagingWithBinaryStreaming.create(socket, serializer);
 
-			messaging.receive()
-					.whenResult(msg -> {
-						if (msg != null) {
-							assertEquals("start", msg);
+					messaging.receive()
+							.whenResult(msg -> {
+								if (msg != null) {
+									assertEquals("start", msg);
 
-							messaging.sendEndOfStream();
+									messaging.sendEndOfStream();
 
-							messaging.receiveBinaryStream()
-									.apply(SerialBinaryDeserializer.create(LONG_SERIALIZER))
-									.streamTo(consumerToList);
-						}
-					});
-
-			return messaging;
-		};
-
-		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
+									messaging.receiveBinaryStream()
+											.apply(SerialBinaryDeserializer.create(LONG_SERIALIZER))
+											.streamTo(consumerToList);
+								}
+							});
+				})
 				.withListenAddress(address)
 				.withAcceptOnce();
 
 		server.listen();
 
-		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
-			if (throwable == null) {
-				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				MessagingWithBinaryStreaming<String, String> messaging =
-						MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		eventloop.connect(address)
+				.whenResult(socketChannel -> {
+					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					MessagingWithBinaryStreaming<String, String> messaging =
+							MessagingWithBinaryStreaming.create(socket, serializer);
 
-				messaging.send("start");
+					messaging.send("start");
 
-				StreamProducer.ofIterable(source)
-						.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
-								.withInitialBufferSize(MemSize.of(1)))
-						.streamTo(messaging.sendBinaryStream());
-
-				asyncTcpSocket.setEventHandler(messaging);
-				asyncTcpSocket.register();
-			} else {
-				fail("Test Exception: " + throwable);
-			}
-		});
+					StreamProducer.ofIterator(LongStream.range(0, 100).boxed().iterator())
+							.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
+									.withInitialBufferSize(MemSize.of(1)))
+							.streamTo(messaging.sendBinaryStream());
+				});
 
 		eventloop.run();
 
-		assertEquals(source, future.get());
+		assertEquals(LongStream.range(0, 100).boxed().collect(toList()), future.get());
 	}
 
 }

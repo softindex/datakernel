@@ -17,48 +17,36 @@
 package io.datakernel.serial.net;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Cancellable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.*;
 import io.datakernel.util.Taggable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.eventloop.AsyncTcpSocket.CHANNEL_CLOSED;
 
 /**
  * Represent the TCP connection which  processes received items with {@link SerialSupplier} and {@link SerialConsumer},
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
-public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.EventHandler, Messaging<I, O>, Taggable {
+public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>, Cancellable, Taggable {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final AsyncTcpSocket socket;
 
-	@Nullable
 	private final MessagingSerializer<I, O> serializer;
+	private final ByteBufsParser<I> parser;
 
-	@Nullable
-	private ByteBuf readBuf;
-	private boolean readEndOfStream;
-
-	@Nullable
-	private SettableStage<I> receiveMessageCallback;
-
-	private List<SettableStage<Void>> writeCallbacks = new ArrayList<>();
-	private boolean writeEndOfStreamRequest;
-	private SocketSerialProducer socketReader;
-	private SocketSerialConsumer socketWriter;
+	private final ByteBufQueue bufs = new ByteBufQueue();
+	private final ByteBufsSupplier bufsSupplier;
+	private final SerialSupplier<ByteBuf> socketReader;
+	private final SerialConsumer<ByteBuf> socketWriter;
 
 	private Throwable closedException;
 
@@ -69,271 +57,79 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	private Object tag;
 
 	// region creators
-	private MessagingWithBinaryStreaming(AsyncTcpSocket socket, @Nullable MessagingSerializer<I, O> serializer) {
+	private MessagingWithBinaryStreaming(AsyncTcpSocket socket, MessagingSerializer<I, O> serializer) {
 		this.socket = socket;
 		this.serializer = serializer;
+		this.socketReader = socket.reader();
+		this.socketWriter = socket.writer();
+		this.bufsSupplier = ByteBufsSupplier.ofProvidedQueue(bufs,
+				() -> this.socket.read()
+						.whenResult(buf -> {
+							if (buf != null) {
+								bufs.add(buf);
+							} else {
+								int x = 0;
+							}
+						})
+						.toVoid(),
+				Stage::complete,
+				this);
+		this.parser = bufs -> {
+			ByteBuf buf = bufs.takeRemaining();
+			I maybeResult = this.serializer.tryDeserialize(buf);
+			if (maybeResult == null) {
+				bufs.add(buf);
+				return null;
+			}
+			return maybeResult;
+		};
 	}
 
-	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket asyncTcpSocket,
+	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket socket,
 			@Nullable MessagingSerializer<I, O> serializer) {
-		return new MessagingWithBinaryStreaming<>(asyncTcpSocket, serializer);
+		return new MessagingWithBinaryStreaming<>(socket, serializer);
 	}
 	// endregion
 
 	@Override
 	public Stage<I> receive() {
-		checkState(socketReader == null, "Cannot try to receive a message while receiving raw binary data");
-		checkState(receiveMessageCallback == null, "Cannot try to receive a message while already trying to receive a message");
-
-		if (closedException != null) {
-			return Stage.ofException(closedException);
-		}
-
-		SettableStage<I> result = new SettableStage<>();
-		this.receiveMessageCallback = result;
-		if (readBuf != null || readEndOfStream) {
-			eventloop.post(() -> {
-				if (socketReader == null && this.receiveMessageCallback != null) {
-					tryReadMessage();
-				}
-			});
-		} else {
-			socket.read();
-		}
-		return result;
-	}
-
-	private void tryReadMessage() {
-		if (readBuf != null && receiveMessageCallback != null) {
-			checkState(serializer != null, "Cannot send or receive messages without messaging serializer");
-			try {
-				I message = serializer.tryDeserialize(readBuf);
-				if (message == null) {
-					socket.read();
-				} else {
-					if (!readBuf.canRead()) {
-						readBuf.recycle();
-						readBuf = null;
-						if (!readEndOfStream) {
-							socket.read();
-						}
-					}
-					if (logger.isTraceEnabled()) {
-						logger.trace("received message {}: {}", message, this);
-					}
-					takeReadCallback().set(message);
-				}
-			} catch (ParseException e) {
-				logger.warn("error trying to deserialize a message: " + this, e);
-				takeReadCallback().setException(e);
-			}
-		}
-		if (readBuf == null && readEndOfStream) {
-			if (receiveMessageCallback != null) {
-				logger.warn("end of stream reached while trying to read a message: {}", this);
-				takeReadCallback().set(null);
-			}
-		}
-	}
-
-	private SettableStage<I> takeReadCallback() {
-		SettableStage<I> callback = this.receiveMessageCallback;
-		receiveMessageCallback = null;
-		assert callback != null;
-		return callback;
+		return bufsSupplier.parse(parser);
 	}
 
 	@Override
 	public Stage<Void> send(O msg) {
-		checkState(socketWriter == null, "Cannot send messages while sending raw binary data");
-		checkState(!writeEndOfStreamRequest, "Cannot send messages after end of stream was sent");
-		checkState(serializer != null, "Cannot send or receive messages without messaging serializer");
-
-		if (closedException != null) {
-			logger.warn("failed to send message " + msg + ": " + this, closedException);
-			return Stage.ofException(closedException);
-		}
-
-		if (logger.isTraceEnabled()) {
-			logger.trace("sending message {}: {}", msg, this);
-		}
-
-		SettableStage<Void> stage = new SettableStage<>();
-		writeCallbacks.add(stage);
-		ByteBuf buf = serializer.serialize(msg);
-		socket.write(buf);
-
-		return stage;
+		return socket.write(serializer.serialize(msg));
 	}
 
 	@Override
 	public Stage<Void> sendEndOfStream() {
-		checkState(socketWriter == null, "Cannot send end of stream while sending raw binary data");
-		checkState(!writeEndOfStreamRequest, "Cannot send end of stream after end of stream was already sent");
-
-		if (closedException != null) {
-			logger.warn("failed to send end of stream: " + this, closedException);
-			return Stage.ofException(closedException);
-		}
-
-		logger.trace("sending end of stream: {}", this);
-
-		SettableStage<Void> stage = new SettableStage<>();
-		writeEndOfStreamRequest = true;
-		socket.writeEndOfStream();
-
-		if (writeCallbacks.isEmpty()) { // all writes are already done
-			writeDone = true;
-			closeIfDone();
-			return Stage.complete();
-		}
-		writeCallbacks.add(stage);
-		return stage;
+		return socket.write(null);
 	}
 
 	@Override
 	public SerialConsumer<ByteBuf> sendBinaryStream() {
-		checkState(socketWriter == null, "Cannot send raw binary data while already sending raw binary data");
-		checkState(!writeEndOfStreamRequest, "Cannot send raw binary data after end of stream was sent");
-
-		writeCallbacks.clear();
-		if (closedException != null) {
-			logger.warn("failed to send binary data: " + this, closedException);
-			return SerialConsumer.ofException(closedException);
-		}
-
-		logger.trace("sending binary data: {}", this);
-
-		socketWriter = new SocketSerialConsumer(socket);
 		return socketWriter;
 	}
 
 	@Override
 	public SerialSupplier<ByteBuf> receiveBinaryStream() {
-		checkState(socketReader == null, "Cannot receive raw binary data while already receiving raw binary data");
-		checkState(receiveMessageCallback == null, "Cannot receive raw binary data while trying to receive a message");
-
-		if (closedException != null) {
-			logger.warn("failed to receive binary data: " + this, closedException);
-			return SerialSupplier.ofException(closedException);
-		}
-
-		logger.trace("receiving binary data: {}", this);
-
-		socketReader = new SocketSerialProducer(socket);
-		if (readBuf != null || readEndOfStream) {
-			eventloop.post(() -> {
-				if (readBuf != null) {
-					readUnconsumedBuf();
-				}
-				if (readEndOfStream) {
-					socketReader.onReadEndOfStream();
-				}
-			});
-		}
-		return socketReader;
+		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.asIterator()), socketReader);
 	}
 
 	@Override
 	public void close() {
-		logger.trace("closing: {}", this);
+		closeWithError(CHANNEL_CLOSED);
+	}
+
+	@Override
+	public void closeWithError(Throwable e) {
 		socket.close();
-		if (readBuf != null) {
-			readBuf.recycle();
-			readBuf = null;
-		}
-	}
-
-	@Override
-	public void onRegistered() {
-		socket.read();
-	}
-
-	private void readUnconsumedBuf() {
-		assert readBuf != null;
-		socketReader.onRead(readBuf);
-		readBuf = null;
-	}
-
-	@Override
-	public void onRead(ByteBuf buf) {
-		assert eventloop.inEventloopThread();
-		if (socketReader == null) {
-			if (readBuf == null) {
-				readBuf = ByteBufPool.allocate(Math.max(8192, buf.writeRemaining()));
-			}
-			readBuf = ByteBufPool.append(readBuf, buf);
-			tryReadMessage();
-		} else {
-			if (readBuf != null) {
-				readUnconsumedBuf();
-			}
-			socketReader.onRead(buf);
-		}
-	}
-
-	@Override
-	public void onReadEndOfStream() {
-		logger.trace("onReadEndOfStream {}", this);
-		readEndOfStream = true;
-		if (socketReader == null) {
-			tryReadMessage();
-		} else {
-			if (readBuf != null) {
-				readUnconsumedBuf();
-			}
-			socketReader.onReadEndOfStream();
-		}
-		readDone = true;
-		closeIfDone();
+		bufs.recycle();
 	}
 
 	private void closeIfDone() {
 		if (readDone && writeDone) {
 			socket.close();
-		}
-	}
-
-	@Override
-	public void onWrite() {
-		if (socketWriter == null) {
-			List<SettableStage<Void>> callbacks = this.writeCallbacks;
-			writeCallbacks = new ArrayList<>();
-			for (SettableStage<Void> callback : callbacks) {
-				callback.set(null);
-			}
-			if (writeEndOfStreamRequest)
-				writeDone = true;
-		} else {
-			socketWriter.onWrite();
-			if (socketWriter.isClosed())
-				writeDone = true;
-		}
-		closeIfDone();
-	}
-
-	@Override
-	public void onClosedWithError(Throwable e) {
-		logger.warn("closing with error: " + this, e);
-		if (socketReader != null) {
-			socketReader.closeWithError(e);
-		} else if (socketWriter != null) {
-			socketWriter.closeWithError(e);
-		} else {
-			closedException = e;
-		}
-
-		if (receiveMessageCallback != null) {
-			receiveMessageCallback.setException(e);
-		} else if (!writeCallbacks.isEmpty()) {
-			for (SettableStage writeCallback : writeCallbacks) {
-				writeCallback.setException(e);
-			}
-		}
-
-		if (readBuf != null) {
-			readBuf.recycle();
-			readBuf = null;
 		}
 	}
 

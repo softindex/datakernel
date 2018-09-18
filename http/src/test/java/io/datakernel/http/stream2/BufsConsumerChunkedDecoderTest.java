@@ -21,7 +21,7 @@ import java.util.Random;
 import static io.datakernel.http.TestUtils.AssertingConsumer;
 import static io.datakernel.http.stream2.BufsConsumerChunkedDecoder.MALFORMED_CHUNK;
 import static io.datakernel.http.stream2.BufsConsumerChunkedDecoder.MALFORMED_CHUNK_LENGTH;
-import static io.datakernel.serial.ByteBufsSupplier.ofSupplier;
+import static io.datakernel.serial.ByteBufsSupplier.of;
 import static io.datakernel.serial.SerialSupplier.ofIterable;
 import static java.lang.System.arraycopy;
 import static org.junit.Assert.assertEquals;
@@ -252,7 +252,7 @@ public class BufsConsumerChunkedDecoderTest {
 	}
 
 	private void doTest(Exception exception) {
-		chunkedDecoder.setInput(ofSupplier(ofIterable(list)));
+		chunkedDecoder.setInput(of(ofIterable(list)));
 		eventloop.post(() -> chunkedDecoder.start()
 				.whenComplete(($, e) -> {
 					if (exception == null) {

@@ -22,16 +22,16 @@ import java.util.function.*;
 public interface AsyncSupplier<T> {
 	Stage<T> get();
 
+	static <T> AsyncSupplier<T> of(Supplier<? extends Stage<T>> supplier) {
+		return supplier::get;
+	}
+
 	default AsyncSupplier<T> with(UnaryOperator<AsyncSupplier<T>> modifier) {
 		return modifier.apply(this);
 	}
 
 	default AsyncSupplier<T> async() {
 		return () -> get().async();
-	}
-
-	static <T> AsyncSupplier<T> of(Supplier<? extends Stage<T>> supplier) {
-		return supplier::get;
 	}
 
 	default AsyncSupplier<T> withExecutor(AsyncExecutor asyncExecutor) {

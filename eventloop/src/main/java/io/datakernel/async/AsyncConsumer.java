@@ -8,19 +8,19 @@ import java.util.function.UnaryOperator;
 public interface AsyncConsumer<T> {
 	Stage<Void> accept(T value);
 
+	static <T> AsyncConsumer<T> of(Consumer<? super T> consumer) {
+		return value -> {
+			consumer.accept(value);
+			return Stage.complete();
+		};
+	}
+
 	default AsyncConsumer<T> with(UnaryOperator<AsyncConsumer<T>> modifier) {
 		return modifier.apply(this);
 	}
 
 	default AsyncConsumer<T> async() {
 		return value -> accept(value).async();
-	}
-
-	static <T> AsyncConsumer<T> of(Consumer<? super T> consumer) {
-		return value -> {
-			consumer.accept(value);
-			return Stage.complete();
-		};
 	}
 
 	default AsyncConsumer<T> withExecutor(AsyncExecutor asyncExecutor) {

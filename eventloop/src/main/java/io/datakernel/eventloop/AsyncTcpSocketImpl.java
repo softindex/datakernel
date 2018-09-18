@@ -17,6 +17,8 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.AsyncTimeoutException;
@@ -27,7 +29,6 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -36,11 +37,11 @@ import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Recyclable.deepRecycle;
 
 @SuppressWarnings({"WeakerAccess", "AssertWithSideEffects"})
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
 	public static final MemSize DEFAULT_READ_BUF_SIZE = MemSize.kilobytes(16);
-	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
 
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException("timed out");
@@ -50,28 +51,33 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private static final AtomicInteger connectionCount = new AtomicInteger(0);
 
 	private final Eventloop eventloop;
-	private final SocketChannel channel;
+	private SocketChannel channel;
+	private final ArrayDeque<ByteBuf> readQueue = new ArrayDeque<>();
+	private boolean readEndOfStream;
 	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
 	private boolean writeEndOfStream;
-	private EventHandler socketEventHandler;
+
+	private SettableStage<Void> write;
+	private SettableStage<ByteBuf> read;
 
 	@Nullable
 	private SelectionKey key;
 
+	private boolean reentrantCall;
 	private int ops = 0;
-	private long readTimestamp = 0L;
-	private long writeTimestamp = 0L;
+//	private long readTimestamp = 0L;
+//	private long writeTimestamp = 0L;
 
 	private long readTimeout = NO_TIMEOUT;
 	private long writeTimeout = NO_TIMEOUT;
-	protected MemSize readMaxSize = DEFAULT_READ_BUF_SIZE;
-	protected MemSize writeMaxSize = MAX_MERGE_SIZE;
+	protected int readMaxSize = DEFAULT_READ_BUF_SIZE.toInt();
+	protected int writeMaxSize = MAX_MERGE_SIZE.toInt();
 
 	@Nullable
-	private ScheduledRunnable checkReadTimeout;
+	private ScheduledRunnable scheduledReadTimeout;
 
 	@Nullable
-	private ScheduledRunnable checkWriteTimeout;
+	private ScheduledRunnable scheduledWriteTimeout;
 
 	public interface Inspector {
 		void onReadTimeout();
@@ -196,9 +202,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (socketSettings.hasImplWriteTimeout())
 			asyncTcpSocket.writeTimeout = socketSettings.getImplWriteTimeout().toMillis();
 		if (socketSettings.hasImplReadSize())
-			asyncTcpSocket.readMaxSize = socketSettings.getImplReadSize();
+			asyncTcpSocket.readMaxSize = socketSettings.getImplReadSize().toInt();
 		if (socketSettings.hasImplWriteSize())
-			asyncTcpSocket.writeMaxSize = socketSettings.getImplWriteSize();
+			asyncTcpSocket.writeMaxSize = socketSettings.getImplWriteSize().toInt();
 		return asyncTcpSocket;
 	}
 
@@ -217,170 +223,173 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 	// endregion
 
-	@Override
-	public void setEventHandler(EventHandler eventHandler) {
-		this.socketEventHandler = eventHandler;
-	}
-
 	public static int getConnectionCount() {
 		return connectionCount.get();
 	}
 
-	public final void register() {
-		socketEventHandler.onRegistered();
-		try {
-			key = channel.register(eventloop.ensureSelector(), ops, this);
-			connectionCount.incrementAndGet();
-		} catch (IOException e) {
-			eventloop.post(() -> {
-				eventloop.closeChannel(channel);
-				socketEventHandler.onClosedWithError(e);
-			});
-		}
-		if ((this.ops & SelectionKey.OP_READ) != 0) {
-			onReadReady();
-		}
-	}
-
 	// timeouts management
-	void scheduleReadTimeOut() {
-		if (checkReadTimeout == null) {
-			checkReadTimeout = eventloop.delayBackground(readTimeout, () -> {
+	private void scheduleReadTimeout() {
+		if (scheduledReadTimeout == null) {
+			scheduledReadTimeout = eventloop.delayBackground(readTimeout, () -> {
 				if (inspector != null) inspector.onReadTimeout();
-				checkReadTimeout = null;
-				closeWithError(TIMEOUT_EXCEPTION, false);
+				scheduledReadTimeout = null;
+				closeWithError(TIMEOUT_EXCEPTION);
 			});
 		}
 	}
 
-	void scheduleWriteTimeOut() {
-		if (checkWriteTimeout == null) {
-			checkWriteTimeout = eventloop.delayBackground(writeTimeout, () -> {
+	private void scheduleWriteTimeout() {
+		if (scheduledWriteTimeout == null) {
+			scheduledWriteTimeout = eventloop.delayBackground(writeTimeout, () -> {
 				if (inspector != null) inspector.onWriteTimeout();
-				checkWriteTimeout = null;
-				closeWithError(TIMEOUT_EXCEPTION, false);
+				scheduledWriteTimeout = null;
+				closeWithError(TIMEOUT_EXCEPTION);
 			});
 		}
 	}
 
-	// interests management
-	@SuppressWarnings("MagicConstant")
-	private void interests(int newOps) {
-		if (ops != newOps) {
+	private void updateInterests() {
+		if (reentrantCall || !isOpen()) return;
+		int newOps = (read != null ? SelectionKey.OP_READ : 0) + (write != null ? SelectionKey.OP_WRITE : 0);
+		if (key == null) {
 			ops = newOps;
-			if ((ops & OP_POSTPONED) == 0 && key != null) {
+			doRegister();
+			if (read != null) {
+				doRead();
+			}
+		} else {
+			if (ops != newOps) {
+				ops = newOps;
 				key.interestOps(ops);
 			}
 		}
 	}
 
-	private void readInterest(boolean readInterest) {
-		interests(readInterest ? (ops | SelectionKey.OP_READ) : (ops & ~SelectionKey.OP_READ));
-	}
-
-	private void writeInterest(boolean writeInterest) {
-		interests(writeInterest ? (ops | SelectionKey.OP_WRITE) : (ops & ~SelectionKey.OP_WRITE));
+	private void doRegister() {
+		try {
+			key = channel.register(eventloop.ensureSelector(), ops, this);
+			connectionCount.incrementAndGet();
+		} catch (IOException e) {
+			closeWithError(e);
+		}
 	}
 
 	@Override
-	public void read() {
+	public Stage<ByteBuf> read() {
+		if (read != null) return read;
+		if (!readQueue.isEmpty() || readEndOfStream) return Stage.of(readQueue.poll());
+		read = new SettableStage<>();
 		if (readTimeout != NO_TIMEOUT) {
-			scheduleReadTimeOut();
+			scheduleReadTimeout();
 		}
-		readInterest(true);
-		if (readTimestamp == 0L) {
-			readTimestamp = eventloop.currentTimeMillis();
-			assert readTimestamp != 0L;
-		}
+		updateInterests();
+		return read;
 	}
 
 	@Override
 	public void onReadReady() {
-		readTimestamp = 0L;
-		int oldOps = ops;
-		ops = ops | OP_POSTPONED;
-		readInterest(false);
-
-		int bytesRead = doRead();
-		if (bytesRead != 0) {
-			int newOps = ops & ~OP_POSTPONED;
-			ops = oldOps;
-			interests(newOps);
-		} else {
-			ops = oldOps;
+		reentrantCall = true;
+		doRead();
+		if (!readQueue.isEmpty() || readEndOfStream) {
+			SettableStage<ByteBuf> read = this.read;
+			this.read = null;
+			read.set(readQueue.poll());
+			closeIfDone();
 		}
+		reentrantCall = false;
+		updateInterests();
 	}
 
-	private int doRead() {
-		ByteBuf buf = ByteBufPool.allocate(readMaxSize);
-		ByteBuffer buffer = buf.toWriteByteBuffer();
+	private void doRead() {
+		while (true) {
+			ByteBuf buf = ByteBufPool.allocate(readMaxSize);
+			ByteBuffer buffer = buf.toWriteByteBuffer();
 
-		int numRead;
-		try {
-			numRead = channel.read(buffer);
-			buf.ofWriteByteBuffer(buffer);
-		} catch (IOException e) {
-			buf.recycle();
-			if (inspector != null) inspector.onReadError(e);
-			closeWithError(e, false);
-			return -1;
-		}
+			int numRead;
+			try {
+				numRead = channel.read(buffer);
+				buf.ofWriteByteBuffer(buffer);
+			} catch (IOException e) {
+				buf.recycle();
+				if (inspector != null) inspector.onReadError(e);
+				closeWithError(e);
+				return;
+			}
 
-		if (numRead == 0) {
+			if (numRead == 0) {
+				if (inspector != null) inspector.onRead(buf);
+				buf.recycle();
+				return;
+			}
+
+			if (scheduledReadTimeout != null) {
+				scheduledReadTimeout.cancel();
+				scheduledReadTimeout = null;
+			}
+
+			if (numRead == -1) {
+				buf.recycle();
+				if (inspector != null) inspector.onReadEndOfStream();
+				readEndOfStream = true;
+				return;
+			}
+
 			if (inspector != null) inspector.onRead(buf);
-			buf.recycle();
-			return numRead;
-		}
+			readQueue.add(buf);
 
-		if (checkReadTimeout != null) {
-			checkReadTimeout.cancel();
-			checkReadTimeout = null;
+			if (buf.writeRemaining() != 0) {
+				return;
+			}
 		}
-
-		if (numRead == -1) {
-			buf.recycle();
-			if (inspector != null) inspector.onReadEndOfStream();
-			socketEventHandler.onReadEndOfStream();
-			return numRead;
-		}
-
-		if (inspector != null) inspector.onRead(buf);
-		socketEventHandler.onRead(buf);
-		return numRead;
 	}
 
 	// write cycle
 	@Override
-	public void write(ByteBuf buf) {
+	public Stage<Void> write(@Nullable ByteBuf buf) {
 		assert eventloop.inEventloopThread();
-		if (writeTimeout != NO_TIMEOUT) {
-			scheduleWriteTimeOut();
+		assert !writeEndOfStream;
+		if (buf != null) {
+			writeQueue.add(buf);
+		} else {
+			writeEndOfStream = true;
 		}
-		writeQueue.add(buf);
-		postWriteRunnable();
-	}
-
-	@Override
-	public void writeEndOfStream() {
-		assert eventloop.inEventloopThread();
-		if (writeEndOfStream) return;
-		writeEndOfStream = true;
-		postWriteRunnable();
+		if (write != null) return write;
+		try {
+			if (doWrite()) {
+				closeIfDone();
+				return Stage.complete();
+			}
+		} catch (IOException e) {
+			closeWithError(e);
+			return Stage.ofException(e);
+		}
+		write = new SettableStage<>();
+		if (writeTimeout != NO_TIMEOUT) {
+			scheduleWriteTimeout();
+		}
+		updateInterests();
+		return write;
 	}
 
 	@Override
 	public void onWriteReady() {
-		writeTimestamp = 0L;
+		assert write != null;
+		reentrantCall = true;
 		try {
-			doWrite();
+			if (doWrite()) {
+				SettableStage<Void> write = this.write;
+				this.write = null;
+				write.set(null);
+				closeIfDone();
+			}
 		} catch (IOException e) {
-			closeWithError(e, false);
+			closeWithError(e);
 		}
+		reentrantCall = false;
+		updateInterests();
 	}
 
-	private void doWrite() throws IOException {
-		int writeMaxSize = this.writeMaxSize.toInt();
-
+	private boolean doWrite() throws IOException {
 		while (true) {
 			ByteBuf bufToSend = writeQueue.poll();
 			if (bufToSend == null)
@@ -426,82 +435,60 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		if (writeQueue.isEmpty()) {
-			if (checkWriteTimeout != null) {
-				checkWriteTimeout.cancel();
-				checkWriteTimeout = null;
+			if (scheduledWriteTimeout != null) {
+				scheduledWriteTimeout.cancel();
+				scheduledWriteTimeout = null;
 			}
 			if (writeEndOfStream) {
 				channel.shutdownOutput();
 			}
-			writeInterest(false);
-			socketEventHandler.onWrite();
+			return true;
 		} else {
-			writeInterest(true);
+			return false;
 		}
 	}
 
-	// close methods
 	@Override
 	public void close() {
+		closeWithError(CHANNEL_CLOSED);
+	}
+
+	@Override
+	public void closeWithError(@Nullable Throwable e) {
 		assert eventloop.inEventloopThread();
-		if (key == null) return;
-		eventloop.closeChannel(key);
+		if (channel == null) return;
+		eventloop.closeChannel(channel);
+		channel = null;
 		key = null;
 		connectionCount.decrementAndGet();
-		for (ByteBuf buf : writeQueue) {
-			buf.recycle();
+		deepRecycle(readQueue);
+		deepRecycle(writeQueue);
+		if (scheduledWriteTimeout != null) {
+			scheduledWriteTimeout.cancel();
+			scheduledWriteTimeout = null;
 		}
-		writeQueue.clear();
-		if (checkWriteTimeout != null) {
-			checkWriteTimeout.cancel();
-			checkWriteTimeout = null;
+		if (scheduledReadTimeout != null) {
+			scheduledReadTimeout.cancel();
+			scheduledReadTimeout = null;
 		}
-		if (checkReadTimeout != null) {
-			checkReadTimeout.cancel();
-			checkReadTimeout = null;
+		if (write != null) {
+			write.setException(e);
+			write = null;
+		}
+		if (read != null) {
+			read.setException(e);
+			read = null;
 		}
 	}
 
-	private void closeWithError(Exception e, boolean fireAsync) {
-		if (isOpen()) {
+	private void closeIfDone() {
+		if (readEndOfStream && writeEndOfStream && read == null && write == null) {
 			close();
-			if (fireAsync)
-				eventloop.post(() -> socketEventHandler.onClosedWithError(e));
-			else {
-				socketEventHandler.onClosedWithError(e);
-			}
-		}
-	}
-
-	// miscellaneous
-	private void postWriteRunnable() {
-		if (writeTimestamp == 0L) {
-			writeTimestamp = eventloop.currentTimeMillis();
-			assert writeTimestamp != 0L;
-			eventloop.post(() -> {
-				if (writeTimestamp == 0L || !isOpen())
-					return;
-				writeTimestamp = 0L;
-				try {
-					doWrite();
-				} catch (IOException e) {
-					closeWithError(e, true);
-				}
-			});
 		}
 	}
 
 	public boolean isOpen() {
-		return key != null;
-	}
-
-	@Override
-	public InetSocketAddress getRemoteSocketAddress() {
-		try {
-			return (InetSocketAddress) channel.getRemoteAddress();
-		} catch (IOException ignored) {
-			throw new AssertionError("I/O error occurs or channel closed");
-		}
+		return channel != null;
 	}
 
 	public SocketChannel getSocketChannel() {
@@ -510,30 +497,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public String toString() {
-		String keyOps;
-		try {
-			keyOps = (key == null ? "" : opsToString(key.interestOps()));
-		} catch (Exception e) {
-			keyOps = "Key throwed exception: " + e.toString();
-		}
 		return "AsyncTcpSocketImpl{" +
-				"channel=" + (channel == null ? "" : channel.toString()) +
+				"channel=" + (channel != null ? channel : "") +
 				", writeQueueSize=" + writeQueue.size() +
 				", writeEndOfStream=" + writeEndOfStream +
-				", key.ops=" + keyOps +
-				", ops=" + opsToString(ops) +
-				", writing=" + (writeTimestamp != 0L) +
-				'}';
-	}
-
-	private String opsToString(int ops) {
-		StringBuilder sb = new StringBuilder();
-		if ((ops & OP_POSTPONED) != 0)
-			sb.append("OP_POSTPONED ");
-		if ((ops & SelectionKey.OP_WRITE) != 0)
-			sb.append("OP_WRITE ");
-		if ((ops & SelectionKey.OP_READ) != 0)
-			sb.append("OP_READ ");
-		return sb.toString();
+				", read=" + read +
+				", write=" + write +
+				", processing=" + reentrantCall +
+				"}";
 	}
 }
