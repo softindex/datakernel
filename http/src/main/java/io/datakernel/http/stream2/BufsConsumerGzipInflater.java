@@ -4,6 +4,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.processor.AbstractIOAsyncProcess;
@@ -15,10 +16,12 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
+import static io.datakernel.serial.ByteBufsParser.ofFixedSize;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.lang.Integer.reverseBytes;
 import static java.lang.Math.max;
-import static java.lang.Math.min;
+import static java.lang.Short.reverseBytes;
 
 public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 		implements WithSerialToSerial<BufsConsumerGzipInflater, ByteBuf, ByteBuf>, WithByteBufsInput<BufsConsumerGzipInflater> {
@@ -56,7 +59,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 		return new BufsConsumerGzipInflater();
 	}
 
-	public BufsConsumerGzipInflater withInflater(Inflater inflater){
+	public BufsConsumerGzipInflater withInflater(Inflater inflater) {
 		checkArgument(inflater != null, "Cannot use null Inflater");
 		this.inflater = inflater;
 		return this;
@@ -85,53 +88,37 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 
 	@Override
 	protected void doProcess() {
-		processHeader(new byte[]{0});
+		processHeader();
 	}
 
-	private void processHeader(byte[] flag) {
-		if (flag[0] == 0) {
-			if (!bufs.hasRemainingBytes(10)) {
-				input.needMoreData()
-						.thenRun(() -> processHeader(flag));
-				return;
-			}
+	private void processHeader() {
+			input.parse(ofFixedSize(10))
+					.whenResult(buf -> {
+								//header validation
+								if (buf.get() != GZIP_HEADER[0] || buf.get() != GZIP_HEADER[1]) {
+									buf.recycle();
+									closeWithError(INCORRECT_ID_HEADER_BYTES);
+									return;
+								}
+								if (buf.get() != GZIP_HEADER[2]) {
+									buf.recycle();
+									closeWithError(UNSUPPORTED_COMPRESSION_METHOD);
+									return;
+								}
 
-			byte id1 = bufs.getByte();
-			byte id2 = bufs.getByte();
-			byte cm = bufs.getByte();
-
-			if (id1 != GZIP_HEADER[0] || id2 != GZIP_HEADER[1]) {
-				closeWithError(INCORRECT_ID_HEADER_BYTES);
-				return;
-			}
-			if (cm != GZIP_HEADER[2]) {
-				closeWithError(UNSUPPORTED_COMPRESSION_METHOD);
-				return;
-			}
-
-			flag[0] = bufs.getByte();
-			if ((flag[0] & 0b11100000) > 0) {
-				closeWithError(MALFORMED_FLAG);
-				return;
-			}
-			bufs.skip(6);
-			// unsetting FTEXT bit
-			flag[0] &= ~1;
+								byte flag = buf.get();
+								if ((flag & 0b11100000) > 0) {
+									buf.recycle();
+									closeWithError(MALFORMED_FLAG);
+									return;
+								}
+								// unsetting FTEXT bit
+								flag &= ~1;
+								buf.recycle();
+								runNext(flag).run();
+							}
+					);
 		}
-
-		// trying to skip optional gzip file members if any is present
-		try {
-			if ((flag[0] & FEXTRA)   != 0 && !skipExtra(flag)) return;
-			if ((flag[0] & FNAME)    != 0 && !skipTerminatorByte(flag, FNAME)) return;
-			if ((flag[0] & FCOMMENT) != 0 && !skipTerminatorByte(flag, FCOMMENT)) return;
-			if ((flag[0] & FHCRC)    != 0 && !skipCRC16(flag)) return;
-
-			processBody();
-
-		} catch (ParseException e) {
-			closeWithError(e);
-		}
-	}
 
 	private void processBody() {
 		ByteBufQueue queue = new ByteBufQueue();
@@ -148,33 +135,36 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 				return;
 			}
 			if (inflater.finished()) {
-				output.acceptAll(queue.asIterator())
+				output.acceptAll(queue.toIterator())
 						.thenRun(this::processFooter);
 				return;
 			}
 		}
 
-		output.acceptAll(queue.asIterator())
+		output.acceptAll(queue.toIterator())
 				.thenCompose($ -> input.needMoreData())
 				.thenRun(this::processBody);
 	}
 
 	private void processFooter() {
-		if (!bufs.hasRemainingBytes(GZIP_FOOTER_SIZE)) {
-			input.needMoreData()
-					.thenRun(this::processFooter);
-			return;
-		}
-		try {
-			validateFooter();
-		} catch (ParseException e) {
-			closeWithError(e);
-			return;
-		}
+		input.parse(ofFixedSize(GZIP_FOOTER_SIZE))
+				.whenResult(buf -> {
+					if ((int) crc32.getValue() != reverseBytes(buf.readInt())) {
+						closeWithError(CRC32_VALUE_DIFFERS);
+						buf.recycle();
+						return;
+					}
 
-		input.endOfStream()
-				.thenCompose($ -> output.accept(null))
-				.thenRun(this::completeProcess);
+					if (inflater.getTotalOut() != reverseBytes(buf.readInt())) {
+						closeWithError(ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED);
+						buf.recycle();
+						return;
+					}
+					buf.recycle();
+					input.endOfStream()
+							.thenCompose($ -> output.accept(null))
+							.thenRun(this::completeProcess);
+				});
 	}
 
 	private void inflate(ByteBufQueue queue) throws DataFormatException {
@@ -198,80 +188,60 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 		}
 	}
 
-	private void getMoreHeaderData(byte[] flag) {
-		input.needMoreData()
-				.thenRun(() -> processHeader(flag));
-	}
-
 	// region skip header fields
-	private boolean skipTerminatorByte(byte[] flag, int part) throws ParseException {
-		int remainingBytes = bufs.remainingBytes();
-		for (int i = 0; i < min(remainingBytes, MAX_HEADER_FIELD_LENGTH); i++) {
-			if (bufs.peekByte(i) == 0) {
-				bufs.skip(i + 1);
-				flag[0] -= part;
-				return true;
-			}
+	private void skipHeaders(int flag) {
+		// trying to skip optional gzip file members if any is present
+		if ((flag & FEXTRA) != 0) {
+			skipExtra(flag);
 		}
-		if (remainingBytes > MAX_HEADER_FIELD_LENGTH) {
-			throw FNAME_FCOMMENT_TOO_LARGE;
+		else if ((flag & FNAME) != 0) {
+			skipTerminatorByte(flag, FNAME);
 		}
-
-		getMoreHeaderData(flag);
-		return false;
+		else if ((flag & FCOMMENT) != 0) {
+			skipTerminatorByte(flag, FCOMMENT);
+		}
+		else if ((flag & FHCRC) != 0) {
+			skipCRC16(flag);
+		}
 	}
 
-	private boolean skipExtra(byte[] flag) throws ParseException {
-		if (!bufs.hasRemainingBytes(2)) {
-			getMoreHeaderData(flag);
-			return false;
-		}
-
-		// peek short from inputBufs
-		short subFieldDataSize = (short) (((bufs.getByte() & 0xFF) << 8)
-				| ((bufs.getByte() & 0xFF)));
-
-		short reversedSubFieldDataSize = Short.reverseBytes(subFieldDataSize);
-		if (reversedSubFieldDataSize > MAX_HEADER_FIELD_LENGTH) {
-			throw FEXTRA_TOO_LARGE;
-		}
-
-		if (!bufs.hasRemainingBytes(reversedSubFieldDataSize)) {
-			getMoreHeaderData(flag);
-			return false;
-		}
-		bufs.skip(reversedSubFieldDataSize);
-		flag[0] -= FEXTRA;
-		return true;
+	private void skipTerminatorByte(int flag, int part) {
+		input.parse(ByteBufsParser.ofNullTerminatedBytes(MAX_HEADER_FIELD_LENGTH))
+				.whenException(e -> closeWithError(FNAME_FCOMMENT_TOO_LARGE))
+				.whenResult(ByteBuf::recycle)
+				.thenRun(runNext(flag - part));
 	}
 
-	private boolean skipCRC16(byte[] flag) {
-		if (!bufs.hasRemainingBytes(2)) {
-			getMoreHeaderData(flag);
-			return false;
+	private void skipExtra(int flag) {
+		input.parse(ofFixedSize(2))
+				.thenApply(shortBuf -> {
+					short toSkip = reverseBytes(shortBuf.readShort());
+					shortBuf.recycle();
+					return toSkip;
+				})
+				.thenCompose(toSkip -> {
+					if (toSkip > MAX_HEADER_FIELD_LENGTH) {
+						closeWithError(FEXTRA_TOO_LARGE);
+					}
+					return input.parse(ofFixedSize(toSkip));
+				})
+				.whenResult(ByteBuf::recycle)
+				.thenRun(runNext(flag - FEXTRA));
+	}
+
+	private void skipCRC16(int flag) {
+		input.parse(ofFixedSize(2))
+				.whenResult(ByteBuf::recycle)
+				.thenRun(runNext(flag - FHCRC));
+	}
+
+	private Runnable runNext(int flag) {
+		if (flag != 0) {
+			return () -> skipHeaders(flag);
 		}
-		bufs.skip(2);
-		flag[0] -= FHCRC;
-		return true;
+		return this::processBody;
 	}
 	// endregion
-
-	private void validateFooter() throws ParseException {
-		if ((int) crc32.getValue() != readNextInt()) {
-			throw CRC32_VALUE_DIFFERS;
-		}
-		if (inflater.getTotalOut() != readNextInt()) {
-			throw ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED;
-		}
-	}
-
-	private int readNextInt() {
-		int bigEndianPosition = ((bufs.getByte() & 0xFF) << 24)
-				| ((bufs.getByte() & 0xFF) << 16)
-				| ((bufs.getByte() & 0xFF) << 8)
-				| (bufs.getByte() & 0xFF);
-		return Integer.reverseBytes(bigEndianPosition);
-	}
 
 	@Override
 	protected void doCloseWithError(Throwable e) {

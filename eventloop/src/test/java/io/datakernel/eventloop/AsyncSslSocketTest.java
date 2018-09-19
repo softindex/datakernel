@@ -49,19 +49,11 @@ public class AsyncSslSocketTest {
 	private SimpleServer server;
 	private SSLContext sslContext;
 	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(TEST_STRING.length())
-			.andThen(buf -> {
-				byte[] bytes = buf.asArray();
-				buf.recycle();
-				return bytes;
-			})
+			.andThen(ByteBuf::toArray)
 			.andThen(ByteBufStrings::decodeAscii);
 
 	private static final ByteBufsParser<String> PARSER_LARGE = ByteBufsParser.ofFixedSize(100_000 + 25_000 * TEST_STRING.length())
-			.andThen(buf -> {
-				byte[] bytes = buf.asArray();
-				buf.recycle();
-				return bytes;
-			})
+			.andThen(ByteBuf::toArray)
 			.andThen(ByteBufStrings::decodeAscii);
 	private StringBuilder sentData;
 

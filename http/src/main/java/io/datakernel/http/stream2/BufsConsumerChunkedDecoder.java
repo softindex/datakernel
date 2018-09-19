@@ -11,6 +11,8 @@ import io.datakernel.serial.processor.WithSerialToSerial;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
+import static io.datakernel.serial.ByteBufsParser.assertBytes;
+import static io.datakernel.serial.ByteBufsParser.ofCrlfTerminatedBytes;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.Math.min;
 
@@ -19,6 +21,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 	public static final int DEFAULT_MAX_EXT_LENGTH = 1024; //1 Kb
 	public static final int DEFAULT_MAX_CHUNK_LENGTH = 1024; //1 Kb
 	public static final int MAX_CHUNK_LENGTH_DIGITS = 8;
+	public static final byte[] CRLF = {13, 10};
 	// region exceptions
 	public static final ParseException MALFORMED_CHUNK = new ParseException("Malformed chunk");
 	public static final ParseException MALFORMED_CHUNK_LENGTH = new ParseException("Malformed chunk length");
@@ -36,16 +39,16 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 	// region creators
 	private BufsConsumerChunkedDecoder() {}
 
-	public static BufsConsumerChunkedDecoder create(){
+	public static BufsConsumerChunkedDecoder create() {
 		return new BufsConsumerChunkedDecoder();
 	}
 
-	public BufsConsumerChunkedDecoder withMaxChunkLength(int maxChunkLength){
+	public BufsConsumerChunkedDecoder withMaxChunkLength(int maxChunkLength) {
 		this.maxChunkLength = maxChunkLength;
 		return this;
 	}
 
-	public BufsConsumerChunkedDecoder withMaxExtLength(int maxExtLength){
+	public BufsConsumerChunkedDecoder withMaxExtLength(int maxExtLength) {
 		this.maxExtLength = maxExtLength;
 		return this;
 	}
@@ -76,43 +79,42 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 	}
 
 	private void processLength() {
-		int remainingBytes = bufs.remainingBytes();
-		int chunkLength = 0;
-		for (int i = 0; i < min(remainingBytes, MAX_CHUNK_LENGTH_DIGITS); i++) {
-			byte c = bufs.peekByte(i);
-			if (c >= '0' && c <= '9') {
-				chunkLength = (chunkLength << 4) + (c - '0');
-			} else if (c >= 'a' && c <= 'f') {
-				chunkLength = (chunkLength << 4) + (c - 'a' + 10);
-			} else if (c >= 'A' && c <= 'F') {
-				chunkLength = (chunkLength << 4) + (c - 'A' + 10);
-			} else if (c == ';' || c == CR) {
-				// Success
-				if (i == 0 || chunkLength > maxChunkLength || chunkLength < 0) {
-					closeWithError(MALFORMED_CHUNK_LENGTH);
-					return;
-				}
-				bufs.skip(i);
-				if (chunkLength != 0) {
-					consumeCRLF(chunkLength);
+		input.parse(queue -> {
+			int remainingBytes = queue.remainingBytes();
+			int chunkLength = 0;
+			for (int i = 0; i < min(remainingBytes, MAX_CHUNK_LENGTH_DIGITS); i++) {
+				byte c = queue.peekByte(i);
+				if (c >= '0' && c <= '9') {
+					chunkLength = (chunkLength << 4) + (c - '0');
+				} else if (c >= 'a' && c <= 'f') {
+					chunkLength = (chunkLength << 4) + (c - 'a' + 10);
+				} else if (c >= 'A' && c <= 'F') {
+					chunkLength = (chunkLength << 4) + (c - 'A' + 10);
+				} else if (c == ';' || c == CR) {
+					// Success
+					if (i == 0 || chunkLength > maxChunkLength || chunkLength < 0) {
+						throw MALFORMED_CHUNK_LENGTH;
+					}
+					queue.skip(i);
+					return chunkLength;
 				} else {
-					validateLastChunk();
+					throw MALFORMED_CHUNK_LENGTH;
 				}
-				return;
-			} else {
-				closeWithError(MALFORMED_CHUNK_LENGTH);
-				return;
 			}
-		}
 
-		if (remainingBytes > MAX_CHUNK_LENGTH_DIGITS) {
-			closeWithError(MALFORMED_CHUNK);
-			return;
-		}
+			if (remainingBytes > MAX_CHUNK_LENGTH_DIGITS) {
+				throw MALFORMED_CHUNK;
+			}
 
-		input.needMoreData()
-				.thenRun(this::processLength);
-
+			return null;
+		})
+		.whenResult(chunkLength -> {
+					if (chunkLength != 0) {
+						consumeCRLF(chunkLength);
+					} else {
+						validateLastChunk();
+					}
+				});
 	}
 
 	private void processData(int chunkLength, ByteBufQueue queue) {
@@ -123,42 +125,20 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 					.thenRun(() -> processData(newChunkLength, queue));
 			return;
 		}
-		flushQueue(queue);
+		input.parse(assertBytes(CRLF))
+				.whenException(e -> {
+					queue.recycle();
+					closeWithError(MALFORMED_CHUNK);
+				})
+				.thenCompose($ -> output.acceptAll(queue.toIterator()))
+				.thenRun(this::processLength);
 	}
 
 	private void consumeCRLF(int chunkLength) {
-		int remainingBytes = bufs.remainingBytes();
-		for (int i = 0; i < min(maxExtLength, remainingBytes - 1); i++) {
-			if (bufs.peekByte(i) == CR && bufs.peekByte(i + 1) == LF) {
-				bufs.skip(i + 2);
-				processData(chunkLength, new ByteBufQueue());
-				return;
-			}
-		}
-		if (remainingBytes > maxExtLength) {
-			closeWithError(EXT_TOO_LARGE);
-			return;
-		}
-
-		input.needMoreData()
-				.thenRun(() -> consumeCRLF(chunkLength));
-	}
-
-	private void flushQueue(ByteBufQueue queue) {
-		if (!bufs.hasRemainingBytes(2)) {
-			input.needMoreData()
-					.thenRun(() -> flushQueue(queue));
-			return;
-		}
-
-		if (bufs.getByte() != CR || bufs.getByte() != LF) {
-			queue.recycle();
-			closeWithError(MALFORMED_CHUNK);
-			return;
-		}
-
-		output.acceptAll(queue.asIterator())
-				.thenRun(this::processLength);
+		input.parse(ofCrlfTerminatedBytes(maxExtLength))
+				.whenResult(ByteBuf::recycle)
+				.whenException(e -> closeWithError(EXT_TOO_LARGE))
+				.thenRun(() -> processData(chunkLength, new ByteBufQueue()));
 	}
 
 	private void validateLastChunk() {

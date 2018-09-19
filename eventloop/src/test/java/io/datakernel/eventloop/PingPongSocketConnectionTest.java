@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
@@ -42,11 +43,7 @@ public class PingPongSocketConnectionTest {
 	private static final String RESPONSE_MSG = "PONG";
 
 	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
-			.andThen(buf -> {
-				byte[] bytes = buf.asArray();
-				buf.recycle();
-				return bytes;
-			})
+			.andThen(ByteBuf::toArray)
 			.andThen(ByteBufStrings::decodeAscii);
 
 	@Rule

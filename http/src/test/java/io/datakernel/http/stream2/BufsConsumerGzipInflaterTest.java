@@ -12,7 +12,6 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.zip.Deflater;
@@ -21,7 +20,6 @@ import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_DATA_EXCEPTION;
-import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 import static java.lang.Math.min;
 import static java.util.Arrays.copyOfRange;
 import static org.junit.Assert.assertEquals;
@@ -108,19 +106,16 @@ public class BufsConsumerGzipInflaterTest {
 				// FHCRC PART
 				123, 123
 		};
-		int part = header.length / 2;
-		byte[] headerPart1 = Arrays.copyOfRange(header, 0, part);
-		byte[] headerPart2 = Arrays.copyOfRange(header, part, header.length);
-		ByteBuf buf1 = ByteBufPool.allocate(headerPart1.length);
-		ByteBuf buf2 = ByteBufPool.allocate(headerPart2.length);
-		buf1.put(headerPart1);
-		buf2.put(headerPart2);
-		list.add(buf1);
-		list.add(buf2);
-		list.add(null);
-		consumer.setExpectedException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
+		byte[] bytes = {1, 2, 3};
+		ByteBuf gzipped = toGzip(wrapForReading(bytes));
+		ByteBuf buf = ByteBufPool.allocate(gzipped.readRemaining() + header.length);
+		buf.put(header);
+		buf.put(gzipped.array(), 10, gzipped.readRemaining()-10);
+		gzipped.recycle();
+		list.add(buf);
+		consumer.setExpectedByteArray(bytes);
 
-		doTest(UNEXPECTED_END_OF_STREAM_EXCEPTION);
+		doTest(null);
 	}
 
 	@Test
@@ -181,10 +176,7 @@ public class BufsConsumerGzipInflaterTest {
 	}
 
 	public byte[] deflate(byte[] array) {
-		ByteBuf buf = toGzip(wrapForReading(array));
-		byte[] deflated = buf.asArray();
-		buf.recycle();
-		return deflated;
+		return toGzip(wrapForReading(array)).toArray();
 	}
 
 	// Test with GzipProcessorUtils Compatibility

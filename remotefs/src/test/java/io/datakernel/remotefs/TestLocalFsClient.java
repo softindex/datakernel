@@ -35,7 +35,6 @@ import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -225,7 +224,7 @@ public class TestLocalFsClient {
 				.thenCompose($ ->
 						client.downloadSerial("concurrent.txt")
 								.streamTo(SerialConsumer.of(AsyncConsumer.of(buf -> {
-									String actual = new String(buf.asArray(), StandardCharsets.UTF_8);
+									String actual = buf.toString(UTF_8);
 									String expected = "Concurrent data - 1\n" +
 											"Concurrent data - 2\n" +
 											"Concurrent data - 3\n" +
@@ -241,8 +240,6 @@ public class TestLocalFsClient {
 											"Concurrent data #2\n" +
 											"Concurrent data + new line\n";
 									assertEquals(expected, actual);
-
-									buf.recycle();
 								}))))
 				.thenRunEx(() -> System.out.println("finished"))
 				.whenComplete(assertComplete());

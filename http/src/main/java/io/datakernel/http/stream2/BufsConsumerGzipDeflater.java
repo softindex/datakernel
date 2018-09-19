@@ -85,7 +85,7 @@ public final class BufsConsumerGzipDeflater extends AbstractIOAsyncProcess
 								deflater.setInput(buf.array(), buf.readPosition(), buf.readRemaining());
 								buf.recycle();
 								ByteBufQueue queue = deflate();
-								output.acceptAll(queue.asIterator())
+								output.acceptAll(queue.toIterator())
 										.thenRun(this::writeBody);
 							} else {
 								buf.recycle();
@@ -103,7 +103,7 @@ public final class BufsConsumerGzipDeflater extends AbstractIOAsyncProcess
 		footer.writeInt(Integer.reverseBytes((int) crc32.getValue()));
 		footer.writeInt(Integer.reverseBytes(deflater.getTotalIn()));
 		queue.add(footer);
-		output.acceptAll(queue.asIterator())
+		output.acceptAll(queue.toIterator())
 				.thenCompose($ -> output.accept(null))
 				.thenRun(this::completeProcess);
 	}

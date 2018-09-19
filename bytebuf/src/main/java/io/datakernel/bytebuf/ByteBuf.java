@@ -331,14 +331,24 @@ public class ByteBuf implements Recyclable, AutoCloseable {
 	public byte[] asArray() {
 		byte[] bytes = new byte[readRemaining()];
 		System.arraycopy(array, readPosition, bytes, 0, bytes.length);
-//		recycle();
+		return bytes;
+	}
+
+	public byte[] toArray(){
+		byte[] bytes = asArray();
+		recycle();
 		return bytes;
 	}
 
 	public String asString(Charset charset) {
-		String str = new String(array, readPosition, readRemaining(), charset);
-//		recycle();
-		return str;
+		return new String(array, readPosition, readRemaining(), charset);
+	}
+
+
+	public String toString(Charset charset){
+		String string = asString(charset);
+		recycle();
+		return string;
 	}
 
 	// region serialization input

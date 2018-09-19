@@ -42,7 +42,7 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 	}
 
 	protected final ByteBufsSupplier sanitize(ByteBufsSupplier supplier) {
-		return new ByteBufsSupplier() {
+		return new ByteBufsSupplier(supplier.bufs) {
 			@Override
 			public Stage<Void> needMoreData() {
 				return sanitize(supplier.needMoreData());

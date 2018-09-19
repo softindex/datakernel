@@ -9,6 +9,10 @@ import io.datakernel.functional.Try;
 
 import java.util.function.Function;
 
+import static io.datakernel.bytebuf.ByteBufStrings.CR;
+import static io.datakernel.bytebuf.ByteBufStrings.LF;
+import static java.lang.Math.min;
+
 public interface ByteBufsParser<T> {
 	@Nullable
 	T tryParse(ByteBufQueue bufs) throws ParseException;
@@ -63,11 +67,27 @@ public interface ByteBufsParser<T> {
 	}
 
 	static ByteBufsParser<ByteBuf> ofNullTerminatedBytes(int maxSize) {
+		return parseUntillTerminatorByte((byte) 0, maxSize);
+	}
+
+	static ByteBufsParser<ByteBuf> ofCrTerminatedBytes() {
+		return ofCrTerminatedBytes(Integer.MAX_VALUE);
+	}
+
+	static ByteBufsParser<ByteBuf> ofCrTerminatedBytes(int maxSize) {
+		return parseUntillTerminatorByte(CR, maxSize);
+	}
+
+	static ByteBufsParser<ByteBuf> ofCrlfTerminatedBytes() {
+		return ofCrlfTerminatedBytes(Integer.MAX_VALUE);
+	}
+
+	static ByteBufsParser<ByteBuf> ofCrlfTerminatedBytes(int maxSize) {
 		return bufs -> {
-			for (int i = 0; i < Math.min(bufs.remainingBytes(), maxSize); i++) {
-				if (bufs.peekByte(i) == (byte) 0) {
-					ByteBuf buf = bufs.takeExactSize(i - 1);
-					bufs.skip(1);
+			for (int i = 0; i < min(bufs.remainingBytes() - 1, maxSize); i++) {
+				if (bufs.peekByte(i) == CR && bufs.peekByte(i + 1) == LF) {
+					ByteBuf buf = bufs.takeExactSize(i);
+					bufs.skip(2);
 					return buf;
 				}
 			}
@@ -94,4 +114,17 @@ public interface ByteBufsParser<T> {
 		};
 	}
 
+	static ByteBufsParser<ByteBuf> parseUntillTerminatorByte(byte terminator, int maxSize) {
+		return bufs -> {
+			for (int i = 0; i < Math.min(bufs.remainingBytes(), maxSize); i++) {
+				if (bufs.peekByte(i) == terminator) {
+					ByteBuf buf = bufs.takeExactSize(i);
+					bufs.skip(1);
+					return buf;
+				}
+			}
+			if (bufs.remainingBytes() >= maxSize) throw new ParseException();
+			return null;
+		};
+	}
 }
