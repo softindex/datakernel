@@ -113,7 +113,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	@Override
 	public SerialSupplier<ByteBuf> receiveBinaryStream() {
-		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.toIterator()), socketReader);
+		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.asIterator()), socketReader);
 	}
 
 	@Override

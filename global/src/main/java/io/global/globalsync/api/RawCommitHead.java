@@ -37,7 +37,7 @@ public final class RawCommitHead implements Signable {
 		writeRepositoryId(buf, repositoryId);
 		writeCommitId(buf, commitId);
 		buf.writeLong(timestamp);
-		return new RawCommitHead(buf.asArray(),
+		return new RawCommitHead(buf.getArray(),
 				repositoryId, commitId, timestamp);
 	}
 

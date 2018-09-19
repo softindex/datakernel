@@ -21,14 +21,14 @@ public class ByteBufsParserTest {
 		ByteBuf beforeNull = parser.tryParse(queue);
 		ByteBuf afterNull = queue.takeRemaining();
 
-		assertArrayEquals(new byte[]{1,2,3}, beforeNull.toArray());
-		assertArrayEquals(new byte[]{4,5,6}, afterNull.toArray());
+		assertArrayEquals(new byte[]{1,2,3}, beforeNull.asArray());
+		assertArrayEquals(new byte[]{4,5,6}, afterNull.asArray());
 
 		queue.add(ByteBuf.wrapForReading(new byte[]{0,1,2,3}));
 		beforeNull = parser.tryParse(queue);
 		afterNull = queue.takeRemaining();
 
-		assertArrayEquals(new byte[]{}, beforeNull.toArray());
-		assertArrayEquals(new byte[]{1,2,3}, afterNull.toArray());
+		assertArrayEquals(new byte[]{}, beforeNull.asArray());
+		assertArrayEquals(new byte[]{1,2,3}, afterNull.asArray());
 	}
 }

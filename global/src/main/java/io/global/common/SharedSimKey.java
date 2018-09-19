@@ -45,7 +45,7 @@ public final class SharedSimKey implements Signable {
 		writeBytes(buf, encryptedSimKey.toBytes());
 		writeSimKeyHash(buf, simKeyHash);
 
-		return new SharedSimKey(buf.asArray(),
+		return new SharedSimKey(buf.getArray(),
 				repositoryOwner, receiver, encryptedSimKey, simKeyHash);
 	}
 

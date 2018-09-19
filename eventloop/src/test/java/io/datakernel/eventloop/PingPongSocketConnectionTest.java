@@ -43,7 +43,7 @@ public class PingPongSocketConnectionTest {
 	private static final String RESPONSE_MSG = "PONG";
 
 	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
-			.andThen(ByteBuf::toArray)
+			.andThen(ByteBuf::asArray)
 			.andThen(ByteBufStrings::decodeAscii);
 
 	@Rule

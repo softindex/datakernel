@@ -176,7 +176,7 @@ public class BufsConsumerGzipInflaterTest {
 	}
 
 	public byte[] deflate(byte[] array) {
-		return toGzip(wrapForReading(array)).toArray();
+		return toGzip(wrapForReading(array)).asArray();
 	}
 
 	// Test with GzipProcessorUtils Compatibility

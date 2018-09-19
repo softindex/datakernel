@@ -51,7 +51,7 @@ public final class RawCommit {
 		buf.writeLong(level);
 		buf.writeLong(timestamp);
 		writeSimKeyHash(buf, simKeyHash);
-		return new RawCommit(buf.asArray(),
+		return new RawCommit(buf.getArray(),
 				parents, encryptedDiffs, simKeyHash, level, timestamp);
 	}
 

@@ -105,7 +105,7 @@ public class GlobalFsAdapterTest {
 										"hello, this is a test buffer data #08\n" +
 										"hello, this is a test buffer data #09\n" +
 										"hello, this is a te",
-								buf.toString(UTF_8))))
+								buf.asString(UTF_8))))
 				.thenCompose($ -> adapter.downloadSerial("test1.txt", 64, 259).toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf ->
 						assertEquals("er data #02\n" +
@@ -116,10 +116,10 @@ public class GlobalFsAdapterTest {
 										"hello, this is a test buffer data #07\n" +
 										"hello, this is a test buffer data #08\n" +
 										"hello, this is a te",
-								buf.toString(UTF_8))))
+								buf.asString(UTF_8))))
 				.thenCompose($ -> adapter.downloadSerial("test1.txt", 228, 37).toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf ->
-						assertEquals("hello, this is a test buffer data #07", buf.toString(UTF_8))));
+						assertEquals("hello, this is a test buffer data #07", buf.asString(UTF_8))));
 
 		eventloop.run();
 	}

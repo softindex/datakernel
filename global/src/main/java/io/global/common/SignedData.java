@@ -43,7 +43,7 @@ public final class SignedData<T extends Signable> {
 		writeBytes(buf, dataBytes);
 		writeBigInteger(buf, signature.r);
 		writeBigInteger(buf, signature.s);
-		return buf.asArray();
+		return buf.getArray();
 	}
 
 	public T getData() {

@@ -224,7 +224,7 @@ public class TestLocalFsClient {
 				.thenCompose($ ->
 						client.downloadSerial("concurrent.txt")
 								.streamTo(SerialConsumer.of(AsyncConsumer.of(buf -> {
-									String actual = buf.toString(UTF_8);
+									String actual = buf.asString(UTF_8);
 									String expected = "Concurrent data - 1\n" +
 											"Concurrent data - 2\n" +
 											"Concurrent data - 3\n" +

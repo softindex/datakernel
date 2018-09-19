@@ -4,13 +4,12 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.global.common.Signable;
 import io.global.common.SimKeyHash;
-import org.spongycastle.math.ec.ECPoint;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-import static io.global.globalsync.util.SerializationUtils.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.global.globalsync.util.SerializationUtils.*;
 
 public final class RawSnapshot implements Signable {
 	public final byte[] bytes;
@@ -47,7 +46,7 @@ public final class RawSnapshot implements Signable {
 		writeCommitId(buf, commitId);
 		writeEncryptedData(buf, encryptedDiffs);
 		writeSimKeyHash(buf, simKeyHash);
-		return new RawSnapshot(buf.asArray(),
+		return new RawSnapshot(buf.getArray(),
 				repositoryId, commitId, encryptedDiffs, simKeyHash);
 	}
 

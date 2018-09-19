@@ -33,7 +33,7 @@ public final class RawServerServlet implements AsyncServlet {
 									HttpResponse.ofCode(200)
 											.withBody(toJson(SET_OF_STRINGS, names).getBytes(UTF_8)))))
 			.with(POST, "/" + SAVE + "/:pubKey/:name", servlet(request -> {
-				SaveTuple saveTuple = fromJson(SAVE_GSON, request.getBody().asString(UTF_8));
+				SaveTuple saveTuple = fromJson(SAVE_GSON, request.getBody().getString(UTF_8));
 				return rawServer.save(urlDecodeRepositoryId(request), saveTuple.commits, saveTuple.heads)
 						.thenApply($ ->
 								HttpResponse.ofCode(200));
@@ -52,7 +52,7 @@ public final class RawServerServlet implements AsyncServlet {
 									HttpResponse.ofCode(200)
 											.withBody(toJson(HEADS_INFO_GSON, headsInfo).getBytes(UTF_8)))))
 			.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", servlet(request -> {
-				SignedData<RawSnapshot> encryptedSnapshot = SignedData.ofBytes(request.getBody().asArray(), RawSnapshot::ofBytes);
+				SignedData<RawSnapshot> encryptedSnapshot = SignedData.ofBytes(request.getBody().getArray(), RawSnapshot::ofBytes);
 				return rawServer.saveSnapshot(encryptedSnapshot.getData().repositoryId, encryptedSnapshot)
 						.thenApply($ -> HttpResponse.ofCode(200));
 			}))
@@ -74,7 +74,7 @@ public final class RawServerServlet implements AsyncServlet {
 									HttpResponse.ofCode(200)
 											.withBody(toJson(HEADS_DELTA_GSON, heads).getBytes(UTF_8)))))
 			.with(POST, "/" + SHARE_KEY, servlet(request ->
-					rawServer.shareKey(fromJson(SHARED_SIM_KEY_JSON, request.getBody().asString(UTF_8)))
+					rawServer.shareKey(fromJson(SHARED_SIM_KEY_JSON, request.getBody().getString(UTF_8)))
 							.thenApply($ ->
 									HttpResponse.ofCode(200))));
 

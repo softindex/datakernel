@@ -19,7 +19,7 @@ public class DiscoveryServlet {
 				.with("/announce", req -> {
 					try {
 						// fixme - this is a prototype of a prototype
-						return service.announce(null, SignedData.ofBytes(req.getBody().asArray(), AnnounceData::fromBytes))
+						return service.announce(null, SignedData.ofBytes(req.getBody().getArray(), AnnounceData::fromBytes))
 								.thenApply($ -> HttpResponse.ok200());
 					} catch (IOException e) {
 						return Stage.ofException(e);

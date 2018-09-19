@@ -57,7 +57,7 @@ public final class BufsConsumerDelimiter extends AbstractIOAsyncProcess
 		}
 		ByteBufQueue outputBufs = new ByteBufQueue();
 		remaining -= bufs.drainTo(outputBufs, remaining);
-		output.acceptAll(outputBufs.toIterator())
+		output.acceptAll(outputBufs.asIterator())
 				.whenResult($ -> {
 					if (remaining != 0) {
 						input.needMoreData()

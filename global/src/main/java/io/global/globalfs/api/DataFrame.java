@@ -51,6 +51,6 @@ public final class DataFrame {
 	@Override
 	public String toString() {
 		assert !isBuf() || buf != null;
-		return "DataFrame{" + (isBuf() ? buf.asString(UTF_8).replace("\n", "\\n")/*"buf=(size=" + buf.readRemaining() + ")"*/ : "checkpoint=" + checkpoint) + '}';
+		return "DataFrame{" + (isBuf() ? buf.getString(UTF_8).replace("\n", "\\n")/*"buf=(size=" + buf.readRemaining() + ")"*/ : "checkpoint=" + checkpoint) + '}';
 	}
 }

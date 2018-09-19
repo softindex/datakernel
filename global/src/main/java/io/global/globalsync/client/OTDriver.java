@@ -42,7 +42,7 @@ public final class OTDriver {
 		ByteBuf dataBuf = ByteBuf.wrapForWriting(new byte[sizeof(diffsBytes, SerializationUtils::sizeof)]);
 		writeList(dataBuf, diffsBytes, SerializationUtils::writeBytes);
 		EncryptedData encryptedDiffs = encryptAES(
-				dataBuf.asArray(),
+				dataBuf.getArray(),
 				currentSimKey.getAesKey());
 		RawCommit rawCommitData = RawCommit.of(
 				parents,

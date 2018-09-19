@@ -85,14 +85,14 @@ public class TestCachedFsClient {
 	public void testDownloadFileNotInCache() {
 		cacheRemote.download("test.txt")
 				.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
-				.thenApply(buf -> buf.toString(UTF_8))
+				.thenApply(buf -> buf.asString(UTF_8))
 				.thenRunEx(server::close)
 				.whenComplete(assertComplete(s -> {
 					assertEquals(testTxtContent, s);
 				}))
 				.thenCompose($ -> cache.download("test.txt")
 						.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-						.thenApply(buf -> buf.toString(UTF_8))
+						.thenApply(buf -> buf.asString(UTF_8))
 						.whenComplete(assertComplete(s -> assertEquals(testTxtContent, s))));
 
 		eventloop.run();
@@ -102,7 +102,7 @@ public class TestCachedFsClient {
 	public void testDownloadFileNotInCacheWithOffsetAndLength() {
 		cacheRemote.download("test.txt", 1, 2)
 				.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
-				.thenApply(buf -> buf.toString(UTF_8))
+				.thenApply(buf -> buf.asString(UTF_8))
 				.whenComplete((res, err) -> {
 					server.close();
 					assertEquals(res, "in");
@@ -121,14 +121,14 @@ public class TestCachedFsClient {
 
 		cacheRemote.download("test.txt")
 				.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
-				.thenApply(buf -> buf.toString(UTF_8))
+				.thenApply(buf -> buf.asString(UTF_8))
 				.thenRunEx(server::close)
 				.whenComplete(assertComplete(s -> {
 					assertEquals(testTxtContent, s);
 				}))
 				.thenCompose($ -> cache.download("test.txt"))
 				.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(buf -> assertEquals(testTxtContent, buf.toString(UTF_8))));
+				.whenComplete(assertComplete(buf -> assertEquals(testTxtContent, buf.asString(UTF_8))));
 
 		eventloop.run();
 	}
@@ -139,7 +139,7 @@ public class TestCachedFsClient {
 
 		cacheRemote.download("test.txt", 1, 2)
 				.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
-				.thenApply(buf -> buf.toString(UTF_8))
+				.thenApply(buf -> buf.asString(UTF_8))
 				.thenRunEx(server::close)
 				.whenComplete((res, err) -> assertEquals("in", res))
 				.whenComplete(assertComplete());
@@ -155,7 +155,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
-							.thenApply($ -> q.takeRemaining().toString(UTF_8));
+							.thenApply($ -> q.takeRemaining().asString(UTF_8));
 				})
 				.thenRunEx(server::close)
 				.whenResult(s -> assertEquals(testTxtContent, s))
@@ -172,7 +172,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
-							.thenApply($ -> q.takeRemaining().toString(UTF_8));
+							.thenApply($ -> q.takeRemaining().asString(UTF_8));
 				})
 				.whenComplete((res, err) -> assertEquals("in", res))
 				.whenComplete(assertComplete())
@@ -191,7 +191,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
-							.thenApply($ -> q.takeRemaining().toString(UTF_8));
+							.thenApply($ -> q.takeRemaining().asString(UTF_8));
 				})
 				.thenRunEx(server::close)
 				.whenComplete(assertComplete())
@@ -210,7 +210,7 @@ public class TestCachedFsClient {
 					ByteBufQueue q = new ByteBufQueue();
 					return producer
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
-							.thenApply($ -> q.takeRemaining().toString(UTF_8));
+							.thenApply($ -> q.takeRemaining().asString(UTF_8));
 				})
 				.whenComplete((res, err) -> assertEquals("hi", res))
 				.whenComplete(assertComplete())

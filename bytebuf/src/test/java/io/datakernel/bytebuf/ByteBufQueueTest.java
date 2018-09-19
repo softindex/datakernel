@@ -27,12 +27,12 @@ public class ByteBufQueueTest {
 		assertEquals(4, queue.remainingBufs());
 		ByteBuf next = iterator.next();
 		next.set(0, (byte) 0);
-		assertEquals("First", queue.take().toString(UTF_8));
+		assertEquals("First", queue.take().asString(UTF_8));
 	}
 
 	@Test
 	public void testToIterator() {
-		queue.toIterator();
+		queue.asIterator();
 		assertEquals(0, queue.remainingBufs());
 	}
 }

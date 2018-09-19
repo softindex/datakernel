@@ -409,7 +409,7 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 		return new ByteBufIterator(this, false);
 	}
 
-	private static class ByteBufIterator implements Iterator<ByteBuf>, Recyclable {
+	public static class ByteBufIterator implements Iterator<ByteBuf>, Recyclable {
 		final ByteBuf[] bufs;
 		int first;
 		final int last;

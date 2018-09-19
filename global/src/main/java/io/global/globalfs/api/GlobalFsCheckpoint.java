@@ -37,7 +37,7 @@ public final class GlobalFsCheckpoint implements Signable {
 		ByteBuf buf = ByteBufPool.allocate(8 + SerializationUtils.sizeof(digestState));
 		buf.writeLong(position);
 		SerializationUtils.writeBytes(buf, digestState);
-		return new GlobalFsCheckpoint(buf.asArray(), position, digest);
+		return new GlobalFsCheckpoint(buf.getArray(), position, digest);
 	}
 
 	public enum CheckpointVerificationResult {

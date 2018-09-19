@@ -66,7 +66,7 @@ public class RawServerHttpClient implements RawServer {
 	private <T> Stage<T> processResult(HttpResponse r, @Nullable TypeAdapter<T> gson) {
 		if (r.getCode() != 200) Stage.ofException(HttpException.ofCode(r.getCode()));
 		try {
-			return Stage.of(gson != null ? fromJson(gson, r.getBody().asString(UTF_8)) : null);
+			return Stage.of(gson != null ? fromJson(gson, r.getBody().getString(UTF_8)) : null);
 		} catch (IOException e) {
 			return Stage.ofException(e);
 		}
@@ -125,7 +125,7 @@ public class RawServerHttpClient implements RawServer {
 					if (!r.getBody().canRead()) return Stage.of(Optional.empty());
 					try {
 						return Stage.of(Optional.of(
-								SignedData.ofBytes(r.getBody().asArray(), RawSnapshot::ofBytes)));
+								SignedData.ofBytes(r.getBody().getArray(), RawSnapshot::ofBytes)));
 					} catch (IOException e) {
 						return Stage.ofException(e);
 					}

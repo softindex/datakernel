@@ -135,13 +135,13 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 				return;
 			}
 			if (inflater.finished()) {
-				output.acceptAll(queue.toIterator())
+				output.acceptAll(queue.asIterator())
 						.thenRun(this::processFooter);
 				return;
 			}
 		}
 
-		output.acceptAll(queue.toIterator())
+		output.acceptAll(queue.asIterator())
 				.thenCompose($ -> input.needMoreData())
 				.thenRun(this::processBody);
 	}
@@ -183,7 +183,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 				buf.recycle();
 				return;
 			}
-			crc32.update(buf.asArray());
+			crc32.update(buf.getArray());
 			queue.add(buf);
 		}
 	}
