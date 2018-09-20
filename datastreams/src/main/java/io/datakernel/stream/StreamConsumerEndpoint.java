@@ -3,7 +3,7 @@ package io.datakernel.stream;
 import io.datakernel.async.Stage;
 import io.datakernel.serial.SerialBuffer;
 
-public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 	public static final int DEFAULT_BUFFER_SIZE = 10;
 
 	private final SerialBuffer<T> buffer;
@@ -27,7 +27,7 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public void onData(T item) {
+	public void accept(T item) {
 		assert item != null;
 		buffer.add(item);
 		if (buffer.isSaturated()) {

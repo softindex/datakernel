@@ -25,14 +25,14 @@ import io.datakernel.serial.processor.SerialLZ4Decompressor;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.MemSize;
 
 import java.time.Duration;
 
 @SuppressWarnings("unchecked")
 public final class RpcStream {
-	public interface Listener extends StreamDataReceiver<RpcMessage> {
+	public interface Listener extends StreamDataAcceptor<RpcMessage> {
 		void onClosedWithError(Throwable exception);
 
 		void onReadEndOfStream();
@@ -44,7 +44,7 @@ public final class RpcStream {
 	private final AsyncTcpSocket socket;
 
 	private boolean ready;
-	private StreamDataReceiver<RpcMessage> downstreamDataReceiver;
+	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;
 
 	public RpcStream(AsyncTcpSocket socket,
 			BufferSerializer<RpcMessage> messageSerializer,
@@ -55,8 +55,8 @@ public final class RpcStream {
 		if (server) {
 			sender = new AbstractStreamProducer<RpcMessage>() {
 				@Override
-				protected void onProduce(StreamDataReceiver<RpcMessage> dataReceiver) {
-					RpcStream.this.downstreamDataReceiver = dataReceiver;
+				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
+					RpcStream.this.downstreamDataAcceptor = dataAcceptor;
 					receiver.getProducer().produce(RpcStream.this.listener);
 					ready = true;
 				}
@@ -76,8 +76,8 @@ public final class RpcStream {
 		} else {
 			sender = new AbstractStreamProducer<RpcMessage>() {
 				@Override
-				protected void onProduce(StreamDataReceiver<RpcMessage> dataReceiver) {
-					RpcStream.this.downstreamDataReceiver = dataReceiver;
+				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
+					RpcStream.this.downstreamDataAcceptor = dataAcceptor;
 					ready = true;
 				}
 
@@ -150,7 +150,7 @@ public final class RpcStream {
 
 	private void sendRpcMessage(RpcMessage message) {
 		if (ready) {
-			downstreamDataReceiver.onData(message);
+			downstreamDataAcceptor.accept(message);
 		}
 	}
 

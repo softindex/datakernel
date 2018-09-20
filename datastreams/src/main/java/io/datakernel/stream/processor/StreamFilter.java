@@ -86,14 +86,14 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			if (predicate.equals(ALWAYS_TRUE)) {
-				input.getProducer().produce(dataReceiver);
+				input.getProducer().produce(dataAcceptor);
 			} else {
 				Predicate<T> predicate = StreamFilter.this.predicate;
 				input.getProducer().produce(item -> {
 					if (predicate.test(item)) {
-						dataReceiver.onData(item);
+						dataAcceptor.accept(item);
 					}
 				});
 			}

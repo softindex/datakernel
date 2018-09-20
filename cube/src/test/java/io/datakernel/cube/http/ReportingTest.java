@@ -39,7 +39,7 @@ import io.datakernel.ot.*;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamProducer;
 import org.junit.After;
 import org.junit.Before;
@@ -248,21 +248,21 @@ public class ReportingTest {
 		}
 
 		@Override
-		protected StreamDataReceiver<LogItem> createSplitter() {
-			return new StreamDataReceiver<LogItem>() {
-				private final StreamDataReceiver<LogItem> dateAggregator = addOutput(cube.logStreamConsumer(
+		protected StreamDataAcceptor<LogItem> createSplitter() {
+			return new StreamDataAcceptor<LogItem>() {
+				private final StreamDataAcceptor<LogItem> dateAggregator = addOutput(cube.logStreamConsumer(
 					LogItem.class,
 					and(notEq("advertiser", EXCLUDE_ADVERTISER), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER))));
-				private final StreamDataReceiver<LogItem> dateAggregator2 = addOutput(cube.logStreamConsumer(
+				private final StreamDataAcceptor<LogItem> dateAggregator2 = addOutput(cube.logStreamConsumer(
 					LogItem.class,
 					and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE))));
 
 				@Override
-				public void onData(LogItem item) {
+				public void accept(LogItem item) {
 					if (item.advertiser != EXCLUDE_ADVERTISER && item.campaign != EXCLUDE_CAMPAIGN && item.banner != EXCLUDE_BANNER) {
-						dateAggregator.onData(item);
+						dateAggregator.accept(item);
 					} else if (item.affiliate != 0 && !EXCLUDE_SITE.equals(item.site)) {
-						dateAggregator2.onData(item);
+						dateAggregator2.accept(item);
 					}
 				}
 			};

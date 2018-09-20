@@ -27,14 +27,14 @@ import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, StreamOutputs, StreamDataReceiver<I> {
+public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, StreamOutputs, StreamDataAcceptor<I> {
 	private final Input input;
 	private final List<Output> outputs = new ArrayList<>();
 	private final MultiSharder<K> sharder;
 	private final Function<I, K> keyFunction;
 
 	@SuppressWarnings("unchecked")
-	private StreamDataReceiver<I>[] dataReceivers = new StreamDataReceiver[0];
+	private StreamDataAcceptor<I>[] dataAcceptors = new StreamDataAcceptor[0];
 	private int suspended = 0;
 
 	private ShardingStreamSplitter(MultiSharder<K> sharder, Function<I, K> keyFunction) {
@@ -53,7 +53,7 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 
 	public StreamProducer<I> newOutput() {
 		Output output = new Output(outputs.size());
-		dataReceivers = Arrays.copyOf(dataReceivers, dataReceivers.length + 1);
+		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
 		suspended++;
 		outputs.add(output);
 		return output;
@@ -70,9 +70,9 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 	}
 
 	@Override
-	public void onData(I item) {
+	public void accept(I item) {
 		for (int index : sharder.shard(keyFunction.apply(item))) {
-			dataReceivers[index].onData(item);
+			dataAcceptors[index].accept(item);
 		}
 	}
 
@@ -112,8 +112,8 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 		}
 
 		@Override
-		protected void onProduce(StreamDataReceiver<I> dataReceiver) {
-			dataReceivers[index] = dataReceiver;
+		protected void onProduce(StreamDataAcceptor<I> dataAcceptor) {
+			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
 				input.getProducer().produce(ShardingStreamSplitter.this);
 			}

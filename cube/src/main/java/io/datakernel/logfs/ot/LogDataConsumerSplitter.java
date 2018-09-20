@@ -30,7 +30,7 @@ import static io.datakernel.util.Preconditions.checkState;
 @SuppressWarnings("unchecked")
 public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T, D> {
 	private final List<LogDataConsumer<?, D>> logDataConsumers = new ArrayList<>();
-	private Iterator<? extends StreamDataReceiver<?>> receivers;
+	private Iterator<? extends StreamDataAcceptor<?>> receivers;
 
 	@Override
 	public StreamConsumerWithResult<T, List<D>> consume() {
@@ -50,23 +50,23 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		return StreamConsumerWithResult.of(splitter.getInput(), resultsReducer.get());
 	}
 
-	protected abstract StreamDataReceiver<T> createSplitter();
+	protected abstract StreamDataAcceptor<T> createSplitter();
 
-	protected final <X> StreamDataReceiver<X> addOutput(LogDataConsumer<X, D> logDataConsumer) {
+	protected final <X> StreamDataAcceptor<X> addOutput(LogDataConsumer<X, D> logDataConsumer) {
 		if (receivers == null) {
 			// initial run, recording scheme
 			logDataConsumers.add(logDataConsumer);
 			return null;
 		}
 		// receivers must correspond outputs for recorded scheme
-		return (StreamDataReceiver<X>) receivers.next();
+		return (StreamDataAcceptor<X>) receivers.next();
 	}
 
 	final class Splitter implements StreamInput<T>, StreamOutputs {
 		private final Input input;
 		private final List<Output<?>> outputs = new ArrayList<>();
 
-		private StreamDataReceiver<T> inputReceiver;
+		private StreamDataAcceptor<T> inputReceiver;
 
 		private int ready = 0;
 
@@ -97,14 +97,14 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		}
 
 		final class Output<X> extends AbstractStreamProducer<X> {
-			private StreamDataReceiver<?> dataReceiver;
+			private StreamDataAcceptor<?> dataAcceptor;
 
 			@Override
-			protected void onProduce(StreamDataReceiver<X> dataReceiver) {
-				this.dataReceiver = dataReceiver;
+			protected void onProduce(StreamDataAcceptor<X> dataAcceptor) {
+				this.dataAcceptor = dataAcceptor;
 				if (++ready == outputs.size()) {
 					if (inputReceiver == null) {
-						receivers = outputs.stream().map(output -> output.dataReceiver).iterator();
+						receivers = outputs.stream().map(output -> output.dataAcceptor).iterator();
 						inputReceiver = createSplitter();
 						checkState(!receivers.hasNext());
 						receivers = null;

@@ -58,7 +58,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		 * @param right  right stream
 		 * @param output callback for sending result
 		 */
-		void onInnerJoin(K key, L left, R right, StreamDataReceiver<V> output);
+		void onInnerJoin(K key, L left, R right, StreamDataAcceptor<V> output);
 
 		/**
 		 * Streams objects with all fields from the left stream , with the matching key - fields in the
@@ -68,7 +68,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		 * @param left   left stream
 		 * @param output callback for sending result
 		 */
-		void onLeftJoin(K key, L left, StreamDataReceiver<V> output);
+		void onLeftJoin(K key, L left, StreamDataAcceptor<V> output);
 	}
 
 	/**
@@ -88,7 +88,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		 * @param output callback for sending result
 		 */
 		@Override
-		public void onLeftJoin(K key, L left, StreamDataReceiver<V> output) {
+		public void onLeftJoin(K key, L left, StreamDataAcceptor<V> output) {
 		}
 	}
 
@@ -123,18 +123,18 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		}
 
 		@Override
-		public final void onInnerJoin(K key, L left, R right, StreamDataReceiver<V> output) {
+		public final void onInnerJoin(K key, L left, R right, StreamDataAcceptor<V> output) {
 			V result = doInnerJoin(key, left, right);
 			if (result != null) {
-				output.onData(result);
+				output.accept(result);
 			}
 		}
 
 		@Override
-		public final void onLeftJoin(K key, L left, StreamDataReceiver<V> output) {
+		public final void onLeftJoin(K key, L left, StreamDataAcceptor<V> output) {
 			V result = doLeftJoin(key, left);
 			if (result != null) {
-				output.onData(result);
+				output.accept(result);
 			}
 		}
 	}
@@ -180,7 +180,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 	}
 	// endregion
 
-	protected final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataReceiver<I> {
+	protected final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataAcceptor<I> {
 		private final ArrayDeque<I> deque;
 
 		public Input(ArrayDeque<I> deque) {
@@ -188,7 +188,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		}
 
 		@Override
-		public void onData(I item) {
+		public void accept(I item) {
 			deque.add(item);
 			output.tryProduce();
 		}
@@ -233,7 +233,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 				for (; ; ) {
 					int compare = keyComparator.compare(leftKey, rightKey);
 					if (compare < 0) {
-						joiner.onLeftJoin(leftKey, leftValue, getCurrentDataReceiver());
+						joiner.onLeftJoin(leftKey, leftValue, getCurrentDataAcceptor());
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
 							break;
@@ -246,7 +246,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 						rightValue = rightDeque.peek();
 						rightKey = rightKeyFunction.apply(rightValue);
 					} else {
-						joiner.onInnerJoin(leftKey, leftValue, rightValue, getCurrentDataReceiver());
+						joiner.onInnerJoin(leftKey, leftValue, rightValue, getCurrentDataAcceptor());
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
 							break;

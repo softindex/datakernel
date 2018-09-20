@@ -68,9 +68,9 @@ public class StreamFunctionTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		source1.apply(streamFunction).streamTo(
-				consumer.apply(decorator((context, dataReceiver) ->
+				consumer.apply(decorator((context, dataAcceptor) ->
 						item -> {
-							dataReceiver.onData(item);
+							dataAcceptor.accept(item);
 							if (list.size() == 2) {
 								context.closeWithError(new ExpectedException("Test Exception"));
 							}

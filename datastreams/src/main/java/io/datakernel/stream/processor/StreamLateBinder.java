@@ -20,7 +20,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 	private final AbstractStreamProducer<T> output = new Output();
 
 	@Nullable
-	private StreamDataReceiver<T> waitingReceiver;
+	private StreamDataAcceptor<T> waitingReceiver;
 
 	// region creators
 	private StreamLateBinder() {
@@ -58,13 +58,13 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 
 	private class Output extends AbstractStreamProducer<T> {
 		@Override
-		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			StreamProducer<T> producer = input.getProducer();
 			if (producer == null) {
-				waitingReceiver = dataReceiver;
+				waitingReceiver = dataAcceptor;
 				return;
 			}
-			producer.produce(dataReceiver);
+			producer.produce(dataAcceptor);
 		}
 
 		@Override

@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
-public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataReceiver<T> {
+public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
 	protected final List<T> list;
 	private final SettableStage<List<T>> resultStage = new SettableStage<>();
 
@@ -38,7 +38,7 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 	}
 
 	@Override
-	public void onData(T item) {
+	public void accept(T item) {
 		list.add(item);
 	}
 

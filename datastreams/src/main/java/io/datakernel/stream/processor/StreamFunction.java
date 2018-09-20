@@ -80,11 +80,11 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected void onProduce(StreamDataReceiver<O> dataReceiver) {
+		protected void onProduce(StreamDataAcceptor<O> dataAcceptor) {
 			input.getProducer().produce(
 					function == Function.identity() ?
-							(StreamDataReceiver<I>) dataReceiver :
-							item -> dataReceiver.onData(function.apply(item)));
+							(StreamDataAcceptor<I>) dataAcceptor :
+							item -> dataAcceptor.accept(function.apply(item)));
 		}
 	}
 }

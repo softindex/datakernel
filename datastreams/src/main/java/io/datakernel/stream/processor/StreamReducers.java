@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 
 import java.util.function.BinaryOperator;
 
@@ -65,7 +65,7 @@ public final class StreamReducers {
 		 * @param firstValue received value
 		 * @return accumulator for further operations
 		 */
-		A onFirstItem(StreamDataReceiver<O> stream, K key, I firstValue);
+		A onFirstItem(StreamDataAcceptor<O> stream, K key, I firstValue);
 
 		/**
 		 * Run when reducer received each next element with key from argument
@@ -76,7 +76,7 @@ public final class StreamReducers {
 		 * @param accumulator accumulator which contains results of all previous operations
 		 * @return accumulator for further operations
 		 */
-		A onNextItem(StreamDataReceiver<O> stream, K key, I nextValue, A accumulator);
+		A onNextItem(StreamDataAcceptor<O> stream, K key, I nextValue, A accumulator);
 
 		/**
 		 * Run after receiving last element with key from argument
@@ -85,7 +85,7 @@ public final class StreamReducers {
 		 * @param key         key of element
 		 * @param accumulator accumulator which contains results of all previous operations
 		 */
-		void onComplete(StreamDataReceiver<O> stream, K key, A accumulator);
+		void onComplete(StreamDataAcceptor<O> stream, K key, A accumulator);
 	}
 
 	/**
@@ -204,7 +204,7 @@ public final class StreamReducers {
 			 * @return accumulator with result
 			 */
 			@Override
-			public final A onFirstItem(StreamDataReceiver<O> stream, K key, I firstValue) {
+			public final A onFirstItem(StreamDataAcceptor<O> stream, K key, I firstValue) {
 				A accumulator = reducerToResult.createAccumulator(key);
 				return reducerToResult.accumulate(accumulator, firstValue);
 			}
@@ -219,7 +219,7 @@ public final class StreamReducers {
 			 * @return accumulator with result
 			 */
 			@Override
-			public final A onNextItem(StreamDataReceiver<O> stream, K key, I nextValue, A accumulator) {
+			public final A onNextItem(StreamDataAcceptor<O> stream, K key, I nextValue, A accumulator) {
 				return reducerToResult.accumulate(accumulator, nextValue);
 			}
 
@@ -231,8 +231,8 @@ public final class StreamReducers {
 			 * @param accumulator accumulator which contains results of all previous operations
 			 */
 			@Override
-			public final void onComplete(StreamDataReceiver<O> stream, K key, A accumulator) {
-				stream.onData(reducerToResult.produceResult(accumulator));
+			public final void onComplete(StreamDataAcceptor<O> stream, K key, A accumulator) {
+				stream.accept(reducerToResult.produceResult(accumulator));
 			}
 		}
 
@@ -275,7 +275,7 @@ public final class StreamReducers {
 			 * @return accumulator with result
 			 */
 			@Override
-			public A onFirstItem(StreamDataReceiver<A> stream, K key, I firstValue) {
+			public A onFirstItem(StreamDataAcceptor<A> stream, K key, I firstValue) {
 				A accumulator = reducerToResult.createAccumulator(key);
 				return reducerToResult.accumulate(accumulator, firstValue);
 			}
@@ -290,7 +290,7 @@ public final class StreamReducers {
 			 * @return accumulator with result
 			 */
 			@Override
-			public A onNextItem(StreamDataReceiver<A> stream, K key, I nextValue, A accumulator) {
+			public A onNextItem(StreamDataAcceptor<A> stream, K key, I nextValue, A accumulator) {
 				return reducerToResult.accumulate(accumulator, nextValue);
 			}
 
@@ -302,8 +302,8 @@ public final class StreamReducers {
 			 * @param accumulator accumulator which contains results of all previous operations
 			 */
 			@Override
-			public void onComplete(StreamDataReceiver<A> stream, K key, A accumulator) {
-				stream.onData(accumulator);
+			public void onComplete(StreamDataAcceptor<A> stream, K key, A accumulator) {
+				stream.accept(accumulator);
 			}
 		}
 
@@ -348,7 +348,7 @@ public final class StreamReducers {
 			 * @return accumulator with result
 			 */
 			@Override
-			public A onFirstItem(StreamDataReceiver<O> stream, K key, A firstValue) {
+			public A onFirstItem(StreamDataAcceptor<O> stream, K key, A firstValue) {
 				return firstValue;
 			}
 
@@ -362,7 +362,7 @@ public final class StreamReducers {
 			 * @return accumulator with result
 			 */
 			@Override
-			public A onNextItem(StreamDataReceiver<O> stream, K key, A nextValue, A accumulator) {
+			public A onNextItem(StreamDataAcceptor<O> stream, K key, A nextValue, A accumulator) {
 				return reducerToResult.combine(accumulator, nextValue);
 			}
 
@@ -374,8 +374,8 @@ public final class StreamReducers {
 			 * @param accumulator accumulator which contains results of all previous operations
 			 */
 			@Override
-			public void onComplete(StreamDataReceiver<O> stream, K key, A accumulator) {
-				stream.onData(reducerToResult.produceResult(accumulator));
+			public void onComplete(StreamDataAcceptor<O> stream, K key, A accumulator) {
+				stream.accept(reducerToResult.produceResult(accumulator));
 			}
 		}
 
@@ -416,7 +416,7 @@ public final class StreamReducers {
 			 * @return accumulator with result
 			 */
 			@Override
-			public A onFirstItem(StreamDataReceiver<A> stream, K key, A firstValue) {
+			public A onFirstItem(StreamDataAcceptor<A> stream, K key, A firstValue) {
 				return firstValue;
 			}
 
@@ -430,7 +430,7 @@ public final class StreamReducers {
 			 * @return accumulator with result
 			 */
 			@Override
-			public A onNextItem(StreamDataReceiver<A> stream, K key, A nextValue, A accumulator) {
+			public A onNextItem(StreamDataAcceptor<A> stream, K key, A nextValue, A accumulator) {
 				return reducerToResult.combine(accumulator, nextValue);
 			}
 
@@ -442,8 +442,8 @@ public final class StreamReducers {
 			 * @param accumulator accumulator which contains results of all previous operations
 			 */
 			@Override
-			public void onComplete(StreamDataReceiver<A> stream, K key, A accumulator) {
-				stream.onData(accumulator);
+			public void onComplete(StreamDataAcceptor<A> stream, K key, A accumulator) {
+				stream.accept(accumulator);
 			}
 		}
 	}
@@ -478,18 +478,18 @@ public final class StreamReducers {
 		 * @param firstValue received value
 		 */
 		@Override
-		public Void onFirstItem(StreamDataReceiver<T> stream, K key, T firstValue) {
-			stream.onData(firstValue);
+		public Void onFirstItem(StreamDataAcceptor<T> stream, K key, T firstValue) {
+			stream.accept(firstValue);
 			return null;
 		}
 
 		@Override
-		public Void onNextItem(StreamDataReceiver<T> stream, K key, T nextValue, Void accumulator) {
+		public Void onNextItem(StreamDataAcceptor<T> stream, K key, T nextValue, Void accumulator) {
 			return null;
 		}
 
 		@Override
-		public void onComplete(StreamDataReceiver<T> stream, K key, Void accumulator) {
+		public void onComplete(StreamDataAcceptor<T> stream, K key, Void accumulator) {
 		}
 	}
 
@@ -501,19 +501,19 @@ public final class StreamReducers {
 	 */
 	public static class MergeSortReducer<K, T> implements Reducer<K, T, T, Void> {
 		@Override
-		public Void onFirstItem(StreamDataReceiver<T> stream, K key, T firstValue) {
-			stream.onData(firstValue);
+		public Void onFirstItem(StreamDataAcceptor<T> stream, K key, T firstValue) {
+			stream.accept(firstValue);
 			return null;
 		}
 
 		@Override
-		public Void onNextItem(StreamDataReceiver<T> stream, K key, T nextValue, Void accumulator) {
-			stream.onData(nextValue);
+		public Void onNextItem(StreamDataAcceptor<T> stream, K key, T nextValue, Void accumulator) {
+			stream.accept(nextValue);
 			return null;
 		}
 
 		@Override
-		public void onComplete(StreamDataReceiver<T> stream, K key, Void accumulator) {
+		public void onComplete(StreamDataAcceptor<T> stream, K key, Void accumulator) {
 		}
 	}
 
@@ -525,18 +525,18 @@ public final class StreamReducers {
 		}
 
 		@Override
-		public T onFirstItem(StreamDataReceiver<T> stream, K key, T firstValue) {
+		public T onFirstItem(StreamDataAcceptor<T> stream, K key, T firstValue) {
 			return firstValue;
 		}
 
 		@Override
-		public T onNextItem(StreamDataReceiver<T> stream, K key, T nextValue, T accumulator) {
+		public T onNextItem(StreamDataAcceptor<T> stream, K key, T nextValue, T accumulator) {
 			return combiner.apply(accumulator, nextValue);
 		}
 
 		@Override
-		public void onComplete(StreamDataReceiver<T> stream, K key, T accumulator) {
-			stream.onData(accumulator);
+		public void onComplete(StreamDataAcceptor<T> stream, K key, T accumulator) {
+			stream.accept(accumulator);
 		}
 	}
 }

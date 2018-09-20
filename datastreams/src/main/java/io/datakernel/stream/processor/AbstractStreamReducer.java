@@ -90,7 +90,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		return output;
 	}
 
-	private final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataReceiver<I> {
+	private final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataAcceptor<I> {
 		private I headItem;
 		private K headKey;
 		private final int index;
@@ -127,7 +127,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		 * @param item item to receive
 		 */
 		@Override
-		public void onData(I item) {
+		public void accept(I item) {
 			//noinspection AssertWithSideEffects
 			if (headItem == null) {
 				headItem = item;
@@ -172,21 +172,21 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 	}
 
 	private void produce() {
-		StreamDataReceiver<O> dataReceiver = output.getCurrentDataReceiver();
-		if (dataReceiver == null)
+		StreamDataAcceptor<O> dataAcceptor = output.getCurrentDataAcceptor();
+		if (dataAcceptor == null)
 			return;
 		while (streamsAwaiting == 0) {
 			Input<Object> input = priorityQueue.poll();
 			if (input == null)
 				break;
 			if (key != null && input.headKey.equals(key)) {
-				accumulator = input.reducer.onNextItem(dataReceiver, key, input.headItem, accumulator);
+				accumulator = input.reducer.onNextItem(dataAcceptor, key, input.headItem, accumulator);
 			} else {
 				if (lastInput != null) {
-					lastInput.reducer.onComplete(dataReceiver, key, accumulator);
+					lastInput.reducer.onComplete(dataAcceptor, key, accumulator);
 				}
 				key = input.headKey;
-				accumulator = input.reducer.onFirstItem(dataReceiver, key, input.headItem);
+				accumulator = input.reducer.onFirstItem(dataAcceptor, key, input.headItem);
 			}
 			input.headItem = input.deque.poll();
 			lastInput = input;
@@ -209,7 +209,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 
 		if (streamsOpen == 0 && priorityQueue.isEmpty()) {
 			if (lastInput != null) {
-				lastInput.reducer.onComplete(dataReceiver, key, accumulator);
+				lastInput.reducer.onComplete(dataAcceptor, key, accumulator);
 				lastInput = null;
 				key = null;
 				accumulator = null;

@@ -53,7 +53,7 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public void produce(StreamDataReceiver<T> dataReceiver) {
+		public void produce(StreamDataAcceptor<T> dataAcceptor) {
 			// do nothing
 		}
 
@@ -92,7 +92,7 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public void produce(StreamDataReceiver<T> dataReceiver) {
+		public void produce(StreamDataAcceptor<T> dataAcceptor) {
 			// do nothing
 		}
 
@@ -127,7 +127,7 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public void produce(StreamDataReceiver<T> dataReceiver) {
+		public void produce(StreamDataAcceptor<T> dataAcceptor) {
 		}
 
 		@Override
@@ -170,12 +170,12 @@ public final class StreamProducers {
 		@Override
 		protected void produce(AsyncProduceController async) {
 			while (iterator.hasNext()) {
-				StreamDataReceiver<T> dataReceiver = getCurrentDataReceiver();
-				if (dataReceiver == null) {
+				StreamDataAcceptor<T> dataAcceptor = getCurrentDataAcceptor();
+				if (dataAcceptor == null) {
 					return;
 				}
 				T item = iterator.next();
-				dataReceiver.onData(item);
+				dataAcceptor.accept(item);
 			}
 			sendEndOfStream();
 		}

@@ -151,9 +151,9 @@ public class StreamMergerTest {
 		source2.streamTo(merger.newInput());
 
 		merger.getOutput().streamTo(
-				consumer.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
+				consumer.apply(TestStreamConsumers.decorator((context, dataAcceptor) ->
 						item -> {
-							dataReceiver.onData(item);
+							dataAcceptor.accept(item);
 							if (item == 8) {
 								context.closeWithError(new Exception("Test Exception"));
 							}

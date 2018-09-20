@@ -4,7 +4,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Before;
 import org.junit.Test;
@@ -78,7 +78,7 @@ public class LogDataConsumerSplitterTest {
 	public void testIncorrectImplementation() {
 		LogDataConsumerSplitter<Integer, Integer> splitter = new LogDataConsumerSplitter<Integer, Integer>() {
 			@Override
-			protected StreamDataReceiver<Integer> createSplitter() {
+			protected StreamDataAcceptor<Integer> createSplitter() {
 				return item -> {};
 			}
 		};
@@ -94,7 +94,7 @@ public class LogDataConsumerSplitterTest {
 		}
 
 		@Override
-		protected StreamDataReceiver<T> createSplitter() {
+		protected StreamDataAcceptor<T> createSplitter() {
 			return addOutput(logConsumer);
 		}
 	}

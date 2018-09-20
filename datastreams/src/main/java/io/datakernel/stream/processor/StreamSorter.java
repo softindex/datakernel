@@ -141,7 +141,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	}
 	// endregion
 
-	private final class Input extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+	private final class Input extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 		private ArrayList<T> list = new ArrayList<>();
 
 		@Override
@@ -150,7 +150,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		public void onData(T item) {
+		public void accept(T item) {
 			list.add(item);
 			if (list.size() >= itemsInMemory) {
 				list.sort(itemComparator);

@@ -201,9 +201,9 @@ public class StreamJoinTest {
 		source2.streamTo(streamJoin.getRight());
 
 		streamJoin.getOutput().streamTo(
-				consumer.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
+				consumer.apply(TestStreamConsumers.decorator((context, dataAcceptor) ->
 						item -> {
-							dataReceiver.onData(item);
+							dataAcceptor.accept(item);
 							if (list.size() == 1) {
 								context.closeWithError(new ExpectedException("Test Exception"));
 							}

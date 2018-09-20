@@ -126,9 +126,9 @@ public class StreamConsumersTest {
 			}
 
 			@Override
-			protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+			protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 				resumed++;
-				input.getProducer().produce(dataReceiver);
+				input.getProducer().produce(dataAcceptor);
 			}
 		}
 	}

@@ -21,11 +21,11 @@ package io.datakernel.stream;
  *
  * @param <T> type of received item
  */
-public interface StreamDataReceiver<T> {
+public interface StreamDataAcceptor<T> {
 	/**
 	 * Method which calling after each receiving result
 	 *
 	 * @param item received item
 	 */
-	void onData(T item);
+	void accept(T item);
 }

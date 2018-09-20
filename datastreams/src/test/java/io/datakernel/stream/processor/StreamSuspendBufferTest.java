@@ -38,7 +38,7 @@ public class StreamSuspendBufferTest {
 						.withResultAcceptor(v -> v.whenComplete(result::set))
 						.apply(decorator((context, receiver) ->
 								item -> {
-									receiver.onData(item);
+									receiver.accept(item);
 //									logger.info("Received: " + item);
 									assertFalse("Should not be suspended when receiving new item!", suspended[0]);
 									suspended[0] = true;

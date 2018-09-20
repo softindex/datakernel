@@ -65,9 +65,9 @@ public class StreamFilterTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		source.apply(streamFilter).streamTo(
-				consumer.apply(decorator((context, dataReceiver) ->
+				consumer.apply(decorator((context, dataAcceptor) ->
 						item -> {
-							dataReceiver.onData(item);
+							dataAcceptor.accept(item);
 							if (item == 3) {
 								context.closeWithError(new ExpectedException("Test Exception"));
 							}

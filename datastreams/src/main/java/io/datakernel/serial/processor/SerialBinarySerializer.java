@@ -24,7 +24,7 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +62,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 	private SerialConsumer<ByteBuf> output;
 
 	private final ArrayDeque<ByteBuf> bufs = new ArrayDeque<>();
-	private boolean writing;
+	private boolean flushing;
 
 	// region creators
 	private SerialBinarySerializer(BufferSerializer<T> serializer) {
@@ -126,7 +126,6 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 	@Override
 	protected Stage<Void> onProducerEndOfStream() {
 		input.flush();
-		produce();
 		return getAcknowledgement();
 	}
 
@@ -140,29 +139,22 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 		output.closeWithError(e);
 	}
 
-	private void send(ByteBuf buf) {
+	private void doFlush() {
+		if (flushing) return;
 		if (!bufs.isEmpty()) {
-			getProducer().suspend();
-		}
-		bufs.add(buf);
-		produce();
-	}
-
-	private void produce() {
-		if (writing) return;
-		if (!bufs.isEmpty()) {
-			writing = true;
+			flushing = true;
 			output.accept(bufs.poll())
 					.whenComplete(($, e) -> {
 						if (e == null) {
-							writing = false;
-							produce();
+							flushing = false;
+							doFlush();
 						} else {
 							this.closeWithError(e);
 						}
 					});
 		} else {
 			if (getEndOfStream().isResult()) {
+				flushing = true;
 				output.accept(null)
 						.thenRun(this::acknowledge);
 			} else {
@@ -171,7 +163,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 		}
 	}
 
-	private final class Input implements StreamDataReceiver<T> {
+	private final class Input implements StreamDataAcceptor<T> {
 		private final BufferSerializer<T> serializer;
 
 		private ByteBuf buf = ByteBuf.empty();
@@ -202,7 +194,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 		 * @param item receiving item
 		 */
 		@Override
-		public void onData(T item) {
+		public void accept(T item) {
 			int positionBegin;
 			int positionItem;
 			for (; ; ) {
@@ -267,16 +259,6 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 			}
 		}
 
-		private void flush() {
-			if (buf.canRead()) {
-				send(buf);
-				estimatedMessageSize -= estimatedMessageSize >>> 8;
-			} else {
-				buf.recycle();
-			}
-			buf = ByteBuf.empty();
-		}
-
 		private void onUnderEstimate(T value, int positionBegin) {
 			buf.writePosition(positionBegin);
 			int writeRemaining = buf.writeRemaining();
@@ -300,6 +282,20 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 			} else {
 				closeWithError(e);
 			}
+		}
+
+		private void flush() {
+			if (buf.canRead()) {
+				if (!bufs.isEmpty()) {
+					getProducer().suspend();
+				}
+				bufs.add(buf);
+				estimatedMessageSize -= estimatedMessageSize >>> 8;
+			} else {
+				buf.recycle();
+			}
+			buf = ByteBuf.empty();
+			doFlush();
 		}
 
 		private void postFlush() {

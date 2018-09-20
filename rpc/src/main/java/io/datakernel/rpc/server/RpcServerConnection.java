@@ -67,7 +67,7 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	}
 
 	@Override
-	public void onData(RpcMessage message) {
+	public void accept(RpcMessage message) {
 		incrementActiveRequests();
 
 		int cookie = message.getCookie();

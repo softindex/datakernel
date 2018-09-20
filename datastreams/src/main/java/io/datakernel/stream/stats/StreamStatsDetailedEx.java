@@ -5,7 +5,7 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
 import io.datakernel.jmx.ValueStats;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 
 import java.time.Duration;
 
@@ -31,28 +31,28 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 	}
 
 	@Override
-	public StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
+	public StreamDataAcceptor<T> createDataAcceptor(StreamDataAcceptor<T> actualDataAcceptor) {
 		return sizeCounter == null ?
-				new StreamDataReceiver<T>() {
+				new StreamDataAcceptor<T>() {
 					final EventStats count = StreamStatsDetailedEx.this.count;
 
 					@Override
-					public void onData(T item) {
+					public void accept(T item) {
 						count.recordEvent();
-						actualDataReceiver.onData(item);
+						actualDataAcceptor.accept(item);
 					}
 				} :
-				new StreamDataReceiver<T>() {
+				new StreamDataAcceptor<T>() {
 					final EventStats count = StreamStatsDetailedEx.this.count;
 					final ValueStats itemSize = StreamStatsDetailedEx.this.itemSize;
 
 					@Override
-					public void onData(T item) {
+					public void accept(T item) {
 						count.recordEvent();
 						int size = sizeCounter.size(item);
 						itemSize.recordValue(size);
 						totalSize.recordEvents(size);
-						actualDataReceiver.onData(item);
+						actualDataAcceptor.accept(item);
 					}
 				};
 	}

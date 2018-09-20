@@ -24,7 +24,7 @@ import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataReceiver<T> {
+public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final AggregationChunkStorage<C> storage;
@@ -74,7 +74,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 	}
 
 	@Override
-	public void onData(T item) {
+	public void accept(T item) {
 		K key = keyFunction.apply(item);
 		Object accumulator = map.get(key);
 		if (accumulator != null) {

@@ -55,9 +55,9 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<T> implements StreamDataReceiver<T> {
+	protected final class Output extends AbstractStreamProducer<T> implements StreamDataAcceptor<T> {
 		@Override
-		public void onData(T item) {
+		public void accept(T item) {
 			if (suspended) {
 				buffer.offer(item);
 				if (buffer.size() >= maxBuffered) {
@@ -65,7 +65,7 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 				}
 				return;
 			}
-			output.getLastDataReceiver().onData(item);
+			output.getLastDataAcceptor().accept(item);
 		}
 
 		@Override

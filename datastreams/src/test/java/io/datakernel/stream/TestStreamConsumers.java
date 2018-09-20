@@ -25,8 +25,8 @@ public class TestStreamConsumers {
 				super.setProducer(new ForwardingStreamProducer<T>(producer) {
 					@SuppressWarnings("unchecked")
 					@Override
-					public void produce(StreamDataReceiver<T> dataReceiver) {
-						StreamDataReceiver<T>[] dataReceiverHolder = new StreamDataReceiver[1];
+					public void produce(StreamDataAcceptor<T> dataAcceptor) {
+						StreamDataAcceptor<T>[] dataAcceptors = new StreamDataAcceptor[1];
 						Decorator.Context context = new Decorator.Context() {
 							final Eventloop eventloop = getCurrentEventloop();
 
@@ -37,7 +37,7 @@ public class TestStreamConsumers {
 
 							@Override
 							public void resume() {
-								eventloop.post(() -> producer.produce(dataReceiverHolder[0]));
+								eventloop.post(() -> producer.produce(dataAcceptors[0]));
 							}
 
 							@Override
@@ -45,8 +45,8 @@ public class TestStreamConsumers {
 								acknowledgement.trySetException(error);
 							}
 						};
-						dataReceiverHolder[0] = decorator.decorate(context, dataReceiver);
-						super.produce(dataReceiverHolder[0]);
+						dataAcceptors[0] = decorator.decorate(context, dataAcceptor);
+						super.produce(dataAcceptors[0]);
 					}
 				});
 			}
@@ -65,11 +65,11 @@ public class TestStreamConsumers {
 	}
 
 	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> errorDecorator(Function<T, Throwable> errorFunction) {
-		return decorator((context, dataReceiver) ->
+		return decorator((context, dataAcceptor) ->
 				item -> {
 					Throwable error = errorFunction.apply(item);
 					if (error == null) {
-						dataReceiver.onData(item);
+						dataAcceptor.accept(item);
 					} else {
 						context.closeWithError(error);
 					}
@@ -77,9 +77,9 @@ public class TestStreamConsumers {
 	}
 
 	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> suspendDecorator(Predicate<T> predicate, Consumer<Decorator.Context> resumer) {
-		return decorator((context, dataReceiver) ->
+		return decorator((context, dataAcceptor) ->
 				item -> {
-					dataReceiver.onData(item);
+					dataAcceptor.accept(item);
 
 					if (predicate.test(item)) {
 						context.suspend();
@@ -117,6 +117,6 @@ public class TestStreamConsumers {
 			void closeWithError(Throwable error);
 		}
 
-		StreamDataReceiver<T> decorate(Context context, StreamDataReceiver<T> dataReceiver);
+		StreamDataAcceptor<T> decorate(Context context, StreamDataAcceptor<T> dataAcceptor);
 	}
 }

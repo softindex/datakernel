@@ -107,7 +107,7 @@ public final class StreamConsumers {
 		}
 	}
 
-	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataReceiver<T> {
+	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
 		private final SerialConsumer<T> consumer;
 		private final ArrayDeque<T> deque = new ArrayDeque<>();
 		private final SettableStage<Void> result = new SettableStage<>();
@@ -124,7 +124,7 @@ public final class StreamConsumers {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public void onData(T item) {
+		public void accept(T item) {
 			assert item != null;
 			if (!deque.isEmpty()) {
 				getProducer().suspend();

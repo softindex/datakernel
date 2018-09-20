@@ -4,7 +4,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
 import io.datakernel.jmx.JmxStatsWithReset;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.ReflectionUtils;
 
 import java.time.Duration;
@@ -28,17 +28,17 @@ public final class StreamStatsDetailed<T> extends StreamStatsBasic<T> implements
 	}
 
 	@Override
-	public StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
+	public StreamDataAcceptor<T> createDataAcceptor(StreamDataAcceptor<T> actualDataAcceptor) {
 		return sizeCounter == null ?
 				item -> {
 					count++;
-					actualDataReceiver.onData(item);
+					actualDataAcceptor.accept(item);
 				} :
 				item -> {
 					count++;
 					int size = sizeCounter.size(item);
 					totalSize += size;
-					actualDataReceiver.onData(item);
+					actualDataAcceptor.accept(item);
 				};
 	}
 

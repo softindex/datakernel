@@ -11,28 +11,28 @@ import java.util.function.BiConsumer;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs, StreamDataReceiver<I> {
+public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs, StreamDataAcceptor<I> {
 	private final Input input;
 	private final List<Output<?>> outputs = new ArrayList<>();
-	private final BiConsumer<I, StreamDataReceiver[]> action;
+	private final BiConsumer<I, StreamDataAcceptor[]> action;
 
 	@SuppressWarnings("unchecked")
-	private StreamDataReceiver[] dataReceivers = new StreamDataReceiver[0];
+	private StreamDataAcceptor[] dataAcceptors = new StreamDataAcceptor[0];
 	private int suspended = 0;
 
-	private StreamMapSplitter(BiConsumer<I, StreamDataReceiver[]> action) {
+	private StreamMapSplitter(BiConsumer<I, StreamDataAcceptor[]> action) {
 		this.action = action;
 		this.input = new Input();
 	}
 
-	public static <I> StreamMapSplitter<I> create(BiConsumer<I, StreamDataReceiver[]> action) {
+	public static <I> StreamMapSplitter<I> create(BiConsumer<I, StreamDataAcceptor[]> action) {
 		return new StreamMapSplitter<>(action);
 	}
 
 	@SuppressWarnings("unchecked")
 	public <O> StreamProducer<O> newOutput() {
 		Output output = new Output(outputs.size());
-		dataReceivers = Arrays.copyOf(dataReceivers, dataReceivers.length + 1);
+		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
 		suspended++;
 		outputs.add(output);
 		return output;
@@ -50,8 +50,8 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 	}
 
 	@Override
-	public void onData(I item) {
-		action.accept(item, dataReceivers);
+	public void accept(I item) {
+		action.accept(item, dataAcceptors);
 	}
 
 	private final class Input extends AbstractStreamConsumer<I> {
@@ -90,8 +90,8 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 		}
 
 		@Override
-		protected void onProduce(StreamDataReceiver<O> dataReceiver) {
-			dataReceivers[index] = dataReceiver;
+		protected void onProduce(StreamDataAcceptor<O> dataAcceptor) {
+			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
 				input.getProducer().produce(StreamMapSplitter.this);
 			}

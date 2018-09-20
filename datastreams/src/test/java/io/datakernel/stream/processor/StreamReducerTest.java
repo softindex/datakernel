@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Test;
 
@@ -131,7 +131,7 @@ public class StreamReducerTest {
 		source3.streamTo(streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
 
 		streamReducer.getOutput().streamTo(
-				consumer.apply(decorator((context, dataReceiver) ->
+				consumer.apply(decorator((context, dataAcceptor) ->
 						item -> {
 							list.add(item);
 							if (list.size() == 1) {
@@ -207,19 +207,19 @@ public class StreamReducerTest {
 
 		public static StreamReducers.Reducer<Integer, KeyValue1, KeyValueResult, KeyValueResult> REDUCER = new StreamReducers.Reducer<Integer, KeyValue1, KeyValueResult, KeyValueResult>() {
 			@Override
-			public KeyValueResult onFirstItem(StreamDataReceiver<KeyValueResult> stream, Integer key, KeyValue1 firstValue) {
+			public KeyValueResult onFirstItem(StreamDataAcceptor<KeyValueResult> stream, Integer key, KeyValue1 firstValue) {
 				return new KeyValueResult(key, firstValue.metric1, 0.0, 0.0);
 			}
 
 			@Override
-			public KeyValueResult onNextItem(StreamDataReceiver<KeyValueResult> stream, Integer key, KeyValue1 nextValue, KeyValueResult accumulator) {
+			public KeyValueResult onNextItem(StreamDataAcceptor<KeyValueResult> stream, Integer key, KeyValue1 nextValue, KeyValueResult accumulator) {
 				accumulator.metric1 += nextValue.metric1;
 				return accumulator;
 			}
 
 			@Override
-			public void onComplete(StreamDataReceiver<KeyValueResult> stream, Integer key, KeyValueResult accumulator) {
-				stream.onData(accumulator);
+			public void onComplete(StreamDataAcceptor<KeyValueResult> stream, Integer key, KeyValueResult accumulator) {
+				stream.accept(accumulator);
 			}
 
 		};
@@ -249,19 +249,19 @@ public class StreamReducerTest {
 
 		public static StreamReducers.Reducer<Integer, KeyValue2, KeyValueResult, KeyValueResult> REDUCER = new StreamReducers.Reducer<Integer, KeyValue2, KeyValueResult, KeyValueResult>() {
 			@Override
-			public KeyValueResult onFirstItem(StreamDataReceiver<KeyValueResult> stream, Integer key, KeyValue2 firstValue) {
+			public KeyValueResult onFirstItem(StreamDataAcceptor<KeyValueResult> stream, Integer key, KeyValue2 firstValue) {
 				return new KeyValueResult(key, 0.0, firstValue.metric2, 0.0);
 			}
 
 			@Override
-			public KeyValueResult onNextItem(StreamDataReceiver<KeyValueResult> stream, Integer key, KeyValue2 nextValue, KeyValueResult accumulator) {
+			public KeyValueResult onNextItem(StreamDataAcceptor<KeyValueResult> stream, Integer key, KeyValue2 nextValue, KeyValueResult accumulator) {
 				accumulator.metric2 += nextValue.metric2;
 				return accumulator;
 			}
 
 			@Override
-			public void onComplete(StreamDataReceiver<KeyValueResult> stream, Integer key, KeyValueResult accumulator) {
-				stream.onData(accumulator);
+			public void onComplete(StreamDataAcceptor<KeyValueResult> stream, Integer key, KeyValueResult accumulator) {
+				stream.accept(accumulator);
 			}
 		};
 	}
@@ -293,12 +293,12 @@ public class StreamReducerTest {
 
 		public static StreamReducers.Reducer<Integer, KeyValue3, KeyValueResult, KeyValueResult> REDUCER = new StreamReducers.Reducer<Integer, KeyValue3, KeyValueResult, KeyValueResult>() {
 			@Override
-			public KeyValueResult onFirstItem(StreamDataReceiver<KeyValueResult> stream, Integer key, KeyValue3 firstValue) {
+			public KeyValueResult onFirstItem(StreamDataAcceptor<KeyValueResult> stream, Integer key, KeyValue3 firstValue) {
 				return new KeyValueResult(key, 0.0, firstValue.metric2, firstValue.metric3);
 			}
 
 			@Override
-			public KeyValueResult onNextItem(StreamDataReceiver<KeyValueResult> stream, Integer key, KeyValue3 nextValue, KeyValueResult accumulator) {
+			public KeyValueResult onNextItem(StreamDataAcceptor<KeyValueResult> stream, Integer key, KeyValue3 nextValue, KeyValueResult accumulator) {
 				accumulator.metric2 += nextValue.metric2;
 				accumulator.metric3 += nextValue.metric3;
 
@@ -306,8 +306,8 @@ public class StreamReducerTest {
 			}
 
 			@Override
-			public void onComplete(StreamDataReceiver<KeyValueResult> stream, Integer key, KeyValueResult accumulator) {
-				stream.onData(accumulator);
+			public void onComplete(StreamDataAcceptor<KeyValueResult> stream, Integer key, KeyValueResult accumulator) {
+				stream.accept(accumulator);
 			}
 		};
 	}

@@ -31,7 +31,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.processor.StreamJoin;
 import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
@@ -64,10 +64,10 @@ public class PageRankTest {
 			this.links = links;
 		}
 
-		public void disperse(Rank rank, StreamDataReceiver<Rank> callback) {
+		public void disperse(Rank rank, StreamDataAcceptor<Rank> callback) {
 			for (long link : links) {
 				Rank newRank = new Rank(link, rank.value / links.length);
-				callback.onData(newRank);
+				callback.accept(newRank);
 			}
 		}
 
@@ -165,7 +165,7 @@ public class PageRankTest {
 		Dataset<Rank> updates = join(pages, ranks,
 			new StreamJoin.InnerJoiner<Long, Page, Rank, Rank>() {
 				@Override
-				public void onInnerJoin(Long key, Page page, Rank rank, StreamDataReceiver<Rank> output) {
+				public void onInnerJoin(Long key, Page page, Rank rank, StreamDataAcceptor<Rank> output) {
 					page.disperse(rank, output);
 				}
 			},

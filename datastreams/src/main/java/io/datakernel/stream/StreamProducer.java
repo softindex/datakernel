@@ -59,7 +59,7 @@ public interface StreamProducer<T> extends Cancellable {
 	/**
 	 * This method is called for restore streaming of this producer
 	 */
-	void produce(StreamDataReceiver<T> dataReceiver);
+	void produce(StreamDataAcceptor<T> dataAcceptor);
 
 	/**
 	 * This method is called for stop streaming of this producer

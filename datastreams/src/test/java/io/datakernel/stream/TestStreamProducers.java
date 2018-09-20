@@ -15,7 +15,7 @@ public class TestStreamProducers {
 			}
 
 			@Override
-			public void produce(StreamDataReceiver<T> dataReceiver) {
+			public void produce(StreamDataAcceptor<T> dataAcceptor) {
 				producer.produce(decorator.decorate(new Decorator.Context() {
 					@Override
 					public void endOfStream() {
@@ -26,7 +26,7 @@ public class TestStreamProducers {
 					public void closeWithError(Throwable error) {
 						endOfStream.trySetException(error);
 					}
-				}, dataReceiver));
+				}, dataAcceptor));
 			}
 
 			@Override
@@ -37,11 +37,11 @@ public class TestStreamProducers {
 	}
 
 	public static <T> StreamProducerFunction<T, StreamProducer<T>> errorDecorator(Function<T, Throwable> errorFunction) {
-		return decorator((context, dataReceiver) ->
+		return decorator((context, dataAcceptor) ->
 				item -> {
 					Throwable error = errorFunction.apply(item);
 					if (error == null) {
-						dataReceiver.onData(item);
+						dataAcceptor.accept(item);
 					} else {
 						context.closeWithError(error);
 					}
@@ -55,6 +55,6 @@ public class TestStreamProducers {
 			void closeWithError(Throwable error);
 		}
 
-		StreamDataReceiver<T> decorate(Context context, StreamDataReceiver<T> dataReceiver);
+		StreamDataAcceptor<T> decorate(Context context, StreamDataAcceptor<T> dataAcceptor);
 	}
 }

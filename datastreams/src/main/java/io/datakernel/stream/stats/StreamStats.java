@@ -9,7 +9,7 @@ import io.datakernel.stream.*;
 public interface StreamStats<T> extends
 		StreamProducerFunction<T, StreamProducer<T>>, StreamConsumerFunction<T, StreamConsumer<T>>,
 		SerialSupplierFunction<T, SerialSupplier<T>>, SerialConsumerFunction<T, SerialConsumer<T>> {
-	StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver);
+	StreamDataAcceptor<T> createDataAcceptor(StreamDataAcceptor<T> actualDataAcceptor);
 
 	void onStarted();
 

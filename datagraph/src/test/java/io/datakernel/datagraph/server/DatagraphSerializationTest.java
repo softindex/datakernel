@@ -19,7 +19,7 @@ package io.datakernel.datagraph.server;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.*;
 import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
 import org.junit.Test;
@@ -47,17 +47,17 @@ public class DatagraphSerializationTest {
 		});
 		reducer.addInput(new StreamId(), Function.identity(), new StreamReducers.Reducer<Integer, Integer, Integer, Integer>() {
 			@Override
-			public Integer onFirstItem(StreamDataReceiver<Integer> stream, Integer key, Integer firstValue) {
+			public Integer onFirstItem(StreamDataAcceptor<Integer> stream, Integer key, Integer firstValue) {
 				return null;
 			}
 
 			@Override
-			public Integer onNextItem(StreamDataReceiver<Integer> stream, Integer key, Integer nextValue, Integer accumulator) {
+			public Integer onNextItem(StreamDataAcceptor<Integer> stream, Integer key, Integer nextValue, Integer accumulator) {
 				return null;
 			}
 
 			@Override
-			public void onComplete(StreamDataReceiver<Integer> stream, Integer key, Integer accumulator) {}
+			public void onComplete(StreamDataAcceptor<Integer> stream, Integer key, Integer accumulator) {}
 		});
 		List<Node> nodes = Arrays.asList(
 				reducer,

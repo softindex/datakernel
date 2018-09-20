@@ -17,7 +17,6 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
 
 import java.util.Set;
 
@@ -34,8 +33,8 @@ public abstract class ForwardingStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	@Override
-	public void produce(StreamDataReceiver<T> dataReceiver) {
-		producer.produce(dataReceiver);
+	public void produce(StreamDataAcceptor<T> dataAcceptor) {
+		producer.produce(dataAcceptor);
 	}
 
 	@Override

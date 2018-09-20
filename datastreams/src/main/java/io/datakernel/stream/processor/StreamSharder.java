@@ -31,13 +31,13 @@ import java.util.List;
  * @param <T> type of input items
  */
 @SuppressWarnings("unchecked")
-public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, StreamDataReceiver<T> {
+public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, StreamDataAcceptor<T> {
 	private final Sharder<T> sharder;
 
 	private final InputConsumer input;
 	private final List<Output> outputs = new ArrayList<>();
 
-	private StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[0];
+	private StreamDataAcceptor<T>[] dataAcceptors = new StreamDataAcceptor[0];
 	private int suspended = 0;
 
 	private StreamSharder(Sharder<T> sharder) {
@@ -52,7 +52,7 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 
 	public StreamProducer<T> newOutput() {
 		Output output = new Output(outputs.size());
-		dataReceivers = Arrays.copyOf(dataReceivers, dataReceivers.length + 1);
+		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
 		suspended++;
 		outputs.add(output);
 		return output;
@@ -69,9 +69,9 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 	}
 
 	@Override
-	public void onData(T item) {
+	public void accept(T item) {
 		int shard = sharder.shard(item);
-		dataReceivers[shard].onData(item);
+		dataAcceptors[shard].accept(item);
 	}
 
 	protected final class InputConsumer extends AbstractStreamConsumer<T> {
@@ -100,8 +100,8 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 		}
 
 		@Override
-		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
-			dataReceivers[index] = dataReceiver;
+		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
+			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
 				input.getProducer().produce(StreamSharder.this);
 			}

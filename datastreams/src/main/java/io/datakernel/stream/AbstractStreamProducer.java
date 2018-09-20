@@ -50,9 +50,9 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 	@Nullable
-	private StreamDataReceiver<T> currentDataReceiver;
+	private StreamDataAcceptor<T> currentDataAcceptor;
 
-	private StreamDataReceiver<T> lastDataReceiver = $ -> {
+	private StreamDataAcceptor<T> lastDataAcceptor = $ -> {
 		throw new IllegalStateException("Uninitialized data receiver");
 	};
 
@@ -105,20 +105,20 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	public final boolean isReceiverReady() {
-		return currentDataReceiver != null;
+		return currentDataAcceptor != null;
 	}
 
 	protected void send(T item) {
-		getLastDataReceiver().onData(item);
+		getLastDataAcceptor().accept(item);
 	}
 
 	@Nullable
-	public final StreamDataReceiver<T> getCurrentDataReceiver() {
-		return currentDataReceiver;
+	public final StreamDataAcceptor<T> getCurrentDataAcceptor() {
+		return currentDataAcceptor;
 	}
 
-	public StreamDataReceiver<T> getLastDataReceiver() {
-		return lastDataReceiver;
+	public StreamDataAcceptor<T> getLastDataAcceptor() {
+		return lastDataAcceptor;
 	}
 
 	protected final class AsyncProduceController {
@@ -167,20 +167,20 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		});
 	}
 
-	protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+	protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 		postProduce();
 	}
 
 	@Override
-	public final void produce(StreamDataReceiver<T> dataReceiver) {
+	public final void produce(StreamDataAcceptor<T> dataAcceptor) {
 		if (logger.isTraceEnabled()) logger.trace("Start producing: {}", this);
-		assert dataReceiver != null;
+		assert dataAcceptor != null;
 
-		if (currentDataReceiver == dataReceiver) return;
+		if (currentDataAcceptor == dataAcceptor) return;
 		if (endOfStream.isComplete()) return;
-		currentDataReceiver = dataReceiver;
-		lastDataReceiver = dataReceiver;
-		onProduce(dataReceiver);
+		currentDataAcceptor = dataAcceptor;
+		lastDataAcceptor = dataAcceptor;
+		onProduce(dataAcceptor);
 	}
 
 	protected boolean isClosed() {
@@ -195,14 +195,14 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		if (logger.isTraceEnabled()) logger.trace("Suspend producer: {}", this);
 		if (!isReceiverReady())
 			return;
-		currentDataReceiver = null;
+		currentDataAcceptor = null;
 		onSuspended();
 	}
 
 	public Stage<Void> sendEndOfStream() {
 		if (endOfStream.isComplete()) return endOfStream;
-		currentDataReceiver = null;
-		lastDataReceiver = Recyclable::deepRecycle;
+		currentDataAcceptor = null;
+		lastDataAcceptor = Recyclable::deepRecycle;
 		endOfStream.set(null);
 		eventloop.post(this::cleanup);
 		return consumer.getAcknowledgement();
@@ -216,8 +216,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 				logger.warn("StreamProducer {} closed with error {}", this, e.toString());
 			}
 		}
-		currentDataReceiver = null;
-		lastDataReceiver = Recyclable::deepRecycle;
+		currentDataAcceptor = null;
+		lastDataAcceptor = Recyclable::deepRecycle;
 		endOfStream.setException(e);
 		eventloop.post(this::cleanup);
 		onError(e);

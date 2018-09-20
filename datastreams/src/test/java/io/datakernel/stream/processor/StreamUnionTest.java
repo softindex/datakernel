@@ -96,9 +96,9 @@ public class StreamUnionTest {
 		source1.streamTo(streamUnion.newInput());
 		source2.streamTo(streamUnion.newInput());
 
-		streamUnion.getOutput().streamTo(consumer.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
+		streamUnion.getOutput().streamTo(consumer.apply(TestStreamConsumers.decorator((context, dataAcceptor) ->
 						item -> {
-							dataReceiver.onData(item);
+							dataAcceptor.accept(item);
 							if (item == 1) {
 								context.closeWithError(new ExpectedException("Test Exception"));
 							}

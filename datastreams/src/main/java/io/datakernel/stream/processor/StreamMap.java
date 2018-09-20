@@ -67,7 +67,7 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 		 * @param input  received item
 		 * @param output callback for streaming it to destination
 		 */
-		void map(I input, StreamDataReceiver<O> output);
+		void map(I input, StreamDataAcceptor<O> output);
 	}
 
 	/**
@@ -86,9 +86,9 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 		protected abstract O apply(I input);
 
 		@Override
-		public final void map(I input, StreamDataReceiver<O> output) {
+		public final void map(I input, StreamDataAcceptor<O> output) {
 			O result = apply(input);
-			output.onData(result);
+			output.accept(result);
 		}
 	}
 
@@ -109,9 +109,9 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 		protected abstract boolean apply(I input);
 
 		@Override
-		public final void map(I input, StreamDataReceiver<I> output) {
+		public final void map(I input, StreamDataAcceptor<I> output) {
 			if (apply(input)) {
-				output.onData(input);
+				output.accept(input);
 			}
 		}
 	}
@@ -152,8 +152,8 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 		}
 
 		@Override
-		protected void onProduce(StreamDataReceiver<O> dataReceiver) {
-			input.getProducer().produce(item -> mapper.map(item, dataReceiver));
+		protected void onProduce(StreamDataAcceptor<O> dataAcceptor) {
+			input.getProducer().produce(item -> mapper.map(item, dataAcceptor));
 		}
 	}
 

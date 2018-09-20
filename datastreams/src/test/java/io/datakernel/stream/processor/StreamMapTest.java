@@ -69,9 +69,9 @@ public class StreamMapTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		source.apply(projection).streamTo(
-				consumer.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
+				consumer.apply(TestStreamConsumers.decorator((context, dataAcceptor) ->
 						item -> {
-							dataReceiver.onData(item);
+							dataAcceptor.accept(item);
 							if (item == 12) {
 								context.closeWithError(new Exception("Test Exception"));
 							}

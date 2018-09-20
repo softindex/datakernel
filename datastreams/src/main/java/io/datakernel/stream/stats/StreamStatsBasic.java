@@ -4,7 +4,7 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 
 import java.time.Duration;
 
@@ -26,8 +26,8 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 	}
 
 	@Override
-	public StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
-		return actualDataReceiver;
+	public StreamDataAcceptor<T> createDataAcceptor(StreamDataAcceptor<T> actualDataAcceptor) {
+		return actualDataAcceptor;
 	}
 
 	@Override

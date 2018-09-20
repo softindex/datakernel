@@ -83,10 +83,10 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 		}
 
 		@Override
-		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			if (!inputs.isEmpty()) {
 				for (int i = 0; i < inputs.size(); i++) {
-					inputs.get(i).getProducer().produce(dataReceiver);
+					inputs.get(i).getProducer().produce(dataAcceptor);
 				}
 			} else {
 				eventloop.post(this::sendEndOfStream);

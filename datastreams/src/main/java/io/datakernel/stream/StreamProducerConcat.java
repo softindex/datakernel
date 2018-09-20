@@ -26,7 +26,7 @@ class StreamProducerConcat<T> extends AbstractStreamProducer<T> {
 				producer = null;
 				internalConsumer = null;
 				if (isReceiverReady()) {
-					onProduce(getCurrentDataReceiver());
+					onProduce(getCurrentDataAcceptor());
 				}
 			});
 			return getConsumer().getAcknowledgement();
@@ -39,8 +39,8 @@ class StreamProducerConcat<T> extends AbstractStreamProducer<T> {
 	}
 
 	@Override
-	protected void onProduce(StreamDataReceiver<T> dataReceiver) {
-		assert dataReceiver != null;
+	protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
+		assert dataAcceptor != null;
 		if (producer == null) {
 			if (!iterator.hasNext()) {
 				eventloop.post(this::sendEndOfStream);
@@ -50,7 +50,7 @@ class StreamProducerConcat<T> extends AbstractStreamProducer<T> {
 			internalConsumer = new InternalConsumer();
 			producer.streamTo(internalConsumer);
 		}
-		producer.produce(dataReceiver);
+		producer.produce(dataAcceptor);
 	}
 
 	@Override

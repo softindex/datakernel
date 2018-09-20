@@ -81,9 +81,9 @@ public class StreamSplitterTest {
 
 		streamConcat.newOutput().streamTo(consumerToList1.apply(TestStreamConsumers.oneByOne()));
 		streamConcat.newOutput().streamTo(
-				badConsumer.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
+				badConsumer.apply(TestStreamConsumers.decorator((context, dataAcceptor) ->
 						item -> {
-							dataReceiver.onData(item);
+							dataAcceptor.accept(item);
 							if (item == 3) {
 								context.closeWithError(new ExpectedException("Test Exception"));
 							}

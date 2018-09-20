@@ -92,7 +92,7 @@ public class StreamSorterTest {
 
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
-				storage, Function.identity(), Integer::compareTo, true, 0);
+				storage, Function.identity(), Integer::compareTo, true, 10);
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
@@ -123,9 +123,9 @@ public class StreamSorterTest {
 
 		source.streamTo(sorter.getInput());
 		sorter.getOutput().streamTo(
-				consumer.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
+				consumer.apply(TestStreamConsumers.decorator((context, dataAcceptor) ->
 						item -> {
-							dataReceiver.onData(item);
+							dataAcceptor.accept(item);
 							if (list.size() == 2) {
 								context.closeWithError(new ExpectedException());
 							}

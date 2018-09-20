@@ -78,12 +78,12 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		return result;
 	}
 
-	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumer<T>, StreamDataReceiver<T> {
+	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
 		private final SettableStage<AggregationChunk> result = new SettableStage<>();
 		private final C chunkId;
 		private final int chunkSize;
 		private final PartitionPredicate<T> partitionPredicate;
-		private StreamDataReceiver<T> dataReceiver;
+		private StreamDataAcceptor<T> dataAcceptor;
 
 		private T first;
 		private T last;
@@ -113,20 +113,20 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		public void setProducer(StreamProducer<T> producer) {
 			super.setProducer(new ForwardingStreamProducer<T>(producer) {
 				@Override
-				public void produce(StreamDataReceiver<T> dataReceiver) {
-					ChunkWriter.this.dataReceiver = dataReceiver;
+				public void produce(StreamDataAcceptor<T> dataAcceptor) {
+					ChunkWriter.this.dataAcceptor = dataAcceptor;
 					super.produce(ChunkWriter.this);
 				}
 			});
 		}
 
 		@Override
-		public void onData(T item) {
+		public void accept(T item) {
 			if (first == null) {
 				first = item;
 			}
 			last = item;
-			dataReceiver.onData(item);
+			dataAcceptor.accept(item);
 			if (++count == chunkSize || (partitionPredicate != null && !partitionPredicate.isSamePartition(last, item))) {
 				if (!switched) {
 					switched = true;

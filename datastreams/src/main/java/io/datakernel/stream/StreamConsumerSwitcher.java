@@ -26,7 +26,7 @@ import java.util.Set;
 
 import static java.util.Collections.emptySet;
 
-public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 	private InternalProducer currentInternalProducer;
 	private int pendingConsumers = 0;
 
@@ -44,7 +44,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	public final void onData(T item) {
+	public final void accept(T item) {
 		currentInternalProducer.onData(item);
 	}
 
@@ -92,7 +92,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		private final Eventloop eventloop;
 		private final StreamConsumer<T> consumer;
 		private final SettableStage<Void> endOfStream = new SettableStage<>();
-		private StreamDataReceiver<T> lastDataReceiver;
+		private StreamDataAcceptor<T> lastDataAcceptor;
 		private boolean suspended;
 		private ArrayList<T> pendingItems;
 		private boolean pendingEndOfStream;
@@ -117,8 +117,8 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public void produce(StreamDataReceiver<T> dataReceiver) {
-			lastDataReceiver = dataReceiver;
+		public void produce(StreamDataAcceptor<T> dataAcceptor) {
+			lastDataAcceptor = dataAcceptor;
 			suspended = false;
 
 			if (pendingItems != null) {
@@ -128,7 +128,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 					}
 
 					for (T item : pendingItems) {
-						lastDataReceiver.onData(item);
+						lastDataAcceptor.accept(item);
 					}
 					pendingItems = null;
 
@@ -178,8 +178,8 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		public void onData(T item) {
-			if (lastDataReceiver != null) {
-				lastDataReceiver.onData(item);
+			if (lastDataAcceptor != null) {
+				lastDataAcceptor.accept(item);
 			} else {
 				if (pendingItems == null) {
 					pendingItems = new ArrayList<>();
@@ -190,7 +190,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		public void sendError(Throwable exception) {
-			lastDataReceiver = item -> {};
+			lastDataAcceptor = item -> {};
 			endOfStream.trySetException(exception);
 		}
 

@@ -33,12 +33,12 @@ import static io.datakernel.util.Preconditions.checkState;
  * @param <T>
  */
 @SuppressWarnings("unchecked")
-public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, StreamDataReceiver<T> {
+public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, StreamDataAcceptor<T> {
 	private final Input input;
 	private final List<Output> outputs = new ArrayList<>();
 
 	@SuppressWarnings("unchecked")
-	private StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[0];
+	private StreamDataAcceptor<T>[] dataAcceptors = new StreamDataAcceptor[0];
 	private int suspended = 0;
 
 
@@ -54,7 +54,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 
 	public StreamProducer<T> newOutput() {
 		Output output = new Output(outputs.size());
-		dataReceivers = Arrays.copyOf(dataReceivers, dataReceivers.length + 1);
+		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
 		suspended++;
 		outputs.add(output);
 		return output;
@@ -71,10 +71,10 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 	}
 
 	@Override
-	public void onData(T item) {
+	public void accept(T item) {
 		//noinspection ForLoopReplaceableByForEach
-		for (int i = 0; i < dataReceivers.length; i++) {
-			dataReceivers[i].onData(item);
+		for (int i = 0; i < dataAcceptors.length; i++) {
+			dataAcceptors[i].accept(item);
 		}
 	}
 
@@ -115,8 +115,8 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 		}
 
 		@Override
-		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
-			dataReceivers[index] = dataReceiver;
+		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
+			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
 				assert input.getProducer() != null;
 				input.getProducer().produce(StreamSplitter.this);

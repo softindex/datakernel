@@ -19,7 +19,7 @@ package io.datakernel.cube;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.logfs.ot.LogDataConsumerSplitter;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamDataAcceptor;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -68,29 +68,29 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 	}
 
 	@Override
-	protected StreamDataReceiver<TestPubRequest> createSplitter() {
-		return new StreamDataReceiver<TestPubRequest>() {
+	protected StreamDataAcceptor<TestPubRequest> createSplitter() {
+		return new StreamDataAcceptor<TestPubRequest>() {
 			private final AggregationItem outputItem = new AggregationItem();
 
-			private final StreamDataReceiver<AggregationItem> pubAggregator = addOutput(
+			private final StreamDataAcceptor<AggregationItem> pubAggregator = addOutput(
 					cube.logStreamConsumer(AggregationItem.class,
 							keysToMap(PUB_DIMENSIONS.stream(), identity()),
 							keysToMap(PUB_METRICS.stream(), identity())));
 
-			private final StreamDataReceiver<AggregationItem> advAggregator = addOutput(
+			private final StreamDataAcceptor<AggregationItem> advAggregator = addOutput(
 					cube.logStreamConsumer(AggregationItem.class,
 							keysToMap(ADV_DIMENSIONS.stream(), identity()),
 							keysToMap(ADV_METRICS.stream(), identity())));
 
 			@Override
-			public void onData(TestPubRequest pubRequest) {
+			public void accept(TestPubRequest pubRequest) {
 				outputItem.date = (int) (pubRequest.timestamp / (24 * 60 * 60 * 1000L));
 				outputItem.hourOfDay = (byte) ((pubRequest.timestamp / (60 * 60 * 1000L)) % 24);
 				outputItem.pub = pubRequest.pub;
-				pubAggregator.onData(outputItem);
+				pubAggregator.accept(outputItem);
 				for (TestPubRequest.TestAdvRequest remRequest : pubRequest.advRequests) {
 					outputItem.adv = remRequest.adv;
-					advAggregator.onData(outputItem);
+					advAggregator.accept(outputItem);
 				}
 			}
 		};

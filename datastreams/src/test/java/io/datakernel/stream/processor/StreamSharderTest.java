@@ -106,9 +106,9 @@ public class StreamSharderTest {
 		source.streamTo(streamSharder.getInput());
 		streamSharder.newOutput().streamTo(consumer1);
 		streamSharder.newOutput().streamTo(
-				consumer2.apply(TestStreamConsumers.decorator((context, dataReceiver) ->
+				consumer2.apply(TestStreamConsumers.decorator((context, dataAcceptor) ->
 						item -> {
-							dataReceiver.onData(item);
+							dataAcceptor.accept(item);
 							if (item == 3) {
 								context.closeWithError(new ExpectedException("Test Exception"));
 							}
