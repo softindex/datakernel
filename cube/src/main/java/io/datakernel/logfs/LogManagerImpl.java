@@ -174,13 +174,13 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 															}
 														}))
 												.apply(supplier ->
-														supplier.withEndOfStream(endOfStream ->
-																endOfStream.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
+														supplier.withEndOfStream(eos ->
+																eos.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
 																		Stage.complete() :
 																		Stage.ofException(e))))
 												.apply(SerialBinaryDeserializer.create(serializer))
-												.withEndOfStream(endOfStream ->
-														endOfStream.whenComplete(($, e) -> log(e)))
+												.withEndOfStream(eos ->
+														eos.whenComplete(($, e) -> log(e)))
 												.withLateBinding();
 									}));
 						}

@@ -124,8 +124,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 										SerialFileWriter.create(file)
 												.withOffset(offset == -1 ? 0L : size)
 												.withForceOnClose(true)
-												.withAcknowledgement(acknowledgement ->
-														acknowledgement.whenComplete(writeFinishStage.recordStats()))
+												.withAcknowledgement(ack ->
+														ack.whenComplete(writeFinishStage.recordStats()))
 												.apply(offset != -1 && offset != size ?
 														SerialByteBufCutter.create(size - offset) :
 														SerialConsumerFunction.identity()));
@@ -165,8 +165,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 										.withBufferSize(readerBufferSize)
 										.withOffset(offset)
 										.withLength(length == -1 ? Long.MAX_VALUE : length)
-										.withEndOfStream(endOfStream ->
-												endOfStream.whenComplete(readFinishStage.recordStats()));
+										.withEndOfStream(eos ->
+												eos.whenComplete(readFinishStage.recordStats()));
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))

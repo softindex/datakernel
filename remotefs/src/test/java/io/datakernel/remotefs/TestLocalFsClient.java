@@ -277,8 +277,8 @@ public class TestLocalFsClient {
 	public void testDownloadNonExistingFile() {
 		String fileName = "no_file.txt";
 		client.downloadSerial(fileName)
-				.withEndOfStream(endOfStream ->
-						endOfStream.whenComplete((result, error) -> {
+				.withEndOfStream(eos ->
+						eos.whenComplete((result, error) -> {
 							assertNotNull(error);
 							assertEquals(error.getClass(), RemoteFsException.class);
 							assertTrue(error.getMessage().contains(fileName));

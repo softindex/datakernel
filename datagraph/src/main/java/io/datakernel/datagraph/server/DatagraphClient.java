@@ -73,8 +73,8 @@ public final class DatagraphClient {
 			return messaging.send(commandDownload)
 					.thenApply($ -> messaging.receiveBinaryStream()
 							.apply(SerialBinaryDeserializer.create(serialization.getSerializer(type)))
-							.withEndOfStream(endOfStream ->
-									endOfStream.thenRunEx(messaging::close))
+							.withEndOfStream(eos ->
+									eos.thenRunEx(messaging::close))
 							.withLateBinding());
 		});
 	}

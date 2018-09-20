@@ -103,7 +103,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 				.thenCompose(messaging ->
 						messaging.send(new Upload(filename, offset))
 								.thenApply($ -> messaging.sendBinaryStream()
-										.withAcknowledgement(acknowledgement -> acknowledgement
+										.withAcknowledgement(ack -> ack
 												.thenCompose($2 -> messaging.receive())
 												.thenCompose(msg -> {
 													messaging.close();
@@ -148,7 +148,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 										long[] size = {0};
 										return Stage.of(messaging.receiveBinaryStream()
 												.peek(buf -> size[0] += buf.readRemaining())
-												.withEndOfStream(endOfStream -> endOfStream
+												.withEndOfStream(eos -> eos
 														.thenCompose($ -> messaging.sendEndOfStream())
 														.thenException($ -> size[0] != receivingSize ?
 																new IOException("Invalid stream size for file " + filename +

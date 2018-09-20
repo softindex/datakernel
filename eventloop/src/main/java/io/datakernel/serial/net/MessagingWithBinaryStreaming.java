@@ -133,23 +133,21 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	@Override
 	public SerialConsumer<ByteBuf> sendBinaryStream() {
 		return socketWriter
-				.withAcknowledgement(stage -> stage
+				.withAcknowledgement(ack -> ack
 						.thenRun(() -> {
 							writeDone = true;
 							closeIfDone();
-						})
-						.whenException(this::closeWithError));
+						}));
 	}
 
 	@Override
 	public SerialSupplier<ByteBuf> receiveBinaryStream() {
 		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.asIterator()), socketReader)
-				.withEndOfStream(stage -> stage
+				.withEndOfStream(eos -> eos
 						.thenRun(() -> {
 							readDone = true;
 							closeIfDone();
-						})
-						.whenException(this::closeWithError));
+						}));
 	}
 
 	@Override
