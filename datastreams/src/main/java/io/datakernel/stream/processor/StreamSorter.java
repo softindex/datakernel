@@ -63,7 +63,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		this.input = new Input();
 
-		this.temporaryStreams.addStage(input.getAcknowledgement(), (accumulator, $) -> {});
+		this.temporaryStreams.addStage(input.getEndOfStream(), (accumulator, $) -> {});
 		Stage<StreamProducer<T>> outputStreamStage = this.temporaryStreams.get()
 				.thenApply(streamIds -> {
 					input.list.sort(itemComparator);
@@ -131,13 +131,13 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	 * @param storage           storage for storing elements which was no placed to RAM
 	 * @param keyFunction       function for searching key
 	 * @param keyComparator     comparator for comparing key
-	 * @param deduplicate       if it is true it means that in result will be not objects with same key
+	 * @param distinct       if it is true it means that in result will be not objects with same key
 	 * @param itemsInMemorySize size of elements which can be saved in RAM before sorting
 	 */
 	public static <K, T> StreamSorter<K, T> create(StreamSorterStorage<T> storage,
-			Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate,
+			Function<T, K> keyFunction, Comparator<K> keyComparator, boolean distinct,
 			int itemsInMemorySize) {
-		return new StreamSorter<>(storage, keyFunction, keyComparator, deduplicate, itemsInMemorySize);
+		return new StreamSorter<>(storage, keyFunction, keyComparator, distinct, itemsInMemorySize);
 	}
 	// endregion
 

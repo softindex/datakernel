@@ -179,7 +179,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 			Input<Object> input = priorityQueue.poll();
 			if (input == null)
 				break;
-			if (key != null && input.headKey.equals(key)) {
+			if (input.headKey.equals(key)) {
 				accumulator = input.reducer.onNextItem(dataAcceptor, key, input.headItem, accumulator);
 			} else {
 				if (lastInput != null) {

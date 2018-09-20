@@ -88,11 +88,11 @@ public class StreamSorterTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StreamProducer<Integer> source = StreamProducer.of(1);
+		StreamProducer<Integer> source = StreamProducer.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
 
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
-				storage, Function.identity(), Integer::compareTo, true, 10);
+				storage, Function.identity(), Integer::compareTo, true, 2);
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
@@ -135,8 +135,8 @@ public class StreamSorterTest {
 
 //		assertTrue(list.size() == 2);
 		assertEndOfStream(source);
-//		assertClosedWithError(sorter.getOutput());
-		assertEndOfStream(sorter.getInput());
+		assertClosedWithError(sorter.getOutput());
+		assertClosedWithError(sorter.getInput());
 		assertClosedWithError(consumer);
 	}
 

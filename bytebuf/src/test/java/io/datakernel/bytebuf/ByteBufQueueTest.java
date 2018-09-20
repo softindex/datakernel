@@ -19,7 +19,7 @@ public class ByteBufQueueTest {
 	}
 
 	@Test
-	public void testToIterator() {
+	public void testAsIterator() {
 		queue.asIterator();
 		assertEquals(0, queue.remainingBufs());
 	}

@@ -201,10 +201,10 @@ public final class StreamProducers {
 		protected void produce(AsyncProduceController async) {
 			async.begin();
 			supplier.get()
-					.whenComplete((value, e) -> {
+					.whenComplete((item, e) -> {
 						if (e == null) {
-							if (value != null) {
-								send(value);
+							if (item != null) {
+								send(item);
 								async.resume();
 							} else {
 								sendEndOfStream();
