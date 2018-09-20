@@ -67,8 +67,7 @@ public class Initializers {
 		return server -> server
 				.withMaxHttpMessageSize(config.get(ofMemSize(), "maxMessageSize", server.getMaxHttpMessageSize()))
 				.withKeepAliveTimeout(config.get(ofDuration(), "keepAliveTimeout", server.getKeepAliveTimeout()))
-				.withReadTimeout(config.get(ofDuration(), "readTimeout", server.getReadTimeout()))
-				.withWriteTimeout(config.get(ofDuration(), "writeTimeout", server.getWriteTimeout()));
+				.withReadWriteTimeout(config.get(ofDuration(), "readWriteTimeout", server.getReadWriteTimeout()));
 	}
 
 	public static Initializer<RemoteFsServer> ofRemoteFsServer(Config config) {

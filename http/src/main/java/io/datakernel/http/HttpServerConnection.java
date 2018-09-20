@@ -82,10 +82,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		this.inspector = server.inspector;
 	}
 
-	@Override
-	public void onRegistered() {
-		asyncTcpSocket.read();
-		switchPool(server.poolReading);
+	public void serve() {
+		switchPool(server.poolReadWrite);
+		readHttpMessage();
 	}
 
 	@Override
@@ -138,7 +137,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
-		switchPool(server.poolReading);
+		switchPool(server.poolReadWrite);
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null) {
@@ -167,11 +166,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				break;
 		}
 
-		keepAlive = false;
 		if (p + 7 < line.writePosition()) {
 			if (array[p + 0] == 'H' && array[p + 1] == 'T' && array[p + 2] == 'T' && array[p + 3] == 'P'
 					&& array[p + 4] == '/' && array[p + 5] == '1' && array[p + 6] == '.' && array[p + 7] == '1') {
-				keepAlive = true; // keep-alive for HTTP/1.1
+				flags |= KEEP_ALIVE; // keep-alive for HTTP/1.1
 			}
 		}
 
@@ -196,14 +194,14 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		super.onHeader(header, value);
 		if (header == HttpHeaders.EXPECT) {
 			if (equalsLowerCaseAscii(EXPECT_100_CONTINUE, value.array(), value.readPosition(), value.readRemaining())) {
-				asyncTcpSocket.write(ByteBuf.wrapForReading(EXPECT_RESPONSE_CONTINUE));
+				socket.write(ByteBuf.wrapForReading(EXPECT_RESPONSE_CONTINUE));
 			}
 		}
 		request.addHeader(header, value);
 	}
 
 	private void writeHttpResult(HttpResponse httpResponse) {
-		httpResponse.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
+		httpResponse.addHeader((flags & KEEP_ALIVE) != 0 ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
 		writeHttpMessage(httpResponse);
 	}
 
@@ -218,53 +216,49 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		servlet.serve(request)
 				.whenComplete((response, e) -> {
+					if (isClosed()) {
+						request.recycle();
+						if (response != null) response.recycle();
+						return;
+					}
 					if (e == null) {
 						if (inspector != null) inspector.onHttpResponse(request, response);
-						if (!isClosed()) {
-							switchPool(server.poolWriting);
-							writeHttpResult(response);
-						} else {
-							//connection is closed, but bufs are not recycled, let 's recycle them now
-							response.recycle();
-						}
+						switchPool(server.poolReadWrite);
+						writeHttpResult(response);
 					} else {
 						if (inspector != null) inspector.onServletException(request, e);
-						if (!isClosed()) {
-							switchPool(server.poolWriting);
-							writeException(e);
-						}
+						switchPool(server.poolReadWrite);
+						writeException(e);
 					}
-					recycleBufs();
 				});
 	}
 
 	@Override
-	protected void reset() {
-		reading = FIRSTLINE;
-		recycleBufs();
-		super.reset();
-	}
-
-	@Override
 	protected void onBodyReceived() {
-		if (bodyWriter == null && bodyReader == null && pool != server.poolServing) onHttpMessageComplete();
+		if ((flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED) && pool != server.poolServing) {
+			onHttpMessageComplete();
+		}
 	}
 
 	@Override
 	protected void onBodySent() {
-		if (bodyWriter == null && bodyReader == null && pool != server.poolServing) onHttpMessageComplete();
+		if ((flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED) && pool != server.poolServing) {
+			onHttpMessageComplete();
+		}
 	}
 
 	private void onHttpMessageComplete() {
 		assert !isClosed();
 
-		if (keepAlive && server.keepAliveTimeoutMillis != 0) {
-			reset();
+		if (request != null) {
+			request.recycle();
+			request = null;
+		}
+
+		if ((flags & KEEP_ALIVE) != 0 && server.keepAliveTimeoutMillis != 0) {
 			switchPool(server.poolKeepAlive);
-			reading = FIRSTLINE;
-			if (readQueue.hasRemaining()) {
-				eventloop.post(() -> onRead(null));
-			}
+			flags = 0;
+			readHttpMessage();
 		} else {
 			close();
 		}
@@ -274,20 +268,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		writeHttpResult(server.formatHttpError(e));
 	}
 
-	private void recycleBufs() {
-		if (request != null) {
+	@Override
+	protected void onClosed() {
+		if (request != null && pool != server.poolServing) {
 			request.recycle();
 			request = null;
 		}
-	}
-
-	@Override
-	protected void onClosed() {
 		switchPool(null);
-		if (reading != NOTHING) {
-			// request is not being processed by asynchronous servlet at the moment
-			recycleBufs();
-		}
 		server.onConnectionClosed();
 	}
 

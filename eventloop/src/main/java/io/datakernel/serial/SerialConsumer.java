@@ -18,7 +18,6 @@ package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
-import io.datakernel.util.Recyclable;
 
 import java.util.Iterator;
 import java.util.function.Consumer;
@@ -94,10 +93,6 @@ public interface SerialConsumer<T> extends Cancellable {
 				return Stage.complete();
 			}
 		};
-	}
-
-	static <T> SerialConsumer<T> recycle() {
-		return of(AsyncConsumer.of(Recyclable::deepRecycle));
 	}
 
 	static <T> SerialConsumer<T> ofException(Throwable e) {

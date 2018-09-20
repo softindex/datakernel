@@ -17,7 +17,6 @@
 package io.datakernel.serial.net;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Cancellable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -28,13 +27,13 @@ import io.datakernel.util.Taggable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static io.datakernel.eventloop.AsyncTcpSocket.CHANNEL_CLOSED;
+import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 
 /**
  * Represent the TCP connection which  processes received items with {@link SerialSupplier} and {@link SerialConsumer},
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
-public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>, Cancellable, Taggable {
+public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>, Taggable {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private final Eventloop eventloop = Eventloop.getCurrentEventloop();
@@ -52,7 +51,6 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	private boolean readDone;
 	private boolean writeDone;
-
 	@Nullable
 	private Object tag;
 
@@ -64,22 +62,24 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 		this.socketWriter = socket.writer();
 		this.bufsSupplier = ByteBufsSupplier.ofProvidedQueue(bufs,
 				() -> this.socket.read()
-						.whenResult(buf -> {
+						.thenCompose(buf -> {
 							if (buf != null) {
 								bufs.add(buf);
+								return Stage.complete();
 							} else {
-								int x = 0;
+								return Stage.ofException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
 							}
 						})
-						.toVoid(),
+						.whenException(this::closeWithError),
 				Stage::complete,
 				this);
 		this.parser = bufs -> {
 			ByteBuf buf = bufs.takeRemaining();
 			I maybeResult = this.serializer.tryDeserialize(buf);
-			if (maybeResult == null) {
+			if (buf.canRead()) {
 				bufs.add(buf);
-				return null;
+			} else {
+				buf.recycle();
 			}
 			return maybeResult;
 		};
@@ -87,13 +87,32 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket socket,
 			@Nullable MessagingSerializer<I, O> serializer) {
-		return new MessagingWithBinaryStreaming<>(socket, serializer);
+		MessagingWithBinaryStreaming<I, O> messaging = new MessagingWithBinaryStreaming<>(socket, serializer);
+		messaging.prefetch();
+		return messaging;
 	}
 	// endregion
 
+	private void prefetch() {
+		if (bufs.isEmpty()) {
+			socket.read()
+					.whenResult(buf -> {
+						if (buf != null) {
+							bufs.add(buf);
+						} else {
+							readDone = true;
+							closeIfDone();
+						}
+					})
+					.whenException(this::closeWithError);
+		}
+	}
+
 	@Override
 	public Stage<I> receive() {
-		return bufsSupplier.parse(parser);
+		return bufsSupplier.parse(parser)
+				.thenRun(this::prefetch)
+				.whenException(this::closeWithError);
 	}
 
 	@Override
@@ -103,34 +122,52 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	@Override
 	public Stage<Void> sendEndOfStream() {
-		return socket.write(null);
+		return socket.write(null)
+				.thenRun(() -> {
+					writeDone = true;
+					closeIfDone();
+				})
+				.whenException(this::closeWithError);
 	}
 
 	@Override
 	public SerialConsumer<ByteBuf> sendBinaryStream() {
-		return socketWriter;
+		return socketWriter
+				.withAcknowledgement(stage -> stage
+						.thenRun(() -> {
+							writeDone = true;
+							closeIfDone();
+						})
+						.whenException(this::closeWithError));
 	}
 
 	@Override
 	public SerialSupplier<ByteBuf> receiveBinaryStream() {
-		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.asIterator()), socketReader);
-	}
-
-	@Override
-	public void close() {
-		closeWithError(CHANNEL_CLOSED);
+		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.asIterator()), socketReader)
+				.withEndOfStream(stage -> stage
+						.thenRun(() -> {
+							readDone = true;
+							closeIfDone();
+						})
+						.whenException(this::closeWithError));
 	}
 
 	@Override
 	public void closeWithError(Throwable e) {
+		if (isClosed()) return;
+		closedException = e;
 		socket.close();
 		bufs.recycle();
 	}
 
 	private void closeIfDone() {
 		if (readDone && writeDone) {
-			socket.close();
+			close();
 		}
+	}
+
+	public boolean isClosed() {
+		return closedException != null;
 	}
 
 	@Override

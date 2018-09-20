@@ -66,12 +66,9 @@ public final class DatagraphClient {
 
 	public <T> Stage<StreamProducer<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
 		return eventloop.connect(address).thenCompose(socketChannel -> {
-			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
-			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+			AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
+			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 			DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
-
-			asyncTcpSocket.setEventHandler(messaging);
-			asyncTcpSocket.register();
 
 			return messaging.send(commandDownload)
 					.thenApply($ -> messaging.receiveBinaryStream()
@@ -85,11 +82,8 @@ public final class DatagraphClient {
 	public Stage<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
 		return eventloop.connect(address)
 				.thenCompose(socketChannel -> {
-					AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
-					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
-
-					asyncTcpSocket.setEventHandler(messaging);
-					asyncTcpSocket.register();
+					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
+					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 
 					DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));
 					return messaging.send(commandExecute)

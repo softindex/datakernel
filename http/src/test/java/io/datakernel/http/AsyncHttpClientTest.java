@@ -20,7 +20,6 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.exception.AsyncTimeoutException;
@@ -124,34 +123,10 @@ public class AsyncHttpClientTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		SimpleServer server = SimpleServer.create(eventloop,
-				asyncTcpSocket ->
-						new AsyncTcpSocket.EventHandler() {
-							@Override
-							public void onRegistered() {
-								asyncTcpSocket.read();
-							}
-
-							@Override
-							public void onRead(ByteBuf buf) {
-								buf.recycle();
-								asyncTcpSocket.write(wrapAscii("\r\n"));
-							}
-
-							@Override
-							public void onReadEndOfStream() {
-								// empty
-							}
-
-							@Override
-							public void onWrite() {
-								asyncTcpSocket.close();
-							}
-
-							@Override
-							public void onClosedWithError(Throwable e1) {
-								// empty
-							}
-						})
+				socket -> socket.read()
+						.whenResult(ByteBuf::recycle)
+						.thenCompose($ -> socket.write(wrapAscii("\r\n")))
+						.thenRunEx(socket::close))
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
@@ -190,8 +165,7 @@ public class AsyncHttpClientTest {
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop)
 				.withNoKeepAlive()
 				.withConnectTimeout(Duration.ofMillis(20))
-				.withReadTimeout(Duration.ofMillis(20))
-				.withWriteTimeout(Duration.ofMillis(20))
+				.withReadWriteTimeout(Duration.ofMillis(20))
 				.withInspector(inspector);
 
 		Stages.all(

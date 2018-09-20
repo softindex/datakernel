@@ -277,7 +277,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					//noinspection RedundantTypeArguments - that <Void> 3 lines below is needed badly for Java, uughh
 					// check number of uploads only here, so even if there were less connections
 					// than replicationCount, they will still upload
-					return Stage.of(consumer.withAcknowledgement(stage -> stage
+					return Stage.of(consumer.withAcknowledgement(ack -> ack
 							.thenCompose($ -> uploadResults)
 							.thenCompose(ackTries -> {
 								long successCount = ackTries.stream().filter(Try::isSuccess).count();

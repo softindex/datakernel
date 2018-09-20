@@ -92,10 +92,6 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamProducer<T>
 			if (isReceiverReady()) {
 				input.get()
 						.whenResult(buf -> {
-							if (isClosed()) {
-								buf.recycle();
-								return;
-							}
 							if (buf != null) {
 								queue.add(buf);
 								async.resume();

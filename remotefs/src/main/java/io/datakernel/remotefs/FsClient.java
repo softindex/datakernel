@@ -76,8 +76,8 @@ public interface FsClient {
 		String tempName = tempFolder + File.separator + filename;
 		return upload(tempName)
 				.thenApply(consumer ->
-						consumer.withAcknowledgement(stage ->
-								stage.thenCompose($ -> move(tempName, filename))));
+						consumer.withAcknowledgement(ack ->
+								ack.thenCompose($ -> move(tempName, filename))));
 	}
 
 	/**

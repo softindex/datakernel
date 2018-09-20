@@ -25,7 +25,7 @@ import io.datakernel.rpc.protocol.RpcStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
+import java.net.InetAddress;
 import java.util.Map;
 
 public final class RpcServerConnection implements RpcStream.Listener, JmxRefreshable {
@@ -39,15 +39,15 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	private boolean readEndOfStream;
 
 	// jmx
-	private final InetSocketAddress remoteAddress;
+	private final InetAddress remoteAddress;
 	private final ExceptionStats lastRequestHandlingException = ExceptionStats.create();
 	private final ValueStats requestHandlingTime = ValueStats.create(RpcServer.SMOOTHING_WINDOW).withUnit("milliseconds");
 	private EventStats successfulRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
 	private EventStats failedRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
 	private boolean monitoring = false;
 
-	protected RpcServerConnection(RpcServer rpcServer, InetSocketAddress remoteAddress,
-	                              Map<Class<?>, RpcRequestHandler<?, ?>> handlers, RpcStream stream) {
+	protected RpcServerConnection(RpcServer rpcServer, InetAddress remoteAddress,
+			Map<Class<?>, RpcRequestHandler<?, ?>> handlers, RpcStream stream) {
 		this.rpcServer = rpcServer;
 		this.stream = stream;
 		this.handlers = handlers;

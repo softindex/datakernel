@@ -46,7 +46,7 @@ public final class RawSnapshot implements Signable {
 		writeCommitId(buf, commitId);
 		writeEncryptedData(buf, encryptedDiffs);
 		writeSimKeyHash(buf, simKeyHash);
-		return new RawSnapshot(buf.getArray(),
+		return new RawSnapshot(buf.asArray(),
 				repositoryId, commitId, encryptedDiffs, simKeyHash);
 	}
 

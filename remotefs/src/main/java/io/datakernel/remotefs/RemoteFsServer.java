@@ -19,7 +19,6 @@ package io.datakernel.remotefs;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
@@ -30,6 +29,7 @@ import io.datakernel.serial.net.MessagingSerializer;
 import io.datakernel.serial.net.MessagingSerializers;
 import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 
+import java.net.InetAddress;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
@@ -78,7 +78,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	}
 
 	@Override
-	protected EventHandler createSocketHandler(AsyncTcpSocket socket) {
+	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
 		MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging =
 				MessagingWithBinaryStreaming.create(socket, SERIALIZER);
 		messaging.receive()
@@ -105,7 +105,6 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 							.thenCompose($2 -> messaging.sendEndOfStream())
 							.thenRun(messaging::close);
 				});
-		return messaging;
 	}
 
 	private void addHandlers() {

@@ -398,15 +398,11 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 		return maxSize - s;
 	}
 
-	public Iterator<ByteBuf> toIterator() {
-		if (!hasRemaining()) return emptyIterator();
-		first = last = 0;
-		return new ByteBufIterator(this, true);
-	}
-
 	public Iterator<ByteBuf> asIterator() {
 		if (!hasRemaining()) return emptyIterator();
-		return new ByteBufIterator(this, false);
+		ByteBufIterator iterator = new ByteBufIterator(this);
+		first = last = 0;
+		return iterator;
 	}
 
 	public static class ByteBufIterator implements Iterator<ByteBuf>, Recyclable {
@@ -414,22 +410,10 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 		int first;
 		final int last;
 
-		private ByteBufIterator(ByteBufQueue queue, boolean mutable) {
-			if (!mutable) {
-				bufs = new ByteBuf[queue.remainingBufs()];
-				for (int i = 0; i < queue.remainingBufs(); i++) {
-					ByteBuf buf = queue.peekBuf(i);
-					ByteBuf copy = ByteBufPool.allocate(buf.readRemaining());
-					copy.put(buf.asArray());
-					bufs[i] = copy;
-				}
-				first = 0;
-				last = queue.remainingBufs();
-			} else {
-				bufs = queue.bufs;
-				first = queue.first;
-				last = queue.last;
-			}
+		private ByteBufIterator(ByteBufQueue queue) {
+			bufs = queue.bufs;
+			first = queue.first;
+			last = queue.last;
 		}
 
 		@Override

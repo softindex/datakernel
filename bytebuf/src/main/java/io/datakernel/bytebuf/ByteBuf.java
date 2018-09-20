@@ -334,7 +334,7 @@ public class ByteBuf implements Recyclable, AutoCloseable {
 		return bytes;
 	}
 
-	public byte[] asArray(){
+	public byte[] asArray() {
 		byte[] bytes = getArray();
 		recycle();
 		return bytes;
@@ -344,8 +344,7 @@ public class ByteBuf implements Recyclable, AutoCloseable {
 		return new String(array, readPosition, readRemaining(), charset);
 	}
 
-
-	public String asString(Charset charset){
+	public String asString(Charset charset) {
 		String string = getString(charset);
 		recycle();
 		return string;

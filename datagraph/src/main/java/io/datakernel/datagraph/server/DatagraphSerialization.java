@@ -29,7 +29,7 @@ import io.datakernel.stream.processor.Sharders.HashSharder;
 import io.datakernel.stream.processor.StreamJoin;
 import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
-import io.datakernel.stream.processor.StreamReducers.MergeDeduplicateReducer;
+import io.datakernel.stream.processor.StreamReducers.MergeDistinctReducer;
 import io.datakernel.stream.processor.StreamReducers.MergeSortReducer;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.AccumulatorToAccumulator;
@@ -100,7 +100,7 @@ public final class DatagraphSerialization {
 					.with("reducerToResult", REDUCER_TO_RESULT_JSON, AccumulatorToAccumulator::getReducerToResult, AccumulatorToAccumulator::setReducerToResult))
 			.withSubtype(AccumulatorToOutput.class, "AccumulatorToOutput", TypeAdapterObject.create(AccumulatorToOutput::new)
 					.with("reducerToResult", REDUCER_TO_RESULT_JSON, AccumulatorToOutput::getReducerToResult, AccumulatorToOutput::setReducerToResult))
-			.withStatelessSubtype(MergeDeduplicateReducer::new, "MergeDeduplicateReducer")
+			.withStatelessSubtype(MergeDistinctReducer::new, "MergeDeduplicateReducer")
 			.withStatelessSubtype(MergeSortReducer::new, "MergeSortReducer")
 			.allOtherAreStateless();
 

@@ -407,10 +407,12 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public String toString() {
-		return "SettableStage{" + String.valueOf(isComplete() ?
-				(exception == null ?
-						"result=" + result :
-						"exception=" + exception.getClass().getSimpleName()) :
-				"<uncomplete>") + '}';
+		return "SettableStage{" +
+				(isComplete() ?
+						(exception == null ?
+								"" + result :
+								"exception=" + exception.getClass().getSimpleName()) :
+						"")
+				+ "}";
 	}
 }

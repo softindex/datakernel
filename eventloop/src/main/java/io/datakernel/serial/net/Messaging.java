@@ -16,12 +16,13 @@
 
 package io.datakernel.serial.net;
 
+import io.datakernel.async.Cancellable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 
-public interface Messaging<I, O> {
+public interface Messaging<I, O> extends Cancellable {
 	Stage<I> receive();
 
 	Stage<Void> send(O msg);
@@ -31,6 +32,4 @@ public interface Messaging<I, O> {
 	SerialSupplier<ByteBuf> receiveBinaryStream();
 
 	SerialConsumer<ByteBuf> sendBinaryStream();
-
-	void close();
 }

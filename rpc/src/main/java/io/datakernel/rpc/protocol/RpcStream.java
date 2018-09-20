@@ -18,7 +18,6 @@ package io.datakernel.rpc.protocol;
 
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.serial.net.SocketStreamingConnection;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serial.processor.SerialLZ4Compressor;
@@ -42,17 +41,16 @@ public final class RpcStream {
 	private Listener listener;
 	private final AbstractStreamProducer<RpcMessage> sender;
 	private final AbstractStreamConsumer<RpcMessage> receiver;
-	private final SocketStreamingConnection connection;
+	private final AsyncTcpSocket socket;
 
 	private boolean ready;
 	private StreamDataReceiver<RpcMessage> downstreamDataReceiver;
 
-	public RpcStream(AsyncTcpSocket asyncTcpSocket,
-	                 BufferSerializer<RpcMessage> messageSerializer,
-	                 MemSize initialBufferSize, MemSize maxMessageSize,
-	                 Duration autoFlushInterval, boolean compression, boolean server) {
-
-		connection = SocketStreamingConnection.create(asyncTcpSocket);
+	public RpcStream(AsyncTcpSocket socket,
+			BufferSerializer<RpcMessage> messageSerializer,
+			MemSize initialBufferSize, MemSize maxMessageSize,
+			Duration autoFlushInterval, boolean compression, boolean server) {
+		this.socket = socket;
 
 		if (server) {
 			sender = new AbstractStreamProducer<RpcMessage>() {
@@ -124,14 +122,14 @@ public final class RpcStream {
 			SerialLZ4Decompressor decompressor = SerialLZ4Decompressor.create();
 			SerialLZ4Compressor compressor = SerialLZ4Compressor.createFastCompressor();
 
-			connection.getSocketReader().streamTo(decompressor);
+			socket.reader().streamTo(decompressor);
 			decompressor.streamTo(deserializer);
 
 			serializer.streamTo(compressor);
-			compressor.streamTo(connection.getSocketWriter());
+			compressor.streamTo(socket.writer());
 		} else {
-			connection.getSocketReader().streamTo(deserializer);
-			serializer.streamTo(connection.getSocketWriter());
+			socket.reader().streamTo(deserializer);
+			serializer.streamTo(socket.writer());
 		}
 
 		deserializer.streamTo(receiver);
@@ -158,10 +156,6 @@ public final class RpcStream {
 
 	public boolean isOverloaded() {
 		return !ready;
-	}
-
-	public AsyncTcpSocket.EventHandler getSocketEventHandler() {
-		return connection;
 	}
 
 	public void sendEndOfStream() {

@@ -39,7 +39,7 @@ public final class RawPullRequest implements Signable {
 		writeRepositoryId(buf, repository);
 		writeRepositoryId(buf, forkRepository);
 
-		return new RawPullRequest(buf.getArray(),
+		return new RawPullRequest(buf.asArray(),
 				repository, forkRepository);
 	}
 

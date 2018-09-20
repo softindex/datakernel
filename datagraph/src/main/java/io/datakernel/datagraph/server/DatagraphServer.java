@@ -37,6 +37,7 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.util.MemSize;
 
+import java.net.InetAddress;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -92,8 +93,8 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 			}
 			SerialConsumer<ByteBuf> consumer = messaging.sendBinaryStream();
 			forwarder.getSupplier().streamTo(consumer);
-			consumer.withAcknowledgement(acknowledgement ->
-					acknowledgement.whenComplete(($, throwable) -> {
+			consumer.withAcknowledgement(ack ->
+					ack.whenComplete(($, throwable) -> {
 						if (throwable != null) {
 							logger.warn("Exception occurred while trying to send data");
 						}
@@ -134,8 +135,8 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	@Override
-	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
+		MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 		messaging.receive()
 				.whenResult(msg -> {
 					if (msg != null) {
@@ -149,7 +150,6 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 					logger.error("received error while trying to read", e);
 					messaging.close();
 				});
-		return messaging;
 	}
 
 	private void doRead(MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {

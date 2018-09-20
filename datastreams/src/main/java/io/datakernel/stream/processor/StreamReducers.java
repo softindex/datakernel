@@ -34,8 +34,8 @@ public final class StreamReducers {
 	 * @param <K> type of key
 	 * @param <T> type of output
 	 */
-	public static <K, T> Reducer<K, T, T, Void> mergeDeduplicateReducer() {
-		return new MergeDeduplicateReducer<>();
+	public static <K, T> Reducer<K, T, T, Void> mergeDistinctReducer() {
+		return new MergeDistinctReducer<>();
 	}
 
 	/**
@@ -469,7 +469,7 @@ public final class StreamReducers {
 	 * @param <K> type of keys
 	 * @param <T> type of input and output data
 	 */
-	public static class MergeDeduplicateReducer<K, T> implements Reducer<K, T, T, Void> {
+	public static class MergeDistinctReducer<K, T> implements Reducer<K, T, T, Void> {
 		/**
 		 * On first item with new key it streams it
 		 *

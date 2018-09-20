@@ -30,16 +30,10 @@ public abstract class ByteBufsSupplier implements Cancellable {
 
 	public static ByteBufsSupplier of(SerialSupplier<ByteBuf> input) {
 		return new ByteBufsSupplier() {
-			private boolean closed;
-
 			@Override
 			public Stage<Void> needMoreData() {
 				return input.get()
 						.thenCompose(buf -> {
-							if (closed) {
-								if (buf != null) buf.recycle();
-								return Stage.ofException(CLOSED_EXCEPTION);
-							}
 							if (buf != null) {
 								bufs.add(buf);
 								return Stage.complete();
@@ -57,10 +51,6 @@ public abstract class ByteBufsSupplier implements Cancellable {
 				}
 				return input.get()
 						.thenCompose(buf -> {
-							if (closed) {
-								if (buf != null) buf.recycle();
-								return Stage.ofException(CLOSED_EXCEPTION);
-							}
 							if (buf != null) {
 								buf.recycle();
 								return Stage.ofException(UNEXPECTED_DATA_EXCEPTION);
@@ -72,8 +62,6 @@ public abstract class ByteBufsSupplier implements Cancellable {
 
 			@Override
 			public void closeWithError(Throwable e) {
-				if (closed) return;
-				closed = true;
 				bufs.recycle();
 				input.closeWithError(e);
 			}

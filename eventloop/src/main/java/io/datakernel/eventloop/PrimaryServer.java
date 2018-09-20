@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.util.Initializable;
 
+import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.List;
 
@@ -53,7 +54,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> implement
 	// endregion
 
 	@Override
-	protected void start(AsyncTcpSocket asyncTcpSocket) {
+	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
 		throw new UnsupportedOperationException();
 	}
 

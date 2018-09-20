@@ -98,11 +98,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	public void onRegistered() {
-		asyncTcpSocket.read();
-	}
-
-	@Override
 	public void onClosedWithError(Throwable e) {
 		if (inspector != null) inspector.onHttpError(this, result == null, e);
 		readQueue.recycle();
@@ -121,13 +116,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			throw new ParseException("Invalid response");
 		}
 
-		keepAlive = false;
 		int sp1;
 		if (line.peek(6) == SP) {
 			sp1 = line.readPosition() + 7;
 		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
-			if (line.peek(7) == '1')
-				keepAlive = true;
+			if (line.peek(7) == '1') {
+				flags |= KEEP_ALIVE;
+			}
 			sp1 = line.readPosition() + 9;
 		} else {
 			line.recycle();
@@ -188,12 +183,16 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onBodyReceived() {
-		if (response != null && bodyWriter == null && bodyReader == null) onHttpMessageComplete();
+		if (response != null && (flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED)) {
+			onHttpMessageComplete();
+	}
 	}
 
 	@Override
 	protected void onBodySent() {
-		if (response != null && bodyWriter == null && bodyReader == null) onHttpMessageComplete();
+		if (response != null && (flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED)) {
+			onHttpMessageComplete();
+	}
 	}
 
 	private void onHttpMessageComplete() {
@@ -201,22 +200,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		response.recycle();
 		response = null;
 
-		if (keepAlive && client.keepAliveTimeoutMillis != 0) {
-			reset();
+		if ((flags & KEEP_ALIVE) != 0 && client.keepAliveTimeoutMillis != 0) {
+			flags = 0;
 			client.returnToKeepAlivePool(this);
 		} else {
 			close();
 		}
-	}
-
-	@Override
-	protected void reset() {
-		reading = END_OF_STREAM;
-		if (response != null) {
-			response.recycle();
-			response = null;
-		}
-		super.reset();
 	}
 
 	/**
@@ -226,10 +215,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	public Stage<HttpResponse> send(HttpRequest request) {
 		this.result = new SettableStage<>();
-		switchPool(client.poolWriting);
+		switchPool(client.poolReadWrite);
 		request.addHeader(CONNECTION_KEEP_ALIVE);
 		writeHttpMessage(request);
-		reading = FIRSTLINE;
+		readHttpMessage();
 		return this.result;
 	}
 

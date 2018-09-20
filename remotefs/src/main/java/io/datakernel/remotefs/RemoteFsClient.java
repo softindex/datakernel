@@ -238,15 +238,9 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 
 	private Stage<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
 		return eventloop.connect(address)
-				.thenApply(channel -> {
-					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, channel, socketSettings);
-					MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging =
-							MessagingWithBinaryStreaming.create(socket, SERIALIZER);
-					socket.setEventHandler(messaging);
-					socket.register();
-					logger.trace("connected to [{}]: {}", address, this);
-					return messaging;
-				})
+				.thenRun(() -> logger.trace("connected to [{}]: {}", address, this))
+				.thenApply(channel -> AsyncTcpSocketImpl.wrapChannel(eventloop, channel, socketSettings))
+				.thenApply(socket -> MessagingWithBinaryStreaming.create(socket, SERIALIZER))
 				.whenException(e -> logger.warn("failed connecting to [" + address + "] (" + e + "): " + this))
 				.whenComplete(connectStage.recordStats());
 	}

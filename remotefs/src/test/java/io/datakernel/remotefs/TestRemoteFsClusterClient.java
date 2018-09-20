@@ -1,5 +1,6 @@
 package io.datakernel.remotefs;
 
+import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
@@ -194,7 +195,7 @@ public class TestRemoteFsClusterClient {
 		String fileName = "i_dont_exist.txt";
 
 		client.downloadSerial(fileName)
-				.streamTo(SerialConsumer.recycle())
+				.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, fileName));
 

@@ -63,18 +63,9 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 	protected void doProcess() {
 		input.get()
 				.whenResult(buf -> {
-					if (isProcessComplete()) {
-						if (buf != null) buf.recycle();
-						return;
-					}
 					if (buf != null) {
 						ensureConsumer()
 								.thenRun(() -> {
-									if (isProcessComplete()) {
-										buf.recycle();
-										return;
-									}
-
 									currentConsumer.accept(buf)
 											.thenRun(() -> {
 												if (isProcessComplete()) return;

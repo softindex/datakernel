@@ -17,8 +17,8 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -32,13 +32,14 @@ import io.datakernel.http.stream2.*;
 import io.datakernel.serial.*;
 import io.datakernel.util.MemSize;
 
+import java.util.function.BiConsumer;
+
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.serial.SerialConsumer.recycle;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
+public abstract class AbstractHttpConnection {
 	public static final AsyncTimeoutException READ_TIMEOUT_ERROR = new AsyncTimeoutException("HTTP connection read timeout");
 	public static final AsyncTimeoutException WRITE_TIMEOUT_ERROR = new AsyncTimeoutException("HTTP connection write timeout");
 	public static final ParseException CLOSED_CONNECTION = new ParseException("HTTP connection unexpectedly closed");
@@ -46,9 +47,11 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	public static final ParseException TOO_BIG_HTTP_MESSAGE = new ParseException("Too big HttpMessage");
 	public static final ParseException TOO_LONG_HEADER = new ParseException("Header line exceeds max header size");
 	public static final ParseException TOO_MANY_HEADERS = new ParseException("Too many headers");
+	public static final ParseException INCOMPLETE_MESSAGE = new ParseException("Incomplete HTTP message");
 	public static final ParseException UNEXPECTED_READ = new ParseException("Unexpected read data");
 
 	public static final MemSize MAX_HEADER_LINE_SIZE = MemSize.kilobytes(8); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
+	private static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 
 	protected static final HttpHeaders.Value CONNECTION_KEEP_ALIVE_HEADER = HttpHeaders.asBytes(CONNECTION, "keep-alive");
@@ -59,28 +62,19 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	protected final Eventloop eventloop;
 
-	protected final AsyncTcpSocket asyncTcpSocket;
+	protected final AsyncTcpSocket socket;
 	protected final ByteBufQueue readQueue = new ByteBufQueue();
 
-	protected boolean keepAlive;
+	protected static final byte KEEP_ALIVE = 1 << 0;
+	protected static final byte GZIPPED = 1 << 1;
+	protected static final byte CHUNKED = 1 << 2;
+	protected static final byte BODY_RECEIVED = 1 << 3;
+	protected static final byte BODY_SENT = 1 << 4;
+	protected byte flags = 0;
+
 	protected int numberOfKeepAliveRequests;
 
-	protected static final byte NOTHING = 0;
-	protected static final byte END_OF_STREAM = 1;
-	protected static final byte FIRSTLINE = 2;
-	protected static final byte HEADERS = 3;
-	protected static final byte BODY = 4;
-	protected static final byte BODY_SUSPENDED = 5;
-
-	protected byte reading;
-
 	protected static final byte[] CONTENT_ENCODING_GZIP = encodeAscii("gzip");
-	private boolean isGzipped = false;
-
-	private boolean isChunked = false;
-
-	protected SettableStage<Void> bodyReader;
-	protected SerialSupplier<ByteBuf> bodyWriter;
 
 	protected int contentLength;
 	private int maxHeaders;
@@ -99,12 +93,10 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	 *
 	 * @param eventloop eventloop which will handle its I/O operations
 	 */
-	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, char[] headerChars) {
+	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket socket, char[] headerChars) {
 		this.eventloop = eventloop;
 		this.headerChars = headerChars;
-		assert headerChars.length >= MAX_HEADER_LINE_SIZE.toInt();
-		this.asyncTcpSocket = asyncTcpSocket;
-		reset();
+		this.socket = socket;
 	}
 
 	protected abstract void onFirstLine(ByteBuf line) throws ParseException;
@@ -117,7 +109,6 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	protected abstract void onClosed();
 
-	@Override
 	public abstract void onClosedWithError(Throwable e);
 
 	protected final boolean isClosed() {
@@ -126,7 +117,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	public final void close() {
 		if (isClosed()) return;
-		asyncTcpSocket.close();
+		socket.close();
 		readQueue.recycle();
 		onClosed();
 	}
@@ -134,24 +125,10 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	protected final void closeWithError(Throwable e) {
 		if (isClosed()) return;
 		onClosedWithError(e);
-		asyncTcpSocket.close();
-		if (bodyWriter != null) {
-			bodyWriter.closeWithError(e);
-			bodyWriter = null;
-		}
-		if (bodyReader != null) {
-			bodyReader.setException(e);
-			bodyReader = null;
-		}
+		socket.close();
 	}
 
-	protected void reset() {
-		assert eventloop.inEventloopThread();
-		contentLength = 0;
-		isChunked = false;
-	}
-
-	static SerialSupplier<ByteBuf> createWriter(HttpMessage httpMessage) {
+	static SerialSupplier<ByteBuf> bodySupplier(HttpMessage httpMessage) {
 		if (httpMessage.body != null) {
 			ByteBuf body = httpMessage.body;
 			assert httpMessage.bodySupplier == null;
@@ -203,33 +180,32 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		}
 	}
 
-	protected void writeHttpMessage(HttpMessage httpMessage) {
-		this.bodyWriter = createWriter(httpMessage);
-		writeBody();
+	protected final void writeHttpMessage(HttpMessage httpMessage) {
+		writeHttpMessageImpl(bodySupplier(httpMessage));
 		httpMessage.recycle();
 	}
 
-	@Override
-	public final void onWrite() {
-		writeBody();
-	}
-
-	private void writeBody() {
-		if (bodyWriter != null) {
-			bodyWriter.get()
-					.whenComplete((buf, e) -> {
-						if (e == null) {
-							if (buf != null) {
-								asyncTcpSocket.write(buf);
-							} else {
-								bodyWriter = null;
-								onBodySent();
-							}
+	private void writeHttpMessageImpl(SerialSupplier<ByteBuf> bodySupplier) {
+		bodySupplier.get()
+				.whenComplete((buf, e) -> {
+					if (e == null) {
+						if (buf != null) {
+							socket.write(buf)
+									.whenComplete(($, e2) -> {
+										if (e2 == null) {
+											writeHttpMessageImpl(bodySupplier);
+										} else {
+											closeWithError(e);
+										}
+									});
 						} else {
-							closeWithError(e);
+							flags |= BODY_SENT;
+							onBodySent();
 						}
-					});
-		}
+					} else {
+						closeWithError(e);
+					}
+				});
 	}
 
 	@Nullable
@@ -307,106 +283,72 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		if (header == CONTENT_LENGTH) {
 			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.readPosition(), value.readRemaining());
 		} else if (header == CONNECTION) {
-			keepAlive = equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.readPosition(), value.readRemaining());
+			flags |= equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.readPosition(), value.readRemaining()) ? KEEP_ALIVE : 0;
 		} else if (header == TRANSFER_ENCODING) {
-			isChunked = equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.readPosition(), value.readRemaining());
+			flags |= equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.readPosition(), value.readRemaining()) ? CHUNKED : 0;
 		} else if (header == CONTENT_ENCODING) {
-			isGzipped = equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, value.array(), value.readPosition(), value.readRemaining());
+			flags |= equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, value.array(), value.readPosition(), value.readRemaining()) ? GZIPPED : 0;
 		}
 	}
 
-	private void readBody() throws ParseException {
-		assert !isClosed();
-		assert eventloop.inEventloopThread();
-
-//		if (readQueue.isEmpty()) return;
-		reading = BODY_SUSPENDED;
-
-		SettableStage<Void> bodyReader = this.bodyReader;
-		if (bodyReader != null) {
-			this.bodyReader = null;
-			bodyReader.set(null);
-		}
+	protected final void readHttpMessage() {
+		contentLength = 0;
+		readFirstLine();
 	}
 
-	@Override
-	public final void onRead(ByteBuf buf) {
-		assert eventloop.inEventloopThread();
+	private void readFirstLine() {
 		assert !isClosed();
-		if (buf != null) readQueue.add(buf);
-
-		if (reading == NOTHING) {
-			return;
-		}
-		if (reading == END_OF_STREAM && readQueue.hasRemaining()) {
-			closeWithError(UNEXPECTED_READ);
-			return;
-		}
-		if (readQueue.hasRemaining()) {
-			try {
-				doRead();
-			} catch (ParseException e) {
-				closeWithError(e);
+		try {
+			ByteBuf headerBuf = takeHeader();
+			if (headerBuf == null) { // states that more bytes are being required
+				check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES), TOO_LONG_HEADER);
+				socket.read().whenComplete(firstLineConsumer);
+				return;
 			}
+
+			onFirstLine(headerBuf);
+		} catch (ParseException e) {
+			closeWithError(e);
+			return;
 		}
-		if (isClosed()) return;
-		if (readQueue.isEmpty() || !(reading == NOTHING || reading == BODY_SUSPENDED)) {
-			asyncTcpSocket.read();
-		}
+
+		maxHeaders = MAX_HEADERS;
+		readHeaders();
 	}
 
-	@Override
-	public final void onReadEndOfStream() {
-		if (reading == NOTHING) {
-			close();
-		} else {
-			closeWithError(CLOSED_CONNECTION);
-		}
-	}
-
-	private void doRead() throws ParseException {
-		if (reading < BODY) {
-			for (; ; ) {
-				assert !isClosed();
-				assert reading == FIRSTLINE || reading == HEADERS;
+	private void readHeaders() {
+		assert !isClosed();
+		try {
+			while (true) {
 				ByteBuf headerBuf = takeHeader();
 				if (headerBuf == null) { // states that more bytes are being required
-					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE.toInt()), TOO_LONG_HEADER);
+					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES), TOO_LONG_HEADER);
+					socket.read().whenComplete(headersConsumer);
 					return;
 				}
 
-				if (headerBuf.canRead()) {
-					if (reading == FIRSTLINE) {
-						onFirstLine(headerBuf);
-						reading = HEADERS;
-						maxHeaders = MAX_HEADERS;
-					} else {
-						check(--maxHeaders >= 0, TOO_MANY_HEADERS);
-						onHeader(headerBuf);
-					}
-					continue;
+				if (!headerBuf.canRead()) {
+					headerBuf.recycle();
+					break;
 				}
 
-				headerBuf.recycle();
-				if (reading == FIRSTLINE)
-					throw new ParseException("Empty response from server");
-				reading = BODY;
-				startReadingBody();
-				break;
+				check(--maxHeaders >= 0, TOO_MANY_HEADERS);
+				onHeader(headerBuf);
 			}
+		} catch (ParseException e) {
+			closeWithError(e);
+			return;
 		}
 
-		if (!isClosed()) {
-			readBody();
-		}
+		readBody();
 	}
 
-	private void startReadingBody() {
+	private void readBody() {
 		ByteBufsInput input;
 		AsyncProcess transferDecoder;
 		SerialOutput<ByteBuf> transferDecoderOutput;
 
-		if (!isChunked) {
+		if ((flags & CHUNKED) == 0) {
 			BufsConsumerDelimiter decoder = BufsConsumerDelimiter.create(contentLength);
 			transferDecoder = decoder;
 			input = decoder;
@@ -421,7 +363,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		AsyncProcess contentDecoder;
 		SerialOutput<ByteBuf> contentDecoderOutput;
 
-		if (!isGzipped) {
+		if ((flags & GZIPPED) == 0) {
 			contentDecoder = null;
 			contentDecoderOutput = transferDecoderOutput;
 		} else {
@@ -435,12 +377,16 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 		input.setInput(ByteBufsSupplier.ofProvidedQueue(
 				readQueue,
-				() -> {
-					assert bodyReader == null;
-					bodyReader = new SettableStage<>();
-					asyncTcpSocket.read();
-					return bodyReader;
-				},
+				() -> socket.read()
+						.thenComposeEx((buf, e) -> {
+							if (e == null) {
+								readQueue.add(buf);
+								return Stage.complete();
+							} else {
+								closeWithError(e);
+								return Stage.<Void>ofException(e);
+							}
+						}),
 				Stage::complete,
 				this::closeWithError));
 
@@ -448,16 +394,21 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		onHeadersReceived(supplier);
 		supplier.recycleIfNotUsed();
 
-		transferDecoder.start().both(contentDecoder != null ? contentDecoder.start() : Stage.complete())
-				.whenComplete(($, e) -> {
-					reading = NOTHING;
-					this.bodyReader = null;
-					if (e == null) {
-						onBodyReceived();
-					} else {
-						closeWithError(e);
-					}
-				});
+		Stage<Void> stage;
+		if (contentDecoder == null) {
+			stage = transferDecoder.start();
+		} else {
+			transferDecoder.start();
+			stage = contentDecoder.start();
+		}
+		stage.whenComplete(($, e) -> {
+			if (e == null) {
+				flags |= BODY_RECEIVED;
+				onBodyReceived();
+			} else {
+				closeWithError(e);
+			}
+		});
 	}
 
 	private static void check(boolean expression, ParseException e) throws ParseException {
@@ -475,34 +426,19 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	@Override
 	public String toString() {
-		return ", socket=" + asyncTcpSocket +
+		return ", socket=" + socket +
 				", readQueue=" + readQueue +
 				", closed=" + isClosed() +
-				", keepAlive=" + keepAlive +
-				", reading=" + readingToString(reading) +
-				", isGzipped=" + isGzipped +
-				", isChunked=" + isChunked +
+				", keepAlive=" + ((flags & KEEP_ALIVE) != 0) +
+				", isGzipped=" + ((flags & GZIPPED) != 0) +
+				", isChunked=" + ((flags & CHUNKED) != 0) +
 				", contentLengthRemaining=" + contentLength +
 				", poolTimestamp=" + poolTimestamp;
 	}
 
-	private String readingToString(byte reading) {
-		switch (reading) {
-			case NOTHING:
-				return "NOTHING";
-			case END_OF_STREAM:
-				return "END_OF_STREAM";
-			case FIRSTLINE:
-				return "FIRSTLINE";
-			case HEADERS:
-				return "HEADERS";
-			case BODY:
-				return "BODY";
-		}
-		return "";
-	}
-
 	static final class RecyclingSupplier extends AbstractSerialSupplier<ByteBuf> {
+		static final SerialConsumer<ByteBuf> BUF_RECYCLER = SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle));
+
 		final SerialSupplier<ByteBuf> supplier;
 		Boolean recycling;
 
@@ -521,8 +457,41 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		void recycleIfNotUsed() {
 			if (recycling == null) {
 				recycling = Boolean.TRUE;
-				supplier.streamTo(recycle());
+				supplier.streamTo(BUF_RECYCLER);
 			}
 		}
 	}
+
+	private abstract class ReadConsumer implements BiConsumer<ByteBuf, Throwable> {
+		@Override
+		public void accept(ByteBuf buf, Throwable e) {
+			assert !isClosed() || e != null;
+			if (e == null) {
+				if (buf != null) {
+					readQueue.add(buf);
+					thenRun();
+				} else {
+					closeWithError(INCOMPLETE_MESSAGE);
+				}
+			} else {
+				closeWithError(e);
+			}
+		}
+
+		abstract void thenRun();
+	}
+
+	private final ReadConsumer firstLineConsumer = new ReadConsumer() {
+		@Override
+		void thenRun() {
+			readFirstLine();
+		}
+	};
+
+	private final ReadConsumer headersConsumer = new ReadConsumer() {
+		@Override
+		void thenRun() {
+			readHeaders();
+		}
+	};
 }

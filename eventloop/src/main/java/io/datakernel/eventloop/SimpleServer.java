@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import java.net.InetAddress;
 import java.util.function.Consumer;
 
 public final class SimpleServer extends AbstractServer<SimpleServer> {
@@ -31,8 +32,7 @@ public final class SimpleServer extends AbstractServer<SimpleServer> {
 	}
 
 	@Override
-	protected void start(AsyncTcpSocket asyncTcpSocket) {
-		socketConsumer.accept(asyncTcpSocket);
+	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
+		socketConsumer.accept(socket);
 	}
-
 }

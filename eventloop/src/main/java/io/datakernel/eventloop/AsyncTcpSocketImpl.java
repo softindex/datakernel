@@ -254,9 +254,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (key == null) {
 			ops = newOps;
 			doRegister();
-			if (read != null) {
-				doRead();
-			}
+//			if (read != null) { // TODO
+//				doRead();
+//			}
 		} else {
 			if (ops != newOps) {
 				ops = newOps;
@@ -276,7 +276,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public Stage<ByteBuf> read() {
-		if (read != null) return read;
+		read = null;
 		if (!readQueue.isEmpty() || readEndOfStream) return Stage.of(readQueue.poll());
 		read = new SettableStage<>();
 		if (readTimeout != NO_TIMEOUT) {
@@ -294,7 +294,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			SettableStage<ByteBuf> read = this.read;
 			this.read = null;
 			read.set(readQueue.poll());
-			closeIfDone();
 		}
 		reentrantCall = false;
 		updateInterests();
@@ -356,7 +355,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (write != null) return write;
 		try {
 			if (doWrite()) {
-				closeIfDone();
 				return Stage.complete();
 			}
 		} catch (IOException e) {
@@ -380,7 +378,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				SettableStage<Void> write = this.write;
 				this.write = null;
 				write.set(null);
-				closeIfDone();
 			}
 		} catch (IOException e) {
 			closeWithError(e);
@@ -449,11 +446,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	@Override
-	public void close() {
-		closeWithError(CHANNEL_CLOSED);
-	}
-
-	@Override
 	public void closeWithError(@Nullable Throwable e) {
 		assert eventloop.inEventloopThread();
 		if (channel == null) return;
@@ -478,12 +470,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (read != null) {
 			read.setException(e);
 			read = null;
-		}
-	}
-
-	private void closeIfDone() {
-		if (readEndOfStream && writeEndOfStream && read == null && write == null) {
-			close();
 		}
 	}
 

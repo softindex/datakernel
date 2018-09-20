@@ -296,7 +296,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 				eventloop.delayBackground(connectTimeoutMillis, () -> {
 					if (running && this.startStage != null) {
 						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
-							connectTimeoutMillis / 1000.0);
+								connectTimeoutMillis / 1000.0);
 						this.startStage.setException(new InterruptedException(errorMsg));
 						running = false;
 						this.startStage = null;
@@ -355,14 +355,12 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		eventloop.connect(address, 0).whenComplete((socketChannel, throwable) -> {
 			if (throwable == null) {
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
-					.withInspector(statsSocket);
-				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-				RpcStream stream = new RpcStream(asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize,
-					autoFlushInterval, compression, false); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
+						.withInspector(statsSocket);
+				AsyncTcpSocket socket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
+				RpcStream stream = new RpcStream(socket, serializer, defaultPacketSize, maxPacketSize,
+						autoFlushInterval, compression, false); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this, address, stream);
 				stream.setListener(connection);
-				asyncTcpSocket.setEventHandler(stream.getSocketEventHandler());
-				asyncTcpSocketImpl.register();
 
 				addConnection(address, connection);
 
@@ -457,18 +455,18 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 			@Override
 			public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 				RpcClient.this.eventloop.execute(() ->
-					RpcClient.this.requestSender.sendRequest(request, timeout,
-						new Callback<O>() {
-							@Override
-							public void set(O result) {
-								anotherEventloop.execute(() -> cb.set(result));
-							}
+						RpcClient.this.requestSender.sendRequest(request, timeout,
+								new Callback<O>() {
+									@Override
+									public void set(O result) {
+										anotherEventloop.execute(() -> cb.set(result));
+									}
 
-							@Override
-							public void setException(Throwable throwable) {
-								anotherEventloop.execute(() -> cb.setException(throwable));
-							}
-						}));
+									@Override
+									public void setException(Throwable throwable) {
+										anotherEventloop.execute(() -> cb.setException(throwable));
+									}
+								}));
 			}
 
 		};
@@ -482,19 +480,19 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	@Override
 	public String toString() {
 		return "RpcClient{" +
-			"connections=" + connections +
-			'}';
+				"connections=" + connections +
+				'}';
 	}
 
 	private final class NoSenderAvailable implements RpcSender {
 		@SuppressWarnings("ThrowableInstanceNeverThrown")
 		private final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION
-			= new RpcNoSenderException("No senders available");
+				= new RpcNoSenderException("No senders available");
 
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 			eventloop.post(() ->
-				cb.setException(NO_SENDER_AVAILABLE_EXCEPTION));
+					cb.setException(NO_SENDER_AVAILABLE_EXCEPTION));
 		}
 	}
 
@@ -512,8 +510,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	// jmx
 	@JmxOperation(description = "enable monitoring " +
-		"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
-		"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled) ]")
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled) ]")
 	public void startMonitoring() {
 		monitoring = true;
 		for (InetSocketAddress address : addresses) {
@@ -525,8 +523,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	}
 
 	@JmxOperation(description = "disable monitoring " +
-		"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
-		"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled) ]")
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled) ]")
 	public void stopMonitoring() {
 		monitoring = false;
 		for (InetSocketAddress address : addresses) {
@@ -538,7 +536,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	}
 
 	@JmxAttribute(description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
-		"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled)")
+			"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled)")
 	private boolean isMonitoring() {
 		return monitoring;
 	}
@@ -583,7 +581,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	}
 
 	@JmxAttribute(description = "exception that occurred because of protocol error " +
-		"(serialization, deserialization, compression, decompression, etc)")
+			"(serialization, deserialization, compression, decompression, etc)")
 	public ExceptionStats getLastProtocolError() {
 		return lastProtocolError;
 	}

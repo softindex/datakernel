@@ -20,13 +20,10 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 
 public interface AsyncTcpSocket extends Cancellable {
-	StacklessException CHANNEL_CLOSED = new StacklessException("Channel closed");
-
 	Stage<ByteBuf> read();
 
 	Stage<Void> write(@Nullable ByteBuf buf);
@@ -36,8 +33,8 @@ public interface AsyncTcpSocket extends Cancellable {
 	}
 
 	default SerialConsumer<ByteBuf> writer() {
-		return SerialConsumer.of(this::write, this);
+		return SerialConsumer.of(this::write, this)
+				.withAcknowledgement(ack -> ack
+						.thenCompose($ -> write(null)));
 	}
-
-	void close();
 }

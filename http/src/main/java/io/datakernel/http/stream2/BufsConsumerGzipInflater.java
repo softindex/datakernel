@@ -85,40 +85,39 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 		checkState(output != null, "Output was not set");
 	}
 
-
 	@Override
 	protected void doProcess() {
 		processHeader();
 	}
 
 	private void processHeader() {
-			input.parse(ofFixedSize(10))
-					.whenResult(buf -> {
-								//header validation
-								if (buf.get() != GZIP_HEADER[0] || buf.get() != GZIP_HEADER[1]) {
-									buf.recycle();
-									closeWithError(INCORRECT_ID_HEADER_BYTES);
-									return;
-								}
-								if (buf.get() != GZIP_HEADER[2]) {
-									buf.recycle();
-									closeWithError(UNSUPPORTED_COMPRESSION_METHOD);
-									return;
-								}
-
-								byte flag = buf.get();
-								if ((flag & 0b11100000) > 0) {
-									buf.recycle();
-									closeWithError(MALFORMED_FLAG);
-									return;
-								}
-								// unsetting FTEXT bit
-								flag &= ~1;
+		input.parse(ofFixedSize(10))
+				.whenResult(buf -> {
+							//header validation
+							if (buf.get() != GZIP_HEADER[0] || buf.get() != GZIP_HEADER[1]) {
 								buf.recycle();
-								runNext(flag).run();
+								closeWithError(INCORRECT_ID_HEADER_BYTES);
+								return;
 							}
-					);
-		}
+							if (buf.get() != GZIP_HEADER[2]) {
+								buf.recycle();
+								closeWithError(UNSUPPORTED_COMPRESSION_METHOD);
+								return;
+							}
+
+							byte flag = buf.get();
+							if ((flag & 0b11100000) > 0) {
+								buf.recycle();
+								closeWithError(MALFORMED_FLAG);
+								return;
+							}
+							// unsetting FTEXT bit
+							flag &= ~1;
+							buf.recycle();
+							runNext(flag).run();
+						}
+				);
+	}
 
 	private void processBody() {
 		ByteBufQueue queue = new ByteBufQueue();
@@ -193,14 +192,11 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 		// trying to skip optional gzip file members if any is present
 		if ((flag & FEXTRA) != 0) {
 			skipExtra(flag);
-		}
-		else if ((flag & FNAME) != 0) {
+		} else if ((flag & FNAME) != 0) {
 			skipTerminatorByte(flag, FNAME);
-		}
-		else if ((flag & FCOMMENT) != 0) {
+		} else if ((flag & FCOMMENT) != 0) {
 			skipTerminatorByte(flag, FCOMMENT);
-		}
-		else if ((flag & FHCRC) != 0) {
+		} else if ((flag & FHCRC) != 0) {
 			skipCRC16(flag);
 		}
 	}

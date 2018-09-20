@@ -27,11 +27,11 @@ class SimpleStaticLoaderAsync implements StaticLoader {
 		}
 
 		return AsyncFile.readFile(executorService, file)
-				.thenComposeEx((result, throwable) -> {
-					if (throwable instanceof NoSuchFileException) {
+				.thenComposeEx((buf, e) -> {
+					if (e instanceof NoSuchFileException) {
 						return Stage.ofException(HttpException.notFound404());
 					}
-					return Stage.of(result, throwable);
+					return Stage.of(buf, e);
 				});
 	}
 }

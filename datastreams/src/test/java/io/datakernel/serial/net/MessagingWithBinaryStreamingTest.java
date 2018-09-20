@@ -137,9 +137,9 @@ public class MessagingWithBinaryStreamingTest {
 	@Test
 	public void testMessagingDownload() throws Exception {
 		List<Long> source = new ArrayList<>();
-//		for (long i = 0; i < 100; i++) {
-//			source.add(i);
-//		}
+		for (long i = 0; i < 100; i++) {
+			source.add(i);
+		}
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();

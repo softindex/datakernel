@@ -41,7 +41,8 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
-import static io.datakernel.http.AbstractHttpConnection.*;
+import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
@@ -58,11 +59,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	int connectionsCount;
 	final HashMap<InetSocketAddress, AddressLinkedList> addresses = new HashMap<>();
 	final ConnectionsLinkedList poolKeepAlive = new ConnectionsLinkedList();
-	final ConnectionsLinkedList poolReading = new ConnectionsLinkedList();
-	final ConnectionsLinkedList poolWriting = new ConnectionsLinkedList();
+	final ConnectionsLinkedList poolReadWrite = new ConnectionsLinkedList();
 	private int poolKeepAliveExpired;
-	private int poolReadingExpired;
-	private int poolWritingExpired;
+	private int poolReadWriteExpired;
 
 	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE.toInt()];
 
@@ -74,8 +73,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private int connectTimeoutMillis = 0;
 	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE_MILLIS.getSeconds();
 	int maxKeepAliveRequests = -1;
-	private int readTimeoutMillis = 0;
-	private int writeTimeoutMillis = 0;
+	private int readWriteTimeoutMillis = 0;
 
 	// SSL
 	private SSLContext sslContext;
@@ -264,13 +262,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return this;
 	}
 
-	public AsyncHttpClient withReadTimeout(Duration readTimeout) {
-		this.readTimeoutMillis = (int) readTimeout.toMillis();
-		return this;
-	}
-
-	public AsyncHttpClient withWriteTimeout(Duration writeTimeout) {
-		this.writeTimeoutMillis = (int) writeTimeout.toMillis();
+	public AsyncHttpClient withReadWriteTimeout(Duration readTimeout) {
+		this.readWriteTimeoutMillis = (int) readTimeout.toMillis();
 		return this;
 	}
 
@@ -296,10 +289,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
 			expiredConnectionsCheck = null;
 			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
-			if (readTimeoutMillis != 0)
-				poolReadingExpired += poolReading.closeExpiredConnections(eventloop.currentTimeMillis() - readTimeoutMillis, READ_TIMEOUT_ERROR);
-			if (writeTimeoutMillis != 0)
-				poolWritingExpired += poolWriting.closeExpiredConnections(eventloop.currentTimeMillis() - writeTimeoutMillis, WRITE_TIMEOUT_ERROR);
+			if (readWriteTimeoutMillis != 0)
+				poolReadWriteExpired += poolReadWrite.closeExpiredConnections(eventloop.currentTimeMillis() - readWriteTimeoutMillis, READ_TIMEOUT_ERROR);
 			if (connectionsCount != 0)
 				scheduleExpiredConnectionsCheck();
 		});
@@ -399,9 +390,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 						HttpClientConnection connection = new HttpClientConnection(eventloop, address, asyncTcpSocket,
 								AsyncHttpClient.this, headerChars);
 
-						asyncTcpSocket.setEventHandler(connection);
-						asyncTcpSocketImpl.register();
-
 						if (inspector != null) inspector.onConnect(request, connection);
 
 						connectionsCount++;
@@ -448,7 +436,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		assert addresses.isEmpty();
 		keepAliveTimeoutMillis = 0;
 		if (connectionsCount == 0) {
-			assert poolReading.isEmpty() && poolWriting.isEmpty();
+			assert poolReadWrite.isEmpty();
 			stage.set(null);
 		} else {
 			this.closeStage = stage;
@@ -468,13 +456,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-	public int getConnectionsReadingCount() {
-		return poolReading.size();
-	}
-
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-	public int getConnectionsWritingCount() {
-		return poolWriting.size();
+	public int getConnectionsReadWriteCount() {
+		return poolReadWrite.size();
 	}
 
 	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
@@ -483,13 +466,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-	public int getConnectionsReadingExpired() {
-		return poolReadingExpired;
-	}
-
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-	public int getConnectionsWritingExpired() {
-		return poolWritingExpired;
+	public int getConnectionsReadWriteExpired() {
+		return poolReadWriteExpired;
 	}
 
 	@JmxOperation(description = "number of connections per address")

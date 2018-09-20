@@ -18,18 +18,13 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
-import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.*;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
-
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * Represent {@link StreamTransformer} which receives data and saves it in collection, when it
@@ -41,28 +36,30 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	private final StagesAccumulator<List<Integer>> temporaryStreams = StagesAccumulator.create(new ArrayList<>());
 	private final StreamSorterStorage<T> storage;
+	private final Function<T, K> keyFunction;
+	private final Comparator<K> keyComparator;
 	private final Comparator<T> itemComparator;
+	private final boolean distinct;
 	private final int itemsInMemory;
 
 	private Input input;
 	private StreamProducer<T> output;
+	private StreamConsumer<T> outputConsumer;
 
 	// region creators
 	private StreamSorter(StreamSorterStorage<T> storage,
-			Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate,
+			Function<T, K> keyFunction, Comparator<K> keyComparator, boolean distinct,
 			int itemsInMemory) {
-		checkArgument(itemsInMemory > 0, "itemsInMemorySize must be positive value, got %s", itemsInMemory);
-		checkNotNull(keyComparator);
-		checkNotNull(keyFunction);
-		checkNotNull(storage);
-
-		this.itemsInMemory = itemsInMemory;
+		this.storage = storage;
+		this.keyFunction = keyFunction;
+		this.keyComparator = keyComparator;
 		this.itemComparator = (item1, item2) -> {
 			K key1 = keyFunction.apply(item1);
 			K key2 = keyFunction.apply(item2);
 			return keyComparator.compare(key1, key2);
 		};
-		this.storage = storage;
+		this.distinct = distinct;
+		this.itemsInMemory = itemsInMemory;
 
 		this.input = new Input();
 
@@ -70,11 +67,14 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 		Stage<StreamProducer<T>> outputStreamStage = this.temporaryStreams.get()
 				.thenApply(streamIds -> {
 					input.list.sort(itemComparator);
-					StreamProducer<T> listProducer = StreamProducer.ofIterable(input.list);
+					Iterator<T> iterator = !distinct ?
+							input.list.iterator() :
+							new DistinctIterator<>(input.list, keyFunction, keyComparator);
+					StreamProducer<T> listProducer = StreamProducer.ofIterator(iterator);
 					if (streamIds.isEmpty()) {
 						return listProducer;
 					} else {
-						StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, deduplicate);
+						StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, distinct);
 						listProducer.streamTo(streamMerger.newInput());
 						streamIds.forEach(streamId ->
 								StreamProducer.ofStage(storage.read(streamId))
@@ -84,7 +84,45 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 								.withLateBinding();
 					}
 				});
-		this.output = StreamProducer.ofStage(outputStreamStage);
+		this.output = new ForwardingStreamProducer<T>(StreamProducer.ofStage(outputStreamStage)) {
+			@Override
+			public void setConsumer(StreamConsumer<T> consumer) {
+				super.setConsumer(consumer);
+				outputConsumer = consumer;
+			}
+		};
+	}
+
+	private static final class DistinctIterator<K, T> implements Iterator<T> {
+		private final ArrayList<T> sortedList;
+		private final Function<T, K> keyFunction;
+		private final Comparator<K> keyComparator;
+		int i = 0;
+
+		private DistinctIterator(ArrayList<T> sortedList, Function<T, K> keyFunction, Comparator<K> keyComparator) {
+			this.sortedList = sortedList;
+			this.keyFunction = keyFunction;
+			this.keyComparator = keyComparator;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return i < sortedList.size();
+		}
+
+		@Override
+		public T next() {
+			T next = sortedList.get(i++);
+			K nextKey = keyFunction.apply(next);
+			while (i < sortedList.size()) {
+				if (keyComparator.compare(nextKey, keyFunction.apply(sortedList.get(i))) == 0) {
+					i++;
+					continue;
+				}
+				break;
+			}
+			return next;
+		}
 	}
 
 	/**
@@ -116,17 +154,20 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 			list.add(item);
 			if (list.size() >= itemsInMemory) {
 				list.sort(itemComparator);
-				writeToTemporaryStorage(list).thenRun(this::suspendOrResume);
+				Iterator<T> iterator = !distinct ?
+						input.list.iterator() :
+						new DistinctIterator<>(input.list, keyFunction, keyComparator);
+				writeToTemporaryStorage(iterator).thenRun(this::suspendOrResume);
 				suspendOrResume();
 				list = new ArrayList<>(itemsInMemory);
 			}
 		}
 
-		private Stage<Integer> writeToTemporaryStorage(List<T> sortedList) {
+		private Stage<Integer> writeToTemporaryStorage(Iterator<T> sortedList) {
 			return temporaryStreams.addStage(
 					storage.newPartitionId()
 							.thenCompose(partitionId -> storage.write(partitionId)
-									.thenCompose(consumer -> StreamProducer.ofIterable(sortedList).streamTo(consumer)
+									.thenCompose(consumer -> StreamProducer.ofIterator(sortedList).streamTo(consumer)
 											.thenApply($ -> partitionId))),
 					List::add);
 		}
@@ -141,7 +182,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		@Override
 		protected Stage<Void> onProducerEndOfStream() {
-			return Stage.complete();
+			return outputConsumer.getAcknowledgement();
 		}
 
 		@Override

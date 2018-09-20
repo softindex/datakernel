@@ -31,7 +31,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestStreamConsumers.decorator;
 import static io.datakernel.stream.TestStreamConsumers.randomlySuspending;
 import static io.datakernel.stream.TestUtils.*;
-import static io.datakernel.stream.processor.StreamReducers.mergeDeduplicateReducer;
+import static io.datakernel.stream.processor.StreamReducers.mergeDistinctReducer;
 import static java.util.Arrays.asList;
 import static java.util.Collections.EMPTY_LIST;
 import static org.junit.Assert.assertEquals;
@@ -47,7 +47,7 @@ public class StreamReducerTest {
 
 		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo)
 				.withBufferSize(1);
-		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
+		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDistinctReducer();
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
@@ -77,7 +77,7 @@ public class StreamReducerTest {
 		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo)
 				.withBufferSize(1);
 		Function<Integer, Integer> keyFunction = Function.identity();
-		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
+		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDistinctReducer();
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 

@@ -20,7 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.AbstractSerialConsumer;
 
 import java.io.*;
 
@@ -64,7 +64,7 @@ public class TestUtils {
 		}
 	}
 
-	public static class AssertingConsumer implements SerialConsumer<ByteBuf> {
+	public static class AssertingConsumer extends AbstractSerialConsumer<ByteBuf> {
 		public boolean executed = false;
 		private byte[] expectedByteArray;
 		private String expectedString;
@@ -103,7 +103,7 @@ public class TestUtils {
 			} else {
 				ByteBuf actualBuf = queue.takeRemaining();
 				if (expectedByteArray != null) {
-					byte[] actualByteArray = actualBuf.getArray();
+					byte[] actualByteArray = actualBuf.asArray();
 					assertArrayEquals(expectedByteArray, actualByteArray);
 				}
 				if (expectedString != null) {
@@ -121,7 +121,7 @@ public class TestUtils {
 		}
 
 		@Override
-		public void closeWithError(Throwable e) {
+		protected void onClosed(Throwable e) {
 			executed = true;
 			queue.recycle();
 			if (expectedBuf != null) {

@@ -57,8 +57,8 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 		checkState(!outputs.isEmpty(), "No splitter outputs");
 		if (lenient) {
 			outputs.replaceAll(output ->
-					output.withAcknowledgement(acknowledgement ->
-							acknowledgement.whenException(e -> {
+					output.withAcknowledgement(ack ->
+							ack.whenException(e -> {
 								if (lenientExceptions.size() < outputs.size()) {
 									lenientExceptions.add(e);
 									return;

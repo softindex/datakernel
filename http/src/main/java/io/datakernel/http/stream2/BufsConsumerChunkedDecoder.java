@@ -130,7 +130,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 					queue.recycle();
 					closeWithError(MALFORMED_CHUNK);
 				})
-				.thenCompose($ -> output.acceptAll(queue.toIterator()))
+				.thenCompose($ -> output.acceptAll(queue.asIterator()))
 				.thenRun(this::processLength);
 	}
 

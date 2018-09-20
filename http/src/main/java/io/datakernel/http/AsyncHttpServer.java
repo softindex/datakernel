@@ -32,7 +32,8 @@ import io.datakernel.util.MemSize;
 import java.net.InetAddress;
 import java.time.Duration;
 
-import static io.datakernel.http.AbstractHttpConnection.*;
+import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -60,17 +61,14 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE.toMillis();
 	int maxKeepAliveRequests = -1;
-	private int readTimeoutMillis = 0;
-	private int writeTimeoutMillis = 0;
+	private int readWriteTimeoutMillis = 0;
 
 	private int connectionsCount;
 	final ConnectionsLinkedList poolKeepAlive = new ConnectionsLinkedList();
-	final ConnectionsLinkedList poolReading = new ConnectionsLinkedList();
-	final ConnectionsLinkedList poolWriting = new ConnectionsLinkedList();
+	final ConnectionsLinkedList poolReadWrite = new ConnectionsLinkedList();
 	final ConnectionsLinkedList poolServing = new ConnectionsLinkedList();
 	private int poolKeepAliveExpired;
-	private int poolReadingExpired;
-	private int poolWritingExpired;
+	private int poolReadWriteExpired;
 
 	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE.toInt()];
 
@@ -180,21 +178,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return withKeepAliveTimeout(Duration.ZERO);
 	}
 
-	public AsyncHttpServer withReadTimeout(Duration readTimeout) {
+	public AsyncHttpServer withReadWriteTimeout(Duration readTimeout) {
 		long readTimeoutMillis = readTimeout.toMillis();
 
 		checkArgument(readTimeoutMillis >= 0, "Read timeout should not be less than zero");
 
-		this.readTimeoutMillis = (int) readTimeoutMillis;
-		return this;
-	}
-
-	public AsyncHttpServer withWriteTimeout(Duration writeTimeout) {
-		long writeTimeoutMillis = writeTimeout.toMillis();
-
-		checkArgument(writeTimeoutMillis >= 0, "Write timeout should not be less than zero");
-
-		this.writeTimeoutMillis = (int) writeTimeoutMillis;
+		this.readWriteTimeoutMillis = (int) readTimeoutMillis;
 		return this;
 	}
 
@@ -221,12 +210,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return Duration.ofMillis(keepAliveTimeoutMillis);
 	}
 
-	public Duration getReadTimeout() {
-		return Duration.ofMillis(readTimeoutMillis);
-	}
-
-	public Duration getWriteTimeout() {
-		return Duration.ofMillis(writeTimeoutMillis);
+	public Duration getReadWriteTimeout() {
+		return Duration.ofMillis(readWriteTimeoutMillis);
 	}
 
 	// endregion
@@ -237,23 +222,21 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
 			expiredConnectionsCheck = null;
 			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
-			if (readTimeoutMillis != 0)
-				poolReadingExpired += poolReading.closeExpiredConnections(eventloop.currentTimeMillis() - readTimeoutMillis, READ_TIMEOUT_ERROR);
-			if (writeTimeoutMillis != 0)
-				poolWritingExpired += poolWriting.closeExpiredConnections(eventloop.currentTimeMillis() - writeTimeoutMillis, WRITE_TIMEOUT_ERROR);
+			if (readWriteTimeoutMillis != 0)
+				poolReadWriteExpired += poolReadWrite.closeExpiredConnections(eventloop.currentTimeMillis() - readWriteTimeoutMillis, READ_TIMEOUT_ERROR);
 			if (connectionsCount != 0)
 				scheduleExpiredConnectionsCheck();
 		});
 	}
 
 	@Override
-	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
+	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
 		assert eventloop.inEventloopThread();
 		connectionsCount++;
 		if (expiredConnectionsCheck == null)
 			scheduleExpiredConnectionsCheck();
-		return new HttpServerConnection(eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket, this, servlet,
-				headerChars);
+		HttpServerConnection connection = new HttpServerConnection(eventloop, remoteAddress, socket, this, servlet, headerChars);
+		connection.serve();
 	}
 
 	@Nullable
@@ -289,13 +272,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	@JmxAttribute(reducer = JmxReducerSum.class)
-	public int getConnectionsReadingCount() {
-		return poolReading.size();
-	}
-
-	@JmxAttribute(reducer = JmxReducerSum.class)
-	public int getConnectionsWritingCount() {
-		return poolWriting.size();
+	public int getConnectionsReadWriteCount() {
+		return poolReadWrite.size();
 	}
 
 	@JmxAttribute(reducer = JmxReducerSum.class)
@@ -309,13 +287,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	@JmxAttribute(reducer = JmxReducerSum.class)
-	public int getConnectionsReadingExpired() {
-		return poolReadingExpired;
-	}
-
-	@JmxAttribute(reducer = JmxReducerSum.class)
-	public int getConnectionsWritingExpired() {
-		return poolWritingExpired;
+	public int getConnectionsReadWriteExpired() {
+		return poolReadWriteExpired;
 	}
 
 	HttpResponse formatHttpError(Throwable e) {

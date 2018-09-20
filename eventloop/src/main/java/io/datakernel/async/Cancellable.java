@@ -19,7 +19,8 @@ package io.datakernel.async;
 import io.datakernel.exception.StacklessException;
 
 public interface Cancellable {
-	StacklessException CANCEL_EXCEPTION = new StacklessException("AsyncSupplier cancelled");
+	StacklessException CANCEL_EXCEPTION = new StacklessException("Cancelled");
+	StacklessException CLOSE_EXCEPTION = new StacklessException("Closed");
 
 	void closeWithError(Throwable e);
 
@@ -27,11 +28,7 @@ public interface Cancellable {
 		closeWithError(CANCEL_EXCEPTION);
 	}
 
-	static Cancellable of(Cancellable... cancellables) {
-		return e -> {
-			for (Cancellable cancellable : cancellables) {
-				cancellable.closeWithError(e);
-			}
-		};
+	default void close() {
+		closeWithError(CLOSE_EXCEPTION);
 	}
 }

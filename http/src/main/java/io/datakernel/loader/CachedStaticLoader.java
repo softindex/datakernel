@@ -23,7 +23,7 @@ class CachedStaticLoader implements StaticLoader {
 		if (bytes == null) {
 			return resourceLoader.getResource(name)
 					.whenComplete((buf, e) ->
-							cache.put(name, e == null ? buf.getArray() : BYTES_ERROR));
+							cache.put(name, e == null ? buf.asArray() : BYTES_ERROR));
 		} else if (bytes == BYTES_ERROR) {
 			return Stage.ofException(HttpException.notFound404());
 		} else {
