@@ -47,7 +47,7 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 	}
 
 	@Override
-	public StreamProducer<T> getOutput() {
+	public StreamSupplier<T> getOutput() {
 		return output;
 	}
 
@@ -61,7 +61,7 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 
 	private final class Input extends AbstractStreamConsumer<T> {
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			if (inputs.stream().allMatch(input -> input.getEndOfStream().isResult())) {
 				output.sendEndOfStream();
 			}
@@ -74,11 +74,11 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 		}
 	}
 
-	private final class Output extends AbstractStreamProducer<T> {
+	private final class Output extends AbstractStreamSupplier<T> {
 		@Override
 		protected void onSuspended() {
 			for (int i = 0; i < inputs.size(); i++) {
-				inputs.get(i).getProducer().suspend();
+				inputs.get(i).getSupplier().suspend();
 			}
 		}
 
@@ -86,7 +86,7 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			if (!inputs.isEmpty()) {
 				for (int i = 0; i < inputs.size(); i++) {
-					inputs.get(i).getProducer().produce(dataAcceptor);
+					inputs.get(i).getSupplier().resume(dataAcceptor);
 				}
 			} else {
 				eventloop.post(this::sendEndOfStream);

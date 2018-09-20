@@ -35,11 +35,11 @@ import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.emptySet;
 
 /**
- * It is basic implementation of {@link StreamProducer}
+ * It is basic implementation of {@link StreamSupplier}
  *
  * @param <T> type of received item
  */
-public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
+public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
@@ -70,8 +70,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	private Object tag;
 
 	/**
-	 * Sets consumer for this producer. At the moment of calling this method producer shouldn't have consumer,
-	 * as well as consumer shouldn't have producer, otherwise there will be error
+	 * Sets consumer for this supplier. At the moment of calling this method supplier shouldn't have consumer,
+	 * as well as consumer shouldn't have supplier, otherwise there will be error
 	 *
 	 * @param consumer consumer for streaming
 	 */
@@ -172,7 +172,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	@Override
-	public final void produce(StreamDataAcceptor<T> dataAcceptor) {
+	public final void resume(StreamDataAcceptor<T> dataAcceptor) {
 		if (logger.isTraceEnabled()) logger.trace("Start producing: {}", this);
 		assert dataAcceptor != null;
 
@@ -192,7 +192,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 	@Override
 	public final void suspend() {
-		if (logger.isTraceEnabled()) logger.trace("Suspend producer: {}", this);
+		if (logger.isTraceEnabled()) logger.trace("Suspend supplier: {}", this);
 		if (!isReceiverReady())
 			return;
 		currentDataAcceptor = null;
@@ -213,7 +213,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		if (endOfStream.isComplete()) return;
 		if (!(e instanceof ExpectedException)) {
 			if (logger.isWarnEnabled()) {
-				logger.warn("StreamProducer {} closed with error {}", this, e.toString());
+				logger.warn("StreamSupplier {} closed with error {}", this, e.toString());
 			}
 		}
 		currentDataAcceptor = null;
@@ -236,11 +236,11 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	/**
 	 * This method is useful for stream transformers that might add some capability to the stream
 	 */
-	protected static Set<StreamCapability> addCapabilities(@Nullable StreamProducer<?> producer,
+	protected static Set<StreamCapability> addCapabilities(@Nullable StreamSupplier<?> supplier,
 			StreamCapability capability, StreamCapability... capabilities) {
 		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
-		if (producer != null) {
-			result.addAll(producer.getCapabilities());
+		if (supplier != null) {
+			result.addAll(supplier.getCapabilities());
 		}
 		return result;
 	}

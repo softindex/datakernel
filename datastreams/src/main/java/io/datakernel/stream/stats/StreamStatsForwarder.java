@@ -30,7 +30,7 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 	}
 
 	@Override
-	public StreamProducer<T> getOutput() {
+	public StreamSupplier<T> getOutput() {
 		return output;
 	}
 
@@ -41,7 +41,7 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			stats.onEndOfStream();
 			return output.sendEndOfStream();
 		}
@@ -58,18 +58,18 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		}
 	}
 
-	private class Output extends AbstractStreamProducer<T> {
+	private class Output extends AbstractStreamSupplier<T> {
 		@SuppressWarnings("unchecked")
 		@Override
 		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			stats.onProduce();
-			input.getProducer().produce(stats.createDataAcceptor(dataAcceptor));
+			input.getSupplier().resume(stats.createDataAcceptor(dataAcceptor));
 		}
 
 		@Override
 		protected void onSuspended() {
 			stats.onSuspend();
-			input.getProducer().suspend();
+			input.getSupplier().suspend();
 		}
 
 		@Override
@@ -80,8 +80,8 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			StreamProducer<T> producer = input.getProducer();
-			return producer != null ? producer.getCapabilities() : emptySet();
+			StreamSupplier<T> supplier = input.getSupplier();
+			return supplier != null ? supplier.getCapabilities() : emptySet();
 		}
 	}
 

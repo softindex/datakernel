@@ -39,11 +39,11 @@ import static io.datakernel.util.Preconditions.checkArgument;
  */
 public interface StreamConsumer<T> extends Cancellable {
 	/**
-	 * Sets wired producer. It will sent data to this consumer
+	 * Sets wired supplier. It will sent data to this consumer
 	 *
-	 * @param producer stream producer for setting
+	 * @param supplier stream supplier for setting
 	 */
-	void setProducer(StreamProducer<T> producer);
+	void setSupplier(StreamSupplier<T> supplier);
 
 	MaterializedStage<Void> getAcknowledgement();
 
@@ -65,9 +65,9 @@ public interface StreamConsumer<T> extends Cancellable {
 		return new StreamConsumers.OfSerialConsumerImpl<>(consumer);
 	}
 
-	static <T> StreamConsumer<T> ofProducer(Consumer<StreamProducer<T>> producerAcceptor) {
+	static <T> StreamConsumer<T> ofSupplier(Consumer<StreamSupplier<T>> supplier) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
-		producerAcceptor.accept(forwarder.getOutput());
+		supplier.accept(forwarder.getOutput());
 		return forwarder.getInput();
 	}
 
@@ -80,7 +80,7 @@ public interface StreamConsumer<T> extends Cancellable {
 	}
 
 	default SerialConsumer<T> asSerialConsumer() {
-		StreamProducerEndpoint<T> endpoint = new StreamProducerEndpoint<>();
+		StreamSupplierEndpoint<T> endpoint = new StreamSupplierEndpoint<>();
 		endpoint.streamTo(this);
 		return new AbstractSerialConsumer<T>(this) {
 			@Override

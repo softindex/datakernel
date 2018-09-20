@@ -120,11 +120,11 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 
 	@Override
 	protected void onStarted() {
-		getProducer().produce(input);
+		getSupplier().resume(input);
 	}
 
 	@Override
-	protected Stage<Void> onProducerEndOfStream() {
+	protected Stage<Void> onEndOfStream() {
 		input.flush();
 		return getAcknowledgement();
 	}
@@ -158,7 +158,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 				output.accept(null)
 						.thenRun(this::acknowledge);
 			} else {
-				getProducer().produce(input);
+				getSupplier().resume(input);
 			}
 		}
 	}
@@ -287,7 +287,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 		private void flush() {
 			if (buf.canRead()) {
 				if (!bufs.isEmpty()) {
-					getProducer().suspend();
+					getSupplier().suspend();
 				}
 				bufs.add(buf);
 				estimatedMessageSize -= estimatedMessageSize >>> 8;

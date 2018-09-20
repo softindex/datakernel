@@ -23,7 +23,7 @@ import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.serial.processor.*;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,8 +127,8 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	public Stage<StreamConsumer<T>> write(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{WRITE, CREATE_NEW, APPEND})
-				.thenApply(file -> StreamConsumer.<T>ofProducer(
-						producer -> producer
+				.thenApply(file -> StreamConsumer.<T>ofSupplier(
+						supplier -> supplier
 								.apply(SerialBinarySerializer.create(serializer))
 								.apply(SerialByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
 								.apply(SerialLZ4Compressor.create(compressionLevel))
@@ -138,13 +138,13 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	}
 
 	/**
-	 * Returns producer for reading data from this storage. It read it from external memory,
+	 * Returns supplier for reading data from this storage. It read it from external memory,
 	 * decompresses and deserializes it
 	 *
 	 * @param partition index of partition to read
 	 */
 	@Override
-	public Stage<StreamProducer<T>> read(int partition) {
+	public Stage<StreamSupplier<T>> read(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
 				.thenApply(file -> SerialFileReader.readFile(file).withBufferSize(readBlockSize)

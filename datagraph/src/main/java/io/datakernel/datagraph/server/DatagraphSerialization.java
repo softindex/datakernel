@@ -182,9 +182,9 @@ public final class DatagraphSerialization {
 					.with("inputs", ofList(STREAM_ID_JSON), NodeUnion::getInputs, NodeUnion::setInputs)
 					.with("output", STREAM_ID_JSON, NodeUnion::getOutput, NodeUnion::setOutput))
 
-			.withSubtype(NodeProducerOfIterable.class, "ProducerOfIterable", TypeAdapterObject.create(NodeProducerOfIterable::new)
-					.with("iterableId", STRING_JSON, t1 -> (String) t1.getIterableId(), NodeProducerOfIterable::setIterableId)
-					.with("output", STREAM_ID_JSON, NodeProducerOfIterable::getOutput, NodeProducerOfIterable::setOutput))
+			.withSubtype(NodeSupplierOfIterable.class, "SupplierOfIterable", TypeAdapterObject.create(NodeSupplierOfIterable::new)
+					.with("iterableId", STRING_JSON, t1 -> (String) t1.getIterableId(), NodeSupplierOfIterable::setIterableId)
+					.with("output", STREAM_ID_JSON, NodeSupplierOfIterable::getOutput, NodeSupplierOfIterable::setOutput))
 
 			.withSubtype(NodeConsumerToList.class, "ConsumerToList", TypeAdapterObject.create(NodeConsumerToList::new)
 					.with("iterableId", STRING_JSON, t -> (String) t.getListId(), NodeConsumerToList::setListId)

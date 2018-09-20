@@ -28,7 +28,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 /**
- * Represents a object which has left and right consumers, and one producer. After receiving data
+ * Represents a object which has left and right consumers, and one supplier. After receiving data
  * it can join it, available are inner join and left join. It work analogous joins from SQL.
  * It is a {@link StreamJoin} which receives specified type and streams
  * set of join's result  to the destination .
@@ -199,7 +199,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			output.tryProduce();
 			return output.getEndOfStream();
 		}
@@ -210,11 +210,11 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<V> {
+	protected final class Output extends AbstractStreamSupplier<V> {
 		@Override
 		protected void onSuspended() {
-			left.getProducer().suspend();
-			right.getProducer().suspend();
+			left.getSupplier().suspend();
+			right.getSupplier().suspend();
 		}
 
 		@Override
@@ -261,8 +261,8 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 				if (left.getEndOfStream().isResult() && right.getEndOfStream().isResult()) {
 					sendEndOfStream();
 				} else {
-					left.getProducer().produce(left);
-					right.getProducer().produce(right);
+					left.getSupplier().resume(left);
+					right.getSupplier().resume(right);
 				}
 			}
 		}
@@ -288,7 +288,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 	}
 
 	@Override
-	public StreamProducer<V> getOutput() {
+	public StreamSupplier<V> getOutput() {
 		return output;
 	}
 }

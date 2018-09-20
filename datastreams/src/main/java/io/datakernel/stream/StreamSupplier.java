@@ -47,22 +47,22 @@ import static java.util.Arrays.asList;
  *
  * @param <T> type of output data
  */
-public interface StreamProducer<T> extends Cancellable {
+public interface StreamSupplier<T> extends Cancellable {
 	/**
-	 * Changes consumer for this producer, removes itself from previous consumer and removes
-	 * previous producer for new consumer. Begins to stream to consumer.
+	 * Changes consumer for this supplier, removes itself from previous consumer and removes
+	 * previous supplier for new consumer. Begins to stream to consumer.
 	 *
 	 * @param consumer consumer for streaming
 	 */
 	void setConsumer(StreamConsumer<T> consumer);
 
 	/**
-	 * This method is called for restore streaming of this producer
+	 * This method is called for restore streaming of this supplier
 	 */
-	void produce(StreamDataAcceptor<T> dataAcceptor);
+	void resume(StreamDataAcceptor<T> dataAcceptor);
 
 	/**
-	 * This method is called for stop streaming of this producer
+	 * This method is called for stop streaming of this supplier
 	 */
 	void suspend();
 
@@ -72,80 +72,80 @@ public interface StreamProducer<T> extends Cancellable {
 
 	@SuppressWarnings("unchecked")
 	default Stage<Void> streamTo(StreamConsumer<T> consumer) {
-		StreamProducer<T> producer = this;
-		producer.setConsumer(consumer);
-		consumer.setProducer(producer);
-		return Stages.all(producer.getEndOfStream(), consumer.getAcknowledgement());
+		StreamSupplier<T> supplier = this;
+		supplier.setConsumer(consumer);
+		consumer.setSupplier(supplier);
+		return Stages.all(supplier.getEndOfStream(), consumer.getAcknowledgement());
 	}
 
-	static <T, R> StreamProducer<T> ofConsumer(Consumer<StreamConsumer<T>> consumer) {
+	static <T, R> StreamSupplier<T> ofConsumer(Consumer<StreamConsumer<T>> consumer) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
 		consumer.accept(forwarder.getInput());
 		return forwarder.getOutput();
 	}
 
 	/**
-	 * Returns producer which doing nothing - not sending any data and not closing itself.
+	 * Returns supplier which doing nothing - not sending any data and not closing itself.
 	 */
-	static <T> StreamProducer<T> idle() {
-		return new StreamProducers.IdleImpl<>();
+	static <T> StreamSupplier<T> idle() {
+		return new StreamSuppliers.IdleImpl<>();
 	}
 
 	/**
-	 * Returns producer which only closes itself.
+	 * Returns supplier which only closes itself.
 	 */
-	static <T> StreamProducer<T> closing() {
-		return new StreamProducers.ClosingImpl<>();
+	static <T> StreamSupplier<T> closing() {
+		return new StreamSuppliers.ClosingImpl<>();
 	}
 
 	/**
-	 * Returns producer which only closes itself with given error.
+	 * Returns supplier which only closes itself with given error.
 	 */
-	static <T> StreamProducer<T> closingWithError(Throwable t) {
-		return new StreamProducers.ClosingWithErrorImpl<>(t);
+	static <T> StreamSupplier<T> closingWithError(Throwable e) {
+		return new StreamSuppliers.ClosingWithErrorImpl<>(e);
 	}
 
 	/**
-	 * Creates producer which sends values and closes itself
+	 * Creates supplier which sends values and closes itself
 	 *
 	 * @param values values for sending
 	 * @param <T>    type of value
 	 */
 	@SafeVarargs
-	static <T> StreamProducer<T> of(T... values) {
-		return new StreamProducers.OfIteratorImpl<>(asList(values).iterator());
+	static <T> StreamSupplier<T> of(T... values) {
+		return new StreamSuppliers.OfIteratorImpl<>(asList(values).iterator());
 	}
 
 	/**
-	 * Returns new {@link StreamProducers.OfIteratorImpl} which sends items from iterator
+	 * Returns new {@link StreamSuppliers.OfIteratorImpl} which sends items from iterator
 	 *
 	 * @param iterator iterator with items for sending
 	 * @param <T>      type of item
 	 */
-	static <T> StreamProducer<T> ofIterator(Iterator<T> iterator) {
-		return new StreamProducers.OfIteratorImpl<>(iterator);
+	static <T> StreamSupplier<T> ofIterator(Iterator<T> iterator) {
+		return new StreamSuppliers.OfIteratorImpl<>(iterator);
 	}
 
 	/**
-	 * Returns new {@link StreamProducers.OfIteratorImpl} which sends items from {@code iterable}
+	 * Returns new {@link StreamSuppliers.OfIteratorImpl} which sends items from {@code iterable}
 	 *
 	 * @param iterable iterable with items for sending
 	 * @param <T>      type of item
 	 */
-	static <T> StreamProducer<T> ofIterable(Iterable<T> iterable) {
-		return new StreamProducers.OfIteratorImpl<>(iterable.iterator());
+	static <T> StreamSupplier<T> ofIterable(Iterable<T> iterable) {
+		return new StreamSuppliers.OfIteratorImpl<>(iterable.iterator());
 	}
 
-	static <T> StreamProducer<T> ofStream(Stream<T> stream) {
-		return new StreamProducers.OfIteratorImpl<>(stream.iterator());
+	static <T> StreamSupplier<T> ofStream(Stream<T> stream) {
+		return new StreamSuppliers.OfIteratorImpl<>(stream.iterator());
 	}
 
 	/**
-	 * Creates a stream producer which produces items from a given lambda.
+	 * Creates a stream supplier which produces items from a given lambda.
 	 * End of stream is marked as null, so no null values cannot be used.
 	 */
-	static <T> StreamProducer<T> ofSupplier(Supplier<T> supplier) {
-		return new StreamProducers.OfIteratorImpl<>(new Iterator<T>() {
+	static <T> StreamSupplier<T> ofSupplier(Supplier<T> supplier) {
+		return new StreamSuppliers.OfIteratorImpl<>(new Iterator<T>() {
 			private T next = supplier.get();
 
 			@Override
@@ -162,15 +162,15 @@ public interface StreamProducer<T> extends Cancellable {
 		});
 	}
 
-	static <T> StreamProducer<T> ofSerialSupplier(SerialSupplier<T> supplier) {
-		return new StreamProducers.OfSerialSupplierImpl<>(supplier);
+	static <T> StreamSupplier<T> ofSerialSupplier(SerialSupplier<T> supplier) {
+		return new StreamSuppliers.OfSerialSupplierImpl<>(supplier);
 	}
 
-	default <R> R apply(StreamProducerFunction<T, R> fn) {
+	default <R> R apply(StreamSupplierFunction<T, R> fn) {
 		return fn.apply(this);
 	}
 
-	default StreamProducer<T> withLateBinding() {
+	default StreamSupplier<T> withLateBinding() {
 		return getCapabilities().contains(LATE_BINDING) ? this : apply(StreamLateBinder.create());
 	}
 
@@ -187,48 +187,48 @@ public interface StreamProducer<T> extends Cancellable {
 	}
 
 	String LATE_BINDING_ERROR_MESSAGE = "" +
-			"StreamProducer %s does not have LATE_BINDING capabilities, " +
+			"StreamSupplier %s does not have LATE_BINDING capabilities, " +
 			"it must be bound in the same tick when it is created. " +
 			"Alternatively, use .withLateBinding() modifier";
 
-	static <T> StreamProducer<T> ofStage(Stage<? extends StreamProducer<T>> stage) {
+	static <T> StreamSupplier<T> ofStage(Stage<? extends StreamSupplier<T>> stage) {
 		if (stage.hasResult()) return stage.getResult();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
-		stage.whenComplete((producer, throwable) -> {
-			if (throwable == null) {
-				checkArgument(producer.getCapabilities().contains(LATE_BINDING),
-						LATE_BINDING_ERROR_MESSAGE, producer);
-				producer.streamTo(binder.getInput());
+		stage.whenComplete((supplier, e) -> {
+			if (e == null) {
+				checkArgument(supplier.getCapabilities().contains(LATE_BINDING),
+						LATE_BINDING_ERROR_MESSAGE, supplier);
+				supplier.streamTo(binder.getInput());
 			} else {
-				StreamProducer.<T>closingWithError(throwable).streamTo(binder.getInput());
+				StreamSupplier.<T>closingWithError(e).streamTo(binder.getInput());
 			}
 		});
 		return binder.getOutput();
 	}
 
 	/**
-	 * Returns  {@link StreamProducerConcat} with producers from Iterator  which will stream to this
+	 * Returns  {@link StreamSupplierConcat} with suppliers from Iterator  which will stream to this
 	 *
-	 * @param iterator iterator with producers
+	 * @param iterator iterator with suppliers
 	 * @param <T>      type of output data
 	 */
-	static <T> StreamProducer<T> concat(Iterator<StreamProducer<T>> iterator) {
-		return new StreamProducerConcat<>(iterator);
+	static <T> StreamSupplier<T> concat(Iterator<StreamSupplier<T>> iterator) {
+		return new StreamSupplierConcat<>(iterator);
 	}
 
 	/**
-	 * Returns  {@link StreamProducerConcat} with producers from Iterable which will stream to this
+	 * Returns  {@link StreamSupplierConcat} with suppliers from Iterable which will stream to this
 	 *
-	 * @param producers list of producers
+	 * @param suppliers list of suppliers
 	 * @param <T>       type of output data
 	 */
-	static <T> StreamProducer<T> concat(List<StreamProducer<T>> producers) {
-		return concat(producers.iterator());
+	static <T> StreamSupplier<T> concat(List<StreamSupplier<T>> suppliers) {
+		return concat(suppliers.iterator());
 	}
 
 	@SafeVarargs
-	static <T> StreamProducer<T> concat(StreamProducer<T>... producers) {
-		return concat(asList(producers));
+	static <T> StreamSupplier<T> concat(StreamSupplier<T>... suppliers) {
+		return concat(asList(suppliers));
 	}
 
 	default Stage<List<T>> toList() {
@@ -241,12 +241,12 @@ public interface StreamProducer<T> extends Cancellable {
 		return consumerToCollector.getResult();
 	}
 
-	default StreamProducer<T> withEndOfStream(Function<Stage<Void>, Stage<Void>> fn) {
+	default StreamSupplier<T> withEndOfStream(Function<Stage<Void>, Stage<Void>> fn) {
 		Stage<Void> endOfStream = getEndOfStream();
 		Stage<Void> suppliedEndOfStream = fn.apply(endOfStream);
 		if (endOfStream == suppliedEndOfStream) return this;
 		MaterializedStage<Void> newEndOfStream = suppliedEndOfStream.materialize();
-		return new ForwardingStreamProducer<T>(this) {
+		return new ForwardingStreamSupplier<T>(this) {
 			@Override
 			public MaterializedStage<Void> getEndOfStream() {
 				return newEndOfStream;

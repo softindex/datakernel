@@ -2,10 +2,10 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.ForwardingStreamProducer;
+import io.datakernel.stream.ForwardingStreamSupplier;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerFunction;
+import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.StreamSupplierFunction;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +23,7 @@ import static org.junit.Assert.assertFalse;
 public class StreamSuspendBufferTest {
 	private static final Logger logger = LoggerFactory.getLogger(StreamSuspendBufferTest.class);
 
-	private void testImmediateSuspend(StreamProducerFunction<String, StreamProducer<String>> suspendingModifier) {
+	private void testImmediateSuspend(StreamSupplierFunction<String, StreamSupplier<String>> suspendingModifier) {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<String> items = IntStream.range(0, 100).mapToObj(i -> "test_" + i).collect(toList());
@@ -31,7 +31,7 @@ public class StreamSuspendBufferTest {
 		SettableStage<List<String>> result = new SettableStage<>();
 
 		boolean[] suspended = {false};
-		StreamProducer.ofIterable(items)
+		StreamSupplier.ofIterable(items)
 				.apply(suspendingModifier)
 				.apply(StreamBuffer.create())
 				.streamTo(StreamConsumerToList.<String>create()
@@ -54,13 +54,13 @@ public class StreamSuspendBufferTest {
 		assertEquals(items, result.getResult());
 	}
 
-	private static <T> StreamProducerFunction<T, StreamProducer<T>> suspend(BiConsumer<Integer, StreamProducer<T>> suspend) {
-		return p -> new ForwardingStreamProducer<T>(p) {
+	private static <T> StreamSupplierFunction<T, StreamSupplier<T>> suspend(BiConsumer<Integer, StreamSupplier<T>> suspend) {
+		return p -> new ForwardingStreamSupplier<T>(p) {
 			private int counter = 0;
 
 			@Override
 			public void suspend() {
-				suspend.accept(counter++, producer);
+				suspend.accept(counter++, supplier);
 			}
 		};
 	}
@@ -68,24 +68,24 @@ public class StreamSuspendBufferTest {
 	@Test
 	public void testDelayedSuspend() {
 		// on every 5th suspend call its actual suspend is delayed
-		testImmediateSuspend(suspend((i, producer) -> {
+		testImmediateSuspend(suspend((i, supplier) -> {
 			if (i % 5 != 0) {
-				producer.suspend();
+				supplier.suspend();
 				return;
 			}
-			Eventloop.getCurrentEventloop().postLater(producer::suspend);
+			Eventloop.getCurrentEventloop().postLater(supplier::suspend);
 		}));
 	}
 
 	@Test
 	public void testVeryDelayedSuspend() {
 		// on every suspend call its actual suspend is delayed
-		testImmediateSuspend(suspend(($, producer) -> Eventloop.getCurrentEventloop().postLater(producer::suspend)));
+		testImmediateSuspend(suspend(($, supplier) -> Eventloop.getCurrentEventloop().postLater(supplier::suspend)));
 	}
 
 	@Test
 	public void testBufferedSuspend() {
 		// does not ever suspend
-		testImmediateSuspend(suspend(($, producer) -> {}));
+		testImmediateSuspend(suspend(($, supplier) -> {}));
 	}
 }

@@ -18,7 +18,7 @@ package io.datakernel.logfs;
 
 import io.datakernel.async.Stage;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamSupplierWithResult;
 
 /**
  * Manages persistence of logs.
@@ -28,7 +28,7 @@ public interface LogManager<T> {
 	 * Creates a {@code StreamConsumer} that persists streamed log items to log.
 	 *
 	 * @param logPartition log partition name
-	 * @return StreamConsumer, which will write records, streamed from wired producer.
+	 * @return StreamConsumer, which will write records, streamed from wired supplier.
 	 */
 	Stage<StreamConsumer<T>> consumer(String logPartition);
 
@@ -37,22 +37,22 @@ public interface LogManager<T> {
 	}
 
 	/**
-	 * Creates a {@code StreamProducer} that streams items, contained in a given partition and file, starting at the specified position.
+	 * Creates a {@code StreamSupplier} that streams items, contained in a given partition and file, starting at the specified position.
 	 *
 	 * @param logPartition  name of log partition
 	 * @param startLogFile  log file
 	 * @param startPosition position
-	 * @return StreamProducer, which will stream read items to its wired consumer.
+	 * @return StreamSupplier, which will stream read items to its wired consumer.
 	 */
-	Stage<StreamProducerWithResult<T, LogPosition>> producer(String logPartition,
+	Stage<StreamSupplierWithResult<T, LogPosition>> supplier(String logPartition,
 			LogFile startLogFile, long startPosition,
 			LogFile endLogFile);
 
-	default StreamProducerWithResult<T, LogPosition> producerStream(String logPartition,
+	default StreamSupplierWithResult<T, LogPosition> supplierStream(String logPartition,
 			LogFile startLogFile, long startPosition,
 			LogFile endLogFile) {
-		return StreamProducerWithResult.ofStage(
-				producer(logPartition, startLogFile, startPosition, endLogFile));
+		return StreamSupplierWithResult.ofStage(
+				supplier(logPartition, startLogFile, startPosition, endLogFile));
 	}
 
 }

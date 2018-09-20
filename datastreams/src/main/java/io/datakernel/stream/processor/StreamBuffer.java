@@ -44,7 +44,7 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			output.tryProduce();
 			return output.getConsumer().getAcknowledgement();
 		}
@@ -55,13 +55,13 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<T> implements StreamDataAcceptor<T> {
+	protected final class Output extends AbstractStreamSupplier<T> implements StreamDataAcceptor<T> {
 		@Override
 		public void accept(T item) {
 			if (suspended) {
 				buffer.offer(item);
 				if (buffer.size() >= maxBuffered) {
-					input.getProducer().suspend();
+					input.getSupplier().suspend();
 				}
 				return;
 			}
@@ -76,12 +76,12 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 				}
 				send(buffer.pop());
 				if (buffer.size() < minBuffered) {
-					input.getProducer().produce(this);
+					input.getSupplier().resume(this);
 				}
 			}
 			if (output.isReceiverReady()) {
 				suspended = false;
-				input.getProducer().produce(this);
+				input.getSupplier().resume(this);
 			}
 			if (input.getEndOfStream().isResult()) {
 				sendEndOfStream();
@@ -92,13 +92,13 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 		protected void onSuspended() {
 			suspended = true;
 			if (maxBuffered == 0) {
-				input.getProducer().suspend();
+				input.getSupplier().suspend();
 			}
 		}
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return addCapabilities(input.getProducer(), IMMEDIATE_SUSPEND);
+			return addCapabilities(input.getSupplier(), IMMEDIATE_SUSPEND);
 		}
 
 		@Override
@@ -113,7 +113,7 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 	}
 
 	@Override
-	public StreamProducer<T> getOutput() {
+	public StreamSupplier<T> getOutput() {
 		return output;
 	}
 }

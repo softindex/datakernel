@@ -157,7 +157,7 @@ public final class Datasets {
 	}
 
 	public static <T> Dataset<T> datasetOfList(Object dataId, Class<T> resultType) {
-		return new DatasetListProducer<>(dataId, resultType);
+		return new DatasetListSupplier<>(dataId, resultType);
 	}
 
 	public static <K, T> SortedDataset<K, T> sortedDatasetOfList(Object dataId, Class<T> resultType, Class<K> keyType,

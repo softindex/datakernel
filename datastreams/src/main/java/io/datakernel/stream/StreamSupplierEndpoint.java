@@ -3,20 +3,20 @@ package io.datakernel.stream;
 import io.datakernel.async.Stage;
 import io.datakernel.serial.SerialBuffer;
 
-public final class StreamProducerEndpoint<T> extends AbstractStreamProducer<T> {
+public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 	public static final int DEFAULT_BUFFER_SIZE = 10;
 
 	private final SerialBuffer<T> buffer;
 
-	public StreamProducerEndpoint() {
+	public StreamSupplierEndpoint() {
 		this(0, DEFAULT_BUFFER_SIZE);
 	}
 
-	public StreamProducerEndpoint(int bufferSize) {
+	public StreamSupplierEndpoint(int bufferSize) {
 		this(0, bufferSize);
 	}
 
-	private StreamProducerEndpoint(int bufferMinSize, int bufferMaxSize) {
+	private StreamSupplierEndpoint(int bufferMinSize, int bufferMaxSize) {
 		this.buffer = new SerialBuffer<>(bufferMinSize, bufferMaxSize);
 	}
 

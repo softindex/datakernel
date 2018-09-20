@@ -21,32 +21,32 @@ import java.util.List;
 import static org.junit.Assert.assertTrue;
 
 public class TestUtils {
-	public static void assertEndOfStream(StreamProducer<?> streamProducer) {
-		assertTrue(streamProducer.getEndOfStream().isResult());
+	public static void assertEndOfStream(StreamSupplier<?> streamSupplier) {
+		assertTrue(streamSupplier.getEndOfStream().isResult());
 	}
 
 	public static void assertEndOfStream(StreamConsumer<?> streamConsumer) {
 		assertTrue(streamConsumer.getAcknowledgement().isResult());
 	}
 
-	public static void assertClosedWithError(StreamProducer<?> streamProducer) {
-		assertTrue(streamProducer.getEndOfStream().isException());
+	public static void assertClosedWithError(StreamSupplier<?> streamSupplier) {
+		assertTrue(streamSupplier.getEndOfStream().isException());
 	}
 
 	public static void assertClosedWithError(StreamConsumer<?> streamConsumer) {
 		assertTrue(streamConsumer.getAcknowledgement().isException());
 	}
 
-	public static void assertProducersEndOfStream(List<? extends StreamProducer<?>> streamProducers) {
-		assertTrue(streamProducers.stream().allMatch(v -> v.getEndOfStream().isResult()));
+	public static void assertSuppliersEndOfStream(List<? extends StreamSupplier<?>> streamSuppliers) {
+		assertTrue(streamSuppliers.stream().allMatch(v -> v.getEndOfStream().isResult()));
 	}
 
 	public static void assertConsumersEndOfStream(List<? extends StreamConsumer<?>> streamConsumers) {
 		assertTrue(streamConsumers.stream().allMatch(v -> v.getAcknowledgement().isResult()));
 	}
 
-	public static void assertProducersClosedWithError(List<? extends StreamProducer<?>> streamProducers) {
-		assertTrue(streamProducers.stream().allMatch(v -> v.getEndOfStream().isException()));
+	public static void assertSuppliersClosedWithError(List<? extends StreamSupplier<?>> streamSuppliers) {
+		assertTrue(streamSuppliers.stream().allMatch(v -> v.getEndOfStream().isException()));
 	}
 
 	public static void assertConsumersClosedWithError(List<? extends StreamConsumer<?>> streamConsumers) {

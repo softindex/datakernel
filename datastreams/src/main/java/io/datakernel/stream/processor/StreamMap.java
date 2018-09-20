@@ -49,7 +49,7 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 	}
 
 	@Override
-	public StreamProducer<O> getOutput() {
+	public StreamSupplier<O> getOutput() {
 		return output;
 	}
 	// endregion
@@ -130,7 +130,7 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 
 	protected final class Input extends AbstractStreamConsumer<I> {
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			return output.sendEndOfStream();
 		}
 
@@ -140,10 +140,10 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<O> {
+	protected final class Output extends AbstractStreamSupplier<O> {
 		@Override
 		protected void onSuspended() {
-			input.getProducer().suspend();
+			input.getSupplier().suspend();
 		}
 
 		@Override
@@ -153,7 +153,7 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 
 		@Override
 		protected void onProduce(StreamDataAcceptor<O> dataAcceptor) {
-			input.getProducer().produce(item -> mapper.map(item, dataAcceptor));
+			input.getSupplier().resume(item -> mapper.map(item, dataAcceptor));
 		}
 	}
 

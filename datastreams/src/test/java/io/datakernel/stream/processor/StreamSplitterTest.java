@@ -20,7 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,7 +46,7 @@ public class StreamSplitterTest {
 
 	@Test
 	public void test1() {
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
+		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3);
 		StreamSplitter<Integer> streamConcat = StreamSplitter.create();
 		StreamConsumerToList<Integer> consumerToList1 = StreamConsumerToList.create();
 		StreamConsumerToList<Integer> consumerToList2 = StreamConsumerToList.create();
@@ -59,14 +59,14 @@ public class StreamSplitterTest {
 		assertEquals(asList(1, 2, 3), consumerToList2.getList());
 		assertEndOfStream(source);
 		assertEndOfStream(streamConcat.getInput());
-		assertProducersEndOfStream(streamConcat.getOutputs());
+		assertSuppliersEndOfStream(streamConcat.getOutputs());
 	}
 
 	@Test
 	public void testConsumerDisconnectWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4, 5);
+		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4, 5);
 		StreamSplitter<Integer> streamConcat = StreamSplitter.create();
 
 		List<Integer> toList1 = new ArrayList<>();
@@ -98,16 +98,16 @@ public class StreamSplitterTest {
 
 		assertClosedWithError(source);
 		assertClosedWithError(streamConcat.getInput());
-		assertProducersClosedWithError(streamConcat.getOutputs());
+		assertSuppliersClosedWithError(streamConcat.getOutputs());
 	}
 
 	@Test
-	public void testProducerDisconnectWithError() {
-		StreamProducer<Integer> source = StreamProducer.concat(
-				StreamProducer.of(1),
-				StreamProducer.of(2),
-				StreamProducer.of(3),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
+	public void testSupplierDisconnectWithError() {
+		StreamSupplier<Integer> source = StreamSupplier.concat(
+				StreamSupplier.of(1),
+				StreamSupplier.of(2),
+				StreamSupplier.of(3),
+				StreamSupplier.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		StreamSplitter<Integer> splitter = StreamSplitter.create();
@@ -131,14 +131,14 @@ public class StreamSplitterTest {
 		assertTrue(list3.size() == 3);
 
 		assertClosedWithError(splitter.getInput());
-		assertProducersClosedWithError(splitter.getOutputs());
+		assertSuppliersClosedWithError(splitter.getOutputs());
 	}
 
 	@Test(expected = IllegalStateException.class)
 	public void testNoOutputs() throws ExecutionException, InterruptedException {
 		StreamSplitter<Integer> splitter = StreamSplitter.create();
 
-		Future<Void> future = StreamProducer.of(1, 2, 3, 4).streamTo(splitter.getInput())
+		Future<Void> future = StreamSupplier.of(1, 2, 3, 4).streamTo(splitter.getInput())
 				.toCompletableFuture();
 
 		eventloop.run();

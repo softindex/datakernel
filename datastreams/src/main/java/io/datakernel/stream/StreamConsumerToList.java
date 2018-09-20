@@ -44,11 +44,11 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 
 	@Override
 	protected void onStarted() {
-		getProducer().produce(this);
+		getSupplier().resume(this);
 	}
 
 	@Override
-	protected Stage<Void> onProducerEndOfStream() {
+	protected Stage<Void> onEndOfStream() {
 		resultStage.set(list);
 		return Stage.complete();
 	}

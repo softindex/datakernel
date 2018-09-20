@@ -19,7 +19,7 @@ package io.datakernel.datagraph.graph;
 import io.datakernel.datagraph.server.DatagraphEnvironment;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -28,7 +28,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
 /**
- * Represents a context of a datagraph system: environment, producers and consumers.
+ * Represents a context of a datagraph system: environment, suppliers and consumers.
  * Provides functionality to alter context and wire components.
  */
 public final class TaskContext {
@@ -36,7 +36,7 @@ public final class TaskContext {
 
 	private final Eventloop eventloop;
 
-	private final Map<StreamId, StreamProducer<?>> producers = new LinkedHashMap<>();
+	private final Map<StreamId, StreamSupplier<?>> suppliers = new LinkedHashMap<>();
 	private final Map<StreamId, StreamConsumer<?>> consumers = new LinkedHashMap<>();
 
 	public TaskContext(Eventloop eventloop, DatagraphEnvironment environment) {
@@ -57,19 +57,19 @@ public final class TaskContext {
 		consumers.put(streamId, consumer);
 	}
 
-	public <T> void export(StreamId streamId, StreamProducer<T> producer) {
-		checkState(!producers.containsKey(streamId));
-		producers.put(streamId, producer);
+	public <T> void export(StreamId streamId, StreamSupplier<T> supplier) {
+		checkState(!suppliers.containsKey(streamId));
+		suppliers.put(streamId, supplier);
 	}
 
 	@SuppressWarnings("unchecked")
 	public void wireAll() {
-		for (StreamId streamId : producers.keySet()) {
-			StreamProducer<Object> producer = (StreamProducer<Object>) producers.get(streamId);
+		for (StreamId streamId : suppliers.keySet()) {
+			StreamSupplier<Object> supplier = (StreamSupplier<Object>) suppliers.get(streamId);
 			StreamConsumer<Object> consumer = (StreamConsumer<Object>) consumers.get(streamId);
-			checkNotNull(producer);
-			checkNotNull(consumer, "Consumer not found for %s , producer %s", streamId, producer);
-			producer.streamTo(consumer);
+			checkNotNull(supplier);
+			checkNotNull(consumer, "Consumer not found for %s , supplier %s", streamId, supplier);
+			supplier.streamTo(consumer);
 		}
 	}
 }

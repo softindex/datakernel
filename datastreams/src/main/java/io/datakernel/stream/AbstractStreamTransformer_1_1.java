@@ -22,11 +22,11 @@ import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.stream.processor.StreamTransformer;
 
 /**
- * Represent {@link StreamProducer} and {@link StreamConsumer} in the one object.
+ * Represent {@link StreamSupplier} and {@link StreamConsumer} in the one object.
  * This object can receive and send streams of data.
  *
  * @param <I> type of input data for consumer
- * @param <O> type of output data of producer
+ * @param <O> type of output data of supplier
  */
 @SuppressWarnings("unchecked")
 public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTransformer<I, O> {

@@ -40,7 +40,7 @@ import io.datakernel.logfs.ot.LogDataConsumer;
 import io.datakernel.ot.OTState;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.*;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
@@ -504,7 +504,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			Map<String, String> aggregationMeasureFields = entriesToMap(filterEntryKeys(measureFields.entrySet().stream(), aggregationContainer.measures::contains));
 
 			AggregationPredicate dataInputFilterPredicate = aggregationToDataInputFilterPredicate.getValue();
-			StreamProducer<T> output = streamSplitter.newOutput();
+			StreamSupplier<T> output = streamSplitter.newOutput();
 			if (!dataInputFilterPredicate.equals(AggregationPredicates.alwaysTrue())) {
 				Predicate<T> filterPredicate = createFilterPredicate(inputClass, dataInputFilterPredicate, getClassLoader(), fieldTypes);
 				output = output.apply(StreamFilter.create(filterPredicate));
@@ -556,18 +556,18 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	/**
-	 * Returns a {@link StreamProducer} of the records retrieved from cube for the specified query.
+	 * Returns a {@link StreamSupplier} of the records retrieved from cube for the specified query.
 	 *
 	 * @param <T>         type of output objects
 	 * @param resultClass class of output records
-	 * @return producer that streams query results
+	 * @return supplier that streams query results
 	 */
-	public <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
+	public <T> StreamSupplier<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
 			Class<T> resultClass) throws QueryException {
 		return queryRawStream(dimensions, storedMeasures, where, resultClass, classLoader);
 	}
 
-	public <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
+	public <T> StreamSupplier<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
 			Class<T> resultClass, DefiningClassLoader queryClassLoader) throws QueryException {
 
 		List<AggregationContainer> compatibleAggregations = getCompatibleAggregationsForQuery(dimensions, storedMeasures, where);
@@ -575,7 +575,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return queryRawStream(dimensions, storedMeasures, where, resultClass, queryClassLoader, compatibleAggregations);
 	}
 
-	private <T, K extends Comparable, S, A> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
+	private <T, K extends Comparable, S, A> StreamSupplier<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
 			Class<T> resultClass, DefiningClassLoader queryClassLoader,
 			List<AggregationContainer> compatibleAggregations) throws QueryException {
 		List<AggregationContainerWithScore> containerWithScores = new ArrayList<>();
@@ -591,7 +591,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				queryClassLoader);
 
 		StreamReducer<K, T, A> streamReducer = StreamReducer.create(Comparable::compareTo);
-		StreamProducer<T> queryResultProducer = streamReducer.getOutput();
+		StreamSupplier<T> queryResultSupplier = streamReducer.getOutput();
 
 		storedMeasures = new ArrayList<>(storedMeasures);
 		for (AggregationContainerWithScore aggregationContainerWithScore : containerWithScores) {
@@ -606,7 +606,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 					keysToMap(compatibleMeasures.stream(), m -> measures.get(m).getFieldType()),
 					queryClassLoader);
 
-			StreamProducer<S> aggregationProducer = aggregationContainer.aggregation.query(
+			StreamSupplier<S> aggregationSupplier = aggregationContainer.aggregation.query(
 					AggregationQuery.create(dimensions, compatibleMeasures, where),
 					aggregationClass, queryClassLoader);
 
@@ -617,7 +617,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				 */
 				StreamMap.MapperProjection<S, T> mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
 						compatibleMeasures, queryClassLoader);
-				queryResultProducer = aggregationProducer.apply(StreamMap.create(mapper));
+				queryResultSupplier = aggregationSupplier.apply(StreamMap.create(mapper));
 				break;
 			}
 
@@ -628,10 +628,10 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 			StreamConsumer<S> streamReducerInput = streamReducer.newInput(keyFunction, reducer);
 
-			aggregationProducer.streamTo(streamReducerInput);
+			aggregationSupplier.streamTo(streamReducerInput);
 		}
 
-		return queryResultProducer;
+		return queryResultSupplier;
 	}
 
 	List<AggregationContainer> getCompatibleAggregationsForQuery(Collection<String> dimensions,

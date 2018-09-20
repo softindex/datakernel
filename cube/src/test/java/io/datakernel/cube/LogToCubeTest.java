@@ -33,7 +33,7 @@ import io.datakernel.ot.*;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -112,7 +112,7 @@ public class LogToCubeTest {
 			asList("partitionA"),
 			cubeDiffLogOTState);
 
-		StreamProducer.of(
+		StreamSupplier.of(
 			new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
 			new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
 			new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),

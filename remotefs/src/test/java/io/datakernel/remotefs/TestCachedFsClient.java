@@ -84,7 +84,7 @@ public class TestCachedFsClient {
 	@Test
 	public void testDownloadFileNotInCache() {
 		cacheRemote.download("test.txt")
-				.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.thenApply(buf -> buf.asString(UTF_8))
 				.thenRunEx(server::close)
 				.whenComplete(assertComplete(s -> {
@@ -101,7 +101,7 @@ public class TestCachedFsClient {
 	@Test
 	public void testDownloadFileNotInCacheWithOffsetAndLength() {
 		cacheRemote.download("test.txt", 1, 2)
-				.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.thenApply(buf -> buf.asString(UTF_8))
 				.whenComplete((res, err) -> {
 					server.close();
@@ -120,14 +120,14 @@ public class TestCachedFsClient {
 		assertArrayEquals(bytes, Files.readAllBytes(cacheTestFile));
 
 		cacheRemote.download("test.txt")
-				.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.thenApply(buf -> buf.asString(UTF_8))
 				.thenRunEx(server::close)
 				.whenComplete(assertComplete(s -> {
 					assertEquals(testTxtContent, s);
 				}))
 				.thenCompose($ -> cache.download("test.txt"))
-				.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf -> assertEquals(testTxtContent, buf.asString(UTF_8))));
 
 		eventloop.run();
@@ -138,7 +138,7 @@ public class TestCachedFsClient {
 		Files.write(cacheTestFile, "line1\nline2\nline3".getBytes(UTF_8));
 
 		cacheRemote.download("test.txt", 1, 2)
-				.thenCompose(producer -> producer.toCollector(ByteBufQueue.collector()))
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.thenApply(buf -> buf.asString(UTF_8))
 				.thenRunEx(server::close)
 				.whenComplete((res, err) -> assertEquals("in", res))
@@ -151,9 +151,9 @@ public class TestCachedFsClient {
 	public void testDownloadFileFullyInCache() throws IOException {
 		Files.copy(serverTestFile, cacheTestFile);
 		cacheRemote.download("test.txt")
-				.thenCompose(producer -> {
+				.thenCompose(supplier -> {
 					ByteBufQueue q = new ByteBufQueue();
-					return producer
+					return supplier
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> q.takeRemaining().asString(UTF_8));
 				})
@@ -168,9 +168,9 @@ public class TestCachedFsClient {
 	public void testDownloadFileFullyInCacheWithOffsetAndLength() throws IOException {
 		Files.copy(serverTestFile, cacheTestFile);
 		cacheRemote.download("test.txt", 1, 2)
-				.thenCompose(producer -> {
+				.thenCompose(supplier -> {
 					ByteBufQueue q = new ByteBufQueue();
-					return producer
+					return supplier
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> q.takeRemaining().asString(UTF_8));
 				})
@@ -187,9 +187,9 @@ public class TestCachedFsClient {
 		String fileContent = "This file is stored only in cache";
 		Files.write(filePath, fileContent.getBytes());
 		cacheRemote.download("cacheOnly.txt")
-				.thenCompose(producer -> {
+				.thenCompose(supplier -> {
 					ByteBufQueue q = new ByteBufQueue();
-					return producer
+					return supplier
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> q.takeRemaining().asString(UTF_8));
 				})
@@ -206,9 +206,9 @@ public class TestCachedFsClient {
 		String fileContent = "This file is stored only in cache";
 		Files.write(filePath, fileContent.getBytes());
 		cacheRemote.download("cacheOnly.txt", 1, 2)
-				.thenCompose(producer -> {
+				.thenCompose(supplier -> {
 					ByteBufQueue q = new ByteBufQueue();
-					return producer
+					return supplier
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> q.takeRemaining().asString(UTF_8));
 				})

@@ -11,7 +11,7 @@ import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -45,14 +45,14 @@ public class LogManagerImplTest {
 
 		List<String> values = asList("test1", "test2", "test3");
 
-		StreamProducer.ofIterable(values)
+		StreamSupplier.ofIterable(values)
 				.streamTo(logManager.consumerStream(testPartition));
 
 		eventloop.run();
 
 		StreamConsumerToList<String> listConsumer = StreamConsumerToList.create();
-		logManager.producerStream(testPartition, new LogFile("", 0), 0, null)
-				.getProducer()
+		logManager.supplierStream(testPartition, new LogFile("", 0), 0, null)
+				.getSupplier()
 				.streamTo(listConsumer);
 
 		CompletableFuture<List<String>> listFuture = listConsumer.getResult().toCompletableFuture();

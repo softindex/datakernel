@@ -24,11 +24,11 @@ public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamCons
 	protected void onStarted() {
 		accumulator = collector.supplier().get();
 		BiConsumer<A, T> consumer = collector.accumulator();
-		getProducer().produce(item -> consumer.accept(accumulator, item));
+		getSupplier().resume(item -> consumer.accept(accumulator, item));
 	}
 
 	@Override
-	protected Stage<Void> onProducerEndOfStream() {
+	protected Stage<Void> onEndOfStream() {
 		R result = collector.finisher().apply(accumulator);
 		accumulator = null;
 		resultStage.set(result);

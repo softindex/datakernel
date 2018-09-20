@@ -10,17 +10,17 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
 /**
  * If stream consumer is not immediately wired, on next eventloop cycle it will error out.
- * This is because consumers request producers to start producing items on the next cycle after they're wired.
+ * This is because consumers request suppliers to start producing items on the next cycle after they're wired.
  * <p>
  * This transformer solves that by storing a data receiver from consumer produce request if it is not wired
- * and when it is actually wired request his new producer to produce into that stored receiver.
+ * and when it is actually wired request his new supplier to produce into that stored receiver.
  */
 public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 	private final AbstractStreamConsumer<T> input = new Input();
-	private final AbstractStreamProducer<T> output = new Output();
+	private final AbstractStreamSupplier<T> output = new Output();
 
 	@Nullable
-	private StreamDataAcceptor<T> waitingReceiver;
+	private StreamDataAcceptor<T> waitingAcceptor;
 
 	// region creators
 	private StreamLateBinder() {
@@ -34,14 +34,14 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 	private class Input extends AbstractStreamConsumer<T> {
 		@Override
 		protected void onStarted() {
-			if (waitingReceiver != null) {
-				getProducer().produce(waitingReceiver);
-				waitingReceiver = null;
+			if (waitingAcceptor != null) {
+				getSupplier().resume(waitingAcceptor);
+				waitingAcceptor = null;
 			}
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			return output.sendEndOfStream();
 		}
 
@@ -56,25 +56,25 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 		}
 	}
 
-	private class Output extends AbstractStreamProducer<T> {
+	private class Output extends AbstractStreamSupplier<T> {
 		@Override
 		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
-			StreamProducer<T> producer = input.getProducer();
-			if (producer == null) {
-				waitingReceiver = dataAcceptor;
+			StreamSupplier<T> supplier = input.getSupplier();
+			if (supplier == null) {
+				waitingAcceptor = dataAcceptor;
 				return;
 			}
-			producer.produce(dataAcceptor);
+			supplier.resume(dataAcceptor);
 		}
 
 		@Override
 		protected void onSuspended() {
-			StreamProducer<T> producer = input.getProducer();
-			if (producer == null) {
-				waitingReceiver = null;
+			StreamSupplier<T> supplier = input.getSupplier();
+			if (supplier == null) {
+				waitingAcceptor = null;
 				return;
 			}
-			producer.suspend();
+			supplier.suspend();
 		}
 
 		@Override
@@ -84,7 +84,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return addCapabilities(input.getProducer(), LATE_BINDING);
+			return addCapabilities(input.getSupplier(), LATE_BINDING);
 		}
 	}
 
@@ -94,7 +94,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 	}
 
 	@Override
-	public StreamProducer<T> getOutput() {
+	public StreamSupplier<T> getOutput() {
 		return output;
 	}
 }

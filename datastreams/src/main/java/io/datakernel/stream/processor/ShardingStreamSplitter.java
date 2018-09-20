@@ -51,7 +51,7 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 		return new ShardingStreamSplitter<>(sharder, keyFunction);
 	}
 
-	public StreamProducer<I> newOutput() {
+	public StreamSupplier<I> newOutput() {
 		Output output = new Output(outputs.size());
 		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
 		suspended++;
@@ -65,7 +65,7 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 	}
 
 	@Override
-	public List<? extends StreamProducer<I>> getOutputs() {
+	public List<? extends StreamSupplier<I>> getOutputs() {
 		return outputs;
 	}
 
@@ -83,7 +83,7 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			return Stages.all(outputs.stream().map(Output::sendEndOfStream));
 		}
 
@@ -93,7 +93,7 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<I> {
+	protected final class Output extends AbstractStreamSupplier<I> {
 		private final int index;
 
 		protected Output(int index) {
@@ -102,20 +102,20 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 
 		@Override
 		protected void onStarted() {
-			checkState(input.getProducer() != null, "Splitter has no input");
+			checkState(input.getSupplier() != null, "Splitter has no input");
 		}
 
 		@Override
 		protected void onSuspended() {
 			suspended++;
-			input.getProducer().suspend();
+			input.getSupplier().suspend();
 		}
 
 		@Override
 		protected void onProduce(StreamDataAcceptor<I> dataAcceptor) {
 			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
-				input.getProducer().produce(ShardingStreamSplitter.this);
+				input.getSupplier().resume(ShardingStreamSplitter.this);
 			}
 		}
 

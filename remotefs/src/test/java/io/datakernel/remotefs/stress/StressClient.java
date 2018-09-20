@@ -25,7 +25,7 @@ import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,8 +103,8 @@ class StressClient {
 				SerialFileWriter consumer = SerialFileWriter.create(executor, downloads.resolve(fileName));
 
 				client.download(fileName, 0)
-						.thenCompose(producer -> producer.streamTo(consumer))
-						.whenComplete((producer, e) -> {
+						.thenCompose(supplier -> supplier.streamTo(consumer))
+						.whenComplete((supplier, e) -> {
 							if (e == null) {
 								logger.info("Downloaded: " + fileName);
 							} else {
@@ -192,11 +192,11 @@ class StressClient {
 		obj.name = "someName";
 		obj.ip = InetAddress.getLocalHost();
 
-		StreamProducer<TestObject> producer = StreamProducer.ofIterable(Collections.singletonList(obj));
+		StreamSupplier<TestObject> supplier = StreamSupplier.ofIterable(Collections.singletonList(obj));
 		SerialBinarySerializer<TestObject> serializer = SerialBinarySerializer.create(bufferSerializer)
 				.withInitialBufferSize(SerialBinarySerializer.MAX_SIZE);
 
-//		producer.with(serializer).streamTo(
+//		supplier.with(serializer).streamTo(
 //				client.uploadStream("someName" + i));
 //		eventloop.run();
 		throw new UnsupportedOperationException("TODO");
@@ -204,12 +204,12 @@ class StressClient {
 
 	void downloadSmallObjects(int i) {
 		String name = "someName" + i;
-		client.download(name, 0).whenComplete((producer, throwable) -> {
+		client.download(name, 0).whenComplete((supplier, throwable) -> {
 			if (throwable != null) {
 				logger.error("can't download", throwable);
 			} else {
 //				try {
-//					producer.streamTo(SerialFileWriter.create(executor, downloads.resolve(name)));
+//					supplier.streamTo(SerialFileWriter.create(executor, downloads.resolve(name)));
 //				} catch (IOException e) {
 //					logger.error("can't download", e);
 //				}

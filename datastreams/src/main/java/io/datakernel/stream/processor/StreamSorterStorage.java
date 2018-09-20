@@ -18,7 +18,7 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.async.Stage;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 
 import java.util.List;
 
@@ -44,15 +44,15 @@ public interface StreamSorterStorage<T> {
 	}
 
 	/**
-	 * Method for creating producer for reading from storage partition of elements
+	 * Method for creating supplier for reading from storage partition of elements
 	 *
 	 * @param partition index of partition
-	 * @return producer for streaming to storage
+	 * @return supplier for streaming to storage
 	 */
-	Stage<StreamProducer<T>> read(int partition);
+	Stage<StreamSupplier<T>> read(int partition);
 
-	default StreamProducer<T> readStream(int partition) {
-		return StreamProducer.ofStage(read(partition));
+	default StreamSupplier<T> readStream(int partition) {
+		return StreamSupplier.ofStage(read(partition));
 	}
 
 	/**

@@ -27,7 +27,7 @@ import java.util.Set;
 import static java.util.Collections.emptySet;
 
 public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
-	private InternalProducer currentInternalProducer;
+	private InternalSupplier currentInternalSupplier;
 	private int pendingConsumers = 0;
 
 	private StreamConsumerSwitcher() {
@@ -45,13 +45,13 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 
 	@Override
 	public final void accept(T item) {
-		currentInternalProducer.onData(item);
+		currentInternalSupplier.onData(item);
 	}
 
 	@Override
-	protected Stage<Void> onProducerEndOfStream() {
-		if (currentInternalProducer != null) {
-			currentInternalProducer.sendEndOfStream();
+	protected Stage<Void> onEndOfStream() {
+		if (currentInternalSupplier != null) {
+			currentInternalSupplier.sendEndOfStream();
 		}
 		return getAcknowledgement();
 	}
@@ -63,32 +63,32 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 
 	@Override
 	public Set<StreamCapability> getCapabilities() {
-		return currentInternalProducer == null ? emptySet() : currentInternalProducer.consumer.getCapabilities();
+		return currentInternalSupplier == null ? emptySet() : currentInternalSupplier.consumer.getCapabilities();
 	}
 
 	public void switchTo(StreamConsumer<T> newConsumer) {
-		if (getProducer() != null && getProducer().getEndOfStream().isException()) {
-			if (currentInternalProducer != null) {
-				currentInternalProducer.sendError(getAcknowledgement().getException());
+		if (getSupplier() != null && getSupplier().getEndOfStream().isException()) {
+			if (currentInternalSupplier != null) {
+				currentInternalSupplier.sendError(getAcknowledgement().getException());
 			}
-			currentInternalProducer = new InternalProducer(eventloop, StreamConsumer.idle());
-			StreamProducer.<T>closingWithError(getAcknowledgement().getException()).streamTo(newConsumer);
-		} else if (getProducer() != null && getProducer().getEndOfStream().isComplete()) {
-			if (currentInternalProducer != null) {
-				currentInternalProducer.sendEndOfStream();
+			currentInternalSupplier = new InternalSupplier(eventloop, StreamConsumer.idle());
+			StreamSupplier.<T>closingWithError(getAcknowledgement().getException()).streamTo(newConsumer);
+		} else if (getSupplier() != null && getSupplier().getEndOfStream().isComplete()) {
+			if (currentInternalSupplier != null) {
+				currentInternalSupplier.sendEndOfStream();
 			}
-			currentInternalProducer = new InternalProducer(eventloop, StreamConsumer.idle());
-			StreamProducer.<T>of().streamTo(newConsumer);
+			currentInternalSupplier = new InternalSupplier(eventloop, StreamConsumer.idle());
+			StreamSupplier.<T>of().streamTo(newConsumer);
 		} else {
-			if (currentInternalProducer != null) {
-				currentInternalProducer.sendEndOfStream();
+			if (currentInternalSupplier != null) {
+				currentInternalSupplier.sendEndOfStream();
 			}
-			currentInternalProducer = new InternalProducer(eventloop, newConsumer);
-			currentInternalProducer.streamTo(newConsumer);
+			currentInternalSupplier = new InternalSupplier(eventloop, newConsumer);
+			currentInternalSupplier.streamTo(newConsumer);
 		}
 	}
 
-	private class InternalProducer implements StreamProducer<T> {
+	private class InternalSupplier implements StreamSupplier<T> {
 		private final Eventloop eventloop;
 		private final StreamConsumer<T> consumer;
 		private final SettableStage<Void> endOfStream = new SettableStage<>();
@@ -97,7 +97,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		private ArrayList<T> pendingItems;
 		private boolean pendingEndOfStream;
 
-		public InternalProducer(Eventloop eventloop, StreamConsumer<T> consumer) {
+		public InternalSupplier(Eventloop eventloop, StreamConsumer<T> consumer) {
 			this.eventloop = eventloop;
 			this.consumer = consumer;
 			pendingConsumers++;
@@ -117,7 +117,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public void produce(StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(StreamDataAcceptor<T> dataAcceptor) {
 			lastDataAcceptor = dataAcceptor;
 			suspended = false;
 
@@ -136,19 +136,19 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 						endOfStream.trySet(null);
 					}
 
-					if (currentInternalProducer == this) {
+					if (currentInternalSupplier == this) {
 						if (!suspended) {
-							getProducer().produce(StreamConsumerSwitcher.this);
+							getSupplier().resume(StreamConsumerSwitcher.this);
 						} else {
-							getProducer().suspend();
+							getSupplier().suspend();
 						}
 					}
 				});
 			} else {
-				if (currentInternalProducer == this) {
-					StreamProducer<T> producer = getProducer();
-					if (producer != null) {
-						producer.produce(StreamConsumerSwitcher.this);
+				if (currentInternalSupplier == this) {
+					StreamSupplier<T> supplier = getSupplier();
+					if (supplier != null) {
+						supplier.resume(StreamConsumerSwitcher.this);
 					}
 				}
 			}
@@ -157,8 +157,8 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		@Override
 		public void suspend() {
 			suspended = true;
-			if (currentInternalProducer == this) {
-				getProducer().suspend();
+			if (currentInternalSupplier == this) {
+				getSupplier().suspend();
 			}
 		}
 
@@ -174,7 +174,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return getProducer().getCapabilities();
+			return getSupplier().getCapabilities();
 		}
 
 		public void onData(T item) {
@@ -183,7 +183,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 			} else {
 				if (pendingItems == null) {
 					pendingItems = new ArrayList<>();
-					getProducer().suspend();
+					getSupplier().suspend();
 				}
 				pendingItems.add(item);
 			}

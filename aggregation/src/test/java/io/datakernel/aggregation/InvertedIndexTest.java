@@ -21,7 +21,7 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -101,33 +101,33 @@ public class InvertedIndexTest {
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
 			.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
-		StreamProducer<InvertedIndexRecord> producer = StreamProducer.of(
+		StreamSupplier<InvertedIndexRecord> supplier = StreamSupplier.of(
 			new InvertedIndexRecord("fox", 1),
 			new InvertedIndexRecord("brown", 2),
 			new InvertedIndexRecord("fox", 3));
-		CompletableFuture<AggregationDiff> future = aggregation.consume(producer, InvertedIndexRecord.class).toCompletableFuture();
+		CompletableFuture<AggregationDiff> future = aggregation.consume(supplier, InvertedIndexRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregation.getState().apply(future.get());
 
 		aggregationChunkStorage.finish(getAddedChunks(future.get()));
 		eventloop.run();
 
-		producer = StreamProducer.of(
+		supplier = StreamSupplier.of(
 			new InvertedIndexRecord("brown", 3),
 			new InvertedIndexRecord("lazy", 4),
 			new InvertedIndexRecord("dog", 1));
-		future = aggregation.consume(producer, InvertedIndexRecord.class).toCompletableFuture();
+		future = aggregation.consume(supplier, InvertedIndexRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregation.getState().apply(future.get());
 
 		aggregationChunkStorage.finish(getAddedChunks(future.get()));
 		eventloop.run();
 
-		producer = StreamProducer.of(
+		supplier = StreamSupplier.of(
 			new InvertedIndexRecord("quick", 1),
 			new InvertedIndexRecord("fox", 4),
 			new InvertedIndexRecord("brown", 10));
-		future = aggregation.consume(producer, InvertedIndexRecord.class).toCompletableFuture();
+		future = aggregation.consume(supplier, InvertedIndexRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregation.getState().apply(future.get());
 

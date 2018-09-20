@@ -23,7 +23,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -66,8 +66,8 @@ public class AggregationGroupReducerTest {
 			long chunkId;
 
 			@Override
-			public <T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamProducer.ofIterable(items));
+			public <T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Stage.of(StreamSupplier.ofIterable(items));
 			}
 
 			@Override
@@ -102,7 +102,7 @@ public class AggregationGroupReducerTest {
 
 		int aggregationChunkSize = 2;
 
-		StreamProducer<InvertedIndexRecord> producer = StreamProducer.of(
+		StreamSupplier<InvertedIndexRecord> supplier = StreamSupplier.of(
 				new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2),
 				new InvertedIndexRecord("fox", 3),
@@ -117,13 +117,13 @@ public class AggregationGroupReducerTest {
 				structure, asList("documents"),
 				aggregationClass, singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader);
 
-		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(groupReducer)
+		CompletableFuture<List<AggregationChunk>> future = supplier.streamTo(groupReducer)
 				.thenCompose($ -> groupReducer.getResult())
 				.toCompletableFuture();
 
 		eventloop.run();
 
-		assertEndOfStream(producer);
+		assertEndOfStream(supplier);
 		assertEndOfStream(groupReducer);
 		assertEquals(future.get().size(), 5);
 

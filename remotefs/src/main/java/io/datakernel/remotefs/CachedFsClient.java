@@ -93,7 +93,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	 * @param filename name of the file to be downloaded
 	 * @param offset   from which byte to download the file
 	 * @param length   how much bytes of the file do download
-	 * @return stage for stream producer of byte buffers
+	 * @return stage for stream supplier of byte buffers
 	 */
 	@Override
 	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {

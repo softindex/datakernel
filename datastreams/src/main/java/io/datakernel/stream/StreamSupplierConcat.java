@@ -5,25 +5,25 @@ import io.datakernel.async.Stage;
 import java.util.Iterator;
 
 /**
- * Represents {@link AbstractStreamTransformer_1_1}, which created with iterator with {@link AbstractStreamProducer}
+ * Represents {@link AbstractStreamTransformer_1_1}, which created with iterator with {@link AbstractStreamSupplier}
  * which will stream to this
  *
  * @param <T> type of received data
  */
-class StreamProducerConcat<T> extends AbstractStreamProducer<T> {
-	private final Iterator<StreamProducer<T>> iterator;
-	private StreamProducer<T> producer;
+class StreamSupplierConcat<T> extends AbstractStreamSupplier<T> {
+	private final Iterator<StreamSupplier<T>> iterator;
+	private StreamSupplier<T> supplier;
 	private InternalConsumer internalConsumer;
 
-	StreamProducerConcat(Iterator<StreamProducer<T>> iterator) {
+	StreamSupplierConcat(Iterator<StreamSupplier<T>> iterator) {
 		this.iterator = iterator;
 	}
 
 	private class InternalConsumer extends AbstractStreamConsumer<T> {
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			eventloop.post(() -> {
-				producer = null;
+				supplier = null;
 				internalConsumer = null;
 				if (isReceiverReady()) {
 					onProduce(getCurrentDataAcceptor());
@@ -34,35 +34,35 @@ class StreamProducerConcat<T> extends AbstractStreamProducer<T> {
 
 		@Override
 		protected void onError(Throwable t) {
-			StreamProducerConcat.this.closeWithError(t);
+			StreamSupplierConcat.this.closeWithError(t);
 		}
 	}
 
 	@Override
 	protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 		assert dataAcceptor != null;
-		if (producer == null) {
+		if (supplier == null) {
 			if (!iterator.hasNext()) {
 				eventloop.post(this::sendEndOfStream);
 				return;
 			}
-			producer = iterator.next();
+			supplier = iterator.next();
 			internalConsumer = new InternalConsumer();
-			producer.streamTo(internalConsumer);
+			supplier.streamTo(internalConsumer);
 		}
-		producer.produce(dataAcceptor);
+		supplier.resume(dataAcceptor);
 	}
 
 	@Override
 	protected void onSuspended() {
-		if (producer != null) {
-			producer.suspend();
+		if (supplier != null) {
+			supplier.suspend();
 		}
 	}
 
 	@Override
 	protected void onError(Throwable t) {
-		if (producer != null) {
+		if (supplier != null) {
 			assert internalConsumer != null;
 			internalConsumer.closeWithError(t);
 		} else {
@@ -72,7 +72,7 @@ class StreamProducerConcat<T> extends AbstractStreamProducer<T> {
 
 	@Override
 	protected void cleanup() {
-		producer = null;
+		supplier = null;
 	}
 
 }

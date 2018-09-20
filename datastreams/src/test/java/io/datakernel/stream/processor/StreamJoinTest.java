@@ -20,7 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
@@ -112,14 +112,14 @@ public class StreamJoinTest {
 	public void test1() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<DataItemMaster> source1 = StreamProducer.of(
+		StreamSupplier<DataItemMaster> source1 = StreamSupplier.of(
 				new DataItemMaster(10, 10, "masterA"),
 				new DataItemMaster(20, 10, "masterB"),
 				new DataItemMaster(25, 15, "masterB+"),
 				new DataItemMaster(30, 20, "masterC"),
 				new DataItemMaster(40, 20, "masterD"));
 
-		StreamProducer<DataItemDetail> source2 = StreamProducer.of(
+		StreamSupplier<DataItemDetail> source2 = StreamSupplier.of(
 				new DataItemDetail(10, "detailX"),
 				new DataItemDetail(20, "detailY"));
 
@@ -167,14 +167,14 @@ public class StreamJoinTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<DataItemMasterDetail> list = new ArrayList<>();
 
-		StreamProducer<DataItemMaster> source1 = StreamProducer.of(
+		StreamSupplier<DataItemMaster> source1 = StreamSupplier.of(
 				new DataItemMaster(10, 10, "masterA"),
 				new DataItemMaster(20, 10, "masterB"),
 				new DataItemMaster(25, 15, "masterB+"),
 				new DataItemMaster(30, 20, "masterC"),
 				new DataItemMaster(40, 20, "masterD"));
 
-		StreamProducer<DataItemDetail> source2 = StreamProducer.of(
+		StreamSupplier<DataItemDetail> source2 = StreamSupplier.of(
 				new DataItemDetail(10, "detailX"),
 				new DataItemDetail(20, "detailY"));
 
@@ -216,21 +216,21 @@ public class StreamJoinTest {
 	}
 
 	@Test
-	public void testProducerWithError() {
+	public void testSupplierWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamProducer<DataItemMaster> source1 = StreamProducer.concat(
-				StreamProducer.of(new DataItemMaster(10, 10, "masterA")),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception")),
-				StreamProducer.of(new DataItemMaster(20, 10, "masterB")),
-				StreamProducer.of(new DataItemMaster(25, 15, "masterB+")),
-				StreamProducer.of(new DataItemMaster(30, 20, "masterC")),
-				StreamProducer.of(new DataItemMaster(40, 20, "masterD"))
+		StreamSupplier<DataItemMaster> source1 = StreamSupplier.concat(
+				StreamSupplier.of(new DataItemMaster(10, 10, "masterA")),
+				StreamSupplier.closingWithError(new ExpectedException("Test Exception")),
+				StreamSupplier.of(new DataItemMaster(20, 10, "masterB")),
+				StreamSupplier.of(new DataItemMaster(25, 15, "masterB+")),
+				StreamSupplier.of(new DataItemMaster(30, 20, "masterC")),
+				StreamSupplier.of(new DataItemMaster(40, 20, "masterD"))
 		);
 
-		StreamProducer<DataItemDetail> source2 = StreamProducer.concat(
-				StreamProducer.of(new DataItemDetail(10, "detailX")),
-				StreamProducer.of(new DataItemDetail(20, "detailY")),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
+		StreamSupplier<DataItemDetail> source2 = StreamSupplier.concat(
+				StreamSupplier.of(new DataItemDetail(10, "detailX")),
+				StreamSupplier.of(new DataItemDetail(20, "detailY")),
+				StreamSupplier.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =

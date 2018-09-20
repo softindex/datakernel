@@ -34,39 +34,39 @@ public class StreamConsumersTest {
 
 	@Test
 	public void testErrorDecorator() {
-		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed());
+		StreamSupplier<Integer> supplier = StreamSupplier.ofStream(IntStream.range(1, 10).boxed());
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		producer.streamTo(consumer.apply(errorDecorator(item -> item.equals(5) ? new IllegalArgumentException() : null)));
+		supplier.streamTo(consumer.apply(errorDecorator(item -> item.equals(5) ? new IllegalArgumentException() : null)));
 		eventloop.run();
 
-		assertClosedWithError(producer);
+		assertClosedWithError(supplier);
 		assertClosedWithError(consumer);
 		assertThat(consumer.getAcknowledgement().getException(), instanceOf(IllegalArgumentException.class));
 	}
 
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
-		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed());
+		StreamSupplier<Integer> supplier = StreamSupplier.ofStream(IntStream.range(1, 10).boxed());
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 		StreamConsumer<Integer> errorConsumer =
 				consumer.apply(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
-		CompletableFuture<Void> producerFuture = producer.streamTo(errorConsumer)
+		CompletableFuture<Void> supplierFuture = supplier.streamTo(errorConsumer)
 				.whenComplete(($, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))
 				.thenApplyEx(($, throwable) -> (Void) null)
 				.toCompletableFuture();
 		eventloop.run();
 
-		producerFuture.get();
+		supplierFuture.get();
 		assertClosedWithError(consumer);
 		assertThat(consumer.getAcknowledgement().getException(), instanceOf(IllegalArgumentException.class));
 	}
 
 	private static class CountTransformer<T> implements StreamTransformer<T, T> {
 		private final AbstractStreamConsumer<T> input;
-		private final AbstractStreamProducer<T> output;
+		private final AbstractStreamSupplier<T> output;
 
 		private boolean isEndOfStream = false;
 		private int suspended = 0;
@@ -83,7 +83,7 @@ public class StreamConsumersTest {
 		}
 
 		@Override
-		public StreamProducer<T> getOutput() {
+		public StreamSupplier<T> getOutput() {
 			return output;
 		}
 
@@ -101,7 +101,7 @@ public class StreamConsumersTest {
 
 		protected final class Input extends AbstractStreamConsumer<T> {
 			@Override
-			protected Stage<Void> onProducerEndOfStream() {
+			protected Stage<Void> onEndOfStream() {
 				isEndOfStream = true;
 				return output.sendEndOfStream();
 			}
@@ -113,11 +113,11 @@ public class StreamConsumersTest {
 
 		}
 
-		protected final class Output extends AbstractStreamProducer<T> {
+		protected final class Output extends AbstractStreamSupplier<T> {
 			@Override
 			protected void onSuspended() {
 				suspended++;
-				input.getProducer().suspend();
+				input.getSupplier().suspend();
 			}
 
 			@Override
@@ -128,7 +128,7 @@ public class StreamConsumersTest {
 			@Override
 			protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 				resumed++;
-				input.getProducer().produce(dataAcceptor);
+				input.getSupplier().resume(dataAcceptor);
 			}
 		}
 	}
@@ -136,7 +136,7 @@ public class StreamConsumersTest {
 	@Test
 	public void testSuspendDecorator() {
 		List<Integer> values = IntStream.range(1, 6).boxed().collect(toList());
-		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
+		StreamSupplier<Integer> supplier = StreamSupplier.ofIterable(values);
 
 		CountTransformer<Integer> transformer = new CountTransformer<>();
 
@@ -147,7 +147,7 @@ public class StreamConsumersTest {
 						context -> eventloop.delay(10, context::resume)
 				));
 
-		producer.streamTo(transformer.getInput());
+		supplier.streamTo(transformer.getInput());
 		transformer.getOutput().streamTo(errorConsumer);
 		eventloop.run();
 
@@ -160,11 +160,11 @@ public class StreamConsumersTest {
 	public void testSuspendDecoratorWithResult() throws ExecutionException, InterruptedException {
 		List<Integer> values = IntStream.range(1, 6).boxed().collect(toList());
 
-		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
+		StreamSupplier<Integer> supplier = StreamSupplier.ofIterable(values);
 		CountTransformer<Integer> transformer = new CountTransformer<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		producer.apply(transformer).streamTo(
+		supplier.apply(transformer).streamTo(
 				consumer.apply(suspendDecorator(
 						item -> true,
 						context -> eventloop.delay(10, context::resume))));
@@ -181,9 +181,9 @@ public class StreamConsumersTest {
 	public void testConsumerWrapper() {
 		List<Integer> values = IntStream.range(1, 6).boxed().collect(toList());
 		List<Integer> actual = new ArrayList<>();
-		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
+		StreamSupplier<Integer> supplier = StreamSupplier.ofIterable(values);
 		StreamConsumer<Integer> consumer = StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(actual::add)));
-		producer.streamTo(consumer);
+		supplier.streamTo(consumer);
 		eventloop.run();
 		assertEquals(values, actual);
 	}

@@ -7,7 +7,7 @@ import io.datakernel.serial.SerialSupplierFunction;
 import io.datakernel.stream.*;
 
 public interface StreamStats<T> extends
-		StreamProducerFunction<T, StreamProducer<T>>, StreamConsumerFunction<T, StreamConsumer<T>>,
+		StreamSupplierFunction<T, StreamSupplier<T>>, StreamConsumerFunction<T, StreamConsumer<T>>,
 		SerialSupplierFunction<T, SerialSupplier<T>>, SerialConsumerFunction<T, SerialConsumer<T>> {
 	StreamDataAcceptor<T> createDataAcceptor(StreamDataAcceptor<T> actualDataAcceptor);
 
@@ -27,8 +27,8 @@ public interface StreamStats<T> extends
 	}
 
 	@Override
-	default StreamProducer<T> apply(StreamProducer<T> producer) {
-		return producer.apply(StreamStatsForwarder.create(this));
+	default StreamSupplier<T> apply(StreamSupplier<T> supplier) {
+		return supplier.apply(StreamStatsForwarder.create(this));
 	}
 
 	@Override

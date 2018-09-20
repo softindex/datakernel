@@ -31,7 +31,7 @@ import io.datakernel.logfs.ot.*;
 import io.datakernel.ot.*;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -130,7 +130,7 @@ public class CubeIntegrationTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
-		StreamProducer.ofIterable(listOfRandomLogItems).streamTo(
+		StreamSupplier.ofIterable(listOfRandomLogItems).streamTo(
 				logManager.consumerStream("partitionA"));
 		eventloop.run();
 		Files.list(logsDir).forEach(System.out::println);
@@ -162,7 +162,7 @@ public class CubeIntegrationTest {
 		future.get();
 
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
-		StreamProducer.ofIterable(listOfRandomLogItems2).streamTo(
+		StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
 				logManager.consumerStream("partitionA"));
 		eventloop.run();
 		Files.list(logsDir).forEach(System.out::println);
@@ -178,7 +178,7 @@ public class CubeIntegrationTest {
 		future.get();
 
 		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
-		StreamProducer.ofIterable(listOfRandomLogItems3).streamTo(
+		StreamSupplier.ofIterable(listOfRandomLogItems3).streamTo(
 				logManager.consumerStream("partitionA"));
 		eventloop.run();
 		Files.list(logsDir).forEach(System.out::println);

@@ -110,12 +110,12 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		}
 
 		@Override
-		public void setProducer(StreamProducer<T> producer) {
-			super.setProducer(new ForwardingStreamProducer<T>(producer) {
+		public void setSupplier(StreamSupplier<T> supplier) {
+			super.setSupplier(new ForwardingStreamSupplier<T>(supplier) {
 				@Override
-				public void produce(StreamDataAcceptor<T> dataAcceptor) {
+				public void resume(StreamDataAcceptor<T> dataAcceptor) {
 					ChunkWriter.this.dataAcceptor = dataAcceptor;
-					super.produce(ChunkWriter.this);
+					super.resume(ChunkWriter.this);
 				}
 			});
 		}

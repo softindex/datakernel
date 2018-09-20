@@ -20,7 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.util.MemSize;
 import org.junit.Rule;
@@ -55,8 +55,8 @@ public class StreamSorterTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3, 4, 5, 6, 7);
-//		StreamProducer<Integer> source2 = StreamProducer.of(111);
+		StreamSupplier<Integer> source1 = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7);
+//		StreamSupplier<Integer> source2 = StreamSupplier.of(111);
 
 		StreamSorterStorageImpl<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.getRoot().toPath())
 				.withWriteBlockSize(MemSize.of(64));
@@ -88,7 +88,7 @@ public class StreamSorterTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StreamProducer<Integer> source = StreamProducer.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
+		StreamSupplier<Integer> source = StreamSupplier.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
 
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
@@ -112,7 +112,7 @@ public class StreamSorterTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StreamProducer<Integer> source = StreamProducer.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
+		StreamSupplier<Integer> source = StreamSupplier.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
 
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
@@ -141,13 +141,13 @@ public class StreamSorterTest {
 	}
 
 	@Test
-	public void testErrorOnProducer() throws IOException {
+	public void testErrorOnSupplier() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StreamProducer<Integer> source = StreamProducer.concat(
-				StreamProducer.of(3, 1, 3, 2),
-				StreamProducer.closingWithError(new ExpectedException())
+		StreamSupplier<Integer> source = StreamSupplier.concat(
+				StreamSupplier.of(3, 1, 3, 2),
+				StreamSupplier.closingWithError(new ExpectedException())
 		);
 
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());

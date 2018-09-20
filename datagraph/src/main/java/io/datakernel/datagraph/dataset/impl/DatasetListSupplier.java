@@ -20,15 +20,15 @@ import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.StreamId;
-import io.datakernel.datagraph.node.NodeProducerOfIterable;
+import io.datakernel.datagraph.node.NodeSupplierOfIterable;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public final class DatasetListProducer<T> extends Dataset<T> {
+public final class DatasetListSupplier<T> extends Dataset<T> {
 	private final Object listId;
 
-	public DatasetListProducer(Object listId, Class<T> resultType) {
+	public DatasetListSupplier(Object listId, Class<T> resultType) {
 		super(resultType);
 		this.listId = listId;
 	}
@@ -38,7 +38,7 @@ public final class DatasetListProducer<T> extends Dataset<T> {
 		List<StreamId> outputStreamIds = new ArrayList<>();
 		List<Partition> availablePartitions = graph.getAvailablePartitions();
 		for (Partition partition : availablePartitions) {
-			NodeProducerOfIterable<T> node = new NodeProducerOfIterable<>(listId);
+			NodeSupplierOfIterable<T> node = new NodeSupplierOfIterable<>(listId);
 			graph.addNode(partition, node);
 			outputStreamIds.add(node.getOutput());
 		}

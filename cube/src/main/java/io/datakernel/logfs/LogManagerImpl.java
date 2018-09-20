@@ -29,8 +29,8 @@ import io.datakernel.serial.processor.SerialLZ4Compressor;
 import io.datakernel.serial.processor.SerialLZ4Decompressor;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
@@ -100,8 +100,8 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	public Stage<StreamConsumer<T>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
 
-		return Stage.of(StreamConsumer.<T>ofProducer(
-				producer -> producer
+		return Stage.of(StreamConsumer.<T>ofSupplier(
+				supplier -> supplier
 						.apply(SerialBinarySerializer.create(serializer)
 								.withAutoFlushInterval(autoFlushInterval)
 								.withInitialBufferSize(bufferSize)
@@ -112,13 +112,13 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	@Override
-	public Stage<StreamProducerWithResult<T, LogPosition>> producer(String logPartition,
+	public Stage<StreamSupplierWithResult<T, LogPosition>> supplier(String logPartition,
 			LogFile startLogFile, long startOffset,
 			LogFile endLogFile) {
 		validateLogPartition(logPartition);
 		LogPosition startPosition = LogPosition.create(startLogFile, startOffset);
 		SettableStage<LogPosition> positionStage = new SettableStage<>();
-		SettableStage<StreamProducerWithResult<T, LogPosition>> resultStage = new SettableStage<>();
+		SettableStage<StreamSupplierWithResult<T, LogPosition>> resultStage = new SettableStage<>();
 		fileSystem.list(logPartition)
 				.whenResult(logFiles -> {
 					List<LogFile> logFilesToRead = logFiles.stream()
@@ -128,7 +128,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 
 					Iterator<LogFile> it = logFilesToRead.iterator();
 
-					Iterator<StreamProducer<T>> producers = new Iterator<StreamProducer<T>>() {
+					Iterator<StreamSupplier<T>> suppliers = new Iterator<StreamSupplier<T>>() {
 						private int n;
 
 						private LogFile currentLogFile;
@@ -154,14 +154,14 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 						}
 
 						@Override
-						public StreamProducer<T> next() {
+						public StreamSupplier<T> next() {
 							currentLogFile = it.next();
 							long position = n++ == 0 ? startPosition.getPosition() : 0L;
 
 							if (logger.isTraceEnabled())
 								logger.trace("Read log file `{}` from: {}", currentLogFile, position);
 
-							return StreamProducer.ofStage(fileSystem.read(logPartition, currentLogFile, position)
+							return StreamSupplier.ofStage(fileSystem.read(logPartition, currentLogFile, position)
 									.thenApply(fileStream -> {
 										inputStreamPosition = 0L;
 										sw.reset().start();
@@ -196,8 +196,8 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 						}
 					};
 
-					StreamProducer<T> producer = StreamProducer.concat(producers).withLateBinding();
-					resultStage.set(StreamProducerWithResult.of(producer, positionStage));
+					StreamSupplier<T> supplier = StreamSupplier.concat(suppliers).withLateBinding();
+					resultStage.set(StreamSupplierWithResult.of(supplier, positionStage));
 				})
 				.whenException(resultStage::setException);
 		return resultStage;

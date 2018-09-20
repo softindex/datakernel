@@ -22,7 +22,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.AbstractStreamSupplier;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 
 import static java.lang.String.format;
@@ -33,7 +33,7 @@ import static java.lang.String.format;
  *
  * @param <T> original type of data
  */
-public final class SerialBinaryDeserializer<T> extends AbstractStreamProducer<T> implements WithSerialToStream<SerialBinaryDeserializer<T>, ByteBuf, T> {
+public final class SerialBinaryDeserializer<T> extends AbstractStreamSupplier<T> implements WithSerialToStream<SerialBinaryDeserializer<T>, ByteBuf, T> {
 	public static final ParseException HEADER_SIZE_EXCEPTION = new ParseException("Header size is too large");
 	public static final ParseException DESERIALIZED_SIZE_EXCEPTION = new ParseException("Deserialized size != parsed data size");
 

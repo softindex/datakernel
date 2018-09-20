@@ -28,7 +28,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -71,7 +71,7 @@ public class StringDimensionTest {
 
 		StreamConsumerWithResult<DataItemString1, CubeDiff> consumer1 = cube.consume(DataItemString1.class);
 		CompletableFuture<CubeDiff> future1 =
-				StreamProducer.of(
+				StreamSupplier.of(
 						new DataItemString1("str1", 2, 10, 20),
 						new DataItemString1("str2", 3, 10, 20))
 						.streamTo(consumer1.getConsumer())
@@ -80,7 +80,7 @@ public class StringDimensionTest {
 
 		StreamConsumerWithResult<DataItemString2, CubeDiff> consumer2 = cube.consume(DataItemString2.class);
 		CompletableFuture<CubeDiff> future2 =
-				StreamProducer.of(
+				StreamSupplier.of(
 						new DataItemString2("str2", 3, 10, 20),
 						new DataItemString2("str1", 4, 10, 20))
 						.streamTo(consumer2.getConsumer())

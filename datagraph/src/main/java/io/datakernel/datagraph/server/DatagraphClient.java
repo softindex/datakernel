@@ -29,7 +29,7 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.serial.net.MessagingSerializer;
 import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +64,7 @@ public final class DatagraphClient {
 		this.serializer = ofJson(serialization.responseAdapter, serialization.commandAdapter);
 	}
 
-	public <T> Stage<StreamProducer<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
+	public <T> Stage<StreamSupplier<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
 		return eventloop.connect(address).thenCompose(socketChannel -> {
 			AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
 			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);

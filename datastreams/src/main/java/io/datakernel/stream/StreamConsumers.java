@@ -20,7 +20,6 @@ import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.util.Recyclable;
 import io.datakernel.util.ThrowingConsumer;
 
 import java.util.ArrayDeque;
@@ -29,7 +28,6 @@ import java.util.Set;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
-import static io.datakernel.util.Recyclable.deepRecycle;
 
 public final class StreamConsumers {
 	private StreamConsumers() {
@@ -44,7 +42,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public void setProducer(StreamProducer<T> producer) {
+		public void setSupplier(StreamSupplier<T> supplier) {
 			getCurrentEventloop().post(() -> acknowledgement.trySetException(exception));
 		}
 
@@ -73,8 +71,8 @@ public final class StreamConsumers {
 
 		@Override
 		protected void onStarted() {
-			assert getProducer() != null;
-			getProducer().produce(t -> {
+			assert getSupplier() != null;
+			getSupplier().resume(t -> {
 				try {
 					consumer.accept(t);
 				} catch (RuntimeException e) {
@@ -86,7 +84,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			try {
 				consumer.accept(null);
 				return Stage.complete();
@@ -127,14 +125,14 @@ public final class StreamConsumers {
 		public void accept(T item) {
 			assert item != null;
 			if (!deque.isEmpty()) {
-				getProducer().suspend();
+				getSupplier().suspend();
 			}
 			deque.add(item);
 			produce();
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			produce();
 			return Stage.complete();
 		}
@@ -159,13 +157,13 @@ public final class StreamConsumers {
 				consumer.accept(null)
 						.whenComplete(result::trySet);
 			} else {
-				getProducer().produce(this);
+				getSupplier().resume(this);
 			}
 		}
 
 		@Override
 		protected void onError(Throwable t) {
-			deepRecycle(deque);
+			deque.clear();
 			consumer.closeWithError(t);
 			result.trySetException(t);
 		}
@@ -177,7 +175,7 @@ public final class StreamConsumers {
 	}
 
 	/**
-	 * Represents a simple {@link AbstractStreamConsumer} which with changing producer sets its status as complete.
+	 * Represents a simple {@link AbstractStreamConsumer} which with changing supplier sets its status as complete.
 	 *
 	 * @param <T> type of received data
 	 */
@@ -185,8 +183,8 @@ public final class StreamConsumers {
 		private final SettableStage<Void> acknowledgement = new SettableStage<>();
 
 		@Override
-		public void setProducer(StreamProducer<T> producer) {
-			producer.getEndOfStream().whenComplete(acknowledgement::trySet);
+		public void setSupplier(StreamSupplier<T> supplier) {
+			supplier.getEndOfStream().whenComplete(acknowledgement::trySet);
 		}
 
 		@Override
@@ -209,9 +207,9 @@ public final class StreamConsumers {
 		private final SettableStage<Void> acknowledgement = new SettableStage<>();
 
 		@Override
-		public void setProducer(StreamProducer<T> producer) {
-			producer.getEndOfStream().whenComplete(acknowledgement::trySet);
-			producer.produce(Recyclable::deepRecycle);
+		public void setSupplier(StreamSupplier<T> supplier) {
+			supplier.getEndOfStream().whenComplete(acknowledgement::trySet);
+			supplier.resume($ -> {});
 		}
 
 		@Override

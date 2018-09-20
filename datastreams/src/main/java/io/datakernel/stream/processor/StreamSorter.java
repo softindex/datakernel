@@ -43,7 +43,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	private final int itemsInMemory;
 
 	private Input input;
-	private StreamProducer<T> output;
+	private StreamSupplier<T> output;
 	private StreamConsumer<T> outputConsumer;
 
 	// region creators
@@ -64,27 +64,27 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 		this.input = new Input();
 
 		this.temporaryStreams.addStage(input.getEndOfStream(), (accumulator, $) -> {});
-		Stage<StreamProducer<T>> outputStreamStage = this.temporaryStreams.get()
+		Stage<StreamSupplier<T>> outputStreamStage = this.temporaryStreams.get()
 				.thenApply(streamIds -> {
 					input.list.sort(itemComparator);
 					Iterator<T> iterator = !distinct ?
 							input.list.iterator() :
 							new DistinctIterator<>(input.list, keyFunction, keyComparator);
-					StreamProducer<T> listProducer = StreamProducer.ofIterator(iterator);
+					StreamSupplier<T> listSupplier = StreamSupplier.ofIterator(iterator);
 					if (streamIds.isEmpty()) {
-						return listProducer;
+						return listSupplier;
 					} else {
 						StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, distinct);
-						listProducer.streamTo(streamMerger.newInput());
+						listSupplier.streamTo(streamMerger.newInput());
 						streamIds.forEach(streamId ->
-								StreamProducer.ofStage(storage.read(streamId))
+								StreamSupplier.ofStage(storage.read(streamId))
 										.streamTo(streamMerger.newInput()));
 						return streamMerger
 								.getOutput()
 								.withLateBinding();
 					}
 				});
-		this.output = new ForwardingStreamProducer<T>(StreamProducer.ofStage(outputStreamStage)) {
+		this.output = new ForwardingStreamSupplier<T>(StreamSupplier.ofStage(outputStreamStage)) {
 			@Override
 			public void setConsumer(StreamConsumer<T> consumer) {
 				super.setConsumer(consumer);
@@ -146,7 +146,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		@Override
 		protected void onStarted() {
-			getProducer().produce(this);
+			getSupplier().resume(this);
 		}
 
 		@Override
@@ -167,21 +167,21 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 			return temporaryStreams.addStage(
 					storage.newPartitionId()
 							.thenCompose(partitionId -> storage.write(partitionId)
-									.thenCompose(consumer -> StreamProducer.ofIterator(sortedList).streamTo(consumer)
+									.thenCompose(consumer -> StreamSupplier.ofIterator(sortedList).streamTo(consumer)
 											.thenApply($ -> partitionId))),
 					List::add);
 		}
 
 		private void suspendOrResume() {
 			if (temporaryStreams.getActiveStages() > 2) {
-				getProducer().suspend();
+				getSupplier().suspend();
 			} else {
-				getProducer().produce(this);
+				getSupplier().resume(this);
 			}
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			return outputConsumer.getAcknowledgement();
 		}
 
@@ -197,7 +197,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	}
 
 	@Override
-	public StreamProducer<T> getOutput() {
+	public StreamSupplier<T> getOutput() {
 		return output;
 	}
 

@@ -66,7 +66,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		private final Input input;
 		private final List<Output<?>> outputs = new ArrayList<>();
 
-		private StreamDataAcceptor<T> inputReceiver;
+		private StreamDataAcceptor<T> inputAcceptor;
 
 		private int ready = 0;
 
@@ -80,13 +80,13 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		}
 
 		@Override
-		public List<? extends StreamProducer<?>> getOutputs() {
+		public List<? extends StreamSupplier<?>> getOutputs() {
 			return outputs;
 		}
 
 		final class Input extends AbstractStreamConsumer<T> {
 			@Override
-			protected Stage<Void> onProducerEndOfStream() {
+			protected Stage<Void> onEndOfStream() {
 				return Stages.all(outputs.stream().map(Output::sendEndOfStream));
 			}
 
@@ -96,27 +96,27 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			}
 		}
 
-		final class Output<X> extends AbstractStreamProducer<X> {
+		final class Output<X> extends AbstractStreamSupplier<X> {
 			private StreamDataAcceptor<?> dataAcceptor;
 
 			@Override
 			protected void onProduce(StreamDataAcceptor<X> dataAcceptor) {
 				this.dataAcceptor = dataAcceptor;
 				if (++ready == outputs.size()) {
-					if (inputReceiver == null) {
+					if (inputAcceptor == null) {
 						receivers = outputs.stream().map(output -> output.dataAcceptor).iterator();
-						inputReceiver = createSplitter();
+						inputAcceptor = createSplitter();
 						checkState(!receivers.hasNext());
 						receivers = null;
 					}
-					input.getProducer().produce(inputReceiver);
+					input.getSupplier().resume(inputAcceptor);
 				}
 			}
 
 			@Override
 			protected void onSuspended() {
 				--ready;
-				input.getProducer().suspend();
+				input.getSupplier().suspend();
 			}
 
 			@Override

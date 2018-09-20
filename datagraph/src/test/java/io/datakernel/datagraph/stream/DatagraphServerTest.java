@@ -28,7 +28,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.StreamSorterStorage;
 import org.junit.Test;
 
@@ -328,12 +328,12 @@ public class DatagraphServerTest {
 		server2.listen();
 
 		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client, eventloop);
-		StreamProducer<TestItem> resultProducer = collector.compile(graph);
+		StreamSupplier<TestItem> resultSupplier = collector.compile(graph);
 
 		System.out.println("Graph: ");
 		System.out.println(graph);
 
-		resultProducer.streamTo(resultConsumer)
+		resultSupplier.streamTo(resultConsumer)
 			.whenComplete(($, err) -> {
 				server1.close();
 				server2.close();

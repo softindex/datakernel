@@ -18,7 +18,7 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -42,12 +42,12 @@ public class ConsumerToListTest {
 		testList2.add("c");
 		testList2.add("d");
 
-		StreamProducer<String> producer = StreamProducer.ofIterable(testList2);
-		producer.streamTo(consumer);
+		StreamSupplier<String> supplier = StreamSupplier.ofIterable(testList2);
+		supplier.streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(testList2, consumer.getList());
-		assertEndOfStream(producer);
+		assertEndOfStream(supplier);
 	}
 
 	@Test
@@ -64,12 +64,12 @@ public class ConsumerToListTest {
 		testList2.add(5);
 		testList2.add(6);
 
-		StreamProducer<Integer> producer = StreamProducer.ofIterable(testList2);
-		producer.streamTo(consumer);
+		StreamSupplier<Integer> supplier = StreamSupplier.ofIterable(testList2);
+		supplier.streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
-		assertEndOfStream(producer);
+		assertEndOfStream(supplier);
 	}
 
 }

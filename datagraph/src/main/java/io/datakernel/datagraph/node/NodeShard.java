@@ -18,7 +18,7 @@ package io.datakernel.datagraph.node;
 
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.Sharders;
 import io.datakernel.stream.processor.StreamSharder;
 
@@ -95,8 +95,8 @@ public final class NodeShard<K, T> implements Node {
 				object -> hashSharder.shard(keyFunction.apply(object)));
 		taskContext.bindChannel(input, streamSharder.getInput());
 		for(StreamId streamId : outputs) {
-			StreamProducer<T> producer = streamSharder.newOutput();
-			taskContext.export(streamId, producer);
+			StreamSupplier<T> supplier = streamSharder.newOutput();
+			taskContext.export(streamId, supplier);
 		}
 	}
 }

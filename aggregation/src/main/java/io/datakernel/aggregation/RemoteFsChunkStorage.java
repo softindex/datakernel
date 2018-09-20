@@ -29,7 +29,7 @@ import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.processor.*;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
@@ -147,12 +147,12 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields,
+	public <T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId,
 			DefiningClassLoader classLoader) {
 		return client.download(getPath(chunkId))
 				.whenComplete(stageOpenR.recordStats())
-				.thenApply(producer -> producer
+				.thenApply(supplier -> supplier
 						.apply(readFile)
 						.apply(SerialLZ4Decompressor.create())
 						.apply(readDecompress)
@@ -169,8 +169,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 			DefiningClassLoader classLoader) {
 		return client.upload(getTempPath(chunkId))
 				.whenComplete(stageOpenW.recordStats())
-				.thenApply(consumer -> StreamConsumer.ofProducer(
-						producer -> producer
+				.thenApply(consumer -> StreamConsumer.ofSupplier(
+						supplier -> supplier
 								.apply((StreamStats<T>) (detailed ? writeSerializeDetailed : writeSerialize))
 								.apply(SerialBinarySerializer.create(
 										createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader))

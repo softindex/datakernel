@@ -59,10 +59,10 @@ public class StressDownload {
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
 			String file = FILES.get(rand.nextInt(OPERATIONS_QUANTITY));
-			client.download(file, 0).whenComplete((producer, throwable) -> {
+			client.download(file, 0).whenComplete((supplier, throwable) -> {
 				if (throwable == null) {
 					try {
-						producer.streamTo(SerialFileWriter.create(executor, CLIENT_STORAGE.resolve(file)));
+						supplier.streamTo(SerialFileWriter.create(executor, CLIENT_STORAGE.resolve(file)));
 					} catch (IOException e) {
 						failures[0]++;
 					}

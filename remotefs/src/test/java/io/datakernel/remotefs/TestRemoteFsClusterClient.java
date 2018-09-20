@@ -110,10 +110,10 @@ public class TestRemoteFsClusterClient {
 
 		Files.write(serverStorages[numOfServer].resolve(file), content.getBytes(UTF_8));
 
-		SerialSupplier<ByteBuf> producer = client.downloadSerial(file, 0);
+		SerialSupplier<ByteBuf> supplier = client.downloadSerial(file, 0);
 		SerialFileWriter consumer = SerialFileWriter.create(executor, clientStorage.resolve(file));
 
-		producer.streamTo(consumer)
+		supplier.streamTo(consumer)
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete());
 

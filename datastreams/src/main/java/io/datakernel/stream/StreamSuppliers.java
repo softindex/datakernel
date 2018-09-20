@@ -29,16 +29,16 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings("StatementWithEmptyBody")
-public final class StreamProducers {
-	private StreamProducers() {
+public final class StreamSuppliers {
+	private StreamSuppliers() {
 	}
 
 	/**
-	 * Represent producer which sends specified exception to consumer.
+	 * Represent supplier which sends specified exception to consumer.
 	 *
 	 * @param <T>
 	 */
-	static class ClosingWithErrorImpl<T> implements StreamProducer<T> {
+	static class ClosingWithErrorImpl<T> implements StreamSupplier<T> {
 		private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 		private final Throwable exception;
@@ -53,7 +53,7 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public void produce(StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(StreamDataAcceptor<T> dataAcceptor) {
 			// do nothing
 		}
 
@@ -79,11 +79,11 @@ public final class StreamProducers {
 	}
 
 	/**
-	 * Represent producer which sends specified exception to consumer.
+	 * Represent supplier which sends specified exception to consumer.
 	 *
 	 * @param <T>
 	 */
-	static class ClosingImpl<T> implements StreamProducer<T> {
+	static class ClosingImpl<T> implements StreamSupplier<T> {
 		private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 		@Override
@@ -92,7 +92,7 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public void produce(StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(StreamDataAcceptor<T> dataAcceptor) {
 			// do nothing
 		}
 
@@ -117,7 +117,7 @@ public final class StreamProducers {
 		}
 	}
 
-	static final class IdleImpl<T> implements StreamProducer<T> {
+	static final class IdleImpl<T> implements StreamSupplier<T> {
 		private final SettableStage<Void> endOfStream = new SettableStage<>();
 
 		@Override
@@ -127,7 +127,7 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public void produce(StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(StreamDataAcceptor<T> dataAcceptor) {
 		}
 
 		@Override
@@ -151,15 +151,15 @@ public final class StreamProducers {
 	}
 
 	/**
-	 * Represents a {@link AbstractStreamProducer} which will send all values from iterator.
+	 * Represents a {@link AbstractStreamSupplier} which will send all values from iterator.
 	 *
 	 * @param <T> type of output data
 	 */
-	static class OfIteratorImpl<T> extends AbstractStreamProducer<T> {
+	static class OfIteratorImpl<T> extends AbstractStreamSupplier<T> {
 		private final Iterator<T> iterator;
 
 		/**
-		 * Creates a new instance of  StreamProducerOfIterator
+		 * Creates a new instance of  StreamSupplierOfIterator
 		 *
 		 * @param iterator iterator with object which need to send
 		 */
@@ -190,7 +190,7 @@ public final class StreamProducers {
 		}
 	}
 
-	static class OfSerialSupplierImpl<T> extends AbstractStreamProducer<T> {
+	static class OfSerialSupplierImpl<T> extends AbstractStreamSupplier<T> {
 		private final SerialSupplier<T> supplier;
 
 		public OfSerialSupplierImpl(SerialSupplier<T> supplier) {

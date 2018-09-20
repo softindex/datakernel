@@ -50,14 +50,14 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 	}
 
 	@Override
-	public StreamProducer<O> getOutput() {
+	public StreamSupplier<O> getOutput() {
 		return output;
 	}
 	// endregion
 
 	protected final class Input extends AbstractStreamConsumer<I> {
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			return output.sendEndOfStream();
 		}
 
@@ -67,10 +67,10 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<O> {
+	protected final class Output extends AbstractStreamSupplier<O> {
 		@Override
 		protected void onSuspended() {
-			input.getProducer().suspend();
+			input.getSupplier().suspend();
 		}
 
 		@Override
@@ -81,7 +81,7 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 		@SuppressWarnings("unchecked")
 		@Override
 		protected void onProduce(StreamDataAcceptor<O> dataAcceptor) {
-			input.getProducer().produce(
+			input.getSupplier().resume(
 					function == Function.identity() ?
 							(StreamDataAcceptor<I>) dataAcceptor :
 							item -> dataAcceptor.accept(function.apply(item)));

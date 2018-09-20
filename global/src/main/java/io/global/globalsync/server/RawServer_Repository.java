@@ -236,7 +236,7 @@ public final class RawServer_Repository {
 	private Stage<Void> push(RawServer server) {
 		return server.getHeadsInfo(repositoryId)
 				.thenCompose(headsInfo -> SerialSupplier.ofStage(
-						getStreamProducer(headsInfo.bases, headsInfo.heads))
+						getCommitsSupplier(headsInfo.bases, headsInfo.heads))
 						.streamTo(server.uploadStream(repositoryId)));
 	}
 
@@ -268,7 +268,7 @@ public final class RawServer_Repository {
 				});
 	}
 
-	public Stage<SerialSupplier<CommitEntry>> getStreamProducer(Set<CommitId> thatBases, Set<CommitId> thatHeads) {
+	public Stage<SerialSupplier<CommitEntry>> getCommitsSupplier(Set<CommitId> thatBases, Set<CommitId> thatHeads) {
 		checkArgument(!hasIntersection(thatBases, thatHeads));
 		Set<CommitId> skipCommits = new HashSet<>(thatHeads);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
@@ -344,7 +344,7 @@ public final class RawServer_Repository {
 	}
 
 /*
-	public Stage<StreamProducer<CommitEntry>> streamProducer2(Set<CommitId> thatBases, Set<CommitId> thatHeads) {
+	public Stage<StreamSupplier<CommitEntry>> streamSupplier2(Set<CommitId> thatBases, Set<CommitId> thatHeads) {
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
 				.thenCompose(thisHeads -> Stages.all(
@@ -357,7 +357,7 @@ public final class RawServer_Repository {
 						.thenApply(supplier -> supplier.map(
 								entry -> new CommitEntry(entry.commitId, entry.rawCommit, thisHeads.get(entry.commitId))))
 						.thenApply(supplier -> AsyncSuppliers.prefetch(DOWNLOAD_PREFETCH_COUNT, supplier))
-						.thenApply(StreamProducer::ofAsyncSupplier));
+						.thenApply(StreamSupplier::ofAsyncSupplier));
 	}
 
 	private Stage<RawCommitEntry> getNextStreamEntry2(PriorityQueue<RawCommitEntry> queue, Set<CommitId> thatHeads) {

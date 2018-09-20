@@ -23,7 +23,7 @@ import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
 import org.junit.Rule;
@@ -155,7 +155,7 @@ public class MessagingWithBinaryStreamingTest {
 							.whenResult(msg -> {
 								if (msg != null) {
 									assertEquals("start", msg);
-									StreamProducer.ofIterable(source)
+									StreamSupplier.ofIterable(source)
 											.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
 													.withInitialBufferSize(MemSize.of(1)))
 											.streamTo(messaging.sendBinaryStream());
@@ -231,7 +231,7 @@ public class MessagingWithBinaryStreamingTest {
 
 					messaging.send("start");
 
-					StreamProducer.ofIterable(source)
+					StreamSupplier.ofIterable(source)
 							.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
 									.withInitialBufferSize(MemSize.of(1)))
 							.streamTo(messaging.sendBinaryStream());
@@ -291,7 +291,7 @@ public class MessagingWithBinaryStreamingTest {
 
 					messaging.send("start");
 
-					StreamProducer.ofIterable(source)
+					StreamSupplier.ofIterable(source)
 							.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
 									.withInitialBufferSize(MemSize.of(1)))
 							.streamTo(messaging.sendBinaryStream());
@@ -348,7 +348,7 @@ public class MessagingWithBinaryStreamingTest {
 
 					messaging.send("start");
 
-					StreamProducer.ofIterator(LongStream.range(0, 100).boxed().iterator())
+					StreamSupplier.ofIterator(LongStream.range(0, 100).boxed().iterator())
 							.apply(SerialBinarySerializer.create(LONG_SERIALIZER)
 									.withInitialBufferSize(MemSize.of(1)))
 							.streamTo(messaging.sendBinaryStream());

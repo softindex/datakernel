@@ -31,7 +31,7 @@ import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.stream.processor.StreamUnion;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
@@ -69,7 +69,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	private final StreamStatsBasic<T> streamStatsBasic = StreamStats.basic();
 	private final StreamStatsDetailed<T> streamStatsDetailed = StreamStats.detailed();
 	private final StageStats stageProcessLog = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats stageProducer = StageStats.create(Duration.ofMinutes(5));
+	private final StageStats stageSupplier = StageStats.create(Duration.ofMinutes(5));
 	private final StageStats stageConsumer = StageStats.create(Duration.ofMinutes(5));
 
 	private LogOTProcessor(Eventloop eventloop, LogManager<T> logManager, LogDataConsumer<T, D> logStreamConsumer,
@@ -113,11 +113,11 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		if (!enabled) return Stage.of(LogDiff.of(emptyMap(), emptyList()));
 		logger.trace("processLog_gotPositions called. Positions: {}", state.getPositions());
 
-		StreamProducerWithResult<T, Map<String, LogPositionDiff>> producer = getProducer();
+		StreamSupplierWithResult<T, Map<String, LogPositionDiff>> supplier = getSupplier();
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
-		return producer.getProducer().streamTo(consumer.getConsumer())
+		return supplier.getSupplier().streamTo(consumer.getConsumer())
 				.thenCompose($ -> Stages.toTuple(
-						producer.getResult().whenComplete(stageProducer.recordStats()),
+						supplier.getResult().whenComplete(stageSupplier.recordStats()),
 						consumer.getResult().whenComplete(stageConsumer.recordStats())))
 				.whenComplete(stageProcessLog.recordStats())
 				.thenApply(result -> LogDiff.of(result.getValue1(), result.getValue2()))
@@ -125,7 +125,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.getPositions()));
 	}
 
-	private StreamProducerWithResult<T, Map<String, LogPositionDiff>> getProducer() {
+	private StreamSupplierWithResult<T, Map<String, LogPositionDiff>> getSupplier() {
 		StagesAccumulator<Map<String, LogPositionDiff>> result = StagesAccumulator.create(new HashMap<>());
 		StreamUnion<T> streamUnion = StreamUnion.create();
 		for (String partition : this.partitions) {
@@ -137,15 +137,15 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 			logger.info("Starting reading '{}' from position {}", logName, logPosition);
 
 			LogPosition logPositionFrom = logPosition;
-			StreamProducerWithResult<T, LogPosition> producer = logManager.producerStream(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
-			producer.getProducer().streamTo(streamUnion.newInput());
-			result.addStage(producer.getResult(), (accumulator, logPositionTo) -> {
+			StreamSupplierWithResult<T, LogPosition> supplier = logManager.supplierStream(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
+			supplier.getSupplier().streamTo(streamUnion.newInput());
+			result.addStage(supplier.getResult(), (accumulator, logPositionTo) -> {
 				if (!logPositionTo.equals(logPositionFrom)) {
 					accumulator.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));
 				}
 			});
 		}
-		return StreamProducerWithResult.of(
+		return StreamSupplierWithResult.of(
 				streamUnion.getOutput()
 						.apply(detailed ? streamStatsDetailed : streamStatsBasic),
 				result.get());
@@ -171,8 +171,8 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	}
 
 	@JmxAttribute
-	public StageStats getStageProducer() {
-		return stageProducer;
+	public StageStats getStageSupplier() {
+		return stageSupplier;
 	}
 
 	@JmxAttribute

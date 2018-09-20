@@ -8,8 +8,8 @@ import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialSupplierFunction;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerFunction;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerFunction;
+import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.StreamSupplierFunction;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.IntrusiveLinkedList;
 
@@ -51,7 +51,7 @@ public final class StreamRegistry<V> implements Iterable<V> {
 	public final class RegisterFunction<T> implements
 			SerialSupplierFunction<T, SerialSupplier<T>>,
 			SerialConsumerFunction<T, SerialConsumer<T>>,
-			StreamProducerFunction<T, StreamProducer<T>>,
+			StreamSupplierFunction<T, StreamSupplier<T>>,
 			StreamConsumerFunction<T, StreamConsumer<T>> {
 		private final V value;
 
@@ -63,8 +63,8 @@ public final class StreamRegistry<V> implements Iterable<V> {
 		}
 
 		@Override
-		public StreamProducer<T> apply(StreamProducer<T> producer) {
-			return register(producer, value);
+		public StreamSupplier<T> apply(StreamSupplier<T> supplier) {
+			return register(supplier, value);
 		}
 
 		@Override
@@ -95,8 +95,8 @@ public final class StreamRegistry<V> implements Iterable<V> {
 		return consumer.withAcknowledgement(subscribe(value));
 	}
 
-	public <T> StreamProducer<T> register(StreamProducer<T> producer, V value) {
-		return producer.withEndOfStream(subscribe(value));
+	public <T> StreamSupplier<T> register(StreamSupplier<T> supplier, V value) {
+		return supplier.withEndOfStream(subscribe(value));
 	}
 
 	private Function<Stage<Void>, Stage<Void>> subscribe(V value) {

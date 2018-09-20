@@ -20,7 +20,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.StreamSorterStorage;
 
 import java.util.ArrayList;
@@ -52,10 +52,10 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 	}
 
 	@Override
-	public Stage<StreamProducer<T>> read(int partition) {
+	public Stage<StreamSupplier<T>> read(int partition) {
 		List<T> iterable = storage.get(partition);
-		StreamProducer<T> producer = StreamProducer.ofIterable(iterable);
-		return Stage.of(producer.withLateBinding());
+		StreamSupplier<T> supplier = StreamSupplier.ofIterable(iterable);
+		return Stage.of(supplier.withLateBinding());
 	}
 
 	@Override

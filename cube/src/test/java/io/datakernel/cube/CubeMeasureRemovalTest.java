@@ -31,7 +31,7 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -154,7 +154,7 @@ public class CubeMeasureRemovalTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems1 = LogItem.getListOfRandomLogItems(100);
-		StreamProducer.ofIterable(listOfRandomLogItems1).streamTo(
+		StreamSupplier.ofIterable(listOfRandomLogItems1).streamTo(
 			logManager.consumerStream("partitionA"));
 		eventloop.run();
 
@@ -207,7 +207,7 @@ public class CubeMeasureRemovalTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
-		StreamProducer.ofIterable(listOfRandomLogItems2).streamTo(
+		StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
 			logManager.consumerStream("partitionA"));
 		eventloop.run();
 
@@ -320,7 +320,7 @@ public class CubeMeasureRemovalTest {
 			logCubeStateManager1.checkout();
 			eventloop.run();
 
-			StreamProducer.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
+			StreamSupplier.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
 				logManager.consumerStream("partitionA"));
 			eventloop.run();
 
@@ -396,7 +396,7 @@ public class CubeMeasureRemovalTest {
 			logCubeStateManager1.checkout();
 			eventloop.run();
 
-			StreamProducer.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
+			StreamSupplier.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
 				logManager.consumerStream("partitionA"));
 			eventloop.run();
 

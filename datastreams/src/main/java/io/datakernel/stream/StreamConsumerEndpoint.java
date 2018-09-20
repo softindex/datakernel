@@ -22,7 +22,7 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 
 	@Override
 	protected void onStarted() {
-		getProducer().produce(this);
+		getSupplier().resume(this);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -31,12 +31,12 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 		assert item != null;
 		buffer.add(item);
 		if (buffer.isSaturated()) {
-			getProducer().suspend();
+			getSupplier().suspend();
 		}
 	}
 
 	@Override
-	protected Stage<Void> onProducerEndOfStream() {
+	protected Stage<Void> onEndOfStream() {
 		return buffer.put(null);
 	}
 
@@ -47,7 +47,7 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 
 	public Stage<T> take() {
 		if (buffer.willBeExhausted()) {
-			getProducer().produce(this);
+			getSupplier().resume(this);
 		}
 		return buffer.take();
 	}

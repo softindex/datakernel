@@ -52,7 +52,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 	}
 	//endregion
 
-	public StreamProducer<T> newOutput() {
+	public StreamSupplier<T> newOutput() {
 		Output output = new Output(outputs.size());
 		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
 		suspended++;
@@ -66,7 +66,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 	}
 
 	@Override
-	public List<? extends StreamProducer<T>> getOutputs() {
+	public List<? extends StreamSupplier<T>> getOutputs() {
 		return outputs;
 	}
 
@@ -85,7 +85,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			return Stages.all(outputs.stream().map(Output::sendEndOfStream));
 		}
 
@@ -95,7 +95,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<T> {
+	protected final class Output extends AbstractStreamSupplier<T> {
 		private final int index;
 
 		protected Output(int index) {
@@ -104,22 +104,22 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 
 		@Override
 		protected void onStarted() {
-			checkState(input.getProducer() != null, "Splitter has no input");
+			checkState(input.getSupplier() != null, "Splitter has no input");
 		}
 
 		@Override
 		protected void onSuspended() {
 			suspended++;
-			assert input.getProducer() != null;
-			input.getProducer().suspend();
+			assert input.getSupplier() != null;
+			input.getSupplier().suspend();
 		}
 
 		@Override
 		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
-				assert input.getProducer() != null;
-				input.getProducer().produce(StreamSplitter.this);
+				assert input.getSupplier() != null;
+				input.getSupplier().resume(StreamSplitter.this);
 			}
 		}
 

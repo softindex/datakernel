@@ -105,14 +105,14 @@ public interface FsClient {
 	}
 
 	/**
-	 * Returns a producer of bytebufs which are read (or received) from the file.
+	 * Returns a supplier of bytebufs which are read (or received) from the file.
 	 * If file does not exist, or specified range goes beyond it's size,
 	 * an error will be returned from the server.
 	 *
 	 * @param filename name of the file to be downloaded
 	 * @param offset   from which byte to download the file
 	 * @param length   how much bytes of the file do download
-	 * @return stage for stream producer of byte buffers
+	 * @return stage for stream supplier of byte buffers
 	 * @see #download(String, long)
 	 * @see #download(String)
 	 */
@@ -121,7 +121,7 @@ public interface FsClient {
 	/**
 	 * Shortcut for downloading the whole file from given offset.
 	 *
-	 * @return stream producer of byte buffers
+	 * @return stream supplier of byte buffers
 	 * @see #download(String, long, long)
 	 * @see #download(String)
 	 */
@@ -133,7 +133,7 @@ public interface FsClient {
 	 * Shortcut for downloading the whole available file.
 	 *
 	 * @param filename name of the file to be downloaded
-	 * @return stream producer of byte buffers
+	 * @return stream supplier of byte buffers
 	 * @see #download(String, long)
 	 * @see #download(String, long, long)
 	 */
@@ -142,7 +142,7 @@ public interface FsClient {
 	}
 
 	/**
-	 * Shortcut which unwraps stage of producer into a producer that produces when stage is complete
+	 * Shortcut which unwraps stage of supplier into a supplier that produces when stage is complete
 	 *
 	 * @see #download(String, long, long)
 	 */

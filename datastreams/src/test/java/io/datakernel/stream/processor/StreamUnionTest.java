@@ -20,7 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
@@ -43,13 +43,13 @@ public class StreamUnionTest {
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
-		StreamProducer<Integer> source0 = StreamProducer.of();
-		StreamProducer<Integer> source1 = StreamProducer.of(1);
-		StreamProducer<Integer> source2 = StreamProducer.of(2, 3);
-		StreamProducer<Integer> source3 = StreamProducer.of();
-		StreamProducer<Integer> source4 = StreamProducer.of(4, 5);
-		StreamProducer<Integer> source5 = StreamProducer.of(6);
-		StreamProducer<Integer> source6 = StreamProducer.of();
+		StreamSupplier<Integer> source0 = StreamSupplier.of();
+		StreamSupplier<Integer> source1 = StreamSupplier.of(1);
+		StreamSupplier<Integer> source2 = StreamSupplier.of(2, 3);
+		StreamSupplier<Integer> source3 = StreamSupplier.of();
+		StreamSupplier<Integer> source4 = StreamSupplier.of(4, 5);
+		StreamSupplier<Integer> source5 = StreamSupplier.of(6);
+		StreamSupplier<Integer> source6 = StreamSupplier.of();
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
@@ -85,9 +85,9 @@ public class StreamUnionTest {
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
-		StreamProducer<Integer> source0 = StreamProducer.of(1, 2, 3);
-		StreamProducer<Integer> source1 = StreamProducer.of(4, 5);
-		StreamProducer<Integer> source2 = StreamProducer.of(6, 7);
+		StreamSupplier<Integer> source0 = StreamSupplier.of(1, 2, 3);
+		StreamSupplier<Integer> source1 = StreamSupplier.of(4, 5);
+		StreamSupplier<Integer> source2 = StreamSupplier.of(6, 7);
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
@@ -118,18 +118,18 @@ public class StreamUnionTest {
 	}
 
 	@Test
-	public void testProducerWithError() {
+	public void testSupplierWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
-		StreamProducer<Integer> source0 = StreamProducer.concat(
-				StreamProducer.ofIterable(Arrays.asList(1, 2)),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
+		StreamSupplier<Integer> source0 = StreamSupplier.concat(
+				StreamSupplier.ofIterable(Arrays.asList(1, 2)),
+				StreamSupplier.closingWithError(new ExpectedException("Test Exception"))
 		);
-		StreamProducer<Integer> source1 = StreamProducer.concat(
-				StreamProducer.ofIterable(Arrays.asList(7, 8, 9)),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
+		StreamSupplier<Integer> source1 = StreamSupplier.concat(
+				StreamSupplier.ofIterable(Arrays.asList(7, 8, 9)),
+				StreamSupplier.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		List<Integer> list = new ArrayList<>();

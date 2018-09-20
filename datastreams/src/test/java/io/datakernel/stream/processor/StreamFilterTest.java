@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
@@ -41,16 +41,16 @@ public class StreamFilterTest {
 	public void test1() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3);
+		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3);
 		StreamFilter<Integer> filter = StreamFilter.create(input -> input % 2 == 1);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		producer.apply(filter).streamTo(
+		supplier.apply(filter).streamTo(
 				consumer.apply(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(1, 3), consumer.getList());
-		assertEndOfStream(producer);
+		assertEndOfStream(supplier);
 		assertEndOfStream(filter.getInput());
 		assertEndOfStream(filter.getOutput());
 	}
@@ -60,7 +60,7 @@ public class StreamFilterTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4, 5);
+		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4, 5);
 		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
@@ -84,12 +84,12 @@ public class StreamFilterTest {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void testProducerDisconnectWithError() {
+	public void testSupplierDisconnectWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducer.concat(
-				StreamProducer.ofIterable(Arrays.asList(1, 2, 3)),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception")));
+		StreamSupplier<Integer> source = StreamSupplier.concat(
+				StreamSupplier.ofIterable(Arrays.asList(1, 2, 3)),
+				StreamSupplier.closingWithError(new ExpectedException("Test Exception")));
 
 		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
 

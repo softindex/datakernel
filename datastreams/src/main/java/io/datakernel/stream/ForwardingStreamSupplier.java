@@ -20,40 +20,40 @@ import io.datakernel.async.MaterializedStage;
 
 import java.util.Set;
 
-public abstract class ForwardingStreamProducer<T> implements StreamProducer<T> {
-	protected final StreamProducer<T> producer;
+public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
+	protected final StreamSupplier<T> supplier;
 
-	public ForwardingStreamProducer(StreamProducer<T> producer) {
-		this.producer = producer;
+	public ForwardingStreamSupplier(StreamSupplier<T> supplier) {
+		this.supplier = supplier;
 	}
 
 	@Override
 	public void setConsumer(StreamConsumer<T> consumer) {
-		producer.setConsumer(consumer);
+		supplier.setConsumer(consumer);
 	}
 
 	@Override
-	public void produce(StreamDataAcceptor<T> dataAcceptor) {
-		producer.produce(dataAcceptor);
+	public void resume(StreamDataAcceptor<T> dataAcceptor) {
+		supplier.resume(dataAcceptor);
 	}
 
 	@Override
 	public void suspend() {
-		producer.suspend();
+		supplier.suspend();
 	}
 
 	@Override
 	public MaterializedStage<Void> getEndOfStream() {
-		return producer.getEndOfStream();
+		return supplier.getEndOfStream();
 	}
 
 	@Override
 	public Set<StreamCapability> getCapabilities() {
-		return producer.getCapabilities();
+		return supplier.getCapabilities();
 	}
 
 	@Override
 	public void closeWithError(Throwable e) {
-		producer.closeWithError(e);
+		supplier.closeWithError(e);
 	}
 }

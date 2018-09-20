@@ -18,7 +18,7 @@ package io.datakernel.datagraph.node;
 
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -30,14 +30,14 @@ import static java.util.Collections.singletonList;
  *
  * @param <T> data items type
  */
-public final class NodeProducerOfIterable<T> implements Node {
+public final class NodeSupplierOfIterable<T> implements Node {
 	private Object iterableId;
 	private StreamId output;
 
-	public NodeProducerOfIterable() {
+	public NodeSupplierOfIterable() {
 	}
 
-	public NodeProducerOfIterable(Object iterableId) {
+	public NodeSupplierOfIterable(Object iterableId) {
 		this.iterableId = iterableId;
 		this.output = new StreamId();
 	}
@@ -50,15 +50,15 @@ public final class NodeProducerOfIterable<T> implements Node {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamProducer<T> producer;
+		StreamSupplier<T> supplier;
 		Object object = taskContext.environment().get(iterableId);
 		if(object instanceof Iterator) {
-			producer = StreamProducer.ofIterator((Iterator<T>) object);
+			supplier = StreamSupplier.ofIterator((Iterator<T>) object);
 		} else if(object instanceof Iterable) {
-			producer = StreamProducer.ofIterable(((Iterable<T>) object));
+			supplier = StreamSupplier.ofIterable(((Iterable<T>) object));
 		} else
 			throw new IllegalArgumentException();
-		taskContext.export(output, producer);
+		taskContext.export(output, supplier);
 	}
 
 	public Object getIterableId() {

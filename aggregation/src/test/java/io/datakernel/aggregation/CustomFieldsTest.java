@@ -25,7 +25,7 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -114,39 +114,39 @@ public class CustomFieldsTest {
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
 			.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
-		StreamProducer<EventRecord> producer = StreamProducer.of(
+		StreamSupplier<EventRecord> supplier = StreamSupplier.of(
 			new EventRecord(1, 0.34, 1),
 			new EventRecord(2, 0.42, 3),
 			new EventRecord(3, 0.13, 20));
 
-		CompletableFuture<AggregationDiff> future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
+		CompletableFuture<AggregationDiff> future = aggregation.consume(supplier, EventRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
-		producer = StreamProducer.of(
+		supplier = StreamSupplier.of(
 			new EventRecord(2, 0.30, 20),
 			new EventRecord(1, 0.22, 1000),
 			new EventRecord(2, 0.91, 33));
-		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
+		future = aggregation.consume(supplier, EventRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
-		producer = StreamProducer.of(
+		supplier = StreamSupplier.of(
 			new EventRecord(1, 0.01, 1),
 			new EventRecord(3, 0.88, 20),
 			new EventRecord(3, 1.01, 21));
-		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
+		future = aggregation.consume(supplier, EventRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
-		producer = StreamProducer.of(
+		supplier = StreamSupplier.of(
 			new EventRecord(1, 0.35, 500),
 			new EventRecord(1, 0.59, 17),
 			new EventRecord(2, 0.85, 50));
-		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
+		future = aggregation.consume(supplier, EventRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());

@@ -5,18 +5,18 @@ import io.datakernel.async.SettableStage;
 
 import java.util.function.Function;
 
-public class TestStreamProducers {
-	public static <T> StreamProducerFunction<T, StreamProducer<T>> decorator(Decorator<T> decorator) {
-		return producer -> new ForwardingStreamProducer<T>(producer) {
+public class TestStreamSuppliers {
+	public static <T> StreamSupplierFunction<T, StreamSupplier<T>> decorator(Decorator<T> decorator) {
+		return supplier -> new ForwardingStreamSupplier<T>(supplier) {
 			final SettableStage<Void> endOfStream = new SettableStage<>();
 
 			{
-				producer.getEndOfStream().whenComplete(endOfStream::trySet);
+				supplier.getEndOfStream().whenComplete(endOfStream::trySet);
 			}
 
 			@Override
-			public void produce(StreamDataAcceptor<T> dataAcceptor) {
-				producer.produce(decorator.decorate(new Decorator.Context() {
+			public void resume(StreamDataAcceptor<T> dataAcceptor) {
+				supplier.resume(decorator.decorate(new Decorator.Context() {
 					@Override
 					public void endOfStream() {
 						endOfStream.trySet(null);
@@ -36,7 +36,7 @@ public class TestStreamProducers {
 		};
 	}
 
-	public static <T> StreamProducerFunction<T, StreamProducer<T>> errorDecorator(Function<T, Throwable> errorFunction) {
+	public static <T> StreamSupplierFunction<T, StreamSupplier<T>> errorDecorator(Function<T, Throwable> errorFunction) {
 		return decorator((context, dataAcceptor) ->
 				item -> {
 					Throwable error = errorFunction.apply(item);

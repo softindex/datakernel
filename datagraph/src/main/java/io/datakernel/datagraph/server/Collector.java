@@ -22,7 +22,7 @@ import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.NodeUpload;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,18 +40,18 @@ public final class Collector<T> {
 		this.eventloop = eventloop;
 	}
 
-	public StreamProducer<T> compile(DataGraph dataGraph) {
+	public StreamSupplier<T> compile(DataGraph dataGraph) {
 		List<StreamId> inputStreamIds = input.channels(dataGraph);
-		List<StreamProducer<T>> producers = new ArrayList<>();
+		List<StreamSupplier<T>> suppliers = new ArrayList<>();
 
 		for (StreamId streamId : inputStreamIds) {
 			NodeUpload<T> nodeUpload = new NodeUpload<>(type, streamId);
 			Partition partition = dataGraph.getPartition(streamId);
 			dataGraph.addNode(partition, nodeUpload);
-			StreamProducer<T> producer = StreamProducer.ofStage(client.download(partition.getAddress(), streamId, type));
-			producers.add(producer);
+			StreamSupplier<T> supplier = StreamSupplier.ofStage(client.download(partition.getAddress(), streamId, type));
+			suppliers.add(supplier);
 		}
 
-		return StreamProducer.concat(producers);
+		return StreamSupplier.concat(suppliers);
 	}
 }

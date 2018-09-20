@@ -25,7 +25,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,7 +91,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 
 	@Override
 	protected void onStarted() {
-		getProducer().produce(this);
+		getSupplier().resume(this);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -115,12 +115,12 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 			list.add((T) entry.getValue());
 		}
 
-		StreamProducer<T> producer = StreamProducer.ofIterable(list);
+		StreamSupplier<T> supplier = StreamSupplier.ofIterable(list);
 		AggregationChunker<C, T> chunker = AggregationChunker.create(aggregation, measures, recordClass,
 				partitionPredicate, storage, classLoader, chunkSize);
 
 		resultsTracker.addStage(
-				producer.streamTo(chunker)
+				supplier.streamTo(chunker)
 						.thenCompose($ -> chunker.getResult()),
 				List::addAll)
 				.thenRun(this::suspendOrResume);
@@ -129,15 +129,15 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 	private void suspendOrResume() {
 		if (resultsTracker.getActiveStages() > 2) {
 			logger.trace("Suspend group reduce: {}", this);
-			getProducer().suspend();
+			getSupplier().suspend();
 		} else {
 			logger.trace("Resume group reduce: {}", this);
-			getProducer().produce(this);
+			getSupplier().resume(this);
 		}
 	}
 
 	@Override
-	protected Stage<Void> onProducerEndOfStream() {
+	protected Stage<Void> onEndOfStream() {
 		doFlush();
 		return resultsTracker.get().toVoid();
 	}

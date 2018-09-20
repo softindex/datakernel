@@ -50,7 +50,7 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 	}
 	// endregion
 
-	public StreamProducer<T> newOutput() {
+	public StreamSupplier<T> newOutput() {
 		Output output = new Output(outputs.size());
 		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
 		suspended++;
@@ -64,7 +64,7 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 	}
 
 	@Override
-	public List<? extends StreamProducer<T>> getOutputs() {
+	public List<? extends StreamSupplier<T>> getOutputs() {
 		return outputs;
 	}
 
@@ -76,7 +76,7 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 
 	protected final class InputConsumer extends AbstractStreamConsumer<T> {
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			return Stages.all(outputs.stream().map(Output::sendEndOfStream));
 		}
 
@@ -86,7 +86,7 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<T> {
+	protected final class Output extends AbstractStreamSupplier<T> {
 		private final int index;
 
 		protected Output(int index) {
@@ -96,14 +96,14 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 		@Override
 		protected void onSuspended() {
 			suspended++;
-			input.getProducer().suspend();
+			input.getSupplier().suspend();
 		}
 
 		@Override
 		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
-				input.getProducer().produce(StreamSharder.this);
+				input.getSupplier().resume(StreamSharder.this);
 			}
 		}
 

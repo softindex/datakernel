@@ -20,7 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -43,7 +43,7 @@ public class StreamReducerTest {
 	public void testEmpty() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducer.of();
+		StreamSupplier<Integer> source = StreamSupplier.of();
 
 		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo)
 				.withBufferSize(1);
@@ -65,14 +65,14 @@ public class StreamReducerTest {
 	public void testDeduplicate() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source0 = StreamProducer.of();
-		StreamProducer<Integer> source1 = StreamProducer.of(7);
-		StreamProducer<Integer> source2 = StreamProducer.of(3, 4, 6);
-		StreamProducer<Integer> source3 = StreamProducer.of();
-		StreamProducer<Integer> source4 = StreamProducer.of(2, 3, 5);
-		StreamProducer<Integer> source5 = StreamProducer.of(1, 3);
-		StreamProducer<Integer> source6 = StreamProducer.of(1, 3);
-		StreamProducer<Integer> source7 = StreamProducer.of();
+		StreamSupplier<Integer> source0 = StreamSupplier.of();
+		StreamSupplier<Integer> source1 = StreamSupplier.of(7);
+		StreamSupplier<Integer> source2 = StreamSupplier.of(3, 4, 6);
+		StreamSupplier<Integer> source3 = StreamSupplier.of();
+		StreamSupplier<Integer> source4 = StreamSupplier.of(2, 3, 5);
+		StreamSupplier<Integer> source5 = StreamSupplier.of(1, 3);
+		StreamSupplier<Integer> source6 = StreamSupplier.of(1, 3);
+		StreamSupplier<Integer> source7 = StreamSupplier.of();
 
 		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo)
 				.withBufferSize(1);
@@ -110,13 +110,13 @@ public class StreamReducerTest {
 	public void testWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<KeyValue1> source1 = StreamProducer.of(
+		StreamSupplier<KeyValue1> source1 = StreamSupplier.of(
 				new KeyValue1(1, 10.0),
 				new KeyValue1(3, 30.0));
-		StreamProducer<KeyValue2> source2 = StreamProducer.of(
+		StreamSupplier<KeyValue2> source2 = StreamSupplier.of(
 				new KeyValue2(1, 10.0),
 				new KeyValue2(3, 30.0));
-		StreamProducer<KeyValue3> source3 = StreamProducer.of(
+		StreamSupplier<KeyValue3> source3 = StreamSupplier.of(
 				new KeyValue3(2, 10.0, 20.0),
 				new KeyValue3(3, 10.0, 20.0));
 
@@ -154,14 +154,14 @@ public class StreamReducerTest {
 	}
 
 	@Test
-	public void testProducerDisconnectWithError() {
+	public void testSupplierDisconnectWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<KeyValue1> source1 = StreamProducer.of(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0));
+		StreamSupplier<KeyValue1> source1 = StreamSupplier.of(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0));
 
-		StreamProducer<KeyValue2> source2 = StreamProducer.closingWithError(new Exception("Test Exception"));
+		StreamSupplier<KeyValue2> source2 = StreamSupplier.closingWithError(new Exception("Test Exception"));
 
-		StreamProducer<KeyValue3> source3 = StreamProducer.of(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0));
+		StreamSupplier<KeyValue3> source3 = StreamSupplier.of(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0));
 
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.create(Integer::compareTo);
 		streamReducer.withBufferSize(1);
@@ -352,9 +352,9 @@ public class StreamReducerTest {
 	public void test2() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<KeyValue1> source1 = StreamProducer.of(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0));
-		StreamProducer<KeyValue2> source2 = StreamProducer.of(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0));
-		StreamProducer<KeyValue3> source3 = StreamProducer.of(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0));
+		StreamSupplier<KeyValue1> source1 = StreamSupplier.of(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0));
+		StreamSupplier<KeyValue2> source2 = StreamSupplier.of(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0));
+		StreamSupplier<KeyValue3> source3 = StreamSupplier.of(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0));
 
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(Integer::compareTo)
 				.withBufferSize(1);
@@ -388,9 +388,9 @@ public class StreamReducerTest {
 	public void test3() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<KeyValue1> source1 = StreamProducer.of(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0));
-		StreamProducer<KeyValue2> source2 = StreamProducer.of(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0));
-		StreamProducer<KeyValue3> source3 = StreamProducer.of(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0));
+		StreamSupplier<KeyValue1> source1 = StreamSupplier.of(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0));
+		StreamSupplier<KeyValue2> source2 = StreamSupplier.of(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0));
+		StreamSupplier<KeyValue3> source3 = StreamSupplier.of(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0));
 
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(Integer::compareTo)
 				.withBufferSize(1);

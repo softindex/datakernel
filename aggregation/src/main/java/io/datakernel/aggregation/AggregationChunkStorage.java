@@ -20,7 +20,7 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.Stage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 
 import java.util.List;
 import java.util.Set;
@@ -30,19 +30,19 @@ import java.util.Set;
  */
 public interface AggregationChunkStorage<C> extends IdGenerator<C> {
 	/**
-	 * Creates a {@code StreamProducer} that streams records contained in the chunk.
+	 * Creates a {@code StreamSupplier} that streams records contained in the chunk.
 	 * The chunk to read is determined by {@code aggregationId} and {@code id}.
 	 *
 	 * @param recordClass class of chunk record
 	 * @param chunkId     id of chunk
-	 * @return StreamProducer, which will stream read records to its wired consumer.
+	 * @return StreamSupplier, which will stream read records to its wired consumer.
 	 */
-	<T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields,
+	<T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader);
 
-	default <T> StreamProducer<T> readStream(AggregationStructure aggregation, List<String> fields,
+	default <T> StreamSupplier<T> readStream(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
-		return StreamProducer.ofStage(read(aggregation, fields, recordClass, chunkId, classLoader));
+		return StreamSupplier.ofStage(read(aggregation, fields, recordClass, chunkId, classLoader));
 	}
 
 	/**

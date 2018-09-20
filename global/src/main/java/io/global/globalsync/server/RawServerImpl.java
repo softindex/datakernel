@@ -75,7 +75,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	@Override
 	public Stage<SerialSupplier<CommitEntry>> download(RepositoryName repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 		return ensureRepositoryDb(repositoryId)
-				.getStreamProducer(bases, heads);
+				.getCommitsSupplier(bases, heads);
 	}
 
 	@Override

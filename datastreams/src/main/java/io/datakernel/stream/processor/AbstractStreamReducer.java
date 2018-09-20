@@ -28,7 +28,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
  * Perform aggregative functions on the elements from input streams. Searches key of item
  * with key function, selects elements with some key, reductions it and streams result sorted by key.
  * Elements from stream to input must be sorted by keys. It is {@link AbstractStreamTransformer_N_1}
- * because it represents few consumers and one producer.
+ * because it represents few consumers and one supplier.
  *
  * @param <K> type of key of element
  * @param <O> type of output data
@@ -86,7 +86,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 	}
 
 	@Override
-	public StreamProducer<O> getOutput() {
+	public StreamSupplier<O> getOutput() {
 		return output;
 	}
 
@@ -117,7 +117,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 
 		@Override
 		protected void onStarted() {
-			getProducer().produce(this);
+			getSupplier().resume(this);
 		}
 
 		/**
@@ -137,14 +137,14 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 			} else {
 				deque.offer(item);
 				if (deque.size() == bufferSize) {
-					getProducer().suspend();
+					getSupplier().suspend();
 					produce();
 				}
 			}
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			streamsOpen--;
 			if (headItem == null) {
 				streamsAwaiting--;
@@ -159,7 +159,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		}
 	}
 
-	private final class Output extends AbstractStreamProducer<O> {
+	private final class Output extends AbstractStreamSupplier<O> {
 		@Override
 		protected void onError(Throwable t) {
 			inputs.forEach(input -> input.closeWithError(t));
@@ -203,7 +203,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 
 		for (Input input : inputs) {
 			if (input.deque.size() <= bufferSize / 2) {
-				input.getProducer().produce(input);
+				input.getSupplier().resume(input);
 			}
 		}
 

@@ -17,7 +17,7 @@
 package io.datakernel.stream;
 
 /**
- * Represents {@link AbstractStreamProducer} with few {@link AbstractStreamConsumer}.
+ * Represents {@link AbstractStreamSupplier} with few {@link AbstractStreamConsumer}.
  *
  * @param <O> type of sending items
  */

@@ -30,7 +30,7 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 	}
 
 	@SuppressWarnings("unchecked")
-	public <O> StreamProducer<O> newOutput() {
+	public <O> StreamSupplier<O> newOutput() {
 		Output output = new Output(outputs.size());
 		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
 		suspended++;
@@ -45,7 +45,7 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public List<? extends StreamProducer<?>> getOutputs() {
+	public List<? extends StreamSupplier<?>> getOutputs() {
 		return outputs;
 	}
 
@@ -61,7 +61,7 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 		}
 
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			return Stages.all(outputs.stream().map(Output::sendEndOfStream));
 		}
 
@@ -71,7 +71,7 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 		}
 	}
 
-	private final class Output<O> extends AbstractStreamProducer<O> {
+	private final class Output<O> extends AbstractStreamSupplier<O> {
 		private final int index;
 
 		protected Output(int index) {
@@ -80,20 +80,20 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 
 		@Override
 		protected void onStarted() {
-			checkState(input.getProducer() != null, "Splitter has no input");
+			checkState(input.getSupplier() != null, "Splitter has no input");
 		}
 
 		@Override
 		protected void onSuspended() {
 			suspended++;
-			input.getProducer().suspend();
+			input.getSupplier().suspend();
 		}
 
 		@Override
 		protected void onProduce(StreamDataAcceptor<O> dataAcceptor) {
 			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
-				input.getProducer().produce(StreamMapSplitter.this);
+				input.getSupplier().resume(StreamMapSplitter.this);
 			}
 		}
 

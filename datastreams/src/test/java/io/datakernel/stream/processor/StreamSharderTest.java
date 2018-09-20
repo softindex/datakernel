@@ -20,7 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
@@ -43,7 +43,7 @@ public class StreamSharderTest {
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4);
+		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4);
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
 		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
 
@@ -69,7 +69,7 @@ public class StreamSharderTest {
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4);
+		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4);
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
 		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
 
@@ -95,7 +95,7 @@ public class StreamSharderTest {
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4);
+		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4);
 
 		List<Integer> list1 = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create(list1);
@@ -121,22 +121,22 @@ public class StreamSharderTest {
 		assertClosedWithError(source);
 		assertClosedWithError(source);
 		assertClosedWithError(streamSharder.getInput());
-		assertProducersClosedWithError(streamSharder.getOutputs());
+		assertSuppliersClosedWithError(streamSharder.getOutputs());
 		assertClosedWithError(consumer1);
 		assertClosedWithError(consumer2);
 	}
 
 	@Test
-	public void testProducerWithError() {
+	public void testSupplierWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
-		StreamProducer<Integer> source = StreamProducer.concat(
-				StreamProducer.of(1),
-				StreamProducer.of(2),
-				StreamProducer.of(3),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
+		StreamSupplier<Integer> source = StreamSupplier.concat(
+				StreamSupplier.of(1),
+				StreamSupplier.of(2),
+				StreamSupplier.of(3),
+				StreamSupplier.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		List<Integer> list1 = new ArrayList<>();
@@ -154,7 +154,7 @@ public class StreamSharderTest {
 		assertTrue(list2.size() == 2);
 
 		assertClosedWithError(streamSharder.getInput());
-		assertProducersClosedWithError(streamSharder.getOutputs());
+		assertSuppliersClosedWithError(streamSharder.getOutputs());
 		assertClosedWithError(consumer1);
 		assertClosedWithError(consumer2);
 	}

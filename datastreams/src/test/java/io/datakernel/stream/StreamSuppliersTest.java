@@ -12,12 +12,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.TestStreamProducers.errorDecorator;
+import static io.datakernel.stream.TestStreamSuppliers.errorDecorator;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-public class StreamProducersTest {
+public class StreamSuppliersTest {
 
 	private Eventloop eventloop;
 
@@ -28,12 +28,12 @@ public class StreamProducersTest {
 
 	@Test
 	public void testErrorDecorator() {
-		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
+		StreamSupplier<Integer> supplier = StreamSupplier.ofStream(IntStream.range(1, 10).boxed())
 				.apply(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		producer.streamTo(consumer);
+		supplier.streamTo(consumer);
 
 		eventloop.run();
 
@@ -43,12 +43,12 @@ public class StreamProducersTest {
 
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
-		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
+		StreamSupplier<Integer> supplier = StreamSupplier.ofStream(IntStream.range(1, 10).boxed())
 				.apply(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		CompletableFuture<Void> future = producer.streamTo(consumer)
+		CompletableFuture<Void> future = supplier.streamTo(consumer)
 				.whenComplete(($, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))
 				.thenApplyEx(($, throwable) -> (Void) null)
 				.toCompletableFuture();
@@ -60,10 +60,10 @@ public class StreamProducersTest {
 	}
 
 	@Test
-	public void testSupplierProducer() {
+	public void testSupplierSupplier() {
 		List<Integer> actual = new ArrayList<>();
 		int[] i = {0};
-		StreamProducer.ofSupplier(
+		StreamSupplier.ofSupplier(
 				() -> {
 					if (i[0] == 10) {
 						return null;

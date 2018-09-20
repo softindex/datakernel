@@ -17,5 +17,5 @@
 package io.datakernel.stream;
 
 public interface StreamOutput<O> {
-	StreamProducer<O> getOutput();
+	StreamSupplier<O> getOutput();
 }

@@ -44,7 +44,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final long createTick = eventloop.tick();
 
-	private StreamProducer<T> producer;
+	private StreamSupplier<T> supplier;
 
 	private final SettableStage<Void> endOfStream = new SettableStage<>();
 	private final SettableStage<Void> acknowledgement = new SettableStage<>();
@@ -52,24 +52,24 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private Object tag;
 
 	/**
-	 * Sets wired producer. It will sent data to this consumer
+	 * Sets wired supplier. It will sent data to this consumer
 	 *
-	 * @param producer stream producer for setting
+	 * @param supplier stream supplier for setting
 	 */
 
 	@Override
-	public final void setProducer(StreamProducer<T> producer) {
-		checkNotNull(producer);
-		checkState(this.producer == null);
+	public final void setSupplier(StreamSupplier<T> supplier) {
+		checkNotNull(supplier);
+		checkState(this.supplier == null);
 		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
 				LATE_BINDING_ERROR_MESSAGE, this);
-		this.producer = producer;
+		this.supplier = supplier;
 		onWired();
-		producer.getEndOfStream()
+		supplier.getEndOfStream()
 				.whenComplete(endOfStream::set)
 				.whenException(this::closeWithError)
 				.post()
-				.thenRun(() -> onProducerEndOfStream()
+				.thenRun(() -> onEndOfStream()
 						.whenException(this::closeWithError)
 						.post()
 						.thenRun(this::acknowledge));
@@ -83,11 +83,11 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	public boolean isWired() {
-		return producer != null;
+		return supplier != null;
 	}
 
-	public final StreamProducer<T> getProducer() {
-		return producer;
+	public final StreamSupplier<T> getSupplier() {
+		return supplier;
 	}
 
 	protected final void acknowledge() {
@@ -96,7 +96,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		eventloop.post(this::cleanup);
 	}
 
-	protected abstract Stage<Void> onProducerEndOfStream();
+	protected abstract Stage<Void> onEndOfStream();
 
 	@Override
 	public final void closeWithError(Throwable e) {

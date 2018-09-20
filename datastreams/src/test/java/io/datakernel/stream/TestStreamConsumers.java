@@ -21,23 +21,23 @@ public class TestStreamConsumers {
 			}
 
 			@Override
-			public void setProducer(StreamProducer<T> producer) {
-				super.setProducer(new ForwardingStreamProducer<T>(producer) {
+			public void setSupplier(StreamSupplier<T> supplier) {
+				super.setSupplier(new ForwardingStreamSupplier<T>(supplier) {
 					@SuppressWarnings("unchecked")
 					@Override
-					public void produce(StreamDataAcceptor<T> dataAcceptor) {
+					public void resume(StreamDataAcceptor<T> dataAcceptor) {
 						StreamDataAcceptor<T>[] dataAcceptors = new StreamDataAcceptor[1];
 						Decorator.Context context = new Decorator.Context() {
 							final Eventloop eventloop = getCurrentEventloop();
 
 							@Override
 							public void suspend() {
-								producer.suspend();
+								supplier.suspend();
 							}
 
 							@Override
 							public void resume() {
-								eventloop.post(() -> producer.produce(dataAcceptors[0]));
+								eventloop.post(() -> supplier.resume(dataAcceptors[0]));
 							}
 
 							@Override
@@ -46,7 +46,7 @@ public class TestStreamConsumers {
 							}
 						};
 						dataAcceptors[0] = decorator.decorate(context, dataAcceptor);
-						super.produce(dataAcceptors[0]);
+						super.resume(dataAcceptors[0]);
 					}
 				});
 			}

@@ -22,7 +22,7 @@ import java.util.function.Function;
 
 public interface StreamTransformer<I, O> extends
 		StreamInput<I>, StreamOutput<O>,
-		StreamProducerFunction<I, StreamProducer<O>>,
+		StreamSupplierFunction<I, StreamSupplier<O>>,
 		StreamConsumerFunction<O, StreamConsumer<I>> {
 
 	static <X> StreamTransformer<X, X> identity() {
@@ -36,12 +36,12 @@ public interface StreamTransformer<I, O> extends
 	}
 
 	@Override
-	default StreamProducer<O> apply(StreamProducer<I> producer) {
-		producer.streamTo(getInput());
+	default StreamSupplier<O> apply(StreamSupplier<I> supplier) {
+		supplier.streamTo(getInput());
 		return getOutput();
 	}
 
-	default Function<StreamProducer<I>, StreamProducer<O>> toProducer() {
+	default Function<StreamSupplier<I>, StreamSupplier<O>> toSupplier() {
 		return this::apply;
 	}
 

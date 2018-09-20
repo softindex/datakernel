@@ -24,7 +24,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -67,8 +67,8 @@ public class AggregationChunkerTest {
 			long chunkId;
 
 			@Override
-			public <T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamProducer.ofIterable(items));
+			public <T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Stage.of(StreamSupplier.ofIterable(items));
 			}
 
 			@Override
@@ -102,7 +102,7 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
-		StreamProducer<KeyValuePair> producer = StreamProducer.of(
+		StreamSupplier<KeyValuePair> supplier = StreamSupplier.of(
 				new KeyValuePair(3, 4, 6),
 				new KeyValuePair(3, 6, 7),
 				new KeyValuePair(1, 2, 1)
@@ -111,7 +111,7 @@ public class AggregationChunkerTest {
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
-		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker)
+		CompletableFuture<List<AggregationChunk>> future = supplier.streamTo(chunker)
 				.thenCompose($ -> chunker.getResult())
 				.toCompletableFuture();
 
@@ -123,16 +123,16 @@ public class AggregationChunkerTest {
 		assertEquals(new KeyValuePair(3, 6, 7), items.get(1));
 		assertEquals(new KeyValuePair(1, 2, 1), items.get(2));
 
-		assertEndOfStream(producer);
+		assertEndOfStream(supplier);
 //		assertEndOfStream(chunker);
-//		assertStatus(((StreamProducers.OfIterator) producer).getDownstream(), chunker);
+//		assertStatus(((StreamSuppliers.OfIterator) supplier).getDownstream(), chunker);
 		for (StreamConsumer consumer : listConsumers) {
 			assertEndOfStream(consumer);
 		}
 	}
 
 	@Test
-	public void testProducerWithError() {
+	public void testSupplierWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
@@ -146,8 +146,8 @@ public class AggregationChunkerTest {
 			final List items = new ArrayList();
 
 			@Override
-			public <T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamProducer.ofIterable(items));
+			public <T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Stage.of(StreamSupplier.ofIterable(items));
 			}
 
 			@Override
@@ -181,37 +181,37 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
-		StreamProducer<KeyValuePair> producer = StreamProducer.concat(
-				StreamProducer.of(
+		StreamSupplier<KeyValuePair> supplier = StreamSupplier.concat(
+				StreamSupplier.of(
 						new KeyValuePair(1, 1, 0),
 						new KeyValuePair(1, 2, 1),
 						new KeyValuePair(1, 1, 2)),
-				StreamProducer.of(
+				StreamSupplier.of(
 						new KeyValuePair(1, 1, 0),
 						new KeyValuePair(1, 2, 1),
 						new KeyValuePair(1, 1, 2)),
-				StreamProducer.of(
+				StreamSupplier.of(
 						new KeyValuePair(1, 1, 0),
 						new KeyValuePair(1, 2, 1),
 						new KeyValuePair(1, 1, 2)),
-				StreamProducer.of(
+				StreamSupplier.of(
 						new KeyValuePair(1, 1, 0),
 						new KeyValuePair(1, 2, 1),
 						new KeyValuePair(1, 1, 2)),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
+				StreamSupplier.closingWithError(new ExpectedException("Test Exception"))
 		);
 		AggregationChunker chunker = AggregationChunker.create(
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
-		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker)
+		CompletableFuture<List<AggregationChunk>> future = supplier.streamTo(chunker)
 				.thenCompose($ -> chunker.getResult())
 				.toCompletableFuture();
 
 		eventloop.run();
 
 		assertTrue(future.isCompletedExceptionally());
-		assertClosedWithError(producer);
+		assertClosedWithError(supplier);
 //		assertClosedWithError(chunker);
 		for (StreamConsumer listConsumer : listConsumers) {
 			assertEndOfStream(listConsumer);
@@ -237,8 +237,8 @@ public class AggregationChunkerTest {
 			final List items = new ArrayList();
 
 			@Override
-			public <T> Stage<StreamProducer<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamProducer.ofIterable(items));
+			public <T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Stage.of(StreamSupplier.ofIterable(items));
 			}
 
 			@Override
@@ -278,7 +278,7 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
-		StreamProducer<KeyValuePair> producer = StreamProducer.of(
+		StreamSupplier<KeyValuePair> supplier = StreamSupplier.of(
 				new KeyValuePair(1, 1, 0),
 				new KeyValuePair(1, 2, 1),
 				new KeyValuePair(1, 1, 2),
@@ -288,14 +288,14 @@ public class AggregationChunkerTest {
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
-		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker)
+		CompletableFuture<List<AggregationChunk>> future = supplier.streamTo(chunker)
 				.thenCompose($ -> chunker.getResult())
 				.toCompletableFuture();
 
 		eventloop.run();
 
 		assertTrue(future.isCompletedExceptionally());
-		assertClosedWithError(producer);
+		assertClosedWithError(supplier);
 //		assertClosedWithError(chunker);
 		for (int i = 0; i < listConsumers.size() - 1; i++) {
 			assertEndOfStream(listConsumers.get(i));

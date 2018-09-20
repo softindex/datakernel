@@ -48,7 +48,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 	}
 
 	@Override
-	public StreamProducer<T> getOutput() {
+	public StreamSupplier<T> getOutput() {
 		return output;
 	}
 
@@ -64,7 +64,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 
 	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
-		protected Stage<Void> onProducerEndOfStream() {
+		protected Stage<Void> onEndOfStream() {
 			return output.sendEndOfStream();
 		}
 
@@ -74,10 +74,10 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		}
 	}
 
-	protected final class Output extends AbstractStreamProducer<T> {
+	protected final class Output extends AbstractStreamSupplier<T> {
 		@Override
 		protected void onSuspended() {
-			input.getProducer().suspend();
+			input.getSupplier().suspend();
 		}
 
 		@Override
@@ -88,10 +88,10 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		@Override
 		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			if (predicate.equals(ALWAYS_TRUE)) {
-				input.getProducer().produce(dataAcceptor);
+				input.getSupplier().resume(dataAcceptor);
 			} else {
 				Predicate<T> predicate = StreamFilter.this.predicate;
-				input.getProducer().produce(item -> {
+				input.getSupplier().resume(item -> {
 					if (predicate.test(item)) {
 						dataAcceptor.accept(item);
 					}

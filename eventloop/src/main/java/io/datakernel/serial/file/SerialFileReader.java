@@ -34,7 +34,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static java.nio.file.StandardOpenOption.READ;
 
 /**
- * This producer allows you to asynchronously read binary data from a file.
+ * This supplier allows you to asynchronously read binary data from a file.
  */
 public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(SerialFileReader.class);

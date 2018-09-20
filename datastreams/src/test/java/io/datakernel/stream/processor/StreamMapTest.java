@@ -18,7 +18,7 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
@@ -45,7 +45,7 @@ public class StreamMapTest {
 	public void test1() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
+		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3);
 		StreamMap<Integer, Integer> projection = StreamMap.create(FUNCTION);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
@@ -64,7 +64,7 @@ public class StreamMapTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
+		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3);
 		StreamMap<Integer, Integer> projection = StreamMap.create(FUNCTION);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
@@ -86,13 +86,13 @@ public class StreamMapTest {
 	}
 
 	@Test
-	public void testProducerWithError() {
+	public void testSupplierWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducer.concat(
-				StreamProducer.of(1),
-				StreamProducer.of(2),
-				StreamProducer.closingWithError(new Exception("Test Exception")));
+		StreamSupplier<Integer> source = StreamSupplier.concat(
+				StreamSupplier.of(1),
+				StreamSupplier.of(2),
+				StreamSupplier.closingWithError(new Exception("Test Exception")));
 
 		StreamMap<Integer, Integer> projection = StreamMap.create(FUNCTION);
 

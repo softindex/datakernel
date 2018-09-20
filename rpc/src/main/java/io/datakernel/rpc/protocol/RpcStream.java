@@ -24,7 +24,7 @@ import io.datakernel.serial.processor.SerialLZ4Compressor;
 import io.datakernel.serial.processor.SerialLZ4Decompressor;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.AbstractStreamSupplier;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.MemSize;
 
@@ -39,7 +39,7 @@ public final class RpcStream {
 	}
 
 	private Listener listener;
-	private final AbstractStreamProducer<RpcMessage> sender;
+	private final AbstractStreamSupplier<RpcMessage> sender;
 	private final AbstractStreamConsumer<RpcMessage> receiver;
 	private final AsyncTcpSocket socket;
 
@@ -53,17 +53,17 @@ public final class RpcStream {
 		this.socket = socket;
 
 		if (server) {
-			sender = new AbstractStreamProducer<RpcMessage>() {
+			sender = new AbstractStreamSupplier<RpcMessage>() {
 				@Override
 				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
 					RpcStream.this.downstreamDataAcceptor = dataAcceptor;
-					receiver.getProducer().produce(RpcStream.this.listener);
+					receiver.getSupplier().resume(RpcStream.this.listener);
 					ready = true;
 				}
 
 				@Override
 				protected void onSuspended() {
-					receiver.getProducer().suspend();
+					receiver.getSupplier().suspend();
 					ready = false;
 				}
 
@@ -74,7 +74,7 @@ public final class RpcStream {
 				}
 			};
 		} else {
-			sender = new AbstractStreamProducer<RpcMessage>() {
+			sender = new AbstractStreamSupplier<RpcMessage>() {
 				@Override
 				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
 					RpcStream.this.downstreamDataAcceptor = dataAcceptor;
@@ -97,11 +97,11 @@ public final class RpcStream {
 		receiver = new AbstractStreamConsumer<RpcMessage>() {
 			@Override
 			protected void onStarted() {
-				getProducer().produce(RpcStream.this.listener);
+				getSupplier().resume(RpcStream.this.listener);
 			}
 
 			@Override
-			protected Stage<Void> onProducerEndOfStream() {
+			protected Stage<Void> onEndOfStream() {
 				RpcStream.this.listener.onReadEndOfStream();
 				return Stage.complete();
 			}

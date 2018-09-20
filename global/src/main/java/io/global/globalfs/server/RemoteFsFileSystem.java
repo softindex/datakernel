@@ -101,9 +101,9 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 												}
 												long ourSize = ourFile != null ? ourFile.getSize() : 0;
 												return client.download(name, file.getName(), ourSize, -1)
-														.thenCompose(producer ->
+														.thenCompose(supplier ->
 																upload(file.getName(), ourSize)
-																		.thenCompose(producer::streamTo));
+																		.thenCompose(supplier::streamTo));
 
 											});
 								})));
@@ -131,7 +131,7 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 					int start = extremes[0];
 					int finish = extremes[1];
 					return fsClient.download(fileName, checkpoints[start], checkpoints[finish] - checkpoints[start])
-							.thenApply(producer -> producer.apply(FetcherTransformer.create(fileName, checkpointStorage, checkpoints, start, finish)));
+							.thenApply(supplier -> supplier.apply(FetcherTransformer.create(fileName, checkpointStorage, checkpoints, start, finish)));
 				});
 	}
 

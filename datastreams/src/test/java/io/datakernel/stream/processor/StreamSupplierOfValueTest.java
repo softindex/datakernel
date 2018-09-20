@@ -18,7 +18,7 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import org.junit.Test;
 
 import java.util.LinkedList;
@@ -28,7 +28,7 @@ import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class ProducerOfValueTest {
+public class StreamSupplierOfValueTest {
 	Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	String TEST_STRING = "Hello consumer";
@@ -39,40 +39,40 @@ public class ProducerOfValueTest {
 	@Test
 	public void test1() {
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create(new LinkedList<Integer>());
-		StreamProducer<Integer> producer1 = StreamProducer.of(TEST_INT);
-		producer1.streamTo(consumer1);
+		StreamSupplier<Integer> supplier1 = StreamSupplier.of(TEST_INT);
+		supplier1.streamTo(consumer1);
 
 		eventloop.run();
 
 		assertEquals(TEST_INT, consumer1.getList().get(0));
-		assertEndOfStream(producer1);
+		assertEndOfStream(supplier1);
 
 		StreamConsumerToList<String> consumer2 = StreamConsumerToList.create(new LinkedList<String>());
-		StreamProducer<String> producer2 = StreamProducer.of(TEST_STRING);
-		producer2.streamTo(consumer2);
+		StreamSupplier<String> supplier2 = StreamSupplier.of(TEST_STRING);
+		supplier2.streamTo(consumer2);
 		eventloop.run();
 
 		assertEquals(TEST_STRING, consumer2.getList().get(0));
-		assertEndOfStream(producer2);
+		assertEndOfStream(supplier2);
 
 		StreamConsumerToList<DataItem1> consumer3 = StreamConsumerToList.create(new LinkedList<DataItem1>());
-		StreamProducer<DataItem1> producer3 = StreamProducer.of(TEST_OBJECT);
-		producer3.streamTo(consumer3);
+		StreamSupplier<DataItem1> supplier3 = StreamSupplier.of(TEST_OBJECT);
+		supplier3.streamTo(consumer3);
 		eventloop.run();
 
 		assertEquals(TEST_OBJECT, consumer3.getList().get(0));
-		assertEndOfStream(producer3);
+		assertEndOfStream(supplier3);
 	}
 
 	@Test
 	public void testNull() {
 		StreamConsumerToList<Object> consumer3 = StreamConsumerToList.create(new LinkedList<>());
-		StreamProducer<Object> producer3 = StreamProducer.of(TEST_NULL);
-		producer3.streamTo(consumer3);
+		StreamSupplier<Object> supplier3 = StreamSupplier.of(TEST_NULL);
+		supplier3.streamTo(consumer3);
 		eventloop.run();
 
 		assertTrue(consumer3.getList().get(0) == null);
-		assertEndOfStream(producer3);
+		assertEndOfStream(supplier3);
 	}
 
 }

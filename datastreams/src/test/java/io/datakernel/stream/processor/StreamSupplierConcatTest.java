@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
@@ -34,7 +34,7 @@ import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class StreamProducerConcatTest {
+public class StreamSupplierConcatTest {
 
 	@Test
 	public void testSequence() {
@@ -42,9 +42,9 @@ public class StreamProducerConcatTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		StreamProducer.concat(
-				StreamProducer.of(1, 2, 3),
-				StreamProducer.of(4, 5, 6))
+		StreamSupplier.concat(
+				StreamSupplier.of(1, 2, 3),
+				StreamSupplier.of(4, 5, 6))
 				.streamTo(
 						consumer.apply(randomlySuspending()));
 
@@ -61,11 +61,11 @@ public class StreamProducerConcatTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		StreamProducer.concat(
-				StreamProducer.of(1, 2, 3),
-				StreamProducer.of(4, 5, 6),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception")),
-				StreamProducer.of(1, 2, 3))
+		StreamSupplier.concat(
+				StreamSupplier.of(1, 2, 3),
+				StreamSupplier.of(4, 5, 6),
+				StreamSupplier.closingWithError(new ExpectedException("Test Exception")),
+				StreamSupplier.of(1, 2, 3))
 				.streamTo(
 						consumer.apply(randomlySuspending()));
 
@@ -79,10 +79,10 @@ public class StreamProducerConcatTest {
 	public void testConcat() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		CompletableFuture<List<Integer>> future = StreamProducer.concat(
-				StreamProducer.of(1, 2, 3),
-				StreamProducer.of(4, 5, 6),
-				StreamProducer.of())
+		CompletableFuture<List<Integer>> future = StreamSupplier.concat(
+				StreamSupplier.of(1, 2, 3),
+				StreamSupplier.of(4, 5, 6),
+				StreamSupplier.of())
 				.toList()
 				.toCompletableFuture();
 
@@ -98,10 +98,10 @@ public class StreamProducerConcatTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		StreamProducer.concat(
-				StreamProducer.of(1, 2, 3),
-				StreamProducer.of(4, 5, 6),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception")))
+		StreamSupplier.concat(
+				StreamSupplier.of(1, 2, 3),
+				StreamSupplier.of(4, 5, 6),
+				StreamSupplier.closingWithError(new ExpectedException("Test Exception")))
 				.streamTo(
 						consumer.apply(TestStreamConsumers.oneByOne()));
 
