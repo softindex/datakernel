@@ -18,6 +18,7 @@ package io.datakernel.rpc.protocol;
 
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serial.processor.SerialLZ4Compressor;
@@ -43,6 +44,9 @@ public final class RpcStream {
 	private final AbstractStreamConsumer<RpcMessage> receiver;
 	private final AsyncTcpSocket socket;
 
+	private boolean readDone;
+	private boolean writeDone;
+
 	private boolean ready;
 	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;
 
@@ -51,6 +55,7 @@ public final class RpcStream {
 			MemSize initialBufferSize, MemSize maxMessageSize,
 			Duration autoFlushInterval, boolean compression, boolean server) {
 		this.socket = socket;
+		MessagingWithBinaryStreaming<Object, Object> messaging = MessagingWithBinaryStreaming.create(socket, null);
 
 		if (server) {
 			sender = new AbstractStreamSupplier<RpcMessage>() {
@@ -122,14 +127,14 @@ public final class RpcStream {
 			SerialLZ4Decompressor decompressor = SerialLZ4Decompressor.create();
 			SerialLZ4Compressor compressor = SerialLZ4Compressor.createFastCompressor();
 
-			socket.reader().streamTo(decompressor);
+			messaging.receiveBinaryStream().streamTo(decompressor);
 			decompressor.streamTo(deserializer);
 
 			serializer.streamTo(compressor);
-			compressor.streamTo(socket.writer());
+			compressor.streamTo(messaging.sendBinaryStream());
 		} else {
-			socket.reader().streamTo(deserializer);
-			serializer.streamTo(socket.writer());
+			messaging.receiveBinaryStream().streamTo(deserializer);
+			serializer.streamTo(messaging.sendBinaryStream());
 		}
 
 		deserializer.streamTo(receiver);

@@ -17,6 +17,7 @@
 package io.datakernel.rpc.protocol.stream;
 
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -39,6 +40,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
@@ -78,45 +80,13 @@ public class RpcBinaryProtocolTest {
 
 		int countRequests = 10;
 		List<String> results = new ArrayList<>();
-		class ResultObserver {
 
-			public void setException(Throwable exception) {
-				client.stop().whenComplete(($, throwable) -> {
-					if (throwable != null) throw new RuntimeException(throwable);
-					System.out.println("Client stopped");
-					server.close();
-				});
-			}
-
-			public void setResult(String result) {
-				results.add(result);
-				if (results.size() == countRequests) {
-					client.stop().whenComplete(($, throwable) -> {
-						if (throwable != null) throw new RuntimeException(throwable);
-						System.out.println("Client stopped");
-						server.close();
-					});
-				}
-			}
-
-		}
-
-		client.start().whenComplete(($, throwable) -> {
-			ResultObserver resultObserver = new ResultObserver();
-			if (throwable != null) {
-				resultObserver.setException(throwable);
-			} else {
-				for (int i = 0; i < countRequests; i++) {
-					client.<String, String>sendRequest(testMessage, 1000).whenComplete((s, throwable1) -> {
-						if (throwable1 == null) {
-							resultObserver.setResult(s);
-						} else {
-							resultObserver.setException(throwable1);
-						}
-					});
-				}
-			}
-		});
+		client.start()
+				.thenCompose($ -> Stages.all(IntStream.range(0, countRequests).mapToObj(i ->
+						client.<String, String>sendRequest(testMessage, 1000)
+								.whenResult(results::add))))
+				.thenRunEx(() ->
+						client.stop().thenRun(server::close));
 
 		eventloop.run();
 

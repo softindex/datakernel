@@ -318,8 +318,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	@Override
 	public Stage<Void> stop() {
+		if (!running) return Stage.complete();
 		checkState(eventloop.inEventloopThread());
-		checkState(running);
 
 		SettableStage<Void> stage = new SettableStage<>();
 

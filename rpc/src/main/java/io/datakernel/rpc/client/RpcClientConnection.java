@@ -161,7 +161,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private void scheduleExpiredResponsesTask() {
 		if (connectionClosing)
 			return;
-		scheduleExpiredResponsesTask = eventloop.delay(timeoutPrecision, expiredResponsesTask);
+		scheduleExpiredResponsesTask = eventloop.delayBackground(timeoutPrecision, expiredResponsesTask);
 	}
 
 	private Runnable createExpiredResponsesTask() {
