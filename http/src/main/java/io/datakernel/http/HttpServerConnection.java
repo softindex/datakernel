@@ -90,22 +90,20 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	public void onClosedWithError(Throwable e) {
 		if (inspector != null && e != null) inspector.onHttpError(remoteAddress, e);
-		readQueue.recycle();
-		onClosed();
 	}
 
-	private static HttpMethod getHttpMethodFromMap(ByteBuf line) {
+	private static HttpMethod getHttpMethodFromMap(byte[] line) {
+		assert line.length >= 16;
 		int hashCode = 1;
-		for (int i = line.readPosition(); i != line.writePosition(); i++) {
-			byte b = line.at(i);
+		for (int i = 0; i < 10; i++) {
+			byte b = line[i];
 			if (b == SP) {
 				for (int p = 0; p < MAX_PROBINGS; p++) {
 					int slot = (hashCode + p) & (METHODS.length - 1);
 					HttpMethod method = METHODS[slot];
 					if (method == null)
 						break;
-					if (method.compareTo(line.array(), line.readPosition(), i - line.readPosition())) {
-						line.moveReadPosition(method.bytes.length + 1);
+					if (method.compareTo(line, 0, i)) {
 						return method;
 					}
 				}
@@ -116,16 +114,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		return null;
 	}
 
-	private static HttpMethod getHttpMethod(ByteBuf line) {
-		if (line.readPosition() == 0) {
-			if (line.readRemaining() >= 4 && line.at(0) == 'G' && line.at(1) == 'E' && line.at(2) == 'T' && line.at(3) == SP) {
-				line.moveReadPosition(4);
-				return GET;
-			}
-			if (line.readRemaining() >= 5 && line.at(0) == 'P' && line.at(1) == 'O' && line.at(2) == 'S' && line.at(3) == 'T' && line.at(4) == SP) {
-				line.moveReadPosition(5);
-				return POST;
-			}
+	private static HttpMethod getHttpMethod(byte[] line) {
+		if (line[0] == 'G' && line[1] == 'E' && line[2] == 'T' && line[3] == SP) {
+			return GET;
+		}
+		if (line[0] == 'P' && line[1] == 'O' && line[2] == 'S' && line[3] == 'T' && line[4] == SP) {
+			return POST;
 		}
 		return getHttpMethodFromMap(line);
 	}
@@ -136,39 +130,39 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param line received line of header.
 	 */
 	@Override
-	protected void onFirstLine(ByteBuf line) throws ParseException {
+	protected void onFirstLine(byte[] line, int size) throws ParseException {
+		assert line.length >= 16;
 		switchPool(server.poolReadWrite);
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null) {
-			String firstBytes = line.toString();
-			line.recycle();
+			String firstBytes = Arrays.toString(line);
 			throw new ParseException("Unknown HTTP method. First Bytes: " + firstBytes);
 		}
 
-		if (headerChars.length <= line.readRemaining()) {
-			line.recycle();
+		int readPosition = method.size + 1;
+
+		if (headerChars.length <= line.length - readPosition) {
 			throw new ParseException("First line is too big");
 		}
 
-		byte[] array = line.array();
 		int i;
-		for (i = 0; i < line.readRemaining(); i++) {
-			byte b = array[line.readPosition() + i];
+		for (i = 0; i < line.length - readPosition; i++) {
+			byte b = line[readPosition + i];
 			if (b == SP)
 				break;
 			this.headerChars[i] = (char) b;
 		}
 
 		int p;
-		for (p = line.readPosition() + i + 1; p < line.writePosition(); p++) {
-			if (array[p] != SP)
+		for (p = readPosition + i + 1; p < line.length; p++) {
+			if (line[p] != SP)
 				break;
 		}
 
-		if (p + 7 < line.writePosition()) {
-			if (array[p + 0] == 'H' && array[p + 1] == 'T' && array[p + 2] == 'T' && array[p + 3] == 'P'
-					&& array[p + 4] == '/' && array[p + 5] == '1' && array[p + 6] == '.' && array[p + 7] == '1') {
+		if (p + 7 < line.length) {
+			if (line[p + 0] == 'H' && line[p + 1] == 'T' && line[p + 2] == 'T' && line[p + 3] == 'P'
+					&& line[p + 4] == '/' && line[p + 5] == '1' && line[p + 6] == '.' && line[p + 7] == '1') {
 				flags |= KEEP_ALIVE; // keep-alive for HTTP/1.1
 			}
 		}
@@ -179,8 +173,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		if (method == GET || method == DELETE) {
 			contentLength = 0;
 		}
-
-		line.recycle();
 	}
 
 	/**
@@ -200,7 +192,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		request.addHeader(header, value);
 	}
 
-	private void writeHttpResult(HttpResponse httpResponse) {
+	private void writeHttpResponse(HttpResponse httpResponse) {
 		httpResponse.addHeader((flags & KEEP_ALIVE) != 0 ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
 		writeHttpMessage(httpResponse);
 	}
@@ -224,7 +216,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 					if (e == null) {
 						if (inspector != null) inspector.onHttpResponse(request, response);
 						switchPool(server.poolReadWrite);
-						writeHttpResult(response);
+						writeHttpResponse(response);
 					} else {
 						if (inspector != null) inspector.onServletException(request, e);
 						switchPool(server.poolReadWrite);
@@ -265,7 +257,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	private void writeException(Throwable e) {
-		writeHttpResult(server.formatHttpError(e));
+		writeHttpResponse(server.formatHttpError(e));
 	}
 
 	@Override

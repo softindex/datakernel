@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -32,6 +33,8 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -151,12 +154,12 @@ public class AsyncHttpClientTest {
 	}
 
 	@Test
-	public void testActiveRequestsCounter() throws IOException {
+	public void testActiveRequestsCounter() throws IOException, ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
+		List<SettableStage<HttpResponse>> responses = new ArrayList<>();
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				request ->
-						new SettableStage<>())
+				request -> Stage.ofCallback(responses::add))
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
 		server.listen();
@@ -174,8 +177,9 @@ public class AsyncHttpClientTest {
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
-				.whenComplete(($, e) -> {
+				.thenRunEx(() -> {
 					server.close();
+					responses.forEach(response -> response.set(HttpResponse.ok200()));
 
 					inspector.getTotalRequests().refresh(eventloop.currentTimeMillis());
 					inspector.getHttpTimeouts().refresh(eventloop.currentTimeMillis());

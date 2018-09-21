@@ -63,7 +63,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	int maxKeepAliveRequests = -1;
 	private int readWriteTimeoutMillis = 0;
 
-	private int connectionsCount;
 	final ConnectionsLinkedList poolKeepAlive = new ConnectionsLinkedList();
 	final ConnectionsLinkedList poolReadWrite = new ConnectionsLinkedList();
 	final ConnectionsLinkedList poolServing = new ConnectionsLinkedList();
@@ -224,7 +223,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
 			if (readWriteTimeoutMillis != 0)
 				poolReadWriteExpired += poolReadWrite.closeExpiredConnections(eventloop.currentTimeMillis() - readWriteTimeoutMillis, READ_TIMEOUT_ERROR);
-			if (connectionsCount != 0)
+			if (getConnectionsCount() != 0)
 				scheduleExpiredConnectionsCheck();
 		});
 	}
@@ -232,7 +231,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@Override
 	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
 		assert eventloop.inEventloopThread();
-		connectionsCount++;
 		if (expiredConnectionsCheck == null)
 			scheduleExpiredConnectionsCheck();
 		HttpServerConnection connection = new HttpServerConnection(eventloop, remoteAddress, socket, this, servlet, headerChars);
@@ -243,8 +241,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private SettableStage<Void> closeStage;
 
 	void onConnectionClosed() {
-		connectionsCount--;
-		if (connectionsCount == 0 && closeStage != null) {
+		if (getConnectionsCount() == 0 && closeStage != null) {
 			closeStage.set(null);
 			closeStage = null;
 		}
@@ -254,7 +251,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	protected void onClose(SettableStage<Void> stage) {
 		poolKeepAlive.closeAllConnections();
 		keepAliveTimeoutMillis = 0;
-		if (connectionsCount == 0) {
+		if (getConnectionsCount() == 0) {
 			stage.set(null);
 		} else {
 			this.closeStage = stage;
@@ -263,7 +260,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	@JmxAttribute(description = "current number of connections", reducer = JmxReducerSum.class)
 	public int getConnectionsCount() {
-		return connectionsCount;
+		return poolKeepAlive.size() + poolReadWrite.size() + poolServing.size();
 	}
 
 	@JmxAttribute(reducer = JmxReducerSum.class)

@@ -28,13 +28,16 @@ public enum HttpMethod {
 	SEARCH, COPY, MOVE, LOCK, UNLOCK, MKCOL, PROPFIND, PROPPATCH;
 
 	protected final byte[] bytes;
+	protected final int size;
 
 	HttpMethod(String string) {
 		this.bytes = encodeAscii(string);
+		this.size = this.bytes.length;
 	}
 
 	HttpMethod() {
 		this.bytes = encodeAscii(this.name());
+		this.size = this.bytes.length;
 	}
 
 	public void write(ByteBuf buf) {

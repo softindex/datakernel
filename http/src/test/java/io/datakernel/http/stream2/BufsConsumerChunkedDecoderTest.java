@@ -5,6 +5,8 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
+import io.datakernel.serial.ByteBufsSupplier;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -21,8 +23,6 @@ import java.util.Random;
 import static io.datakernel.http.TestUtils.AssertingConsumer;
 import static io.datakernel.http.stream2.BufsConsumerChunkedDecoder.MALFORMED_CHUNK;
 import static io.datakernel.http.stream2.BufsConsumerChunkedDecoder.MALFORMED_CHUNK_LENGTH;
-import static io.datakernel.serial.ByteBufsSupplier.of;
-import static io.datakernel.serial.SerialSupplier.ofIterable;
 import static java.lang.System.arraycopy;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -252,7 +252,7 @@ public class BufsConsumerChunkedDecoderTest {
 	}
 
 	private void doTest(Exception exception) {
-		chunkedDecoder.setInput(of(ofIterable(list)));
+		chunkedDecoder.setInput(ByteBufsSupplier.of(SerialSupplier.ofIterable(list)));
 		eventloop.post(() -> chunkedDecoder.start()
 				.whenComplete(($, e) -> {
 					if (exception == null) {
@@ -264,7 +264,6 @@ public class BufsConsumerChunkedDecoderTest {
 
 		eventloop.run();
 	}
-
 
 	public static byte[] encode(byte[] data, boolean lastchunk) throws IOException {
 		try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {

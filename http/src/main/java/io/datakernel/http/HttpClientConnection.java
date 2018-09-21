@@ -100,45 +100,41 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public void onClosedWithError(Throwable e) {
 		if (inspector != null) inspector.onHttpError(this, result == null, e);
-		readQueue.recycle();
 		if (result != null) {
 			SettableStage<HttpResponse> callback = this.result;
 			eventloop.post(() -> callback.setException(e));
 			this.result = null;
 		}
-		onClosed();
 	}
 
 	@Override
-	protected void onFirstLine(ByteBuf line) throws ParseException {
-		if (line.peek(0) != 'H' || line.peek(1) != 'T' || line.peek(2) != 'T' || line.peek(3) != 'P' || line.peek(4) != '/' || line.peek(5) != '1') {
-			line.recycle();
+	protected void onFirstLine(byte[] line, int size) throws ParseException {
+		assert line.length >= 16;
+		if (line[0] != 'H' || line[1] != 'T' || line[2] != 'T' || line[3] != 'P' || line[4] != '/' || line[5] != '1') {
 			throw new ParseException("Invalid response");
 		}
 
 		int sp1;
-		if (line.peek(6) == SP) {
-			sp1 = line.readPosition() + 7;
-		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
-			if (line.peek(7) == '1') {
+		if (line[6] == SP) {
+			sp1 = 7;
+		} else if (line[6] == '.' && (line[7] == '1' || line[7] == '0') && line[8] == SP) {
+			if (line[7] == '1') {
 				flags |= KEEP_ALIVE;
 			}
-			sp1 = line.readPosition() + 9;
+			sp1 = 9;
 		} else {
-			line.recycle();
-			throw new ParseException("Invalid response: " + new String(line.array(), line.readPosition(), line.readRemaining()));
+			throw new ParseException("Invalid response: " + new String(line, 0, size));
 		}
 
 		int sp2;
-		for (sp2 = sp1; sp2 < line.writePosition(); sp2++) {
-			if (line.at(sp2) == SP) {
+		for (sp2 = sp1; sp2 < size; sp2++) {
+			if (line[sp2] == SP) {
 				break;
 			}
 		}
 
-		int statusCode = decodeDecimal(line.array(), sp1, sp2 - sp1);
+		int statusCode = decodeDecimal(line, sp1, sp2 - sp1);
 		if (!(statusCode >= 100 && statusCode < 600)) {
-			line.recycle();
 			throw new ParseException("Invalid HTTP Status Code " + statusCode);
 		}
 		response = HttpResponse.ofCode(statusCode);
@@ -146,8 +142,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			// Reset Content-Length for the case keep-alive connection
 			contentLength = 0;
 		}
-
-		line.recycle();
 	}
 
 	/**
@@ -185,14 +179,14 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onBodyReceived() {
 		if (response != null && (flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED)) {
 			onHttpMessageComplete();
-	}
+		}
 	}
 
 	@Override
 	protected void onBodySent() {
 		if (response != null && (flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED)) {
 			onHttpMessageComplete();
-	}
+		}
 	}
 
 	private void onHttpMessageComplete() {

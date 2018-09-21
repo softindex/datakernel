@@ -56,7 +56,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private AsyncDnsClient asyncDnsClient;
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
 
-	int connectionsCount;
 	final HashMap<InetSocketAddress, AddressLinkedList> addresses = new HashMap<>();
 	final ConnectionsLinkedList poolKeepAlive = new ConnectionsLinkedList();
 	final ConnectionsLinkedList poolReadWrite = new ConnectionsLinkedList();
@@ -291,7 +290,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
 			if (readWriteTimeoutMillis != 0)
 				poolReadWriteExpired += poolReadWrite.closeExpiredConnections(eventloop.currentTimeMillis() - readWriteTimeoutMillis, READ_TIMEOUT_ERROR);
-			if (connectionsCount != 0)
+			if (getConnectionsCount() != 0)
 				scheduleExpiredConnectionsCheck();
 		});
 	}
@@ -392,7 +391,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 						if (inspector != null) inspector.onConnect(request, connection);
 
-						connectionsCount++;
 						if (expiredConnectionsCheck == null)
 							scheduleExpiredConnectionsCheck();
 
@@ -420,8 +418,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private SettableStage<Void> closeStage;
 
 	public void onConnectionClosed() {
-		connectionsCount--;
-		if (connectionsCount == 0 && closeStage != null) {
+		if (getConnectionsCount() == 0 && closeStage != null) {
 			closeStage.set(null);
 			closeStage = null;
 		}
@@ -435,7 +432,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		poolKeepAlive.closeAllConnections();
 		assert addresses.isEmpty();
 		keepAliveTimeoutMillis = 0;
-		if (connectionsCount == 0) {
+		if (getConnectionsCount() == 0) {
 			assert poolReadWrite.isEmpty();
 			stage.set(null);
 		} else {
@@ -447,7 +444,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	// region jmx
 	@JmxAttribute(description = "current number of connections", reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsCount() {
-		return connectionsCount;
+		return poolKeepAlive.size() + poolReadWrite.size();
 	}
 
 	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)

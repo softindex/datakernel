@@ -19,6 +19,8 @@ package io.datakernel.http;
 import io.datakernel.annotation.Nullable;
 
 final class ConnectionsLinkedList {
+	private int size;
+
 	@Nullable
 	private AbstractHttpConnection first;
 	@Nullable
@@ -28,30 +30,31 @@ final class ConnectionsLinkedList {
 		return first == null;
 	}
 
+	public int size() {
+		return size;
+	}
+
 	public void addLastNode(AbstractHttpConnection node) {
-		assert node.prev == null && node.next == null;
+		size++;
 		if (last != null) {
-			assert last.next == null;
 			last.next = node;
 			node.prev = last;
 		} else {
-			assert first == null;
 			first = node;
 		}
 		last = node;
 	}
 
 	public void removeNode(AbstractHttpConnection node) {
+		size--;
 		if (node.prev != null) {
 			node.prev.next = node.next;
 		} else {
-			assert first == node;
 			first = node.next;
 		}
 		if (node.next != null) {
 			node.next.prev = node.prev;
 		} else {
-			assert last == node;
 			last = node.prev;
 		}
 		node.next = node.prev = null;
@@ -79,24 +82,13 @@ final class ConnectionsLinkedList {
 		return count;
 	}
 
-	public int closeAllConnections() {
-		int count = 0;
+	public void closeAllConnections() {
 		AbstractHttpConnection connection = first;
 		while (connection != null) {
 			AbstractHttpConnection next = connection.next;
 			connection.close();
 			assert connection.prev == null && connection.next == null;
 			connection = next;
-			count++;
 		}
-		return count;
-	}
-
-	public int size() {
-		int count = 0;
-		for (AbstractHttpConnection connection = first; connection != null; connection = connection.next) {
-			count++;
-		}
-		return count;
 	}
 }

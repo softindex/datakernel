@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventStats;
@@ -35,8 +34,8 @@ import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static junit.framework.TestCase.assertNotNull;
-import static junit.framework.TestCase.assertNull;
 import static org.junit.Assert.assertEquals;
 
 public class AbstractHttpConnectionTest {
@@ -78,37 +77,25 @@ public class AbstractHttpConnectionTest {
 
 	@Test
 	public void testGzipCompression() throws Exception {
-		AsyncServlet servlet = new AsyncServlet() {
-			boolean first = true;
-
-			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				HttpResponse response = HttpResponse.ok200().withBodyGzipCompression();
-				if (!first) {
-					return Stage.of(response.withBody((ByteBuf) null));
-				} else {
-					first = false;
-					return Stage.of(response.withBody(encodeAscii("Test message")));
-				}
-			}
-		};
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				request -> Stage.of(
+						HttpResponse.ok200()
+								.withBodyGzipCompression()
+								.withBody(encodeAscii("Test message"))))
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
 		HttpRequest request = HttpRequest.get(url).withHeader(ACCEPT_ENCODING, "gzip");
-		CompletableFuture<Void> future = client.request(request)
-				.thenCompose(response -> {
+		CompletableFuture<String> future = client.request(request)
+				.thenApply(response -> {
 					assertNotNull(response.getHeaderValue(CONTENT_ENCODING));
-					return client.request(HttpRequest.get(url)).thenCompose(innerResponse -> {
-						assertNull(innerResponse.getHeaderValue(CONTENT_ENCODING));
-						return stopClientAndServer(client, server);
-					});
+					return response.getBody().getString(UTF_8);
 				})
+				.thenRunEx(() -> stopClientAndServer(client, server))
 				.toCompletableFuture();
 
 		eventloop.run();
-		future.get();
+		assertEquals("Test message", future.get());
 	}
 
 	@Test

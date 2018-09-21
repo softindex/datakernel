@@ -37,6 +37,7 @@ import java.util.function.BiConsumer;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.lang.Math.max;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public abstract class AbstractHttpConnection {
@@ -99,7 +100,7 @@ public abstract class AbstractHttpConnection {
 		this.socket = socket;
 	}
 
-	protected abstract void onFirstLine(ByteBuf line) throws ParseException;
+	protected abstract void onFirstLine(byte[] line, int size) throws ParseException;
 
 	protected abstract void onHeadersReceived(SerialSupplier<ByteBuf> bodySupplier);
 
@@ -117,15 +118,17 @@ public abstract class AbstractHttpConnection {
 
 	public final void close() {
 		if (isClosed()) return;
+		onClosed();
 		socket.close();
 		readQueue.recycle();
-		onClosed();
 	}
 
 	protected final void closeWithError(Throwable e) {
 		if (isClosed()) return;
 		onClosedWithError(e);
+		onClosed();
 		socket.close();
+		readQueue.recycle();
 	}
 
 	static SerialSupplier<ByteBuf> bodySupplier(HttpMessage httpMessage) {
@@ -209,6 +212,29 @@ public abstract class AbstractHttpConnection {
 	}
 
 	@Nullable
+	private ByteBuf takeFirstLine() {
+		int offset = 0;
+		for (int i = 0; i < readQueue.remainingBufs(); i++) {
+			ByteBuf buf = readQueue.peekBuf(i);
+			for (int p = buf.readPosition(); p < buf.writePosition(); p++) {
+				if (buf.at(p) == LF) {
+					int size = offset + p - buf.readPosition() + 1;
+					ByteBuf line = ByteBufPool.allocate(max(16, size)); // allocate at least 16 bytes
+					readQueue.drainTo(line, size);
+					if (line.readRemaining() >= 2 && line.peek(line.readRemaining() - 2) == CR) {
+						line.moveWritePosition(-2);
+					} else {
+						line.moveWritePosition(-1);
+					}
+					return line;
+				}
+			}
+			offset += buf.readRemaining();
+		}
+		return null;
+	}
+
+	@Nullable
 	private ByteBuf takeHeader() {
 		int offset = 0;
 		for (int i = 0; i < readQueue.remainingBufs(); i++) {
@@ -283,7 +309,8 @@ public abstract class AbstractHttpConnection {
 		if (header == CONTENT_LENGTH) {
 			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.readPosition(), value.readRemaining());
 		} else if (header == CONNECTION) {
-			flags |= equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.readPosition(), value.readRemaining()) ? KEEP_ALIVE : 0;
+			flags = (byte) ((flags & ~KEEP_ALIVE) |
+					(equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.readPosition(), value.readRemaining()) ? KEEP_ALIVE : 0));
 		} else if (header == TRANSFER_ENCODING) {
 			flags |= equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.readPosition(), value.readRemaining()) ? CHUNKED : 0;
 		} else if (header == CONTENT_ENCODING) {
@@ -298,18 +325,23 @@ public abstract class AbstractHttpConnection {
 
 	private void readFirstLine() {
 		assert !isClosed();
+		ByteBuf buf = null;
 		try {
-			ByteBuf headerBuf = takeHeader();
-			if (headerBuf == null) { // states that more bytes are being required
+			buf = takeFirstLine();
+			if (buf == null) { // states that more bytes are being required
 				check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES), TOO_LONG_HEADER);
 				socket.read().whenComplete(firstLineConsumer);
 				return;
 			}
 
-			onFirstLine(headerBuf);
+			onFirstLine(buf.array(), buf.writePosition());
 		} catch (ParseException e) {
 			closeWithError(e);
 			return;
+		} finally {
+			if (buf != null) {
+				buf.recycle();
+			}
 		}
 
 		maxHeaders = MAX_HEADERS;

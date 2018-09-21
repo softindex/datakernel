@@ -103,7 +103,7 @@ public class TestUtils {
 			} else {
 				ByteBuf actualBuf = queue.takeRemaining();
 				if (expectedByteArray != null) {
-					byte[] actualByteArray = actualBuf.asArray();
+					byte[] actualByteArray = actualBuf.getArray();
 					assertArrayEquals(expectedByteArray, actualByteArray);
 				}
 				if (expectedString != null) {
