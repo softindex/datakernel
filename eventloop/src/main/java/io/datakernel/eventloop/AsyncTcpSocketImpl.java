@@ -449,7 +449,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public void closeWithError(@Nullable Throwable e) {
 		assert eventloop.inEventloopThread();
 		if (channel == null) return;
-		eventloop.closeChannel(channel);
+		eventloop.closeChannel(channel, key);
 		channel = null;
 		key = null;
 		connectionCount.decrementAndGet();

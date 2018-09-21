@@ -160,7 +160,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 			key = channel.register(eventloop.ensureSelector(), ops, this);
 		} catch (IOException e) {
 			eventloop.post(() -> {
-				eventloop.closeChannel(channel);
+				eventloop.closeChannel(channel, key);
 				eventHandler.onClosedWithError(e);
 			});
 		}
@@ -265,7 +265,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		if (key == null) {
 			return;
 		}
-		eventloop.closeChannel(key);
+		eventloop.closeChannel(channel, key);
 		key = null;
 		deepRecycle(writeQueue);
 	}

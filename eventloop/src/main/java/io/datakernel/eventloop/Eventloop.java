@@ -49,6 +49,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.emptyIterator;
 
@@ -215,30 +216,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	// endregion
 
-	public final class Scope implements AutoCloseable {
-		private final Eventloop previousEventloop;
-		private boolean closed;
-
-		public Scope(Eventloop previousEventloop) {
-			this.previousEventloop = previousEventloop;
-		}
-
-		@Override
-		public void close() {
-			if (closed) return;
-			closed = true;
-			if (previousEventloop == null) {
-				CURRENT_EVENTLOOP.remove();
-			} else {
-				CURRENT_EVENTLOOP.set(previousEventloop);
-			}
-		}
-	}
-
-	public Scope useCurrentThread() {
-		Eventloop previousEventloop = CURRENT_EVENTLOOP.get();
-		CURRENT_EVENTLOOP.set(this);
-		return new Scope(previousEventloop);
+	@Nullable
+	public Selector getSelector() {
+		return selector;
 	}
 
 	private static final String NO_CURRENT_EVENTLOOP_ERROR = "Trying to start async operations prior eventloop.run(), or from outside of eventloop.run() \n" +
@@ -294,21 +274,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return selector;
 	}
 
-	public void closeChannel(SelectionKey channelKey) {
-		if (channelKey.isValid()) {
-			cancelledKeys++;
-		}
-		SelectableChannel channel = channelKey.channel();
-		try {
-			channel.close();
-		} catch (IOException e) {
-			logger.warn("Failed to close channel {}", channel, e);
-		}
-	}
-
-	public void closeChannel(SelectableChannel channel) {
-		if (!channel.isOpen()) return;
-		SelectionKey key = channel.keyFor(selector);
+	public void closeChannel(@Nullable SelectableChannel channel, @Nullable SelectionKey key) {
+		checkArgument(channel != null || key == null);
+		if (channel == null || !channel.isOpen()) return;
 		if (key != null && key.isValid()) {
 			cancelledKeys++;
 		}
@@ -663,12 +631,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		AcceptCallback acceptCallback = (AcceptCallback) key.attachment();
 		for (; ; ) {
-			SocketChannel socketChannel;
+			SocketChannel channel;
 			try {
-				socketChannel = serverSocketChannel.accept();
-				if (socketChannel == null)
+				channel = serverSocketChannel.accept();
+				if (channel == null)
 					break;
-				socketChannel.configureBlocking(false);
+				channel.configureBlocking(false);
 			} catch (ClosedChannelException e) {
 				break;
 			} catch (IOException e) {
@@ -677,10 +645,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 
 			try {
-				acceptCallback.onAccept(socketChannel);
+				acceptCallback.onAccept(channel);
 			} catch (Throwable e) {
 				recordFatalError(e, acceptCallback);
-				closeChannel(socketChannel);
+				closeChannel(channel, null);
 			}
 		}
 	}
@@ -694,25 +662,25 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private void onConnect(SelectionKey key) {
 		assert inEventloopThread();
 		SettableStage<SocketChannel> connectStage = (SettableStage<SocketChannel>) key.attachment();
-		SocketChannel socketChannel = (SocketChannel) key.channel();
+		SocketChannel channel = (SocketChannel) key.channel();
 		boolean connected;
 		try {
-			connected = socketChannel.finishConnect();
+			connected = channel.finishConnect();
 		} catch (IOException e) {
-			closeChannel(socketChannel);
+			closeChannel(channel, key);
 			connectStage.setException(e);
 			return;
 		}
 
 		try {
 			if (connected) {
-				connectStage.set(socketChannel);
+				connectStage.set(channel);
 			} else {
 				connectStage.setException(new StacklessException("Not connected"));
 			}
 		} catch (Throwable e) {
-			recordFatalError(e, socketChannel);
-			closeChannel(socketChannel);
+			recordFatalError(e, channel);
+			closeChannel(channel, null);
 		}
 	}
 
@@ -728,7 +696,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			handler.onReadReady();
 		} catch (Throwable e) {
 			recordFatalError(e, handler);
-			closeChannel(key);
+			closeChannel(key.channel(), null);
 		}
 	}
 
@@ -744,7 +712,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			handler.onWriteReady();
 		} catch (Throwable e) {
 			recordFatalError(e, handler);
-			closeChannel(key);
+			closeChannel(key.channel(), null);
 		}
 	}
 
@@ -759,17 +727,17 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	public ServerSocketChannel listen(InetSocketAddress address, ServerSocketSettings serverSocketSettings, AcceptCallback acceptCallback) throws IOException {
 		assert inEventloopThread();
-		ServerSocketChannel serverChannel = null;
+		ServerSocketChannel serverSocketChannel = null;
 		try {
-			serverChannel = ServerSocketChannel.open();
-			serverSocketSettings.applySettings(serverChannel);
-			serverChannel.configureBlocking(false);
-			serverChannel.bind(address, serverSocketSettings.getBacklog());
-			serverChannel.register(ensureSelector(), SelectionKey.OP_ACCEPT, acceptCallback);
-			return serverChannel;
+			serverSocketChannel = ServerSocketChannel.open();
+			serverSocketSettings.applySettings(serverSocketChannel);
+			serverSocketChannel.configureBlocking(false);
+			serverSocketChannel.bind(address, serverSocketSettings.getBacklog());
+			serverSocketChannel.register(ensureSelector(), SelectionKey.OP_ACCEPT, acceptCallback);
+			return serverSocketChannel;
 		} catch (IOException e) {
-			if (serverChannel != null) {
-				closeChannel(serverChannel);
+			if (serverSocketChannel != null) {
+				closeChannel(serverSocketChannel, null);
 			}
 			throw e;
 		}
@@ -829,26 +797,26 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	public Stage<SocketChannel> connect(SocketAddress address, long timeout) {
 		assert inEventloopThread();
-		SocketChannel socketChannel = null;
 		SettableStage<SocketChannel> stage = new SettableStage<>();
+		SocketChannel channel = null;
 		try {
-			socketChannel = SocketChannel.open();
-			socketChannel.configureBlocking(false);
-			socketChannel.connect(address);
+			channel = SocketChannel.open();
+			channel.configureBlocking(false);
+			channel.connect(address);
 
-			SelectionKey key = socketChannel.register(ensureSelector(), SelectionKey.OP_CONNECT, stage);
+			SelectionKey key = channel.register(ensureSelector(), SelectionKey.OP_CONNECT, stage);
 
 			if (timeout != 0) {
 				ScheduledRunnable scheduledTimeout = delay(timeout, () -> {
-					closeChannel(key);
+					closeChannel(key.channel(), key);
 					stage.setException(CONNECT_TIMEOUT);
 				});
 
 				stage.whenComplete(($, throwable) -> scheduledTimeout.cancel());
 			}
 		} catch (IOException e) {
-			if (socketChannel != null) {
-				closeChannel(socketChannel);
+			if (channel != null) {
+				closeChannel(channel, null);
 			}
 			try {
 				stage.setException(e);

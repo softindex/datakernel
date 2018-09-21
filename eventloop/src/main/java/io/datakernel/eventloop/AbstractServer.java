@@ -207,7 +207,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		for (InetSocketAddress address : addresses) {
 			try {
 				ServerSocketChannel serverSocketChannel = eventloop.listen(address, serverSocketSettings,
-						chan -> AbstractServer.this.doAccept(chan, address, ssl));
+						channel -> AbstractServer.this.doAccept(channel, address, ssl));
 				serverSocketChannels.add(serverSocketChannel);
 			} catch (IOException e) {
 				logger.error("Can't listen on [" + address + "]: " + this, e);
@@ -259,7 +259,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			if (serverSocketChannel == null) {
 				continue;
 			}
-			eventloop.closeChannel(serverSocketChannel);
+			eventloop.closeChannel(serverSocketChannel, serverSocketChannel.keyFor(eventloop.getSelector()));
 			it.remove();
 		}
 	}
@@ -284,19 +284,19 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		filteredAccepts.recordEvent();
 	}
 
-	private void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, boolean ssl) {
+	private void doAccept(SocketChannel channel, InetSocketAddress localAddress, boolean ssl) {
 		assert eventloop.inEventloopThread();
 
 		InetAddress remoteAddress;
 		try {
-			remoteAddress = ((InetSocketAddress) socketChannel.getRemoteAddress()).getAddress();
+			remoteAddress = ((InetSocketAddress) channel.getRemoteAddress()).getAddress();
 		} catch (IOException e) {
-			eventloop.closeChannel(socketChannel);
+			eventloop.closeChannel(channel, null);
 			return;
 		}
 
-		if (acceptFilter != null && acceptFilter.filterAccept(socketChannel, localAddress, remoteAddress, ssl)) {
-			onFilteredAccept(socketChannel, localAddress, remoteAddress, ssl);
+		if (acceptFilter != null && acceptFilter.filterAccept(channel, localAddress, remoteAddress, ssl)) {
+			onFilteredAccept(channel, localAddress, remoteAddress, ssl);
 			return;
 		}
 
@@ -304,11 +304,11 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		Eventloop workerServerEventloop = workerServer.getEventloop();
 
 		if (workerServerEventloop == this.eventloop) {
-			workerServer.doAccept(socketChannel, localAddress, remoteAddress, ssl, socketSettings);
+			workerServer.doAccept(channel, localAddress, remoteAddress, ssl, socketSettings);
 		} else {
-			onAccept(socketChannel, localAddress, remoteAddress, ssl);
+			onAccept(channel, localAddress, remoteAddress, ssl);
 			workerServerEventloop.execute(() ->
-					workerServer.doAccept(socketChannel, localAddress, remoteAddress, ssl, socketSettings));
+					workerServer.doAccept(channel, localAddress, remoteAddress, ssl, socketSettings));
 		}
 
 		if (acceptOnce) {
