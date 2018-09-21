@@ -23,7 +23,6 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.*;
-import io.datakernel.util.Taggable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +32,7 @@ import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_END_OF_STREAM_EXC
  * Represent the TCP connection which  processes received items with {@link SerialSupplier} and {@link SerialConsumer},
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
-public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>, Taggable {
+public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O> {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private final Eventloop eventloop = Eventloop.getCurrentEventloop();
@@ -51,8 +50,6 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	private boolean readDone;
 	private boolean writeDone;
-	@Nullable
-	private Object tag;
 
 	// region creators
 	private MessagingWithBinaryStreaming(AsyncTcpSocket socket, MessagingSerializer<I, O> serializer) {
@@ -169,18 +166,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	}
 
 	@Override
-	public void setTag(@Nullable Object tag) {
-		this.tag = tag;
-	}
-
-	@Nullable
-	@Override
-	public Object getTag() {
-		return tag;
-	}
-
-	@Override
 	public String toString() {
-		return "Messaging" + (tag != null ? '(' + tag.toString() + ')' : "{socket=" + socket + '}');
+		return this + " {socket=" + socket + "}";
 	}
 }

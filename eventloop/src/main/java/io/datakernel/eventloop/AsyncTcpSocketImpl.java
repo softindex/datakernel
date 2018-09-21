@@ -250,7 +250,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void updateInterests() {
 		if (reentrantCall || !isOpen()) return;
-		int newOps = (read != null ? SelectionKey.OP_READ : 0) + (write != null ? SelectionKey.OP_WRITE : 0);
+		int newOps = (read != null || readQueue.isEmpty() ? SelectionKey.OP_READ : 0) +
+				(write != null ? SelectionKey.OP_WRITE : 0);
 		if (key == null) {
 			ops = newOps;
 			doRegister();
@@ -290,8 +291,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public void onReadReady() {
 		reentrantCall = true;
 		doRead();
-		if (!readQueue.isEmpty() || readEndOfStream) {
-			SettableStage<ByteBuf> read = this.read;
+		SettableStage<ByteBuf> read = this.read;
+		if (read != null && (!readQueue.isEmpty() || readEndOfStream)) {
 			this.read = null;
 			read.set(readQueue.poll());
 		}
@@ -330,6 +331,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				buf.recycle();
 				if (inspector != null) inspector.onReadEndOfStream();
 				readEndOfStream = true;
+				if (writeEndOfStream && writeQueue.isEmpty()) {
+					doClose();
+				}
 				return;
 			}
 
@@ -437,7 +441,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				scheduledWriteTimeout = null;
 			}
 			if (writeEndOfStream) {
-				channel.shutdownOutput();
+				if (readEndOfStream) {
+					doClose();
+				} else {
+					channel.shutdownOutput();
+				}
 			}
 			return true;
 		} else {
@@ -449,10 +457,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public void closeWithError(@Nullable Throwable e) {
 		assert eventloop.inEventloopThread();
 		if (channel == null) return;
-		eventloop.closeChannel(channel, key);
-		channel = null;
-		key = null;
-		connectionCount.decrementAndGet();
+		doClose();
 		deepRecycle(readQueue);
 		deepRecycle(writeQueue);
 		if (scheduledWriteTimeout != null) {
@@ -471,6 +476,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			read.setException(e);
 			read = null;
 		}
+	}
+
+	private void doClose() {
+		eventloop.closeChannel(channel, key);
+		channel = null;
+		key = null;
+		connectionCount.decrementAndGet();
 	}
 
 	public boolean isOpen() {

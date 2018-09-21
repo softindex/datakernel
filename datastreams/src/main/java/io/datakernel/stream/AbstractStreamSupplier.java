@@ -67,8 +67,6 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	@Nullable
 	private ProduceStatus produceStatus;
 
-	private Object tag;
-
 	/**
 	 * Sets consumer for this supplier. At the moment of calling this method supplier shouldn't have consumer,
 	 * as well as consumer shouldn't have supplier, otherwise there will be error
@@ -250,16 +248,4 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		return emptySet();
 	}
 
-	public final Object getTag() {
-		return tag;
-	}
-
-	public final void setTag(Object tag) {
-		this.tag = tag;
-	}
-
-	@Override
-	public String toString() {
-		return tag != null ? tag.toString() : super.toString();
-	}
 }

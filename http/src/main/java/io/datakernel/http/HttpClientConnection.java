@@ -196,6 +196,18 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		if ((flags & KEEP_ALIVE) != 0 && client.keepAliveTimeoutMillis != 0) {
 			flags = 0;
+			socket.read()
+					.whenComplete((buf, e) -> {
+						if (e == null) {
+							if (buf != null) {
+								closeWithError(UNEXPECTED_READ);
+							} else {
+								close();
+							}
+						} else {
+							closeWithError(e);
+						}
+					});
 			client.returnToKeepAlivePool(this);
 		} else {
 			close();

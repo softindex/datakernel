@@ -49,8 +49,6 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private final SettableStage<Void> endOfStream = new SettableStage<>();
 	private final SettableStage<Void> acknowledgement = new SettableStage<>();
 
-	private Object tag;
-
 	/**
 	 * Sets wired supplier. It will sent data to this consumer
 	 *
@@ -140,19 +138,6 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	@Override
 	public Set<StreamCapability> getCapabilities() {
 		return emptySet();
-	}
-
-	public final Object getTag() {
-		return tag;
-	}
-
-	public final void setTag(Object tag) {
-		this.tag = tag;
-	}
-
-	@Override
-	public String toString() {
-		return tag != null ? tag.toString() : super.toString();
 	}
 
 }

@@ -932,14 +932,19 @@ public final class Stages {
 	}
 
 	private static void repeatImpl(Supplier<Stage<Void>> supplier, SettableStage<Void> cb) {
-		supplier.get()
-				.whenComplete(($, e) -> {
+		while (true) {
+			Stage<Void> stage = supplier.get();
+			if (!stage.hasResult()) {
+				stage.whenComplete(($, e) -> {
 					if (e == null) {
 						repeatImpl(supplier, cb);
 					} else {
 						cb.setException(e);
 					}
 				});
+				return;
+			}
+		}
 	}
 
 	public static <T> Stage<Void> loop(T seed, Predicate<T> test, Function<T, Stage<T>> next) {
@@ -950,8 +955,13 @@ public final class Stages {
 	}
 
 	private static <T> void loopImpl(T seed, Predicate<T> test, Function<T, Stage<T>> next, SettableStage<Void> cb) {
-		next.apply(seed)
-				.whenComplete((newSeed, e) -> {
+		while (true) {
+			Stage<T> stage = next.apply(seed);
+			if (stage.hasResult()) {
+				seed = stage.getResult();
+				if (!test.test(seed)) break;
+			} else {
+				stage.whenComplete((newSeed, e) -> {
 					if (e == null) {
 						if (test.test(newSeed)) {
 							loopImpl(newSeed, test, next, cb);
@@ -962,6 +972,9 @@ public final class Stages {
 						cb.setException(e);
 					}
 				});
+				return;
+			}
+		}
 	}
 
 }
