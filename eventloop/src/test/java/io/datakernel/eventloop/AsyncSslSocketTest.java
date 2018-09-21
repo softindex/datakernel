@@ -8,7 +8,6 @@ import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -27,13 +26,15 @@ import java.util.Random;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static io.datakernel.async.Cancellable.CLOSE_EXCEPTION;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serial.ByteBufsSupplier.of;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.assertFailure;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
-@Ignore
 public class AsyncSslSocketTest {
 	// region fields
 	@Rule
@@ -54,7 +55,8 @@ public class AsyncSslSocketTest {
 			.andThen(ByteBuf::asArray)
 			.andThen(ByteBufStrings::decodeAscii);
 
-	private static final ByteBufsParser<String> PARSER_LARGE = ByteBufsParser.ofFixedSize(100_000 + 25_000 * TEST_STRING.length())
+	public static final int LENGTH = 10_000 + TEST_STRING.length() * 1_000;
+	private static final ByteBufsParser<String> PARSER_LARGE = ByteBufsParser.ofFixedSize(LENGTH)
 			.andThen(ByteBuf::asArray)
 			.andThen(ByteBufStrings::decodeAscii);
 	private StringBuilder sentData;
@@ -88,10 +90,10 @@ public class AsyncSslSocketTest {
 		eventloop.connect(ADDRESS)
 				.whenResult(socketChannel -> {
 					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(eventloop, clientTcp, sslContext, Runnable::run);
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
 
 					clientSsl.write(wrapAscii(TEST_STRING))
-							.thenRunEx(() -> close(clientSsl, clientTcp));
+							.thenRunEx(clientSsl::close);
 				});
 
 		eventloop.run();
@@ -110,7 +112,7 @@ public class AsyncSslSocketTest {
 		eventloop.connect(ADDRESS)
 				.whenResult(socketChannel -> {
 					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(eventloop, clientTcp, sslContext, Runnable::run);
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
 
 					ByteBufsSupplier supplier = of(clientSsl.reader());
 					PARSER.parse(supplier)
@@ -118,8 +120,7 @@ public class AsyncSslSocketTest {
 								System.out.println(result);
 								assertEquals(TEST_STRING, result);
 							}))
-							.thenRunEx(() -> close(clientSsl, clientTcp))
-							.thenRunEx(server::close);
+							.thenRunEx(clientSsl::close);
 				});
 
 		eventloop.run();
@@ -133,7 +134,8 @@ public class AsyncSslSocketTest {
 							assertEquals(TEST_STRING, result);
 							return serverSsl.write(wrapAscii(result));
 						})
-						.whenComplete(assertComplete()))
+						.whenComplete(assertComplete())
+						.thenRunEx(serverSsl::close))
 				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
 				.withAcceptOnce(true);
 
@@ -142,7 +144,7 @@ public class AsyncSslSocketTest {
 		eventloop.connect(ADDRESS)
 				.whenResult(socketChannel -> {
 					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(eventloop, clientTcp, sslContext, Runnable::run);
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
 
 					clientSsl.write(wrapAscii(TEST_STRING))
 							.thenCompose($ -> {
@@ -153,7 +155,8 @@ public class AsyncSslSocketTest {
 								System.out.println(result);
 								assertEquals(TEST_STRING, result);
 							}))
-							.thenRunEx(() -> close(clientSsl, clientTcp));
+							.thenRunEx(clientSsl::close);
+
 				});
 
 		eventloop.run();
@@ -163,7 +166,10 @@ public class AsyncSslSocketTest {
 	public void sendsLargeAmountOfDataFromClientToServer() throws IOException {
 		server = SimpleServer.create(eventloop,
 				serverSsl -> PARSER_LARGE.parse(of(serverSsl.reader()))
-						.whenComplete(assertComplete(result -> assertEquals(result, sentData.toString())))
+						.whenComplete(assertComplete(result -> {
+							assertEquals(LENGTH, result.length());
+							assertEquals(result, sentData.toString());
+						}))
 						.thenRunEx(serverSsl::close))
 				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
 				.withAcceptOnce(true);
@@ -173,11 +179,11 @@ public class AsyncSslSocketTest {
 		eventloop.connect(ADDRESS)
 				.whenResult(socketChannel -> {
 					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(eventloop, clientTcp, sslContext, Runnable::run);
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
 
 					sendData(clientSsl)
 							.whenComplete(assertComplete())
-							.thenRunEx(() -> close(clientSsl, clientTcp));
+							.thenRunEx(clientSsl::close);
 				});
 
 		eventloop.run();
@@ -197,12 +203,40 @@ public class AsyncSslSocketTest {
 		eventloop.connect(ADDRESS)
 				.whenResult(socketChannel -> {
 					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(eventloop, clientTcp, sslContext, Runnable::run);
-
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
 					ByteBufsSupplier supplier = of(clientSsl.reader());
 					PARSER_LARGE.parse(supplier)
-							.whenComplete(assertComplete(result -> assertEquals(result, sentData.toString())))
-							.thenRunEx(() -> close(clientSsl, clientTcp));
+							.whenComplete(assertComplete(result -> {
+								assertEquals(LENGTH, result.length());
+								assertEquals(result, sentData.toString());
+							}))
+							.thenRunEx(clientSsl::close);
+				});
+
+		eventloop.run();
+	}
+
+	@Test
+	public void testClose() throws IOException {
+		server = SimpleServer.create(eventloop,
+				socket -> socket.write(wrapAscii("He"))
+						.thenRun(socket::close))
+				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
+				.withAcceptOnce(true);
+
+		server.listen();
+
+		eventloop.connect(ADDRESS)
+				.whenResult(socketChannel -> {
+					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
+
+					ByteBufsSupplier supplier = ByteBufsSupplier.of(clientSsl.reader());
+					PARSER.parse(supplier)
+							.whenComplete(assertFailure(e -> {
+								supplier.closeWithError(e);
+								assertSame(CLOSE_EXCEPTION, e);
+							}));
 				});
 
 		eventloop.run();
@@ -253,27 +287,19 @@ public class AsyncSslSocketTest {
 		return builder.toString();
 	}
 
-	void close(AsyncTcpSocket... sockets) {
-		for (AsyncTcpSocket socket : sockets) {
-			socket.close();
-		}
-	}
-
 	private Stage<Void> sendData(AsyncTcpSocket socket) {
-		String largeData = generateLargeString(100_000);
+		String largeData = generateLargeString(10_000);
 		ByteBuf largeBuf = wrapAscii(largeData);
 		sentData.append(largeData);
-		Stage<Void> write = socket.write(largeBuf);
 
-		Stage<Void> loop = Stages.loop(25_000, i -> i != 0,
-				i -> {
-					String smallData = "data_012345";
-					sentData.append(smallData);
-					return socket.write(wrapAscii(smallData))
-							.thenApply($ -> i - 1);
-				});
-
-		return Stages.all(write, loop);
+		return socket.write(largeBuf)
+				.thenCompose($ -> Stages.loop(1000, i -> i != 0,
+						i -> {
+							sentData.append(TEST_STRING);
+							return socket.write(wrapAscii(TEST_STRING))
+									.async()
+									.thenApply($2 -> i - 1);
+						}));
 	}
 	// endregion
 

@@ -382,7 +382,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 						assert host != null;
 
 						AsyncTcpSocket asyncTcpSocket = https ?
-								wrapClientSocket(eventloop, asyncTcpSocketImpl,
+								wrapClientSocket(asyncTcpSocketImpl,
 										host, request.getUrl().getPort(),
 										sslContext, sslExecutor) :
 								asyncTcpSocketImpl;

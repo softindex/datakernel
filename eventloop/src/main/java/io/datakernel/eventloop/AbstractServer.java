@@ -323,7 +323,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		onAccept(socketChannel, localAddress, remoteAddress, ssl);
 		AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
 				.withInspector(getSocketInspector(remoteAddress, localAddress, ssl));
-		AsyncTcpSocket asyncTcpSocket = ssl ? wrapServerSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
+		AsyncTcpSocket asyncTcpSocket = ssl ? wrapServerSocket(asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 		serve(asyncTcpSocket, remoteAddress);
 	}
 

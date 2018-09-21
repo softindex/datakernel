@@ -34,6 +34,7 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Recyclable.deepRecycle;
 
 public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEventHandler {
 	private static final MemSize DEFAULT_UDP_BUFFER_SIZE = MemSize.kilobytes(16);
@@ -266,10 +267,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		}
 		eventloop.closeChannel(key);
 		key = null;
-		for (UdpPacket packet : writeQueue) {
-			packet.recycle();
-		}
-		writeQueue.clear();
+		deepRecycle(writeQueue);
 	}
 
 	@Override

@@ -36,105 +36,101 @@ import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
 
-@SuppressWarnings("AssertWithSideEffects")
 public final class AsyncSslSocket implements AsyncTcpSocket {
-	private final Eventloop eventloop;
 	private final SSLEngine engine;
 	private final Executor executor;
 	private final AsyncTcpSocket upstream;
 
-	private ByteBuf net2engine = ByteBuf.empty();
+	private ByteBuf net2engine; // - null at first to trigger initial handshake
 	private ByteBuf engine2app = ByteBuf.empty();
 	private ByteBuf app2engine = ByteBuf.empty();
 
-	private boolean syncPosted = false;
+	@Nullable
 	private SettableStage<ByteBuf> read;
+	@Nullable
 	private SettableStage<Void> write;
 
 	// region builders
-	public static AsyncSslSocket wrapClientSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	public static AsyncSslSocket wrapClientSocket(AsyncTcpSocket asyncTcpSocket,
 			String host, int port,
 			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine(host, port);
 		sslEngine.setUseClientMode(true);
-		return create(eventloop, asyncTcpSocket, sslEngine, executor);
+		return create(asyncTcpSocket, sslEngine, executor);
 	}
 
-	public static AsyncSslSocket wrapClientSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	public static AsyncSslSocket wrapClientSocket(AsyncTcpSocket asyncTcpSocket,
 			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
 		sslEngine.setUseClientMode(true);
-		return create(eventloop, asyncTcpSocket, sslEngine, executor);
+		return create(asyncTcpSocket, sslEngine, executor);
 	}
 
-	public static AsyncSslSocket wrapServerSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	public static AsyncSslSocket wrapServerSocket(AsyncTcpSocket asyncTcpSocket,
 			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
 		sslEngine.setUseClientMode(false);
-		return create(eventloop, asyncTcpSocket, sslEngine, executor);
+		return create(asyncTcpSocket, sslEngine, executor);
 	}
 
-	private AsyncSslSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLEngine engine, Executor executor) {
-		this.eventloop = eventloop;
+	private AsyncSslSocket(AsyncTcpSocket asyncTcpSocket, SSLEngine engine, Executor executor) {
 		this.engine = engine;
 		this.executor = executor;
 		this.upstream = asyncTcpSocket;
 	}
 
-	public static AsyncSslSocket create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	public static AsyncSslSocket create(AsyncTcpSocket asyncTcpSocket,
 			SSLEngine engine, Executor executor) {
-		return new AsyncSslSocket(eventloop, asyncTcpSocket, engine, executor);
+		return new AsyncSslSocket(asyncTcpSocket, engine, executor);
 	}
 	// endregion
 
-	private void start() {
-		try {
-			engine.beginHandshake();
-			doSync();
-		} catch (SSLException e) {
-			upstream.close();
-			eventloop.post(() -> {
-				if (engine2app != null) {
-					closeWithError(e);
-				}
-				recycleByteBufs();
-			});
-		}
-	}
-
 	private <T> Stage<T> sanitize(Stage<T> stage) {
-		return stage.async().thenComposeEx((value, e) -> {
+		return stage.thenComposeEx((value, e) -> {
 			if (e == null) {
 				return Stage.of(value);
 			} else {
-				if (engine2app != null) {
-					closeWithError(e);
-				}
-				recycleByteBufs();
+				closeWithError(e);
 				return Stage.ofException(e);
 			}
 		});
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
-		upstream.closeWithError(e);
+	public Stage<ByteBuf> read() {
+		assert !isClosed() : "Cannot use read operation after socket has been closed";
+		this.read = null;
+		ensureHandShakeStarted();
+		if (engine2app.canRead()) {
+			ByteBuf readBuf = engine2app;
+			engine2app = ByteBuf.empty();
+			return Stage.of(readBuf);
+		}
+		SettableStage<ByteBuf> read = new SettableStage<>();
+		this.read = read;
+		sync();
+		return read;
 	}
 
 	@Override
-	public Stage<ByteBuf> read() {
-		if (read != null) return read;
-		read = new SettableStage<>();
-		if (!net2engine.canRead() && !engine2app.canRead()) {
-			doRead();
+	public Stage<Void> write(@Nullable ByteBuf buf) {
+		assert !isClosed() : "Cannot use write operation after socket has been closed";
+		if (buf == null) {
+			throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");
 		}
-		postSync();
-		return read;
+		ensureHandShakeStarted();
+		app2engine = ByteBufPool.append(app2engine, buf);
+		if (this.write != null) return write;
+		SettableStage<Void> write = new SettableStage<>();
+		this.write = write;
+		sync();
+		return write;
 	}
 
 	private void doRead() {
 		sanitize(upstream.read())
 				.whenResult(buf -> {
+					assert !isClosed();
 					if (buf != null) {
 						net2engine = ByteBufPool.append(net2engine, buf);
 						sync();
@@ -143,44 +139,26 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 						try {
 							engine.closeInbound();
 						} catch (SSLException e) {
-							if (app2engine != null) {
-								closeWithError(new CloseWithoutNotifyException(e));
-							}
-							upstream.close();
-							recycleByteBufs();
+							closeWithError(new CloseWithoutNotifyException(e));
 						}
 					}
 				});
 	}
 
-	@Override
-	public Stage<Void> write(@Nullable ByteBuf buf) {
-		if (buf == null) {
-			throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");
-		}
-		app2engine = ByteBufPool.append(app2engine, buf);
-		if (write != null) return write;
-		write = new SettableStage<>();
-		postSync();
-		return write;
-	}
-
-	@Override
-	public void close() {
-		if (engine2app == null) return;
-		engine2app.recycle();
-		engine2app = null;
-		app2engine.recycle();
-		app2engine = ByteBuf.empty();
-		engine.closeOutbound();
-		postSync();
-	}
-
-	private void recycleByteBufs() {
-		if (net2engine != null) net2engine.recycle();
-		if (engine2app != null) engine2app.recycle();
-		if (app2engine != null) app2engine.recycle();
-		net2engine = engine2app = app2engine = null;
+	private void doWrite(ByteBuf dstBuf) {
+		sanitize(upstream.write(dstBuf))
+				.thenRun(() -> {
+					assert !isClosed();
+					if (engine.isOutboundDone()) {
+						close();
+						return;
+					}
+					if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write != null) {
+						SettableStage<Void> write = this.write;
+						this.write = null;
+						write.set(null);
+					}
+				});
 	}
 
 	private SSLEngineResult tryToUnwrap() throws SSLException {
@@ -242,117 +220,142 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		return result;
 	}
 
-	private void doWrite(ByteBuf dstBuf) {
-		sanitize(upstream.write(dstBuf))
-				.thenRun(() -> {
-					if (engine.isOutboundDone()) {
-						upstream.close();
-						recycleByteBufs();
-						return;
-					}
-					if (engine2app != null && !app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write != null) {
-						SettableStage<Void> write = this.write;
-						this.write = null;
-						write.set(null);
-					}
-				});
-	}
-
-	private void executeTasks() {
-		while (true) {
-			Runnable task = engine.getDelegatedTask();
-			if (task == null) break;
-			executor.execute(() -> {
-				task.run();
-				eventloop.execute(() -> {
-					if (net2engine == null) return;
-					sync();
-				});
-			});
-		}
-	}
-
-	private void postSync() {
-		if (!syncPosted) {
-			syncPosted = true;
-			eventloop.post(this::sync);
-		}
-	}
-
-	private void sync() {
-		syncPosted = false;
-		try {
-			doSync();
-		} catch (SSLException e) {
-			upstream.close();
-			if (engine2app != null) {
-				closeWithError(e);
-			}
-			recycleByteBufs();
-		}
-	}
-
-	@SuppressWarnings("UnusedAssignment")
-	private void doSync() throws SSLException {
-		HandshakeStatus handshakeStatus;
+	/**
+	 * This method is used for handling handshake routine as well as sending close_notify message to recepient
+	 */
+	private void doHandshake() throws SSLException {
 		SSLEngineResult result = null;
 		while (true) {
 			if (result != null && result.getStatus() == CLOSED) {
-				upstream.close();
-				recycleByteBufs();
-				break;
+				close();
+				return;
 			}
-			handshakeStatus = engine.getHandshakeStatus();
+
+			HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
 			if (handshakeStatus == NEED_WRAP) {
 				result = tryToWrap();
 			} else if (handshakeStatus == NEED_UNWRAP) {
 				result = tryToUnwrap();
 				if (result.getStatus() == BUFFER_UNDERFLOW) {
 					doRead();
-					break;
+					return;
 				}
 			} else if (handshakeStatus == NEED_TASK) {
 				executeTasks();
 				return;
-			} else if (handshakeStatus == NOT_HANDSHAKING) {
-				if (result != null && result.getHandshakeStatus() == FINISHED) {
-					doRead();
-				}
-
-				// read data from net
-				if (net2engine.canRead()) {
-					do {
-						result = tryToUnwrap();
-					} while (net2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
-					if (result.getStatus() == BUFFER_UNDERFLOW) {
-						doRead();
-					}
-				}
-
-				// write data to net
-				if (app2engine.canRead()) {
-					do {
-						result = tryToWrap();
-					} while (app2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
-				}
-				break;
-			} else
-				break;
-		}
-
-		if (engine2app != null && read != null && engine2app.canRead()) {
-			SettableStage<ByteBuf> read = this.read;
-			this.read = null;
-			ByteBuf readBuf = engine2app;
-			engine2app = ByteBuf.empty();
-			read.set(readBuf);
-		}
-
-		if (engine2app != null && result != null && result.getStatus() == CLOSED) {
-			SettableStage<ByteBuf> read = this.read;
-			this.read = null;
-			read.set(null);
+			} else {
+				doSync();
+				return;
+			}
 		}
 	}
 
+	private void executeTasks() {
+		while (true) {
+			Runnable task = engine.getDelegatedTask();
+			if (task == null) break;
+			Stage.ofRunnable(executor, task)
+					.thenRun(() -> {
+						if (engine2app == null) return;
+						try {
+							doHandshake();
+						} catch (SSLException e) {
+							closeWithError(e);
+						}
+					});
+		}
+	}
+
+	private void sync() {
+		try {
+			doSync();
+		} catch (SSLException e) {
+			closeWithError(e);
+		}
+	}
+
+	private void doSync() throws SSLException {
+		SSLEngineResult result = null;
+		HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
+
+		if (handshakeStatus != NOT_HANDSHAKING) {
+			doHandshake();
+			return;
+		}
+
+		// write data to net
+		if (app2engine.canRead()) {
+			do {
+				result = tryToWrap();
+			}
+			while (!isClosed() && app2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
+		}
+
+		if (isClosed()) {
+			return;
+		}
+
+		// read data from net
+		if (net2engine.canRead()) {
+			do {
+				result = tryToUnwrap();
+			} while (net2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
+
+			if (read != null && engine2app.canRead()) {
+				SettableStage<ByteBuf> read = this.read;
+				this.read = null;
+				ByteBuf readBuf = engine2app;
+				engine2app = ByteBuf.empty();
+				read.set(readBuf);
+				return;
+			}
+		}
+
+		if (result != null && !isClosed() && result.getStatus() == CLOSED) {
+			close();
+			return;
+		}
+
+		doRead();
+	}
+
+	private void ensureHandShakeStarted() {
+		if (net2engine == null) {
+			try {
+				engine.beginHandshake();
+				net2engine = ByteBuf.empty();
+			} catch (SSLException e) {
+				closeWithError(e);
+			}
+		}
+	}
+
+	private boolean isClosed() {
+		return app2engine == null;
+	}
+
+	@SuppressWarnings("AssignmentToNull") // bufs set to null only when socket is closing
+	private void recycleByteBufs() {
+		if (net2engine != null) net2engine.recycle();
+		if (engine2app != null) engine2app.recycle();
+		if (app2engine != null) app2engine.recycle();
+		net2engine = engine2app = app2engine = null;
+	}
+
+	@Override
+	public void closeWithError(Throwable e) {
+		if (isClosed()) return;
+		engine.closeOutbound();
+		sync(); // sync is used here to send close_notify message to recepient
+		recycleByteBufs();
+		upstream.closeWithError(e);
+		if (write != null) {
+			write.setException(e);
+			write = null;
+		}
+		if (read != null) {
+			read.setException(e);
+			read = null;
+		}
+	}
 }
