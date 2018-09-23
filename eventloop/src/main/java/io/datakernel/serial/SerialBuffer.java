@@ -9,6 +9,8 @@ import static io.datakernel.util.Recyclable.deepRecycle;
 import static java.lang.Integer.numberOfLeadingZeros;
 
 public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
+	private Exception exception;
+
 	@SuppressWarnings("unchecked")
 	private Object[] elements;
 	private int tail;
@@ -21,8 +23,6 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	private SettableStage<Void> put;
 	@Nullable
 	private SettableStage<T> take;
-
-	private Throwable exception;
 
 	public SerialBuffer(int bufferSize) {
 		this(0, bufferSize);
@@ -67,12 +67,15 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	}
 
 	@SuppressWarnings("unchecked")
-	public void add(@Nullable T value) {
+	public void add(@Nullable T value) throws Exception {
+		if (exception != null) throw exception;
+
 		if (take != null) {
 			assert isEmpty();
 			SettableStage<T> take = this.take;
 			this.take = null;
 			take.set(value);
+			if (exception != null) throw exception;
 			return;
 		}
 
@@ -98,6 +101,22 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 		tail = elements.length;
 	}
 
+	@Nullable
+	@SuppressWarnings("unchecked")
+	public T poll() throws Exception {
+		if (exception != null) throw exception;
+
+		if (put != null && willBeExhausted()) {
+			T item = doPoll();
+			SettableStage<Void> put = this.put;
+			this.put = null;
+			put.set(null);
+			return item;
+		}
+
+		return !isEmpty() ? doPoll() : null;
+	}
+
 	private T doPoll() {
 		assert head != tail;
 		@SuppressWarnings("unchecked")
@@ -111,6 +130,7 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	@SuppressWarnings("unchecked")
 	public Stage<Void> put(@Nullable T value) {
 		assert put == null;
+		if (exception != null) return Stage.ofException(exception);
 
 		if (take != null) {
 			assert isEmpty();
@@ -134,6 +154,7 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	@SuppressWarnings("unchecked")
 	public Stage<T> take() {
 		assert take == null;
+		if (exception != null) return Stage.ofException(exception);
 
 		if (put != null && willBeExhausted()) {
 			assert !isEmpty();
@@ -152,27 +173,10 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 		return take;
 	}
 
-	@Nullable
-	@SuppressWarnings("unchecked")
-	public T poll() {
-		if (put != null && willBeExhausted()) {
-			T item = doPoll();
-			SettableStage<Void> put = this.put;
-			this.put = null;
-			put.set(null);
-			return item;
-		}
-
-		return !isEmpty() ? doPoll() : null;
-	}
-
-	public Throwable getException() {
-		return exception;
-	}
-
 	@Override
 	public void closeWithError(Throwable e) {
-		this.exception = e;
+		if (exception != null) return;
+		exception = e instanceof Exception ? (Exception) e : new RuntimeException(e);
 		if (put != null) {
 			put.setException(e);
 			put = null;
@@ -185,5 +189,10 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 			deepRecycle(elements[i]);
 		}
 		elements = null;
+	}
+
+	@Nullable
+	public Throwable getException() {
+		return exception;
 	}
 }

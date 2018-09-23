@@ -8,6 +8,8 @@ import io.datakernel.async.Stage;
 import static io.datakernel.util.Recyclable.deepRecycle;
 
 public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
+	private Exception exception;
+
 	@Nullable
 	private T value;
 
@@ -30,6 +32,7 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	@SuppressWarnings("unchecked")
 	public Stage<Void> put(@Nullable T value) {
 		assert put == null;
+		if (exception != null) return Stage.ofException(exception);
 
 		if (take != null) {
 			SettableStage<T> take = this.take;
@@ -47,6 +50,7 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	@Override
 	public Stage<T> take() {
 		assert take == null;
+		if (exception != null) return Stage.ofException(exception);
 
 		if (put != null) {
 			T value = this.value;
@@ -64,6 +68,8 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void closeWithError(Throwable e) {
+		if (exception != null) return;
+		exception = e instanceof Exception ? (Exception) e : new RuntimeException(e);
 		if (put != null) {
 			put.setException(e);
 			put = null;
@@ -74,5 +80,10 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 		}
 		deepRecycle(value);
 		value = null;
+	}
+
+	@Nullable
+	public Throwable getException() {
+		return exception;
 	}
 }

@@ -55,11 +55,11 @@ public final class Try<T> {
 	}
 
 	@Nullable
-	public T get() throws Throwable {
+	public T get() throws Exception {
 		if (throwable == null) {
 			return result;
 		}
-		throw throwable;
+		throw throwable instanceof Exception ? (Exception) throwable : new RuntimeException(throwable);
 	}
 
 	@Nullable

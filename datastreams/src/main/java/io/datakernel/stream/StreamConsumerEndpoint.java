@@ -29,7 +29,14 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 	@Override
 	public void accept(T item) {
 		assert item != null;
-		buffer.add(item);
+		try {
+			buffer.add(item);
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			closeWithError(e);
+			return;
+		}
 		if (buffer.isSaturated()) {
 			getSupplier().suspend();
 		}

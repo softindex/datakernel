@@ -20,7 +20,7 @@ public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 		this.buffer = new SerialBuffer<>(bufferMinSize, bufferMaxSize);
 	}
 
-	public void add(T item) {
+	public void add(T item) throws Exception {
 		postProduce();
 		buffer.add(item);
 	}
@@ -33,7 +33,7 @@ public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 	@SuppressWarnings({"unchecked", "ConstantConditions"})
 	@Override
 	protected void produce(AsyncProduceController async) {
-		if (buffer.getException() == null) {
+		try {
 			while (!buffer.isEmpty()) {
 				T item = buffer.poll();
 				if (item != null) {
@@ -42,8 +42,10 @@ public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 					sendEndOfStream();
 				}
 			}
-		} else {
-			closeWithError(buffer.getException());
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			closeWithError(e);
 		}
 	}
 

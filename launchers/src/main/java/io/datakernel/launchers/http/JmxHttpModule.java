@@ -414,7 +414,7 @@ public class JmxHttpModule extends AbstractModule {
 						return loader.getResource("table_template.html")
 								.thenApply(buf -> HttpResponse.ok200()
 										.withBody(String.format(
-												buf.getString(UTF_8),
+												buf.asString(UTF_8),
 												htmlEscape(prettyPrintSimpleKeyName(key)) + (workerId != null ? " (worker id: " + workerId + ")" : ""),
 												tableHTML(finalInstance)
 										).getBytes(UTF_8)));
