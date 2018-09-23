@@ -87,6 +87,7 @@ public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 
 	@Override
 	public Stage<ByteBuf> get() {
+		assert !isClosed();
 		if (finished) {
 			return Stage.of(null);
 		}

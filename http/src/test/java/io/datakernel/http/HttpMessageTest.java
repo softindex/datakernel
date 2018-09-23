@@ -37,8 +37,7 @@ public class HttpMessageTest {
 
 	private static void assertHttpMessageEquals(String expected, HttpMessage message) {
 		ByteBuf buf = AbstractHttpConnection.bodySupplier(message).toCollector(ByteBufQueue.collector()).getResult();
-		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
-		buf.recycle();
+		assertEquals(expected, ByteBufStrings.asAscii(buf));
 		message.recycle();
 	}
 

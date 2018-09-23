@@ -28,6 +28,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpHeaders.DATE;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
@@ -141,34 +142,27 @@ public abstract class HttpMessage {
 	}
 
 	public ByteBuf getBody() {
-		return checkNotNull(body);
-	}
-
-	public ByteBuf detachBody() {
 		ByteBuf body = checkNotNull(this.body);
 		this.body = null;
 		return body;
 	}
 
 	public Stage<ByteBuf> getBodyStage() {
+		checkState(body != null ^ bodySupplier != null);
 		if (body != null) return Stage.of(body);
-		if (bodySupplier != null) {
-			return bodySupplier.toCollector(ByteBufQueue.collector())
-					.whenComplete((buf, e) -> {
-						this.body = buf;
-						this.bodySupplier = null;
-					});
-		}
-		return Stage.of(ByteBuf.empty());
+		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
+		this.bodySupplier = null;
+		return bodySupplier.toCollector(ByteBufQueue.collector());
 	}
 
 	protected Stage<? extends HttpMessage> doEnsureBody() {
 		if (body != null) return Stage.of(this);
+		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		if (bodySupplier != null) {
+			this.bodySupplier = null;
 			return bodySupplier.toCollector(ByteBufQueue.collector())
 					.thenComposeEx((buf, e) -> {
 						this.body = buf;
-						this.bodySupplier = null;
 						return e == null ? Stage.of(this) : Stage.ofException(e);
 					});
 		}
@@ -176,9 +170,11 @@ public abstract class HttpMessage {
 	}
 
 	public SerialSupplier<ByteBuf> getBodyStream() {
+		checkState(body != null || bodySupplier != null);
 		if (body != null) return SerialSupplier.of(body);
-		if (bodySupplier != null) return bodySupplier;
-		return SerialSupplier.of(ByteBuf.empty());
+		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
+		this.bodySupplier = null;
+		return bodySupplier;
 	}
 
 	public void setBody(ByteBuf body) {

@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -33,21 +34,6 @@ import static io.datakernel.util.Recyclable.deepRecycle;
 
 public interface SerialSupplier<T> extends Cancellable {
 	Stage<T> get();
-
-	default Stage<T> get(Consumer<T> preprocessor) {
-		Stage<T> stage;
-		while (true) {
-			stage = this.get();
-			if (!stage.hasResult()) break;
-			T item = stage.getResult();
-			if (item != null) {
-				preprocessor.accept(item);
-				continue;
-			}
-			break;
-		}
-		return stage;
-	}
 
 	static <T> SerialSupplier<T> ofConsumer(Consumer<SerialConsumer<T>> consumer, SerialQueue<T> queue) {
 		consumer.accept(queue.getConsumer());
@@ -62,6 +48,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>(cancellable) {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return supplier.get();
 			}
 		};
@@ -71,6 +58,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>() {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return Stage.of(null);
 			}
 		};
@@ -89,6 +77,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>() {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return Stage.ofException(e);
 			}
 		};
@@ -102,6 +91,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>() {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return Stage.of(iterator.hasNext() ? iterator.next() : null);
 			}
 
@@ -121,6 +111,7 @@ public interface SerialSupplier<T> extends Cancellable {
 
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				if (supplier != null) return supplier.get();
 				return materializedStage.thenComposeEx((supplier, e) -> {
 					if (e == null) {
@@ -136,6 +127,25 @@ public interface SerialSupplier<T> extends Cancellable {
 			protected void onClosed(Throwable e) {
 				exception = e;
 				materializedStage.whenResult(supplier -> supplier.closeWithError(e));
+			}
+		};
+	}
+
+	static <T> SerialSupplier<T> ofLazyProvider(Supplier<? extends SerialSupplier<T>> provider) {
+		return new AbstractSerialSupplier<T>() {
+			private SerialSupplier<T> supplier;
+
+			@Override
+			public Stage<T> get() {
+				assert !isClosed();
+				if (supplier == null) supplier = provider.get();
+				return supplier.get();
+			}
+
+			@Override
+			protected void onClosed(Throwable e) {
+				if (supplier == null) supplier = provider.get();
+				supplier.closeWithError(e);
 			}
 		};
 	}
@@ -163,11 +173,11 @@ public interface SerialSupplier<T> extends Cancellable {
 		return fn.apply(this);
 	}
 
-
 	default SerialSupplier<T> async() {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return SerialSupplier.this.get().async();
 			}
 		};
@@ -178,6 +188,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return asyncExecutor.execute(supplier);
 			}
 		};
@@ -187,6 +198,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return SerialSupplier.this.get()
 						.whenResult(value -> { if (value != null) fn.accept(value);});
 			}
@@ -197,6 +209,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return SerialSupplier.this.get()
 						.thenCompose(item -> {
 							if (item != null) {
@@ -214,6 +227,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<V>(this) {
 			@Override
 			public Stage<V> get() {
+				assert !isClosed();
 				return SerialSupplier.this.get()
 						.thenApply(value -> value != null ? fn.apply(value) : null);
 			}
@@ -225,6 +239,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<V>(this) {
 			@Override
 			public Stage<V> get() {
+				assert !isClosed();
 				return SerialSupplier.this.get()
 						.thenCompose(value -> value != null ?
 								fn.apply(value) :
@@ -237,6 +252,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				while (true) {
 					Stage<T> stage = SerialSupplier.this.get();
 					if (stage.hasResult()) {
@@ -253,6 +269,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return SerialSupplier.this.get()
 						.thenCompose(value -> value != null ?
 								predicate.test(value)
@@ -269,6 +286,7 @@ public interface SerialSupplier<T> extends Cancellable {
 			@SuppressWarnings("unchecked")
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return SerialSupplier.this.get()
 						.thenComposeEx((item, e) -> {
 							if (e == null) {

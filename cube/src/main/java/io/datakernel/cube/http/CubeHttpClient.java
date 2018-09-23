@@ -37,11 +37,10 @@ import java.lang.reflect.Type;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
 import static io.datakernel.cube.http.Utils.*;
 import static io.datakernel.util.LogUtils.toLogger;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class CubeHttpClient implements ICube {
 	protected final Logger logger = LoggerFactory.getLogger(CubeHttpClient.class);
@@ -108,12 +107,7 @@ public final class CubeHttpClient implements ICube {
 	public Stage<QueryResult> query(CubeQuery query) {
 		return httpClient.request(buildRequest(query))
 				.thenCompose(httpResponse -> {
-					String response;
-					try {
-						response = decodeUtf8(httpResponse.getBody()); // TODO getBodyAsString
-					} catch (ParseException e) {
-						return Stage.ofException(new ParseException("Cube HTTP query failed. Invalid data received", e));
-					}
+					String response = httpResponse.getBody().asString(UTF_8);
 
 					if (httpResponse.getCode() != 200) {
 						return Stage.ofException(new ParseException("Cube HTTP query failed. Response code: " + httpResponse.getCode() + " Body: " + response));
@@ -133,8 +127,8 @@ public final class CubeHttpClient implements ICube {
 	private HttpRequest buildRequest(CubeQuery query) {
 		Map<String, String> urlParams = new LinkedHashMap<>();
 
-		urlParams.put(ATTRIBUTES_PARAM, query.getAttributes().stream().collect(Collectors.joining(",")));
-		urlParams.put(MEASURES_PARAM, query.getMeasures().stream().collect(Collectors.joining(",")));
+		urlParams.put(ATTRIBUTES_PARAM, String.join(",", query.getAttributes()));
+		urlParams.put(MEASURES_PARAM, String.join(",", query.getMeasures()));
 		urlParams.put(WHERE_PARAM, getAggregationPredicateJson().toJson(query.getWhere()));
 		urlParams.put(SORT_PARAM, formatOrderings(query.getOrderings()));
 		urlParams.put(HAVING_PARAM, getAggregationPredicateJson().toJson(query.getHaving()));

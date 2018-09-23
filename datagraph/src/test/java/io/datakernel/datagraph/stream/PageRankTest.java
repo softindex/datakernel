@@ -214,11 +214,14 @@ public class PageRankTest {
 			.setInstance(DatagraphClient.class, client)
 			.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
 		DatagraphEnvironment environment1 = environment.extend()
-			.set("items", asList(new Page(1, new long[]{1, 2, 3}), new Page(3, new long[]{1})))
-			.set("result", result1);
+			.with("items", asList(
+					new Page(1, new long[]{1, 2, 3}),
+					new Page(3, new long[]{1})))
+			.with("result", result1);
 		DatagraphEnvironment environment2 = environment.extend()
-			.set("items", asList(new Page(2, new long[]{1})))
-			.set("result", result2);
+			.with("items", asList(
+					new Page(2, new long[]{1})))
+			.with("result", result2);
 
 		DatagraphServer server1 = new DatagraphServer(eventloop, environment1).withListenAddress(address1);
 		DatagraphServer server2 = new DatagraphServer(eventloop, environment2).withListenAddress(address2);

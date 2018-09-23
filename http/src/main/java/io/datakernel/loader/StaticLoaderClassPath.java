@@ -1,7 +1,6 @@
 package io.datakernel.loader;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.HttpException;
@@ -12,8 +11,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.NoSuchFileException;
 import java.util.concurrent.ExecutorService;
-
-import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 
 class StaticLoaderClassPath implements StaticLoader {
 	private final ExecutorService executorService;
@@ -34,9 +31,9 @@ class StaticLoaderClassPath implements StaticLoader {
 			return Stage.ofException(HttpException.notFound404());
 		}
 
-	    return Stage.ofCallable(executorService, () -> wrapForReading(loadResource(file)))
-                .thenComposeEx((result, e) ->
-		                Stage.of(result, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
+	    return Stage.ofCallable(executorService, () -> ByteBuf.wrapForReading(loadResource(file)))
+                .thenComposeEx((buf, e) ->
+		                Stage.of(buf, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
     }
 
 	private byte[] loadResource(URL file) throws IOException {

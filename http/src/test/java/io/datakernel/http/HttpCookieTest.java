@@ -67,12 +67,12 @@ public class HttpCookieTest {
 				"Path=/test; Secure; HttpOnly; Alhambra site";
 		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		cookie.renderFull(buf);
-		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
+		assertEquals(expected, ByteBufStrings.asAscii(buf));
 	}
 
 	@Test
 	public void testRenderMany() {
-		Date date = new Date(987654321098l); // "Thu, 19 Apr 2001 04:25:21 GMT";
+		Date date = new Date(987654321098L); // "Thu, 19 Apr 2001 04:25:21 GMT";
 		HttpCookie cookie1 = HttpCookie.of("name1", "value1")
 				.withExpirationDate(date)
 				.withMaxAge(10)
@@ -89,7 +89,7 @@ public class HttpCookieTest {
 
 		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		HttpCookie.renderSimple(Arrays.asList(cookie1, cookie2, cookie3), buf);
-		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
+		assertEquals(expected, ByteBufStrings.asAscii(buf));
 	}
 
 	@Test

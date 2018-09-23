@@ -3,6 +3,7 @@ package io.global.globalsync.http;
 import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ToDoException;
 import io.datakernel.http.*;
 import io.datakernel.serial.SerialConsumer;
@@ -66,7 +67,7 @@ public class RawServerHttpClient implements RawServer {
 	private <T> Stage<T> processResult(HttpResponse r, @Nullable TypeAdapter<T> gson) {
 		if (r.getCode() != 200) Stage.ofException(HttpException.ofCode(r.getCode()));
 		try {
-			return Stage.of(gson != null ? fromJson(gson, r.getBody().getString(UTF_8)) : null);
+			return Stage.of(gson != null ? fromJson(gson, r.getBody().asString(UTF_8)) : null);
 		} catch (IOException e) {
 			return Stage.ofException(e);
 		}
@@ -122,12 +123,16 @@ public class RawServerHttpClient implements RawServer {
 				.<Optional<SignedData<RawSnapshot>>>thenCompose(r -> {
 					if (r.getCode() != 200)
 						return Stage.ofException(HttpException.ofCode(r.getCode()));
-					if (!r.getBody().canRead()) return Stage.of(Optional.empty());
-					try {
-						return Stage.of(Optional.of(
-								SignedData.ofBytes(r.getBody().getArray(), RawSnapshot::ofBytes)));
-					} catch (IOException e) {
-						return Stage.ofException(e);
+					try (ByteBuf body = r.getBody()) {
+						if (!body.canRead()) {
+							return Stage.of(Optional.empty());
+						}
+						try {
+							return Stage.of(Optional.of(
+									SignedData.ofBytes(body.getArray(), RawSnapshot::ofBytes)));
+						} catch (IOException e) {
+							return Stage.ofException(e);
+						}
 					}
 				});
 	}

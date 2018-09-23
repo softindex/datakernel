@@ -83,7 +83,7 @@ public class ContentTypeTest {
 		String expected = "application/json";
 		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		MediaTypes.render(JSON, buf);
-		String actual = decodeAscii(buf);
+		String actual = asAscii(buf);
 		assertEquals(expected, actual);
 	}
 
@@ -93,7 +93,7 @@ public class ContentTypeTest {
 		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		ContentType type = ContentType.of(HTML, StandardCharsets.UTF_8);
 		ContentType.render(type, buf);
-		String actual = decodeAscii(buf);
+		String actual = asAscii(buf);
 		assertEquals(expected, actual);
 	}
 
@@ -108,7 +108,7 @@ public class ContentTypeTest {
 		acts.add(AcceptMediaType.of(WEBP));
 		acts.add(AcceptMediaType.of(MediaTypes.ANY, 80));
 		AcceptMediaType.render(acts, buf);
-		String actual = decodeAscii(buf);
+		String actual = asAscii(buf);
 		assertEquals(expected, actual);
 	}
 }

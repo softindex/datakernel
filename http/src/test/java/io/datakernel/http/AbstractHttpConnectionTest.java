@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.*;
@@ -62,7 +61,7 @@ public class AbstractHttpConnectionTest {
 		Map<String, String> data = new HashMap<>();
 		CompletableFuture<Void> future = client.request(HttpRequest.get(url))
 				.whenResult(result -> {
-					data.put("body", decodeAscii(result.getBody()));
+					data.put("body", result.getBody().asString(UTF_8));
 					data.put("header", result.getHeader(CONTENT_TYPE));
 				})
 				.thenCompose($ -> stopClientAndServer(client, server))
@@ -89,7 +88,7 @@ public class AbstractHttpConnectionTest {
 		CompletableFuture<String> future = client.request(request)
 				.thenApply(response -> {
 					assertNotNull(response.getHeaderValue(CONTENT_ENCODING));
-					return response.getBody().getString(UTF_8);
+					return response.getBody().asString(UTF_8);
 				})
 				.thenRunEx(() -> stopClientAndServer(client, server))
 				.toCompletableFuture();

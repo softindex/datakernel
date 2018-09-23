@@ -13,6 +13,7 @@ public interface SerialQueue<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
+				assert !isClosed();
 				return put(value);
 			}
 		};
@@ -22,6 +23,7 @@ public interface SerialQueue<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return take();
 			}
 		};

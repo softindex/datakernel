@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.Recyclable.deepRecycle;
@@ -87,6 +88,7 @@ public interface SerialConsumer<T> extends Cancellable {
 
 			@Override
 			public Stage<Void> accept(T value) {
+				assert !isClosed();
 				if (value != null) {
 					return thisConsumer.accept(value);
 				}
@@ -99,6 +101,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>() {
 			@Override
 			public Stage<Void> accept(T value) {
+				assert !isClosed();
 				deepRecycle(value);
 				return Stage.ofException(e);
 			}
@@ -119,6 +122,7 @@ public interface SerialConsumer<T> extends Cancellable {
 
 			@Override
 			public Stage<Void> accept(T value) {
+				assert !isClosed();
 				if (consumer != null) return consumer.accept(value);
 				return materializedStage.thenComposeEx((consumer, e) -> {
 					if (e == null) {
@@ -139,6 +143,25 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
+	static <T> SerialConsumer<T> ofLazyProvider(Supplier<? extends SerialConsumer<T>> provider) {
+		return new AbstractSerialConsumer<T>() {
+			private SerialConsumer<T> consumer;
+
+			@Override
+			public Stage<Void> accept(@Nullable T value) {
+				assert !isClosed();
+				if (consumer == null) consumer = provider.get();
+				return consumer.accept(value);
+			}
+
+			@Override
+			protected void onClosed(Throwable e) {
+				if (consumer == null) consumer = provider.get();
+				consumer.closeWithError(e);
+			}
+		};
+	}
+
 	default <R> R apply(SerialConsumerFunction<T, R> fn) {
 		return fn.apply(this);
 	}
@@ -147,6 +170,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
+				assert !isClosed();
 				return SerialConsumer.this.accept(value).async();
 			}
 		};
@@ -156,6 +180,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
+				assert !isClosed();
 				return asyncExecutor.execute(() -> SerialConsumer.this.accept(value));
 			}
 		};
@@ -165,6 +190,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
+				assert !isClosed();
 				if (value != null) fn.accept(value);
 				return SerialConsumer.this.accept(value);
 			}
@@ -175,6 +201,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
+				assert !isClosed();
 				return value != null ?
 						Stages.all(SerialConsumer.this.accept(value), fn.accept(value)) :
 						SerialConsumer.this.accept(null);
@@ -186,6 +213,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<V>(this) {
 			@Override
 			public Stage<Void> accept(V value) {
+				assert !isClosed();
 				return SerialConsumer.this.accept(value != null ? fn.apply(value) : null);
 			}
 		};
@@ -195,6 +223,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<V>(this) {
 			@Override
 			public Stage<Void> accept(V value) {
+				assert !isClosed();
 				return value != null ?
 						fn.apply(value)
 								.thenCompose(SerialConsumer.this::accept) :
@@ -207,6 +236,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
+				assert !isClosed();
 				if (value != null && predicate.test(value)) {
 					return SerialConsumer.this.accept(value);
 				} else {
@@ -220,6 +250,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T value) {
+				assert !isClosed();
 				if (value != null) {
 					return predicate.test(value)
 							.thenCompose(test -> test ?
@@ -238,6 +269,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>() {
 			@Override
 			public Stage<Void> accept(@Nullable T value) {
+				assert !isClosed();
 				if (value != null) {
 					return SerialConsumer.this.accept(value)
 							.thenComposeEx(($, e) -> {

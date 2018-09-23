@@ -60,7 +60,8 @@ public final class NodeConsumerToList<T> implements Node {
 		Object object = taskContext.environment().get(listId);
 		if(object == null) {
 			object = new ArrayList<>();
-			taskContext.environment().set(listId, object);
+			taskContext.environment()
+					.with(listId, object);
 		}
 		StreamConsumer<T> consumer;
 		if(object instanceof List) {

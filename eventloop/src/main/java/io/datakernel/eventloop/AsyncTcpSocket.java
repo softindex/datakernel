@@ -22,6 +22,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialSuppliers;
 
 public interface AsyncTcpSocket extends Cancellable {
 	Stage<ByteBuf> read();
@@ -29,7 +30,7 @@ public interface AsyncTcpSocket extends Cancellable {
 	Stage<Void> write(@Nullable ByteBuf buf);
 
 	default SerialSupplier<ByteBuf> reader() {
-		return SerialSupplier.of(this::read, this);
+		return SerialSuppliers.prefetch(SerialSupplier.of(this::read, this));
 	}
 
 	default SerialConsumer<ByteBuf> writer() {

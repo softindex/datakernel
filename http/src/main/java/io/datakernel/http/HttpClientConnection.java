@@ -162,10 +162,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onHeadersReceived(SerialSupplier<ByteBuf> bodySupplier) {
+	protected void onHeadersReceived(ByteBuf body, SerialSupplier<ByteBuf> bodySupplier) {
 		assert !isClosed();
+		assert body != null ^ bodySupplier != null;
 
 		assert response != null;
+		response.body = body;
 		response.bodySupplier = bodySupplier;
 
 		if (inspector != null) inspector.onHttpResponse(this, response);
@@ -173,6 +175,15 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		assert result != null;
 		result.set(response);
 		result = null;
+
+		if (response.body != null) {
+			response.body.recycle();
+			response.body = null;
+		}
+		if (response.bodySupplier != null) {
+			response.bodySupplier.streamTo(BUF_RECYCLER);
+			response.bodySupplier = null;
+		}
 	}
 
 	@Override

@@ -182,7 +182,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 				buf.recycle();
 				return;
 			}
-			crc32.update(buf.getArray());
+			crc32.update(buf.array(), buf.readPosition(), buf.readRemaining());
 			queue.add(buf);
 		}
 	}

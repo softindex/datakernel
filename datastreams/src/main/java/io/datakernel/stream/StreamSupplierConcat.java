@@ -29,7 +29,7 @@ class StreamSupplierConcat<T> extends AbstractStreamSupplier<T> {
 					onProduce(getCurrentDataAcceptor());
 				}
 			});
-			return getConsumer().getAcknowledgement();
+			return StreamSupplierConcat.this.getConsumer().getAcknowledgement();
 		}
 
 		@Override

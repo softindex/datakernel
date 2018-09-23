@@ -229,8 +229,7 @@ public class HttpUrlTest {
 		assertEquals(17, url.getPathAndQueryLength());
 		ByteBuf buf = ByteBufPool.allocate(64);
 		url.writePathAndQuery(buf);
-		assertEquals("/a/b/c/index.html", ByteBufStrings.decodeAscii(buf));
-		buf.recycle();
+		assertEquals("/a/b/c/index.html", ByteBufStrings.asAscii(buf));
 		assertEquals("section-2.1?q=1&key=value&b:c", url.getFragment());
 	}
 
@@ -242,8 +241,7 @@ public class HttpUrlTest {
 
 		assertEquals(0, buf.readPosition());
 		assertEquals(36, buf.writePosition());
-		assertEquals("/path1/path2/path3/?key1=value1&key2", ByteBufStrings.decodeAscii(buf));
-		buf.recycle();
+		assertEquals("/path1/path2/path3/?key1=value1&key2", ByteBufStrings.asAscii(buf));
 
 		url = UrlParser.of("http://example.com:1234?key1=value1&key2#sec:2.2");
 		buf = ByteBufPool.allocate(64);
@@ -251,8 +249,7 @@ public class HttpUrlTest {
 
 		assertEquals(0, buf.readPosition());
 		assertEquals(18, buf.writePosition());
-		assertEquals("/?key1=value1&key2", ByteBufStrings.decodeAscii(buf));
-		buf.recycle();
+		assertEquals("/?key1=value1&key2", ByteBufStrings.asAscii(buf));
 	}
 
 	@Test

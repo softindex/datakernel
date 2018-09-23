@@ -21,10 +21,10 @@ import io.datakernel.eventloop.Eventloop;
 
 import java.net.InetSocketAddress;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.AsyncServlet.ensureBody;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class HelloWorldPostServer {
 	public static final int PORT = 5588;
@@ -34,7 +34,7 @@ public final class HelloWorldPostServer {
 		return AsyncHttpServer.create(primaryEventloop,
 				ensureBody(request -> Stage.of(
 						HttpResponse.ok200()
-								.withBody(encodeAscii(HELLO_WORLD + decodeAscii(request.getBody()))))))
+								.withBody(encodeAscii(HELLO_WORLD + request.getBody().asString(UTF_8))))))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 	}
 

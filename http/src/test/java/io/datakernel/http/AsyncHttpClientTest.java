@@ -20,7 +20,6 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.exception.AsyncTimeoutException;
@@ -41,6 +40,7 @@ import java.util.concurrent.ExecutionException;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertFailure;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
 public class AsyncHttpClientTest {
@@ -61,7 +61,7 @@ public class AsyncHttpClientTest {
 
 		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenApply(HttpMessage::getBody)
-				.thenTry(ByteBufStrings::decodeUtf8)
+				.thenTry(buf -> buf.asString(UTF_8))
 				.thenRunEx(() -> {
 					httpClient.stop();
 					httpServer.close();
@@ -70,7 +70,7 @@ public class AsyncHttpClientTest {
 
 		eventloop.run();
 
-		assertEquals(decodeUtf8(HelloWorldServer.HELLO_WORLD), future.get());
+		assertEquals(decodeAscii(HelloWorldServer.HELLO_WORLD), future.get());
 	}
 
 	@Test(expected = AsyncTimeoutException.class)
@@ -81,8 +81,7 @@ public class AsyncHttpClientTest {
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
 
 		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://google.com"))
-				.thenTry(response ->
-						decodeUtf8(response.getBody()))
+				.thenTry(response -> response.getBody().asString(UTF_8))
 				.thenRunEx(httpClient::stop)
 				.toCompletableFuture();
 
@@ -105,7 +104,7 @@ public class AsyncHttpClientTest {
 		httpServer.listen();
 
 		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenTry(response -> decodeUtf8(response.getBody()))
+				.thenTry(response -> response.getBody().asString(UTF_8))
 				.thenRunEx(() -> {
 					httpClient.stop();
 					httpServer.close();
@@ -137,7 +136,7 @@ public class AsyncHttpClientTest {
 
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
 		CompletableFuture<String> future = httpClient.request(request)
-				.thenTry(response -> decodeUtf8(response.getBody()))
+				.thenTry(response -> response.getBody().asString(UTF_8))
 				.thenRunEx(() -> {
 					httpClient.stop();
 					server.close();
@@ -154,7 +153,7 @@ public class AsyncHttpClientTest {
 	}
 
 	@Test
-	public void testActiveRequestsCounter() throws IOException, ExecutionException, InterruptedException {
+	public void testActiveRequestsCounter() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<SettableStage<HttpResponse>> responses = new ArrayList<>();

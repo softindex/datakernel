@@ -4,7 +4,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Cancellable;
 
 public abstract class AbstractSerialSupplier<T> implements SerialSupplier<T> {
-	private static final Cancellable CANCELLED = e -> {
+	private static final Cancellable CLOSED = e -> {
 		throw new AssertionError();
 	};
 
@@ -24,9 +24,9 @@ public abstract class AbstractSerialSupplier<T> implements SerialSupplier<T> {
 
 	@Override
 	public final void closeWithError(Throwable e) {
-		if (cancellable == CANCELLED) return;
+		if (isClosed()) return;
 		Cancellable cancellable = this.cancellable;
-		this.cancellable = CANCELLED;
+		this.cancellable = CLOSED;
 		onClosed(e);
 		if (cancellable != null) {
 			cancellable.closeWithError(e);
@@ -37,4 +37,14 @@ public abstract class AbstractSerialSupplier<T> implements SerialSupplier<T> {
 	public final void cancel() {
 		SerialSupplier.super.cancel();
 	}
+
+	@Override
+	public final void close() {
+		SerialSupplier.super.close();
+	}
+
+	public final boolean isClosed() {
+		return cancellable == CLOSED;
+	}
+
 }

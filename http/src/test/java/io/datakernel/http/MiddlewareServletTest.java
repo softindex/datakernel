@@ -25,6 +25,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import static io.datakernel.http.HttpMethod.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
 public class MiddlewareServletTest {
@@ -52,7 +53,7 @@ public class MiddlewareServletTest {
 	@Test
 	public void testBase() {
 		MiddlewareServlet servlet1 = MiddlewareServlet.create();
-		servlet1.with(HttpMethod.GET, "/a/b/c", request -> Stage.of(HttpResponse.ofCode(200)));
+		servlet1.with(HttpMethod.GET, "/a/b/c", request -> Stage.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
 		check(servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c")), "", 200);
 		check(servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c")), "", 200);
@@ -60,7 +61,7 @@ public class MiddlewareServletTest {
 		check(servlet1.serve(HttpRequest.post("http://some-test.com/a/b/c")), "", 404);
 
 		MiddlewareServlet servlet2 = MiddlewareServlet.create();
-		servlet2.with(HttpMethod.HEAD, "/a/b/c", request -> Stage.of(HttpResponse.ofCode(200)));
+		servlet2.with(HttpMethod.HEAD, "/a/b/c", request -> Stage.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
 		check(servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c")), "", 404);
 		check(servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c/d")), "", 404);
@@ -70,7 +71,7 @@ public class MiddlewareServletTest {
 	@Test
 	public void testProcessWildCardRequest() {
 		MiddlewareServlet servlet = MiddlewareServlet.create();
-		servlet.with("/a/b/c/d", request -> Stage.of(HttpResponse.ofCode(200)));
+		servlet.with("/a/b/c/d", request -> Stage.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
 		check(servlet.serve(HttpRequest.get("http://some-test.com/a/b/c/d")), "", 200);
 		check(servlet.serve(HttpRequest.post("http://some-test.com/a/b/c/d")), "", 200);

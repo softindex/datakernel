@@ -36,7 +36,6 @@ import java.util.function.BiConsumer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.Math.max;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
@@ -50,6 +49,8 @@ public abstract class AbstractHttpConnection {
 	public static final ParseException TOO_MANY_HEADERS = new ParseException("Too many headers");
 	public static final ParseException INCOMPLETE_MESSAGE = new ParseException("Incomplete HTTP message");
 	public static final ParseException UNEXPECTED_READ = new ParseException("Unexpected read data");
+
+	public static final SerialConsumer<ByteBuf> BUF_RECYCLER = SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle));
 
 	public static final MemSize MAX_HEADER_LINE_SIZE = MemSize.kilobytes(8); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	private static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
@@ -102,7 +103,7 @@ public abstract class AbstractHttpConnection {
 
 	protected abstract void onFirstLine(byte[] line, int size) throws ParseException;
 
-	protected abstract void onHeadersReceived(SerialSupplier<ByteBuf> bodySupplier);
+	protected abstract void onHeadersReceived(ByteBuf body, SerialSupplier<ByteBuf> bodySupplier);
 
 	protected abstract void onBodyReceived();
 
@@ -376,6 +377,15 @@ public abstract class AbstractHttpConnection {
 	}
 
 	private void readBody() {
+		if ((flags & (CHUNKED | GZIPPED)) == 0 && readQueue.hasRemainingBytes(contentLength)) {
+			ByteBuf body = readQueue.takeExactSize(contentLength);
+			onHeadersReceived(body, null);
+			if (isClosed()) return;
+			flags |= BODY_RECEIVED;
+			onBodyReceived();
+			return;
+		}
+
 		ByteBufsInput input;
 		AsyncProcess transferDecoder;
 		SerialOutput<ByteBuf> transferDecoderOutput;
@@ -422,9 +432,8 @@ public abstract class AbstractHttpConnection {
 				Stage::complete,
 				this::closeWithError));
 
-		RecyclingSupplier supplier = new RecyclingSupplier(contentDecoderOutput.getOutputSupplier(new SerialZeroBuffer<>()));
-		onHeadersReceived(supplier);
-		supplier.recycleIfNotUsed();
+		onHeadersReceived(null, contentDecoderOutput.getOutputSupplier(new SerialZeroBuffer<>()));
+		if (isClosed()) return;
 
 		Stage<Void> stage;
 		if (contentDecoder == null) {
@@ -466,32 +475,6 @@ public abstract class AbstractHttpConnection {
 				", isChunked=" + ((flags & CHUNKED) != 0) +
 				", contentLengthRemaining=" + contentLength +
 				", poolTimestamp=" + poolTimestamp;
-	}
-
-	static final class RecyclingSupplier extends AbstractSerialSupplier<ByteBuf> {
-		static final SerialConsumer<ByteBuf> BUF_RECYCLER = SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle));
-
-		final SerialSupplier<ByteBuf> supplier;
-		Boolean recycling;
-
-		public RecyclingSupplier(SerialSupplier<ByteBuf> supplier) {
-			super(supplier);
-			this.supplier = supplier;
-		}
-
-		@Override
-		public Stage<ByteBuf> get() {
-			checkState(recycling != Boolean.TRUE);
-			recycling = Boolean.FALSE;
-			return supplier.get();
-		}
-
-		void recycleIfNotUsed() {
-			if (recycling == null) {
-				recycling = Boolean.TRUE;
-				supplier.streamTo(BUF_RECYCLER);
-			}
-		}
 	}
 
 	private abstract class ReadConsumer implements BiConsumer<ByteBuf, Throwable> {

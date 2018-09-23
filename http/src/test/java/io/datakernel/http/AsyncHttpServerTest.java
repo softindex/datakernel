@@ -357,7 +357,7 @@ public class AsyncHttpServerTest {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
 				ensureBody(request ->
-						Stage.of(HttpResponse.ok200().withBody(request.getBody().slice()))))
+						Stage.of(HttpResponse.ok200().withBody(request.getBody()))))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 
 		server.listen();

@@ -24,7 +24,7 @@ import io.datakernel.serial.AbstractSerialConsumer;
 
 import java.io.*;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.asAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
@@ -98,24 +98,26 @@ public class TestUtils {
 
 		@Override
 		public Stage<Void> accept(@Nullable ByteBuf value) {
+			assert !isClosed();
 			if (value != null) {
 				queue.add(value);
 			} else {
 				ByteBuf actualBuf = queue.takeRemaining();
 				if (expectedByteArray != null) {
-					byte[] actualByteArray = actualBuf.getArray();
+					byte[] actualByteArray = actualBuf.asArray();
 					assertArrayEquals(expectedByteArray, actualByteArray);
 				}
 				if (expectedString != null) {
-					String actualString = decodeAscii(actualBuf);
+					String actualString = asAscii(actualBuf);
 					assertEquals(expectedString, actualString);
 				}
 				if (expectedBuf != null) {
 					assertEquals(expectedBuf, actualBuf);
+					actualBuf.recycle();
 					expectedBuf.recycle();
+					expectedBuf = null;
 				}
 				executed = true;
-				actualBuf.recycle();
 			}
 			return Stage.complete().async();
 		}

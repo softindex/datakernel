@@ -85,6 +85,7 @@ public interface StreamConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
 			public Stage<Void> accept(T item) {
+				assert !isClosed();
 				if (item != null) return endpoint.put(item);
 				assert endpoint.getConsumer() != null;
 				return endpoint.put(null).both(endpoint.getConsumer().getAcknowledgement());

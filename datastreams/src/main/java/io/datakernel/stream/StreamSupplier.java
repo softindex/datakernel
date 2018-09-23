@@ -181,6 +181,7 @@ public interface StreamSupplier<T> extends Cancellable {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return endpoint.take();
 			}
 		};

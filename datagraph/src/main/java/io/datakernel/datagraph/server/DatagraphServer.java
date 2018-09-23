@@ -73,7 +73,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	public DatagraphServer(Eventloop eventloop, DatagraphEnvironment environment) {
 		super(eventloop);
 		this.environment = DatagraphEnvironment.extend(environment)
-				.set(DatagraphServer.class, this);
+				.with(DatagraphServer.class, this);
 		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
 		this.serializer = ofJson(serialization.commandAdapter, serialization.responseAdapter);
 	}

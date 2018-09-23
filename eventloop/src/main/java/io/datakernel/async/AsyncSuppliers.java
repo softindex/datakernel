@@ -102,30 +102,32 @@ public final class AsyncSuppliers {
 
 	@SuppressWarnings("unchecked")
 	public static <T> AsyncSupplier<T> prefetch(int count, AsyncSupplier<? extends T> actual, AsyncSupplier<? extends T> prefetchCallable) {
-		return count == 0 ? (AsyncSupplier<T>) actual : new AsyncSupplier<T>() {
-			private int pendingCalls;
-			private final ArrayDeque<T> deque = new ArrayDeque<>();
+		return count == 0 ?
+				(AsyncSupplier<T>) actual :
+				new AsyncSupplier<T>() {
+					private int pendingCalls;
+					private final ArrayDeque<T> deque = new ArrayDeque<>();
 
-			private void tryPrefetch() {
-				for (int i = 0; i < count - (deque.size() + pendingCalls); i++) {
-					pendingCalls++;
-					prefetchCallable.get().async().whenComplete((value, throwable) -> {
-						pendingCalls--;
-						if (throwable == null) {
-							deque.addLast(value);
+					private void tryPrefetch() {
+						for (int i = 0; i < count - (deque.size() + pendingCalls); i++) {
+							pendingCalls++;
+							prefetchCallable.get().async().whenComplete((value, throwable) -> {
+								pendingCalls--;
+								if (throwable == null) {
+									deque.addLast(value);
+								}
+							});
 						}
-					});
-				}
-			}
+					}
 
-			@SuppressWarnings("unchecked")
-			@Override
-			public Stage<T> get() {
-				Stage<? extends T> result = deque.isEmpty() ? actual.get() : Stage.of(deque.pollFirst());
-				tryPrefetch();
-				return (Stage<T>) result;
-			}
-		};
+					@SuppressWarnings("unchecked")
+					@Override
+					public Stage<T> get() {
+						Stage<? extends T> result = deque.isEmpty() ? actual.get() : Stage.of(deque.pollFirst());
+						tryPrefetch();
+						return (Stage<T>) result;
+					}
+				};
 	}
 
 }

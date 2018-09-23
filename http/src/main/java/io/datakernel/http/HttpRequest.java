@@ -355,7 +355,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 				&& getContentType() != null
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
 				&& this.body.readPosition() != this.body.writePosition()) {
-			return UrlParser.parseQueryIntoMap(decodeAscii(body));
+			return UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.readPosition(), body.readRemaining()));
 		} else {
 			return Collections.emptyMap();
 		}
@@ -486,7 +486,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private static final byte[] GZIP_BYTES = encodeAscii("gzip");
 
 	@SuppressWarnings("unchecked")
-	public Stage<HttpRequest> ensureBody() {
+	Stage<HttpRequest> ensureBody() {
 		return (Stage<HttpRequest>) doEnsureBody();
 	}
 

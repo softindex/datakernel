@@ -198,7 +198,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onHeadersReceived(SerialSupplier<ByteBuf> bodySupplier) {
+	protected void onHeadersReceived(ByteBuf body, SerialSupplier<ByteBuf> bodySupplier) {
+		request.body = body;
 		request.bodySupplier = bodySupplier;
 		request.setRemoteAddress(remoteAddress);
 
@@ -223,6 +224,15 @@ final class HttpServerConnection extends AbstractHttpConnection {
 						writeException(e);
 					}
 				});
+
+		if (request.body != null) {
+			request.body.recycle();
+			request.body = null;
+		}
+		if (request.bodySupplier != null) {
+			request.bodySupplier.streamTo(BUF_RECYCLER);
+			request.bodySupplier = null;
+		}
 	}
 
 	@Override

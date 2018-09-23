@@ -61,7 +61,7 @@ public final class DatagraphEnvironment {
 	 * @return this environment
 	 */
 	@SuppressWarnings("unchecked")
-	public DatagraphEnvironment set(Object key, Object value) {
+	public DatagraphEnvironment with(Object key, Object value) {
 		((Map) instances).put(key, value);
 		return this;
 	}

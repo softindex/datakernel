@@ -43,8 +43,6 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	private final ByteBufQueue bufs = new ByteBufQueue();
 	private final ByteBufsSupplier bufsSupplier;
-	private final SerialSupplier<ByteBuf> socketReader;
-	private final SerialConsumer<ByteBuf> socketWriter;
 
 	private Throwable closedException;
 
@@ -55,8 +53,6 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	private MessagingWithBinaryStreaming(AsyncTcpSocket socket, MessagingSerializer<I, O> serializer) {
 		this.socket = socket;
 		this.serializer = serializer;
-		this.socketReader = socket.reader();
-		this.socketWriter = socket.writer();
 		this.bufsSupplier = ByteBufsSupplier.ofProvidedQueue(bufs,
 				() -> this.socket.read()
 						.thenCompose(buf -> {
@@ -129,7 +125,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	@Override
 	public SerialConsumer<ByteBuf> sendBinaryStream() {
-		return socketWriter
+		return socket.writer()
 				.withAcknowledgement(ack -> ack
 						.thenRun(() -> {
 							writeDone = true;
@@ -139,7 +135,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	@Override
 	public SerialSupplier<ByteBuf> receiveBinaryStream() {
-		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.asIterator()), socketReader)
+		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.asIterator()), socket.reader())
 				.withEndOfStream(eos -> eos
 						.thenRun(() -> {
 							readDone = true;

@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.asAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static java.nio.charset.Charset.forName;
 import static org.junit.Assert.assertEquals;
@@ -75,7 +75,7 @@ public class HttpCharsetTest {
 		chs.add(AcceptCharset.of(StandardCharsets.ISO_8859_1));
 		chs.add(AcceptCharset.of(StandardCharsets.UTF_16, 80));
 		AcceptCharset.render(chs, buf);
-		String actual = decodeAscii(buf);
+		String actual = asAscii(buf);
 		assertEquals(expected, actual);
 	}
 }

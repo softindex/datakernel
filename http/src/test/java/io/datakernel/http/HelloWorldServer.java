@@ -29,9 +29,11 @@ public final class HelloWorldServer {
 	public static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = request -> Stage.of(HttpResponse.ok200().withBody(HELLO_WORLD));
-
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port)).withAcceptOnce(false);
+		return AsyncHttpServer.create(primaryEventloop,
+				request ->
+						Stage.of(HttpResponse.ok200().withBody(HELLO_WORLD)))
+				.withListenAddress(new InetSocketAddress("localhost", port))
+				.withAcceptOnce(false);
 	}
 
 	public static void main(String[] args) throws Exception {

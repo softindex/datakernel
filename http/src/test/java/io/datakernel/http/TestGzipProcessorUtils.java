@@ -41,7 +41,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.asAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.AsyncServlet.ensureBody;
@@ -78,8 +78,7 @@ public class TestGzipProcessorUtils {
 	public void testEncodeDecode() throws ParseException {
 		ByteBuf raw = toGzip(wrapAscii(text));
 		ByteBuf actual = fromGzip(raw, 11_000_000);
-		assertEquals(text, decodeAscii(actual));
-		actual.recycle();
+		assertEquals(text, asAscii(actual));
 	}
 
 	@Test
@@ -106,10 +105,11 @@ public class TestGzipProcessorUtils {
 	}
 
 	@Test
-	public void testGzippedCommunicationBetweenClientServer() throws IOException, ParseException, ExecutionException, InterruptedException {
+	public void testGzippedCommunicationBetweenClientServer() throws IOException, ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncServlet servlet = ensureBody(request -> {
-			String receivedData = ByteBufStrings.decodeAscii(request.getBody());
+			ByteBuf buf = request.getBody();
+			String receivedData = asAscii(buf);
 			assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
 			assertEquals("gzip", request.getHeader(HttpHeaders.ACCEPT_ENCODING));
 			assertEquals(text, receivedData);
@@ -134,7 +134,8 @@ public class TestGzipProcessorUtils {
 					assertEquals("gzip", result.getHeader(HttpHeaders.CONTENT_ENCODING));
 					server.close();
 					client.stop();
-					return decodeAscii(result.getBody());
+					ByteBuf buf = result.getBody();
+					return asAscii(buf);
 				})
 				.toCompletableFuture();
 
@@ -143,20 +144,18 @@ public class TestGzipProcessorUtils {
 	}
 
 	@Test
-	public void testGzipInputStreamCorrectlyDecodesDataEncoded() throws IOException, ParseException {
+	public void testGzipInputStreamCorrectlyDecodesDataEncoded() throws IOException {
 		ByteBuf encodedData = toGzip(ByteBufStrings.wrapAscii(text));
 		ByteBuf decoded = decodeWithGzipInputStream(encodedData);
-		assertEquals(text, decodeAscii(decoded));
+		assertEquals(text, asAscii(decoded));
 		encodedData.recycle();
-		decoded.recycle();
 	}
 
 	@Test
 	public void testGzipOutputStreamDataIsCorrectlyDecoded() throws IOException, ParseException {
 		ByteBuf encodedData = encodeWithGzipOutputStream(ByteBufStrings.wrapAscii(text));
 		ByteBuf decoded = fromGzip(encodedData, 11_000_000);
-		assertEquals(text, decodeAscii(decoded));
-		decoded.recycle();
+		assertEquals(text, asAscii(decoded));
 	}
 
 	private static ByteBuf encodeWithGzipOutputStream(ByteBuf raw) throws IOException {

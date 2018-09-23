@@ -5,10 +5,13 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.util.CollectionUtils;
 
+import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collector;
+
+import static io.datakernel.util.Recyclable.deepRecycle;
 
 public final class SerialSuppliers {
 	private SerialSuppliers() {}
@@ -20,6 +23,7 @@ public final class SerialSuppliers {
 
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				T item = this.thisItem;
 				this.thisItem = null;
 				return Stage.of(item);
@@ -42,6 +46,7 @@ public final class SerialSuppliers {
 
 			@Override
 			public Stage<T> get() {
+				assert !isClosed();
 				return current.get()
 						.thenComposeEx((value, e) -> {
 							if (e == null) {
@@ -75,26 +80,37 @@ public final class SerialSuppliers {
 	}
 
 	protected static <T, A, R> Stage<R> toCollector(SerialSupplier<T> supplier, Collector<T, A, R> collector) {
-		return Stage.ofCallback(cb -> toCollectorImpl(supplier,
-				collector.supplier().get(), collector.accumulator(), collector.finisher(), cb));
+		SettableStage<R> cb = new SettableStage<>();
+		toCollectorImpl(supplier, collector.supplier().get(), collector.accumulator(), collector.finisher(), cb);
+		return cb;
 	}
 
 	private static <T, A, R> void toCollectorImpl(SerialSupplier<T> supplier,
 			A accumulatedValue, BiConsumer<A, T> accumulator, Function<A, R> finisher,
 			SettableStage<R> result) {
-		supplier.get(value -> accumulator.accept(accumulatedValue, value))
-				.whenComplete((value, e) -> {
-					if (e == null) {
-						if (value != null) {
-							accumulator.accept(accumulatedValue, value);
-							toCollectorImpl(supplier, accumulatedValue, accumulator, finisher, result);
-						} else {
-							result.set(finisher.apply(accumulatedValue));
-						}
-					} else {
-						result.setException(e);
-					}
-				});
+		Stage<T> stage;
+		while (true) {
+			stage = supplier.get();
+			if (!stage.hasResult()) break;
+			T item = stage.getResult();
+			if (item != null) {
+				accumulator.accept(accumulatedValue, item);
+				continue;
+			}
+			break;
+		}
+		stage.whenComplete((value, e) -> {
+			if (e == null) {
+				if (value != null) {
+					accumulator.accept(accumulatedValue, value);
+					toCollectorImpl(supplier, accumulatedValue, accumulator, finisher, result);
+				} else {
+					result.set(finisher.apply(accumulatedValue));
+				}
+			} else {
+				result.setException(e);
+			}
+		});
 	}
 
 	public static <T> Stage<Void> stream(SerialSupplier<T> supplier, SerialConsumer<T> consumer) {
@@ -141,6 +157,151 @@ public final class SerialSuppliers {
 						result.trySetException(e1);
 					}
 				});
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> SerialSupplier<T> prefetch(int count, SerialSupplier<? extends T> actual) {
+		return count == 0 ?
+				(SerialSupplier<T>) actual :
+				new AbstractSerialSupplier<T>() {
+					private final ArrayDeque<T> deque = new ArrayDeque<>();
+					private boolean endOfStream;
+					private boolean prefetching;
+					private SettableStage<T> pending;
+
+					{
+						tryPrefetch();
+					}
+
+					private void tryPrefetch() {
+						if (prefetching || deque.size() == count || endOfStream) return;
+						prefetching = true;
+						actual.get()
+								.whenComplete((item, e) -> {
+									if (isClosed()) return;
+									prefetching = false;
+									if (e == null) {
+										assert pending == null || (deque.isEmpty() && !endOfStream);
+										if (pending != null) {
+											SettableStage<T> pending = this.pending;
+											this.pending = null;
+											if (item != null) {
+												tryPrefetch();
+											} else {
+												endOfStream = true;
+											}
+											pending.set(item);
+											return;
+										}
+										if (item != null) {
+											deque.add(item);
+											tryPrefetch();
+										} else {
+											endOfStream = true;
+										}
+									} else {
+										closeWithError(e);
+									}
+								});
+					}
+
+					@SuppressWarnings("unchecked")
+					@Override
+					public Stage<T> get() {
+						assert !isClosed() && pending == null;
+						if (!deque.isEmpty() || endOfStream) {
+							T result = deque.poll();
+							tryPrefetch();
+							return Stage.of(result);
+						}
+						pending = new SettableStage<>();
+						tryPrefetch();
+						return pending;
+					}
+
+					@Override
+					protected void onClosed(Throwable e) {
+						deepRecycle(deque);
+						actual.closeWithError(e);
+						if (pending != null) {
+							pending.trySetException(e);
+							pending = null;
+						}
+					}
+				};
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> SerialSupplier<T> prefetch(SerialSupplier<? extends T> actual) {
+		return new AbstractSerialSupplier<T>() {
+			private T prefetched;
+			private boolean endOfStream;
+			private boolean prefetching;
+			private SettableStage<T> pending;
+
+			{
+				tryPrefetch();
+			}
+
+			private void tryPrefetch() {
+				assert !isClosed();
+				if (prefetching || prefetched != null || endOfStream) return;
+				prefetching = true;
+				actual.get()
+						.whenComplete((item, e) -> {
+							if (isClosed()) return;
+							prefetching = false;
+							if (e == null) {
+								assert pending == null || (prefetched == null && !endOfStream);
+								if (pending != null) {
+									SettableStage<T> pending = this.pending;
+									this.pending = null;
+									if (item != null) {
+										// do nothing
+									} else {
+										endOfStream = true;
+									}
+									pending.set(item);
+									return;
+								}
+								if (item != null) {
+									prefetched = item;
+								} else {
+									endOfStream = true;
+								}
+							} else {
+								closeWithError(e);
+							}
+						});
+			}
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public Stage<T> get() {
+				assert !isClosed() && pending == null;
+				if (prefetched != null || endOfStream) {
+					T result = this.prefetched;
+					this.prefetched = null;
+					tryPrefetch();
+					return Stage.of(result);
+				}
+				SettableStage<T> pending = new SettableStage<>();
+				this.pending = pending;
+				tryPrefetch();
+				return pending;
+			}
+
+			@Override
+			protected void onClosed(Throwable e) {
+				deepRecycle(prefetched);
+				prefetched = null;
+				actual.closeWithError(e);
+				if (pending != null) {
+					pending.setException(e);
+					pending = null;
+				}
+			}
+		};
 	}
 
 }

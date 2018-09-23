@@ -241,9 +241,7 @@ public final class HttpHeaders {
 		public String toString() {
 			ByteBuf buf = ByteBufPool.allocate(estimateSize());
 			ContentType.render(type, buf);
-			String value = ByteBufStrings.decodeAscii(buf);
-			buf.recycle();
-			return value;
+			return ByteBufStrings.asAscii(buf);
 		}
 	}
 
@@ -273,9 +271,7 @@ public final class HttpHeaders {
 		public String toString() {
 			ByteBuf buf = ByteBufPool.allocate(estimateSize());
 			AcceptMediaType.render(types, buf);
-			String value = ByteBufStrings.decodeAscii(buf);
-			buf.recycle();
-			return value;
+			return ByteBufStrings.asAscii(buf);
 		}
 	}
 
@@ -307,9 +303,7 @@ public final class HttpHeaders {
 		public String toString() {
 			ByteBuf buf = ByteBufPool.allocate(estimateSize());
 			HttpCookie.renderSimple(cookies, buf);
-			String value = ByteBufStrings.decodeAscii(buf);
-			buf.recycle();
-			return value;
+			return ByteBufStrings.asAscii(buf);
 		}
 	}
 
@@ -345,9 +339,7 @@ public final class HttpHeaders {
 		public String toString() {
 			ByteBuf buf = ByteBufPool.allocate(estimateSize());
 			HttpCookie.renderFull(cookies, buf);
-			String value = ByteBufStrings.decodeAscii(buf);
-			buf.recycle();
-			return value;
+			return ByteBufStrings.asAscii(buf);
 		}
 	}
 
@@ -377,9 +369,7 @@ public final class HttpHeaders {
 		public String toString() {
 			ByteBuf buf = ByteBufPool.allocate(estimateSize());
 			AcceptCharset.render(charsets, buf);
-			String value = ByteBufStrings.decodeAscii(buf);
-			buf.recycle();
-			return value;
+			return ByteBufStrings.asAscii(buf);
 		}
 	}
 
@@ -405,9 +395,7 @@ public final class HttpHeaders {
 		public String toString() {
 			ByteBuf buf = ByteBufPool.allocate(estimateSize());
 			HttpDate.render(date.getTime(), buf);
-			String value = ByteBufStrings.decodeAscii(buf);
-			buf.recycle();
-			return value;
+			return ByteBufStrings.asAscii(buf);
 		}
 	}
 

@@ -74,12 +74,10 @@ public final class ByteBufStrings {
 		return decodeAscii(array, pos, len, new char[len]);
 	}
 
-	public static String decodeAscii(ByteBuf buf, char[] tmpBuffer) {
-		return decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining(), tmpBuffer);
-	}
-
-	public static String decodeAscii(ByteBuf buf) {
-		return decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining(), new char[buf.readRemaining()]);
+	public static String asAscii(ByteBuf buf) {
+		String str = decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining(), new char[buf.readRemaining()]);
+		buf.recycle();
+		return str;
 	}
 
 	public static String decodeAscii(byte[] array) {
@@ -288,16 +286,14 @@ public final class ByteBufStrings {
 		return decodeUtf8(array, pos, len, new char[len]);
 	}
 
-	public static String decodeUtf8(ByteBuf buf, char[] tmpBuffer) throws ParseException {
-		return decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), tmpBuffer);
-	}
-
-	public static String decodeUtf8(ByteBuf buf) throws ParseException {
-		return decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), new char[buf.readRemaining()]);
-	}
-
 	public static String decodeUtf8(byte[] array) throws ParseException {
 		return decodeUtf8(array, 0, array.length, new char[array.length]);
+	}
+
+	public static String asUtf8(ByteBuf buf) throws ParseException {
+		String str = decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), new char[buf.readRemaining()]);
+		buf.recycle();
+		return str;
 	}
 
 	// Decimal (unsigned)

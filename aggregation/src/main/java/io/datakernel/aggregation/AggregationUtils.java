@@ -199,7 +199,7 @@ public class AggregationUtils {
 		return ClassBuilder.create(classLoader, StreamReducers.Reducer.class)
 				.withMethod("onFirstItem", onFirstItem)
 				.withMethod("onNextItem", onNextItem)
-				.withMethod("onComplete", call(arg(0), "onData", arg(2)))
+				.withMethod("onComplete", call(arg(0), "accept", arg(2)))
 				.buildClassAndCreateNewInstance();
 	}
 
