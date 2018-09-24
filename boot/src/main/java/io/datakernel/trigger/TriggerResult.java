@@ -146,14 +146,6 @@ public final class TriggerResult {
 		return isPresent() && conditionSupplier.get() ? this : NONE;
 	}
 
-	public TriggerResult whenTimestamp(Predicate<Long> timestampPredicate) {
-		return isPresent() && hasTimestamp() && timestampPredicate.test(timestamp) ? this : NONE;
-	}
-
-	public TriggerResult whenInstant(Predicate<Instant> instantPredicate) {
-		return isPresent() && hasTimestamp() && instantPredicate.test(Instant.ofEpochMilli(timestamp)) ? this : NONE;
-	}
-
 	@SuppressWarnings("unchecked")
 	public <T> TriggerResult whenValue(Predicate<T> valuePredicate) {
 		return isPresent() && hasValue() && valuePredicate.test((T) value) ? this : NONE;

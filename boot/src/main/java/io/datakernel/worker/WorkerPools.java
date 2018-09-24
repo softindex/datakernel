@@ -23,6 +23,7 @@ import com.google.inject.TypeLiteral;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
@@ -31,7 +32,7 @@ import java.util.stream.Collectors;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
 
-@SuppressWarnings("ALL")
+@SuppressWarnings("unchecked")
 public final class WorkerPools {
 	private final List<WorkerPool> workerPools = new CopyOnWriteArrayList<>();
 	private final ThreadLocal<WorkerPool> threadLocalWorkerPool = ThreadLocal.withInitial(() ->
@@ -57,7 +58,7 @@ public final class WorkerPools {
 	}
 
 	public <T> List<T> getAllObjects(Key<T> key) {
-		return workerPools.stream().flatMap(workerPool -> workerPool.getInstances(key).stream()).collect(toList());
+		return (List<T>) workerPools.stream().map(workerPool -> workerPool.pool.get(key)).filter(Objects::nonNull).flatMap(List::stream).collect(toList());
 	}
 
 	public WorkerPool getCurrentWorkerPool() {

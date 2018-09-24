@@ -132,6 +132,12 @@ public final class WorkerPool {
 	}
 	// endregion
 
+	public synchronized <T> List<T> getExistingInstances(Key<T> key) {
+		checkState(injector != null && poolScope != null, "WorkerPool has not been initialized, make sure Boot module and ServiceGraph is used");
+		checkArgument(injector.getExistingBinding(key) != null, "Binding for %s not found", key);
+		return (List<T>) pool.get(key);
+	}
+
 	@SuppressWarnings("unchecked")
 	Object getOrAdd(Key<?> key, int workerId, Provider<?> unscoped) {
 		List<Object> instances = pool.computeIfAbsent(key, $ -> Arrays.asList(new Object[workers]));
