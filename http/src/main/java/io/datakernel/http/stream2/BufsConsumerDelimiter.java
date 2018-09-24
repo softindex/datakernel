@@ -1,5 +1,6 @@
 package io.datakernel.http.stream2;
 
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.serial.ByteBufsSupplier;
@@ -28,10 +29,11 @@ public final class BufsConsumerDelimiter extends AbstractIOAsyncProcess
 	}
 
 	@Override
-	public void setInput(ByteBufsSupplier input) {
+	public MaterializedStage<Void> setInput(ByteBufsSupplier input) {
 		checkState(this.input == null, "Input already set");
 		this.input = sanitize(input);
 		this.bufs = input.bufs;
+		return getResult();
 	}
 
 	@Override

@@ -1,5 +1,7 @@
 package io.datakernel.serial;
 
+import io.datakernel.async.MaterializedStage;
+
 public interface ByteBufsInput {
-	void setInput(ByteBufsSupplier input);
+	MaterializedStage<Void> setInput(ByteBufsSupplier input);
 }

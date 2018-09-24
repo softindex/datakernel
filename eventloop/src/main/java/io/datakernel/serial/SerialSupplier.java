@@ -150,15 +150,16 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
-	default Stage<Void> streamTo(SerialConsumer<T> consumer) {
+	default MaterializedStage<Void> streamTo(SerialConsumer<T> consumer) {
 		return SerialSuppliers.stream(this, consumer);
 	}
 
-	default void streamTo(SerialInput<T> to) {
-		to.setInput(this);
+	default MaterializedStage<Void> streamTo(SerialInput<T> to) {
+		MaterializedStage<Void> extraAcknowledge = to.setInput(this);
 		if (to instanceof AsyncProcess) {
 			getCurrentEventloop().post(((AsyncProcess) to)::start);
 		}
+		return extraAcknowledge;
 	}
 
 	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {

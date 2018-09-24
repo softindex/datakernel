@@ -16,6 +16,7 @@
 
 package io.datakernel.serial.processor;
 
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.jmx.ValueStats;
@@ -98,8 +99,9 @@ public final class SerialLZ4Compressor extends AbstractIOAsyncProcess
 	}
 
 	@Override
-	public void setInput(SerialSupplier<ByteBuf> input) {
+	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
 		this.input = sanitize(input);
+		return getResult();
 	}
 
 	@Override

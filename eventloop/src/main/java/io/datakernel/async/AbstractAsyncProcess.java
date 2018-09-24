@@ -35,12 +35,12 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	}
 
 	@Override
-	public Stage<Void> getResult() {
+	public MaterializedStage<Void> getResult() {
 		return processResult;
 	}
 
 	@Override
-	public final Stage<Void> start() {
+	public final MaterializedStage<Void> start() {
 		if (!processStarted) {
 			processStarted = true;
 			beforeProcess();

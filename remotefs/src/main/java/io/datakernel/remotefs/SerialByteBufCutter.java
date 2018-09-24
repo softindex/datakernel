@@ -1,6 +1,7 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AbstractAsyncProcess;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -27,9 +28,10 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 	}
 
 	@Override
-	public void setInput(SerialSupplier<ByteBuf> input) {
+	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
 		checkState(this.input == null, "Input already set");
 		this.input = input;
+		return getResult();
 	}
 
 	@Override

@@ -1,6 +1,7 @@
 package io.global.globalfs.api;
 
 import io.datakernel.async.AbstractAsyncProcess;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
@@ -32,9 +33,10 @@ public abstract class FramesToByteBufsTransformer
 	}
 
 	@Override
-	public void setInput(SerialSupplier<DataFrame> input) {
+	public MaterializedStage<Void> setInput(SerialSupplier<DataFrame> input) {
 		checkState(this.input == null, "Input is already set");
 		this.input = input;
+		return getResult();
 	}
 
 	@Override

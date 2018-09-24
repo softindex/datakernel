@@ -1,6 +1,7 @@
 package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.util.CollectionUtils;
@@ -113,8 +114,10 @@ public final class SerialSuppliers {
 		});
 	}
 
-	public static <T> Stage<Void> stream(SerialSupplier<T> supplier, SerialConsumer<T> consumer) {
-		return Stage.ofCallback(cb -> streamImpl(supplier, consumer, cb));
+	public static <T> MaterializedStage<Void> stream(SerialSupplier<T> supplier, SerialConsumer<T> consumer) {
+		SettableStage<Void> cb = new SettableStage<>();
+		streamImpl(supplier, consumer, cb);
+		return cb;
 	}
 
 	private static <T> void streamImpl(SerialSupplier<T> supplier, SerialConsumer<T> consumer, SettableStage<Void> result) {

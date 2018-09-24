@@ -17,6 +17,7 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.AbstractAsyncProcess;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -55,8 +56,9 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 	}
 
 	@Override
-	public void setInput(SerialSupplier<ByteBuf> input) {
+	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
 		this.input = input;
+		return getResult();
 	}
 
 	@Override

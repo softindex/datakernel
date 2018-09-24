@@ -48,6 +48,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	private StreamConsumer<T> consumer;
 
 	private final SettableStage<Void> endOfStream = new SettableStage<>();
+	private final SettableStage<Void> acknowledgement = new SettableStage<>();
 
 	@Nullable
 	private StreamDataAcceptor<T> currentDataAcceptor;
@@ -83,7 +84,8 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		this.consumer = consumer;
 		onWired();
 		consumer.getAcknowledgement()
-				.whenException(this::closeWithError);
+				.whenException(this::closeWithError)
+				.whenComplete(acknowledgement::set);
 	}
 
 	protected void onWired() {
@@ -229,6 +231,10 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	@Override
 	public final MaterializedStage<Void> getEndOfStream() {
 		return endOfStream;
+	}
+
+	public MaterializedStage<Void> getAcknowledgement() {
+		return acknowledgement;
 	}
 
 	/**

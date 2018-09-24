@@ -8,33 +8,22 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 		SerialSupplierFunction<I, SerialSupplier<O>>, SerialConsumerFunction<O, SerialConsumer<I>> {
 	@Override
 	default SerialSupplier<O> apply(SerialSupplier<I> supplier) {
-		return serialSupplierModifier(new SerialZeroBuffer<>()).apply(supplier);
+		this.setInput(supplier);
+		SerialSupplier<O> outputSupplier = getOutputSupplier(new SerialZeroBuffer<>());
+		if (this instanceof AsyncProcess) {
+			((AsyncProcess) this).start();
+		}
+		return outputSupplier;
 	}
 
 	@Override
 	default SerialConsumer<I> apply(SerialConsumer<O> consumer) {
-		return serialConsumerModifier(new SerialZeroBuffer<>()).apply(consumer);
+		this.setOutput(consumer);
+		SerialConsumer<I> outputSupplier = getInputConsumer(new SerialZeroBuffer<>());
+		if (this instanceof AsyncProcess) {
+			((AsyncProcess) this).start();
+		}
+		return outputSupplier;
 	}
 
-	default SerialSupplierFunction<I, SerialSupplier<O>> serialSupplierModifier(SerialQueue<O> queue) {
-		return input -> {
-			setInput(input);
-			SerialSupplier<O> outputSupplier = getOutputSupplier(queue);
-			if (this instanceof AsyncProcess) {
-				((AsyncProcess) this).start();
-			}
-			return outputSupplier;
-		};
-	}
-
-	default SerialConsumerFunction<O, SerialConsumer<I>> serialConsumerModifier(SerialQueue<I> queue) {
-		return output -> {
-			setOutput(output);
-			SerialConsumer<I> outputSupplier = getInputConsumer(queue);
-			if (this instanceof AsyncProcess) {
-				((AsyncProcess) this).start();
-			}
-			return outputSupplier;
-		};
-	}
 }

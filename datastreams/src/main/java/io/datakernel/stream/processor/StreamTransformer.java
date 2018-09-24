@@ -41,12 +41,4 @@ public interface StreamTransformer<I, O> extends
 		return getOutput();
 	}
 
-	default Function<StreamSupplier<I>, StreamSupplier<O>> toSupplier() {
-		return this::apply;
-	}
-
-	default Function<StreamConsumer<O>, StreamConsumer<I>> toConsumer() {
-		return this::apply;
-	}
-
 }

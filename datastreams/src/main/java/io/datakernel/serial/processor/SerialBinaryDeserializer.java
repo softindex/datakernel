@@ -16,6 +16,7 @@
 
 package io.datakernel.serial.processor;
 
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
@@ -52,8 +53,9 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamSupplier<T>
 	}
 
 	@Override
-	public void setInput(SerialSupplier<ByteBuf> input) {
+	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
 		this.input = input;
+		return getAcknowledgement();
 	}
 	// endregion
 

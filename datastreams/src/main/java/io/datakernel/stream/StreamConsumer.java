@@ -25,7 +25,6 @@ import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.stream.processor.StreamTransformer;
 
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
@@ -65,10 +64,13 @@ public interface StreamConsumer<T> extends Cancellable {
 		return new StreamConsumers.OfSerialConsumerImpl<>(consumer);
 	}
 
-	static <T> StreamConsumer<T> ofSupplier(Consumer<StreamSupplier<T>> supplier) {
+	static <T> StreamConsumer<T> ofSupplier(Function<StreamSupplier<T>, MaterializedStage<Void>> supplier) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
-		supplier.accept(forwarder.getOutput());
-		return forwarder.getInput();
+		MaterializedStage<Void> extraAcknowledge = supplier.apply(forwarder.getOutput());
+		StreamConsumer<T> result = forwarder.getInput();
+		if (extraAcknowledge == Stage.complete()) return result;
+		return result
+				.withAcknowledgement(ack -> ack.thenCompose($ -> extraAcknowledge));
 	}
 
 	default <R> R apply(StreamConsumerFunction<T, R> fn) {

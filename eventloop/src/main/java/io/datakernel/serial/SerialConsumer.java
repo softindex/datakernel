@@ -108,9 +108,16 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
-	static <T> SerialConsumer<T> ofSupplier(Consumer<SerialSupplier<T>> supplier, SerialQueue<T> queue) {
-		supplier.accept(queue.getSupplier());
-		return queue.getConsumer();
+	static <T> SerialConsumer<T> ofSupplier(Function<SerialSupplier<T>, MaterializedStage<Void>> supplier) {
+		return ofSupplier(supplier, new SerialZeroBuffer<>());
+	}
+
+	static <T> SerialConsumer<T> ofSupplier(Function<SerialSupplier<T>, MaterializedStage<Void>> supplier, SerialQueue<T> queue) {
+		MaterializedStage<Void> extraAcknowledge = supplier.apply(queue.getSupplier());
+		SerialConsumer<T> result = queue.getConsumer();
+		if (extraAcknowledge == Stage.complete()) return result;
+		return result
+				.withAcknowledgement(ack -> ack.thenCompose($ -> extraAcknowledge));
 	}
 
 	static <T> SerialConsumer<T> ofStage(Stage<? extends SerialConsumer<T>> stage) {
