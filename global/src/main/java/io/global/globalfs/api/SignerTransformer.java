@@ -6,8 +6,6 @@ import io.global.common.PrivKey;
 import io.global.common.SignedData;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
-import java.util.Objects;
-
 public class SignerTransformer extends ByteBufsToFramesTransformer {
 	private final SHA256Digest digest = new SHA256Digest();
 	private final CheckpointPositionStrategy checkpointPositionStrategy;
@@ -29,23 +27,25 @@ public class SignerTransformer extends ByteBufsToFramesTransformer {
 	protected Stage<Void> postByteBuf(ByteBuf buf) {
 		digest.update(buf.array(), buf.readPosition(), buf.readRemaining());
 		lastPostedCheckpoint = false;
-//		System.out.println("posting " + buf.asString(UTF_8));
 		return super.postByteBuf(buf);
 	}
 
 	@Override
 	protected Stage<Void> postNextCheckpoint() {
-		nextCheckpoint = Objects.requireNonNull(checkpointPositionStrategy, "wtf").nextPosition(nextCheckpoint);
+		nextCheckpoint = checkpointPositionStrategy.nextPosition(nextCheckpoint);
 		GlobalFsCheckpoint checkpoint = GlobalFsCheckpoint.of(position, new SHA256Digest(digest));
 		lastPostedCheckpoint = true;
-//		System.out.println("posting checkpoint at " + position);
 		return output.accept(DataFrame.of(SignedData.sign(checkpoint, privateKey)));
 	}
 
 	@Override
 	protected void iteration() {
 		input.get()
-				.whenResult(buf -> {
+				.whenComplete((buf, e) -> {
+					if (e != null) {
+						closeWithError(e);
+						return;
+					}
 					if (buf == null) {
 						if (lastPostedCheckpoint) {
 							output.accept(null)
@@ -53,15 +53,15 @@ public class SignerTransformer extends ByteBufsToFramesTransformer {
 						} else {
 							nextCheckpoint = position;
 							postNextCheckpoint()
-									.thenRun(() -> output.accept(null))
+									.thenCompose($ -> output.accept(null))
 									.thenRun(this::completeProcess);
 						}
 						return;
 					}
 					handleBuffer(buf)
-							.whenComplete(($, e) -> {
-								if (e != null) {
-									closeWithError(e);
+							.whenComplete(($, e2) -> {
+								if (e2 != null) {
+									closeWithError(e2);
 								}
 								iteration();
 							});

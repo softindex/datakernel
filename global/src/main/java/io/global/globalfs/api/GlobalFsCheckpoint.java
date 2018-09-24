@@ -17,8 +17,7 @@ public final class GlobalFsCheckpoint implements Signable {
 	private final long position;
 	private final SHA256Digest digest;
 
-	private GlobalFsCheckpoint(byte[] bytes,
-			long position, SHA256Digest digest) {
+	private GlobalFsCheckpoint(byte[] bytes, long position, SHA256Digest digest) {
 		this.bytes = bytes;
 		this.position = position;
 		this.digest = digest;

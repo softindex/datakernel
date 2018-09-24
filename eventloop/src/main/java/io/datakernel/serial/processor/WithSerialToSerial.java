@@ -19,11 +19,11 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 	@Override
 	default SerialConsumer<I> apply(SerialConsumer<O> consumer) {
 		this.setOutput(consumer);
-		SerialConsumer<I> outputSupplier = getInputConsumer(new SerialZeroBuffer<>());
+		SerialConsumer<I> outputConsumer = getInputConsumer(new SerialZeroBuffer<>());
 		if (this instanceof AsyncProcess) {
 			((AsyncProcess) this).start();
 		}
-		return outputSupplier;
+		return outputConsumer;
 	}
 
 }

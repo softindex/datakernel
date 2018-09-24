@@ -22,4 +22,24 @@ public final class PrivKey {
 	public ECPrivateKeyParameters getEcPrivateKey() {
 		return ecPrivateKey;
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		PrivKey privKey = (PrivKey) o;
+
+		return ecPrivateKey.getD().equals(privKey.ecPrivateKey.getD());
+	}
+
+	@Override
+	public int hashCode() {
+		return ecPrivateKey.getD().hashCode();
+	}
+
+	@Override
+	public String toString() {
+		return "PrivKey{}";
+	}
 }

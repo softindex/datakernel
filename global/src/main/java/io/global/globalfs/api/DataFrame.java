@@ -36,6 +36,19 @@ public final class DataFrame {
 		return checkpoint != null;
 	}
 
+	public DataFrame slice() {
+		if (buf == null) {
+			return this;
+		}
+		return new DataFrame(buf.slice(), null);
+	}
+
+	public void recycle() {
+		if (buf != null) {
+			buf.recycle();
+		}
+	}
+
 	public ByteBuf getBuf() {
 		checkState(isBuf());
 		assert buf != null;

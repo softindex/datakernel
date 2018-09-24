@@ -60,4 +60,12 @@ public class GlobalFsCheckpointTest {
 		checkpointTest(1, 3, checkpoints, 234, 789 - 234);
 		checkpointTest(1, 4, checkpoints, 234, 789 - 234 + 1);
 	}
+
+	@Test
+	public void testUnboundedEnd() {
+		long[] checkpoints = {0, 10, 20, 30, 40, 50};
+		boundaryTest(checkpoints);
+
+		checkpointTest(1, 5, checkpoints, 15, -1);
+	}
 }

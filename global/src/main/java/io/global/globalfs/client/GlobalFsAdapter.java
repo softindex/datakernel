@@ -6,74 +6,89 @@ import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.global.common.PrivKey;
-import io.global.globalfs.api.*;
+import io.global.common.KeyPair;
+import io.global.common.PubKey;
+import io.global.globalfs.api.CheckpointPositionStrategy;
+import io.global.globalfs.api.FramesToByteBufsTransformer;
+import io.global.globalfs.api.GlobalFsFileSystem;
+import io.global.globalfs.api.SignerTransformer;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class GlobalFsAdapter implements FsClient {
-	private final GlobalFsClient globalFsClient;
-	private final GlobalFsName name;
-	private final CheckpointPositionStrategy checkpointPositionStrategy;
-	private final PrivKey privateKey;
+import static java.util.stream.Collectors.toList;
 
-	public GlobalFsAdapter(GlobalFsClient globalFsClient, GlobalFsName name, CheckpointPositionStrategy checkpointPositionStrategy, PrivKey privateKey) {
-		this.globalFsClient = globalFsClient;
-		this.name = name;
+public class GlobalFsAdapter implements FsClient {
+	private final GlobalFsFileSystem fs;
+	private final KeyPair keys;
+	private final CheckpointPositionStrategy checkpointPositionStrategy;
+
+	public GlobalFsAdapter(GlobalFsFileSystem fs, KeyPair keys, CheckpointPositionStrategy checkpointPositionStrategy) {
+		this.fs = fs;
+		this.keys = keys;
 		this.checkpointPositionStrategy = checkpointPositionStrategy;
-		this.privateKey = privateKey;
 	}
 
 	@Override
 	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
-		return globalFsClient.upload(name, filename, offset)
+		return fs.upload(filename, offset == -1 ? 0 : offset)
 				.thenApply(consumer -> consumer
-						.apply(SignerTransformer.create(offset, checkpointPositionStrategy, privateKey)));
+						.apply(SignerTransformer.create(offset == -1 ? 0 : offset, checkpointPositionStrategy, keys.getPrivKey())));
 	}
 
 	@Override
 	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
-		return globalFsClient.download(name, filename, offset, length)
-				.thenApply(supplier ->
-						supplier.apply(new FramesToByteBufsTransformer(name.getPubKey()) {
-							long endOffset = offset + length;
-
-							@Override
-							protected Stage<Void> receiveByteBuffer(ByteBuf byteBuf) {
-								int size = byteBuf.readRemaining();
-								if (position <= offset || position - size > endOffset) {
-									return Stage.of(null);
-								}
-								if (position - size < offset) {
-									byteBuf.moveReadPosition((int) (offset - position + size));
-								}
-								if (position > endOffset) {
-									byteBuf.moveWritePosition((int) (endOffset - position));
-								}
-								return output.accept(byteBuf);
-							}
-						}));
+		return fs.download(filename, offset, length)
+				.thenApply(supplier -> supplier.apply(new CuttingReceiver(keys.getPubKey(), offset, length)));
 	}
 
 	@Override
 	public Stage<Set<String>> move(Map<String, String> changes) {
-		return globalFsClient.move(name, changes);
+		return fs.move(changes);
 	}
 
 	@Override
 	public Stage<Set<String>> copy(Map<String, String> changes) {
-		return globalFsClient.copy(name, changes);
+		return fs.copy(changes);
 	}
 
 	@Override
 	public Stage<List<FileMetadata>> list(String glob) {
-		return globalFsClient.list(name, glob);
+		return fs.list(glob)
+				.thenApply(res -> res.stream()
+						.map(meta -> new FileMetadata(meta.getAddress().getFile(), meta.getSize(), meta.getRevision()))
+						.collect(toList()));
 	}
 
 	@Override
 	public Stage<Void> delete(String glob) {
-		return globalFsClient.delete(name, glob);
+		return fs.delete(glob);
+	}
+
+	private static class CuttingReceiver extends FramesToByteBufsTransformer {
+		private final long offset;
+		private final long endOffset;
+
+		CuttingReceiver(PubKey pubKey, long offset, long length) {
+			super(pubKey);
+			this.offset = offset;
+			this.endOffset = length == -1 ? Long.MAX_VALUE : offset + length;
+		}
+
+		@Override
+		protected Stage<Void> receiveByteBuffer(ByteBuf byteBuf) {
+			int size = byteBuf.readRemaining();
+			if (position <= offset || position - size > endOffset) {
+				return Stage.of(null);
+			}
+			if (position - size < offset) {
+				byteBuf.moveReadPosition((int) (offset - position + size));
+			}
+			if (position > endOffset) {
+				byteBuf.moveWritePosition((int) (endOffset - position));
+			}
+			return output.accept(byteBuf);
+		}
 	}
 }

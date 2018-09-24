@@ -30,26 +30,38 @@ public class FetcherTransformer extends ByteBufsToFramesTransformer {
 
 	@Override
 	protected Stage<Void> postNextCheckpoint() {
-		Stage<Void> stage = checkpointStorage.loadCheckpoint(fileName, nextCheckpoint)
-				.thenCompose(c -> output.accept(DataFrame.of(c)));
+		long checkpoint = nextCheckpoint;
 		if (nextCheckpointIndex < lastCheckpointIndex) {
 			nextCheckpoint = checkpoints[++nextCheckpointIndex];
-			return stage;
 		}
-		return stage.thenRun(() -> output.accept(null));
+		return checkpointStorage.loadCheckpoint(fileName, checkpoint)
+				.thenComposeEx((signedCheckpoint, e) -> {
+					if (e != null || signedCheckpoint == null) {
+						// we are loading a checkpoint from a position that obtained using getCheckpoints,
+						// so somewhere in between the file was corrupted, or CheckpointStorage implementation is broken
+						output.closeWithError(new GlobalFsException("No checkpoint at position {} for file {} found! Are checkpoint files corrupted?"));
+						return Stage.complete();
+					}
+					return output.accept(DataFrame.of(signedCheckpoint));
+				});
 	}
 
 	@Override
 	protected void iteration() {
 		input.get()
-				.whenResult(buf -> {
+				.whenComplete((buf, e) -> {
+					if (e != null) {
+						closeWithError(e);
+					}
 					if (buf == null) {
+						output.accept(null)
+								.thenRun(this::completeProcess);
 						return;
 					}
 					handleBuffer(buf)
-							.whenComplete(($, e) -> {
+							.whenComplete(($, e2) -> {
 								if (e != null) {
-									output.closeWithError(e);
+									closeWithError(e2);
 								}
 								iteration();
 							});

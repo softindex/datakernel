@@ -1,10 +1,7 @@
 package io.global.globalsync.util;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.global.common.CryptoUtils;
-import io.global.common.ECDSASignature;
-import io.global.common.PubKey;
-import io.global.common.SimKeyHash;
+import io.global.common.*;
 import io.global.globalsync.api.CommitId;
 import io.global.globalsync.api.EncryptedData;
 import io.global.globalsync.api.RepositoryName;
@@ -12,10 +9,12 @@ import org.spongycastle.math.ec.ECPoint;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 public final class SerializationUtils {
 	private SerializationUtils() {
@@ -46,7 +45,7 @@ public final class SerializationUtils {
 		writeBigInteger(buf, ecPoint.getYCoord().toBigInteger());
 	}
 
-	public static ECPoint readECPoint(ByteBuf buf) throws IOException {
+	public static ECPoint readECPoint(ByteBuf buf) {
 		BigInteger x = readBigInteger(buf);
 		BigInteger y = readBigInteger(buf);
 		return CryptoUtils.CURVE.getCurve().validatePoint(x, y);
@@ -60,7 +59,7 @@ public final class SerializationUtils {
 		writeECPoint(buf, pubKey.getEcPublicKey().getQ());
 	}
 
-	public static PubKey readPubKey(ByteBuf buf) throws IOException {
+	public static PubKey readPubKey(ByteBuf buf) {
 		return PubKey.ofQ(readECPoint(buf));
 	}
 
@@ -87,7 +86,7 @@ public final class SerializationUtils {
 		writeBytes(buf, commitId.toBytes());
 	}
 
-	public static CommitId readCommitId(ByteBuf buf) throws IOException {
+	public static CommitId readCommitId(ByteBuf buf) {
 		return CommitId.ofBytes(readBytes(buf));
 	}
 
@@ -99,7 +98,7 @@ public final class SerializationUtils {
 		writeBytes(buf, simKeyHash.toBytes());
 	}
 
-	public static SimKeyHash readSimKeyHash(ByteBuf buf) throws IOException {
+	public static SimKeyHash readSimKeyHash(ByteBuf buf) {
 		return new SimKeyHash(readBytes(buf));
 	}
 
@@ -112,7 +111,7 @@ public final class SerializationUtils {
 		writeBytes(buf, encryptedData.encryptedBytes);
 	}
 
-	public static EncryptedData readEncryptedData(ByteBuf buf) throws IOException {
+	public static EncryptedData readEncryptedData(ByteBuf buf) {
 		byte[] initializationVector = readBytes(buf);
 		byte[] data = readBytes(buf);
 		return new EncryptedData(initializationVector, data);
@@ -126,7 +125,7 @@ public final class SerializationUtils {
 		writeBytes(buf, bigInteger.toByteArray());
 	}
 
-	public static BigInteger readBigInteger(ByteBuf buf) throws IOException {
+	public static BigInteger readBigInteger(ByteBuf buf) {
 		return new BigInteger(readBytes(buf));
 	}
 
@@ -139,14 +138,40 @@ public final class SerializationUtils {
 		writeBigInteger(buf, signature.s);
 	}
 
-	public static ECDSASignature readEcdsaSignature(ByteBuf buf) throws IOException {
+	public static ECDSASignature readEcdsaSignature(ByteBuf buf) {
 		BigInteger r = readBigInteger(buf);
 		BigInteger s = readBigInteger(buf);
 		return new ECDSASignature(r, s);
 	}
 
-	public static <T> int sizeof(List<T> list, Function<T, Integer> elementSizeof) {
-		return 5 + list.stream().mapToInt(elementSizeof::apply).sum();
+	public static int sizeof(InetSocketAddress socketAddress) {
+		return 16 + 2; // 16 bytes for the IPv6 + 2 bytes - port
+	}
+
+	public static void writeInetSocketAddress(ByteBuf buf, InetSocketAddress address) {
+		buf.writeShort((short) (address.getPort() & 0xFFFF));
+		writeBytes(buf, address.getAddress().getAddress());
+	}
+
+	public static InetSocketAddress readInetSocketAddress(ByteBuf buf) throws IOException {
+		int port = buf.readShort() & 0xFFFF;
+		return new InetSocketAddress(InetAddress.getByAddress(readBytes(buf)), port);
+	}
+
+	public static int sizeof(RawServerId serverId) {
+		return sizeof(serverId.getInetSocketAddress());
+	}
+
+	public static void writeRawServerId(ByteBuf buf, RawServerId serverId) {
+		writeInetSocketAddress(buf, serverId.getInetSocketAddress());
+	}
+
+	public static RawServerId readRawServerId(ByteBuf buf) throws IOException {
+		return new RawServerId(readInetSocketAddress(buf));
+	}
+
+	public static <T> int sizeof(List<T> list, ToIntFunction<T> elementSizeof) {
+		return 5 + list.stream().mapToInt(elementSizeof).sum();
 	}
 
 	public static <T> void writeList(ByteBuf buf, List<T> list, BiConsumer<ByteBuf, T> writer) {

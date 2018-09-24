@@ -73,7 +73,7 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 									});
 						} else {
 							output.accept(null)
-									.whenComplete(($, e2) -> completeProcess(e));
+									.whenComplete(($, e2) -> completeProcess(e2));
 						}
 					} else {
 						closeWithError(e);

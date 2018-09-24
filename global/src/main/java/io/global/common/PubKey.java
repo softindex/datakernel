@@ -30,4 +30,9 @@ public final class PubKey {
 	public int hashCode() {
 		return ecPublicKey.getQ().hashCode();
 	}
+
+	@Override
+	public String toString() {
+		return "PubKey{}";
+	}
 }

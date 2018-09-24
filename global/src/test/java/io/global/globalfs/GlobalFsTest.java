@@ -8,14 +8,15 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.KeyPair;
+import io.global.common.RawServerId;
 import io.global.common.SignedData;
+import io.global.common.api.DiscoveryService;
 import io.global.globalfs.api.GlobalFsCheckpoint;
-import io.global.globalfs.api.GlobalFsClient;
+import io.global.globalfs.api.GlobalFsFileSystem;
 import io.global.globalfs.api.GlobalFsName;
+import io.global.globalfs.api.GlobalFsNode;
 import io.global.globalfs.client.GlobalFsAdapter;
-import io.global.globalfs.server.CheckpointStorage;
-import io.global.globalfs.server.GlobalFsClientLocalImpl;
-import io.global.globalfs.server.RemoteFsFileSystem;
+import io.global.globalfs.server.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -23,7 +24,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
-import java.nio.file.Path;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -35,38 +36,44 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-public class GlobalFsAdapterTest {
+public class GlobalFsTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	private FsClient serverStorage;
 	private Eventloop eventloop;
 	private ExecutorService executor;
-
 	private GlobalFsAdapter adapter;
 
-	private final KeyPair keys = KeyPair.generate();
-	private final GlobalFsName globalName = new GlobalFsName(keys.getPubKey(), "testFs");
+	private final KeyPair firstKeys = KeyPair.generate();
+	private final KeyPair secondKeys = KeyPair.generate();
 
 	@Before
 	public void setUp() throws IOException {
 		eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
 		executor = Executors.newSingleThreadExecutor();
 
-		Path storageDir = temporaryFolder.newFolder().toPath();
+		FsClient storage = LocalFsClient.create(eventloop, executor, temporaryFolder.newFolder().toPath());
+		DiscoveryService discoveryService = new LocalDiscoveryService();
 
-		serverStorage = LocalFsClient.create(eventloop, executor, storageDir);
+		RawNodeFactory clientFactory = new RawNodeFactory() {
+			@Override
+			public GlobalFsNode create(RawServerId serverId) {
+				return new GlobalFsLocalNode(serverId, discoveryService, this,
+						(group, fsName) ->
+								new RemoteFsFileSystem(group, fsName, storage.subfolder(fsName), new RuntimeCheckpointStorage()),
+						() -> Duration.ofMinutes(5));
+			}
+		};
+		FileSystemFactory fileSystemFactory = (group, fsName) ->
+				new RemoteFsFileSystem(group, fsName, storage, new RuntimeCheckpointStorage());
 
 		//noinspection ConstantConditions - all these nulls
-		GlobalFsClient client = new GlobalFsClientLocalImpl(null, null, null, (group, name) ->
-				new RemoteFsFileSystem(group, name, serverStorage, new RuntimeCheckpointStorage()), null);
+		GlobalFsNode client = new GlobalFsLocalNode(null, discoveryService, clientFactory, fileSystemFactory, () -> Duration.ofMinutes(5));
 
-		adapter = new GlobalFsAdapter(
-				client,
-				globalName,
-				pp -> pp + ThreadLocalRandom.current().nextInt(5, 50),
-				keys.getPrivKey());
+		GlobalFsFileSystem fs = client.getFileSystem(GlobalFsName.of(firstKeys, "testFs")).getResult();
+
+		adapter = new GlobalFsAdapter(fs, firstKeys, pp -> pp + ThreadLocalRandom.current().nextInt(5, 50));
 	}
 
 	@After
@@ -119,7 +126,10 @@ public class GlobalFsAdapterTest {
 								buf.asString(UTF_8))))
 				.thenCompose($ -> adapter.downloadSerial("test1.txt", 228, 37).toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf ->
-						assertEquals("hello, this is a test buffer data #07", buf.asString(UTF_8))));
+						assertEquals("hello, this is a test buffer data #07", buf.asString(UTF_8))))
+				.thenCompose($ -> adapter.downloadSerial("test1.txt").toCollector(ByteBufQueue.collector()))
+				.whenComplete(assertComplete(buf ->
+						assertEquals(570, buf.asString(UTF_8).length())));
 
 		eventloop.run();
 	}
