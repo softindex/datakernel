@@ -673,8 +673,8 @@ public final class ConfigConverters {
 			@Override
 			protected ThrottlingController provide(Config config, ThrottlingController defaultValue) {
 				return ThrottlingController.create()
-						.withTargetTime(config.get(ofDuration(), "targetTime", defaultValue.getTargetTimeMillis()))
-						.withGcTime(config.get(ofDuration(), "gcTime", defaultValue.getGcTimeMillis()))
+						.withTargetTime(config.get(ofDuration(), "targetTime", defaultValue.getTargetTime()))
+						.withGcTime(config.get(ofDuration(), "gcTime", defaultValue.getGcTime()))
 						.withSmoothingWindow(config.get(ofDuration(), "smoothingWindow", defaultValue.getSmoothingWindow()))
 						.withThrottlingDecrease(config.get(ofDouble(), "throttlingDecrease", defaultValue.getThrottlingDecrease()))
 						.withInitialKeysPerSecond(config.get(ofDouble(), "initialKeysPerSecond", INITIAL_KEYS_PER_SECOND))

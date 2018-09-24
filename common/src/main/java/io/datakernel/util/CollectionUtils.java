@@ -335,4 +335,22 @@ public class CollectionUtils {
 		return map;
 	}
 
+	public static <T> T getLast(Iterable<T> iterable) {
+		Iterator<T> iterator = iterable.iterator();
+		while (iterator.hasNext()) {
+			T next = iterator.next();
+			if (!iterator.hasNext()) {
+				return next;
+			}
+		}
+		throw new IllegalArgumentException("Empty iterable");
+	}
+
+	public static <T> T getFirst(Iterable<T> iterable) {
+		Iterator<T> iterator = iterable.iterator();
+		if (iterator.hasNext()) {
+			return iterator.next();
+		}
+		throw new IllegalArgumentException("Empty iterable");
+	}
 }

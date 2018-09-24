@@ -145,10 +145,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	private Duration idleInterval = DEFAULT_IDLE_INTERVAL;
 
-	@Nullable
-	private ThrottlingController throttlingController;
-	private int throttlingKeys;
-
 	/**
 	 * Count of selected keys for last Selector.select()
 	 */
@@ -158,7 +154,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	// JMX
 
-	private final EventloopStats stats = new EventloopStats(new ExtraStatsExtractor());
+	@Nullable
+	private EventloopInspector inspector = new EventloopStats(null);
 
 	private boolean monitoring = false;
 
@@ -186,10 +183,15 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return this;
 	}
 
-	public Eventloop withThrottlingController(@Nullable ThrottlingController throttlingController) {
-		this.throttlingController = throttlingController;
-		if (throttlingController != null) {
-			throttlingController.setEventloop(this);
+	public Eventloop withInspector(@Nullable EventloopInspector inspector) {
+		if (inspector != null){
+			inspector.setEventloop(this);
+		}
+
+		if (this.inspector != null){
+			this.inspector = new EventloopStats(inspector);
+		} else {
+			this.inspector = inspector;
 		}
 		return this;
 	}
@@ -211,6 +213,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	public Eventloop withCurrentThread() {
 		CURRENT_EVENTLOOP.set(this);
+		return this;
+	}
+
+	public Eventloop withoutStats() {
+		assert inspector != null;
+		inspector = ((EventloopStats) inspector).next;
 		return this;
 	}
 
@@ -237,8 +245,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@Nullable
-	public ThrottlingController getThrottlingController() {
-		return throttlingController;
+	public EventloopInspector getInspector() {
+		return inspector;
 	}
 
 	private void openSelector() {
@@ -337,6 +345,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			eventloopThread.setPriority(threadPriority);
 		CURRENT_EVENTLOOP.set(this);
 		ensureSelector();
+		assert selector != null;
 		breakEventloop = false;
 
 		timeAfterBusinessLogic = timeAfterSelectorSelect = 0;
@@ -347,7 +356,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 			try {
 				long selectTimeout = getSelectTimeout();
-				stats.updateSelectorSelectTimeout(selectTimeout);
+				if (inspector != null) {
+					inspector.onUpdateSelectorSelectTimeout(selectTimeout);
+				}
 				if (selectTimeout <= 0) {
 					lastSelectedKeys = selector.selectNow();
 				} else {
@@ -360,7 +371,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			} catch (IOException e) {
 				recordIoError(e, selector);
 			}
-			updateSelectorSelectStats();
+
+			timeAfterSelectorSelect = refreshTimestampAndGet();
 
 			int keys = processSelectedKeys(selector.selectedKeys());
 			int concurrentTasks = executeConcurrentTasks();
@@ -368,7 +380,18 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			int backgroundTasks = executeBackgroundTasks();
 			int localTasks = executeLocalTasks();
 
-			updateBusinessLogicStats(keys + concurrentTasks + scheduledTasks + backgroundTasks + localTasks);
+			if (inspector != null) {
+				if (timeAfterBusinessLogic != 0) {
+					long selectorSelectTime = timeAfterSelectorSelect - timeAfterBusinessLogic;
+					inspector.onUpdateSelectorSelectTime(selectorSelectTime);
+				}
+
+				timeAfterBusinessLogic = timestamp; //refreshTimestampAndGet();
+				boolean taskOrKeyPresent = (keys + concurrentTasks + scheduledTasks + backgroundTasks + localTasks) != 0;
+				boolean externalTaskPresent = lastExternalTasksCount != 0;
+				long businessLogicTime = timeAfterBusinessLogic - timeAfterSelectorSelect;
+				inspector.onUpdateBusinessLogicTime(taskOrKeyPresent, externalTaskPresent, businessLogicTime);
+			}
 
 			loop++;
 			tick = 0;
@@ -380,27 +403,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			return;
 		}
 		closeSelector();
-	}
-
-	private void updateSelectorSelectStats() {
-		timeAfterSelectorSelect = refreshTimestampAndGet();
-		if (timeAfterBusinessLogic != 0) {
-			long selectorSelectTime = timeAfterSelectorSelect - timeAfterBusinessLogic;
-			stats.updateSelectorSelectTime(selectorSelectTime);
-		}
-		if (throttlingController != null) {
-			throttlingKeys = lastSelectedKeys + concurrentTasks.size();
-			throttlingController.calculateThrottling(throttlingKeys);
-		}
-	}
-
-	private void updateBusinessLogicStats(int tasksAndKeys) {
-		timeAfterBusinessLogic = timestamp; //refreshTimestampAndGet();
-		long businessLogicTime = timeAfterBusinessLogic - timeAfterSelectorSelect;
-		stats.updateBusinessLogicTime(tasksAndKeys, lastExternalTasksCount, businessLogicTime);
-		if (throttlingController != null) {
-			throttlingController.updateInternalStats(throttlingKeys, (int) businessLogicTime);
-		}
 	}
 
 	private long getSelectTimeout() {
@@ -470,12 +472,16 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 					invalidKeys++;
 				}
 			}
-			if (sw != null) stats.updateSelectedKeyDuration(sw);
+			if (sw != null && inspector != null) {
+				inspector.onUpdateSelectedKeyDuration(sw);
+			}
 		}
 
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		stats.updateSelectedKeysStats(lastSelectedKeys,
-				invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
+		if (inspector != null) {
+			inspector.onUpdateSelectedKeysStats(lastSelectedKeys,
+					invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
+		}
 
 		return acceptKeys + connectKeys + readKeys + writeKeys + invalidKeys;
 	}
@@ -486,7 +492,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private int executeLocalTasks() {
 		long startTimestamp = timestamp;
 
-		int newRunnables = 0;
+		int newLocalTasks = 0;
 
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
@@ -504,17 +510,20 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			try {
 				runnable.run();
 				tick++;
-				if (sw != null)
-					stats.updateLocalTaskDuration(runnable, sw);
+				if (sw != null && inspector != null) {
+					inspector.onUpdateLocalTaskDuration(runnable, sw);
+				}
 			} catch (Throwable e) {
 				recordFatalError(e, runnable);
 			}
-			newRunnables++;
+			newLocalTasks++;
 		}
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		stats.updateLocalTasksStats(newRunnables, loopTime);
+		if (inspector != null) {
+			inspector.onUpdateLocalTasksStats(newLocalTasks, loopTime);
+		}
 
-		return newRunnables;
+		return newLocalTasks;
 	}
 
 	/**
@@ -523,7 +532,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private int executeConcurrentTasks() {
 		long startTimestamp = timestamp;
 
-		int newRunnables = 0;
+		int newConcurrentTasks = 0;
 
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
@@ -540,17 +549,20 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 			try {
 				runnable.run();
-				if (sw != null)
-					stats.updateConcurrentTaskDuration(runnable, sw);
+				if (sw != null && inspector != null) {
+					inspector.onUpdateConcurrentTaskDuration(runnable, sw);
+				}
 			} catch (Throwable e) {
 				recordFatalError(e, runnable);
 			}
-			newRunnables++;
+			newConcurrentTasks++;
 		}
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		stats.updateConcurrentTasksStats(newRunnables, loopTime);
+		if (inspector != null) {
+			inspector.onUpdateConcurrentTasksStats(newConcurrentTasks, loopTime);
+		}
 
-		return newRunnables;
+		return newConcurrentTasks;
 	}
 
 	/**
@@ -568,7 +580,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		long startTimestamp = timestamp;
 		boolean background = taskQueue == backgroundTasks;
 
-		int newRunnables = 0;
+		int newScheduledTasks = 0;
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		for (; ; ) {
@@ -591,28 +603,30 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				sw.start();
 			}
 
-			if (monitoring) {
+			if (monitoring && inspector != null) {
 				int overdue = (int) (System.currentTimeMillis() - peeked.getTimestamp());
-				stats.recordScheduledTaskOverdue(overdue, background);
+				inspector.onScheduledTaskOverdue(overdue, background);
 			}
 
 			try {
 				runnable.run();
 				tick++;
 				polled.complete();
-				if (sw != null)
-					stats.updateScheduledTaskDuration(runnable, sw, background);
+				if (sw != null && inspector != null)
+					inspector.onUpdateScheduledTaskDuration(runnable, sw, background);
 			} catch (Throwable e) {
 				recordFatalError(e, runnable);
 			}
 
-			newRunnables++;
+			newScheduledTasks++;
 		}
 
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		stats.updateScheduledTasksStats(newRunnables, loopTime, background);
+		if (inspector != null) {
+			inspector.onUpdateScheduledTasksStats(newScheduledTasks, loopTime, background);
+		}
 
-		return newRunnables;
+		return newScheduledTasks;
 	}
 
 	/**
@@ -1044,10 +1058,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		} else {
 			handleFatalError(globalFatalErrorHandler, e, context);
 		}
-		if (inEventloopThread()) {
-			stats.recordFatalError(e, context);
-		} else {
-			execute(() -> stats.recordFatalError(e, context));
+		if (inspector != null) {
+			if (inEventloopThread()) {
+				inspector.onFatalError(e, context);
+			} else {
+				execute(() -> inspector.onFatalError(e, context));
+			}
 		}
 	}
 
@@ -1096,7 +1112,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	@JmxAttribute(name = "")
 	public EventloopStats getStats() {
-		return stats;
+		return (inspector instanceof EventloopStats ? (EventloopStats) inspector : null);
 	}
 
 	@JmxAttribute
@@ -1107,24 +1123,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@JmxAttribute
 	public void setIdleInterval(Duration idleInterval) {
 		this.idleInterval = idleInterval;
-	}
-
-	final class ExtraStatsExtractor {
-		int getLocalTasksCount() {
-			return localTasks.size();
-		}
-
-		int getConcurrentTasksCount() {
-			return concurrentTasks.size();
-		}
-
-		int getScheduledTasksCount() {
-			return scheduledTasks.size();
-		}
-
-		int getBackgroundTasksCount() {
-			return backgroundTasks.size();
-		}
 	}
 
 	@Override

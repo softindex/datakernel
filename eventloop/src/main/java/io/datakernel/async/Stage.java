@@ -427,7 +427,7 @@ public interface Stage<T> {
 	 * Otherwise it completes with timeout exception.
 	 * If <code>null</code> is given, no timeout is applied.
 	 *
-	 * @param timeout timeout in milliseconds
+	 * @param timeout timeout as Duration
 	 */
 	Stage<T> timeout(@Nullable Duration timeout);
 

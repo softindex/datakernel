@@ -16,10 +16,12 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +31,7 @@ import java.util.Random;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.pow;
 
-public final class ThrottlingController implements EventloopJmxMBean {
+public final class ThrottlingController implements EventloopJmxMBean, EventloopInspector {
 	private static int staticInstanceCounter = 0;
 
 	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
@@ -57,6 +59,8 @@ public final class ThrottlingController implements EventloopJmxMBean {
 	};
 
 	private Eventloop eventloop;
+	private int lastSelectedKeys;
+	private int concurrentTasksSize;
 
 	// region settings
 	private int targetTimeMillis;
@@ -102,12 +106,12 @@ public final class ThrottlingController implements EventloopJmxMBean {
 	}
 
 	public ThrottlingController withTargetTime(Duration targetTime) {
-		setTargetTimeMillis(targetTime);
+		setTargetTime(targetTime);
 		return this;
 	}
 
 	public ThrottlingController withGcTime(Duration gcTime) {
-		setGcTimeMillis(gcTime);
+		setGcTime(gcTime);
 		return this;
 	}
 
@@ -144,16 +148,28 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		return false;
 	}
 
-	void updateInternalStats(int lastKeys, int lastTime) {
-		if (lastTime < 0 || lastTime > 60000) {
-			logger.warn("Invalid processing time: {}", lastTime);
+	@Override
+	public void onUpdateConcurrentTasksStats(int concurrentTasksSize, long loopTime) {
+		this.concurrentTasksSize = concurrentTasksSize;
+	}
+
+	@Override
+	public void onUpdateSelectedKeysStats(int lastSelectedKeys, int invalidKeys, int acceptKeys, int connectKeys, int readKeys, int writeKeys, long loopTime) {
+		this.lastSelectedKeys = lastSelectedKeys;
+	}
+
+	@Override
+	public void onUpdateBusinessLogicTime(boolean anyTaskOrKeyPresent, boolean externalTaskOrKeyPresent, long businessLogicTime) {
+		if (businessLogicTime < 0 || businessLogicTime > 60000) {
+			logger.warn("Invalid processing time: {}", businessLogicTime);
 			return;
 		}
 
-		int lastTimePredicted = (int) (lastKeys * getAvgTimePerKeyMillis());
-		if (gcTimeMillis != 0.0 && lastTime > lastTimePredicted + gcTimeMillis) {
-			logger.debug("GC detected {} ms, {} keys", lastTime, lastKeys);
-			lastTime = lastTimePredicted + gcTimeMillis;
+		int throttlingKeys = lastSelectedKeys + concurrentTasksSize;
+		int lastTimePredicted = (int) (throttlingKeys * getAvgTimePerKeyMillis());
+		if (gcTimeMillis != 0.0 && businessLogicTime > lastTimePredicted + gcTimeMillis) {
+			logger.debug("GC detected {} ms, {} keys", businessLogicTime, throttlingKeys);
+			businessLogicTime = lastTimePredicted + gcTimeMillis;
 			infoRoundsGc++;
 		}
 
@@ -169,16 +185,18 @@ public final class ThrottlingController implements EventloopJmxMBean {
 			bufferedRequestsThrottled = 0;
 		}
 
-		if (lastKeys != 0) {
-			double value = (double) lastTime / lastKeys;
-			smoothedTimePerKeyMillis = (smoothedTimePerKeyMillis - value) * pow(weight, lastKeys) + value;
+		if (throttlingKeys != 0) {
+			double value = (double) businessLogicTime / throttlingKeys;
+			smoothedTimePerKeyMillis = (smoothedTimePerKeyMillis - value) * pow(weight, throttlingKeys) + value;
 		}
 
-		infoTotalTimeMillis += lastTime;
+		infoTotalTimeMillis += businessLogicTime;
 	}
 
-	void calculateThrottling(int newKeys) {
-		double predictedTime = newKeys * getAvgTimePerKeyMillis();
+	@Override
+	public void onUpdateSelectorSelectTime(long selectorSelectTime) {
+		int throttlingKeys = lastSelectedKeys + concurrentTasksSize;
+		double predictedTime = throttlingKeys * getAvgTimePerKeyMillis();
 
 		double newThrottling = getAvgThrottling() - throttlingDecrease;
 		if (newThrottling < 0)
@@ -198,6 +216,44 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		this.throttling = (float) newThrottling;
 	}
 
+	// region NOP
+	@Override
+	public void onUpdateSelectorSelectTimeout(long selectorSelectTimeout) {
+	}
+
+	@Override
+	public void onUpdateSelectedKeyDuration(Stopwatch sw) {
+	}
+
+	@Override
+	public void onUpdateLocalTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
+	}
+
+	@Override
+	public void onUpdateLocalTasksStats(int newTasks, long loopTime) {
+	}
+
+	@Override
+	public void onUpdateConcurrentTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
+	}
+
+	@Override
+	public void onUpdateScheduledTaskDuration(Runnable runnable, @Nullable Stopwatch sw, boolean background) {
+	}
+
+	@Override
+	public void onUpdateScheduledTasksStats(int newTasks, long loopTime, boolean background) {
+	}
+
+	@Override
+	public void onFatalError(Throwable throwable, Object causedObject) {
+	}
+
+	@Override
+	public void onScheduledTaskOverdue(int overdue, boolean background) {
+	}
+	// endregion
+
 	public double getAvgTimePerKeyMillis() {
 		return smoothedTimePerKeyMillis;
 	}
@@ -213,23 +269,23 @@ public final class ThrottlingController implements EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public Duration getTargetTimeMillis() {
+	public Duration getTargetTime() {
 		return Duration.ofMillis(targetTimeMillis);
 	}
 
 	@JmxAttribute
-	public void setTargetTimeMillis(Duration targetTime) {
+	public void setTargetTime(Duration targetTime) {
 		checkArgument(targetTime.toMillis() > 0, "Target time should not be zero or less");
 		this.targetTimeMillis = (int) targetTime.toMillis();
 	}
 
 	@JmxAttribute
-	public Duration getGcTimeMillis() {
+	public Duration getGcTime() {
 		return Duration.ofMillis(gcTimeMillis);
 	}
 
 	@JmxAttribute
-	public void setGcTimeMillis(Duration gcTime) {
+	public void setGcTime(Duration gcTime) {
 		checkArgument(gcTime.toMillis() > 0, "GC time should not be zero or less");
 		this.gcTimeMillis = (int) gcTime.toMillis();
 	}
@@ -324,7 +380,8 @@ public final class ThrottlingController implements EventloopJmxMBean {
 				infoRoundsExceededTargetTime);
 	}
 
-	void setEventloop(Eventloop eventloop) {
+	@Override
+	public void setEventloop(Eventloop eventloop) {
 		this.eventloop = eventloop;
 	}
 

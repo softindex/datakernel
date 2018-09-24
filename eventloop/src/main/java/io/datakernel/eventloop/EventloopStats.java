@@ -30,8 +30,10 @@ import static io.datakernel.eventloop.Eventloop.DEFAULT_SMOOTHING_WINDOW;
 import static io.datakernel.jmx.ValueStats.POWERS_OF_TWO;
 
 @SuppressWarnings("unused")
-public final class EventloopStats {
+public final class EventloopStats implements EventloopInspector {
 
+	@Nullable
+	final EventloopInspector next;
 	private final EventStats loops;
 	private final ValueStats selectorSelectTimeout;
 	private final ValueStats selectorSelectTime;
@@ -44,13 +46,14 @@ public final class EventloopStats {
 	private final EventStats idleLoopsWaitingExternalTask;
 	private final EventStats selectOverdues;
 
-	EventloopStats(Eventloop.ExtraStatsExtractor extraStatsExtractor) {
+	EventloopStats(@Nullable EventloopInspector next) {
+		this.next = next;
 		loops = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
 		selectorSelectTimeout = ValueStats.create(DEFAULT_SMOOTHING_WINDOW)
 				.withHistogram(new int[]{-256, -128, -64, -32, -16, -8, -4, -2, -1, 0, 1, 2, 4, 8, 16, 32}).withUnit("milliseconds");
 		selectorSelectTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");
 		businessLogicTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");
-		tasks = new Tasks(extraStatsExtractor);
+		tasks = new Tasks();
 		keys = new Keys();
 		fatalErrors = ExceptionStats.create();
 		fatalErrorsMap = new HashMap<>();
@@ -60,36 +63,54 @@ public final class EventloopStats {
 	}
 
 	// region updating
-	public void updateBusinessLogicTime(int tasksAndKeys, int externalTasksCount, long businessLogicTime) {
+	@Override
+	public void onUpdateBusinessLogicTime(boolean taskOrKeyPresent, boolean externalTaskPresent, long businessLogicTime) {
 		loops.recordEvent();
-		if (tasksAndKeys != 0) {
+		if (taskOrKeyPresent) {
 			this.businessLogicTime.recordValue((int) businessLogicTime);
 		} else {
-			if (externalTasksCount == 0) {
+			if (!externalTaskPresent) {
 				idleLoops.recordEvent();
 			} else {
 				idleLoopsWaitingExternalTask.recordEvent();
 			}
 		}
-	}
 
-	public void updateSelectorSelectTime(long selectorSelectTime) {
-		this.selectorSelectTime.recordValue((int) selectorSelectTime);
-	}
-
-	public void updateSelectorSelectTimeout(long selectorSelectTimeout) {
-		this.selectorSelectTimeout.recordValue((int) selectorSelectTimeout);
-		if (selectorSelectTimeout < 0) this.selectOverdues.recordEvent();
-	}
-
-	public void updateSelectedKeyDuration(Stopwatch sw) {
-		if (sw != null) {
-			keys.oneKeyTime.recordValue((int) sw.elapsed(TimeUnit.MICROSECONDS));
+		if(next != null){
+			next.onUpdateBusinessLogicTime(taskOrKeyPresent, externalTaskPresent, businessLogicTime);
 		}
 	}
 
-	public void updateSelectedKeysStats(int lastSelectedKeys, int invalidKeys, int acceptKeys,
-	                                    int connectKeys, int readKeys, int writeKeys, long loopTime) {
+	@Override
+	public void onUpdateSelectorSelectTime(long selectorSelectTime) {
+		this.selectorSelectTime.recordValue((int) selectorSelectTime);
+		if(next != null){
+			next.onUpdateSelectorSelectTime(selectorSelectTime);
+		}
+	}
+
+	@Override
+	public void onUpdateSelectorSelectTimeout(long selectorSelectTimeout) {
+		this.selectorSelectTimeout.recordValue((int) selectorSelectTimeout);
+		if (selectorSelectTimeout < 0) this.selectOverdues.recordEvent();
+		if(next != null){
+			next.onUpdateSelectorSelectTimeout(selectorSelectTimeout);
+		}
+	}
+
+	@Override
+	public void onUpdateSelectedKeyDuration(Stopwatch sw) {
+		if (sw != null) {
+			keys.oneKeyTime.recordValue((int) sw.elapsed(TimeUnit.MICROSECONDS));
+		}
+		if(next != null){
+			next.onUpdateSelectedKeyDuration(sw);
+		}
+	}
+
+	@Override
+	public void onUpdateSelectedKeysStats(int lastSelectedKeys, int invalidKeys, int acceptKeys,
+			int connectKeys, int readKeys, int writeKeys, long loopTime) {
 		keys.all.recordEvents(lastSelectedKeys);
 		keys.invalid.recordEvents(invalidKeys);
 		keys.acceptPerLoop.recordValue(acceptKeys);
@@ -97,6 +118,9 @@ public final class EventloopStats {
 		keys.readPerLoop.recordValue(readKeys);
 		keys.writePerLoop.recordValue(writeKeys);
 		if (lastSelectedKeys != 0) keys.loopTime.recordValue((int) loopTime);
+		if(next != null){
+			next.onUpdateSelectedKeysStats(lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
+		}
 	}
 
 	private void updateTaskDuration(ValueStats counter, DurationRunnable longestCounter, Runnable runnable, @Nullable Stopwatch sw) {
@@ -109,43 +133,68 @@ public final class EventloopStats {
 		}
 	}
 
-	public void updateLocalTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
+	@Override
+	public void onUpdateLocalTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
 		updateTaskDuration(tasks.local.oneTaskTime, tasks.local.longestTask, runnable, sw);
+		if(next != null){
+			next.onUpdateLocalTaskDuration(runnable, sw);
+		}
 	}
 
-	public void updateLocalTasksStats(int newTasks, long loopTime) {
-		if (newTasks != 0) tasks.local.loopTime.recordValue((int) loopTime);
-		tasks.local.tasksPerLoop.recordValue(newTasks);
+	@Override
+	public void onUpdateLocalTasksStats(int newLocalTasks, long loopTime) {
+		if (newLocalTasks != 0) tasks.local.loopTime.recordValue((int) loopTime);
+		tasks.local.tasksPerLoop.recordValue(newLocalTasks);
+		if(next != null){
+			next.onUpdateLocalTasksStats(newLocalTasks, loopTime);
+		}
 	}
 
-	public void updateConcurrentTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
+	@Override
+	public void onUpdateConcurrentTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
 		updateTaskDuration(tasks.concurrent.oneTaskTime, tasks.concurrent.longestTask, runnable, sw);
+		if(next != null){
+			next.onUpdateConcurrentTaskDuration(runnable, sw);
+		}
 	}
 
-	public void updateConcurrentTasksStats(int newTasks, long loopTime) {
-		if (newTasks != 0) tasks.concurrent.loopTime.recordValue((int) loopTime);
-		tasks.concurrent.tasksPerLoop.recordValue(newTasks);
+	@Override
+	public void onUpdateConcurrentTasksStats(int newConcurrentTasks, long loopTime) {
+		if (newConcurrentTasks != 0) tasks.concurrent.loopTime.recordValue((int) loopTime);
+		tasks.concurrent.tasksPerLoop.recordValue(newConcurrentTasks);
+		if(next != null){
+			next.onUpdateConcurrentTasksStats(newConcurrentTasks, loopTime);
+		}
 	}
 
-	public void updateScheduledTaskDuration(Runnable runnable, @Nullable Stopwatch sw, boolean background) {
+	@Override
+	public void onUpdateScheduledTaskDuration(Runnable runnable, @Nullable Stopwatch sw, boolean background) {
 		if (background) {
 			updateTaskDuration(tasks.background.getOneTaskTime(), tasks.background.getLongestTask(), runnable, sw);
 		} else {
 			updateTaskDuration(tasks.scheduled.getOneTaskTime(), tasks.scheduled.getLongestTask(), runnable, sw);
 		}
-	}
-
-	public void updateScheduledTasksStats(int newTasks, long loopTime, boolean background) {
-		if (background) {
-			if (newTasks != 0) tasks.background.getLoopTime().recordValue((int) loopTime);
-			tasks.background.getTasksPerLoop().recordValue(newTasks);
-		} else {
-			if (newTasks != 0) tasks.scheduled.getLoopTime().recordValue((int) loopTime);
-			tasks.scheduled.getTasksPerLoop().recordValue(newTasks);
+		if(next != null){
+			next.onUpdateScheduledTaskDuration(runnable, sw, background);
 		}
 	}
 
-	public void recordFatalError(Throwable throwable, Object causedObject) {
+	@Override
+	public void onUpdateScheduledTasksStats(int newScheduledTasks, long loopTime, boolean background) {
+		if (background) {
+			if (newScheduledTasks != 0) tasks.background.getLoopTime().recordValue((int) loopTime);
+			tasks.background.getTasksPerLoop().recordValue(newScheduledTasks);
+		} else {
+			if (newScheduledTasks != 0) tasks.scheduled.getLoopTime().recordValue((int) loopTime);
+			tasks.scheduled.getTasksPerLoop().recordValue(newScheduledTasks);
+		}
+		if(next != null){
+			next.onUpdateScheduledTasksStats(newScheduledTasks, loopTime, background);
+		}
+	}
+
+	@Override
+	public void onFatalError(Throwable throwable, Object causedObject) {
 		fatalErrors.recordException(throwable, causedObject);
 
 		Class<? extends Throwable> type = throwable.getClass();
@@ -155,14 +204,25 @@ public final class EventloopStats {
 			fatalErrorsMap.put(type, stats);
 		}
 		stats.recordException(throwable, causedObject);
+		if(next != null){
+			next.onFatalError(throwable, causedObject);
+		}
 	}
 
-	public void recordScheduledTaskOverdue(int overdue, boolean background) {
+	@Override
+	public void onScheduledTaskOverdue(int overdue, boolean background) {
 		if (background) {
 			tasks.background.overdues.recordValue(overdue);
 		} else {
 			tasks.scheduled.overdues.recordValue(overdue);
 		}
+		if(next != null){
+			next.onScheduledTaskOverdue(overdue, background);
+		}
+	}
+
+	@Override
+	public void setEventloop(Eventloop eventloop) {
 	}
 
 	// endregion
@@ -232,11 +292,11 @@ public final class EventloopStats {
 		private final ScheduledTaskStats scheduled;
 		private final ScheduledTaskStats background;
 
-		public Tasks(Eventloop.ExtraStatsExtractor extraStatsExtractor) {
-			local = new TaskStats(extraStatsExtractor::getLocalTasksCount);
-			concurrent = new TaskStats(extraStatsExtractor::getConcurrentTasksCount);
-			scheduled = new ScheduledTaskStats(extraStatsExtractor::getScheduledTasksCount);
-			background = new ScheduledTaskStats(extraStatsExtractor::getBackgroundTasksCount);
+		public Tasks() {
+			local = new TaskStats();
+			concurrent = new TaskStats();
+			scheduled = new ScheduledTaskStats();
+			background = new ScheduledTaskStats();
 		}
 
 		@JmxAttribute
@@ -265,14 +325,12 @@ public final class EventloopStats {
 		private final ValueStats loopTime;
 		private final ValueStats oneTaskTime;
 		private final DurationRunnable longestTask;
-		private final Count count;
 
-		public TaskStats(Count count) {
+		public TaskStats() {
 			this.tasksPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
-			this.loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");
-			this.oneTaskTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("microseconds");
+			this.loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");;
+			this.oneTaskTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("microseconds");;
 			this.longestTask = new DurationRunnable();
-			this.count = count;
 		}
 
 		@JmxAttribute(name = "perLoop", extraSubAttributes = "histogram")
@@ -297,15 +355,15 @@ public final class EventloopStats {
 
 		@JmxAttribute(reducer = JmxReducerSum.class)
 		public int getCount() {
-			return count.getCount();
+			return (int) tasksPerLoop.getLastValue();
 		}
 	}
 
 	public static final class ScheduledTaskStats extends TaskStats {
 		private final ValueStats overdues;
 
-		public ScheduledTaskStats(Count count) {
-			super(count);
+		public ScheduledTaskStats() {
+			super();
 			overdues = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withRate().withUnit("milliseconds");
 		}
 
@@ -375,10 +433,6 @@ public final class EventloopStats {
 		public ValueStats getOneKeyTime() {
 			return oneKeyTime;
 		}
-	}
-
-	private interface Count {
-		int getCount();
 	}
 
 	private static final class StackTrace {

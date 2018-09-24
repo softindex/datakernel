@@ -36,7 +36,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static com.google.common.collect.Iterators.getLast;
+import static io.datakernel.util.CollectionUtils.getLast;
 import static io.datakernel.util.guice.GuiceUtils.*;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
@@ -256,7 +256,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 
 	@Provides
 	TriggerRegistry getTriggersRegistry() {
-		return new TriggerRegistryRecorder(getLast(currentlyProvidingSingletonKeys.iterator()));
+		return new TriggerRegistryRecorder(getLast(currentlyProvidingSingletonKeys));
 	}
 
 	@SuppressWarnings("unchecked")

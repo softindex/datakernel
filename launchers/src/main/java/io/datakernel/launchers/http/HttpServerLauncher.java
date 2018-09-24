@@ -70,7 +70,7 @@ public abstract class HttpServerLauncher extends Launcher {
 							OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
+								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
 					}
 
 					@Provides

@@ -7,7 +7,6 @@ import io.datakernel.ot.utils.TestOpState;
 import io.datakernel.ot.utils.Utils;
 import org.junit.Test;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -15,6 +14,7 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.utils.Utils.add;
+import static io.datakernel.util.CollectionUtils.getLast;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -109,14 +109,4 @@ public class OTAlgorithmsTest {
 		diffs.forEach(opState::apply);
 		return opState.getValue();
 	}
-
-	private static <T> T getLast(Iterable<T> iterable) {
-		Iterator<T> iterator = iterable.iterator();
-		while (iterator.hasNext()) {
-			T next = iterator.next();
-			if (!iterator.hasNext()) return next;
-		}
-		throw new IllegalArgumentException("Empty iterable");
-	}
-
 }

@@ -23,8 +23,6 @@ import java.time.Duration;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.*;
-import static java.lang.Math.log10;
-import static java.lang.Math.max;
 
 /**
  * Computes total amount of events and dynamic rate using exponential smoothing algorithm

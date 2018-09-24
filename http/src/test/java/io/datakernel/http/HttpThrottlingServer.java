@@ -19,6 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopInspector;
 import io.datakernel.eventloop.ThrottlingController;
 
 import java.net.InetSocketAddress;
@@ -122,8 +123,8 @@ public class HttpThrottlingServer {
 			return;
 		info(options);
 
-		ThrottlingController throttlingController = ThrottlingController.create();
-		Eventloop eventloop = Eventloop.create().withThrottlingController(throttlingController).withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		EventloopInspector throttlingController = ThrottlingController.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread().withInspector(throttlingController);
 
 		HttpThrottlingServer server = new HttpThrottlingServer(eventloop, options);
 

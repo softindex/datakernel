@@ -1,14 +1,17 @@
 package io.datakernel.util.guice;
 
 import com.google.inject.Inject;
+import io.datakernel.annotation.Nullable;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public final class OptionalDependency<T> {
 	@Inject(optional = true)
+	@Nullable
 	private T value;
 
+	@Nullable
 	public T get() {
 		return value;
 	}

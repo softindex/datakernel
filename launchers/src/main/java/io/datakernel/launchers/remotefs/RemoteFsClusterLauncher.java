@@ -62,7 +62,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
+								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
 					}
 
 					@Provides
