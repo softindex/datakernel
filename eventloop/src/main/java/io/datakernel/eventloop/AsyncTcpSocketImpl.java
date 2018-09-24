@@ -37,6 +37,7 @@ import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 import static io.datakernel.util.Recyclable.deepRecycle;
 
 @SuppressWarnings({"WeakerAccess", "AssertWithSideEffects"})
@@ -277,6 +278,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public Stage<ByteBuf> read() {
+		if (!isOpen()) return Stage.ofException(CLOSE_EXCEPTION);
 		read = null;
 		if (!readQueue.isEmpty() || readEndOfStream) return Stage.of(readQueue.poll());
 		read = new SettableStage<>();
@@ -350,7 +352,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	@Override
 	public Stage<Void> write(@Nullable ByteBuf buf) {
 		assert eventloop.inEventloopThread();
-		assert !writeEndOfStream;
+		checkState(!writeEndOfStream);
+		if (!isOpen()) {
+			if (buf != null) buf.recycle();
+			return Stage.ofException(CLOSE_EXCEPTION);
+		}
 		if (buf != null) {
 			writeQueue.add(buf);
 		} else {

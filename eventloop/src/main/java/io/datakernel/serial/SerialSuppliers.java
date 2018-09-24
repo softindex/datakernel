@@ -211,7 +211,8 @@ public final class SerialSuppliers {
 					@SuppressWarnings("unchecked")
 					@Override
 					public Stage<T> get() {
-						assert !isClosed() && pending == null;
+						if (isClosed()) return Stage.ofException(CLOSE_EXCEPTION);
+						assert pending == null;
 						if (!deque.isEmpty() || endOfStream) {
 							T result = deque.poll();
 							tryPrefetch();
