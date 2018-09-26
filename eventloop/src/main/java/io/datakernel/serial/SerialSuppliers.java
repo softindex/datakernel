@@ -23,8 +23,7 @@ public final class SerialSuppliers {
 			T thisItem = item;
 
 			@Override
-			public Stage<T> get() {
-				assert !isClosed();
+			protected Stage<T> doGet() {
 				T item = this.thisItem;
 				this.thisItem = null;
 				return Stage.of(item);
@@ -46,8 +45,7 @@ public final class SerialSuppliers {
 			SerialSupplier<? extends T> current = SerialSupplier.of();
 
 			@Override
-			public Stage<T> get() {
-				assert !isClosed();
+			protected Stage<T> doGet() {
 				return current.get()
 						.thenComposeEx((value, e) -> {
 							if (e == null) {
@@ -170,6 +168,7 @@ public final class SerialSuppliers {
 					private final ArrayDeque<T> deque = new ArrayDeque<>();
 					private boolean endOfStream;
 					private boolean prefetching;
+					@Nullable
 					private SettableStage<T> pending;
 
 					{
@@ -210,15 +209,15 @@ public final class SerialSuppliers {
 
 					@SuppressWarnings("unchecked")
 					@Override
-					public Stage<T> get() {
-						if (isClosed()) return Stage.ofException(CLOSE_EXCEPTION);
+					protected Stage<T> doGet() {
 						assert pending == null;
 						if (!deque.isEmpty() || endOfStream) {
 							T result = deque.poll();
 							tryPrefetch();
 							return Stage.of(result);
 						}
-						pending = new SettableStage<>();
+						SettableStage<T> pending = new SettableStage<>();
+						this.pending = pending;
 						tryPrefetch();
 						return pending;
 					}
@@ -241,6 +240,7 @@ public final class SerialSuppliers {
 			private T prefetched;
 			private boolean endOfStream;
 			private boolean prefetching;
+			@Nullable
 			private SettableStage<T> pending;
 
 			{
@@ -281,8 +281,8 @@ public final class SerialSuppliers {
 
 			@SuppressWarnings("unchecked")
 			@Override
-			public Stage<T> get() {
-				assert !isClosed() && pending == null;
+			protected Stage<T> doGet() {
+				assert pending == null;
 				if (prefetched != null || endOfStream) {
 					T result = this.prefetched;
 					this.prefetched = null;

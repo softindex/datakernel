@@ -32,6 +32,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.bytebuf.ByteBufPool.recycleIfEmpty;
+import static io.datakernel.util.Recyclable.deepRecycle;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
@@ -41,7 +42,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	private final Executor executor;
 	private final AsyncTcpSocket upstream;
 
-	private ByteBuf net2engine; // - null at first to trigger initial handshake
+	private ByteBuf net2engine = ByteBuf.empty();
 	private ByteBuf engine2app = ByteBuf.empty();
 	private ByteBuf app2engine = ByteBuf.empty();
 
@@ -77,6 +78,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		this.engine = engine;
 		this.executor = executor;
 		this.upstream = asyncTcpSocket;
+		startHandShake();
 	}
 
 	public static AsyncSslSocket create(AsyncTcpSocket asyncTcpSocket,
@@ -98,9 +100,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 
 	@Override
 	public Stage<ByteBuf> read() {
-		assert !isClosed() : "Cannot use read operation after socket has been closed";
+		if (!isOpen()) return Stage.ofException(CLOSE_EXCEPTION);
 		this.read = null;
-		ensureHandShakeStarted();
 		if (engine2app.canRead()) {
 			ByteBuf readBuf = engine2app;
 			engine2app = ByteBuf.empty();
@@ -114,11 +115,15 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 
 	@Override
 	public Stage<Void> write(@Nullable ByteBuf buf) {
-		assert !isClosed() : "Cannot use write operation after socket has been closed";
+		if (!isOpen()) {
+			if (buf != null){
+				buf.recycle();
+			}
+			return Stage.ofException(CLOSE_EXCEPTION);
+		}
 		if (buf == null) {
 			throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");
 		}
-		ensureHandShakeStarted();
 		app2engine = ByteBufPool.append(app2engine, buf);
 		if (this.write != null) return write;
 		SettableStage<Void> write = new SettableStage<>();
@@ -130,7 +135,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	private void doRead() {
 		sanitize(upstream.read())
 				.whenResult(buf -> {
-					assert !isClosed();
+					assert isOpen();
 					if (buf != null) {
 						net2engine = ByteBufPool.append(net2engine, buf);
 						sync();
@@ -148,7 +153,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	private void doWrite(ByteBuf dstBuf) {
 		sanitize(upstream.write(dstBuf))
 				.thenRun(() -> {
-					assert !isClosed();
+					assert isOpen();
 					if (engine.isOutboundDone()) {
 						close();
 						return;
@@ -182,7 +187,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		net2engine = recycleIfEmpty(net2engine);
 
 		dstBuf.ofWriteByteBuffer(dstBuffer);
-		if (engine2app != null && dstBuf.canRead()) {
+		if (isOpen() && dstBuf.canRead()) {
 			engine2app = ByteBufPool.append(engine2app, dstBuf);
 		} else {
 			dstBuf.recycle();
@@ -256,7 +261,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			if (task == null) break;
 			Stage.ofRunnable(executor, task)
 					.thenRun(() -> {
-						if (engine2app == null) return;
+						if (!isOpen()) return;
 						try {
 							doHandshake();
 						} catch (SSLException e) {
@@ -288,10 +293,10 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			do {
 				result = tryToWrap();
 			}
-			while (!isClosed() && app2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
+			while (isOpen() && app2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
 		}
 
-		if (isClosed()) {
+		if (!isOpen()) {
 			return;
 		}
 
@@ -311,7 +316,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			}
 		}
 
-		if (result != null && !isClosed() && result.getStatus() == CLOSED) {
+		if (result != null && isOpen() && result.getStatus() == CLOSED) {
 			close();
 			return;
 		}
@@ -319,32 +324,30 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		doRead();
 	}
 
-	private void ensureHandShakeStarted() {
-		if (net2engine == null) {
-			try {
-				engine.beginHandshake();
-				net2engine = ByteBuf.empty();
-			} catch (SSLException e) {
-				closeWithError(e);
-			}
+	private void startHandShake() {
+		try {
+			engine.beginHandshake();
+			sync();
+		} catch (SSLException e) {
+			closeWithError(e);
 		}
 	}
 
-	private boolean isClosed() {
-		return app2engine == null;
+	private boolean isOpen() {
+		return net2engine != null;
 	}
 
 	@SuppressWarnings("AssignmentToNull") // bufs set to null only when socket is closing
 	private void recycleByteBufs() {
-		if (net2engine != null) net2engine.recycle();
-		if (engine2app != null) engine2app.recycle();
-		if (app2engine != null) app2engine.recycle();
+		deepRecycle(net2engine);
+		deepRecycle(engine2app);
+		deepRecycle(app2engine);
 		net2engine = engine2app = app2engine = null;
 	}
 
 	@Override
 	public void closeWithError(Throwable e) {
-		if (isClosed()) return;
+		if (!isOpen()) return;
 		engine.closeOutbound();
 		sync(); // sync is used here to send close_notify message to recepient
 		recycleByteBufs();

@@ -180,8 +180,7 @@ public interface StreamSupplier<T> extends Cancellable {
 		this.streamTo(endpoint);
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
-			public Stage<T> get() {
-				assert !isClosed();
+			protected Stage<T> doGet() {
 				return endpoint.take();
 			}
 		};

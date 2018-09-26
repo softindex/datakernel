@@ -217,10 +217,17 @@ public class AsyncSslSocketTest {
 	}
 
 	@Test
-	public void testClose() throws IOException {
+	public void testCloseAndOperationAfterClose() throws IOException {
 		server = SimpleServer.create(eventloop,
 				socket -> socket.write(wrapAscii("He"))
-						.thenRun(socket::close))
+						.thenRun(socket::close)
+						.whenComplete(assertComplete(r -> {
+							ByteBuf message = wrapAscii("ello");
+							socket.write(message)
+									.whenComplete(assertFailure(e -> {
+										assertSame(CLOSE_EXCEPTION, e);
+									}));
+						})))
 				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
 				.withAcceptOnce(true);
 
@@ -234,7 +241,7 @@ public class AsyncSslSocketTest {
 					ByteBufsSupplier supplier = ByteBufsSupplier.of(clientSsl.reader());
 					PARSER.parse(supplier)
 							.whenComplete(assertFailure(e -> {
-								supplier.closeWithError(e);
+								supplier.bufs.recycle();
 								assertSame(CLOSE_EXCEPTION, e);
 							}));
 				});

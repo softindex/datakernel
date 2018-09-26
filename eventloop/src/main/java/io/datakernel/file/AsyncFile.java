@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.StacklessException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -32,6 +33,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.Stage.ofThrowingRunnable;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.StandardOpenOption.*;
 import static java.util.Arrays.asList;
@@ -40,6 +42,7 @@ import static java.util.Arrays.asList;
  * This class represents a file with asynchronous capabilities.
  */
 public final class AsyncFile {
+	public static final StacklessException FILE_CLOSED = new StacklessException("File has been closed");
 	private final ExecutorService executor;
 	private final FileChannel channel;
 
@@ -186,15 +189,15 @@ public final class AsyncFile {
 	}
 
 	public Stage<Long> size() {
-		return AsyncFile.size(executor, path);
+		return sanitize(AsyncFile.size(executor, path));
 	}
 
 	public Stage<Void> seek(long position) {
-		return Stage.ofThrowingRunnable(executor, () -> channel.position(position));
+		return sanitize(ofThrowingRunnable(executor, () -> channel.position(position)));
 	}
 
 	public Stage<Long> tell() {
-		return Stage.ofCallable(executor, channel::position);
+		return sanitize(Stage.ofCallable(executor, channel::position));
 	}
 
 	/**
@@ -203,7 +206,7 @@ public final class AsyncFile {
 	 * @param buf byte buffer to be written
 	 */
 	public Stage<Void> write(ByteBuf buf) {
-		return Stage.ofThrowingRunnable(executor, () -> {
+		return sanitize(ofThrowingRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				try {
 					int writtenBytes;
@@ -216,7 +219,7 @@ public final class AsyncFile {
 					buf.recycle();
 				}
 			}
-		});
+		}));
 	}
 
 	/**
@@ -226,7 +229,7 @@ public final class AsyncFile {
 	 * @param buf      byte buffer to be written
 	 */
 	public Stage<Void> write(ByteBuf buf, long position) {
-		return Stage.ofThrowingRunnable(executor, () -> {
+		return sanitize(ofThrowingRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				int writtenBytes = 0;
 				long pos = position;
@@ -240,7 +243,7 @@ public final class AsyncFile {
 					buf.recycle();
 				}
 			}
-		});
+		}));
 	}
 
 	/**
@@ -279,7 +282,7 @@ public final class AsyncFile {
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 */
 	public Stage<Void> read(ByteBuf buf, long position) {
-		return Stage.ofThrowingRunnable(executor, () -> {
+		return sanitize(ofThrowingRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				int readBytes = 0;
 				long pos = position;
@@ -289,7 +292,7 @@ public final class AsyncFile {
 					buf.ofWriteByteBuffer(byteBuffer);
 				} while (readBytes != -1 && buf.canWrite());
 			}
-		});
+		}));
 	}
 
 	/**
@@ -298,7 +301,8 @@ public final class AsyncFile {
 	 * @param forceMetadata whether or not to force metadata writes too
 	 */
 	public Stage<Void> forceAndClose(boolean forceMetadata) {
-		return Stage.ofThrowingRunnable(executor, () -> {
+		if (!isOpen()) return Stage.ofException(FILE_CLOSED);
+		return ofThrowingRunnable(executor, () -> {
 			channel.force(forceMetadata);
 			channel.close();
 		});
@@ -308,7 +312,10 @@ public final class AsyncFile {
 	 * Closes the channel
 	 */
 	public Stage<Void> close() {
-		return Stage.ofThrowingRunnable(executor, channel::close);
+		if (!isOpen()) {
+			return Stage.ofException(FILE_CLOSED);
+		}
+		return ofThrowingRunnable(executor, channel::close);
 	}
 
 	/**
@@ -317,7 +324,7 @@ public final class AsyncFile {
 	 * @param size the new size, a non-negative byte count
 	 */
 	public Stage<Void> truncate(long size) {
-		return Stage.ofThrowingRunnable(executor, () -> channel.truncate(size));
+		return sanitize(ofThrowingRunnable(executor, () -> channel.truncate(size)));
 	}
 
 	/**
@@ -328,7 +335,7 @@ public final class AsyncFile {
 	 *                 otherwise, it need only force content changes to be written
 	 */
 	public Stage<Void> force(boolean metaData) {
-		return Stage.ofThrowingRunnable(executor, () -> channel.force(metaData));
+		return sanitize(ofThrowingRunnable(executor, () -> channel.force(metaData)));
 	}
 
 	public ExecutorService getExecutor() {
@@ -346,5 +353,15 @@ public final class AsyncFile {
 	@Override
 	public String toString() {
 		return path.toString();
+	}
+
+	private <T> Stage<T> sanitize(Stage<T> stage) {
+		return stage
+				.thenComposeEx((result, e) -> {
+					if (!isOpen()) {
+						return Stage.ofException(FILE_CLOSED);
+					}
+					return Stage.of(result, e);
+				});
 	}
 }

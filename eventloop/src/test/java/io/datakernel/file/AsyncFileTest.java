@@ -30,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Random;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -37,6 +38,7 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertSame;
 
 public class AsyncFileTest {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -72,6 +74,34 @@ public class AsyncFileTest {
 				}));
 			}));
 		}));
+
+		eventloop.run();
+	}
+
+	@Test
+	public void testClose() throws Exception {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		File file = temporaryFolder.newFile("10Mb");
+		byte[] data = new byte[10 * 1024 * 1024]; // the larger the file the less chance that it will be read fully before close completes
+		new Random().nextBytes(data);
+		Files.write(file.toPath(), data);
+		Path srcPath = file.toPath();
+		AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ})
+				.whenComplete(assertComplete(asyncFile -> {
+					logger.info("Opened file");
+					asyncFile.read().whenComplete((res, e) -> {
+						if (e != null) {
+							assertSame(AsyncFile.FILE_CLOSED, e);
+						} else {
+							// rare cases when read finishes before close
+							logger.info("Read has finished prior to close");
+							assertArrayEquals(data, res.asArray());
+						}
+					});
+					logger.info("Calling close file");
+					asyncFile.close()
+							.whenComplete(assertComplete($ -> logger.info("Closed file")));
+				}));
 
 		eventloop.run();
 	}

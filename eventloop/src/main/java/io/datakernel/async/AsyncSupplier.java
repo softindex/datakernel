@@ -18,10 +18,25 @@ package io.datakernel.async;
 
 import java.util.function.*;
 
+/**
+ * This interface represents asynchronous supplier that returns {@link Stage} of some data.
+ *
+ */
 @FunctionalInterface
 public interface AsyncSupplier<T> {
+	/**
+	 * Asynchronous operation that is used to get {@link Stage} of data item.
+	 *
+	 * @return {@link Stage} of data item
+	 */
 	Stage<T> get();
 
+	/**
+	 * Wrapper around standard Java's {@link Supplier} interface.
+	 *
+	 * @param supplier - Java's {@link Supplier} of Stages
+	 * @return {@link AsyncSupplier} that works on top of standard Java's {@link Supplier} interface
+	 */
 	static <T> AsyncSupplier<T> of(Supplier<? extends Stage<T>> supplier) {
 		return supplier::get;
 	}
@@ -30,6 +45,12 @@ public interface AsyncSupplier<T> {
 		return modifier.apply(this);
 	}
 
+	/**
+	 * Method to ensure that supplied stage will complete asynchronously.
+	 *
+	 * @see Stage#async()
+	 * @return {@link AsyncSupplier} of stages that will be completed asynchronously
+	 */
 	default AsyncSupplier<T> async() {
 		return () -> get().async();
 	}
@@ -38,10 +59,23 @@ public interface AsyncSupplier<T> {
 		return () -> asyncExecutor.execute(this);
 	}
 
+	/**
+	 * Applies function before supplying a stage.
+	 *
+	 * @param fn function to be applied to result of stage
+	 * @return {@link AsyncSupplier} of stages after transformation
+	 */
 	default <V> AsyncSupplier<V> transform(Function<? super T, ? extends V> fn) {
 		return () -> get().thenApply(fn);
 	}
 
+	/**
+	 * Applies function to the result of supplied stage.
+	 *
+	 * @param fn - function to be applied to result of stage
+	 * @param <V>
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	default <V> AsyncSupplier<V> transformAsync(Function<? super T, ? extends Stage<V>> fn) {
 		return () -> get().thenCompose(fn::apply);

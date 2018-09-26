@@ -14,8 +14,7 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 	protected final <T> SerialSupplier<T> sanitize(SerialSupplier<T> supplier) {
 		return new AbstractSerialSupplier<T>() {
 			@Override
-			public Stage<T> get() {
-				assert !isClosed();
+			protected Stage<T> doGet() {
 				return sanitize(supplier.get());
 			}
 
@@ -30,8 +29,7 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 	protected final <T> SerialConsumer<T> sanitize(SerialConsumer<T> consumer) {
 		return new AbstractSerialConsumer<T>() {
 			@Override
-			public Stage<Void> accept(@Nullable T item) {
-				assert !isClosed();
+			protected Stage<Void> doAccept(@Nullable T item) {
 				return sanitize(consumer.accept(item));
 			}
 

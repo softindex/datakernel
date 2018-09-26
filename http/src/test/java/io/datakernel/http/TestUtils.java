@@ -97,8 +97,7 @@ public class TestUtils {
 		}
 
 		@Override
-		public Stage<Void> accept(@Nullable ByteBuf value) {
-			assert !isClosed();
+		protected Stage<Void> doAccept(@Nullable ByteBuf value) {
 			if (value != null) {
 				queue.add(value);
 			} else {

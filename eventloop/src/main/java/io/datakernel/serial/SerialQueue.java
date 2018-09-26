@@ -12,8 +12,7 @@ public interface SerialQueue<T> extends Cancellable {
 	default SerialConsumer<T> getConsumer() {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
-			public Stage<Void> accept(T value) {
-				assert !isClosed();
+			protected Stage<Void> doAccept(T value) {
 				return put(value);
 			}
 		};
@@ -22,8 +21,7 @@ public interface SerialQueue<T> extends Cancellable {
 	default SerialSupplier<T> getSupplier() {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
-			public Stage<T> get() {
-				assert !isClosed();
+			protected Stage<T> doGet() {
 				return take();
 			}
 		};

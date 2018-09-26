@@ -1,16 +1,13 @@
 package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.AbstractCancellable;
 import io.datakernel.async.Cancellable;
+import io.datakernel.async.Stage;
 
-public abstract class AbstractSerialConsumer<T> implements SerialConsumer<T> {
-	private static final Cancellable CLOSED = e -> {
-		throw new AssertionError();
-	};
+import static io.datakernel.util.Recyclable.deepRecycle;
 
-	@Nullable
-	private Cancellable cancellable;
-
+public abstract class AbstractSerialConsumer<T> extends AbstractCancellable implements SerialConsumer<T> {
 	protected AbstractSerialConsumer() {
 		this.cancellable = null;
 	}
@@ -19,18 +16,15 @@ public abstract class AbstractSerialConsumer<T> implements SerialConsumer<T> {
 		this.cancellable = cancellable;
 	}
 
-	protected void onClosed(Throwable e) {
-	}
+	protected abstract Stage<Void> doAccept(@Nullable T value);
 
 	@Override
-	public final void closeWithError(Throwable e) {
-		if (isClosed()) return;
-		Cancellable cancellable = this.cancellable;
-		this.cancellable = CLOSED;
-		onClosed(e);
-		if (cancellable != null) {
-			cancellable.closeWithError(e);
+	public Stage<Void> accept(@Nullable T value) {
+		if (isClosed()) {
+			deepRecycle(value);
+			return Stage.ofException(exception);
 		}
+		return doAccept(value);
 	}
 
 	@Override
@@ -42,9 +36,4 @@ public abstract class AbstractSerialConsumer<T> implements SerialConsumer<T> {
 	public final void close() {
 		SerialConsumer.super.close();
 	}
-
-	public final boolean isClosed() {
-		return cancellable == CLOSED;
-	}
-
 }

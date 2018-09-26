@@ -18,16 +18,39 @@ package io.datakernel.async;
 
 import io.datakernel.exception.StacklessException;
 
+/**
+ * This interface describes methods that are used to handle exceptional behaviour or to handle closing.
+ * <p>
+ * After {@link #close()}, {@link #closeWithError(Throwable)} or {@link #cancel()} is called, the following things
+ * should be done:
+ * <ul>
+ * <li>Resources held by an object should be freed</li>
+ * <li>All pending asynchronous operations should be completed exceptionally</li>
+ * </ul>
+ * All operations of this interface are idompotent.
+ */
 public interface Cancellable {
 	StacklessException CANCEL_EXCEPTION = new StacklessException("Cancelled");
 	StacklessException CLOSE_EXCEPTION = new StacklessException("Closed");
 
+	/**
+	 * This method should be called to close some process exceptionally in case of some exception is thrown while
+	 * executing the given process.
+	 *
+	 * @param e exception that is used to close process with
+	 */
 	void closeWithError(Throwable e);
 
+	/**
+	 * This method should be called in case user wants to cancel some process
+	 */
 	default void cancel() {
 		closeWithError(CANCEL_EXCEPTION);
 	}
 
+	/**
+	 * This method should be called after process has finished its job
+	 */
 	default void close() {
 		closeWithError(CLOSE_EXCEPTION);
 	}

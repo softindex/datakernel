@@ -76,8 +76,7 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 	}
 
 	@Override
-	public Stage<Void> accept(ByteBuf buf) {
-		assert !isClosed();
+	protected Stage<Void> doAccept(ByteBuf buf) {
 		return start()
 				.thenComposeEx(($, e) -> {
 					if (e != null) {
