@@ -138,7 +138,7 @@ public class RawServerHttpClient implements RawServer {
 	}
 
 	@Override
-	public Stage<HeadsDelta> getHeads(RepositoryName repositoryId, Set<CommitId> remoteHeads) {
+	public Stage<Heads> getHeads(RepositoryName repositoryId, Set<CommitId> remoteHeads) {
 		return httpClient.request(request(GET, GET_HEADS, apiQuery(repositoryId, map("heads",
 				remoteHeads.stream()
 						.map(HttpDataFormats::urlEncodeCommitId)

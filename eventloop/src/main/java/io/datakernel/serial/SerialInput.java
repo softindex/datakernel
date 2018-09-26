@@ -15,6 +15,6 @@ public interface SerialInput<T> {
 		SerialConsumer<T> consumer = queue.getConsumer();
 		return extraAcknowledge == Stage.complete() ?
 				consumer :
-				consumer.withAcknowledgement(ack -> ack.thenCompose($ -> extraAcknowledge));
+				consumer.withAcknowledgement(ack -> ack.both(extraAcknowledge));
 	}
 }

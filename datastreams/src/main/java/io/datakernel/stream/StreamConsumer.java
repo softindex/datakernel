@@ -70,7 +70,7 @@ public interface StreamConsumer<T> extends Cancellable {
 		StreamConsumer<T> result = forwarder.getInput();
 		if (extraAcknowledge == Stage.complete()) return result;
 		return result
-				.withAcknowledgement(ack -> ack.thenCompose($ -> extraAcknowledge));
+				.withAcknowledgement(ack -> ack.both(extraAcknowledge));
 	}
 
 	default <R> R apply(StreamConsumerFunction<T, R> fn) {

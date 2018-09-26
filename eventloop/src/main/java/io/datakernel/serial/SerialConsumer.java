@@ -129,7 +129,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		SerialConsumer<T> result = queue.getConsumer();
 		if (extraAcknowledge == Stage.complete()) return result;
 		return result
-				.withAcknowledgement(ack -> ack.thenCompose($ -> extraAcknowledge));
+				.withAcknowledgement(ack -> ack.both(extraAcknowledge));
 	}
 
 	static <T> SerialConsumer<T> ofStage(Stage<? extends SerialConsumer<T>> stage) {

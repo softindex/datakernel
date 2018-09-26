@@ -25,10 +25,10 @@ public class CommitStorageStub implements CommitStorage {
 	}
 
 	@Override
-	public Stage<Void> updateHeads(RepositoryName repositoryId, Set<SignedData<RawCommitHead>> addHeads, Set<CommitId> excludeHeads) {
+	public Stage<Void> applyHeads(RepositoryName repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
 		Map<CommitId, SignedData<RawCommitHead>> map = heads.computeIfAbsent(repositoryId, repositoryId1 -> new HashMap<>());
-		addHeads.forEach(head -> map.put(head.getData().commitId, head));
-		excludeHeads.forEach(map::remove);
+		newHeads.forEach(head -> map.put(head.getData().commitId, head));
+		excludedHeads.forEach(map::remove);
 		return Stage.complete();
 	}
 

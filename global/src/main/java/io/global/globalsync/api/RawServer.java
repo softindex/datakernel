@@ -108,11 +108,11 @@ public interface RawServer {
 
 	Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepositoryName repositoryId, CommitId id);
 
-	class HeadsDelta {
+	class Heads {
 		public final Set<SignedData<RawCommitHead>> newHeads;
 		public final Set<CommitId> excludedHeads;
 
-		public HeadsDelta(Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
+		public Heads(Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
 			this.newHeads = newHeads;
 			this.excludedHeads = excludedHeads;
 		}
@@ -129,7 +129,7 @@ public interface RawServer {
 		public boolean equals(Object o) {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
-			HeadsDelta that = (HeadsDelta) o;
+			Heads that = (Heads) o;
 			if (!newHeads.equals(that.newHeads)) return false;
 			return excludedHeads.equals(that.excludedHeads);
 		}
@@ -142,7 +142,7 @@ public interface RawServer {
 		}
 	}
 
-	Stage<HeadsDelta> getHeads(RepositoryName repositoryId, Set<CommitId> remoteHeads);
+	Stage<Heads> getHeads(RepositoryName repositoryId, Set<CommitId> remoteHeads);
 
 	default Stage<Set<SignedData<RawCommitHead>>> getHeads(RepositoryName repositoryId) {
 		return getHeads(repositoryId, emptySet())

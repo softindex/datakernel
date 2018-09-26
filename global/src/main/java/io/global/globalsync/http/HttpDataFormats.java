@@ -3,6 +3,7 @@ package io.global.globalsync.http;
 import com.google.gson.TypeAdapter;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
+import io.datakernel.util.gson.GsonAdapters;
 import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -10,10 +11,9 @@ import io.global.common.SignedData;
 import io.global.globalsync.api.CommitId;
 import io.global.globalsync.api.RawCommit;
 import io.global.globalsync.api.RawCommitHead;
-import io.global.globalsync.api.RepositoryName;
-import io.global.globalsync.api.RawServer.HeadsDelta;
+import io.global.globalsync.api.RawServer.Heads;
 import io.global.globalsync.api.RawServer.HeadsInfo;
-import io.datakernel.util.gson.GsonAdapters;
+import io.global.globalsync.api.RepositoryName;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
@@ -21,7 +21,6 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.http.HttpUtils.urlDecode;
 import static io.datakernel.http.HttpUtils.urlEncode;
 import static io.datakernel.util.gson.GsonAdapters.BYTES_JSON;
 import static io.datakernel.util.gson.GsonAdapters.STRING_JSON;
@@ -93,9 +92,9 @@ public class HttpDataFormats {
 			"bases", HeadsInfo::getBases, GsonAdapters.ofSet(COMMIT_ID_JSON),
 			"heads", HeadsInfo::getHeads, GsonAdapters.ofSet(COMMIT_ID_JSON));
 
-	public static final TypeAdapter<HeadsDelta> HEADS_DELTA_GSON = GsonAdapters.ofTuple(HeadsDelta::new,
-			"newHeads", HeadsDelta::getNewHeads, GsonAdapters.ofSet(COMMIT_HEAD_JSON),
-			"excludedHeads", HeadsDelta::getExcludedHeads, GsonAdapters.ofSet(COMMIT_ID_JSON));
+	public static final TypeAdapter<Heads> HEADS_DELTA_GSON = GsonAdapters.ofTuple(Heads::new,
+			"newHeads", Heads::getNewHeads, GsonAdapters.ofSet(COMMIT_HEAD_JSON),
+			"excludedHeads", Heads::getExcludedHeads, GsonAdapters.ofSet(COMMIT_ID_JSON));
 
 	public static String urlEncodeCommitId(CommitId commitId) {
 		return Base64.getUrlEncoder().encodeToString(commitId.toBytes());

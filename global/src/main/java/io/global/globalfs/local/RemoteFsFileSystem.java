@@ -41,7 +41,7 @@ import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.stream.Collectors.toList;
 
-final class RemoteFsFileSystem {
+public final class RemoteFsFileSystem {
 	private final LocalGlobalFsNamespace namespace;
 	private final FsClient fsClient;
 	private final CheckpointStorage checkpointStorage;

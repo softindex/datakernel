@@ -10,7 +10,7 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.*;
 import io.global.globalsync.api.*;
-import io.global.globalsync.api.RawServer.HeadsDelta;
+import io.global.globalsync.api.RawServer.Heads;
 import io.global.globalsync.api.RawServer.HeadsInfo;
 import org.junit.Test;
 
@@ -103,8 +103,8 @@ public class RawServerHttpClientTest {
 			}
 
 			@Override
-			public Stage<HeadsDelta> getHeads(RepositoryName repositoryId, Set<CommitId> remoteHeads) {
-				return resultOf(new HeadsDelta(set(signedRawCommitHead), set(rootCommitId)),
+			public Stage<Heads> getHeads(RepositoryName repositoryId, Set<CommitId> remoteHeads) {
+				return resultOf(new Heads(set(signedRawCommitHead), set(rootCommitId)),
 						repositoryId, remoteHeads);
 			}
 
@@ -202,7 +202,7 @@ public class RawServerHttpClientTest {
 		assertEquals(rootCommitId, parameters.remove());
 		assertTrue(parameters.isEmpty());
 
-		CompletableFuture<HeadsDelta> getHeadsFuture = client.getHeads(
+		CompletableFuture<Heads> getHeadsFuture = client.getHeads(
 				repository,
 				set(rootCommitId))
 				.toCompletableFuture();

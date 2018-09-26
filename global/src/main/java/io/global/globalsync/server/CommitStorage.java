@@ -11,11 +11,7 @@ import java.util.Set;
 public interface CommitStorage {
 	Stage<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepositoryName repositoryId);
 
-	Stage<Void> updateHeads(RepositoryName repositoryId, Set<SignedData<RawCommitHead>> addHeads, Set<CommitId> excludeHeads);
-
-	default Stage<Void> updateHeads(RepositoryName repositoryId, RawServer.HeadsDelta headsDelta) {
-		return updateHeads(repositoryId, headsDelta.newHeads, headsDelta.excludedHeads);
-	}
+	Stage<Void> applyHeads(RepositoryName repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads);
 
 	Stage<Boolean> hasCommit(CommitId commitId);
 
