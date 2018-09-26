@@ -1,22 +1,42 @@
+/*
+ * Copyright (C) 2015-2018  SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package io.global.globalfs;
 
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.KeyPair;
 import io.global.common.RawServerId;
-import io.global.common.SignedData;
 import io.global.common.api.DiscoveryService;
-import io.global.globalfs.api.GlobalFsCheckpoint;
-import io.global.globalfs.api.GlobalFsFileSystem;
 import io.global.globalfs.api.GlobalFsName;
 import io.global.globalfs.api.GlobalFsNode;
-import io.global.globalfs.client.GlobalFsAdapter;
-import io.global.globalfs.server.*;
+import io.global.globalfs.api.RawNodeFactory;
+import io.global.globalfs.http.GlobalFsNodeServlet;
+import io.global.globalfs.http.HttpGlobalFsNode;
+import io.global.globalfs.local.LocalGlobalFsNode;
+import io.global.globalfs.local.RemoteFsAdapter;
+import io.global.globalfs.local.RemoteFsFileSystem;
+import io.global.globalfs.local.RuntimeDiscoveryService;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -24,15 +44,17 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
@@ -43,37 +65,33 @@ public class GlobalFsTest {
 
 	private Eventloop eventloop;
 	private ExecutorService executor;
-	private GlobalFsAdapter adapter;
 
-	private final KeyPair firstKeys = KeyPair.generate();
-	private final KeyPair secondKeys = KeyPair.generate();
+	private RawNodeFactory clientFactory;
+	private DiscoveryService discoveryService;
+
+	private RawServerId createLocalhost(int port) {
+		try {
+			return new RawServerId(new InetSocketAddress(InetAddress.getLocalHost(), port));
+		} catch (UnknownHostException e) {
+			throw new AssertionError(e);
+		}
+	}
 
 	@Before
 	public void setUp() throws IOException {
 		eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
 		executor = Executors.newSingleThreadExecutor();
-
+		discoveryService = new RuntimeDiscoveryService();
 		FsClient storage = LocalFsClient.create(eventloop, executor, temporaryFolder.newFolder().toPath());
-		DiscoveryService discoveryService = new LocalDiscoveryService();
+		clientFactory = new RawNodeFactory() {
+			int serverIndex = 0;
 
-		RawNodeFactory clientFactory = new RawNodeFactory() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
-				return new GlobalFsLocalNode(serverId, discoveryService, this,
-						(group, fsName) ->
-								new RemoteFsFileSystem(group, fsName, storage.subfolder(fsName), new RuntimeCheckpointStorage()),
-						() -> Duration.ofMinutes(5));
+				LocalGlobalFsNode.FileSystemFactory fileSystemFactory = RemoteFsFileSystem.usingSingleClient(storage.subfolder("server_" + serverIndex++));
+				return new LocalGlobalFsNode(serverId, discoveryService, this, fileSystemFactory, () -> Duration.ofMinutes(5));
 			}
 		};
-		FileSystemFactory fileSystemFactory = (group, fsName) ->
-				new RemoteFsFileSystem(group, fsName, storage, new RuntimeCheckpointStorage());
-
-		//noinspection ConstantConditions - all these nulls
-		GlobalFsNode client = new GlobalFsLocalNode(null, discoveryService, clientFactory, fileSystemFactory, () -> Duration.ofMinutes(5));
-
-		GlobalFsFileSystem fs = client.getFileSystem(GlobalFsName.of(firstKeys, "testFs")).getResult();
-
-		adapter = new GlobalFsAdapter(fs, firstKeys, pp -> pp + ThreadLocalRandom.current().nextInt(5, 50));
 	}
 
 	@After
@@ -82,7 +100,12 @@ public class GlobalFsTest {
 	}
 
 	@Test
-	public void test() {
+	public void testCutters() {
+		KeyPair keys = KeyPair.generate();
+
+		GlobalFsNode client = clientFactory.create(createLocalhost(12345));
+		RemoteFsAdapter adapter = new RemoteFsAdapter(client, GlobalFsName.of(keys, "testFs"), keys, pp -> pp + ThreadLocalRandom.current().nextInt(5, 50));
+
 		SerialSupplier.of(
 				ByteBuf.wrapForReading("hello, this is a test buffer data #01\n".getBytes(UTF_8)),
 				ByteBuf.wrapForReading("hello, this is a test buffer data #02\n".getBytes(UTF_8)),
@@ -134,31 +157,41 @@ public class GlobalFsTest {
 		eventloop.run();
 	}
 
-	private static final class RuntimeCheckpointStorage implements CheckpointStorage {
-		private Map<String, Map<Long, SignedData<GlobalFsCheckpoint>>> storage = new HashMap<>();
+	@Test
+	public void testSeparate() {
+		GlobalFsNode client = clientFactory.create(createLocalhost(12345));
+		KeyPair alice = KeyPair.generate();
+		KeyPair bob = KeyPair.generate();
 
-		@Override
-		public Stage<long[]> getCheckpoints(String filename) {
-			Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
-			if (checkpoints == null) {
-				return Stage.of(new long[0]);
-			}
-			return Stage.of(checkpoints.keySet().stream().mapToLong(Long::longValue).sorted().toArray());
-		}
+		FsClient adapted = new RemoteFsAdapter(client, GlobalFsName.of(alice, "testFs"), alice, pos -> pos + 3);
+		FsClient other = new RemoteFsAdapter(client, GlobalFsName.of(bob, "testFs"), bob, pos -> pos + 4);
 
-		@Override
-		public Stage<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position) {
-			Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
-			if (checkpoints == null) {
-				return Stage.of(null);
-			}
-			return Stage.of(checkpoints.get(position));
-		}
+		String content = "hello world, i am here!";
 
-		@Override
-		public Stage<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
-			storage.computeIfAbsent(filename, $ -> new HashMap<>()).put(checkpoint.getData().getPosition(), checkpoint);
-			return Stage.of(null);
-		}
+		adapted.upload("test.txt")
+				.thenCompose(consumer -> SerialSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8))).streamTo(consumer))
+				.thenCompose($ -> adapted.download("test.txt"))
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
+				.whenResult(buf -> assertEquals(content, buf.asString(UTF_8)))
+				.thenCompose($ -> other.download("test.txt"))
+				.whenComplete(assertFailure());
+
+		eventloop.run();
+	}
+
+	@Test
+	public void test() throws IOException {
+		KeyPair keys = KeyPair.generate();
+
+		GlobalFsNode node = clientFactory.create(createLocalhost(12345));
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, GlobalFsNodeServlet.wrap(node))
+				.withListenPort(8080);
+		server.listen();
+
+		GlobalFsNode client = new HttpGlobalFsNode(AsyncHttpClient.create(eventloop), "http://127.0.0.1:8080");
+
+		// TODO anton: make this test again
+
+		eventloop.run();
 	}
 }

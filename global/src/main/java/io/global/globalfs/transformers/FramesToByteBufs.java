@@ -1,4 +1,21 @@
-package io.global.globalfs.api;
+/*
+ * Copyright (C) 2015-2018  SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package io.global.globalfs.transformers;
 
 import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.MaterializedStage;
@@ -9,6 +26,8 @@ import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
+import io.global.globalfs.api.DataFrame;
+import io.global.globalfs.api.GlobalFsCheckpoint;
 import io.global.globalfs.api.GlobalFsCheckpoint.CheckpointVerificationResult;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
@@ -16,9 +35,8 @@ import java.io.IOException;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public abstract class FramesToByteBufsTransformer
-		extends AbstractAsyncProcess
-		implements WithSerialToSerial<FramesToByteBufsTransformer, DataFrame, ByteBuf> {
+abstract class FramesToByteBufs extends AbstractAsyncProcess
+		implements WithSerialToSerial<FramesToByteBufs, DataFrame, ByteBuf> {
 	private final PubKey pubKey;
 
 	protected SerialSupplier<DataFrame> input;
@@ -28,9 +46,11 @@ public abstract class FramesToByteBufsTransformer
 	private boolean first = true;
 	private SHA256Digest digest;
 
-	public FramesToByteBufsTransformer(PubKey pubKey) {
+	// region creators
+	FramesToByteBufs(PubKey pubKey) {
 		this.pubKey = pubKey;
 	}
+	// endregion
 
 	@Override
 	public MaterializedStage<Void> setInput(SerialSupplier<DataFrame> input) {
@@ -89,7 +109,7 @@ public abstract class FramesToByteBufsTransformer
 			if (result != CheckpointVerificationResult.SUCCESS) {
 				return Stage.ofException(new IOException("Checkpoint verification failed: " + result.message));
 			}
-//			return output.post(ByteBuf.wrapForReading(new byte[]{124}));
+			// return output.post(ByteBuf.wrapForReading(new byte[]{124}));
 			return receiveCheckpoint(checkpoint);
 		}
 		ByteBuf buf = frame.getBuf();

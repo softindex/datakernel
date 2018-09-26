@@ -1,4 +1,21 @@
-package io.global.globalfs.server;
+/*
+ * Copyright (C) 2015-2018  SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package io.global.globalfs.local;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncSupplier;
@@ -10,9 +27,10 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.time.CurrentTimeProvider;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
 import io.global.globalfs.api.*;
+import io.global.globalfs.local.LocalGlobalFsNode.FileSystemFactory;
+import io.global.globalfs.transformers.FramesFromStorage;
+import io.global.globalfs.transformers.FramesIntoStorage;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,46 +41,40 @@ import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.stream.Collectors.toList;
 
-public class RemoteFsFileSystem implements GlobalFsFileSystem {
-	private final GlobalFsNamespace namespace;
+final class RemoteFsFileSystem {
+	private final LocalGlobalFsNamespace namespace;
 	private final FsClient fsClient;
 	private final CheckpointStorage checkpointStorage;
 	private final GlobalFsName name;
-
+	private final AsyncSupplier<Void> catchUp = reuse(() -> Stage.ofCallback(this::catchUpIteration));
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-//	private long updateTimestamp;
-//	private final AsyncSupplier<Void> update = reuse(null); // TODO: what is this
-
-	private final AsyncSupplier<Void> catchUp = reuse(() -> Stage.ofCallback(this::catchUpIteration));
-
-	public RemoteFsFileSystem(GlobalFsNamespace namespace, String filesystem, FsClient fsClient, CheckpointStorage checkpointStorage) {
+	// region creators
+	public RemoteFsFileSystem(LocalGlobalFsNamespace namespace, String filesystem, FsClient fsClient, CheckpointStorage checkpointStorage) {
 		this.namespace = namespace;
 		this.fsClient = fsClient;
 		this.checkpointStorage = checkpointStorage;
 		this.name = GlobalFsName.of(namespace.getKey(), filesystem);
 	}
-
-	// region getters
-	public GlobalFsNamespace getNamespace() {
-		return namespace;
-	}
-
-	@Override
-	public GlobalFsName getName() {
-		return name;
-	}
-
-	public FsClient getFsClient() {
-		return fsClient;
-	}
-
-	public CheckpointStorage getCheckpointStorage() {
-		return checkpointStorage;
-	}
 	// endregion
 
-	@Override
+	public static FileSystemFactory usingSingleClient(FsClient mainClient, String dataFolderName, String checkpointFolderName) {
+		return (namespace, fsName) -> {
+			String namespaceName = GlobalFsName.serializePubKey(namespace.getKey());
+
+			FsClient data = mainClient.subfolder(dataFolderName);
+			FsClient checkpoints = mainClient.subfolder(checkpointFolderName);
+
+			return new RemoteFsFileSystem(namespace, fsName,
+					data.subfolder(namespaceName).subfolder(fsName),
+					new RemoteFsCheckpointStorage(checkpoints.subfolder(namespaceName).subfolder(fsName)));
+		};
+	}
+
+	public static FileSystemFactory usingSingleClient(FsClient mainClient) {
+		return usingSingleClient(mainClient, "data", "checkpoints");
+	}
+
 	public Stage<Void> catchUp() {
 		return catchUp.get();
 	}
@@ -81,7 +93,6 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 				.whenException(callback::setException);
 	}
 
-	@Override
 	public Stage<Void> fetch() {
 		return namespace.findNodes()
 				.thenCompose(servers ->
@@ -96,16 +107,15 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 		return new GlobalFsMetadata(name.addressOf(meta.getName()), meta.getSize(), meta.getTimestamp());
 	}
 
-	@Override
 	public Stage<Void> fetch(GlobalFsNode client) {
 		checkState(client != namespace.getNode(), "Trying to fetch from itself");
 
 		return client.getFileSystem(name)
-				.thenCompose(fs -> fs.list("**"))
+				.list("**")
 				.thenCompose(files ->
 						Stages.runSequence(files.stream()
 								.map(file -> {
-									String fileName = file.getAddress().getFile();
+									String fileName = file.getPath().getPath();
 									return fsClient.getMetadata(fileName)
 											.thenCompose(ourFileMeta -> {
 												GlobalFsMetadata ourFile = into(ourFileMeta);
@@ -116,7 +126,7 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 													return Stage.of(null);
 												}
 												long ourSize = ourFileMeta != null ? ourFileMeta.getSize() : 0;
-												return client.download(file.getAddress(), ourSize, -1) // download missing part or the whole file
+												return client.download(file.getPath(), ourSize, -1) // download missing part or the whole file
 														.thenCompose(supplier ->
 																upload(fileName, ourSize)
 																		.thenCompose(supplier::streamTo));
@@ -126,13 +136,11 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 				.thenApplyEx(($, e) -> null);
 	}
 
-	@Override
 	public Stage<SerialConsumer<DataFrame>> upload(String fileName, long offset) {
 		return fsClient.upload(fileName, offset)
-				.thenApply(consumer -> consumer.apply(new StoringReceiver(name.getPubKey(), fileName, checkpointStorage)));
+				.thenApply(consumer -> consumer.apply(new FramesIntoStorage(name.getPubKey(), fileName, checkpointStorage)));
 	}
 
-	@Override
 	public Stage<SerialSupplier<DataFrame>> download(String fileName, long offset, long length) {
 		return checkpointStorage.getCheckpoints(fileName)
 				.thenCompose(checkpoints -> {
@@ -142,60 +150,23 @@ public class RemoteFsFileSystem implements GlobalFsFileSystem {
 					int start = extremes[0];
 					int finish = extremes[1];
 					return fsClient.download(fileName, checkpoints[start], checkpoints[finish] - checkpoints[start])
-							.thenApply(supplier -> supplier.apply(FetcherTransformer.create(fileName, checkpointStorage, checkpoints, start, finish)));
+							.thenApply(supplier -> supplier.apply(FramesFromStorage.create(fileName, checkpointStorage, checkpoints, start, finish)));
 				});
 	}
 
-	@Override
 	public Stage<List<GlobalFsMetadata>> list(String glob) {
 		return fsClient.list(glob).thenApply(res -> res.stream().map(this::into).collect(toList()));
 	}
 
-	@Override
 	public Stage<Void> delete(String glob) {
 		return fsClient.delete(glob);
 	}
 
-	@Override
 	public Stage<Set<String>> copy(Map<String, String> changes) {
 		return fsClient.copy(changes);
 	}
 
-	@Override
 	public Stage<Set<String>> move(Map<String, String> changes) {
 		return fsClient.move(changes);
-	}
-
-	public static FileSystemFactory usingSingleClient(FsClient mainClient, String dataFolderName, String checkpointFolderName) {
-		return (namespace, fsName) -> {
-			String namespaceName = GlobalFsName.serializePubKey(namespace.getKey());
-
-			FsClient data = mainClient.subfolder(dataFolderName);
-			FsClient checkpoints = mainClient.subfolder(checkpointFolderName);
-
-			return new RemoteFsFileSystem(namespace, fsName,
-					data.subfolder(namespaceName).subfolder(fsName),
-					new CheckpointStorageFs(checkpoints.subfolder(namespaceName).subfolder(fsName)));
-		};
-	}
-
-	public static FileSystemFactory usingSingleClient(FsClient mainClient) {
-		return usingSingleClient(mainClient, "data", "checkpoints");
-	}
-
-	private static class StoringReceiver extends FramesToByteBufsTransformer {
-		private final String fileName;
-		private final CheckpointStorage checkpointStorage;
-
-		public StoringReceiver(PubKey pubKey, String fileName, CheckpointStorage checkpointStorage) {
-			super(pubKey);
-			this.fileName = fileName;
-			this.checkpointStorage = checkpointStorage;
-		}
-
-		@Override
-		protected Stage<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {
-			return checkpointStorage.saveCheckpoint(fileName, checkpoint);
-		}
 	}
 }

@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2015-2018  SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package io.global.common.api;
 
 import io.datakernel.bytebuf.ByteBuf;
@@ -19,6 +36,7 @@ public final class AnnounceData implements Signable {
 	private final PubKey pubKey;
 	private final Set<RawServerId> serverIds;
 
+	// region creators
 	public AnnounceData(byte[] bytes, long timestamp, PubKey pubKey, Set<RawServerId> serverIds) {
 		this.bytes = bytes;
 		this.timestamp = timestamp;
@@ -31,9 +49,10 @@ public final class AnnounceData implements Signable {
 		ByteBuf buf = ByteBufPool.allocate(8 + sizeof(pubKey) + sizeof(ids, SerializationUtils::sizeof));
 		buf.writeLong(timestamp);
 		SerializationUtils.writePubKey(buf, pubKey);
-		SerializationUtils.writeList(buf, ids, SerializationUtils::writeRawServerId);
+		SerializationUtils.writeCollection(buf, ids, SerializationUtils::writeRawServerId);
 		return new AnnounceData(buf.asArray(), timestamp, pubKey, serverIds);
 	}
+	// endregion
 
 	public static AnnounceData fromBytes(byte[] bytes) throws IOException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);

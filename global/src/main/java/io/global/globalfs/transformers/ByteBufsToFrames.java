@@ -1,4 +1,21 @@
-package io.global.globalfs.api;
+/*
+ * Copyright (C) 2015-2018  SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package io.global.globalfs.transformers;
 
 import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.MaterializedStage;
@@ -7,20 +24,23 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
+import io.global.globalfs.api.DataFrame;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public abstract class ByteBufsToFramesTransformer extends AbstractAsyncProcess
-		implements WithSerialToSerial<ByteBufsToFramesTransformer, ByteBuf, DataFrame> {
+abstract class ByteBufsToFrames extends AbstractAsyncProcess
+		implements WithSerialToSerial<ByteBufsToFrames, ByteBuf, DataFrame> {
 	protected long position;
 	protected long nextCheckpoint;
 
 	protected SerialSupplier<ByteBuf> input;
 	protected SerialConsumer<DataFrame> output;
 
-	public ByteBufsToFramesTransformer(long offset) {
+	// region creators
+	ByteBufsToFrames(long offset) {
 		this.position = nextCheckpoint = offset;
 	}
+	// endregion
 
 	@Override
 	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {

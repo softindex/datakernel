@@ -1,9 +1,35 @@
-package io.global.globalfs.api;
+/*
+ * Copyright (C) 2015-2018  SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package io.global.globalfs.transformers;
 
 import io.datakernel.async.Stage;
-import io.global.globalfs.server.CheckpointStorage;
+import io.global.globalfs.api.CheckpointStorage;
+import io.global.globalfs.api.DataFrame;
+import io.global.globalfs.api.GlobalFsException;
 
-public class FetcherTransformer extends ByteBufsToFramesTransformer {
+/**
+ * Makes frames from given data and {@link CheckpointStorage}.
+ * Unlike {@link FrameSigner} it does not sign anything by itself,
+ * it only loads data from given sources.
+ * <p>
+ * It's counterpart is the {@link FramesIntoStorage}.
+ */
+public final class FramesFromStorage extends ByteBufsToFrames {
 	private final String fileName;
 	private final long[] checkpoints;
 
@@ -12,7 +38,8 @@ public class FetcherTransformer extends ByteBufsToFramesTransformer {
 
 	private int nextCheckpointIndex;
 
-	private FetcherTransformer(String fileName, CheckpointStorage checkpointStorage,
+	// region creators
+	private FramesFromStorage(String fileName, CheckpointStorage checkpointStorage,
 			long[] checkpoints, int firstCheckpointIndex, int lastCheckpointIndex) {
 		super(checkpoints[firstCheckpointIndex]);
 		this.fileName = fileName;
@@ -23,10 +50,11 @@ public class FetcherTransformer extends ByteBufsToFramesTransformer {
 		nextCheckpointIndex = firstCheckpointIndex;
 	}
 
-	public static FetcherTransformer create(String fileName, CheckpointStorage checkpointStorage,
+	public static FramesFromStorage create(String fileName, CheckpointStorage checkpointStorage,
 			long[] checkpoints, int firstCheckpointIndex, int lastCheckpointIndex) {
-		return new FetcherTransformer(fileName, checkpointStorage, checkpoints, firstCheckpointIndex, lastCheckpointIndex);
+		return new FramesFromStorage(fileName, checkpointStorage, checkpoints, firstCheckpointIndex, lastCheckpointIndex);
 	}
+	// endregion
 
 	@Override
 	protected Stage<Void> postNextCheckpoint() {

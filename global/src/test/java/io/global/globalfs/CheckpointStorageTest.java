@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2015-2018  SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package io.global.globalfs;
 
 import io.datakernel.async.Stage;
@@ -6,7 +23,7 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.global.common.KeyPair;
 import io.global.common.SignedData;
 import io.global.globalfs.api.GlobalFsCheckpoint;
-import io.global.globalfs.server.CheckpointStorageFs;
+import io.global.globalfs.local.RemoteFsCheckpointStorage;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -26,7 +43,7 @@ public class CheckpointStorageTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
-	private CheckpointStorageFs storage;
+	private RemoteFsCheckpointStorage storage;
 	private Eventloop eventloop;
 
 	@Before
@@ -35,7 +52,7 @@ public class CheckpointStorageTest {
 		Path path = temporaryFolder.newFolder().toPath();
 
 		eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
-		storage = new CheckpointStorageFs(LocalFsClient.create(eventloop, executor, path));
+		storage = new RemoteFsCheckpointStorage(LocalFsClient.create(eventloop, executor, path));
 	}
 
 	@Test

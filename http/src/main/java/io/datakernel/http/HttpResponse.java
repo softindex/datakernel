@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018  SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
 package io.datakernel.http;
@@ -20,6 +21,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializable;
 
 import java.nio.charset.Charset;
@@ -37,9 +39,21 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	private static final Value CACHE_CONTROL__NO_STORE = HttpHeaders.asBytes(CACHE_CONTROL, "no-store");
 	private static final Value PRAGMA__NO_CACHE = HttpHeaders.asBytes(PRAGMA, "no-cache");
 	private static final Value AGE__0 = HttpHeaders.asBytes(AGE, "0");
-
+	// region internal
+	private static final byte[] HTTP11_BYTES = encodeAscii("HTTP/1.1 ");
+	private static final byte[] CODE_ERROR_BYTES = encodeAscii(" Error");
+	private static final byte[] CODE_OK_BYTES = encodeAscii(" OK");
+	private static final byte[] CODE_200_BYTES = encodeAscii("HTTP/1.1 200 OK");
+	private static final byte[] CODE_302_BYTES = encodeAscii("HTTP/1.1 302 Found");
+	private static final byte[] CODE_400_BYTES = encodeAscii("HTTP/1.1 400 Bad Request");
+	private static final byte[] CODE_403_BYTES = encodeAscii("HTTP/1.1 403 Forbidden");
+	private static final byte[] CODE_404_BYTES = encodeAscii("HTTP/1.1 404 Not Found");
+	private static final byte[] CODE_500_BYTES = encodeAscii("HTTP/1.1 500 Internal Server Error");
+	private static final byte[] CODE_503_BYTES = encodeAscii("HTTP/1.1 503 Service Unavailable");
+	private static final int LONGEST_FIRST_LINE_SIZE = CODE_503_BYTES.length;
 	private final int code;
 
+	// region creators
 	// region builders
 	private HttpResponse(int code) {
 		this.code = code;
@@ -48,16 +62,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	public static HttpResponse ofCode(int code) {
 		assert code >= 100 && code < 600;
 		return new HttpResponse(code);
-	}
-
-	public static HttpResponse ok200() {
-		return new HttpResponse(200);
-	}
-
-	public static HttpResponse redirect302(String url) {
-		HttpResponse response = HttpResponse.ofCode(302);
-		response.addHeader(HttpHeaders.LOCATION, url);
-		return response;
 	}
 
 	// common builder methods
@@ -88,6 +92,11 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	public HttpResponse withBody(byte[] array) {
 		setBody(array);
+		return this;
+	}
+
+	public HttpResponse withBody(SerialSupplier<ByteBuf> stream) {
+		setBodyStream(stream);
 		return this;
 	}
 
@@ -151,118 +160,18 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return this;
 	}
 	// endregion
-
-	// region setters
-	public void setNoCache() {
-		setHeader(CACHE_CONTROL__NO_STORE);
-		setHeader(PRAGMA__NO_CACHE);
-		setHeader(AGE__0);
-	}
-
-	public void setAge(int value) {
-		setHeader(ofDecimal(AGE, value));
-	}
-
-	public void setContentType(ContentType contentType) {
-		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, contentType));
-	}
-
-	public void setContentType(MediaType mime, Charset charset) {
-		setContentType(ContentType.of(mime, charset));
-	}
-
-	public void setContentType(MediaType mime) {
-		setContentType(ContentType.of(mime));
-	}
-
-	public void setDate(Date date) {
-		setHeader(ofDate(HttpHeaders.DATE, date));
-	}
-
-	public void setExpires(Date date) {
-		setHeader(ofDate(HttpHeaders.EXPIRES, date));
-	}
-
-	public void setLastModified(Date date) {
-		setHeader(ofDate(HttpHeaders.LAST_MODIFIED, date));
-	}
-
-	public void addCookies(List<HttpCookie> cookies) {
-		addHeader(ofSetCookies(HttpHeaders.SET_COOKIE, cookies));
-	}
-
-	public void addCookies(HttpCookie... cookies) {
-		addCookies(Arrays.asList(cookies));
-	}
-
-	public void setCookie(HttpCookie cookie) {
-		addCookies(Collections.singletonList(cookie));
-	}
 	// endregion
 
-	// region getters
-	public int getCode() {
-		assert !isRecycled();
-		return code;
+	public static HttpResponse ok200() {
+		return new HttpResponse(200);
 	}
 
-	public int getAge() {
-		assert !isRecycled();
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(AGE);
-		if (header != null)
-			try {
-				return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
-			} catch (ParseException e) {
-				return 0;
-			}
-		return 0;
-	}
-
-	public Date getExpires() {
-		assert !isRecycled();
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(EXPIRES);
-		if (header != null)
-			try {
-				return new Date(HttpDate.parse(header.array, header.offset));
-			} catch (ParseException e) {
-				return null;
-			}
-		return null;
-	}
-
-	public Date getLastModified() {
-		assert !isRecycled();
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(LAST_MODIFIED);
-		if (header != null)
-			try {
-				return new Date(HttpDate.parse(header.array, header.offset));
-			} catch (ParseException e) {
-				return null;
-			}
-		return null;
-	}
-
-	@Override
-	public List<HttpCookie> getCookies() {
-		assert !isRecycled();
-		List<HttpCookie> cookies = new ArrayList<>();
-		List<Value> headers = getHeaderValues(SET_COOKIE);
-		for (Value header : headers) {
-			ValueOfBytes value = (ValueOfBytes) header;
-			try {
-				HttpCookie.parse(value.array, value.offset, value.offset + value.size, cookies);
-			} catch (ParseException e) {
-				return Collections.emptyList();
-			}
-		}
-		return cookies;
+	public static HttpResponse redirect302(String url) {
+		HttpResponse response = HttpResponse.ofCode(302);
+		response.addHeader(HttpHeaders.LOCATION, url);
+		return response;
 	}
 	// endregion
-
-	// region internal
-	private static final byte[] HTTP11_BYTES = encodeAscii("HTTP/1.1 ");
-	private static final byte[] CODE_ERROR_BYTES = encodeAscii(" Error");
-	private static final byte[] CODE_OK_BYTES = encodeAscii(" OK");
 
 	private static void writeCodeMessageEx(ByteBuf buf, int code) {
 		buf.put(HTTP11_BYTES);
@@ -273,15 +182,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 			buf.put(CODE_OK_BYTES);
 		}
 	}
-
-	private static final byte[] CODE_200_BYTES = encodeAscii("HTTP/1.1 200 OK");
-	private static final byte[] CODE_302_BYTES = encodeAscii("HTTP/1.1 302 Found");
-	private static final byte[] CODE_400_BYTES = encodeAscii("HTTP/1.1 400 Bad Request");
-	private static final byte[] CODE_403_BYTES = encodeAscii("HTTP/1.1 403 Forbidden");
-	private static final byte[] CODE_404_BYTES = encodeAscii("HTTP/1.1 404 Not Found");
-	private static final byte[] CODE_500_BYTES = encodeAscii("HTTP/1.1 500 Internal Server Error");
-	private static final byte[] CODE_503_BYTES = encodeAscii("HTTP/1.1 503 Service Unavailable");
-	private static final int LONGEST_FIRST_LINE_SIZE = CODE_503_BYTES.length;
 
 	private static void writeCodeMessage(ByteBuf buf, int code) {
 		byte[] result;
@@ -312,6 +212,112 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 				return;
 		}
 		buf.put(result);
+	}
+
+	// region setters
+	public void setNoCache() {
+		setHeader(CACHE_CONTROL__NO_STORE);
+		setHeader(PRAGMA__NO_CACHE);
+		setHeader(AGE__0);
+	}
+
+	public void setContentType(ContentType contentType) {
+		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, contentType));
+	}
+
+	public void setContentType(MediaType mime, Charset charset) {
+		setContentType(ContentType.of(mime, charset));
+	}
+	// endregion
+
+	public void setContentType(MediaType mime) {
+		setContentType(ContentType.of(mime));
+	}
+
+	public void setDate(Date date) {
+		setHeader(ofDate(HttpHeaders.DATE, date));
+	}
+
+	public void addCookies(List<HttpCookie> cookies) {
+		addHeader(ofSetCookies(HttpHeaders.SET_COOKIE, cookies));
+	}
+
+	public void addCookies(HttpCookie... cookies) {
+		addCookies(Arrays.asList(cookies));
+	}
+
+	public void setCookie(HttpCookie cookie) {
+		addCookies(Collections.singletonList(cookie));
+	}
+
+	// region getters
+	public int getCode() {
+		assert !isRecycled();
+		return code;
+	}
+
+	public int getAge() {
+		assert !isRecycled();
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(AGE);
+		if (header != null)
+			try {
+				return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
+			} catch (ParseException e) {
+				return 0;
+			}
+		return 0;
+	}
+
+	public void setAge(int value) {
+		setHeader(ofDecimal(AGE, value));
+	}
+
+	public Date getExpires() {
+		assert !isRecycled();
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(EXPIRES);
+		if (header != null)
+			try {
+				return new Date(HttpDate.parse(header.array, header.offset));
+			} catch (ParseException e) {
+				return null;
+			}
+		return null;
+	}
+
+	public void setExpires(Date date) {
+		setHeader(ofDate(HttpHeaders.EXPIRES, date));
+	}
+
+	public Date getLastModified() {
+		assert !isRecycled();
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(LAST_MODIFIED);
+		if (header != null)
+			try {
+				return new Date(HttpDate.parse(header.array, header.offset));
+			} catch (ParseException e) {
+				return null;
+			}
+		return null;
+	}
+
+	public void setLastModified(Date date) {
+		setHeader(ofDate(HttpHeaders.LAST_MODIFIED, date));
+	}
+
+	@Override
+	public List<HttpCookie> getCookies() {
+		assert !isRecycled();
+		List<HttpCookie> cookies = new ArrayList<>();
+		List<Value> headers = getHeaderValues(SET_COOKIE);
+		for (Value header : headers) {
+			ValueOfBytes value = (ValueOfBytes) header;
+			try {
+				HttpCookie.parse(value.array, value.offset, value.offset + value.size, cookies);
+			} catch (ParseException e) {
+				return Collections.emptyList();
+			}
+		}
+		return cookies;
 	}
 
 	@SuppressWarnings("unchecked")

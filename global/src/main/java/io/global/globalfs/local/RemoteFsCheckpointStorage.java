@@ -1,4 +1,21 @@
-package io.global.globalfs.server;
+/*
+ * Copyright (C) 2015-2018  SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package io.global.globalfs.local;
 
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
@@ -7,6 +24,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.SignedData;
+import io.global.globalfs.api.CheckpointStorage;
 import io.global.globalfs.api.GlobalFsCheckpoint;
 import io.global.globalfs.api.GlobalFsException;
 import io.global.globalsync.util.SerializationUtils;
@@ -16,14 +34,16 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class CheckpointStorageFs implements CheckpointStorage {
-	private static final Logger logger = LoggerFactory.getLogger(CheckpointStorageFs.class);
+public final class RemoteFsCheckpointStorage implements CheckpointStorage {
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFsCheckpointStorage.class);
 
 	private final FsClient fsClient;
 
-	public CheckpointStorageFs(FsClient fsClient) {
+	// region creators
+	public RemoteFsCheckpointStorage(FsClient fsClient) {
 		this.fsClient = fsClient;
 	}
+	// endregion
 
 	private Stage<ByteBuf> download(String filename) {
 		return fsClient.download(filename)
@@ -69,7 +89,6 @@ public class CheckpointStorageFs implements CheckpointStorage {
 				});
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Stage<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position) {
 		return download(filename)
