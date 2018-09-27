@@ -65,9 +65,9 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 		return checkpointStorage.loadCheckpoint(fileName, checkpoint)
 				.thenComposeEx((signedCheckpoint, e) -> {
 					if (e != null || signedCheckpoint == null) {
-						// we are loading a checkpoint from a position that obtained using getCheckpoints,
+						// we are loading a checkpoint from a position that was obtained using getCheckpoints,
 						// so somewhere in between the file was corrupted, or CheckpointStorage implementation is broken
-						output.closeWithError(new GlobalFsException("No checkpoint at position {} for file {} found! Are checkpoint files corrupted?"));
+						output.closeWithError(new GlobalFsException("No checkpoint at position {} for file {} found! Is checkpoint data corrupted?"));
 						return Stage.complete();
 					}
 					return output.accept(DataFrame.of(signedCheckpoint));
@@ -77,22 +77,10 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 	@Override
 	protected void iteration() {
 		input.get()
-				.whenComplete((buf, e) -> {
-					if (e != null) {
-						closeWithError(e);
-					}
-					if (buf == null) {
-						output.accept(null)
-								.thenRun(this::completeProcess);
-						return;
-					}
-					handleBuffer(buf)
-							.whenComplete(($, e2) -> {
-								if (e != null) {
-									closeWithError(e2);
-								}
-								iteration();
-							});
-				});
+				.thenCompose(buf ->
+						buf != null ?
+								handleBuffer(buf).thenRun(this::iteration) :
+								output.accept(null).thenRun(this::completeProcess))
+				.whenException(this::closeWithError);
 	}
 }

@@ -27,23 +27,10 @@ public abstract class SimpleSerialTransformer<S extends SimpleSerialTransformer<
 	@Override
 	protected final void doProcess() {
 		input.get()
-				.whenComplete((item, e) -> {
-					if (e == null) {
-						if (item == null) {
-							output.accept(null)
-									.thenRun(this::completeProcess);
-							return;
-						}
-						handle(item).whenComplete(($, e2) -> {
-							if (e2 == null) {
-								doProcess();
-							} else {
-								closeWithError(e2);
-							}
-						});
-					} else {
-						closeWithError(e);
-					}
-				});
+				.thenCompose(item ->
+						item != null ?
+								handle(item).thenRun(this::doProcess) :
+								output.accept(null).thenRun(this::completeProcess))
+				.whenException(this::closeWithError);
 	}
 }

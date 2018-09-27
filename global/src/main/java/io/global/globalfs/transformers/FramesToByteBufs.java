@@ -68,21 +68,11 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 	@Override
 	protected void doProcess() {
 		input.get()
-				.whenResult(frame -> {
-					if (frame == null) {
-						output.accept(null)
-								.thenRun(this::completeProcess);
-						return;
-					}
-					handleFrame(frame)
-							.whenComplete(($, e) -> {
-								if (e != null) {
-									closeWithError(e);
-									return;
-								}
-								doProcess();
-							});
-				});
+				.thenCompose(frame ->
+						frame != null ?
+								handleFrame(frame).thenRun(this::doProcess) :
+								output.accept(null).thenRun(this::completeProcess))
+				.whenException(this::doCloseWithError);
 	}
 
 	protected Stage<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {

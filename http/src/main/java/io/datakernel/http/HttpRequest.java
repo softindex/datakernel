@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018  SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
 package io.datakernel.http;
@@ -20,6 +21,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializable;
 
 import java.net.InetAddress;
@@ -42,12 +44,16 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * creating and configuring an HTTP request.
  */
 public final class HttpRequest extends HttpMessage implements Initializable<HttpRequest> {
+	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
+	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
+	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
+	private static final byte[] GZIP_BYTES = encodeAscii("gzip");
 	private final HttpMethod method;
 	private UrlParser url;
 	private InetAddress remoteAddress;
-
 	private Map<String, String> pathParameters;
 
+	// region creators
 	// region builders
 	private HttpRequest(HttpMethod method) {
 		this.method = method;
@@ -58,21 +64,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		HttpRequest request = new HttpRequest(method);
 		request.setUrl(url);
 		return request;
-	}
-
-	static HttpRequest of(HttpMethod method, UrlParser url) {
-		assert method != null;
-		HttpRequest request = new HttpRequest(method);
-		request.url = url;
-		return request;
-	}
-
-	public static HttpRequest get(String url) {
-		return HttpRequest.of(GET, url);
-	}
-
-	public static HttpRequest post(String url) {
-		return HttpRequest.of(POST, url);
 	}
 
 	// common builder methods
@@ -108,6 +99,11 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	public HttpRequest withBody(ByteBuf body) {
 		setBody(body);
+		return this;
+	}
+
+	public HttpRequest withBody(SerialSupplier<ByteBuf> stream) {
+		setBodyStream(stream);
 		return this;
 	}
 
@@ -191,36 +187,29 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return this;
 	}
 	// endregion
+	// endregion
 
-	// region setters
-	public void setUrl(String url) throws IllegalArgumentException {
-		assert !isRecycled();
-		this.url = UrlParser.of(url);
-		if (!this.url.isRelativePath()) {
-			assert this.url.getHostAndPort() != null; // sadly no advanced contracts yet
-			setHeader(HttpHeaders.ofString(HttpHeaders.HOST, this.url.getHostAndPort()));
-		}
+	static HttpRequest of(HttpMethod method, UrlParser url) {
+		assert method != null;
+		HttpRequest request = new HttpRequest(method);
+		request.url = url;
+		return request;
 	}
 
-	public void setRemoteAddress(InetAddress inetAddress) {
-		assert !isRecycled();
-		this.remoteAddress = inetAddress;
+	public static HttpRequest get(String url) {
+		return HttpRequest.of(GET, url);
+	}
+
+	public static HttpRequest post(String url) {
+		return HttpRequest.of(POST, url);
 	}
 
 	public void setAccept(List<AcceptMediaType> value) {
 		addHeader(ofAcceptContentTypes(HttpHeaders.ACCEPT, value));
 	}
 
-	public void setAccept(AcceptMediaType... value) {
-		setAccept(Arrays.asList(value));
-	}
-
 	public void setAcceptCharsets(List<AcceptCharset> values) {
 		addHeader(ofCharsets(HttpHeaders.ACCEPT_CHARSET, values));
-	}
-
-	public void setAcceptCharsets(AcceptCharset... values) {
-		setAcceptCharsets(Arrays.asList(values));
 	}
 
 	public void addCookies(List<HttpCookie> cookies) {
@@ -251,18 +240,9 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		setHeader(ofDate(HttpHeaders.DATE, date));
 	}
 
-	public void setIfModifiedSince(Date date) {
-		setHeader(ofDate(IF_MODIFIED_SINCE, date));
-	}
-
-	public void setIfUnModifiedSince(Date date) {
-		setHeader(ofDate(IF_UNMODIFIED_SINCE, date));
-	}
-
 	public void setAcceptEncodingGzip() {
 		setHeader(HttpHeaders.ofString(ACCEPT_ENCODING, "gzip"));
 	}
-	// endregion
 
 	// region getters
 	public HttpMethod getMethod() {
@@ -273,6 +253,12 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public InetAddress getRemoteAddress() {
 		assert !isRecycled();
 		return remoteAddress;
+	}
+	// endregion
+
+	public void setRemoteAddress(InetAddress inetAddress) {
+		assert !isRecycled();
+		this.remoteAddress = inetAddress;
 	}
 
 	@Nullable
@@ -294,6 +280,16 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	UrlParser getUrl() {
 		assert !isRecycled();
 		return url;
+	}
+
+	// region setters
+	public void setUrl(String url) throws IllegalArgumentException {
+		assert !isRecycled();
+		this.url = UrlParser.of(url);
+		if (!this.url.isRelativePath()) {
+			assert this.url.getHostAndPort() != null; // sadly no advanced contracts yet
+			setHeader(HttpHeaders.ofString(HttpHeaders.HOST, this.url.getHostAndPort()));
+		}
 	}
 
 	@Nullable
@@ -387,6 +383,10 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return list;
 	}
 
+	public void setAccept(AcceptMediaType... value) {
+		setAccept(Arrays.asList(value));
+	}
+
 	public List<AcceptCharset> getAcceptCharsets() {
 		assert !isRecycled();
 		List<AcceptCharset> charsets = new ArrayList<>();
@@ -400,6 +400,10 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 			}
 		}
 		return charsets;
+	}
+
+	public void setAcceptCharsets(AcceptCharset... values) {
+		setAcceptCharsets(Arrays.asList(values));
 	}
 
 	@Nullable
@@ -416,6 +420,11 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return null;
 	}
 
+	public void setIfModifiedSince(Date date) {
+		setHeader(ofDate(IF_MODIFIED_SINCE, date));
+	}
+	// endregion
+
 	@Nullable
 	public Date getIfUnModifiedSince() {
 		assert !isRecycled();
@@ -427,6 +436,10 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 				return null;
 			}
 		return null;
+	}
+
+	public void setIfUnModifiedSince(Date date) {
+		setHeader(ofDate(IF_UNMODIFIED_SINCE, date));
 	}
 
 	@Override
@@ -449,7 +462,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		String acceptEncoding = this.getHeader(HttpHeaders.ACCEPT_ENCODING);
 		return acceptEncoding != null && acceptEncoding.contains("gzip");
 	}
-	// endregion
 
 	int getPos() {
 		return url.pos;
@@ -479,11 +491,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		}
 		pathParameters.put(key, value);
 	}
-
-	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
-	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
-	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
-	private static final byte[] GZIP_BYTES = encodeAscii("gzip");
 
 	@SuppressWarnings("unchecked")
 	Stage<HttpRequest> ensureBody() {

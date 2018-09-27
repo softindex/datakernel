@@ -15,10 +15,13 @@
  *
  */
 
-package io.global.globalfs.api;
+package io.global.globalfs.http;
 
-import io.global.common.RawServerId;
+public final class HttpMessages {
+	// region creators
+	private HttpMessages() {
+		throw new AssertionError("nope.");
+	}
+	// endregion
 
-public interface RawNodeFactory {
-	GlobalFsNode create(RawServerId serverId);
 }

@@ -19,10 +19,12 @@ package io.global.globalfs.http;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.serial.SerialSupplier;
 import io.global.common.PubKey;
 import io.global.globalfs.api.GlobalFsName;
 import io.global.globalfs.api.GlobalFsNode;
@@ -43,8 +45,10 @@ public final class GlobalFsNodeServlet {
 	//	public static final String SETTINGS = "/settings"; //TODO ?
 
 	private static int parseUnsignedInt(@Nullable String param) {
+		if (param == null) {
+			return 0;
+		}
 		try {
-			//noinspection ConstantConditions parseUnsignedInt DOES accept nulls (and throws an NFE)
 			return Integer.parseUnsignedInt(param);
 		} catch (NumberFormatException e) {
 			return -1;
@@ -53,22 +57,9 @@ public final class GlobalFsNodeServlet {
 
 	public static AsyncServlet wrap(GlobalFsNode node) {
 		return MiddlewareServlet.create()
-				.with(POST, UPLOAD, request -> {
-					PubKey pubKey = GlobalFsName.deserializePubKey(request.getQueryParameter("key"));
-					String filesystem = request.getQueryParameter("filesystem");
-					String path = request.getQueryParameter("path");
-					int offset = parseUnsignedInt(request.getQueryParameter("offset"));
-					if (pubKey == null || filesystem == null || path == null || offset == -1) {
-						return Stage.ofException(HttpException.badRequest400());
-					}
-					GlobalFsPath globalPath = GlobalFsPath.of(pubKey, filesystem, path);
-					return node.upload(globalPath, offset)
-							.thenCompose(consumer -> request.getBodyStream().streamTo(consumer.apply(new FrameDecoder())))
-							.thenApply($ -> HttpResponse.ok200());
-				})
 				.with(GET, DOWNLOAD, request -> {
 					PubKey pubKey = GlobalFsName.deserializePubKey(request.getQueryParameter("key"));
-					String filesystem = request.getQueryParameter("filesystem");
+					String filesystem = request.getQueryParameter("fs");
 					String path = request.getQueryParameter("path");
 					int offset = parseUnsignedInt(request.getQueryParameter("offset"));
 					int limit = parseUnsignedInt(request.getQueryParameter("limit"));
@@ -76,8 +67,24 @@ public final class GlobalFsNodeServlet {
 						return Stage.ofException(HttpException.badRequest400());
 					}
 					GlobalFsPath globalPath = GlobalFsPath.of(pubKey, filesystem, path);
+					System.out.println("DOWNLOAD CALLED");
 					return node.download(globalPath, offset, limit)
 							.thenApply(supplier -> HttpResponse.ok200().withBody(supplier.apply(new FrameEncoder())));
+				})
+				.with(POST, UPLOAD, request -> {
+					PubKey pubKey = GlobalFsName.deserializePubKey(request.getQueryParameter("key"));
+					String filesystem = request.getQueryParameter("fs");
+					String path = request.getQueryParameter("path");
+					int offset = parseUnsignedInt(request.getQueryParameter("offset"));
+					if (pubKey == null || filesystem == null || path == null || offset == -1) {
+						return Stage.ofException(HttpException.badRequest400());
+					}
+					System.out.println("UPLOAD CALLED " + request);
+					GlobalFsPath globalPath = GlobalFsPath.of(pubKey, filesystem, path);
+					SerialSupplier<ByteBuf> body = request.getBodyStream();
+					return node.upload(globalPath, offset)
+							.thenCompose(consumer -> body.streamTo(consumer.apply(new FrameDecoder())))
+							.thenApply($ -> HttpResponse.ok200());
 				});
 	}
 }

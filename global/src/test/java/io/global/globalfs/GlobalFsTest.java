@@ -30,12 +30,11 @@ import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.globalfs.api.GlobalFsName;
 import io.global.globalfs.api.GlobalFsNode;
-import io.global.globalfs.api.RawNodeFactory;
+import io.global.globalfs.api.NodeFactory;
 import io.global.globalfs.http.GlobalFsNodeServlet;
 import io.global.globalfs.http.HttpGlobalFsNode;
 import io.global.globalfs.local.LocalGlobalFsNode;
 import io.global.globalfs.local.RemoteFsAdapter;
-import io.global.globalfs.local.RemoteFsFileSystem;
 import io.global.globalfs.local.RuntimeDiscoveryService;
 import org.junit.After;
 import org.junit.Before;
@@ -66,7 +65,7 @@ public class GlobalFsTest {
 	private Eventloop eventloop;
 	private ExecutorService executor;
 
-	private RawNodeFactory clientFactory;
+	private NodeFactory clientFactory;
 	private DiscoveryService discoveryService;
 
 	private RawServerId createLocalhost(int port) {
@@ -83,13 +82,12 @@ public class GlobalFsTest {
 		executor = Executors.newSingleThreadExecutor();
 		discoveryService = new RuntimeDiscoveryService();
 		FsClient storage = LocalFsClient.create(eventloop, executor, temporaryFolder.newFolder().toPath());
-		clientFactory = new RawNodeFactory() {
+		clientFactory = new NodeFactory() {
 			int serverIndex = 0;
 
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
-				LocalGlobalFsNode.FileSystemFactory fileSystemFactory = RemoteFsFileSystem.usingSingleClient(storage.subfolder("server_" + serverIndex++));
-				return new LocalGlobalFsNode(serverId, discoveryService, this, fileSystemFactory, () -> Duration.ofMinutes(5));
+				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverIndex++), () -> Duration.ofMinutes(5));
 			}
 		};
 	}
@@ -189,8 +187,18 @@ public class GlobalFsTest {
 		server.listen();
 
 		GlobalFsNode client = new HttpGlobalFsNode(AsyncHttpClient.create(eventloop), "http://127.0.0.1:8080");
+		RemoteFsAdapter adapter = new RemoteFsAdapter(client, GlobalFsName.of(keys, "testFs"), keys, x -> x + 5);
 
-		// TODO anton: make this test again
+		SerialSupplier.of(
+				ByteBuf.wrapForReading("Hello world, this is some bytes ".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("to be sent through GlobalFs HTTP interface".getBytes(UTF_8))
+		)
+				.streamTo(adapter.uploadSerial("test.txt"))
+				.thenCompose($ -> adapter.downloadSerial("test.txt").toCollector(ByteBufQueue.collector()))
+				.whenResult(res -> System.out.println(res.asString(UTF_8)))
+				.whenComplete(assertComplete())
+				.whenComplete(($, e) -> server.close());
+
 
 		eventloop.run();
 	}

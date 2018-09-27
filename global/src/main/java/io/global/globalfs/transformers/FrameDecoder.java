@@ -60,24 +60,6 @@ public final class FrameDecoder extends AbstractSerialTransformer<FrameDecoder, 
 
 	@Override
 	protected void doProcess() {
-		iteration(ByteBufsSupplier.of(input));
-	}
-
-	private void iteration(ByteBufsSupplier supplier) {
-		supplier.parse(FrameDecoder::parseDataFrame)
-				.whenComplete((result, e) -> {
-					if (e == null) {
-						output.accept(result)
-								.whenComplete(($, e2) -> {
-									if (e2 == null) {
-										iteration(supplier);
-									} else {
-										closeWithError(e2);
-									}
-								});
-					} else {
-						closeWithError(e);
-					}
-				});
+		ByteBufsSupplier.of(input).parseStream(FrameDecoder::parseDataFrame).streamTo(output);
 	}
 }

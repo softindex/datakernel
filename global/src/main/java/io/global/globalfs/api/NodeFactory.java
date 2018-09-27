@@ -15,7 +15,10 @@
  *
  */
 
-package io.global.globalfs;
+package io.global.globalfs.api;
 
-public class ServerTest {
+import io.global.common.RawServerId;
+
+public interface NodeFactory {
+	GlobalFsNode create(RawServerId serverId);
 }

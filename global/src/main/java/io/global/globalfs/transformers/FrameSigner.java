@@ -69,30 +69,14 @@ public final class FrameSigner extends ByteBufsToFrames {
 	@Override
 	protected void iteration() {
 		input.get()
-				.whenComplete((buf, e) -> {
-					if (e != null) {
-						closeWithError(e);
-						return;
-					}
-					if (buf == null) {
-						if (lastPostedCheckpoint) {
-							output.accept(null)
-									.thenRun(this::completeProcess);
-						} else {
-							nextCheckpoint = position;
-							postNextCheckpoint()
-									.thenCompose($ -> output.accept(null))
-									.thenRun(this::completeProcess);
-						}
-						return;
-					}
-					handleBuffer(buf)
-							.whenComplete(($, e2) -> {
-								if (e2 != null) {
-									closeWithError(e2);
-								}
-								iteration();
-							});
-				});
+				.thenCompose(buf ->
+						buf != null ?
+								handleBuffer(buf).thenRun(this::iteration) :
+								(lastPostedCheckpoint ?
+										output.accept(null) :
+										postNextCheckpoint()
+												.thenCompose($ -> output.accept(null)))
+										.thenRun(this::completeProcess))
+				.whenException(this::closeWithError);
 	}
 }

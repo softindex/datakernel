@@ -31,16 +31,17 @@ import java.util.Set;
  */
 public interface GlobalFsNode {
 	StacklessException RECURSIVE_ERROR = new StacklessException("Trying to download a file from a server that also tries to download this file.");
+	StacklessException FETCH_DID_NOTHING = new StacklessException("Did not fetch anything from given node.");
 
 	Stage<SerialSupplier<DataFrame>> download(GlobalFsPath file, long offset, long limit);
 
-	default SerialSupplier<DataFrame> downloadStream(GlobalFsPath file, long offset, long limit) {
+	default SerialSupplier<DataFrame> downloader(GlobalFsPath file, long offset, long limit) {
 		return SerialSupplier.ofStage(download(file, offset, limit));
 	}
 
 	Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath file, long offset);
 
-	default SerialConsumer<DataFrame> uploadSerial(GlobalFsPath file, long offset) {
+	default SerialConsumer<DataFrame> uploader(GlobalFsPath file, long offset) {
 		return SerialConsumer.ofStage(upload(file, offset));
 	}
 

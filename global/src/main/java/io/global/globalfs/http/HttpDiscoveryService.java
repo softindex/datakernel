@@ -31,6 +31,7 @@ import io.global.globalfs.api.GlobalFsName;
 import java.io.IOException;
 
 public final class HttpDiscoveryService implements DiscoveryService {
+	public final String test = "";
 	private final AsyncHttpClient client;
 	private final String host;
 
@@ -43,7 +44,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 
 	@Override
 	public Stage<SignedData<AnnounceData>> findServers(PubKey pubKey) {
-		return client.request(HttpRequest.get("http://" + host + DiscoveryServlet.FIND + "?key=" + GlobalFsName.serializePubKey(pubKey)))
+		return client.request(HttpRequest.get(host + DiscoveryServlet.FIND + "?key=" + GlobalFsName.serializePubKey(pubKey)))
 				.thenCompose(data -> {
 					try {
 						return Stage.of(SignedData.ofBytes(data.getBody().asArray(), AnnounceData::fromBytes));
@@ -55,7 +56,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 
 	@Override
 	public Stage<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
-		return client.request(HttpRequest.of(HttpMethod.PUT, "http://" + host + DiscoveryServlet.ANNOUNCE + "?key=" + GlobalFsName.serializePubKey(pubKey))
+		return client.request(HttpRequest.of(HttpMethod.PUT, host + DiscoveryServlet.ANNOUNCE + "?key=" + GlobalFsName.serializePubKey(pubKey))
 				.withBody(announceData.toBytes())
 				.withHeader(HttpHeaders.HOST, host))
 				.toVoid();

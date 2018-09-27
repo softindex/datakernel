@@ -17,15 +17,24 @@
 
 package io.global.globalfs.http;
 
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.http.HttpRequest;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialZeroBuffer;
 import io.global.globalfs.api.*;
+import io.global.globalfs.transformers.FrameDecoder;
+import io.global.globalfs.transformers.FrameEncoder;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static io.global.globalfs.api.GlobalFsName.serializePubKey;
+import static io.global.globalfs.http.GlobalFsNodeServlet.DOWNLOAD;
+import static io.global.globalfs.http.GlobalFsNodeServlet.UPLOAD;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {
 	private final AsyncHttpClient client;
@@ -40,12 +49,40 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 
 	@Override
 	public Stage<SerialSupplier<DataFrame>> download(GlobalFsPath file, long offset, long limit) {
-		throw new UnsupportedOperationException("HttpGlobalFsNode#download is not implemented yet");
+		return client.requestBodyStream(
+				HttpRequest.get(host + DOWNLOAD +
+						"?key=" + serializePubKey(file.getPubKey()) +
+						"&fs=" + file.getFsName() +
+						"&path=" + file.getPath() +
+						"&offset=" + offset +
+						"&limit=" + limit))
+				.thenCompose(response -> {
+					if (response.getCode() != 200) {
+						return Stage.ofException(new GlobalFsException("response: " + response));
+					}
+					return Stage.of(response);
+				})
+				.thenApply(response -> response.getBodyStream().apply(new FrameDecoder()));
 	}
 
 	@Override
 	public Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath file, long offset) {
-		throw new UnsupportedOperationException("HttpGlobalFsNode#upload is not implemented yet");
+		SerialZeroBuffer<DataFrame> buffer = new SerialZeroBuffer<>();
+		MaterializedStage<Void> request = client.request(
+				HttpRequest.post(host + UPLOAD +
+						"?key=" + serializePubKey(file.getPubKey()) +
+						"&fs=" + file.getFsName() +
+						"&path=" + file.getPath() +
+						"&offset=" + offset)
+						.withBody(buffer.getSupplier().apply(new FrameEncoder())))
+				.thenCompose(response -> {
+					if (response.getCode() != 200) {
+						return Stage.ofException(new GlobalFsException("response: " + response));
+					}
+					return Stage.complete();
+				})
+				.materialize();
+		return Stage.of(buffer.getConsumer().withAcknowledgement(ack -> ack.both(request)));
 	}
 
 	@Override
