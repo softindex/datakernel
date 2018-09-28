@@ -48,37 +48,42 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	@SuppressWarnings("unchecked")
 	public Stage<Void> put(@Nullable T value) {
 		assert put == null;
-		if (exception != null) return Stage.ofException(exception);
+		if (exception == null) {
+			if (take != null) {
+				SettableStage<T> take = this.take;
+				this.take = null;
+				take.set(value);
+				return Stage.complete();
+			}
 
-		if (take != null) {
-			SettableStage<T> take = this.take;
-			this.take = null;
-			take.set(value);
-			return Stage.complete();
+			this.value = value;
+			this.put = new SettableStage<>();
+			return put;
+		} else {
+			tryRecycle(value);
+			return Stage.ofException(exception);
 		}
-
-		this.value = value;
-		this.put = new SettableStage<>();
-		return put;
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Stage<T> take() {
 		assert take == null;
-		if (exception != null) return Stage.ofException(exception);
+		if (exception == null) {
+			if (put != null) {
+				T value = this.value;
+				SettableStage<Void> put = this.put;
+				this.value = null;
+				this.put = null;
+				put.set(null);
+				return Stage.of(value);
+			}
 
-		if (put != null) {
-			T value = this.value;
-			SettableStage<Void> put = this.put;
-			this.value = null;
-			this.put = null;
-			put.set(null);
-			return Stage.of(value);
+			this.take = new SettableStage<>();
+			return take;
+		} else {
+			return Stage.ofException(exception);
 		}
-
-		this.take = new SettableStage<>();
-		return take;
 	}
 
 	@SuppressWarnings("unchecked")

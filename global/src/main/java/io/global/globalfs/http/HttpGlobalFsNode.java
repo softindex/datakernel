@@ -74,7 +74,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						"&fs=" + file.getFsName() +
 						"&path=" + file.getPath() +
 						"&offset=" + offset)
-						.withBody(buffer.getSupplier().apply(new FrameEncoder())))
+						.withBodyStream(buffer.getSupplier().apply(new FrameEncoder())))
 				.thenCompose(response -> {
 					if (response.getCode() != 200) {
 						return Stage.ofException(new GlobalFsException("response: " + response));

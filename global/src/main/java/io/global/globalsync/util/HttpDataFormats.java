@@ -1,6 +1,7 @@
-package io.global.globalsync.http;
+package io.global.globalsync.util;
 
 import com.google.gson.TypeAdapter;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.util.gson.GsonAdapters;
@@ -37,6 +38,8 @@ public class HttpDataFormats {
 	public static final String LOAD_SNAPSHOT = "loadSnapshot";
 	public static final String GET_HEADS = "getHeads";
 	public static final String SHARE_KEY = "shareKey";
+	public static final String DOWNLOAD = "download";
+	public static final String UPLOAD = "upload";
 
 	public static final TypeAdapter<Set<String>> SET_OF_STRINGS = GsonAdapters.ofSet(STRING_JSON);
 
@@ -108,9 +111,17 @@ public class HttpDataFormats {
 		return urlEncodePubKey(repositoryId.getPubKey()) + '/' + urlEncode(repositoryId.getRepositoryName(), "UTF-8");
 	}
 
-	public static RepositoryName urlDecodeRepositoryId(HttpRequest httpRequest) {
-		String pubKey = httpRequest.getPathParameter("pubKey");
-		String name = httpRequest.getPathParameter("name");
+	public static String getPathParameter(HttpRequest request, String parameter) throws ParseException {
+		String result = request.getPathParameter(parameter);
+		if (result == null) {
+			throw new ParseException(parameter);
+		}
+		return result;
+	}
+
+	public static RepositoryName urlDecodeRepositoryId(HttpRequest httpRequest) throws ParseException {
+		String pubKey = getPathParameter(httpRequest, "pubKey");
+		String name = getPathParameter(httpRequest, "name");
 		return new RepositoryName(urlDecodePubKey(pubKey), HttpUtils.urlDecode(name, "UTF-8"));
 	}
 

@@ -4,6 +4,7 @@ import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.ParseException;
 import io.datakernel.exception.ToDoException;
 import io.datakernel.http.*;
 import io.datakernel.serial.SerialConsumer;
@@ -14,6 +15,7 @@ import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.SimKeyHash;
 import io.global.globalsync.api.*;
+import io.global.globalsync.util.HttpDataFormats;
 
 import java.io.IOException;
 import java.util.Map;
@@ -27,7 +29,7 @@ import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.gson.GsonAdapters.fromJson;
 import static io.datakernel.util.gson.GsonAdapters.toJson;
-import static io.global.globalsync.http.HttpDataFormats.*;
+import static io.global.globalsync.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 
@@ -130,7 +132,7 @@ public class RawServerHttpClient implements RawServer {
 						try {
 							return Stage.of(Optional.of(
 									SignedData.ofBytes(body.getArray(), RawSnapshot::ofBytes)));
-						} catch (IOException e) {
+						} catch (ParseException e) {
 							return Stage.ofException(e);
 						}
 					}

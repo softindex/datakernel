@@ -2,11 +2,11 @@ package io.global.common;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 
-import java.io.IOException;
 import java.util.Arrays;
 
-import static io.global.globalsync.util.SerializationUtils.*;
+import static io.global.globalsync.util.BinaryDataFormats.*;
 
 public final class SharedSimKey implements Signable {
 	private final byte[] bytes;
@@ -26,7 +26,7 @@ public final class SharedSimKey implements Signable {
 		this.simKeyHash = simKeyHash;
 	}
 
-	public static SharedSimKey ofBytes(byte[] bytes) throws IOException {
+	public static SharedSimKey ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 
 		PubKey repositoryOwner = readPubKey(buf);

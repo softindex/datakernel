@@ -26,34 +26,6 @@ public interface RawServer {
 
 	Stage<RawCommit> loadCommit(RepositoryName repositoryId, CommitId id);
 
-	final class CommitEntry {
-		public final CommitId commitId;
-		public final RawCommit rawCommit;
-		public final SignedData<RawCommitHead> rawHead;
-
-		public CommitEntry(CommitId commitId, RawCommit rawCommit, @Nullable SignedData<RawCommitHead> rawHead) {
-			this.commitId = commitId;
-			this.rawCommit = rawCommit;
-			this.rawHead = rawHead;
-		}
-
-		public CommitId getCommitId() {
-			return commitId;
-		}
-
-		public RawCommit getRawCommit() {
-			return rawCommit;
-		}
-
-		public SignedData<RawCommitHead> getRawHead() {
-			return rawHead;
-		}
-
-		public boolean hasRawHead() {
-			return rawHead != null;
-		}
-	}
-
 	final class HeadsInfo {
 		public final Set<CommitId> bases;
 		public final Set<CommitId> heads;
@@ -89,20 +61,6 @@ public interface RawServer {
 	}
 
 	Stage<HeadsInfo> getHeadsInfo(RepositoryName repositoryId);
-
-	Stage<SerialSupplier<CommitEntry>> download(RepositoryName repositoryId,
-			Set<CommitId> bases, Set<CommitId> heads);
-
-	default SerialSupplier<CommitEntry> downloadStream(RepositoryName repositoryId,
-			Set<CommitId> bases, Set<CommitId> heads) {
-		return SerialSupplier.ofStage(download(repositoryId, bases, heads));
-	}
-
-	Stage<SerialConsumer<CommitEntry>> upload(RepositoryName repositoryId);
-
-	default SerialConsumer<CommitEntry> uploadStream(RepositoryName repositoryId) {
-		return SerialConsumer.ofStage(upload(repositoryId));
-	}
 
 	Stage<Void> saveSnapshot(RepositoryName repositoryId, SignedData<RawSnapshot> encryptedSnapshot);
 
@@ -156,4 +114,49 @@ public interface RawServer {
 	Stage<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest);
 
 	Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepositoryName repositoryId);
+
+	final class CommitEntry {
+		public final CommitId commitId;
+		public final RawCommit commit;
+		@Nullable
+		public final SignedData<RawCommitHead> head;
+
+		public CommitEntry(CommitId commitId, RawCommit commit, @Nullable SignedData<RawCommitHead> head) {
+			this.commitId = commitId;
+			this.commit = commit;
+			this.head = head;
+		}
+
+		public CommitId getCommitId() {
+			return commitId;
+		}
+
+		public RawCommit getCommit() {
+			return commit;
+		}
+
+		@Nullable
+		public SignedData<RawCommitHead> getHead() {
+			return head;
+		}
+
+		public boolean hasHead() {
+			return head != null;
+		}
+	}
+
+	Stage<SerialSupplier<CommitEntry>> download(RepositoryName repositoryId,
+			Set<CommitId> bases, Set<CommitId> heads);
+
+	default SerialSupplier<CommitEntry> downloader(RepositoryName repositoryId,
+			Set<CommitId> bases, Set<CommitId> heads) {
+		return SerialSupplier.ofStage(download(repositoryId, bases, heads));
+	}
+
+	Stage<SerialConsumer<CommitEntry>> upload(RepositoryName repositoryId);
+
+	default SerialConsumer<CommitEntry> uploader(RepositoryName repositoryId) {
+		return SerialConsumer.ofStage(upload(repositoryId));
+	}
+
 }

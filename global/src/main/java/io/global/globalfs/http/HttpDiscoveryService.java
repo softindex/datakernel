@@ -18,6 +18,7 @@
 package io.global.globalfs.http;
 
 import io.datakernel.async.Stage;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpHeaders;
 import io.datakernel.http.HttpMethod;
@@ -27,8 +28,6 @@ import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.globalfs.api.GlobalFsName;
-
-import java.io.IOException;
 
 public final class HttpDiscoveryService implements DiscoveryService {
 	public final String test = "";
@@ -48,7 +47,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 				.thenCompose(data -> {
 					try {
 						return Stage.of(SignedData.ofBytes(data.getBody().asArray(), AnnounceData::fromBytes));
-					} catch (IOException e) {
+					} catch (ParseException e) {
 						return Stage.ofException(e);
 					}
 				});

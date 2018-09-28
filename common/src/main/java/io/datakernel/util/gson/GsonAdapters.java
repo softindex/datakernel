@@ -5,6 +5,7 @@ import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import io.datakernel.exception.ParseException;
 import io.datakernel.util.*;
 
 import java.io.IOException;
@@ -360,19 +361,34 @@ public final class GsonAdapters {
 */
 
 	public interface FunctionIO<I, O> {
-		O convert(I in) throws IOException;
+		O convert(I in) throws ParseException;
 	}
 
 	public static <I, O> TypeAdapter<O> transform(TypeAdapter<I> adapter, FunctionIO<I, O> from, FunctionIO<O, I> to) {
 		return new TypeAdapter<O>() {
 			@Override
 			public void write(JsonWriter out, O value) throws IOException {
-				adapter.write(out, to.convert(value));
+				I result;
+				try {
+					result = to.convert(value);
+				} catch (ParseException e) {
+					throw new IOException(e);
+				}
+				try {
+					adapter.write(out, result);
+				} catch (IOException e) {
+					throw new AssertionError(e);
+				}
 			}
 
 			@Override
 			public O read(JsonReader in) throws IOException {
-				return from.convert(adapter.read(in));
+				I result = adapter.read(in);
+				try {
+					return from.convert(result);
+				} catch (ParseException e) {
+					throw new IOException(e);
+				}
 			}
 		};
 	}

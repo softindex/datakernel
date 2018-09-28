@@ -18,14 +18,13 @@
 package io.global.globalfs.http;
 
 import io.datakernel.async.Stage;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.globalfs.api.GlobalFsName;
-
-import java.io.IOException;
 
 public final class DiscoveryServlet {
 	public static final String FIND = "/find";
@@ -55,7 +54,7 @@ public final class DiscoveryServlet {
 							.thenCompose(body -> {
 								try {
 									return service.announce(pubKey, SignedData.ofBytes(body.getArray(), AnnounceData::fromBytes));
-								} catch (IOException e) {
+								} catch (ParseException e) {
 									return Stage.ofException(e);
 								}
 							})

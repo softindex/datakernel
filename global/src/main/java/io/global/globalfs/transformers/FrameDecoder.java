@@ -27,8 +27,6 @@ import io.global.common.SignedData;
 import io.global.globalfs.api.DataFrame;
 import io.global.globalfs.api.GlobalFsCheckpoint;
 
-import java.io.IOException;
-
 /**
  * Decodes a stream of byte bufs back into a stream of frames.
  * <p>
@@ -53,7 +51,7 @@ public final class FrameDecoder extends AbstractSerialTransformer<FrameDecoder, 
 		}
 		try {
 			return DataFrame.of(SignedData.ofBytes(data.asArray(), GlobalFsCheckpoint::ofBytes));
-		} catch (IOException e) {
+		} catch (ParseException e) {
 			throw new ParseException(e);
 		}
 	}

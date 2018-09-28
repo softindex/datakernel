@@ -65,7 +65,7 @@ public interface SerialConsumer<T> extends Cancellable {
 					if (e == null) {
 						return accept(item1);
 					} else {
-						tryRecycle(item1);
+						tryRecycle(item2);
 						deepRecycle(items);
 						return Stage.ofException(e);
 					}

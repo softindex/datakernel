@@ -24,6 +24,12 @@ import java.util.Map;
 public interface Recyclable {
 	void recycle();
 
+	static void tryRecycle(Object object) {
+		if (object instanceof Recyclable) {
+			((Recyclable) object).recycle();
+		}
+	}
+
 	static void deepRecycle(Object object) {
 		if (object == null) return;
 		if (object instanceof Recyclable) {
@@ -48,12 +54,6 @@ public interface Recyclable {
 				deepRecycle(element);
 			}
 			Arrays.fill(objects, null);
-		}
-	}
-
-	static void tryRecycle(Object object) {
-		if (object instanceof Recyclable) {
-			((Recyclable) object).recycle();
 		}
 	}
 }

@@ -23,7 +23,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.ot.OTCommit;
 import io.global.common.*;
 import io.global.globalsync.api.*;
-import io.global.globalsync.util.SerializationUtils;
+import io.global.globalsync.util.BinaryDataFormats;
 
 import java.io.IOException;
 import java.util.*;
@@ -31,8 +31,8 @@ import java.util.*;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.global.common.CryptoUtils.*;
-import static io.global.globalsync.util.SerializationUtils.sizeof;
-import static io.global.globalsync.util.SerializationUtils.writeCollection;
+import static io.global.globalsync.util.BinaryDataFormats.sizeof;
+import static io.global.globalsync.util.BinaryDataFormats.writeCollection;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 
@@ -56,8 +56,8 @@ public final class OTDriver {
 			parents.add(key);
 			diffsBytes.add(myRepositoryId.getDiffsSerializer().apply((List<D>) value));
 		});
-		ByteBuf dataBuf = ByteBuf.wrapForWriting(new byte[sizeof(diffsBytes, SerializationUtils::sizeof)]);
-		writeCollection(dataBuf, diffsBytes, SerializationUtils::writeBytes);
+		ByteBuf dataBuf = ByteBuf.wrapForWriting(new byte[sizeof(diffsBytes, BinaryDataFormats::sizeof)]);
+		writeCollection(dataBuf, diffsBytes, BinaryDataFormats::writeBytes);
 		EncryptedData encryptedDiffs = encryptAES(
 				dataBuf.asArray(),
 				currentSimKey.getAesKey());
@@ -162,7 +162,7 @@ public final class OTDriver {
 									simKey.getAesKey()));
 							Map<CommitId, List<? extends D>> parents = new HashMap<>();
 							for (CommitId parent : rawCommit.getParents()) {
-								byte[] bytes = SerializationUtils.readBytes(buf);
+								byte[] bytes = BinaryDataFormats.readBytes(buf);
 								List<? extends D> diffs = myRepositoryId.getDiffsDeserializer().apply(bytes);
 								parents.put(parent, diffs);
 							}

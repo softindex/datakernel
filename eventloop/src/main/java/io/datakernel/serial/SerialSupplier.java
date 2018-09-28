@@ -18,6 +18,7 @@ package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
+import io.datakernel.util.CollectionUtils;
 
 import java.util.Iterator;
 import java.util.List;
@@ -245,6 +246,42 @@ public interface SerialSupplier<T> extends Cancellable {
 						.thenCompose(value -> value != null ?
 								fn.apply(value) :
 								Stage.of(null));
+			}
+		};
+	}
+
+	default <V> SerialSupplier<V> remap(Function<? super T, ? extends Iterator<? extends V>> fn) {
+		return new AbstractSerialSupplier<V>(this) {
+			Iterator<? extends V> iterator = CollectionUtils.emptyIterator();
+			boolean endOfStream;
+
+			@Override
+			protected Stage<V> doGet() {
+				if (iterator.hasNext()) return Stage.of(iterator.next());
+				SettableStage<V> cb = new SettableStage<>();
+				next(cb);
+				return cb;
+			}
+
+			private void next(SettableStage<V> cb) {
+				if (!endOfStream) {
+					SerialSupplier.this.get()
+							.whenComplete((item, e) -> {
+								if (e == null) {
+									if (item == null) endOfStream = true;
+									iterator = fn.apply(item);
+									if (iterator.hasNext()) {
+										cb.set(iterator.next());
+									} else {
+										next(cb);
+									}
+								} else {
+									cb.setException(e);
+								}
+							});
+				} else {
+					cb.set(null);
+				}
 			}
 		};
 	}

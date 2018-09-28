@@ -18,27 +18,31 @@
 package io.global.globalsync.util;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 import io.global.common.*;
-import io.global.globalsync.api.CommitId;
-import io.global.globalsync.api.EncryptedData;
-import io.global.globalsync.api.RepositoryName;
+import io.global.globalsync.api.*;
 import org.spongycastle.math.ec.ECPoint;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.ToIntFunction;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public final class SerializationUtils {
+public final class BinaryDataFormats {
 	// region creators
-	private SerializationUtils() {
-	}
+	private BinaryDataFormats() {}
 	// endregion
+
+	@FunctionalInterface
+	public interface Parser<T> {
+		T parse(ByteBuf buf) throws ParseException;
+	}
 
 	public static int sizeof(byte[] bytes) {
 		return bytes.length + 5;
@@ -185,9 +189,13 @@ public final class SerializationUtils {
 		writeBytes(buf, address.getAddress().getAddress());
 	}
 
-	public static InetSocketAddress readInetSocketAddress(ByteBuf buf) throws IOException {
+	public static InetSocketAddress readInetSocketAddress(ByteBuf buf) throws ParseException {
 		int port = buf.readShort() & 0xFFFF;
-		return new InetSocketAddress(InetAddress.getByAddress(readBytes(buf)), port);
+		try {
+			return new InetSocketAddress(InetAddress.getByAddress(readBytes(buf)), port);
+		} catch (UnknownHostException e) {
+			throw new ParseException(e);
+		}
 	}
 
 	public static int sizeof(RawServerId serverId) {
@@ -198,37 +206,64 @@ public final class SerializationUtils {
 		writeInetSocketAddress(buf, serverId.getInetSocketAddress());
 	}
 
-	public static RawServerId readRawServerId(ByteBuf buf) throws IOException {
+	public static RawServerId readRawServerId(ByteBuf buf) throws ParseException {
 		return new RawServerId(readInetSocketAddress(buf));
 	}
 
-	public static <T> int sizeof(Collection<T> coll, ToIntFunction<T> elementSizeof) {
-		return 5 + coll.stream().mapToInt(elementSizeof).sum();
+	public static <T> int sizeof(Collection<T> collection, ToIntFunction<T> elementSizeof) {
+		return 5 + collection.stream().mapToInt(elementSizeof).sum();
 	}
 
-	public static <T> void writeCollection(ByteBuf buf, Collection<T> coll, BiConsumer<ByteBuf, T> writer) {
-		buf.writeVarInt(coll.size());
-		coll.forEach(item -> writer.accept(buf, item));
+	public static <T> void writeCollection(ByteBuf buf, Collection<T> collection, BiConsumer<ByteBuf, T> writer) {
+		buf.writeVarInt(collection.size());
+		collection.forEach(item -> writer.accept(buf, item));
 	}
 
-	private static <T, C extends Collection<T>> C readInto(ByteBuf buf, Parser<T> parser, C coll) throws IOException {
+	private static <T, C extends Collection<T>> C readInto(ByteBuf buf, Parser<T> parser, C collection) throws ParseException {
 		int size = buf.readVarInt();
 		for (int i = 0; i < size; i++) {
-			coll.add(parser.parse(buf));
+			collection.add(parser.parse(buf));
 		}
-		return coll;
+		return collection;
 	}
 
-	public static <T> List<T> readList(ByteBuf buf, Parser<T> parser) throws IOException {
+	public static <T> List<T> readList(ByteBuf buf, Parser<T> parser) throws ParseException {
 		return readInto(buf, parser, new ArrayList<>());
 	}
 
-	public static <T> Set<T> readSet(ByteBuf buf, Parser<T> parser) throws IOException {
+	public static <T> Set<T> readSet(ByteBuf buf, Parser<T> parser) throws ParseException {
 		return readInto(buf, parser, new HashSet<>());
 	}
 
-	@FunctionalInterface
-	public interface Parser<T> {
-		T parse(ByteBuf buf) throws IOException;
+	public static ByteBuf wrapWithVarIntHeader(ByteBuf buf) {
+		int size = buf.readRemaining();
+		ByteBuf result = ByteBufPool.allocate(size + 5);
+		result.writeVarInt(size);
+		result.put(buf);
+		buf.recycle();
+		return result;
+	}
+
+	public static ByteBuf ofCommitEntry(RawServer.CommitEntry commitEntry) {
+		byte[] commitIdBytes = commitEntry.commitId.toBytes();
+		byte[] commitBytes = commitEntry.commit.toBytes();
+		byte[] headBytes = commitEntry.head != null ? commitEntry.head.toBytes() : new byte[]{};
+		int size = sizeof(commitIdBytes) + sizeof(commitBytes) + sizeof(headBytes);
+		ByteBuf buf = ByteBufPool.allocate(size);
+		writeBytes(buf, commitIdBytes);
+		writeBytes(buf, commitBytes);
+		if (headBytes.length > 0) {
+			writeBytes(buf, headBytes);
+		}
+		return buf;
+	}
+
+	public static RawServer.CommitEntry toCommitEntry(ByteBuf buf) throws ParseException {
+		CommitId commitId = CommitId.ofBytes(readBytes(buf));
+		RawCommit rawCommit = RawCommit.ofBytes(readBytes(buf));
+		SignedData<RawCommitHead> head = buf.canRead() ?
+				SignedData.ofBytes(readBytes(buf), RawCommitHead::ofBytes) :
+				null;
+		return new RawServer.CommitEntry(commitId, rawCommit, head);
 	}
 }

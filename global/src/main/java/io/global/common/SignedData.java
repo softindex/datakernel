@@ -2,12 +2,12 @@ package io.global.common;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.global.globalsync.util.SerializationUtils;
+import io.datakernel.exception.ParseException;
+import io.global.globalsync.util.BinaryDataFormats;
 
-import java.io.IOException;
 import java.math.BigInteger;
 
-import static io.global.globalsync.util.SerializationUtils.*;
+import static io.global.globalsync.util.BinaryDataFormats.*;
 
 public final class SignedData<T extends Signable> {
 	private final T data;
@@ -18,9 +18,9 @@ public final class SignedData<T extends Signable> {
 		this.signature = signature;
 	}
 
-	public static <T extends Signable> SignedData<T> ofBytes(byte[] bytes, Signable.Parser<T> dataParser) throws IOException {
+	public static <T extends Signable> SignedData<T> ofBytes(byte[] bytes, Signable.Parser<T> dataParser) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		byte[] dataBytes = SerializationUtils.readBytes(buf);
+		byte[] dataBytes = BinaryDataFormats.readBytes(buf);
 		T data = dataParser.parseBytes(dataBytes);
 		BigInteger r = readBigInteger(buf);
 		BigInteger s = readBigInteger(buf);

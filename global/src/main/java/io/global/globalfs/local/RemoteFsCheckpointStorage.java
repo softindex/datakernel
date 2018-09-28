@@ -21,17 +21,17 @@ import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.SignedData;
 import io.global.globalfs.api.CheckpointStorage;
 import io.global.globalfs.api.GlobalFsCheckpoint;
 import io.global.globalfs.api.GlobalFsException;
-import io.global.globalsync.util.SerializationUtils;
+import io.global.globalsync.util.BinaryDataFormats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Arrays;
 
 public final class RemoteFsCheckpointStorage implements CheckpointStorage {
@@ -74,14 +74,14 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					long[] array = new long[32];
 					int size = 0;
 					while (buf.canRead()) {
-						byte[] bytes = SerializationUtils.readBytes(buf);
+						byte[] bytes = BinaryDataFormats.readBytes(buf);
 						try {
 							SignedData<GlobalFsCheckpoint> checkpoint = SignedData.ofBytes(bytes, GlobalFsCheckpoint::ofBytes);
 							if (array.length == size) {
 								array = Arrays.copyOf(array, size * 2);
 							}
 							array[size++] = checkpoint.getData().getPosition();
-						} catch (IOException e) {
+						} catch (ParseException e) {
 							return Stage.ofException(e);
 						}
 					}
@@ -97,13 +97,13 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						return Stage.of(null);
 					}
 					while (buf.canRead()) {
-						byte[] bytes = SerializationUtils.readBytes(buf);
+						byte[] bytes = BinaryDataFormats.readBytes(buf);
 						try {
 							SignedData<GlobalFsCheckpoint> checkpoint = SignedData.ofBytes(bytes, GlobalFsCheckpoint::ofBytes);
 							if (checkpoint.getData().getPosition() == position) {
 								return Stage.of(checkpoint);
 							}
-						} catch (IOException e) {
+						} catch (ParseException e) {
 							return Stage.ofException(e);
 						}
 					}
@@ -118,7 +118,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 				.thenCompose(consumer -> {
 					byte[] bytes = checkpoint.toBytes();
 					ByteBuf buf = ByteBufPool.allocate(bytes.length + 5);
-					SerializationUtils.writeBytes(buf, bytes);
+					BinaryDataFormats.writeBytes(buf, bytes);
 					return SerialSupplier.of(buf).streamTo(consumer);
 				});
 	}

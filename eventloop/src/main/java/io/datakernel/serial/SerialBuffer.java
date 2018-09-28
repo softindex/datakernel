@@ -83,19 +83,22 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	}
 
 	@SuppressWarnings("unchecked")
-	public void add(@Nullable T value) throws Exception {
-		if (exception != null) throw exception;
+	public void add(@Nullable T item) throws Exception {
+		if (exception == null) {
+			if (take != null) {
+				assert isEmpty();
+				SettableStage<T> take = this.take;
+				this.take = null;
+				take.set(item);
+				if (exception != null) throw exception;
+				return;
+			}
 
-		if (take != null) {
-			assert isEmpty();
-			SettableStage<T> take = this.take;
-			this.take = null;
-			take.set(value);
-			if (exception != null) throw exception;
-			return;
+			doAdd(item);
+		} else {
+			tryRecycle(item);
+			throw exception;
 		}
-
-		doAdd(value);
 	}
 
 	private void doAdd(@Nullable T value) {
@@ -146,23 +149,26 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	@SuppressWarnings("unchecked")
 	public Stage<Void> put(@Nullable T value) {
 		assert put == null;
-		if (exception != null) return Stage.ofException(exception);
+		if (exception == null) {
+			if (take != null) {
+				assert isEmpty();
+				SettableStage<T> take = this.take;
+				this.take = null;
+				take.set(value);
+				return Stage.complete();
+			}
 
-		if (take != null) {
-			assert isEmpty();
-			SettableStage<T> take = this.take;
-			this.take = null;
-			take.set(value);
-			return Stage.complete();
-		}
+			doAdd(value);
 
-		doAdd(value);
-
-		if (isSaturated()) {
-			put = new SettableStage<>();
-			return put;
+			if (isSaturated()) {
+				put = new SettableStage<>();
+				return put;
+			} else {
+				return Stage.complete();
+			}
 		} else {
-			return Stage.complete();
+			tryRecycle(value);
+			return Stage.ofException(exception);
 		}
 	}
 
@@ -170,23 +176,25 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	@SuppressWarnings("unchecked")
 	public Stage<T> take() {
 		assert take == null;
-		if (exception != null) return Stage.ofException(exception);
+		if (exception == null) {
+			if (put != null && willBeExhausted()) {
+				assert !isEmpty();
+				T item = doPoll();
+				SettableStage<Void> put = this.put;
+				this.put = null;
+				put.set(null);
+				return Stage.of(item);
+			}
 
-		if (put != null && willBeExhausted()) {
-			assert !isEmpty();
-			T item = doPoll();
-			SettableStage<Void> put = this.put;
-			this.put = null;
-			put.set(null);
-			return Stage.of(item);
+			if (!isEmpty()) {
+				return Stage.of(doPoll());
+			}
+
+			take = new SettableStage<>();
+			return take;
+		} else {
+			return Stage.ofException(exception);
 		}
-
-		if (!isEmpty()) {
-			return Stage.of(doPoll());
-		}
-
-		take = new SettableStage<>();
-		return take;
 	}
 
 	@Override

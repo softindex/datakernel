@@ -6,7 +6,7 @@ import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.Signable;
 import io.global.common.SignedData;
-import io.global.globalsync.util.SerializationUtils;
+import io.global.globalsync.util.BinaryDataFormats;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.Arrays;
@@ -26,16 +26,16 @@ public final class GlobalFsCheckpoint implements Signable {
 	public static GlobalFsCheckpoint ofBytes(byte[] bytes) {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 		long position = buf.readLong();
-		byte[] digestState = SerializationUtils.readBytes(buf);
+		byte[] digestState = BinaryDataFormats.readBytes(buf);
 		SHA256Digest sha256Digest = CryptoUtils.ofSha256PackedState(digestState, position);
 		return new GlobalFsCheckpoint(bytes, position, sha256Digest);
 	}
 
 	public static GlobalFsCheckpoint of(long position, SHA256Digest digest) {
 		byte[] digestState = CryptoUtils.toSha256PackedState(digest);
-		ByteBuf buf = ByteBufPool.allocate(8 + SerializationUtils.sizeof(digestState));
+		ByteBuf buf = ByteBufPool.allocate(8 + BinaryDataFormats.sizeof(digestState));
 		buf.writeLong(position);
-		SerializationUtils.writeBytes(buf, digestState);
+		BinaryDataFormats.writeBytes(buf, digestState);
 		return new GlobalFsCheckpoint(buf.asArray(), position, digest);
 	}
 

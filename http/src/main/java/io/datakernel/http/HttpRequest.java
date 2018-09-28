@@ -102,7 +102,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return this;
 	}
 
-	public HttpRequest withBody(SerialSupplier<ByteBuf> stream) {
+	public HttpRequest withBodyStream(SerialSupplier<ByteBuf> stream) {
 		setBodyStream(stream);
 		return this;
 	}

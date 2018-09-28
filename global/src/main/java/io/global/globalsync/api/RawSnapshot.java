@@ -2,14 +2,14 @@ package io.global.globalsync.api;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 import io.global.common.Signable;
 import io.global.common.SimKeyHash;
 
-import java.io.IOException;
 import java.util.Arrays;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.global.globalsync.util.SerializationUtils.*;
+import static io.global.globalsync.util.BinaryDataFormats.*;
 
 public final class RawSnapshot implements Signable {
 	public final byte[] bytes;
@@ -28,7 +28,7 @@ public final class RawSnapshot implements Signable {
 		this.simKeyHash = simKeyHash;
 	}
 
-	public static RawSnapshot ofBytes(byte[] bytes) throws IOException {
+	public static RawSnapshot ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 		RepositoryName repositoryId = readRepositoryId(buf);
 		CommitId commitId = readCommitId(buf);

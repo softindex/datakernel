@@ -95,7 +95,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return this;
 	}
 
-	public HttpResponse withBody(SerialSupplier<ByteBuf> stream) {
+	public HttpResponse withBodyStream(SerialSupplier<ByteBuf> stream) {
 		setBodyStream(stream);
 		return this;
 	}

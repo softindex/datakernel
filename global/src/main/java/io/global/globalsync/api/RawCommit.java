@@ -19,16 +19,16 @@ package io.global.globalsync.api;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 import io.global.common.SimKeyHash;
-import io.global.globalsync.util.SerializationUtils;
+import io.global.globalsync.util.BinaryDataFormats;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static io.global.globalsync.util.SerializationUtils.*;
+import static io.global.globalsync.util.BinaryDataFormats.*;
 
 public final class RawCommit {
 	private final byte[] bytes;
@@ -51,9 +51,9 @@ public final class RawCommit {
 		this.timestamp = timestamp;
 	}
 
-	public static RawCommit ofBytes(byte[] bytes) throws IOException {
+	public static RawCommit ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		List<CommitId> parents = readList(buf, SerializationUtils::readCommitId);
+		List<CommitId> parents = readList(buf, BinaryDataFormats::readCommitId);
 		EncryptedData encryptedData = readEncryptedData(buf);
 		long level = buf.readLong();
 		long timestamp = buf.readLong();
@@ -63,8 +63,8 @@ public final class RawCommit {
 	}
 
 	public static RawCommit of(List<CommitId> parents, EncryptedData encryptedDiffs, SimKeyHash simKeyHash, long level, long timestamp) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(parents, SerializationUtils::sizeof) + sizeof(encryptedDiffs) + sizeof(simKeyHash) + 8 + 8);
-		writeCollection(buf, parents, SerializationUtils::writeCommitId);
+		ByteBuf buf = ByteBufPool.allocate(sizeof(parents, BinaryDataFormats::sizeof) + sizeof(encryptedDiffs) + sizeof(simKeyHash) + 8 + 8);
+		writeCollection(buf, parents, BinaryDataFormats::writeCommitId);
 		writeEncryptedData(buf, encryptedDiffs);
 		buf.writeLong(level);
 		buf.writeLong(timestamp);

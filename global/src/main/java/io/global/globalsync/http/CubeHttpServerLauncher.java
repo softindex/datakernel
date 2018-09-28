@@ -44,7 +44,8 @@ public final class CubeHttpServerLauncher extends HttpServerLauncher {
 				CommitStorage commitStorage) {
 			return new RawServerImpl(eventloop,
 					rawDiscoveryService,
-					commitStorage);
+					commitStorage,
+					null);
 		}
 
 		@Provides

@@ -19,15 +19,15 @@ package io.global.common.api;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.Signable;
-import io.global.globalsync.util.SerializationUtils;
+import io.global.globalsync.util.BinaryDataFormats;
 
-import java.io.IOException;
 import java.util.*;
 
-import static io.global.globalsync.util.SerializationUtils.sizeof;
+import static io.global.globalsync.util.BinaryDataFormats.sizeof;
 
 public final class AnnounceData implements Signable {
 	private final byte[] bytes;
@@ -46,19 +46,19 @@ public final class AnnounceData implements Signable {
 
 	public static AnnounceData of(long timestamp, PubKey pubKey, Set<RawServerId> serverIds) {
 		List<RawServerId> ids = new ArrayList<>(serverIds);
-		ByteBuf buf = ByteBufPool.allocate(8 + sizeof(pubKey) + sizeof(ids, SerializationUtils::sizeof));
+		ByteBuf buf = ByteBufPool.allocate(8 + sizeof(pubKey) + sizeof(ids, BinaryDataFormats::sizeof));
 		buf.writeLong(timestamp);
-		SerializationUtils.writePubKey(buf, pubKey);
-		SerializationUtils.writeCollection(buf, ids, SerializationUtils::writeRawServerId);
+		BinaryDataFormats.writePubKey(buf, pubKey);
+		BinaryDataFormats.writeCollection(buf, ids, BinaryDataFormats::writeRawServerId);
 		return new AnnounceData(buf.asArray(), timestamp, pubKey, serverIds);
 	}
 	// endregion
 
-	public static AnnounceData fromBytes(byte[] bytes) throws IOException {
+	public static AnnounceData fromBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 		long timestamp = buf.readLong();
-		PubKey pubKey = SerializationUtils.readPubKey(buf);
-		List<RawServerId> rawServerIds = SerializationUtils.readList(buf, SerializationUtils::readRawServerId);
+		PubKey pubKey = BinaryDataFormats.readPubKey(buf);
+		List<RawServerId> rawServerIds = BinaryDataFormats.readList(buf, BinaryDataFormats::readRawServerId);
 		return new AnnounceData(bytes, timestamp, pubKey, new HashSet<>(rawServerIds));
 	}
 

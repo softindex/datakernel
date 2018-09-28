@@ -22,7 +22,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
-import io.global.globalsync.util.SerializationUtils;
+import io.global.globalsync.util.BinaryDataFormats;
 
 import java.util.Base64;
 
@@ -81,8 +81,8 @@ public final class GlobalFsName {
 	private static final Base64.Decoder decoder = Base64.getUrlDecoder();
 
 	public static String serializePubKey(PubKey pubKey) {
-		byte[] bytes = new byte[SerializationUtils.sizeof(pubKey)];
-		SerializationUtils.writePubKey(ByteBuf.wrapForWriting(bytes), pubKey);
+		byte[] bytes = new byte[BinaryDataFormats.sizeof(pubKey)];
+		BinaryDataFormats.writePubKey(ByteBuf.wrapForWriting(bytes), pubKey);
 		return encoder.encodeToString(bytes);
 	}
 
@@ -91,6 +91,6 @@ public final class GlobalFsName {
 		if (repr == null) {
 			return null;
 		}
-		return SerializationUtils.readPubKey(ByteBuf.wrapForReading(decoder.decode(repr)));
+		return BinaryDataFormats.readPubKey(ByteBuf.wrapForReading(decoder.decode(repr)));
 	}
 }

@@ -69,7 +69,7 @@ public final class GlobalFsNodeServlet {
 					GlobalFsPath globalPath = GlobalFsPath.of(pubKey, filesystem, path);
 					System.out.println("DOWNLOAD CALLED");
 					return node.download(globalPath, offset, limit)
-							.thenApply(supplier -> HttpResponse.ok200().withBody(supplier.apply(new FrameEncoder())));
+							.thenApply(supplier -> HttpResponse.ok200().withBodyStream(supplier.apply(new FrameEncoder())));
 				})
 				.with(POST, UPLOAD, request -> {
 					PubKey pubKey = GlobalFsName.deserializePubKey(request.getQueryParameter("key"));

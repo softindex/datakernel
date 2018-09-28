@@ -7,7 +7,7 @@ import io.global.common.Signable;
 import java.io.IOException;
 import java.util.Arrays;
 
-import static io.global.globalsync.util.SerializationUtils.*;
+import static io.global.globalsync.util.BinaryDataFormats.*;
 
 public final class RawPullRequest implements Signable {
 	public final byte[] bytes;

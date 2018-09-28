@@ -1,12 +1,12 @@
 package io.global.common;
 
-import java.io.IOException;
+import io.datakernel.exception.ParseException;
 
 public interface Signable {
 	byte[] toBytes();
 
 	@FunctionalInterface
 	interface Parser<T> {
-		T parseBytes(byte[] bytes) throws IOException;
+		T parseBytes(byte[] bytes) throws ParseException;
 	}
 }

@@ -29,6 +29,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	private final Eventloop eventloop;
 	private final RawDiscoveryService discoveryService;
 	private final CommitStorage commitStorage;
+	private final RawServerFactory rawServerFactory;
 
 	private Duration latencyMargin;
 
@@ -36,12 +37,12 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	private final Map<PubKey, SharedKeysDb> sharedKeysDb = new HashMap<>();
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
-	RawServerFactory rawServerFactory;
 
-	public RawServerImpl(Eventloop eventloop, RawDiscoveryService discoveryService, CommitStorage commitStorage) {
+	public RawServerImpl(Eventloop eventloop, RawDiscoveryService discoveryService, CommitStorage commitStorage, RawServerFactory rawServerFactory) {
 		this.eventloop = eventloop;
 		this.discoveryService = discoveryService;
 		this.commitStorage = commitStorage;
+		this.rawServerFactory = rawServerFactory;
 	}
 
 	private PubKeyEntry ensurePubKey(PubKey pubKey) {
@@ -83,8 +84,8 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	public Stage<Set<String>> list(PubKey pubKey) {
 		return Stage.of(new HashSet<>(
 				ensurePubKey(pubKey)
-						.repositories.values().stream()
-						.map(rawServer_repository -> rawServer_repository.repositoryId)
+						.repositories.keySet()
+						.stream()
 						.map(RepositoryName::getRepositoryName)
 						.collect(toSet())));
 	}
@@ -93,7 +94,8 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	public Stage<Void> save(RepositoryName repositoryId, Map<CommitId, RawCommit> newCommits, Set<SignedData<RawCommitHead>> newHeads) {
 		return commitStorage.getHeads(repositoryId)
 				.thenCompose(thisHeads -> Stages.all(
-						newCommits.entrySet().stream()
+						newCommits.entrySet()
+								.stream()
 								.map(entry -> commitStorage.saveCommit(entry.getKey(), entry.getValue())))
 						.thenCompose($ -> {
 							Set<CommitId> excludedHeads = new HashSet<>();
@@ -117,7 +119,8 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
 				.thenCompose(thisHeads -> Stages.all(
-						union(thisHeads.keySet(), bases, heads).stream()
+						union(thisHeads.keySet(), bases, heads)
+								.stream()
 								.map(commitId -> commitStorage.loadCommit(commitId)
 										.whenResult(maybeRawCommit -> maybeRawCommit.ifPresent(rawCommit ->
 												queue.add(new RawCommitEntry(commitId, rawCommit))))
@@ -134,7 +137,8 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
 				.thenCompose(thisHeads -> Stages.all(
-						union(thisHeads.keySet(), thatBases, thatHeads).stream()
+						union(thisHeads.keySet(), thatBases, thatHeads)
+								.stream()
 								.map(commitId -> commitStorage.loadCommit(commitId)
 										.whenResult(maybeRawCommit -> maybeRawCommit.ifPresent(rawCommit ->
 												queue.add(new RawCommitEntry(commitId, rawCommit))))
@@ -161,7 +165,8 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		boolean skipped = skipCommits.remove(entry.commitId);
 		Set<CommitId> nextCommitIds = entry.getRawCommit().getParents();
 		Stages.all(
-				nextCommitIds.stream()
+				nextCommitIds
+						.stream()
 						.filter(nextCommitId -> !thatHeads.contains(nextCommitId))
 						.filter(nextCommitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(nextCommitId::equals))
 						.map(nextCommitId -> commitStorage.loadCommit(nextCommitId)
@@ -188,7 +193,8 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		return commitStorage.getHeads(repositoryId)
 				.thenApply(Map::keySet)
 				.thenCompose(thisHeads -> Stages.all(
-						thisHeads.stream()
+						thisHeads
+								.stream()
 								.map(head -> commitStorage.loadCommit(head)
 										.whenResult(maybeRawCommit -> maybeRawCommit.ifPresent(
 												rawCommit -> {
@@ -209,7 +215,8 @@ public final class RawServerImpl implements RawServer, EventloopService {
 			return;
 		}
 		Stages.all(
-				entry.rawCommit.getParents().stream()
+				entry.rawCommit.getParents()
+						.stream()
 						.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
 						.map(parentId -> commitStorage.isCompleteCommit(parentId)
 								.thenCompose(isCompleteCommit -> isCompleteCommit ?
@@ -228,7 +235,6 @@ public final class RawServerImpl implements RawServer, EventloopService {
 
 	@Override
 	public Stage<SerialConsumer<CommitEntry>> upload(RepositoryName repositoryId) {
-		RepositoryEntry db = ensureRepository(repositoryId);
 		return commitStorage.getHeads(repositoryId)
 				.thenApply(Map::keySet)
 				.thenApply(thisHeads -> {
@@ -236,15 +242,15 @@ public final class RawServerImpl implements RawServer, EventloopService {
 					Set<SignedData<RawCommitHead>> addedHeads = new HashSet<>();
 					return SerialConsumer.of(
 							(CommitEntry entry) -> {
-								for (CommitId parentId : entry.getRawCommit().getParents()) {
+								for (CommitId parentId : entry.getCommit().getParents()) {
 									if (thisHeads.contains(parentId)) {
 										excludedHeads.add(parentId);
 									}
 								}
-								if (entry.hasRawHead()) {
-									addedHeads.add(entry.getRawHead());
+								if (entry.hasHead()) {
+									addedHeads.add(entry.getHead());
 								}
-								return commitStorage.saveCommit(entry.commitId, entry.rawCommit).toVoid();
+								return commitStorage.saveCommit(entry.commitId, entry.commit).toVoid();
 							})
 							.withAcknowledgement(ack -> ack
 									.thenCompose($ -> commitStorage.markCompleteCommits())
@@ -260,15 +266,15 @@ public final class RawServerImpl implements RawServer, EventloopService {
 					Set<SignedData<RawCommitHead>> addedHeads = new HashSet<>();
 					return SerialConsumer.of(
 							(CommitEntry entry) -> {
-								for (CommitId parentId : entry.getRawCommit().getParents()) {
+								for (CommitId parentId : entry.getCommit().getParents()) {
 									if (thisHeads.contains(parentId)) {
 										excludedHeads.add(parentId);
 									}
 								}
-								if (entry.hasRawHead()) {
-									addedHeads.add(entry.getRawHead());
+								if (entry.hasHead()) {
+									addedHeads.add(entry.getHead());
 								}
-								return commitStorage.saveCommit(entry.commitId, entry.rawCommit).toVoid();
+								return commitStorage.saveCommit(entry.commitId, entry.commit).toVoid();
 							})
 							.withAcknowledgement(ack -> ack
 									.thenCompose($ -> commitStorage.markCompleteCommits())
@@ -285,8 +291,6 @@ public final class RawServerImpl implements RawServer, EventloopService {
 
 	@Override
 	public Stage<Void> saveSnapshot(RepositoryName repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
-		CommitId commitId = encryptedSnapshot.getData().commitId;
-		RepositoryEntry repositoryEntry = ensureRepository(repositoryId);
 		return commitStorage.saveSnapshot(encryptedSnapshot)
 				.thenCompose(saved -> saved ?
 						ensureServers(repositoryId)
@@ -297,7 +301,6 @@ public final class RawServerImpl implements RawServer, EventloopService {
 
 	@Override
 	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepositoryName repositoryId, CommitId commitId) {
-		RepositoryEntry repositoryEntry = ensureRepository(repositoryId);
 		return Stages.firstSuccessful(
 				() -> commitStorage.loadSnapshot(repositoryId, commitId)
 						.thenTry(Optional::get),
@@ -311,10 +314,6 @@ public final class RawServerImpl implements RawServer, EventloopService {
 
 	@Override
 	public Stage<Heads> getHeads(RepositoryName repositoryId, Set<CommitId> remoteHeads) {
-		RepositoryEntry repositoryEntry = ensureRepository(repositoryId);
-//		if (repositoryEntry.isSync() || repositoryEntry.isUpdate()) {
-//			return Stage.of(repositoryEntry.heads);
-//		}
 		return commitStorage.getHeads(repositoryId)
 				.thenCompose(heads -> excludeParents(union(heads.keySet(), remoteHeads))
 						.thenApply(excludedHeads -> new Heads(
@@ -349,7 +348,8 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		}
 		resultHeads.removeAll(entry.rawCommit.getParents());
 		Stages.all(
-				entry.rawCommit.getParents().stream()
+				entry.rawCommit.getParents()
+						.stream()
 						.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
 						.map(parentId ->
 								commitStorage.loadCommit(parentId)
@@ -388,15 +388,15 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				.thenCompose(saveStatus -> saveStatus ?
 						ensureServers(pullRequest.getData().repository)
 								.thenCompose(servers -> Stages.any(
-										servers.stream()
-												.map(server -> server.sendPullRequest(pullRequest))
+										servers.stream().map(server -> server.sendPullRequest(pullRequest))
 								)) :
 						Stage.complete());
 	}
 
 	@Override
 	public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepositoryName repositoryId) {
-		return ensureRepository(repositoryId).update()
+		return ensureRepository(repositoryId)
+				.update()
 				.thenCompose($ -> commitStorage.getPullRequests(repositoryId));
 	}
 
@@ -513,8 +513,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				return ensureServers()
 						.thenCompose(servers -> commitStorage.getHeads(repositoryId)
 								.thenCompose(heads -> Stages.firstSuccessful(
-										servers.stream()
-												.map(server -> server.getHeads(repositoryId, heads.keySet()))))
+										servers.stream().map(server -> server.getHeads(repositoryId, heads.keySet()))))
 								.thenCompose(headsDelta ->
 										commitStorage.applyHeads(repositoryId, headsDelta.newHeads, headsDelta.excludedHeads)));
 			}
@@ -522,11 +521,9 @@ public final class RawServerImpl implements RawServer, EventloopService {
 			private Stage<Void> doUpdatePullRequests() {
 				return ensureServers()
 						.thenCompose(servers -> Stages.firstSuccessful(
-								servers.stream()
-										.map(server -> server.getPullRequests(repositoryId))))
+								servers.stream().map(server -> server.getPullRequests(repositoryId))))
 						.thenCompose(pullRequests -> Stages.all(
-								pullRequests.stream()
-										.map(commitStorage::savePullRequest)))
+								pullRequests.stream().map(commitStorage::savePullRequest)))
 						.toVoid();
 			}
 
@@ -537,7 +534,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 
 			private Stage<Void> doFetch(RawServer server) {
 				return getHeadsInfo(repositoryId)
-						.thenCompose(headsInfo -> server.downloadStream(repositoryId, headsInfo.bases, headsInfo.heads)
+						.thenCompose(headsInfo -> server.downloader(repositoryId, headsInfo.bases, headsInfo.heads)
 								.streamTo(SerialConsumer.ofStage(getStreamConsumer(repositoryId))));
 			}
 
@@ -576,7 +573,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				return server.getHeadsInfo(repositoryId)
 						.thenCompose(headsInfo -> SerialSupplier.ofStage(
 								getCommitsSupplier(repositoryId, headsInfo.bases, headsInfo.heads))
-								.streamTo(server.uploadStream(repositoryId)));
+								.streamTo(server.uploader(repositoryId)));
 			}
 
 		}

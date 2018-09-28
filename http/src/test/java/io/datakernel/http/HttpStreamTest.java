@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -25,19 +24,17 @@ import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.util.Recyclable.deepRecycle;
 import static java.lang.Math.min;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
@@ -67,26 +64,23 @@ public class HttpStreamTest {
 
 	@Test
 	public void testStreamUpload() throws IOException {
-		AsyncServlet servlet = request -> {
-			SerialSupplier<ByteBuf> bodyStream = request.getBodyStream().async();
-			return bodyStream.toList()
-					.thenApply(list -> list.stream()
-							.map(buf -> buf.asString(UTF_8))
-							.collect(Collectors.joining("")))
-					.thenCompose(s -> {
-						assertEquals(requestBody, s);
-						return Stage.of(HttpResponse.ok200());
-					});
-		};
-
-		server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
-		client = AsyncHttpClient.create(eventloop);
-
+		server = AsyncHttpServer.create(eventloop,
+				request -> request.getBodyStream().async().toList()
+						.thenApply(list -> list.stream()
+								.map(buf -> buf.asString(UTF_8))
+								.collect(Collectors.joining("")))
+						.thenCompose(s -> {
+							assertEquals(requestBody, s);
+							return Stage.of(HttpResponse.ok200());
+						}))
+				.withListenPort(PORT);
 		server.listen();
-		SerialSupplier<ByteBuf> supplier = new DelayingSupplier<>(1, expectedList);
-		HttpRequest request = HttpRequest.post("http://127.0.0.1:" + PORT)
-				.withBody(supplier);
-		client.requestBodyStream(request).async()
+
+		client = AsyncHttpClient.create(eventloop);
+		client.requestBodyStream(HttpRequest.post("http://127.0.0.1:" + PORT)
+				.withBodyStream(SerialSupplier.ofIterable(expectedList)
+						.transformAsync(item -> getCurrentEventloop().delay(1, item))))
+				.async()
 				.whenComplete(assertComplete(response -> {
 					assertEquals(200, response.getCode());
 					close();
@@ -97,16 +91,16 @@ public class HttpStreamTest {
 
 	@Test
 	public void testStreamDownload() throws IOException {
-		SerialSupplier<ByteBuf> supplier = new DelayingSupplier<>(1, expectedList);
-
-		AsyncServlet servlet = request -> Stage.of(HttpResponse.ok200()
-				.withBody(supplier));
-
-		server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
-
+		server = AsyncHttpServer.create(eventloop,
+				request -> Stage.of(
+						HttpResponse.ok200()
+								.withBodyStream(SerialSupplier.ofIterable(expectedList)
+										.transformAsync(item -> getCurrentEventloop().delay(1, item)))))
+				.withListenPort(PORT);
 		server.listen();
-		HttpRequest request = HttpRequest.post("http://127.0.0.1:" + PORT);
-		client.requestBodyStream(request).async()
+
+		client.requestBodyStream(HttpRequest.post("http://127.0.0.1:" + PORT))
+				.async()
 				.thenApply(response -> {
 					assertEquals(200, response.getCode());
 					return response.getBodyStream().async();
@@ -126,20 +120,21 @@ public class HttpStreamTest {
 
 	@Test
 	public void testLoopBack() throws IOException {
-		AsyncServlet servlet = request -> {
-			SerialSupplier<ByteBuf> stream = request.getBodyStream().async();
-			return stream.toList()
-					.thenApply(SerialSupplier::ofIterable)
-					.thenCompose(supplier -> Stage.of(HttpResponse.ok200().withBody(supplier.async())));
-		};
 
-		server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
-
+		server = AsyncHttpServer.create(eventloop,
+				request ->
+						request.getBodyStream().async().toList()
+								.thenApply(SerialSupplier::ofIterable)
+								.thenCompose(bodyStream -> Stage.of(
+										HttpResponse.ok200()
+												.withBodyStream(bodyStream.async()))))
+				.withListenPort(PORT);
 		server.listen();
-		SerialSupplier<ByteBuf> supplier = new DelayingSupplier<>(1, expectedList);
-		HttpRequest request = HttpRequest.post("http://127.0.0.1:" + PORT)
-				.withBody(supplier);
-		client.requestBodyStream(request)
+
+		client.requestBodyStream(
+				HttpRequest.post("http://127.0.0.1:" + PORT)
+						.withBodyStream(SerialSupplier.ofIterable(expectedList)
+								.transformAsync(item -> getCurrentEventloop().delay(1, item))))
 				.thenApply(response -> {
 					assertEquals(200, response.getCode());
 					return response.getBodyStream().async();
@@ -156,40 +151,30 @@ public class HttpStreamTest {
 		eventloop.run();
 	}
 
-	@Ignore // Byte Bufs are not recycled
 	@Test
 	public void testCloseWithError() throws IOException {
 		String exceptionMessage = "Test Exception";
-		AsyncServlet servlet = request -> {
-			SerialSupplier<ByteBuf> stream = request.getBodyStream();
-			return stream.get()
-					.thenCompose(buf -> {
-						buf.recycle();
-						return stream.get();
-					})
-					.thenCompose(buf -> {
-						buf.recycle();
-						return stream.get();
-					})
-					.thenCompose(buf -> {
-						HttpException testException = new HttpException(432, exceptionMessage);
-						stream.closeWithError(testException);
-						buf.recycle();
-						return Stage.ofException(testException);
-					});
-		};
 
-		server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
-
+		server = AsyncHttpServer.create(eventloop,
+				request -> {
+					SerialSupplier<ByteBuf> stream = request.getBodyStream();
+					return stream.get()
+							.thenCompose(buf -> {
+								HttpException testException = new HttpException(432, exceptionMessage);
+								stream.closeWithError(testException);
+								buf.recycle();
+								return Stage.ofException(testException);
+							});
+				})
+				.withListenPort(PORT);
 		server.listen();
 
 		SerialSupplier<ByteBuf> supplier = SerialSupplier.ofIterable(expectedList);
 		// SerialSupplier<ByteBuf> supplier = new DelayingSupplier<>(5, expectedList);
 
-		HttpRequest request = HttpRequest.post("http://127.0.0.1:" + PORT)
-				.withBody(supplier);
-
-		client.requestBodyStream(request)
+		client.requestBodyStream(
+				HttpRequest.post("http://127.0.0.1:" + PORT)
+						.withBodyStream(supplier))
 				.thenApply(HttpMessage::getBodyStream)
 				.thenCompose(SerialSupplier::toList)
 				.whenComplete(assertComplete(list -> {
@@ -201,7 +186,6 @@ public class HttpStreamTest {
 				));
 
 		eventloop.run();
-
 	}
 
 	private void close() {
@@ -213,7 +197,7 @@ public class HttpStreamTest {
 		List<ByteBuf> list = new ArrayList<>();
 		ByteBuf buf = ByteBufPool.allocate(array.length);
 		buf.put(array);
-		int bufSize = random.nextInt(10) + 5;
+		int bufSize = random.nextInt(array.length) + 5;
 		for (int i = 0; i < array.length; i += bufSize) {
 			int min = min(bufSize, buf.readRemaining());
 			list.add(buf.slice(min));
@@ -223,28 +207,4 @@ public class HttpStreamTest {
 		return list;
 	}
 
-	private static class DelayingSupplier<T> implements SerialSupplier<T> {
-		private final int delay;
-		private final Iterator<T> iterator;
-
-		// region creators
-		public DelayingSupplier(int delay, List<T> elements) {
-			this.delay = delay;
-			this.iterator = elements.iterator();
-		}
-		// endregion
-
-		@Override
-		public Stage<T> get() {
-			SettableStage<T> settableStage = new SettableStage<>();
-			T next = iterator.hasNext() ? iterator.next() : null;
-			Eventloop.getCurrentEventloop().delay(delay, () -> settableStage.set(next));
-			return settableStage;
-		}
-
-		@Override
-		public void closeWithError(Throwable e) {
-			deepRecycle(iterator);
-		}
-	}
 }

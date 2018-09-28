@@ -2,12 +2,12 @@ package io.global.globalsync.api;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 import io.global.common.Signable;
 
-import java.io.IOException;
 import java.util.Arrays;
 
-import static io.global.globalsync.util.SerializationUtils.*;
+import static io.global.globalsync.util.BinaryDataFormats.*;
 
 public final class RawCommitHead implements Signable {
 	public final byte[] bytes;
@@ -24,7 +24,7 @@ public final class RawCommitHead implements Signable {
 		this.timestamp = timestamp;
 	}
 
-	public static RawCommitHead ofBytes(byte[] bytes) throws IOException {
+	public static RawCommitHead ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 		RepositoryName repositoryId = readRepositoryId(buf);
 		CommitId commitId = readCommitId(buf);

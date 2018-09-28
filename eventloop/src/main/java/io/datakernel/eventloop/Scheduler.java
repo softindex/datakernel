@@ -16,10 +16,13 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.time.CurrentTimeProvider;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.function.Supplier;
 
 public interface Scheduler extends CurrentTimeProvider {
 
@@ -35,6 +38,46 @@ public interface Scheduler extends CurrentTimeProvider {
 
 	default ScheduledRunnable delay(Duration delay, Runnable runnable) {
 		return delay(delay.toMillis(), runnable);
+	}
+
+	default <T> Stage<T> schedule(long timestamp, T value) {
+		SettableStage<T> result = new SettableStage<>();
+		schedule(timestamp, () -> result.set(value));
+		return result;
+	}
+
+	default <T> Stage<T> schedule(long timestamp, Supplier<T> supplier) {
+		SettableStage<T> result = new SettableStage<>();
+		schedule(timestamp, () -> result.set(supplier.get()));
+		return result;
+	}
+
+	default <T> Stage<T> schedule(Instant instant, T value) {
+		return schedule(instant.toEpochMilli(), value);
+	}
+
+	default <T> Stage<T> schedule(Instant instant, Supplier<T> supplier) {
+		return schedule(instant.toEpochMilli(), supplier);
+	}
+
+	default <T> Stage<T> delay(long delayMillis, T value) {
+		SettableStage<T> result = new SettableStage<>();
+		delay(delayMillis, () -> result.set(value));
+		return result;
+	}
+
+	default <T> Stage<T> delay(long delayMillis, Supplier<T> supplier) {
+		SettableStage<T> result = new SettableStage<>();
+		delay(delayMillis, () -> result.set(supplier.get()));
+		return result;
+	}
+
+	default <T> Stage<T> delay(Duration delay, T value) {
+		return delay(delay.toMillis(), value);
+	}
+
+	default <T> Stage<T> delay(Duration delay, Supplier<T> supplier) {
+		return delay(delay.toMillis(), supplier);
 	}
 
 	ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable);

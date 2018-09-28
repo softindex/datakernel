@@ -22,6 +22,7 @@ import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.*;
 import io.datakernel.datagraph.node.NodeReduce.Input;
 import io.datakernel.datagraph.server.command.*;
+import io.datakernel.exception.ParseException;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.Sharder;
@@ -43,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -68,11 +70,19 @@ public final class DatagraphSerialization {
 	/**
 	 * Store addresses as strings
 	 */
-	public static final TypeAdapter<InetSocketAddress> ADDRESS_JSON = transform(STRING_JSON, str -> {
-		String[] split = str.split(":");
-		checkArgument(split.length == 2);
-		return new InetSocketAddress(InetAddress.getByName(split[0]), Integer.parseInt(split[1]));
-	}, (InetSocketAddress addr) -> addr.getAddress().getHostAddress() + ':' + addr.getPort()).nullSafe();
+	public static final TypeAdapter<InetSocketAddress> ADDRESS_JSON = transform(STRING_JSON,
+			str -> {
+				String[] split = str.split(":");
+				checkArgument(split.length == 2);
+				try {
+					return new InetSocketAddress(InetAddress.getByName(split[0]), Integer.parseInt(split[1]));
+				} catch (UnknownHostException e) {
+					throw new ParseException(e);
+				}
+			},
+			(InetSocketAddress addr) ->
+					addr.getAddress().getHostAddress() + ':' + addr.getPort())
+			.nullSafe();
 
 	@SuppressWarnings("unchecked")
 	public static final TypeAdapter<Predicate<Object>> PREDICATE_JSON = stateless();
