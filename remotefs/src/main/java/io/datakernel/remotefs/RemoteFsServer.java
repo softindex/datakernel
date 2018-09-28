@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,15 +95,15 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					return handler.onMessage(messaging, msg);
 				})
 				.whenComplete(handleRequestStage.recordStats())
-				.thenComposeEx(($, err) -> {
-					if (err == null) {
+				.thenComposeEx(($, e) -> {
+					if (e == null) {
 						return Stage.complete();
 					}
-					logger.warn("got an error while handling message (" + err + ") : " + this);
-					String prefix = err.getClass() != RemoteFsException.class ? err.getClass().getSimpleName() + ": " : "";
-					return messaging.send(new ServerError(prefix + err.getMessage()))
+					logger.warn("got an error while handling message (" + e + ") : " + this);
+					String prefix = e.getClass() != RemoteFsException.class ? e.getClass().getSimpleName() + ": " : "";
+					return messaging.send(new ServerError(prefix + e.getMessage()))
 							.thenCompose($2 -> messaging.sendEndOfStream())
-							.thenRun(messaging::close);
+							.thenRun(() -> messaging.closeWithError(e));
 				});
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -147,7 +147,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	public void closeWithError(Throwable e) {
 		if (isClosed()) return;
 		closedException = e;
-		socket.close();
+		socket.closeWithError(e);
 		bufs.recycle();
 	}
 
@@ -163,6 +163,6 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	@Override
 	public String toString() {
-		return this + " {socket=" + socket + "}";
+		return "MessagingWithBinaryStreaming{socket=" + socket + "}";
 	}
 }

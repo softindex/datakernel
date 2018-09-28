@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.bytebuf.ByteBufPool.recycleIfEmpty;
-import static io.datakernel.util.Recyclable.deepRecycle;
+import static io.datakernel.util.Recyclable.tryRecycle;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
@@ -116,7 +116,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	@Override
 	public Stage<Void> write(@Nullable ByteBuf buf) {
 		if (!isOpen()) {
-			if (buf != null){
+			if (buf != null) {
 				buf.recycle();
 			}
 			return Stage.ofException(CLOSE_EXCEPTION);
@@ -339,9 +339,9 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 
 	@SuppressWarnings("AssignmentToNull") // bufs set to null only when socket is closing
 	private void recycleByteBufs() {
-		deepRecycle(net2engine);
-		deepRecycle(engine2app);
-		deepRecycle(app2engine);
+		tryRecycle(net2engine);
+		tryRecycle(engine2app);
+		tryRecycle(app2engine);
 		net2engine = engine2app = app2engine = null;
 	}
 

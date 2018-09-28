@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.Stage.ofThrowingRunnable;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.nio.file.StandardOpenOption.*;
 import static java.util.Arrays.asList;
 
@@ -188,6 +189,14 @@ public final class AsyncFile {
 								.whenException($2 -> buf.recycle())));
 	}
 
+	public ExecutorService getExecutor() {
+		return executor;
+	}
+
+	public FileChannel getChannel() {
+		return channel;
+	}
+
 	public Stage<Long> size() {
 		return sanitize(AsyncFile.size(executor, path));
 	}
@@ -338,30 +347,23 @@ public final class AsyncFile {
 		return sanitize(ofThrowingRunnable(executor, () -> channel.force(metaData)));
 	}
 
-	public ExecutorService getExecutor() {
-		return executor;
-	}
-
-	public FileChannel getChannel() {
-		return channel;
-	}
-
 	public boolean isOpen() {
 		return channel.isOpen();
-	}
-
-	@Override
-	public String toString() {
-		return path.toString();
 	}
 
 	private <T> Stage<T> sanitize(Stage<T> stage) {
 		return stage
 				.thenComposeEx((result, e) -> {
 					if (!isOpen()) {
+						tryRecycle(result);
 						return Stage.ofException(FILE_CLOSED);
 					}
 					return Stage.of(result, e);
 				});
+	}
+
+	@Override
+	public String toString() {
+		return path.toString();
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,11 +39,10 @@ import static io.datakernel.util.Recyclable.deepRecycle;
  * After supplier is closed, all subsequent calls to {@link #get()} will return stage, completed exceptionally.
  * <p>
  * If any exception is caught while supplying data items, {@link #closeWithError(Throwable)} method should
- * be called to properly free resources.
+ * be called. All resources should be freed and the caught exception should be propagated to all related processes.
  * <p>
  * If {@link #get()} returns {@link Stage} of {@code null}, it represents end-of-stream and means that no additional
  * data should be querried.
- *
  */
 public interface SerialSupplier<T> extends Cancellable {
 	Stage<T> get();

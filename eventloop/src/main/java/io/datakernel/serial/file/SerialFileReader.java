@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,6 +88,7 @@ public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 	@Override
 	protected Stage<ByteBuf> doGet() {
 		if (finished) {
+			close();
 			return Stage.of(null);
 		}
 		int bufSize = (int) Math.min(bufferSize, limit);
@@ -96,12 +97,13 @@ public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 				.thenComposeEx(($, e) -> {
 					if (e != null) {
 						buf.recycle();
-						return Stage.ofException(e);
+						closeWithError(e);
+						return Stage.ofException(getException());
 					}
 					int bytesRead = buf.readRemaining(); // bytes written (as they were read from file, thus the name) to be read by a consumer (thus the method)
 					if (bytesRead == 0) { // this happens when file size is exact multiple of buffer size
 						buf.recycle();
-						finished = true;
+						close();
 						return Stage.of(null);
 					}
 					position += bytesRead;
@@ -112,11 +114,6 @@ public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 						finished = true;
 					}
 					return Stage.of(buf);
-				})
-				.whenComplete((result, e) -> {
-					if (result == null || e != null) {
-						closeFile();
-					}
 				});
 	}
 

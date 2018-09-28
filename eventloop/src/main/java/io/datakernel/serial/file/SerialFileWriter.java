@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,15 +79,24 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 	protected Stage<Void> doAccept(ByteBuf buf) {
 		return start()
 				.thenComposeEx(($, e) -> {
+					if (isClosed()) return Stage.ofException(getException());
 					if (e != null) {
 						buf.recycle();
 						closeWithError(e);
 						return Stage.ofException(e);
 					}
 					if (buf == null) {
-						return closeFile();
+						return closeFile()
+								.thenRunEx(this::close);
 					}
-					return asyncFile.write(buf);
+					return asyncFile.write(buf)
+							.thenComposeEx(($2, e2) -> {
+								if (isClosed()) return Stage.ofException(getException());
+								if (e2 != null) {
+									closeWithError(e2);
+								}
+								return Stage.of($2, e2);
+							});
 				});
 	}
 

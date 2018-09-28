@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -156,15 +156,19 @@ public abstract class AbstractHttpConnection {
 				return SerialSupplier.of(buf);
 			}
 		} else if (httpMessage.bodySupplier != null) {
-			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
-			httpMessage.writeTo(buf);
+			httpMessage.setHeader(HttpHeaders.asBytes(HttpHeaders.TRANSFER_ENCODING, TRANSFER_ENCODING_CHUNKED));
 			if (!httpMessage.useGzip) {
+				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
+				httpMessage.writeTo(buf);
 				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
 				chunker.setInput(httpMessage.bodySupplier);
 				SerialSupplier<ByteBuf> result = SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutputSupplier());
 				chunker.start();
 				return result;
 			} else {
+				httpMessage.setHeader(HttpHeaders.asBytes(HttpHeaders.CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
+				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
+				httpMessage.writeTo(buf);
 				BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
 				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
 				deflater.setInput(httpMessage.bodySupplier);
@@ -199,7 +203,7 @@ public abstract class AbstractHttpConnection {
 										if (e2 == null) {
 											writeHttpMessageImpl(bodySupplier);
 										} else {
-											closeWithError(e);
+											closeWithError(e2);
 										}
 									});
 						} else {

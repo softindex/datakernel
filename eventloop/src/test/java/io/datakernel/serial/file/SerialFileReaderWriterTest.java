@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,20 +32,21 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class SerialFileReaderWriterTest {
 
@@ -147,17 +148,16 @@ public class SerialFileReaderWriterTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
-
+		new Random().nextBytes(bytes);
 
 		SerialSupplier<ByteBuf> producer = SerialSupplier.of(ByteBuf.wrapForReading(bytes));
 		SerialFileWriter writer = SerialFileWriter.create(executor, tempPath);
 
 		producer.streamTo(writer)
-				.thenCompose($ -> {
-					writer.closeWithError(new Exception("Test Exception"));
-					return writer.accept(ByteBuf.wrapForReading("abc".getBytes()));
-				})
+				.thenCompose($ -> writer.accept(ByteBuf.wrapForReading("abc".getBytes())))
 				.whenComplete(assertFailure(Exception.class, "Test Exception"));
+		writer.closeWithError(new Exception("Test Exception"));
+
 		eventloop.run();
 	}
 
@@ -186,5 +186,26 @@ public class SerialFileReaderWriterTest {
 
 		eventloop.run();
 		executor.shutdown();
+	}
+
+	@Test
+	public void testClose() throws Exception {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		File file = tempFolder.newFile("2Mb");
+		byte[] data = new byte[2 * 1024 * 1024]; // the larger the file the less chance that it will be read fully before close completes
+		new Random().nextBytes(data);
+		Files.write(file.toPath(), data);
+		Path srcPath = file.toPath();
+		Exception testException = new Exception("Test Exception");
+
+		SerialFileReader serialFileReader = SerialFileReader.readFile(Executors.newCachedThreadPool(), srcPath);
+		serialFileReader.toList()
+				.whenComplete((res, e) -> {
+					System.out.println("COMPLETED");
+					assertSame(testException, e);
+				});
+		serialFileReader.closeWithError(testException);
+
+		eventloop.run();
 	}
 }

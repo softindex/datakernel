@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -188,7 +188,7 @@ public class FsIntegrationTest {
 		ByteBuf test4 = wrapUtf8("Test4");
 
 		SerialSuppliers.concat(
-				SerialSupplier.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")),
+				SerialSupplier.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")).async(),
 				SerialSupplier.of(ByteBuf.wrapForReading(BIG_FILE)),
 				SerialSupplier.ofException(new StacklessException("Test exception")),
 				SerialSupplier.of(test4))
@@ -199,7 +199,15 @@ public class FsIntegrationTest {
 		eventloop.run();
 		test4.recycle();
 
-		assertTrue(Files.exists(storage.resolve(resultFile)));
+		byte[] actual;
+		try {
+			actual = Files.readAllBytes(storage.resolve(resultFile));
+		} catch (IOException e) {
+			throw new AssertionError(e);
+		}
+		ByteBufQueue queue = new ByteBufQueue();
+		queue.addAll(asList(wrapUtf8("Test1 Test2 Test3"), ByteBuf.wrapForReading(BIG_FILE)));
+		assertArrayEquals(queue.takeRemaining().asArray(), actual);
 	}
 
 	private ByteBuf download(String file) {

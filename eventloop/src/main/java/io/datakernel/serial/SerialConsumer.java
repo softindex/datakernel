@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,8 @@ import java.util.function.Supplier;
 
 import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.Recyclable.deepRecycle;
+import static io.datakernel.util.Recyclable.tryRecycle;
+
 /**
  * This interface represents consumer of data items that should be used serially (each consecutive {@link #accept(Object)}
  * operation should be called only after previous {@link #accept(Object)} operation finishes.
@@ -34,12 +36,11 @@ import static io.datakernel.util.Recyclable.deepRecycle;
  * After consumer is closed, all subsequent calls to {@link #accept(Object)} will return stage, completed exceptionally.
  * <p>
  * If any exception is caught while consuming data items, {@link #closeWithError(Throwable)} method should
- * be called to properly free resources.
+ * be called. All resources should be freed and the caught exception should be propagated to all related processes.
  * <p>
  * If {@link #accept(Object)} takes {@code null} as argument, it represents end-of-stream and means that no additional
  * data should be consumed.
  * <p>
- *
  */
 
 public interface SerialConsumer<T> extends Cancellable {
@@ -51,7 +52,7 @@ public interface SerialConsumer<T> extends Cancellable {
 					if (e == null) {
 						return accept(item2);
 					} else {
-						deepRecycle(item2);
+						tryRecycle(item2);
 						return Stage.ofException(e);
 					}
 				});
@@ -64,10 +65,8 @@ public interface SerialConsumer<T> extends Cancellable {
 					if (e == null) {
 						return accept(item1);
 					} else {
-						deepRecycle(item1);
-						for (T item : items) {
-							deepRecycle(item);
-						}
+						tryRecycle(item1);
+						deepRecycle(items);
 						return Stage.ofException(e);
 					}
 				})
@@ -75,9 +74,7 @@ public interface SerialConsumer<T> extends Cancellable {
 					if (e == null) {
 						return accept(item2);
 					} else {
-						for (T item : items) {
-							deepRecycle(item);
-						}
+						deepRecycle(items);
 						return Stage.ofException(e);
 					}
 				})
@@ -114,7 +111,7 @@ public interface SerialConsumer<T> extends Cancellable {
 		return new AbstractSerialConsumer<T>() {
 			@Override
 			protected Stage<Void> doAccept(T value) {
-				deepRecycle(value);
+				tryRecycle(value);
 				return Stage.ofException(e);
 			}
 		};
@@ -147,7 +144,7 @@ public interface SerialConsumer<T> extends Cancellable {
 						this.consumer = consumer;
 						return consumer.accept(value);
 					} else {
-						deepRecycle(value);
+						tryRecycle(value);
 						return Stage.ofException(e);
 					}
 				});

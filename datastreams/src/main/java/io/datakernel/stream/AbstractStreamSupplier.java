@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -202,7 +202,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	public Stage<Void> sendEndOfStream() {
 		if (endOfStream.isComplete()) return endOfStream;
 		currentDataAcceptor = null;
-		lastDataAcceptor = Recyclable::deepRecycle;
+		lastDataAcceptor = Recyclable::tryRecycle;
 		endOfStream.set(null);
 		eventloop.post(this::cleanup);
 		return consumer.getAcknowledgement();
@@ -217,7 +217,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 			}
 		}
 		currentDataAcceptor = null;
-		lastDataAcceptor = Recyclable::deepRecycle;
+		lastDataAcceptor = Recyclable::tryRecycle;
 		endOfStream.setException(e);
 		eventloop.post(this::cleanup);
 		onError(e);

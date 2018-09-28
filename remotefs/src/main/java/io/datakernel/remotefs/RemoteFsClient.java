@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,12 +119,12 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 													return Stage.ofException(new RemoteFsException());
 												})
 												.whenException(e -> {
-													messaging.close();
+													messaging.closeWithError(e);
 													logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
 												})
 												.whenComplete(uploadFinishStage.recordStats())))
 								.whenException(e -> {
-									messaging.close();
+									messaging.closeWithError(e);
 									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
 								}))
 				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
@@ -169,7 +169,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 									return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
 								})
 								.whenException(e -> {
-									messaging.close();
+									messaging.closeWithError(e);
 									logger.warn("Error trying to download file " + filename + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
 								}))
 				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))
@@ -231,7 +231,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 									return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
 								})
 								.whenException(e -> {
-									messaging.close();
+									messaging.closeWithError(e);
 									logger.warn("Error while processing command " + command + " (" + e + ") : " + this);
 								}));
 	}
