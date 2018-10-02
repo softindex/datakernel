@@ -74,8 +74,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet       servlet for handling requests
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-			AsyncHttpServer server, AsyncServlet servlet) {
-		super(eventloop, asyncTcpSocket);
+			AsyncHttpServer server, AsyncServlet servlet, int maxHttpMessageSize) {
+		super(eventloop, asyncTcpSocket, maxHttpMessageSize);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
@@ -192,7 +192,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	private void writeHttpResponse(HttpResponse httpResponse) {
-		httpResponse.setHeader(CONNECTION, (flags & KEEP_ALIVE) != 0 ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
+		HttpHeaderValue connectionHeader = (flags & KEEP_ALIVE) != 0 ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER;
+		if (server.maxKeepAliveRequests != -1) {
+			if (++numberOfKeepAliveRequests >= server.maxKeepAliveRequests) {
+				connectionHeader = CONNECTION_CLOSE_HEADER;
+			}
+		}
+		httpResponse.setHeader(CONNECTION, connectionHeader);
 		writeHttpMessage(httpResponse);
 	}
 

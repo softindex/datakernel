@@ -384,7 +384,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 								asyncTcpSocketImpl;
 
 						HttpClientConnection connection = new HttpClientConnection(eventloop, address, asyncTcpSocket,
-								AsyncHttpClient.this);
+								AsyncHttpClient.this, maxHttpMessageSize);
 
 						if (inspector != null) inspector.onConnect(request, connection);
 

@@ -19,12 +19,14 @@ package io.datakernel.http;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
@@ -254,7 +256,8 @@ public class MiddlewareServletTest {
 
 		System.out.println("Parameter test " + DELIM);
 		check(main.serve(HttpRequest.get("http://www.coursera.org/123/a/456/b/789")), "123 456 789", 200);
-		check(main.serve(HttpRequest.get("http://www.coursera.org/555/a/777")), "555 777 null", 200);
+		main.serve(HttpRequest.get("http://www.coursera.org/555/a/777"))
+				.whenComplete(assertFailure(ParseException.class));
 		HttpRequest request = HttpRequest.get("http://www.coursera.org");
 		check(main.serve(request), "", 404);
 		System.out.println();

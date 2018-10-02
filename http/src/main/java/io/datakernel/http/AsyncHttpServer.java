@@ -235,7 +235,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		assert eventloop.inEventloopThread();
 		if (expiredConnectionsCheck == null)
 			scheduleExpiredConnectionsCheck();
-		HttpServerConnection connection = new HttpServerConnection(eventloop, remoteAddress, socket, this, servlet);
+		HttpServerConnection connection = new HttpServerConnection(eventloop, remoteAddress, socket, this, servlet, maxHttpMessageSize);
 		connection.serve();
 	}
 

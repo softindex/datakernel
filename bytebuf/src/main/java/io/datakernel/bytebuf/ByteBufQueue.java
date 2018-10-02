@@ -217,6 +217,8 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 	 */
 	@Override
 	public boolean hasRemainingBytes(int remaining) {
+		assert remaining >= 0;
+		if (remaining == 0) return true;
 		for (int i = first; i != last; i = next(i)) {
 			int bufRemaining = bufs[i].readRemaining();
 			if (bufRemaining >= remaining)

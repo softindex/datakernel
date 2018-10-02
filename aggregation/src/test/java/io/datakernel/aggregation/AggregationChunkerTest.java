@@ -213,9 +213,10 @@ public class AggregationChunkerTest {
 		assertTrue(future.isCompletedExceptionally());
 		assertClosedWithError(supplier);
 //		assertClosedWithError(chunker);
-		for (StreamConsumer listConsumer : listConsumers) {
-			assertEndOfStream(listConsumer);
+		for (int i = 0; i < listConsumers.size() - 1; i++) {
+			assertEndOfStream(listConsumers.get(i));
 		}
+		assertClosedWithError(getLast(listConsumers));
 	}
 
 	private static <T> T getLast(List<T> list) {

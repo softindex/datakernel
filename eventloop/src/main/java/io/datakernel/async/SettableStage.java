@@ -50,7 +50,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 
 	@Override
 	public boolean isException() {
-		return super.isException();
+		return exception != null && exception != STAGE_NOT_SET;
 	}
 
 	@Override

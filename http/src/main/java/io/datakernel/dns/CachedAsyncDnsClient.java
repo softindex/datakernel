@@ -17,6 +17,7 @@
 package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
@@ -45,7 +46,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 	private final AsyncDnsClient client;
 
 	private DnsCache cache;
-	private final Map<DnsQuery, Stage<DnsResponse>> pending = new HashMap<>();
+	private final Map<DnsQuery, MaterializedStage<DnsResponse>> pending = new HashMap<>();
 	private final Set<DnsQuery> refreshingNow = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
 	private CachedAsyncDnsClient(Eventloop eventloop, AsyncDnsClient client, DnsCache cache) {
@@ -89,7 +90,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 		}
 		return new AsyncDnsClient() {
 			@Override
-			public Stage<DnsResponse> resolve(DnsQuery query) {
+			public MaterializedStage<DnsResponse> resolve(DnsQuery query) {
 				DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 				if (fromQuery != null) {
 					logger.trace("{} already contained an IP address within itself", query);
@@ -144,7 +145,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 	}
 
 	@Override
-	public Stage<DnsResponse> resolve(DnsQuery query) {
+	public MaterializedStage<DnsResponse> resolve(DnsQuery query) {
 		assert eventloop.inEventloopThread() : "Concurrent resolves are not allowed, to reuse the cache use adaptToOtherEventloop";
 
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
@@ -161,16 +162,17 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 			}
 			return cacheResult.getResponseAsStage();
 		}
-		Stage<DnsResponse> stage = pending.compute(query, (k, v) -> {
+		MaterializedStage<DnsResponse> stage = pending.compute(query, (k, v) -> {
 			if (v != null) {
 				logger.trace("{} is already pending", k);
 				return v;
 			}
-			return client.resolve(k)
-					.whenComplete((response, e) -> {
-						addToCache(k, response, e);
-						pending.remove(k);
-					});
+			MaterializedStage<DnsResponse> resolve = client.resolve(k);
+			resolve.whenComplete((response, e) -> {
+				addToCache(k, response, e);
+				pending.remove(k);
+			});
+			return resolve;
 		});
 		cache.performCleanup();
 		return stage;

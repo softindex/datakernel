@@ -280,6 +280,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	}
 
 	private void doSync() throws SSLException {
+		if (!isOpen()) return;
 		SSLEngineResult result = null;
 		HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
 

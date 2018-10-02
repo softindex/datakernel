@@ -17,6 +17,7 @@
 package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
@@ -39,7 +40,6 @@ import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.*;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -170,21 +170,38 @@ public class AsyncDnsClientTest {
 
 		int[] index = {0};
 		IntStream.range(0, threadCount)
-				.mapToObj($ -> {
+				.mapToObj($ -> (Runnable) () -> {
+					eventloop.startExternalTask();
 					Eventloop subloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-					AsyncDnsClient cachedClient = primaryCachedDnsClient.adaptToOtherEventloop(eventloop);
+					AsyncDnsClient cachedClient = primaryCachedDnsClient.adaptToOtherEventloop(subloop);
 
 					Stages.toList(
 							Stream.generate(() -> null)
 									.flatMap($2 -> Stream.of("www.google.com", "www.github.com", "www.kpi.ua"))
 									.limit(100)
 									.map(cachedClient::resolve4))
+							.thenComposeEx(($2, e) -> {
+								if (e instanceof DnsQueryException) {
+									if (((DnsQueryException) e).getResult().getErrorCode() == TIMED_OUT) {
+										System.out.println("TIMED_OUT");
+										return Stage.complete();
+									}
+								}
+								return Stage.of(null, e);
+							})
 							.whenComplete(assertComplete());
-					return subloop;
+
+					try {
+						subloop.run();
+					} catch (Throwable e) {
+						eventloop.recordFatalError(e, null);
+					} finally {
+						eventloop.completeExternalTask();
+					}
 				})
-				.collect(toList()) // materialize all of them
-				.forEach(subloop -> new Thread(subloop, "test thread #" + index[0]++).start());
+				.forEach(runnable -> new Thread(runnable, "test thread #" + index[0]++).start());
+
 		eventloop.run();
 
 		System.out.println("Real requests per query:");

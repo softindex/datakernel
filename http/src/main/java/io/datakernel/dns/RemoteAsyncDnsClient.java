@@ -17,6 +17,7 @@
 package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
@@ -106,11 +107,11 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 		}
 		socket.close();
 		socket = null;
-		transactions.values().forEach(s -> eventloop.post(() -> s.setException(Stage.TIMEOUT_EXCEPTION)));
+		transactions.values().forEach(s -> s.setException(Stage.TIMEOUT_EXCEPTION));
 	}
 
 	@Override
-	public Stage<DnsResponse> resolve(DnsQuery query) {
+	public MaterializedStage<DnsResponse> resolve(DnsQuery query) {
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {
 			logger.trace("{} already contained an IP address within itself", query);
@@ -164,7 +165,8 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 						inspector.onDnsQueryError(query, e);
 					}
 					return Stage.ofException(e);
-				});
+				})
+				.materialize();
 	}
 
 	@Override

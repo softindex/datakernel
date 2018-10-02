@@ -124,7 +124,7 @@ public final class SerialSuppliers {
 					result.set(finisher.apply(accumulatedValue));
 				}
 			} else {
-				tryRecycle(finisher.apply(accumulatedValue));
+				deepRecycle(finisher.apply(accumulatedValue));
 				result.setException(e);
 			}
 		});

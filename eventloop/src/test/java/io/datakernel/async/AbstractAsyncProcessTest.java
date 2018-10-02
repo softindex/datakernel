@@ -20,6 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
+import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
@@ -30,30 +31,42 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Random;
 
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.util.Recyclable.deepRecycle;
+import static io.datakernel.util.Recyclable.tryRecycle;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class AbstractAsyncProcessTest {
 	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
-	private final String DATA = "DATA";
-	private final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError()).withCurrentThread();
-	private final int size = 20;
-	private final int listLize = 5;
-	private final List<ByteBuf> expectedData = initializeList();
+	public final ByteBufRule byteBufRule = new ByteBufRule();
+
+	private final int size = 10;
 	private final List<ByteBuf> actualData = new ArrayList<>();
-	private final AtomicBoolean consumedAll = new AtomicBoolean(false);
-	private final Throwable error = new Throwable("Test Error");
+	private final ParseException error = new ParseException("Test Error");
+
+	private Eventloop eventloop;
+
 	private PassThroughProcess[] processes = new PassThroughProcess[size];
 	private MaterializedStage<Void> acknowledgement;
+	private List<ByteBuf> expectedData = new ArrayList<>();
+	private boolean consumedAll = false;
 
 
 	@Before
 	public void setUp() {
+		eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError()).withCurrentThread();
+		Random random = new Random();
+		for (int i = 0; i < 5; i++) {
+			byte[] bytes = new byte[1000];
+			random.nextBytes(bytes);
+			ByteBuf buf = ByteBufPool.allocate(bytes.length);
+			buf.put(bytes);
+			expectedData.add(buf);
+		}
 		for (int i = 0; i < size; i++) {
 			processes[i] = new PassThroughProcess();
 		}
@@ -62,47 +75,35 @@ public class AbstractAsyncProcessTest {
 			processes[i].streamTo(processes[i + 1]);
 		}
 
-		acknowledgement = processes[0].setInput(SerialSupplier.ofIterable(expectedData));
+		acknowledgement = SerialSupplier.ofIterable(expectedData).streamTo(processes[0]);
 	}
 
 	@Test
 	public void testAckPropagation() {
-		processes[size - 1].setOutput(SerialConsumer.of(value -> {
+		processes[size - 1].streamTo(SerialConsumer.of(value -> {
 			actualData.add(value);
-			if (expectedData.equals(actualData)) {
-				consumedAll.set(true);
+			if (expectedData.size() == actualData.size()) {
+				deepRecycle(actualData);
+				consumedAll = true;
 			}
 			return Stage.complete();
 		}));
 
-		acknowledgement.whenComplete(assertComplete($ -> assertTrue(consumedAll.get())));
+		acknowledgement.whenComplete(assertComplete($ -> assertTrue(consumedAll)));
 
 		eventloop.run();
 	}
 
 	@Test
 	public void testAckPropagationWithFailure() {
-		processes[size - 1].setOutput(SerialConsumer.of(value -> {
-			actualData.add(value);
-			if (actualData.size() == expectedData.size() / 2) {
-				return Stage.ofException(error);
-			}
-			return Stage.complete();
+		processes[size - 1].streamTo(SerialConsumer.of(value -> {
+			tryRecycle(value);
+			return Stage.ofException(error);
 		}));
 
 		acknowledgement.whenComplete(assertFailure(e -> assertSame(error, e)));
 
 		eventloop.run();
-	}
-
-	private List<ByteBuf> initializeList() {
-		List<ByteBuf> list = new ArrayList<>();
-		for (int i = 0; i < listLize; i++) {
-			ByteBuf buf = ByteBufPool.allocate(DATA.length());
-			buf.put(DATA.getBytes());
-			list.add(buf);
-		}
-		return list;
 	}
 
 	// region stub

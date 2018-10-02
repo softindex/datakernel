@@ -76,8 +76,6 @@ import static io.datakernel.http.HttpHeaders.CONNECTION;
  */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
-	private static final HttpHeaderValue CONNECTION_KEEP_ALIVE = HttpHeaderValue.of("keep-alive");
-
 	@Nullable
 	private SettableStage<HttpResponse> result;
 	@Nullable
@@ -90,8 +88,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	HttpClientConnection addressNext;
 
 	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
-			AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client) {
-		super(eventloop, asyncTcpSocket);
+			AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client, int maxHttpMessageSize) {
+		super(eventloop, asyncTcpSocket, maxHttpMessageSize);
 		this.remoteAddress = remoteAddress;
 		this.client = client;
 		this.inspector = client.inspector;
@@ -233,7 +231,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	public Stage<HttpResponse> send(HttpRequest request) {
 		this.result = new SettableStage<>();
 		switchPool(client.poolReadWrite);
-		request.setHeader(CONNECTION, CONNECTION_KEEP_ALIVE);
+		HttpHeaderValue connectionHeader = CONNECTION_KEEP_ALIVE_HEADER;
+		if (client.maxKeepAliveRequests != -1){
+			if(++numberOfKeepAliveRequests >= client.maxKeepAliveRequests){
+				connectionHeader = CONNECTION_CLOSE_HEADER;
+			}
+		}
+		request.setHeader(CONNECTION, connectionHeader);
 		writeHttpMessage(request);
 		readHttpMessage();
 		return this.result;

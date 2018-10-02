@@ -80,6 +80,7 @@ public abstract class AbstractHttpConnection {
 
 	protected static final byte[] CONTENT_ENCODING_GZIP = encodeAscii("gzip");
 
+	private final int maxHttpMessageSize;
 	protected int contentLength;
 	private int maxHeaders;
 
@@ -96,9 +97,10 @@ public abstract class AbstractHttpConnection {
 	 *
 	 * @param eventloop eventloop which will handle its I/O operations
 	 */
-	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket socket) {
+	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket socket, int maxHttpMessageSize) {
 		this.eventloop = eventloop;
 		this.socket = socket;
+		this.maxHttpMessageSize = maxHttpMessageSize;
 	}
 
 	protected abstract void onFirstLine(byte[] line, int size) throws ParseException;
@@ -313,6 +315,10 @@ public abstract class AbstractHttpConnection {
 
 		if (header == CONTENT_LENGTH) {
 			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.readPosition(), value.readRemaining());
+			if (contentLength > maxHttpMessageSize) {
+				value.recycle();
+				throw TOO_BIG_HTTP_MESSAGE;
+			}
 		} else if (header == CONNECTION) {
 			flags = (byte) ((flags & ~KEEP_ALIVE) |
 					(equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.readPosition(), value.readRemaining()) ? KEEP_ALIVE : 0));
