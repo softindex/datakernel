@@ -1,82 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>io.datakernel</groupId>
-        <artifactId>datakernel</artifactId>
-        <version>2.5.12-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
-    </parent>
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>io.datakernel</groupId>
+		<artifactId>datakernel</artifactId>
+		<version>2.6.0-SNAPSHOT</version>
+		<relativePath>../pom.xml</relativePath>
+	</parent>
 
-    <artifactId>datakernel-serializer</artifactId>
+	<artifactId>datakernel-serializer</artifactId>
 
-    <name>DataKernel: Serializer</name>
-    <description>
-        Extremely fast and space-efficient serializers, crafted using bytecode engineering.
-    </description>
+	<name>DataKernel: Serializer</name>
+	<description>
+		Extremely fast and space-efficient serializers, crafted using bytecode engineering.
+	</description>
 
-    <dependencies>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-codegen</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-bytebuf</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.carrotsearch</groupId>
-            <artifactId>hppc</artifactId>
-            <optional>true</optional>
-        </dependency>
+	<dependencies>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-codegen</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-bytebuf</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.carrotsearch</groupId>
+			<artifactId>hppc</artifactId>
+			<optional>true</optional>
+		</dependency>
 
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-test</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-test</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
 
-    <profiles>
-        <profile>
-            <id>uberJar</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-shade-plugin</artifactId>
-                        <version>2.4.2</version>
-                        <executions>
-                            <execution>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>shade</goal>
-                                </goals>
-                                <configuration>
-                                    <artifactSet>
-                                        <excludes>
-                                            <exclude>com.carrotsearch</exclude>
-                                        </excludes>
-                                    </artifactSet>
-                                    <createDependencyReducedPom>false</createDependencyReducedPom>
-                                    <relocations>
-                                        <relocation>
-                                            <pattern>org.objectweb.asm</pattern>
-                                            <shadedPattern>io.datakernel.thirdparty.org.objectweb.asm</shadedPattern>
-                                        </relocation>
-                                    </relocations>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+	<profiles>
+		<profile>
+			<id>uberJar</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-shade-plugin</artifactId>
+						<version>2.4.2</version>
+						<executions>
+							<execution>
+								<phase>package</phase>
+								<goals>
+									<goal>shade</goal>
+								</goals>
+								<configuration>
+									<artifactSet>
+										<excludes>
+											<exclude>com.carrotsearch</exclude>
+										</excludes>
+									</artifactSet>
+									<createDependencyReducedPom>false</createDependencyReducedPom>
+									<relocations>
+										<relocation>
+											<pattern>org.objectweb.asm</pattern>
+											<shadedPattern>io.datakernel.thirdparty.org.objectweb.asm</shadedPattern>
+										</relocation>
+									</relocations>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>

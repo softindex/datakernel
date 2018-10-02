@@ -1,49 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>io.datakernel</groupId>
-        <artifactId>datakernel</artifactId>
-        <version>2.5.12-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
-    </parent>
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>io.datakernel</groupId>
+		<artifactId>datakernel</artifactId>
+		<version>2.6.0-SNAPSHOT</version>
+		<relativePath>../pom.xml</relativePath>
+	</parent>
 
-    <artifactId>datakernel-rpc</artifactId>
+	<artifactId>datakernel-rpc</artifactId>
 
-    <name>DataKernel: RPC</name>
-    <description>
-        High-performance and fault-tolerant remote procedure call module for building distributed applications.
-    </description>
+	<name>DataKernel: RPC</name>
+	<description>
+		High-performance and fault-tolerant remote procedure call module for building distributed applications.
+	</description>
 
-    <dependencies>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-eventloop</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-serializer</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-datastreams</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+	<dependencies>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-eventloop</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-serializer</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-datastreams</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 
-        <dependency>
-            <groupId>net.jpountz.lz4</groupId>
-            <artifactId>lz4</artifactId>
-        </dependency>
+		<dependency>
+			<groupId>net.jpountz.lz4</groupId>
+			<artifactId>lz4</artifactId>
+		</dependency>
 
-	    <dependency>
-		    <groupId>io.datakernel</groupId>
-		    <artifactId>datakernel-test</artifactId>
-		    <version>${project.version}</version>
-		    <scope>test</scope>
-	    </dependency>
-    </dependencies>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-test</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
 </project>

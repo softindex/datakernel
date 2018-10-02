@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>io.datakernel</groupId>
-        <artifactId>datakernel</artifactId>
-        <version>2.5.12-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
-    </parent>
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>io.datakernel</groupId>
+		<artifactId>datakernel</artifactId>
+		<version>2.6.0-SNAPSHOT</version>
+		<relativePath>../pom.xml</relativePath>
+	</parent>
 
-    <artifactId>datakernel-bytebuf</artifactId>
+	<artifactId>datakernel-bytebuf</artifactId>
 
-    <name>DataKernel: ByteBuf</name>
-    <description>
-        Memory-efficient, recyclable byte buffers
-    </description>
+	<name>DataKernel: ByteBuf</name>
+	<description>
+		Memory-efficient, recyclable byte buffers
+	</description>
 
-    <dependencies>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
+	<dependencies>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-common</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+	</dependencies>
 
 </project>
