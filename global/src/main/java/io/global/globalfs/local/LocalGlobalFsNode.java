@@ -73,6 +73,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode {
 		return ensureNamespace(name.getPubKey()).ensureFilesystem(name);
 	}
 
+	@Override
 	public RawServerId getId() {
 		return id;
 	}
@@ -230,7 +231,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode {
 
 			// region creators
 			Filesystem(GlobalFsName name) {
-				String namespaceName = GlobalFsName.serializePubKey(name.getPubKey());
+				String namespaceName = name.getPubKey().asString();
 				this.folder = dataFsClient.subfolder(namespaceName).subfolder(name.getFsName());
 				this.checkpointStorage = new RemoteFsCheckpointStorage(checkpointFsClient.subfolder(namespaceName).subfolder(name.getFsName()));
 				this.name = name;
@@ -309,7 +310,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode {
 							int start = extremes[0];
 							int finish = extremes[1];
 							return folder.download(fileName, checkpoints[start], checkpoints[finish] - checkpoints[start])
-									.thenApply(supplier -> supplier.apply(FramesFromStorage.create(fileName, checkpointStorage, checkpoints, start, finish)));
+									.thenApply(supplier -> supplier.apply(new FramesFromStorage(fileName, checkpointStorage, checkpoints, start, finish)));
 						});
 			}
 
@@ -334,7 +335,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode {
 				if (meta == null) {
 					return null;
 				}
-				return new GlobalFsMetadata(name.addressOf(meta.getName()), meta.getSize(), meta.getTimestamp());
+				return GlobalFsMetadata.of(name.addressOf(meta.getName()), meta.getSize(), meta.getTimestamp());
 			}
 		}
 	}

@@ -56,8 +56,11 @@ public final class RemoteFsAdapter implements FsClient {
 	@Override
 	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		return fs.upload(filename, offset == -1 ? 0 : offset)
-				.thenApply(consumer -> consumer
-						.apply(FrameSigner.create(offset == -1 ? 0 : offset, checkpointPositionStrategy, keys.getPrivKey())));
+				.thenApply(consumer -> {
+					long offset1 = offset == -1 ? 0 : offset;
+					return consumer
+							.apply(new FrameSigner(offset1, checkpointPositionStrategy, keys.getPrivKey()));
+				});
 	}
 
 	@Override

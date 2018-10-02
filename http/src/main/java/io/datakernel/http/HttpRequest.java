@@ -222,15 +222,19 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		assert !isRecycled();
 		String result = url.getQueryParameter(key);
 		if (result != null) return result;
-		throw new ParseException();
+		throw new ParseException("Query parameter '" + key + "' is required");
+	}
+
+	public String getQueryParameter(String key, String defaultValue) {
+		assert !isRecycled();
+		String result = url.getQueryParameter(key);
+		return result != null ? result : defaultValue;
 	}
 
 	@Nullable
 	public String getQueryParameterOrNull(String key) {
 		assert !isRecycled();
-		String result = url.getQueryParameter(key);
-		if (result != null) return result;
-		return null;
+		return url.getQueryParameter(key);
 	}
 
 	public List<String> getQueryParameters(String key) {

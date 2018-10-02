@@ -40,14 +40,10 @@ public final class FrameSigner extends ByteBufsToFrames {
 	private boolean lastPostedCheckpoint = false;
 
 	// region creators
-	private FrameSigner(long offset, CheckpointPositionStrategy checkpointPositionStrategy, PrivKey privateKey) {
+	public FrameSigner(long offset, CheckpointPositionStrategy checkpointPositionStrategy, PrivKey privateKey) {
 		super(offset);
 		this.checkpointPositionStrategy = checkpointPositionStrategy;
 		this.privateKey = privateKey;
-	}
-
-	public static FrameSigner create(long offset, CheckpointPositionStrategy checkpointPositionStrategy, PrivKey privateKey) {
-		return new FrameSigner(offset, checkpointPositionStrategy, privateKey);
 	}
 	// endregion
 

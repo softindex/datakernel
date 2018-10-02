@@ -39,7 +39,7 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 	private int nextCheckpointIndex;
 
 	// region creators
-	private FramesFromStorage(String fileName, CheckpointStorage checkpointStorage,
+	public FramesFromStorage(String fileName, CheckpointStorage checkpointStorage,
 			long[] checkpoints, int firstCheckpointIndex, int lastCheckpointIndex) {
 		super(checkpoints[firstCheckpointIndex]);
 		this.fileName = fileName;
@@ -48,11 +48,6 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 		this.lastCheckpointIndex = lastCheckpointIndex;
 
 		nextCheckpointIndex = firstCheckpointIndex;
-	}
-
-	public static FramesFromStorage create(String fileName, CheckpointStorage checkpointStorage,
-			long[] checkpoints, int firstCheckpointIndex, int lastCheckpointIndex) {
-		return new FramesFromStorage(fileName, checkpointStorage, checkpoints, firstCheckpointIndex, lastCheckpointIndex);
 	}
 	// endregion
 

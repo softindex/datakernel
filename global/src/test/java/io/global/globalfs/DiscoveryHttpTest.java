@@ -49,7 +49,7 @@ public class DiscoveryHttpTest {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, DiscoveryServlet.wrap(serverService)).withListenPort(8080);
 		server.listen();
 
-		DiscoveryService clientService = new HttpDiscoveryService(AsyncHttpClient.create(eventloop), "http://127.0.0.1:8080");
+		DiscoveryService clientService = new HttpDiscoveryService(AsyncHttpClient.create(eventloop), new InetSocketAddress(8080));
 
 		KeyPair keys1 = KeyPair.generate();
 		KeyPair keys2 = KeyPair.generate();

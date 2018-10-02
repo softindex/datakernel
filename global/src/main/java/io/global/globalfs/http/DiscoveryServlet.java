@@ -24,16 +24,20 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
-import io.global.globalfs.api.GlobalFsName;
 
 public final class DiscoveryServlet {
-	public static final String FIND = "/find";
-	public static final String ANNOUNCE = "/announce";
+	public static final String FIND = "find";
+	public static final String ANNOUNCE = "announce";
+
+	// region creators
+	private DiscoveryServlet() {
+		throw new AssertionError("nope.");
+	}
 
 	public static AsyncServlet wrap(DiscoveryService service) {
 		return MiddlewareServlet.create()
-				.with(HttpMethod.GET, FIND, request -> {
-					PubKey pubKey = GlobalFsName.deserializePubKey(request.getQueryParameter("key"));
+				.with(HttpMethod.GET, "/" + FIND, request -> {
+					PubKey pubKey = PubKey.fromString(request.getQueryParameter("key"));
 					return service.findServers(pubKey)
 							.thenCompose(data -> {
 								if (data != null) {
@@ -42,8 +46,8 @@ public final class DiscoveryServlet {
 								return Stage.ofException(HttpException.notFound404());
 							});
 				})
-				.with(HttpMethod.PUT, ANNOUNCE, request -> {
-					PubKey pubKey = GlobalFsName.deserializePubKey(request.getQueryParameter("key"));
+				.with(HttpMethod.PUT, "/" + ANNOUNCE, request -> {
+					PubKey pubKey = PubKey.fromString(request.getQueryParameter("key"));
 					return request.getBodyStage()
 							.thenCompose(body -> {
 								try {
@@ -56,4 +60,5 @@ public final class DiscoveryServlet {
 
 				});
 	}
+	// endregion
 }

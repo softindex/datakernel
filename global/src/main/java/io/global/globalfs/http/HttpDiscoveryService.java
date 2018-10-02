@@ -26,28 +26,38 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
-import io.global.globalfs.api.GlobalFsName;
 
-import static io.datakernel.http.HttpHeaders.HOST;
+import java.net.InetSocketAddress;
+
+import static io.global.globalfs.http.DiscoveryServlet.ANNOUNCE;
+import static io.global.globalfs.http.DiscoveryServlet.FIND;
+import static io.global.globalfs.http.UrlBuilder.query;
 
 public final class HttpDiscoveryService implements DiscoveryService {
-	public final String test = "";
 	private final AsyncHttpClient client;
-	private final String host;
+	private final InetSocketAddress address;
 
 	// region creators
-	public HttpDiscoveryService(AsyncHttpClient client, String host) {
+	public HttpDiscoveryService(AsyncHttpClient client, InetSocketAddress address) {
 		this.client = client;
-		this.host = host;
+		this.address = address;
 	}
 	// endregion
 
 	@Override
 	public Stage<SignedData<AnnounceData>> findServers(PubKey pubKey) {
-		return client.request(HttpRequest.get(host + DiscoveryServlet.FIND + "?key=" + GlobalFsName.serializePubKey(pubKey)))
-				.thenCompose(data -> {
+		return client.request(
+				HttpRequest.get(
+						UrlBuilder.http(FIND)
+								.withAuthority(address)
+								.withQuery(query().with("key", pubKey.asString()))
+								.build()))
+				.thenCompose(response -> {
+					if (response.getCode() == 404) {
+						return Stage.of(null);
+					}
 					try {
-						return Stage.of(SignedData.ofBytes(data.getBody().asArray(), AnnounceData::fromBytes));
+						return Stage.of(SignedData.ofBytes(response.getBody().asArray(), AnnounceData::fromBytes));
 					} catch (ParseException e) {
 						return Stage.ofException(e);
 					}
@@ -56,9 +66,13 @@ public final class HttpDiscoveryService implements DiscoveryService {
 
 	@Override
 	public Stage<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
-		return client.request(HttpRequest.of(HttpMethod.PUT, host + DiscoveryServlet.ANNOUNCE + "?key=" + GlobalFsName.serializePubKey(pubKey))
-				.withBody(announceData.toBytes())
-				.withHeader(HOST, host))
+		return client.request(
+				HttpRequest.of(HttpMethod.PUT,
+						UrlBuilder.http(ANNOUNCE)
+								.withAuthority(address)
+								.withQuery(query().with("key", pubKey.asString()))
+								.build())
+						.withBody(announceData.toBytes()))
 				.toVoid();
 	}
 }

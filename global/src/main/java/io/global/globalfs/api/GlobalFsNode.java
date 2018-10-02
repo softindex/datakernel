@@ -21,6 +21,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
+import io.global.common.RawServerId;
 
 import java.util.List;
 import java.util.Map;
@@ -33,33 +34,31 @@ public interface GlobalFsNode {
 	StacklessException RECURSIVE_ERROR = new StacklessException("Trying to download a file from a server that also tries to download this file.");
 	StacklessException FETCH_DID_NOTHING = new StacklessException("Did not fetch anything from given node.");
 
-	Stage<SerialSupplier<DataFrame>> download(GlobalFsPath file, long offset, long limit);
+	RawServerId getId();
 
 	default SerialSupplier<DataFrame> downloader(GlobalFsPath file, long offset, long limit) {
 		return SerialSupplier.ofStage(download(file, offset, limit));
 	}
 
-	Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath file, long offset);
+	Stage<SerialSupplier<DataFrame>> download(GlobalFsPath file, long offset, long limit);
 
 	default SerialConsumer<DataFrame> uploader(GlobalFsPath file, long offset) {
 		return SerialConsumer.ofStage(upload(file, offset));
 	}
 
-	Stage<List<GlobalFsMetadata>> list(GlobalFsName name, String glob);
+	Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath file, long offset);
 
 	default Stage<GlobalFsMetadata> getMetadata(GlobalFsPath file) {
 		return list(file.getGlobalFsName(), file.getPath()).thenApply(res -> res.size() == 1 ? res.get(0) : null);
 	}
 
-	Stage<Void> delete(GlobalFsName name, String glob);
+	Stage<List<GlobalFsMetadata>> list(GlobalFsName name, String glob);
 
 	default Stage<Void> delete(GlobalFsPath file) {
 		return delete(file.getGlobalFsName(), file.getPath());
 	}
 
-	Stage<Set<String>> copy(GlobalFsName name, Map<String, String> changes);
-
-	Stage<Set<String>> move(GlobalFsName name, Map<String, String> changes);
+	Stage<Void> delete(GlobalFsName name, String glob);
 
 	default GlobalFsFileSystem getFileSystem(GlobalFsName name) {
 		return new GlobalFsFileSystem() {
@@ -100,26 +99,30 @@ public interface GlobalFsNode {
 		};
 	}
 
+	Stage<Set<String>> copy(GlobalFsName name, Map<String, String> changes);
+
+	Stage<Set<String>> move(GlobalFsName name, Map<String, String> changes);
+
 	interface GlobalFsFileSystem {
 		GlobalFsName getName();
-
-		Stage<SerialConsumer<DataFrame>> upload(String file, long offset);
 
 		default SerialConsumer<DataFrame> uploadSerial(String file, long offset) {
 			return SerialConsumer.ofStage(upload(file, offset));
 		}
 
-		Stage<SerialSupplier<DataFrame>> download(String file, long offset, long length);
+		Stage<SerialConsumer<DataFrame>> upload(String file, long offset);
 
 		default SerialSupplier<DataFrame> downloadSerial(String file, long offset, long length) {
 			return SerialSupplier.ofStage(download(file, offset, length));
 		}
 
-		Stage<List<GlobalFsMetadata>> list(String glob);
+		Stage<SerialSupplier<DataFrame>> download(String file, long offset, long length);
 
 		default Stage<GlobalFsMetadata> getMetadata(String file) {
 			return list(file).thenApply(res -> res.size() == 1 ? res.get(0) : null);
 		}
+
+		Stage<List<GlobalFsMetadata>> list(String glob);
 
 		Stage<Void> delete(String glob);
 

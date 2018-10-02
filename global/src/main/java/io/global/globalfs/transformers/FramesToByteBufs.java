@@ -17,12 +17,12 @@
 
 package io.global.globalfs.transformers;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -33,9 +33,7 @@ import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
 
-import static io.datakernel.util.Preconditions.checkState;
-
-abstract class FramesToByteBufs extends AbstractAsyncProcess
+abstract class FramesToByteBufs extends AbstractIOAsyncProcess
 		implements WithSerialToSerial<FramesToByteBufs, DataFrame, ByteBuf> {
 	private final PubKey pubKey;
 
@@ -54,25 +52,25 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 
 	@Override
 	public MaterializedStage<Void> setInput(SerialSupplier<DataFrame> input) {
-		checkState(this.input == null, "Input is already set");
-		this.input = input;
+		this.input = sanitize(input);
 		return getResult();
 	}
 
 	@Override
 	public void setOutput(SerialConsumer<ByteBuf> output) {
-		checkState(this.output == null, "Output is already set");
-		this.output = output;
+		this.output = sanitize(output);
 	}
 
 	@Override
 	protected void doProcess() {
 		input.get()
-				.thenCompose(frame ->
-						frame != null ?
-								handleFrame(frame).thenRun(this::doProcess) :
-								output.accept(null).thenRun(this::completeProcess))
-				.whenException(this::doCloseWithError);
+				.whenResult(frame -> {
+					if (frame != null) {
+						handleFrame(frame).thenRun(this::doProcess);
+					} else {
+						output.accept(null).thenRun(this::completeProcess);
+					}
+				});
 	}
 
 	protected Stage<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {

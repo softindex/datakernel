@@ -17,12 +17,15 @@
 
 package io.global.globalfs.transformers;
 
-import io.datakernel.annotation.Nullable;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
-import io.datakernel.serial.processor.AbstractSerialTransformer;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.processor.AbstractIOAsyncProcess;
+import io.datakernel.serial.processor.WithSerialToSerial;
 import io.global.common.SignedData;
 import io.global.globalfs.api.DataFrame;
 import io.global.globalfs.api.GlobalFsCheckpoint;
@@ -32,32 +35,41 @@ import io.global.globalfs.api.GlobalFsCheckpoint;
  * <p>
  * It's counterpart is the {@link FrameEncoder}.
  */
-public final class FrameDecoder extends AbstractSerialTransformer<FrameDecoder, ByteBuf, DataFrame> {
+public final class FrameDecoder extends AbstractIOAsyncProcess implements WithSerialToSerial<FrameDecoder, ByteBuf, DataFrame> {
+	protected SerialSupplier<ByteBuf> input;
+	protected SerialConsumer<DataFrame> output;
 
-	@Nullable
-	private static DataFrame parseDataFrame(ByteBufQueue bbq) throws ParseException {
-		if (!bbq.hasRemainingBytes(6)) { // TODO anton: do something with that 6
-			return null;
-		}
-		byte type = bbq.peekByte();
-		assert type == 0 || type == 1;
-		int size = bbq.peekVarInt(1);
-		if (!bbq.hasRemainingBytes(size)) {
-			return null;
-		}
-		ByteBuf data = bbq.takeExactSize(size);
-		if (type == 0) {
-			return DataFrame.of(data);
-		}
-		try {
-			return DataFrame.of(SignedData.ofBytes(data.asArray(), GlobalFsCheckpoint::ofBytes));
-		} catch (ParseException e) {
-			throw new ParseException(e);
-		}
+	@Override
+	public final void setOutput(SerialConsumer<DataFrame> output) {
+		this.output = sanitize(output);
+	}
+
+	@Override
+	public final MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
+		this.input = sanitize(input);
+		return getResult();
 	}
 
 	@Override
 	protected void doProcess() {
-		ByteBufsSupplier.of(input).parseStream(FrameDecoder::parseDataFrame).streamTo(output);
+		ByteBufsSupplier.of(input)
+				.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes().andThen(this::parseDataFrame))
+				.streamTo(output)
+				.thenRun(this::completeProcess);
+	}
+
+	@Override
+	protected final void doCloseWithError(Throwable e) {
+		input.closeWithError(e);
+		output.closeWithError(e);
+	}
+
+	private DataFrame parseDataFrame(ByteBuf buf) throws ParseException {
+		byte type = buf.readByte();
+		assert type == 0 || type == 1;
+		if (type == 0) {
+			return DataFrame.of(buf);
+		}
+		return DataFrame.of(SignedData.ofBytes(buf.asArray(), GlobalFsCheckpoint::ofBytes));
 	}
 }

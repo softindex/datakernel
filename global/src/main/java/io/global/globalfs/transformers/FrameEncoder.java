@@ -17,10 +17,13 @@
 
 package io.global.globalfs.transformers;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.serial.processor.SimpleSerialTransformer;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.processor.AbstractIOAsyncProcess;
+import io.datakernel.serial.processor.WithSerialToSerial;
 import io.global.globalfs.api.DataFrame;
 
 /**
@@ -28,19 +31,44 @@ import io.global.globalfs.api.DataFrame;
  * <p>
  * It's counterpart is the {@link FrameDecoder}.
  */
-public final class FrameEncoder extends SimpleSerialTransformer<FrameEncoder, DataFrame, ByteBuf> {
-
+public final class FrameEncoder extends AbstractIOAsyncProcess implements WithSerialToSerial<FrameEncoder, DataFrame, ByteBuf> {
 	private static final byte[] DATA_HEADER = new byte[]{0};
 	private static final byte[] CHECKPOINT_HEADER = new byte[]{1};
+	protected SerialSupplier<DataFrame> input;
+	protected SerialConsumer<ByteBuf> output;
 
 	@Override
-	protected Stage<Void> handle(DataFrame frame) {
-		ByteBuf data = frame.isBuf() ? frame.getBuf() : ByteBuf.wrapForReading(frame.getCheckpoint().getData().toBytes());
-		ByteBuf sizeBuf = ByteBufPool.allocate(5);
-		sizeBuf.writeVarInt(data.readRemaining());
-		return Stage.complete()
-				.thenCompose($ -> output.accept(ByteBuf.wrapForReading(frame.isBuf() ? DATA_HEADER : CHECKPOINT_HEADER)))
-				.thenCompose($ -> output.accept(sizeBuf)) // anyway this will be repacked by socket components,
-				.thenCompose($ -> output.accept(data));   // or stored in OS buffer when writing to disk
+	public final void setOutput(SerialConsumer<ByteBuf> output) {
+		this.output = sanitize(output);
+	}
+
+	@Override
+	public final MaterializedStage<Void> setInput(SerialSupplier<DataFrame> input) {
+		this.input = sanitize(input);
+		return getResult();
+	}
+
+	@Override
+	protected final void doProcess() {
+		input.get()
+				.whenResult(item -> {
+					if (item != null) {
+						ByteBuf data = item.isBuf() ? item.getBuf() : ByteBuf.wrapForReading(item.getCheckpoint().toBytes());
+						ByteBuf sizeBuf = ByteBufPool.allocate(5);
+						sizeBuf.writeVarInt(data.readRemaining() + 1); // + 1 is for that header byte
+						output.accept(sizeBuf)
+								.thenCompose($ -> output.accept(ByteBuf.wrapForReading(item.isBuf() ? DATA_HEADER : CHECKPOINT_HEADER)))
+								.thenCompose($ -> output.accept(data))
+								.thenRun(this::doProcess);
+					} else {
+						output.accept(null).thenRun(this::completeProcess);
+					}
+				});
+	}
+
+	@Override
+	protected final void doCloseWithError(Throwable e) {
+		input.closeWithError(e);
+		output.closeWithError(e);
 	}
 }

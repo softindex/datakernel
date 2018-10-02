@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2015-2018  SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
@@ -5,6 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.functional.Try;
 import io.datakernel.util.ThrowingRunnable;
+import io.datakernel.util.ThrowingSupplier;
 
 import java.time.Duration;
 import java.util.concurrent.*;
@@ -61,6 +79,20 @@ public interface Stage<T> {
 	static <T> Stage<T> of(@Nullable T value, @Nullable Throwable exception) {
 		assert !(value != null && exception != null);
 		return exception == null ? of(value) : ofException(exception);
+	}
+
+	/**
+	 * Similarly to {@link Try#wrap}, executes given computation and wraps it's result or error in a stage.
+	 * Useful for bridging with non-Stage code.
+	 *
+	 * @param computation a block of code which may throw an exception.
+	 */
+	static <T> Stage<T> compute(ThrowingSupplier<T> computation) {
+		try {
+			return of(computation.get());
+		} catch (Throwable e) {
+			return ofException(e);
+		}
 	}
 
 	/**

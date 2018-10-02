@@ -17,18 +17,16 @@
 
 package io.global.globalfs.transformers;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
 import io.global.globalfs.api.DataFrame;
 
-import static io.datakernel.util.Preconditions.checkState;
-
-abstract class ByteBufsToFrames extends AbstractAsyncProcess
+abstract class ByteBufsToFrames extends AbstractIOAsyncProcess
 		implements WithSerialToSerial<ByteBufsToFrames, ByteBuf, DataFrame> {
 	protected long position;
 	protected long nextCheckpoint;
@@ -44,23 +42,35 @@ abstract class ByteBufsToFrames extends AbstractAsyncProcess
 
 	@Override
 	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
-		checkState(this.input == null, "Input is already set");
-		this.input = input;
+		this.input = sanitize(input);
 		return getResult();
 	}
 
 	@Override
 	public void setOutput(SerialConsumer<DataFrame> output) {
-		checkState(this.output == null, "Output is already set");
-		this.output = output;
+		this.output = sanitize(output);
 	}
+
+	@Override
+	protected void doProcess() {
+		postNextCheckpoint()
+				.thenRun(this::iteration);
+	}
+
+	@Override
+	protected final void doCloseWithError(Throwable e) {
+		input.closeWithError(e);
+		output.closeWithError(e);
+	}
+
+	protected abstract Stage<Void> postNextCheckpoint();
+
+	protected abstract void iteration();
 
 	protected Stage<Void> postByteBuf(ByteBuf buf) {
 		position += buf.readRemaining();
 		return output.accept(DataFrame.of(buf));
 	}
-
-	protected abstract Stage<Void> postNextCheckpoint();
 
 	protected Stage<Void> handleBuffer(ByteBuf buf) {
 		int size = buf.readRemaining();
@@ -82,23 +92,5 @@ abstract class ByteBufsToFrames extends AbstractAsyncProcess
 		return postByteBuf(buf.slice(bytesUntilCheckpoint))
 				.thenCompose($ -> postNextCheckpoint())
 				.thenCompose($ -> handleBuffer(afterCheckpoint));
-	}
-
-	protected abstract void iteration();
-
-	@Override
-	protected void doProcess() {
-		postNextCheckpoint()
-				.thenRun(this::iteration);
-	}
-
-	@Override
-	protected final void doCloseWithError(Throwable e) {
-		if (input != null) {
-			input.closeWithError(e);
-		}
-		if (output != null) {
-			output.closeWithError(e);
-		}
 	}
 }

@@ -31,22 +31,18 @@ public final class GlobalFsPath {
 		this.path = path;
 	}
 
-	public static GlobalFsPath of(PubKey pubKey, String filesystem, String path) {
-		return new GlobalFsPath(GlobalFsName.of(pubKey, filesystem), path);
+	public static GlobalFsPath of(PubKey pubKey, String fsName, String path) {
+		return new GlobalFsPath(GlobalFsName.of(pubKey, fsName), path);
 	}
 
-	public static GlobalFsPath of(KeyPair keys, String filesystem, String path) {
-		return new GlobalFsPath(GlobalFsName.of(keys.getPubKey(), filesystem), path);
+	public static GlobalFsPath of(KeyPair keys, String fsName, String path) {
+		return of(keys.getPubKey(), fsName, path);
 	}
 
-	public static GlobalFsPath of(PrivKey key, String filesystem, String path) {
-		return new GlobalFsPath(GlobalFsName.of(key.computePubKey(), filesystem), path);
+	public static GlobalFsPath of(PrivKey key, String fsName, String path) {
+		return of(key.computePubKey(), fsName, path);
 	}
 	// endregion
-
-	public GlobalFsPath addressOf(String path) {
-		return new GlobalFsPath(name, path);
-	}
 
 	public GlobalFsName getGlobalFsName() {
 		return name;
@@ -65,16 +61,16 @@ public final class GlobalFsPath {
 	}
 
 	@Override
+	public int hashCode() {
+		return 31 * name.hashCode() + path.hashCode();
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		GlobalFsPath that = (GlobalFsPath) o;
 		return name.equals(that.name) && path.equals(that.path);
-	}
-
-	@Override
-	public int hashCode() {
-		return 31 * name.hashCode() + path.hashCode();
 	}
 
 	@Override

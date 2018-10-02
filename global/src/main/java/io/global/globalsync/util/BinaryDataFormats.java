@@ -20,8 +20,12 @@ package io.global.globalsync.util;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
+import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.util.ParserFunction;
 import io.global.common.*;
+import io.global.globalfs.api.GlobalFsMetadata;
+import io.global.globalfs.api.GlobalFsName;
+import io.global.globalfs.api.GlobalFsPath;
 import io.global.globalsync.api.*;
 import org.spongycastle.math.ec.ECPoint;
 
@@ -37,17 +41,32 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class BinaryDataFormats {
 	// region creators
-	private BinaryDataFormats() {}
+	private BinaryDataFormats() {
+	}
+
+	public static ByteBuf ofCommitEntry(RawServer.CommitEntry commitEntry) {
+		byte[] commitIdBytes = commitEntry.commitId.toBytes();
+		byte[] commitBytes = commitEntry.commit.toBytes();
+		byte[] headBytes = commitEntry.head != null ? commitEntry.head.toBytes() : new byte[]{};
+		int size = sizeof(commitIdBytes) + sizeof(commitBytes) + sizeof(headBytes);
+		ByteBuf buf = ByteBufPool.allocate(size);
+		writeBytes(buf, commitIdBytes);
+		writeBytes(buf, commitBytes);
+		if (headBytes.length > 0) {
+			writeBytes(buf, headBytes);
+		}
+		return buf;
+	}
+
+	public static ByteBuf wrapWithVarIntHeader(ByteBuf buf) {
+		int size = buf.readRemaining();
+		ByteBuf result = ByteBufPool.allocate(size + 5);
+		result.writeVarInt(size);
+		result.put(buf);
+		buf.recycle();
+		return result;
+	}
 	// endregion
-
-	public static int sizeof(byte[] bytes) {
-		return bytes.length + 5;
-	}
-
-	public static void writeBytes(ByteBuf buf, byte[] bytes) {
-		buf.writeVarInt(bytes.length);
-		buf.write(bytes);
-	}
 
 	public static int readVarInt(ByteBuf buf) throws ParseException {
 		int size;
@@ -75,6 +94,16 @@ public final class BinaryDataFormats {
 		return size;
 	}
 
+	// region byte[]
+	public static int sizeof(byte[] bytes) {
+		return bytes.length + 5;
+	}
+
+	public static void writeBytes(ByteBuf buf, byte[] bytes) {
+		buf.writeVarInt(bytes.length);
+		buf.write(bytes);
+	}
+
 	public static byte[] readBytes(ByteBuf buf) throws ParseException {
 		int size = readVarInt(buf);
 		if (size < 0 || size > buf.readRemaining()) {
@@ -84,7 +113,9 @@ public final class BinaryDataFormats {
 		buf.read(bytes);
 		return bytes;
 	}
+	// endregion
 
+	// region String
 	public static int sizeof(String string) {
 		return sizeof(string.getBytes(UTF_8));
 	}
@@ -96,7 +127,9 @@ public final class BinaryDataFormats {
 	public static String readString(ByteBuf buf) throws ParseException {
 		return new String(readBytes(buf), UTF_8);
 	}
+	// endregion
 
+	// region ECPoint
 	public static int sizeof(ECPoint ecPoint) {
 		return 32 * 2 + 10;
 	}
@@ -115,7 +148,9 @@ public final class BinaryDataFormats {
 			throw new ParseException(e);
 		}
 	}
+	// endregion
 
+	// region PubKey
 	public static int sizeof(PubKey pubKey) {
 		return sizeof(pubKey.getEcPublicKey().getQ());
 	}
@@ -131,7 +166,9 @@ public final class BinaryDataFormats {
 			throw new ParseException(e);
 		}
 	}
+	// endregion
 
+	// region RepositoryName
 	public static int sizeof(RepositoryName repositoryId) {
 		return sizeof(repositoryId.getPubKey()) + repositoryId.getRepositoryName().length() * 5 + 5;
 	}
@@ -146,7 +183,9 @@ public final class BinaryDataFormats {
 		String str = buf.readJavaUTF8();
 		return new RepositoryName(pubKey, str);
 	}
+	// endregion
 
+	// region CommitId
 	public static int sizeof(CommitId commitId) {
 		return sizeof(commitId.toBytes());
 	}
@@ -158,7 +197,9 @@ public final class BinaryDataFormats {
 	public static CommitId readCommitId(ByteBuf buf) throws ParseException {
 		return CommitId.ofBytes(readBytes(buf));
 	}
+	// endregion
 
+	// region SimKeyHash
 	public static int sizeof(SimKeyHash simKeyHash) {
 		return sizeof(simKeyHash.toBytes());
 	}
@@ -170,7 +211,9 @@ public final class BinaryDataFormats {
 	public static SimKeyHash readSimKeyHash(ByteBuf buf) throws ParseException {
 		return new SimKeyHash(readBytes(buf));
 	}
+	// endregion
 
+	// region EncryptedData
 	public static int sizeof(EncryptedData encryptedData) {
 		return sizeof(encryptedData.initializationVector) + sizeof(encryptedData.encryptedBytes);
 	}
@@ -185,7 +228,9 @@ public final class BinaryDataFormats {
 		byte[] data = readBytes(buf);
 		return new EncryptedData(initializationVector, data);
 	}
+	// endregion
 
+	// region BigInteger
 	public static int sizeof(BigInteger bigInteger) {
 		return bigInteger.bitLength() / 8 + 2;
 	}
@@ -201,7 +246,9 @@ public final class BinaryDataFormats {
 			throw new ParseException(e);
 		}
 	}
+	// endregion
 
+	// region Signature
 	public static int sizeof(ECDSASignature signature) {
 		return sizeof(signature.r) + sizeof(signature.s);
 	}
@@ -216,7 +263,9 @@ public final class BinaryDataFormats {
 		BigInteger s = readBigInteger(buf);
 		return new ECDSASignature(r, s);
 	}
+	// endregion
 
+	// region InetSocketAddress
 	public static int sizeof(InetSocketAddress socketAddress) {
 		return 16 + 2; // 16 bytes for the IPv6 + 2 bytes - port
 	}
@@ -234,7 +283,9 @@ public final class BinaryDataFormats {
 			throw new ParseException(e);
 		}
 	}
+	// endregion
 
+	// region RawServerId
 	public static int sizeof(RawServerId serverId) {
 		return sizeof(serverId.getInetSocketAddress());
 	}
@@ -246,7 +297,71 @@ public final class BinaryDataFormats {
 	public static RawServerId readRawServerId(ByteBuf buf) throws ParseException {
 		return new RawServerId(readInetSocketAddress(buf));
 	}
+	// endregion
 
+	// region GlobalFsName
+	public static int sizeof(GlobalFsName globalFsName) {
+		return sizeof(globalFsName.getPubKey()) + sizeof(globalFsName.getFsName());
+	}
+
+	public static void writeGlobalFsName(ByteBuf buf, GlobalFsName globalFsName) {
+		writePubKey(buf, globalFsName.getPubKey());
+		writeString(buf, globalFsName.getFsName());
+	}
+
+	public static GlobalFsName readGlobalFsName(ByteBuf buf) throws ParseException {
+		return GlobalFsName.of(readPubKey(buf), readString(buf));
+	}
+	// endregion
+
+	// region GlobalFsPath
+	public static int sizeof(GlobalFsPath globalFsPath) {
+		return sizeof(globalFsPath.getGlobalFsName()) + sizeof(globalFsPath.getPath());
+	}
+
+	public static void writeGlobalFsPath(ByteBuf buf, GlobalFsPath globalFsPath) {
+		writeGlobalFsName(buf, globalFsPath.getGlobalFsName());
+		writeString(buf, globalFsPath.getPath());
+	}
+
+	public static GlobalFsPath readGlobalFsPath(ByteBuf buf) throws ParseException {
+		return readGlobalFsName(buf).addressOf(readString(buf));
+	}
+	// endregion
+
+	// region GlobalFsMetadata
+	public static int sizeof(GlobalFsMetadata metadata) {
+		return sizeof(metadata.getPath()) + 9 + 8;
+	}
+
+	public static void writeGlobalFsMetadata(ByteBuf buf, GlobalFsMetadata metadata) {
+		writeGlobalFsPath(buf, metadata.getPath());
+		buf.writeVarLong(metadata.getSize());
+		buf.writeLong(metadata.getRevision());
+	}
+
+	public static GlobalFsMetadata readGlobalFsMetadata(ByteBuf buf) throws ParseException {
+		return GlobalFsMetadata.of(readGlobalFsPath(buf), buf.readVarLong(), buf.readLong());
+	}
+	// endregion
+
+	// region FileMetadata
+	public static int sizeof(FileMetadata metadata) {
+		return sizeof(metadata.getName()) + 9 + 8;
+	}
+
+	public static void writeFileMetadata(ByteBuf buf, FileMetadata metadata) {
+		writeString(buf, metadata.getName());
+		buf.writeVarLong(metadata.getSize());
+		buf.writeLong(metadata.getTimestamp());
+	}
+
+	public static FileMetadata readFileMetadata(ByteBuf buf) throws ParseException {
+		return new FileMetadata(readString(buf), buf.readVarLong(), buf.readLong());
+	}
+	// endregion
+
+	// region Collection
 	public static <T> int sizeof(Collection<T> collection, ToIntFunction<T> elementSizeof) {
 		return 5 + collection.stream().mapToInt(elementSizeof).sum();
 	}
@@ -274,29 +389,33 @@ public final class BinaryDataFormats {
 	public static <T> Set<T> readSet(ByteBuf buf, ParserFunction<ByteBuf, T> parser) throws ParseException {
 		return readInto(buf, parser, new HashSet<>());
 	}
+	// endregion
 
-	public static ByteBuf wrapWithVarIntHeader(ByteBuf buf) {
-		int size = buf.readRemaining();
-		ByteBuf result = ByteBufPool.allocate(size + 5);
-		result.writeVarInt(size);
-		result.put(buf);
-		buf.recycle();
-		return result;
+	// region Map
+	public static <K, V> int sizeof(Map<K, V> collection, ToIntFunction<K> keySizeof, ToIntFunction<V> valueSizeof) {
+		return 5 + collection.entrySet().stream().mapToInt(e -> keySizeof.applyAsInt(e.getKey()) + valueSizeof.applyAsInt(e.getValue())).sum();
 	}
 
-	public static ByteBuf ofCommitEntry(RawServer.CommitEntry commitEntry) {
-		byte[] commitIdBytes = commitEntry.commitId.toBytes();
-		byte[] commitBytes = commitEntry.commit.toBytes();
-		byte[] headBytes = commitEntry.head != null ? commitEntry.head.toBytes() : new byte[]{};
-		int size = sizeof(commitIdBytes) + sizeof(commitBytes) + sizeof(headBytes);
-		ByteBuf buf = ByteBufPool.allocate(size);
-		writeBytes(buf, commitIdBytes);
-		writeBytes(buf, commitBytes);
-		if (headBytes.length > 0) {
-			writeBytes(buf, headBytes);
+	public static <K, V> void writeMap(ByteBuf buf, Map<K, V> map, BiConsumer<ByteBuf, K> keyWriter, BiConsumer<ByteBuf, V> valueWriter) {
+		buf.writeVarInt(map.size());
+		map.forEach((k, v) -> {
+			keyWriter.accept(buf, k);
+			valueWriter.accept(buf, v);
+		});
+	}
+
+	public static <K, V> Map<K, V> readMap(ByteBuf buf, ParserFunction<ByteBuf, K> keyParser, ParserFunction<ByteBuf, V> valueParser) throws ParseException {
+		int size = readVarInt(buf);
+		if (size < 0) {
+			throw new ParseException();
 		}
-		return buf;
+		Map<K, V> map = new HashMap<>();
+		for (int i = 0; i < size; i++) {
+			map.put(keyParser.parse(buf), valueParser.parse(buf));
+		}
+		return map;
 	}
+	// endregion
 
 	public static RawServer.CommitEntry toCommitEntry(ByteBuf buf) throws ParseException {
 		CommitId commitId = CommitId.ofBytes(readBytes(buf));

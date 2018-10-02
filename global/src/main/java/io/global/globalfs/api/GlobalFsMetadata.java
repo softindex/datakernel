@@ -26,10 +26,14 @@ public final class GlobalFsMetadata {
 	private final long revision;
 
 	// region creators
-	public GlobalFsMetadata(GlobalFsPath path, long size, long revision) {
+	private GlobalFsMetadata(GlobalFsPath path, long size, long revision) {
 		this.path = path;
 		this.size = size;
 		this.revision = revision;
+	}
+
+	public static GlobalFsMetadata of(GlobalFsPath path, long size, long revision) {
+		return new GlobalFsMetadata(path, size, revision);
 	}
 	// endregion
 
@@ -66,16 +70,16 @@ public final class GlobalFsMetadata {
 	}
 
 	@Override
+	public int hashCode() {
+		return 31 * (31 * path.hashCode() + (int) (size ^ (size >>> 32))) + (int) (revision ^ (revision >>> 32));
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		GlobalFsMetadata that = (GlobalFsMetadata) o;
 		return size == that.size && revision == that.revision && path.equals(that.path);
-	}
-
-	@Override
-	public int hashCode() {
-		return 31 * (31 * path.hashCode() + (int) (size ^ (size >>> 32))) + (int) (revision ^ (revision >>> 32));
 	}
 
 	@Override
