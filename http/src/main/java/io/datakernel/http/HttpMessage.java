@@ -16,26 +16,30 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.NotNull;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
+import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfBuf;
+import io.datakernel.http.HttpHeaderValue.ParserIntoList;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.util.ParserFunction;
 
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
-import static io.datakernel.http.HttpHeaders.DATE;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.*;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
  */
 public abstract class HttpMessage {
-	protected ArrayList<HttpHeaders.Value> headers = new ArrayList<>();
-	private ArrayList<ByteBuf> headerBufs;
+	protected Map<HttpHeader, HttpHeaderValue> headers = new LinkedHashMap<>();
+	protected Map<String, HttpCookie> cookies;
 	protected SerialSupplier<ByteBuf> bodySupplier;
 	protected ByteBuf body;
 	protected boolean useGzip;
@@ -43,102 +47,135 @@ public abstract class HttpMessage {
 	protected HttpMessage() {
 	}
 
-	public final Map<HttpHeader, String> getHeaders() {
-		LinkedHashMap<HttpHeader, String> map = new LinkedHashMap<>(headers.size() * 2);
-		for (HttpHeaders.Value headerValue : headers) {
-			HttpHeader header = headerValue.getKey();
-			String headerString = headerValue.toString();
-			if (!map.containsKey(header)) {
-				map.put(header, headerString);
+	public final Map<HttpHeader, HttpHeaderValue> getHeaders() {
+		return headers;
+	}
+
+	void addHeader(HttpHeader header, ByteBuf buf) {
+		assert !isRecycled();
+		HttpHeaderValueOfBuf headerBytes =
+				(HttpHeaderValueOfBuf) headers.computeIfAbsent(header,
+						$ -> new HttpHeaderValueOfBuf());
+		headerBytes.add(buf);
+	}
+
+	public void setHeader(HttpHeader header, String string) {
+		assert !isRecycled();
+		setHeader(header, HttpHeaderValue.of(string));
+	}
+
+	public void setHeader(HttpHeader header, byte[] value) {
+		assert !isRecycled();
+		setHeader(header, HttpHeaderValue.ofBytes(value, 0, value.length));
+	}
+
+	public void setHeader(HttpHeader header, HttpHeaderValue value) {
+		assert !isRecycled();
+		HttpHeaderValue prev = headers.put(header, value);
+		checkArgument(prev == null);
+	}
+
+	@NotNull
+	public ByteBuf getHeaderBuf(HttpHeader header) throws ParseException {
+		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
+		if (headerBuf != null) {
+			if (headerBuf.bufs != null) throw new ParseException();
+			return headerBuf.buf;
+		}
+		throw new ParseException();
+	}
+
+	@Nullable
+	public ByteBuf getHeaderBufOrNull(HttpHeader header) throws ParseException {
+		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
+		if (headerBuf != null) {
+			if (headerBuf.bufs != null) throw new ParseException();
+			return headerBuf.buf;
+		}
+		return null;
+	}
+
+	public List<ByteBuf> getHeaderBufs(HttpHeader header) {
+		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
+		if (headerBuf == null) return emptyList();
+		if (headerBuf.bufs == null) return singletonList(headerBuf.buf);
+		return Arrays.asList(headerBuf.bufs);
+	}
+
+	@NotNull
+	public final String getHeader(HttpHeader header) throws ParseException {
+		HttpHeaderValue headerValue = headers.get(header);
+		if (headerValue != null) return headerValue.toString();
+		throw new ParseException();
+	}
+
+	@Nullable
+	public final String getHeaderOrNull(HttpHeader header) {
+		HttpHeaderValue headerValue = headers.get(header);
+		if (headerValue != null) return headerValue.toString();
+		return null;
+	}
+
+	@NotNull
+	public <T> T parseHeader(HttpHeader header, ParserFunction<ByteBuf, T> parser) throws ParseException {
+		return parser.parse(getHeaderBuf(header));
+	}
+
+	public <T> T parseHeader(HttpHeader header, ParserFunction<ByteBuf, T> parser, T defaultValue) throws ParseException {
+		return parser.parseOrDefault(getHeaderBufOrNull(header), defaultValue);
+	}
+
+	public <T> List<T> parseHeader(HttpHeader header, ParserIntoList<T> parser) throws ParseException {
+		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
+		if (headerBuf == null) return emptyList();
+		List<T> list = new ArrayList<>();
+		if (headerBuf.bufs == null) {
+			parser.parse(headerBuf.buf, list);
+		} else {
+			for (ByteBuf buf : headerBuf.bufs) {
+				parser.parse(buf, list);
 			}
 		}
-		return map;
+		return list;
 	}
 
-	public final Map<HttpHeader, List<String>> getAllHeaders() {
-		LinkedHashMap<HttpHeader, List<String>> map = new LinkedHashMap<>(headers.size() * 2);
-		for (HttpHeaders.Value headerValue : headers) {
-			HttpHeader header = headerValue.getKey();
-			String headerString = headerValue.toString();
-			map.computeIfAbsent(header, k -> new ArrayList<>()).add(headerString);
+	protected abstract List<HttpCookie> doParseCookies() throws ParseException;
+
+	public abstract void setCookies(List<HttpCookie> cookies);
+
+	public void setCookies(HttpCookie... cookie) {
+		setCookies(Arrays.asList(cookie));
+	}
+
+	public void setCookie(HttpCookie cookie) {
+		setCookies(Collections.singletonList(cookie));
+	}
+
+	public Map<String, HttpCookie> getCookies() throws ParseException {
+		if (cookies != null) return cookies;
+		Map<String, HttpCookie> cookies = new LinkedHashMap<>();
+		for (HttpCookie cookie : doParseCookies()) {
+			cookies.put(cookie.getName(), cookie);
 		}
-		return map;
+		this.cookies = cookies;
+		return cookies;
 	}
 
-	/**
-	 * Sets the header with value to this HttpMessage.
-	 * Checks whether the header was already applied to the message.
-	 *
-	 * @param value value of this header
-	 */
-	protected void setHeader(HttpHeaders.Value value) {
-		assert !isRecycled();
-		assert getHeaderValue(value.getKey()) == null : "Duplicate header: " + value.getKey();
-		headers.add(value);
+	public HttpCookie getCookie(String cookie) throws ParseException {
+		HttpCookie httpCookie = getCookies().get(cookie);
+		if (httpCookie != null) return httpCookie;
+		throw new ParseException();
 	}
 
-	/**
-	 * Adds the header with value to this HttpMessage
-	 * Does not check whether the header was already applied to the message.
-	 *
-	 * @param value value of this header
-	 */
-	protected void addHeader(HttpHeaders.Value value) {
-		assert !isRecycled();
-		headers.add(value);
-	}
-
-	public void addHeader(HttpHeader header, ByteBuf value) {
-		assert !isRecycled();
-		addHeader(HttpHeaders.asBytes(header, value.array(), value.readPosition(), value.readRemaining()));
-		if (value.isRecycleNeeded()) {
-			if (headerBufs == null) {
-				headerBufs = new ArrayList<>(4);
-			}
-			headerBufs.add(value);
-		}
-	}
-
-	public void addHeader(HttpHeader header, byte[] value) {
-		assert !isRecycled();
-		addHeader(HttpHeaders.asBytes(header, value, 0, value.length));
-	}
-
-	public void addHeader(HttpHeader header, String string) {
-		assert !isRecycled();
-		addHeader(HttpHeaders.ofString(header, string));
+	@Nullable
+	public HttpCookie getCookieOrNull(String cookie) throws ParseException {
+		HttpCookie httpCookie = getCookies().get(cookie);
+		if (httpCookie != null) return httpCookie;
+		return null;
 	}
 
 	public void setBodyGzipCompression() {
 		this.useGzip = true;
-	}
-
-	// getters
-	public ContentType getContentType() {
-		assert !isRecycled();
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(CONTENT_TYPE);
-		if (header != null) {
-			try {
-				return ContentType.parse(header.array, header.offset, header.size);
-			} catch (ParseException e) {
-				return null;
-			}
-		}
-		return null;
-	}
-
-	public Date getDate() {
-		assert !isRecycled();
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(DATE);
-		if (header != null) {
-			try {
-				long date = HttpDate.parse(header.array, header.offset);
-				return new Date(date);
-			} catch (ParseException e) {
-				return null;
-			}
-		}
-		return null;
 	}
 
 	public ByteBuf getBody() {
@@ -198,13 +235,10 @@ public abstract class HttpMessage {
 	 */
 	protected void recycleHeaders() {
 		assert !isRecycled();
-		headers = null;
-		if (headerBufs != null) {
-			for (ByteBuf headerBuf : headerBufs) {
-				headerBuf.recycle();
-			}
-			headerBufs.clear();
+		for (HttpHeaderValue headerValue : headers.values()) {
+			headerValue.recycle();
 		}
+		headers = null;
 	}
 
 	protected void recycle() {
@@ -226,7 +260,7 @@ public abstract class HttpMessage {
 	 */
 	protected void writeHeaders(ByteBuf buf) {
 		assert !isRecycled();
-		for (HttpHeaders.Value entry : this.headers) {
+		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : this.headers.entrySet()) {
 			HttpHeader header = entry.getKey();
 
 			buf.put(CR);
@@ -234,7 +268,7 @@ public abstract class HttpMessage {
 			header.writeTo(buf);
 			buf.put((byte) ':');
 			buf.put(SP);
-			entry.writeTo(buf);
+			entry.getValue().writeTo(buf);
 		}
 
 		buf.put(CR);
@@ -246,56 +280,12 @@ public abstract class HttpMessage {
 	protected int estimateSize(int firstLineSize) {
 		assert !isRecycled();
 		int size = firstLineSize;
-		for (HttpHeaders.Value entry : this.headers) {
+		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : this.headers.entrySet()) {
 			HttpHeader header = entry.getKey();
-			size += 2 + header.size() + 2 + entry.estimateSize(); // CR,LF,header,": ",value
+			size += 2 + header.size() + 2 + entry.getValue().estimateSize(); // CR,LF,header,": ",value
 		}
 		size += 4; // CR,LF,CR,LF
 		return size;
-	}
-
-	protected final HttpHeaders.Value getHeaderValue(HttpHeader header) {
-		for (HttpHeaders.Value headerValue : headers) {
-			if (header.equals(headerValue.getKey()))
-				return headerValue;
-		}
-		return null;
-	}
-
-	public final String getHeader(HttpHeader header) {
-		HttpHeaders.Value result = getHeaderValue(header);
-		return result == null ? null : result.toString();
-	}
-
-	protected final List<HttpHeaders.Value> getHeaderValues(HttpHeader header) {
-		List<HttpHeaders.Value> result = new ArrayList<>();
-		for (HttpHeaders.Value headerValue : headers) {
-			if (header.equals(headerValue.getKey()))
-				result.add(headerValue);
-		}
-		return result;
-	}
-
-	protected abstract List<HttpCookie> getCookies();
-
-	public Map<String, HttpCookie> getCookiesMap() {
-		assert !isRecycled();
-		List<HttpCookie> cookies = getCookies();
-		LinkedHashMap<String, HttpCookie> map = new LinkedHashMap<>();
-		for (HttpCookie cookie : cookies) {
-			map.put(cookie.getName(), cookie);
-		}
-		return map;
-	}
-
-	public HttpCookie getCookie(String name) {
-		assert !isRecycled();
-		List<HttpCookie> cookies = getCookies();
-		for (HttpCookie cookie : cookies) {
-			if (name.equals(cookie.getName()))
-				return cookie;
-		}
-		return null;
 	}
 
 	protected abstract int estimateSize();

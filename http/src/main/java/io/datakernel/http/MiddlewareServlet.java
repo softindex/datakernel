@@ -117,7 +117,7 @@ public class MiddlewareServlet implements AsyncServlet {
 		if (urlPart.isEmpty()) {
 			AsyncServlet servlet = getRootServletOrWildcard(method);
 			if (servlet != null) {
-				return servlet.serve(request);
+				return servlet.tryServe(request);
 			} else if (fallbackServlet == null) {
 				if (!rootServlets.isEmpty()) {
 					return null;
@@ -146,7 +146,7 @@ public class MiddlewareServlet implements AsyncServlet {
 
 		if (result == null && fallbackServlet != null) {
 			request.setPos(introPosition);
-			result = fallbackServlet.serve(request);
+			result = fallbackServlet.tryServe(request);
 		}
 		return result;
 	}

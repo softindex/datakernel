@@ -17,11 +17,12 @@ import io.global.common.SimKeyHash;
 import io.global.globalsync.api.*;
 import io.global.globalsync.util.HttpDataFormats;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static io.datakernel.http.HttpHeaderValue.ofContentType;
+import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpUtils.renderQueryString;
@@ -62,7 +63,7 @@ public class RawServerHttpClient implements RawServer {
 
 	private <T> Initializer<HttpRequest> withJson(TypeAdapter<T> gson, T value) {
 		return httpRequest -> httpRequest
-				.withContentType(JSON)
+				.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(JSON)))
 				.withBody(toJson(gson, value).getBytes(UTF_8));
 	}
 
@@ -70,7 +71,7 @@ public class RawServerHttpClient implements RawServer {
 		if (r.getCode() != 200) Stage.ofException(HttpException.ofCode(r.getCode()));
 		try {
 			return Stage.of(gson != null ? fromJson(gson, r.getBody().asString(UTF_8)) : null);
-		} catch (IOException e) {
+		} catch (ParseException e) {
 			return Stage.ofException(e);
 		}
 	}

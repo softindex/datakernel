@@ -1,4 +1,4 @@
-package io.datakernel.http.stream2;
+package io.datakernel.http.stream;
 
 import io.datakernel.async.AsyncProcess;
 import io.datakernel.async.Stages;

@@ -74,8 +74,8 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					long[] array = new long[32];
 					int size = 0;
 					while (buf.canRead()) {
-						byte[] bytes = BinaryDataFormats.readBytes(buf);
 						try {
+							byte[] bytes = BinaryDataFormats.readBytes(buf);
 							SignedData<GlobalFsCheckpoint> checkpoint = SignedData.ofBytes(bytes, GlobalFsCheckpoint::ofBytes);
 							if (array.length == size) {
 								array = Arrays.copyOf(array, size * 2);
@@ -97,8 +97,8 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						return Stage.of(null);
 					}
 					while (buf.canRead()) {
-						byte[] bytes = BinaryDataFormats.readBytes(buf);
 						try {
+							byte[] bytes = BinaryDataFormats.readBytes(buf);
 							SignedData<GlobalFsCheckpoint> checkpoint = SignedData.ofBytes(bytes, GlobalFsCheckpoint::ofBytes);
 							if (checkpoint.getData().getPosition() == position) {
 								return Stage.of(checkpoint);

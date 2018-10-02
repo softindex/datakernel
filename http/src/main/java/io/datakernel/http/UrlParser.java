@@ -284,7 +284,7 @@ public final class UrlParser {
 		if (fragment == -1) {
 			return "";
 		} else {
-			return raw.substring(fragment, raw.length());
+			return raw.substring(fragment);
 		}
 	}
 

@@ -67,7 +67,8 @@ public class ContentTypeTest {
 				"image/webp," +
 				"*/*;q=0.8," +
 				"unknown/mime");
-		List<AcceptMediaType> actual = AcceptMediaType.parse(acceptCts, 0, acceptCts.length);
+		List<AcceptMediaType> result = new ArrayList<>();
+		AcceptMediaType.parse(acceptCts, 0, acceptCts.length, result);
 		List<AcceptMediaType> expected = new ArrayList<>();
 		expected.add(AcceptMediaType.of(HTML, 10));
 		expected.add(AcceptMediaType.of(XHTML_APP, 30));
@@ -75,7 +76,7 @@ public class ContentTypeTest {
 		expected.add(AcceptMediaType.of(WEBP));
 		expected.add(AcceptMediaType.of(ANY, 80));
 		expected.add(AcceptMediaType.of(MediaType.of("unknown/mime")));
-		assertEquals(expected.toString(), actual.toString());
+		assertEquals(expected.toString(), result.toString());
 	}
 
 	@Test

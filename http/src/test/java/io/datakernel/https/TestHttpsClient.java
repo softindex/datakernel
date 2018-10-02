@@ -40,6 +40,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.http.HttpHeaderValue.ofAcceptMediaTypes;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
@@ -88,10 +89,11 @@ public class TestHttpsClient {
 				.withHeader(ACCEPT_ENCODING, "gzip, deflate, sdch")
 				.withHeader(ACCEPT_LANGUAGE, "en-US,en;q=0.8")
 				.withHeader(USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
-				.withAccept(AcceptMediaType.of(HTML),
+				.withHeader(ACCEPT, ofAcceptMediaTypes(
+						AcceptMediaType.of(HTML),
 						AcceptMediaType.of(XHTML_APP),
 						AcceptMediaType.of(XML_APP, 90),
 						AcceptMediaType.of(WEBP),
-						AcceptMediaType.of(ANY, 80));
+						AcceptMediaType.of(ANY, 80)));
 	}
 }

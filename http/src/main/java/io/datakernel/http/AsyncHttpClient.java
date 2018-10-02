@@ -41,7 +41,6 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
-import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -61,8 +60,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	final ConnectionsLinkedList poolReadWrite = new ConnectionsLinkedList();
 	private int poolKeepAliveExpired;
 	private int poolReadWriteExpired;
-
-	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE.toInt()];
 
 	@Nullable
 	private ScheduledRunnable expiredConnectionsCheck;
@@ -387,7 +384,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 								asyncTcpSocketImpl;
 
 						HttpClientConnection connection = new HttpClientConnection(eventloop, address, asyncTcpSocket,
-								AsyncHttpClient.this, headerChars);
+								AsyncHttpClient.this);
 
 						if (inspector != null) inspector.onConnect(request, connection);
 

@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -67,12 +66,6 @@ public final class AcceptCharset {
 
 	public int getQ() {
 		return q;
-	}
-
-	static List<AcceptCharset> parse(byte[] bytes, int pos, int len) throws ParseException {
-		List<AcceptCharset> chs = new ArrayList<>();
-		parse(bytes, pos, len, chs);
-		return chs;
 	}
 
 	static void parse(byte[] bytes, int pos, int len, List<AcceptCharset> list) throws ParseException {
@@ -154,10 +147,25 @@ public final class AcceptCharset {
 	}
 
 	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		AcceptCharset that = (AcceptCharset) o;
+
+		if (q != that.q) return false;
+		return charset.equals(that.charset);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = charset.hashCode();
+		result = 31 * result + q;
+		return result;
+	}
+
+	@Override
 	public String toString() {
-		return "AcceptCharset{" +
-				"charset=" + charset +
-				", q=" + q +
-				'}';
+		return "AcceptCharset{charset=" + charset + ", q=" + q + '}';
 	}
 }

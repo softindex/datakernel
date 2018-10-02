@@ -1,12 +1,12 @@
 package io.datakernel.util.gson;
 
 import com.google.gson.TypeAdapter;
+import io.datakernel.exception.ParseException;
 import io.datakernel.util.SimpleType;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -18,7 +18,7 @@ public class GsonAdaptersTest {
 	public ExpectedException thrown = ExpectedException.none();
 
 	@Test
-	public void primitiveMappingTest() throws IOException {
+	public void primitiveMappingTest() throws ParseException {
 		Random rng = new Random();
 
 		int testInt = rng.nextInt(100);
@@ -40,7 +40,7 @@ public class GsonAdaptersTest {
 	}
 
 	@Test
-	public void primitiveEnumTest() throws IOException {
+	public void primitiveEnumTest() throws ParseException {
 		String res1 = PRIMITIVES_MAP.toJson(TestEnum1.THIRD);
 		String res2 = PRIMITIVES_MAP.toJson(TestEnum2.YELLOW);
 
@@ -52,7 +52,7 @@ public class GsonAdaptersTest {
 	}
 
 	@Test
-	public void primitiveListTest() throws IOException {
+	public void primitiveListTest() throws ParseException {
 		List<String> testList = Arrays.asList("one", "two", "strawberry", "five");
 
 		TypeAdapter<List<String>> adapter = PRIMITIVES_MAP.getAdapter(SimpleType.of(testList.getClass(), SimpleType.of(String.class)).getType());
@@ -64,7 +64,7 @@ public class GsonAdaptersTest {
 	}
 
 	@Test
-	public void primitiveSetTest() throws IOException {
+	public void primitiveSetTest() throws ParseException {
 		Set<String> testSet = new HashSet<>();
 		testSet.add("one");
 		testSet.add("two");
@@ -83,7 +83,7 @@ public class GsonAdaptersTest {
 	}
 
 	@Test
-	public void primitiveMapTest() throws IOException {
+	public void primitiveMapTest() throws ParseException {
 		Map<String, Float> testMap = new HashMap<>();
 		testMap.put("~pi", 3.1415F);
 		testMap.put("~e", 2.7182F);
@@ -108,7 +108,7 @@ public class GsonAdaptersTest {
 	}
 
 	@Test
-	public void objectBuilderTest() throws IOException {
+	public void objectBuilderTest() throws ParseException {
 		PersonPOJO person = new PersonPOJO("Vasiliy", "Pupkin", 18, 75.4F);
 
 		TypeAdapter<PersonPOJO> adapter = TypeAdapterObject.create(PersonPOJO::new)
@@ -125,7 +125,7 @@ public class GsonAdaptersTest {
 	}
 
 	@Test
-	public void extendedMappingTest() throws IOException {
+	public void extendedMappingTest() throws ParseException {
 		TypeAdapterMapping mapping = TypeAdapterMappingImpl.from(PRIMITIVES_MAP)
 				.withAdapter(Class.class, CLASS_JSON)
 				.withAdapter(LocalDate.class, LOCAL_DATE_JSON);

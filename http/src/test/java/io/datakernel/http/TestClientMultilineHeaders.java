@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.http.HttpHeaders.ALLOW;
 import static org.junit.Assert.assertEquals;
 
 public class TestClientMultilineHeaders {
@@ -48,7 +49,7 @@ public class TestClientMultilineHeaders {
 			@Override
 			public Stage<HttpResponse> serve(HttpRequest request) {
 				HttpResponse response = HttpResponse.ok200();
-				response.addHeader(HttpHeaders.ALLOW, "GET,\r\n HEAD");
+				response.setHeader(ALLOW, "GET,\r\n HEAD");
 				return Stage.of(response);
 			}
 		};
@@ -60,7 +61,7 @@ public class TestClientMultilineHeaders {
 				.thenApply(response -> {
 					httpClient.stop();
 					server.close();
-					return response.getHeader(HttpHeaders.ALLOW);
+					return response.getHeaderOrNull(ALLOW);
 				}).toCompletableFuture();
 
 		eventloop.run();

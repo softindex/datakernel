@@ -26,6 +26,8 @@ import io.datakernel.http.*;
 import java.lang.reflect.Type;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.http.HttpHeaderValue.ofContentType;
+import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 
 public final class ConsolidationDebugServlet extends AsyncServletWithStats {
 	private final Gson gson;
@@ -57,7 +59,7 @@ public final class ConsolidationDebugServlet extends AsyncServletWithStats {
 	@Override
 	public Stage<HttpResponse> doServe(HttpRequest request) {
 		return Stage.of(HttpResponse.ok200()
-				.withContentType(ContentType.of(MediaTypes.JSON))
+				.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(MediaTypes.JSON)))
 				.withBody(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo()))));
 	}
 }

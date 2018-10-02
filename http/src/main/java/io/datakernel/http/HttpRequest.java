@@ -17,16 +17,20 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.NotNull;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.ParserFunction;
 
 import java.net.InetAddress;
-import java.nio.charset.Charset;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
@@ -52,43 +56,45 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private UrlParser url;
 	private InetAddress remoteAddress;
 	private Map<String, String> pathParameters;
+	private Map<String, String> queryParameters;
+	private Map<String, String> postParameters;
 
 	// region creators
 	// region builders
-	private HttpRequest(HttpMethod method) {
+	HttpRequest(HttpMethod method, UrlParser url) {
 		this.method = method;
+		this.url = url;
 	}
 
-	public static HttpRequest of(HttpMethod method, String url) throws IllegalArgumentException {
+	public static HttpRequest of(HttpMethod method, String url) {
 		assert method != null;
-		HttpRequest request = new HttpRequest(method);
+		HttpRequest request = new HttpRequest(method, null);
 		request.setUrl(url);
 		return request;
 	}
 
+	public static HttpRequest get(String url) {
+		return HttpRequest.of(GET, url);
+	}
+
+	public static HttpRequest post(String url) {
+		return HttpRequest.of(POST, url);
+	}
+
 	// common builder methods
-	public HttpRequest withUrl(String url) throws IllegalArgumentException {
-		setUrl(url);
-		return this;
-	}
 
-	public HttpRequest withRemoteAddress(InetAddress inetAddress) {
-		setRemoteAddress(inetAddress);
-		return this;
-	}
-
-	public HttpRequest withHeader(HttpHeader header, ByteBuf value) {
-		addHeader(header, value);
+	public HttpRequest withHeader(HttpHeader header, String value) {
+		setHeader(header, value);
 		return this;
 	}
 
 	public HttpRequest withHeader(HttpHeader header, byte[] value) {
-		addHeader(header, value);
+		setHeader(header, value);
 		return this;
 	}
 
-	public HttpRequest withHeader(HttpHeader header, String value) {
-		addHeader(header, value);
+	public HttpRequest withHeader(HttpHeader header, HttpHeaderValue value) {
+		setHeader(header, value);
 		return this;
 	}
 
@@ -108,140 +114,35 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	// specific builder methods
-	public HttpRequest withAccept(List<AcceptMediaType> value) {
-		setAccept(value);
-		return this;
+
+	@Override
+	protected List<HttpCookie> doParseCookies() throws ParseException {
+		return parseHeader(COOKIE, HttpHeaderValue::toSimpleCookies);
 	}
 
-	public HttpRequest withAccept(AcceptMediaType... value) {
-		setAccept(value);
-		return this;
-	}
-
-	public HttpRequest withAcceptCharsets(List<AcceptCharset> values) {
-		setAcceptCharsets(values);
-		return this;
-	}
-
-	public HttpRequest withAcceptCharsets(AcceptCharset... values) {
-		setAcceptCharsets(values);
-		return this;
+	@Override
+	public void setCookies(List<HttpCookie> cookies) {
+		setHeader(COOKIE, new HttpHeaderValue.HttpHeaderValueOfSimpleCookies(cookies));
 	}
 
 	public HttpRequest withCookies(List<HttpCookie> cookies) {
-		addCookies(cookies);
+		setCookies(cookies);
 		return this;
 	}
 
 	public HttpRequest withCookies(HttpCookie... cookie) {
-		addCookies(cookie);
+		setCookies(cookie);
 		return this;
 	}
 
 	public HttpRequest withCookie(HttpCookie cookie) {
-		addCookie(cookie);
-		return this;
-	}
-
-	public HttpRequest withContentType(ContentType contentType) {
-		setContentType(contentType);
-		return this;
-	}
-
-	public HttpRequest withContentType(MediaType mime) {
-		setContentType(mime);
-		return this;
-	}
-
-	public HttpRequest withContentType(MediaType mime, Charset charset) {
-		setContentType(mime, charset);
-		return this;
-	}
-
-	public HttpRequest withContentType(MediaType mime, String charset) {
-		return withContentType(mime, Charset.forName(charset));
-	}
-
-	public HttpRequest withDate(Date date) {
-		setDate(date);
-		return this;
-	}
-
-	public HttpRequest withIfModifiedSince(Date date) {
-		setIfModifiedSince(date);
-		return this;
-	}
-
-	public HttpRequest withIfUnModifiedSince(Date date) {
-		setIfUnModifiedSince(date);
+		setCookie(cookie);
 		return this;
 	}
 
 	public HttpRequest withBodyGzipCompression() {
 		super.setBodyGzipCompression();
 		return this;
-	}
-
-	public HttpRequest withAcceptEncodingGzip() {
-		setHeader(HttpHeaders.ofString(ACCEPT_ENCODING, "gzip"));
-		return this;
-	}
-	// endregion
-	// endregion
-
-	static HttpRequest of(HttpMethod method, UrlParser url) {
-		assert method != null;
-		HttpRequest request = new HttpRequest(method);
-		request.url = url;
-		return request;
-	}
-
-	public static HttpRequest get(String url) {
-		return HttpRequest.of(GET, url);
-	}
-
-	public static HttpRequest post(String url) {
-		return HttpRequest.of(POST, url);
-	}
-
-	public void setAccept(List<AcceptMediaType> value) {
-		addHeader(ofAcceptContentTypes(HttpHeaders.ACCEPT, value));
-	}
-
-	public void setAcceptCharsets(List<AcceptCharset> values) {
-		addHeader(ofCharsets(HttpHeaders.ACCEPT_CHARSET, values));
-	}
-
-	public void addCookies(List<HttpCookie> cookies) {
-		addHeader(ofCookies(COOKIE, cookies));
-	}
-
-	public void addCookies(HttpCookie... cookie) {
-		addCookies(Arrays.asList(cookie));
-	}
-
-	public void addCookie(HttpCookie cookie) {
-		addCookies(Collections.singletonList(cookie));
-	}
-
-	public void setContentType(ContentType contentType) {
-		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, contentType));
-	}
-
-	public void setContentType(MediaType mime) {
-		setContentType(ContentType.of(mime));
-	}
-
-	public void setContentType(MediaType mime, Charset charset) {
-		setContentType(ContentType.of(mime, charset));
-	}
-
-	public void setDate(Date date) {
-		setHeader(ofDate(HttpHeaders.DATE, date));
-	}
-
-	public void setAcceptEncodingGzip() {
-		setHeader(HttpHeaders.ofString(ACCEPT_ENCODING, "gzip"));
 	}
 
 	// region getters
@@ -256,21 +157,15 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 	// endregion
 
-	public void setRemoteAddress(InetAddress inetAddress) {
-		assert !isRecycled();
+	void setRemoteAddress(InetAddress inetAddress) {
 		this.remoteAddress = inetAddress;
 	}
 
-	@Nullable
 	public String getFullUrl() {
 		if (!url.isRelativePath()) {
 			return url.toString();
 		}
-		String host = getHost();
-		if (host == null) {
-			return null;
-		}
-		return "http://" + host + url.getPathAndQuery();
+		return "http://" + getHeaderOrNull(HOST) + url.getPathAndQuery();
 	}
 
 	public boolean isHttps() {
@@ -283,26 +178,18 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	// region setters
-	public void setUrl(String url) throws IllegalArgumentException {
+	void setUrl(String url) {
 		assert !isRecycled();
 		this.url = UrlParser.of(url);
 		if (!this.url.isRelativePath()) {
 			assert this.url.getHostAndPort() != null; // sadly no advanced contracts yet
-			setHeader(HttpHeaders.ofString(HttpHeaders.HOST, this.url.getHostAndPort()));
+			setHeader(HOST, this.url.getHostAndPort());
 		}
 	}
 
 	@Nullable
 	public String getHostAndPort() {
 		return url.getHostAndPort();
-	}
-
-	@Nullable
-	public String getHost() {
-		String host = getHeader(HttpHeaders.HOST);
-		if ((host == null) || host.isEmpty())
-			return null;
-		return host;
 	}
 
 	public String getPath() {
@@ -323,10 +210,27 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return url.getFragment();
 	}
 
-	@Nullable
-	public String getQueryParameter(String key) {
+	public Map<String, String> getQueryParameters() {
 		assert !isRecycled();
-		return url.getQueryParameter(key);
+		if (queryParameters != null) return queryParameters;
+		queryParameters = url.getQueryParameters();
+		return queryParameters;
+	}
+
+	@NotNull
+	public String getQueryParameter(String key) throws ParseException {
+		assert !isRecycled();
+		String result = url.getQueryParameter(key);
+		if (result != null) return result;
+		throw new ParseException();
+	}
+
+	@Nullable
+	public String getQueryParameterOrNull(String key) {
+		assert !isRecycled();
+		String result = url.getQueryParameter(key);
+		if (result != null) return result;
+		return null;
 	}
 
 	public List<String> getQueryParameters(String key) {
@@ -339,28 +243,50 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return url.getQueryParametersIterable();
 	}
 
-	public Map<String, String> getQueryParameters() {
-		assert !isRecycled();
-		return url.getQueryParameters();
+	@NotNull
+	public <T> T parseQueryParameter(String key, ParserFunction<String, T> parser) throws ParseException {
+		return parser.parse(getQueryParameter(key));
 	}
 
-	public Map<String, String> getPostParameters() {
+	public <T> T parseQueryParameter(String key, ParserFunction<String, T> parser, T defaultValue) throws ParseException {
+		return parser.parseOrDefault(getQueryParameterOrNull(key), defaultValue);
+	}
+
+	public Map<String, String> getPostParameters() throws ParseException {
 		assert !isRecycled();
+		if (postParameters != null) return postParameters;
 		checkNotNull(body);
+		ContentType contentType = parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType, null);
 		if (method == POST
-				&& getContentType() != null
-				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
+				&& contentType != null
+				&& contentType.getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
 				&& this.body.readPosition() != this.body.writePosition()) {
-			return UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.readPosition(), body.readRemaining()));
+			postParameters = UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.readPosition(), body.readRemaining()));
 		} else {
-			return Collections.emptyMap();
+			postParameters = Collections.emptyMap();
 		}
+		return postParameters;
+	}
+
+	@NotNull
+	public String getPostParameter(String postParameter) throws ParseException {
+		String result = getPostParameters().get(postParameter);
+		if (result != null) return result;
+		throw new ParseException();
 	}
 
 	@Nullable
-	public String getPathParameter(String key) {
-		assert !isRecycled();
-		return pathParameters != null ? pathParameters.get(key) : null;
+	public String getPostParameterOrNull(String postParameter) throws ParseException {
+		return getPostParameters().get(postParameter);
+	}
+
+	@NotNull
+	public <T> T parsePostParameter(String postParameter, ParserFunction<String, T> parser) throws ParseException {
+		return parser.parse(getPostParameter(postParameter));
+	}
+
+	public <T> T parsePostParameter(String postParameter, ParserFunction<String, T> parser, T defaultValue) throws ParseException {
+		return parser.parseOrDefault(getPostParameterOrNull(postParameter), defaultValue);
 	}
 
 	public Map<String, String> getPathParameters() {
@@ -368,100 +294,30 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return pathParameters != null ? pathParameters : Collections.emptyMap();
 	}
 
-	public List<AcceptMediaType> getAccept() {
+	@NotNull
+	public String getPathParameter(String key) throws ParseException {
 		assert !isRecycled();
-		List<AcceptMediaType> list = new ArrayList<>();
-		List<Value> headers = getHeaderValues(ACCEPT);
-		for (Value header : headers) {
-			ValueOfBytes value = (ValueOfBytes) header;
-			try {
-				AcceptMediaType.parse(value.array, value.offset, value.size, list);
-			} catch (ParseException e) {
-				return Collections.emptyList();
-			}
-		}
-		return list;
-	}
-
-	public void setAccept(AcceptMediaType... value) {
-		setAccept(Arrays.asList(value));
-	}
-
-	public List<AcceptCharset> getAcceptCharsets() {
-		assert !isRecycled();
-		List<AcceptCharset> charsets = new ArrayList<>();
-		List<Value> headers = getHeaderValues(ACCEPT_CHARSET);
-		for (Value header : headers) {
-			ValueOfBytes value = (ValueOfBytes) header;
-			try {
-				AcceptCharset.parse(value.array, value.offset, value.size, charsets);
-			} catch (ParseException e) {
-				return Collections.emptyList();
-			}
-		}
-		return charsets;
-	}
-
-	public void setAcceptCharsets(AcceptCharset... values) {
-		setAcceptCharsets(Arrays.asList(values));
+		String result = pathParameters != null ? pathParameters.get(key) : null;
+		if (result != null) return result;
+		throw new ParseException();
 	}
 
 	@Nullable
-	public Date getIfModifiedSince() {
+	public String getPathParameterOrNull(String key) {
 		assert !isRecycled();
-		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_MODIFIED_SINCE);
-		if (header != null) {
-			try {
-				return new Date(HttpDate.parse(header.array, header.offset));
-			} catch (ParseException e) {
-				return null;
-			}
-		}
-		return null;
+		return pathParameters != null ? pathParameters.get(key) : null;
 	}
 
-	public void setIfModifiedSince(Date date) {
-		setHeader(ofDate(IF_MODIFIED_SINCE, date));
+	@NotNull
+	public <T> T parsePathParameter(String key, ParserFunction<String, T> parser) throws ParseException {
+		return parser.parse(getPathParameter(key));
 	}
+
+	public <T> T parsePathParameter(String key, ParserFunction<String, T> parser, T defaultValue) throws ParseException {
+		return parser.parseOrDefault(getPathParameterOrNull(key), defaultValue);
+	}
+
 	// endregion
-
-	@Nullable
-	public Date getIfUnModifiedSince() {
-		assert !isRecycled();
-		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_UNMODIFIED_SINCE);
-		if (header != null)
-			try {
-				return new Date(HttpDate.parse(header.array, header.offset));
-			} catch (ParseException e) {
-				return null;
-			}
-		return null;
-	}
-
-	public void setIfUnModifiedSince(Date date) {
-		setHeader(ofDate(IF_UNMODIFIED_SINCE, date));
-	}
-
-	@Override
-	public List<HttpCookie> getCookies() {
-		assert !isRecycled();
-		List<HttpCookie> cookie = new ArrayList<>();
-		List<Value> headers = getHeaderValues(COOKIE);
-		for (Value header : headers) {
-			ValueOfBytes value = (ValueOfBytes) header;
-			try {
-				HttpCookie.parseSimple(value.array, value.offset, value.offset + value.size, cookie);
-			} catch (ParseException e) {
-				return new ArrayList<>();
-			}
-		}
-		return cookie;
-	}
-
-	public boolean isAcceptEncodingGzip() {
-		String acceptEncoding = this.getHeader(HttpHeaders.ACCEPT_ENCODING);
-		return acceptEncoding != null && acceptEncoding.contains("gzip");
-	}
 
 	int getPos() {
 		return url.pos;

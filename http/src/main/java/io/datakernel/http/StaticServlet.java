@@ -24,6 +24,9 @@ import io.datakernel.loader.StaticLoader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
+import static io.datakernel.http.HttpHeaderValue.ofContentType;
+import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
+
 @SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
 public final class StaticServlet implements AsyncServlet {
 	public static final Charset DEFAULT_TXT_ENCODING = StandardCharsets.UTF_8;
@@ -64,7 +67,7 @@ public final class StaticServlet implements AsyncServlet {
 	protected HttpResponse createHttpResponse(ByteBuf buf, String path) {
 		return HttpResponse.ofCode(200)
 				.withBody(buf)
-				.withContentType(getContentType(path));
+				.withHeader(CONTENT_TYPE, ofContentType(getContentType(path)));
 	}
 
 	@Override

@@ -2,6 +2,7 @@ package io.global.globalfs.api;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.Signable;
@@ -23,7 +24,7 @@ public final class GlobalFsCheckpoint implements Signable {
 		this.digest = digest;
 	}
 
-	public static GlobalFsCheckpoint ofBytes(byte[] bytes) {
+	public static GlobalFsCheckpoint ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 		long position = buf.readLong();
 		byte[] digestState = BinaryDataFormats.readBytes(buf);

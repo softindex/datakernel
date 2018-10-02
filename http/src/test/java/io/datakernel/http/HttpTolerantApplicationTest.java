@@ -135,7 +135,7 @@ public class HttpTolerantApplicationTest {
 
 			Future<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + port))
 					.thenApply(response ->
-							response.getHeader(HttpHeaders.CONTENT_TYPE))
+							response.getHeaderOrNull(HttpHeaders.CONTENT_TYPE))
 					.thenRunEx(httpClient::stop)
 					.toCompletableFuture();
 

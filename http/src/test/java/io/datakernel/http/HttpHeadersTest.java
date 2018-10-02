@@ -16,14 +16,14 @@
 
 package io.datakernel.http;
 
+import io.datakernel.exception.ParseException;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.util.Date;
-import java.util.Map;
-
 import static io.datakernel.http.ContentTypes.JSON_UTF_8;
+import static io.datakernel.http.HttpHeaderValue.*;
+import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.MediaTypes.ANY_IMAGE;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -34,23 +34,21 @@ public class HttpHeadersTest {
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
-	public void testValuesToStrings() {
+	public void testValuesToStrings() throws ParseException {
 		HttpRequest request = HttpRequest.post("http://example.com")
-				.withContentType(JSON_UTF_8)
-				.withAccept(AcceptMediaType.of(ANY_IMAGE, 50), AcceptMediaType.of(MediaTypes.HTML))
-				.withAcceptCharsets(AcceptCharset.of(UTF_8), AcceptCharset.of(ISO_8859_1))
+				.withHeader(CONTENT_TYPE, ofContentType(JSON_UTF_8))
+				.withHeader(ACCEPT, ofAcceptMediaTypes(AcceptMediaType.of(ANY_IMAGE, 50), AcceptMediaType.of(MediaTypes.HTML)))
+				.withHeader(ACCEPT_CHARSET, ofAcceptCharsets(AcceptCharset.of(UTF_8), AcceptCharset.of(ISO_8859_1)))
 				.withCookies(HttpCookie.of("key1", "value1"), HttpCookie.of("key2"), HttpCookie.of("key3", "value2"));
 
-		Map<HttpHeader, String> headers = request.getHeaders();
-		assertEquals("application/json; charset=utf-8", headers.get(HttpHeaders.CONTENT_TYPE));
-		assertEquals("image/*; q=0.5, text/html", headers.get(HttpHeaders.ACCEPT));
-		assertEquals("utf-8, iso-8859-1", headers.get(HttpHeaders.ACCEPT_CHARSET));
-		assertEquals("key1=value1; key2; key3=value2", headers.get(HttpHeaders.COOKIE));
+		assertEquals("application/json; charset=utf-8", request.getHeader(CONTENT_TYPE));
+		assertEquals("image/*; q=0.5, text/html", request.getHeader(ACCEPT));
+		assertEquals("utf-8, iso-8859-1", request.getHeader(ACCEPT_CHARSET));
+		assertEquals("key1=value1; key2; key3=value2", request.getHeader(COOKIE));
 
 		HttpResponse response = HttpResponse.ofCode(200)
-				.withDate(new Date(1486944000021L));
+				.withHeader(DATE, HttpHeaderValue.ofTimestamp(1486944000021L));
 
-		headers = response.getHeaders();
-		assertEquals("Mon, 13 Feb 2017 00:00:00 GMT", headers.get(HttpHeaders.DATE));
+		assertEquals("Mon, 13 Feb 2017 00:00:00 GMT", response.getHeader(DATE));
 	}
 }

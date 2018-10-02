@@ -30,13 +30,16 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.http.HttpHeaderValue.*;
+import static io.datakernel.http.HttpHeaders.*;
+import static java.time.ZoneOffset.UTC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -52,17 +55,17 @@ public class HttpApiTest {
 	// request
 	private List<AcceptMediaType> requestAcceptContentTypes = new ArrayList<>();
 	private List<AcceptCharset> requestAcceptCharsets = new ArrayList<>();
-	private Date requestDate = createDate(1999, 1, 1);
-	private Date dateIMS = createDate(2012, 18, 1);
-	private Date dateIUMS = createDate(1972, 0, 1);
+	private Instant requestDate = createDate(1999, 1, 1);
+	private Instant dateIMS = createDate(2011, 3, 4);
+	private Instant dateIUMS = createDate(2012, 5, 6);
 	private MediaType requestMime = MediaTypes.ANY_TEXT;
 	private ContentType requestContentType = ContentType.of(requestMime);
 	private List<HttpCookie> requestCookies = new ArrayList<>();
 
 	// response
-	private Date responseDate = createDate(2000, 11, 17);
-	private Date expiresDate = createDate(2011, 2, 22);
-	private Date lastModified = createDate(2099, 11, 13);
+	private Instant responseDate = createDate(2000, 11, 17);
+	private Instant expiresDate = createDate(2011, 2, 22);
+	private Instant lastModified = createDate(2099, 11, 13);
 	private MediaType responseMime = MediaType.of("font/woff2");
 	private Charset responseCharset = StandardCharsets.UTF_16LE;
 	private ContentType responseContentType = ContentType.of(responseMime, responseCharset);
@@ -109,7 +112,7 @@ public class HttpApiTest {
 
 		HttpCookie cookie1 = HttpCookie.of("name2", "value2");
 		cookie1.setMaxAge(123);
-		cookie1.setExpirationDate(new Date());
+		cookie1.setExpirationDate(Instant.now());
 		responseCookies.add(cookie1);
 	}
 
@@ -138,47 +141,46 @@ public class HttpApiTest {
 	}
 
 	private HttpResponse createResponse() {
-		HttpResponse response = HttpResponse.ok200();
-		response.withDate(responseDate);
-		response.withExpires(expiresDate);
-		response.withContentType(responseContentType);
-		response.withCookies(responseCookies);
-		response.withLastModified(lastModified);
-		response.withAge(age);
-		return response;
+		return HttpResponse.ok200()
+				.withHeader(DATE, ofInstant(responseDate))
+				.withHeader(EXPIRES, ofInstant(expiresDate))
+				.withHeader(CONTENT_TYPE, ofContentType(responseContentType))
+				.withHeader(LAST_MODIFIED, ofInstant(lastModified))
+				.withHeader(AGE, ofDecimal(age))
+				.withCookies(responseCookies);
 	}
 
 	private HttpRequest createRequest() {
 		return HttpRequest.get("http://127.0.0.1:" + PORT)
-				.withAccept(requestAcceptContentTypes)
-				.withAcceptCharsets(requestAcceptCharsets)
-				.withDate(requestDate)
-				.withContentType(requestContentType)
-				.withIfModifiedSince(dateIMS)
-				.withIfUnModifiedSince(dateIUMS)
+				.withHeader(ACCEPT, ofAcceptMediaTypes(requestAcceptContentTypes))
+				.withHeader(ACCEPT_CHARSET, ofAcceptCharsets(requestAcceptCharsets))
+				.withHeader(DATE, ofInstant(requestDate))
+				.withHeader(CONTENT_TYPE, ofContentType(requestContentType))
+				.withHeader(IF_MODIFIED_SINCE, ofInstant(dateIMS))
+				.withHeader(IF_UNMODIFIED_SINCE, ofInstant(dateIUMS))
 				.withCookies(requestCookies);
 	}
 
 	private void testResponse(HttpResponse response) throws ParseException {
-		assertEquals(responseContentType.toString(), response.getContentType().toString());
-		assertEquals(responseCookies.toString(), response.getCookies().toString());
-		assertEquals(responseDate.toString(), response.getDate().toString());
-		assertEquals(age, response.getAge());
-		assertEquals(expiresDate.toString(), response.getExpires().toString());
-		assertEquals(lastModified.toString(), response.getLastModified().toString());
+		assertEquals(responseContentType, response.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
+		assertEquals(responseCookies, new ArrayList<>(response.getCookies().values()));
+		assertEquals(responseDate, response.parseHeader(DATE, HttpHeaderValue::toInstant));
+		assertEquals(age, (int) response.parseHeader(AGE, HttpHeaderValue::toDecimal));
+		assertEquals(expiresDate, response.parseHeader(EXPIRES, HttpHeaderValue::toInstant));
+		assertEquals(lastModified, response.parseHeader(LAST_MODIFIED, HttpHeaderValue::toInstant));
 	}
 
 	private void testRequest(HttpRequest request) throws ParseException {
-		assertEquals(requestAcceptContentTypes.toString(), request.getAccept().toString());
-		assertEquals(requestAcceptCharsets.toString(), request.getAcceptCharsets().toString());
-		assertEquals(requestDate.toString(), request.getDate().toString());
-		assertEquals(dateIMS.toString(), request.getIfModifiedSince().toString());
-		assertEquals(dateIUMS.toString(), request.getIfUnModifiedSince().toString());
-		assertEquals(requestContentType.toString(), request.getContentType().toString());
-		assertEquals(requestCookies.toString(), request.getCookies().toString());
+		assertEquals(requestAcceptContentTypes, request.parseHeader(ACCEPT, HttpHeaderValue::toAcceptContentTypes));
+		assertEquals(requestAcceptCharsets, request.parseHeader(ACCEPT_CHARSET, HttpHeaderValue::toAcceptCharsets));
+		assertEquals(requestDate, request.parseHeader(DATE, HttpHeaderValue::toInstant));
+		assertEquals(dateIMS, request.parseHeader(IF_MODIFIED_SINCE, HttpHeaderValue::toInstant));
+		assertEquals(dateIUMS, request.parseHeader(IF_UNMODIFIED_SINCE, HttpHeaderValue::toInstant));
+		assertEquals(requestContentType, request.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
+		assertEquals(requestCookies, new ArrayList<>(request.getCookies().values()));
 	}
 
-	private static Date createDate(int year, int month, int day) {
-		return new GregorianCalendar(year, month, day).getTime();
+	private static Instant createDate(int year, int month, int day) {
+		return LocalDate.of(year, month, day).atStartOfDay().toInstant(UTC);
 	}
 }

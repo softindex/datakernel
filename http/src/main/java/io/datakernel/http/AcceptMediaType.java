@@ -20,7 +20,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
@@ -49,12 +48,6 @@ public final class AcceptMediaType {
 
 	public static AcceptMediaType of(MediaType mime, int q) {
 		return new AcceptMediaType(mime, q);
-	}
-
-	static List<AcceptMediaType> parse(byte[] bytes, int pos, int length) throws ParseException {
-		List<AcceptMediaType> cts = new ArrayList<>();
-		parse(bytes, pos, length, cts);
-		return cts;
 	}
 
 	static void parse(byte[] bytes, int pos, int length, List<AcceptMediaType> list) throws ParseException {
@@ -102,7 +95,6 @@ public final class AcceptMediaType {
 			} else {
 				list.add(AcceptMediaType.of(mime));
 			}
-
 		}
 	}
 
@@ -147,10 +139,25 @@ public final class AcceptMediaType {
 	}
 
 	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		AcceptMediaType that = (AcceptMediaType) o;
+
+		if (q != that.q) return false;
+		return mime.equals(that.mime);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = mime.hashCode();
+		result = 31 * result + q;
+		return result;
+	}
+
+	@Override
 	public String toString() {
-		return "AcceptContentType{" +
-				"mime=" + mime +
-				", q=" + q +
-				'}';
+		return "AcceptContentType{mime=" + mime + ", q=" + q + '}';
 	}
 }

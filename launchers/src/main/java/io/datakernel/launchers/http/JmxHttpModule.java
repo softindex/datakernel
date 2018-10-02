@@ -7,6 +7,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.jmx.KeyWithWorkerData;
@@ -308,8 +309,8 @@ public class JmxHttpModule extends AbstractModule {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public Stage<HttpResponse> serve(HttpRequest request) {
-			String keyParam = request.getQueryParameter("key");
+		public Stage<HttpResponse> serve(HttpRequest request) throws ParseException {
+			String keyParam = request.getQueryParameterOrNull("key");
 
 			if ("/favicon.ico".equals(request.getPath())) { // if somehow it got to this servlet
 				return Stage.ofException(HttpException.notFound404());

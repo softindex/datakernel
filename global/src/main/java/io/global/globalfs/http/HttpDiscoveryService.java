@@ -20,7 +20,6 @@ package io.global.globalfs.http;
 import io.datakernel.async.Stage;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.HttpHeaders;
 import io.datakernel.http.HttpMethod;
 import io.datakernel.http.HttpRequest;
 import io.global.common.PubKey;
@@ -28,6 +27,8 @@ import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.globalfs.api.GlobalFsName;
+
+import static io.datakernel.http.HttpHeaders.HOST;
 
 public final class HttpDiscoveryService implements DiscoveryService {
 	public final String test = "";
@@ -57,7 +58,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	public Stage<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
 		return client.request(HttpRequest.of(HttpMethod.PUT, host + DiscoveryServlet.ANNOUNCE + "?key=" + GlobalFsName.serializePubKey(pubKey))
 				.withBody(announceData.toBytes())
-				.withHeader(HttpHeaders.HOST, host))
+				.withHeader(HOST, host))
 				.toVoid();
 	}
 }

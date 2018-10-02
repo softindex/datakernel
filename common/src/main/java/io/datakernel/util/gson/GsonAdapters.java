@@ -360,20 +360,11 @@ public final class GsonAdapters {
 	}
 */
 
-	public interface FunctionIO<I, O> {
-		O convert(I in) throws ParseException;
-	}
-
-	public static <I, O> TypeAdapter<O> transform(TypeAdapter<I> adapter, FunctionIO<I, O> from, FunctionIO<O, I> to) {
+	public static <I, O> TypeAdapter<O> transform(TypeAdapter<I> adapter, ParserFunction<I, O> from, Function<O, I> to) {
 		return new TypeAdapter<O>() {
 			@Override
-			public void write(JsonWriter out, O value) throws IOException {
-				I result;
-				try {
-					result = to.convert(value);
-				} catch (ParseException e) {
-					throw new IOException(e);
-				}
+			public void write(JsonWriter out, O value) {
+				I result = to.apply(value);
 				try {
 					adapter.write(out, result);
 				} catch (IOException e) {
@@ -385,7 +376,7 @@ public final class GsonAdapters {
 			public O read(JsonReader in) throws IOException {
 				I result = adapter.read(in);
 				try {
-					return from.convert(result);
+					return from.parse(result);
 				} catch (ParseException e) {
 					throw new IOException(e);
 				}
@@ -673,10 +664,14 @@ public final class GsonAdapters {
 		return ofHeterogeneousList(valueAdapters.toArray(new TypeAdapter<?>[0]));
 	}
 
-	public static <T> T fromJson(TypeAdapter<T> typeAdapter, String string) throws IOException {
+	public static <T> T fromJson(TypeAdapter<T> typeAdapter, String string) throws ParseException {
 		StringReader reader = new StringReader(string);
 		JsonReader jsonReader = new JsonReader(reader);
-		return typeAdapter.read(jsonReader);
+		try {
+			return typeAdapter.read(jsonReader);
+		} catch (IOException e) {
+			throw new ParseException(e);
+		}
 	}
 
 	private static final class JsonWriterEx extends JsonWriter {

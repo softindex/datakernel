@@ -17,14 +17,16 @@
 
 package io.global.globalfs.api;
 
-import io.datakernel.annotation.Nullable;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.ParseException;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.globalsync.util.BinaryDataFormats;
 
 import java.util.Base64;
+
+import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
+import static io.datakernel.bytebuf.ByteBuf.wrapForWriting;
 
 public final class GlobalFsName {
 	private final PubKey pubKey;
@@ -82,15 +84,11 @@ public final class GlobalFsName {
 
 	public static String serializePubKey(PubKey pubKey) {
 		byte[] bytes = new byte[BinaryDataFormats.sizeof(pubKey)];
-		BinaryDataFormats.writePubKey(ByteBuf.wrapForWriting(bytes), pubKey);
+		BinaryDataFormats.writePubKey(wrapForWriting(bytes), pubKey);
 		return encoder.encodeToString(bytes);
 	}
 
-	@Nullable
-	public static PubKey deserializePubKey(@Nullable String repr) {
-		if (repr == null) {
-			return null;
-		}
-		return BinaryDataFormats.readPubKey(ByteBuf.wrapForReading(decoder.decode(repr)));
+	public static PubKey deserializePubKey(String repr) throws ParseException {
+		return BinaryDataFormats.readPubKey(wrapForReading(decoder.decode(repr)));
 	}
 }

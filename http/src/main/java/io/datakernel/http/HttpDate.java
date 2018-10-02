@@ -79,7 +79,7 @@ final class HttpDate {
 				}
 			}
 
-			int yearLength = '0' <=  bytes[start + 12 + 2] && bytes[start + 12 + 2] <= '9' ? 4 : 2;
+			int yearLength = '0' <= bytes[start + 12 + 2] && bytes[start + 12 + 2] <= '9' ? 4 : 2;
 
 			int year = (yearLength == 2 ? 2000 : 0) + decodeDecimal(bytes, start + 12, yearLength);
 			int hour = decodeDecimal(bytes, start + 13 + yearLength, 2);
@@ -112,7 +112,6 @@ final class HttpDate {
 			}
 
 			timestamp += ((60 * hour + minutes) * 60) + seconds;
-			timestamp *= 1_000l;
 
 			return timestamp;
 		} catch (RuntimeException e) {
@@ -120,17 +119,15 @@ final class HttpDate {
 		}
 	}
 
-	static void render(long timestamp, ByteBuf buf) {
-		int pos = render(timestamp, buf.array(), buf.writePosition());
+	static void render(long epochSeconds, ByteBuf buf) {
+		int pos = render(epochSeconds, buf.array(), buf.writePosition());
 		buf.writePosition(pos);
 	}
 
-	static int render(long timestamp, byte[] bytes, int pos) {
-		long secondsFrom1970 = timestamp / 1000L;
-
-		int fourYears = (int) (secondsFrom1970 / FOUR_YEAR_SECONDS);
+	static int render(long epochSeconds, byte[] bytes, int pos) {
+		int fourYears = (int) (epochSeconds / FOUR_YEAR_SECONDS);
 		int year = fourYears * 4 + 1970;
-		int seconds = (int) (secondsFrom1970 - fourYears * FOUR_YEAR_SECONDS);
+		int seconds = (int) (epochSeconds - fourYears * FOUR_YEAR_SECONDS);
 		boolean isLeapYear = false;
 
 		if (seconds >= YEAR_SECONDS) {
@@ -164,7 +161,7 @@ final class HttpDate {
 		int minutes = seconds / 60;
 		seconds -= minutes * 60;
 
-		int dayOfWeek = (int) ((timestamp / (24 * 60 * 60 * 1000L) + 4) % 7) + 1;
+		int dayOfWeek = (int) ((epochSeconds / (24 * 60 * 60) + 4) % 7) + 1;
 
 		byte[] stringDay = DAYS_OF_WEEK[dayOfWeek - 1];
 		System.arraycopy(stringDay, 0, bytes, pos, stringDay.length);

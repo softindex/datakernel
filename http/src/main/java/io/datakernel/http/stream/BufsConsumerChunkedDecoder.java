@@ -1,4 +1,4 @@
-package io.datakernel.http.stream2;
+package io.datakernel.http.stream;
 
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;

@@ -19,6 +19,7 @@ package io.datakernel.http;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.util.Utils.arraysEquals;
 
 // All media type values, subtype values, and parameter names as defined are case-insensitive RFC2045 section 2
 public final class MediaType extends CaseInsensitiveTokenMap.Token {
@@ -43,13 +44,21 @@ public final class MediaType extends CaseInsensitiveTokenMap.Token {
 		return bytes.length;
 	}
 
-	boolean isTextType() {
+	public boolean isTextType() {
 		return bytes.length > 5
 				&& bytes[0] == 't'
 				&& bytes[1] == 'e'
 				&& bytes[2] == 'x'
 				&& bytes[3] == 't'
 				&& bytes[4] == '/';
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		MediaType that = (MediaType) o;
+		return arraysEquals(this.bytes, this.offset, this.length, that.bytes, that.offset, that.length);
 	}
 
 	@Override

@@ -8,6 +8,11 @@ import org.junit.runners.model.Statement;
 import static org.junit.Assert.assertEquals;
 
 public final class ByteBufRule implements TestRule {
+	static {
+		System.setProperty("ByteBufPool.minSize", "1");
+		System.setProperty("ByteBufPool.maxSize", "0");
+	}
+
 	private boolean enabled = true;
 
 	public void enable(boolean enabled) {
@@ -20,7 +25,6 @@ public final class ByteBufRule implements TestRule {
 			@Override
 			public void evaluate() throws Throwable {
 				ByteBufPool.clear();
-				ByteBufPool.setSizes(1, Integer.MAX_VALUE);
 				base.evaluate();
 				if (enabled) {
 					assertEquals(ByteBufPool.getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

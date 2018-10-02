@@ -162,4 +162,16 @@ public class Utils {
 		if (value instanceof char[]) return Arrays.hashCode((char[]) value);
 		throw new AssertionError();
 	}
+
+	public static boolean arraysEquals(
+			byte[] array1, int pos1, int len1,
+			byte[] array2, int pos2, int len2) {
+		if (len1 != len2) return false;
+		for (int i = 0; i < len1; i++) {
+			if (array1[pos1 + i] != array2[pos2 + i]) {
+				return false;
+			}
+		}
+		return true;
+	}
 }

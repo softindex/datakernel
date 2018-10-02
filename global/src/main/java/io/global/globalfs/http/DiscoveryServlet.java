@@ -34,9 +34,6 @@ public final class DiscoveryServlet {
 		return MiddlewareServlet.create()
 				.with(HttpMethod.GET, FIND, request -> {
 					PubKey pubKey = GlobalFsName.deserializePubKey(request.getQueryParameter("key"));
-					if (pubKey == null) {
-						return Stage.ofException(HttpException.badRequest400());
-					}
 					return service.findServers(pubKey)
 							.thenCompose(data -> {
 								if (data != null) {
@@ -47,9 +44,6 @@ public final class DiscoveryServlet {
 				})
 				.with(HttpMethod.PUT, ANNOUNCE, request -> {
 					PubKey pubKey = GlobalFsName.deserializePubKey(request.getQueryParameter("key"));
-					if (pubKey == null) {
-						return Stage.ofException(HttpException.badRequest400());
-					}
 					return request.getBodyStage()
 							.thenCompose(body -> {
 								try {

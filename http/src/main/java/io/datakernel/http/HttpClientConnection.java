@@ -76,7 +76,7 @@ import static io.datakernel.http.HttpHeaders.CONNECTION;
  */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
-	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
+	private static final HttpHeaderValue CONNECTION_KEEP_ALIVE = HttpHeaderValue.of("keep-alive");
 
 	@Nullable
 	private SettableStage<HttpResponse> result;
@@ -90,8 +90,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	HttpClientConnection addressNext;
 
 	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
-			AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client, char[] headerChars) {
-		super(eventloop, asyncTcpSocket, headerChars);
+			AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client) {
+		super(eventloop, asyncTcpSocket);
 		this.remoteAddress = remoteAddress;
 		this.client = client;
 		this.inspector = client.inspector;
@@ -155,10 +155,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
-		super.onHeader(header, value);
+	protected void onHeader(HttpHeader header, ByteBuf buf) throws ParseException {
+		super.onHeader(header, buf);
 		assert response != null;
-		response.addHeader(header, value);
+		response.addHeader(header, buf);
 	}
 
 	@Override
@@ -233,7 +233,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	public Stage<HttpResponse> send(HttpRequest request) {
 		this.result = new SettableStage<>();
 		switchPool(client.poolReadWrite);
-		request.addHeader(CONNECTION_KEEP_ALIVE);
+		request.setHeader(CONNECTION, CONNECTION_KEEP_ALIVE);
 		writeHttpMessage(request);
 		readHttpMessage();
 		return this.result;

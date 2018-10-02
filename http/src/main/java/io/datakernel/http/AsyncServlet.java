@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Stage;
+import io.datakernel.exception.ParseException;
 
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across
@@ -25,9 +26,18 @@ import io.datakernel.async.Stage;
  */
 @FunctionalInterface
 public interface AsyncServlet {
-	Stage<HttpResponse> serve(HttpRequest request);
+	Stage<HttpResponse> serve(HttpRequest request) throws ParseException;
+
+	default Stage<HttpResponse> tryServe(HttpRequest request) {
+		try {
+			return serve(request);
+		} catch (ParseException e) {
+			return Stage.ofException(e);
+		}
+	}
 
 	static AsyncServlet ensureBody(AsyncServlet delegate) {
-		return request -> request.ensureBody().thenCompose(delegate::serve);
+		return request -> request.ensureBody()
+				.thenCompose(delegate::tryServe);
 	}
 }

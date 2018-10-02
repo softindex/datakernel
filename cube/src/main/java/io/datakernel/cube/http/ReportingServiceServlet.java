@@ -35,6 +35,9 @@ import java.util.regex.Pattern;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.cube.http.Utils.*;
+import static io.datakernel.http.HttpHeaderValue.ofContentType;
+import static io.datakernel.http.HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN;
+import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static java.util.stream.Collectors.toList;
 
@@ -116,17 +119,17 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 
 	private static HttpResponse createResponse(String body) {
 		HttpResponse response = HttpResponse.ok200();
-		response.setContentType(ContentType.of(MediaTypes.JSON, StandardCharsets.UTF_8));
+		response.setHeader(CONTENT_TYPE, ofContentType(ContentType.of(MediaTypes.JSON, StandardCharsets.UTF_8)));
 		response.setBody(wrapUtf8(body));
-		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+		response.setHeader(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 		return response;
 	}
 
 	private static HttpResponse createErrorResponse(String body) {
 		HttpResponse response = HttpResponse.ofCode(400);
-		response.setContentType(ContentType.of(MediaTypes.PLAIN_TEXT, StandardCharsets.UTF_8));
+		response.setHeader(CONTENT_TYPE, ofContentType(ContentType.of(MediaTypes.PLAIN_TEXT, StandardCharsets.UTF_8)));
 		response.setBody(wrapUtf8(body));
-		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+		response.setHeader(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 		return response;
 	}
 
@@ -144,35 +147,35 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 		CubeQuery query = CubeQuery.create();
 
 		String parameter;
-		parameter = request.getQueryParameter(ATTRIBUTES_PARAM);
+		parameter = request.getQueryParameterOrNull(ATTRIBUTES_PARAM);
 		if (parameter != null)
 			query = query.withAttributes(split(parameter));
 
-		parameter = request.getQueryParameter(MEASURES_PARAM);
+		parameter = request.getQueryParameterOrNull(MEASURES_PARAM);
 		if (parameter != null)
 			query = query.withMeasures(split(parameter));
 
-		parameter = request.getQueryParameter(WHERE_PARAM);
+		parameter = request.getQueryParameterOrNull(WHERE_PARAM);
 		if (parameter != null)
 			query = query.withWhere(getAggregationPredicateJson().fromJson(parameter));
 
-		parameter = request.getQueryParameter(SORT_PARAM);
+		parameter = request.getQueryParameterOrNull(SORT_PARAM);
 		if (parameter != null)
 			query = query.withOrderings(parseOrderings(parameter));
 
-		parameter = request.getQueryParameter(HAVING_PARAM);
+		parameter = request.getQueryParameterOrNull(HAVING_PARAM);
 		if (parameter != null)
 			query = query.withHaving(getAggregationPredicateJson().fromJson(parameter));
 
-		parameter = request.getQueryParameter(LIMIT_PARAM);
+		parameter = request.getQueryParameterOrNull(LIMIT_PARAM);
 		if (parameter != null)
 			query = query.withLimit(Integer.valueOf(parameter)); // TODO throws ParseException
 
-		parameter = request.getQueryParameter(OFFSET_PARAM);
+		parameter = request.getQueryParameterOrNull(OFFSET_PARAM);
 		if (parameter != null)
 			query = query.withOffset(Integer.valueOf(parameter));
 
-		parameter = request.getQueryParameter(REPORT_TYPE_PARAM);
+		parameter = request.getQueryParameterOrNull(REPORT_TYPE_PARAM);
 		if (parameter != null)
 			query = query.withReportType(ReportType.valueOf(parameter.toUpperCase()));
 

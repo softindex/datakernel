@@ -5,6 +5,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.ParserFunction;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
@@ -19,15 +20,11 @@ public interface ByteBufsParser<T> {
 		return supplier.parse(this);
 	}
 
-	interface ParseFunction<T, R> {
-		R apply(T t) throws ParseException;
-	}
-
-	default <V> ByteBufsParser<V> andThen(ParseFunction<? super T, ? extends V> after) {
+	default <V> ByteBufsParser<V> andThen(ParserFunction<? super T, ? extends V> after) {
 		return bufs -> {
 			T maybeResult = tryParse(bufs);
 			if (maybeResult == null) return null;
-			return after.apply(maybeResult);
+			return after.parse(maybeResult);
 		};
 	}
 

@@ -125,10 +125,23 @@ public final class ContentType {
 	}
 
 	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		ContentType that = (ContentType) o;
+		if (!mime.equals(that.mime)) return false;
+		return charset != null ? charset.equals(that.charset) : that.charset == null;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = mime.hashCode();
+		result = 31 * result + (charset != null ? charset.hashCode() : 0);
+		return result;
+	}
+
+	@Override
 	public String toString() {
-		return "ContentType{" +
-				"type=" + mime +
-				", charset=" + charset +
-				'}';
+		return "ContentType{type=" + mime + ", charset=" + charset + '}';
 	}
 }

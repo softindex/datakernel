@@ -62,7 +62,7 @@ public class AbstractHttpConnectionTest {
 		CompletableFuture<Void> future = client.request(HttpRequest.get(url))
 				.whenResult(result -> {
 					data.put("body", result.getBody().asString(UTF_8));
-					data.put("header", result.getHeader(CONTENT_TYPE));
+					data.put("header", result.getHeaderOrNull(CONTENT_TYPE));
 				})
 				.thenCompose($ -> stopClientAndServer(client, server))
 				.toCompletableFuture();
@@ -84,10 +84,11 @@ public class AbstractHttpConnectionTest {
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
-		HttpRequest request = HttpRequest.get(url).withHeader(ACCEPT_ENCODING, "gzip");
+		HttpRequest request = HttpRequest.get(url)
+				.withHeader(ACCEPT_ENCODING, "gzip");
 		CompletableFuture<String> future = client.request(request)
 				.thenApply(response -> {
-					assertNotNull(response.getHeaderValue(CONTENT_ENCODING));
+					assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING));
 					return response.getBody().asString(UTF_8);
 				})
 				.thenRunEx(() -> stopClientAndServer(client, server))
@@ -111,25 +112,25 @@ public class AbstractHttpConnectionTest {
 		client.request(HttpRequest.get(url))
 				.thenCompose(response -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
-					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
+					assertEquals("keep-alive", response.getHeaderOrNull(CONNECTION));
 					assertEquals(1, clientConnectionCount.getTotalCount());
 					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
-					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
+					assertEquals("keep-alive", response.getHeaderOrNull(CONNECTION));
 					assertEquals(1, clientConnectionCount.getTotalCount());
 					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
-					assertEquals("close", response.getHeaderValue(CONNECTION).toString());
+					assertEquals("close", response.getHeaderOrNull(CONNECTION));
 					assertEquals(1, client.getStats().getConnected().getTotalCount());
 					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
-					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
+					assertEquals("keep-alive", response.getHeaderOrNull(CONNECTION));
 					assertEquals(2, clientConnectionCount.getTotalCount());
 					return stopClientAndServer(client, server);
 				})
@@ -153,25 +154,25 @@ public class AbstractHttpConnectionTest {
 		client.request(HttpRequest.get(url))
 				.thenCompose(response -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
-					assertEquals("keep-alive", response.getHeaderValue(CONNECTION).toString());
+					assertEquals("keep-alive", response.getHeaderOrNull(CONNECTION));
 					assertEquals(1, clientConnectionCount.getTotalCount());
 					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response2 -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
-					assertEquals("keep-alive", response2.getHeaderValue(CONNECTION).toString());
+					assertEquals("keep-alive", response2.getHeaderOrNull(CONNECTION));
 					assertEquals(1, clientConnectionCount.getTotalCount());
 					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response3 -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
-					assertEquals("close", response3.getHeaderValue(CONNECTION).toString());
+					assertEquals("close", response3.getHeaderOrNull(CONNECTION));
 					assertEquals(1, clientConnectionCount.getTotalCount());
 					return client.request(HttpRequest.get(url));
 				})
 				.thenCompose(response4 -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
-					assertEquals("keep-alive", response4.getHeaderValue(CONNECTION).toString());
+					assertEquals("keep-alive", response4.getHeaderOrNull(CONNECTION));
 					assertEquals(2, clientConnectionCount.getTotalCount());
 					return stopClientAndServer(client, server);
 				})

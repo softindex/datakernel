@@ -61,10 +61,11 @@ public class HttpCharsetTest {
 	@Test
 	public void testAcceptCharset() throws ParseException {
 		byte[] bytes = encodeAscii("iso-8859-5, unicode-1-1;q=0.8");
-		List<AcceptCharset> charsets = AcceptCharset.parse(bytes, 0, bytes.length);
-		assertEquals(2, charsets.size());
-		assertTrue(forName("ISO-8859-5") == charsets.get(0).getCharset());
-		assertEquals(80, charsets.get(1).getQ());
+		List<AcceptCharset> chs = new ArrayList<>();
+		AcceptCharset.parse(bytes, 0, bytes.length, chs);
+		assertEquals(2, chs.size());
+		assertTrue(forName("ISO-8859-5") == chs.get(0).getCharset());
+		assertEquals(80, chs.get(1).getQ());
 	}
 
 	@Test

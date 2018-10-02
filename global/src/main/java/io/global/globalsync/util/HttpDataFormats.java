@@ -2,6 +2,7 @@ package io.global.globalsync.util;
 
 import com.google.gson.TypeAdapter;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedWrapperException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.util.gson.GsonAdapters;
@@ -62,7 +63,13 @@ public class HttpDataFormats {
 	public static final TypeAdapter<Map<CommitId, RawCommit>> COMMIT_MAP_JSON = GsonAdapters.transform(GsonAdapters.ofMap(COMMIT_JSON),
 			map -> map.entrySet().stream()
 					.collect(toMap(
-							entry -> urlDecodeCommitId(entry.getKey()),
+							entry -> {
+								try {
+									return urlDecodeCommitId(entry.getKey());
+								} catch (ParseException e) {
+									throw new UncheckedWrapperException(e);
+								}
+							},
 							Map.Entry::getValue)),
 			map -> map.entrySet().stream()
 					.collect(toMap(
@@ -103,25 +110,21 @@ public class HttpDataFormats {
 		return Base64.getUrlEncoder().encodeToString(commitId.toBytes());
 	}
 
-	public static CommitId urlDecodeCommitId(String str) {
-		return CommitId.ofBytes(Base64.getUrlDecoder().decode(str));
+	public static CommitId urlDecodeCommitId(String str) throws ParseException {
+		try {
+			return CommitId.ofBytes(Base64.getUrlDecoder().decode(str));
+		} catch (IllegalArgumentException e) {
+			throw new ParseException(e);
+		}
 	}
 
 	public static String urlEncodeRepositoryId(RepositoryName repositoryId) {
 		return urlEncodePubKey(repositoryId.getPubKey()) + '/' + urlEncode(repositoryId.getRepositoryName(), "UTF-8");
 	}
 
-	public static String getPathParameter(HttpRequest request, String parameter) throws ParseException {
-		String result = request.getPathParameter(parameter);
-		if (result == null) {
-			throw new ParseException(parameter);
-		}
-		return result;
-	}
-
 	public static RepositoryName urlDecodeRepositoryId(HttpRequest httpRequest) throws ParseException {
-		String pubKey = getPathParameter(httpRequest, "pubKey");
-		String name = getPathParameter(httpRequest, "name");
+		String pubKey = httpRequest.getPathParameter("pubKey");
+		String name = httpRequest.getPathParameter("name");
 		return new RepositoryName(urlDecodePubKey(pubKey), HttpUtils.urlDecode(name, "UTF-8"));
 	}
 
@@ -132,11 +135,15 @@ public class HttpDataFormats {
 				Base64.getUrlEncoder().encodeToString(q.getYCoord().toBigInteger().toByteArray());
 	}
 
-	public static PubKey urlDecodePubKey(String str) {
-		int pos = str.indexOf(':');
-		BigInteger x = new BigInteger(Base64.getUrlDecoder().decode(str.substring(0, pos)));
-		BigInteger y = new BigInteger(Base64.getUrlDecoder().decode(str.substring(pos + 1)));
-		return PubKey.ofQ(CryptoUtils.CURVE.getCurve().validatePoint(x, y));
+	public static PubKey urlDecodePubKey(String str) throws ParseException {
+		try {
+			int pos = str.indexOf(':');
+			BigInteger x = new BigInteger(Base64.getUrlDecoder().decode(str.substring(0, pos)));
+			BigInteger y = new BigInteger(Base64.getUrlDecoder().decode(str.substring(pos + 1)));
+			return PubKey.ofQ(CryptoUtils.CURVE.getCurve().validatePoint(x, y));
+		} catch (IllegalArgumentException | ArithmeticException e) {
+			throw new ParseException(e);
+		}
 	}
 
 }

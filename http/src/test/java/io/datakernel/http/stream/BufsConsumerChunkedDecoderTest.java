@@ -1,4 +1,4 @@
-package io.datakernel.http.stream2;
+package io.datakernel.http.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.Random;
 
 import static io.datakernel.http.TestUtils.AssertingConsumer;
-import static io.datakernel.http.stream2.BufsConsumerChunkedDecoder.MALFORMED_CHUNK;
-import static io.datakernel.http.stream2.BufsConsumerChunkedDecoder.MALFORMED_CHUNK_LENGTH;
+import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.MALFORMED_CHUNK;
+import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.MALFORMED_CHUNK_LENGTH;
 import static java.lang.System.arraycopy;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;

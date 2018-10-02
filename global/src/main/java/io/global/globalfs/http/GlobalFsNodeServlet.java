@@ -17,11 +17,9 @@
 
 package io.global.globalfs.http;
 
-import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.serial.SerialSupplier;
@@ -44,14 +42,11 @@ public final class GlobalFsNodeServlet {
 
 	//	public static final String SETTINGS = "/settings"; //TODO ?
 
-	private static int parseUnsignedInt(@Nullable String param) {
-		if (param == null) {
-			return 0;
-		}
+	private static int parseUnsignedInt(String param) throws ParseException {
 		try {
 			return Integer.parseUnsignedInt(param);
 		} catch (NumberFormatException e) {
-			return -1;
+			throw new ParseException(e);
 		}
 	}
 
@@ -61,11 +56,8 @@ public final class GlobalFsNodeServlet {
 					PubKey pubKey = GlobalFsName.deserializePubKey(request.getQueryParameter("key"));
 					String filesystem = request.getQueryParameter("fs");
 					String path = request.getQueryParameter("path");
-					int offset = parseUnsignedInt(request.getQueryParameter("offset"));
-					int limit = parseUnsignedInt(request.getQueryParameter("limit"));
-					if (pubKey == null || filesystem == null || path == null || offset == -1 || limit == -1) {
-						return Stage.ofException(HttpException.badRequest400());
-					}
+					int offset = request.parseQueryParameter("offset", GlobalFsNodeServlet::parseUnsignedInt);
+					int limit = request.parseQueryParameter(request.getQueryParameter("limit"), GlobalFsNodeServlet::parseUnsignedInt);
 					GlobalFsPath globalPath = GlobalFsPath.of(pubKey, filesystem, path);
 					System.out.println("DOWNLOAD CALLED");
 					return node.download(globalPath, offset, limit)
@@ -75,10 +67,7 @@ public final class GlobalFsNodeServlet {
 					PubKey pubKey = GlobalFsName.deserializePubKey(request.getQueryParameter("key"));
 					String filesystem = request.getQueryParameter("fs");
 					String path = request.getQueryParameter("path");
-					int offset = parseUnsignedInt(request.getQueryParameter("offset"));
-					if (pubKey == null || filesystem == null || path == null || offset == -1) {
-						return Stage.ofException(HttpException.badRequest400());
-					}
+					int offset = request.parseQueryParameter("offset", GlobalFsNodeServlet::parseUnsignedInt);
 					System.out.println("UPLOAD CALLED " + request);
 					GlobalFsPath globalPath = GlobalFsPath.of(pubKey, filesystem, path);
 					SerialSupplier<ByteBuf> body = request.getBodyStream();

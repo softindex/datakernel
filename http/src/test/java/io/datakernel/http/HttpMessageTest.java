@@ -29,7 +29,7 @@ import java.util.Collections;
 
 import static io.datakernel.http.HttpHeaders.of;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class HttpMessageTest {
 	@Rule
@@ -60,11 +60,11 @@ public class HttpMessageTest {
 
 	@Test
 	public void testHttpRequest() {
-		assertHttpMessageEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\n\r\n", HttpRequest.get("http://test.com/index.html"));
+		assertHttpMessageEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 0\r\n\r\n", HttpRequest.get("http://test.com/index.html"));
 		assertHttpMessageEquals("POST /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 0\r\n\r\n", HttpRequest.post("http://test.com/index.html"));
 		assertHttpMessageEquals("CONNECT /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 0\r\n\r\n", HttpRequest.of(HttpMethod.CONNECT, "http://test.com/index.html"));
-		assertHttpMessageEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=value1\r\n\r\n", HttpRequest.get("http://test.com/index.html").withCookie(HttpCookie.of("cookie1", "value1")));
-		assertHttpMessageEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=value1; cookie2=value2\r\n\r\n", HttpRequest.get("http://test.com/index.html").withCookies(asList(HttpCookie.of("cookie1", "value1"), HttpCookie.of("cookie2", "value2"))));
+		assertHttpMessageEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=value1\r\nContent-Length: 0\r\n\r\n", HttpRequest.get("http://test.com/index.html").withCookie(HttpCookie.of("cookie1", "value1")));
+		assertHttpMessageEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=value1; cookie2=value2\r\nContent-Length: 0\r\n\r\n", HttpRequest.get("http://test.com/index.html").withCookies(asList(HttpCookie.of("cookie1", "value1"), HttpCookie.of("cookie2", "value2"))));
 
 		HttpRequest request = HttpRequest.post("http://test.com/index.html");
 		ByteBuf buf = ByteBufPool.allocate(100);
@@ -73,37 +73,13 @@ public class HttpMessageTest {
 		assertHttpMessageEquals("POST /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 4\r\n\r\n/abc", request);
 	}
 
-	private static String getHeaderValue(HttpMessage message, HttpHeader header) {
-		return message.getHeader(header);
-	}
-
-	@Test
+	@Test(expected = IllegalArgumentException.class)
 	public void testMultiHeaders() {
 		HttpResponse response = HttpResponse.ofCode(200);
 		HttpHeader header1 = of("header1");
 		HttpHeader HEADER1 = of("HEADER1");
-		HttpHeader header2 = of("header2");
 
-		assertTrue(response.headers.isEmpty());
-		assertNull(getHeaderValue(response, header1));
-		assertNull(getHeaderValue(response, header2));
-
-		response.addHeader(header1, "value1");
-		response.addHeader(header2, "value2");
-		response.addHeader(HEADER1, "VALUE1");
-
-		assertEquals(3, response.headers.size());
-
-		assertEquals("value1", response.getHeader(header1));
-		assertEquals("value1", response.getHeader(HEADER1));
-		assertEquals("value2", response.getHeader(header2));
-
-		assertEquals("value1", response.getHeaders().get(header1));
-		assertEquals("value1", response.getHeaders().get(HEADER1));
-		assertEquals("value2", response.getHeaders().get(header2));
-
-		assertEquals(asList("value1", "VALUE1"), response.getAllHeaders().get(header1));
-		assertEquals(asList("value1", "VALUE1"), response.getAllHeaders().get(HEADER1));
-		assertEquals(asList("value2"), response.getAllHeaders().get(header2));
+		response.setHeader(header1, "value1");
+		response.setHeader(HEADER1, "VALUE1");
 	}
 }

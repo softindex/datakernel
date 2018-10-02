@@ -28,13 +28,15 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.stream2.*;
+import io.datakernel.http.stream.*;
 import io.datakernel.serial.*;
 import io.datakernel.util.MemSize;
 
 import java.util.function.BiConsumer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.http.HttpHeaderValue.ofBytes;
+import static io.datakernel.http.HttpHeaderValue.ofDecimal;
 import static io.datakernel.http.HttpHeaders.*;
 import static java.lang.Math.max;
 
@@ -53,11 +55,11 @@ public abstract class AbstractHttpConnection {
 	public static final SerialConsumer<ByteBuf> BUF_RECYCLER = SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle));
 
 	public static final MemSize MAX_HEADER_LINE_SIZE = MemSize.kilobytes(8); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
-	private static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
+	public static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 
-	protected static final HttpHeaders.Value CONNECTION_KEEP_ALIVE_HEADER = HttpHeaders.asBytes(CONNECTION, "keep-alive");
-	protected static final HttpHeaders.Value CONNECTION_CLOSE_HEADER = HttpHeaders.asBytes(CONNECTION, "close");
+	protected static final HttpHeaderValue CONNECTION_KEEP_ALIVE_HEADER = HttpHeaderValue.of("keep-alive");
+	protected static final HttpHeaderValue CONNECTION_CLOSE_HEADER = HttpHeaderValue.of("close");
 
 	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
 	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
@@ -80,7 +82,6 @@ public abstract class AbstractHttpConnection {
 
 	protected int contentLength;
 	private int maxHeaders;
-	protected final char[] headerChars;
 
 	@Nullable
 	ConnectionsLinkedList pool;
@@ -95,9 +96,8 @@ public abstract class AbstractHttpConnection {
 	 *
 	 * @param eventloop eventloop which will handle its I/O operations
 	 */
-	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket socket, char[] headerChars) {
+	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket socket) {
 		this.eventloop = eventloop;
-		this.headerChars = headerChars;
 		this.socket = socket;
 	}
 
@@ -137,7 +137,7 @@ public abstract class AbstractHttpConnection {
 			ByteBuf body = httpMessage.body;
 			assert httpMessage.bodySupplier == null;
 			if (!httpMessage.useGzip) {
-				httpMessage.setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body.readRemaining()));
+				httpMessage.setHeader(CONTENT_LENGTH, ofDecimal(body.readRemaining()));
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + body.readRemaining());
 				httpMessage.writeTo(buf);
 				buf.put(body);
@@ -146,8 +146,8 @@ public abstract class AbstractHttpConnection {
 				return SerialSupplier.of(buf);
 			} else {
 				ByteBuf gzippedBody = GzipProcessorUtils.toGzip(body);
-				httpMessage.setHeader(HttpHeaders.asBytes(HttpHeaders.CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
-				httpMessage.setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, gzippedBody.readRemaining()));
+				httpMessage.setHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
+				httpMessage.setHeader(CONTENT_LENGTH, ofDecimal(gzippedBody.readRemaining()));
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + gzippedBody.readRemaining());
 				httpMessage.writeTo(buf);
 				buf.put(gzippedBody);
@@ -156,7 +156,7 @@ public abstract class AbstractHttpConnection {
 				return SerialSupplier.of(buf);
 			}
 		} else if (httpMessage.bodySupplier != null) {
-			httpMessage.setHeader(HttpHeaders.asBytes(HttpHeaders.TRANSFER_ENCODING, TRANSFER_ENCODING_CHUNKED));
+			httpMessage.setHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
 			if (!httpMessage.useGzip) {
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 				httpMessage.writeTo(buf);
@@ -166,7 +166,7 @@ public abstract class AbstractHttpConnection {
 				chunker.start();
 				return result;
 			} else {
-				httpMessage.setHeader(HttpHeaders.asBytes(HttpHeaders.CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
+				httpMessage.setHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 				httpMessage.writeTo(buf);
 				BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
@@ -181,7 +181,7 @@ public abstract class AbstractHttpConnection {
 				return result;
 			}
 		} else {
-			httpMessage.setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, 0));
+			httpMessage.setHeader(CONTENT_LENGTH, ofDecimal(0));
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
 			return SerialSupplier.of(buf);

@@ -26,7 +26,7 @@ public class HttpHeader extends CaseInsensitiveTokenMap.Token {
 	protected final int length;
 
 	HttpHeader(byte[] bytes, int offset, int length,
-	           byte[] lowerCaseBytes, int lowerCaseHashCode) {
+			byte[] lowerCaseBytes, int lowerCaseHashCode) {
 		this.bytes = bytes;
 		this.offset = offset;
 		this.length = length;
@@ -34,11 +34,11 @@ public class HttpHeader extends CaseInsensitiveTokenMap.Token {
 		this.lowerCaseHashCode = lowerCaseHashCode;
 	}
 
-	int size() {
+	public int size() {
 		return length;
 	}
 
-	void writeTo(ByteBuf buf) {
+	public void writeTo(ByteBuf buf) {
 		buf.put(bytes, offset, length);
 	}
 
@@ -50,9 +50,7 @@ public class HttpHeader extends CaseInsensitiveTokenMap.Token {
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
-
-		if (o == null || !(o instanceof HttpHeader))
-			return false;
+		if (!(o instanceof HttpHeader)) return false;
 		HttpHeader that = (HttpHeader) o;
 
 		if (length != that.length) return false;

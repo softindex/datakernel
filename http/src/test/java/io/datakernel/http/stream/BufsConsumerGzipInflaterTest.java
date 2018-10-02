@@ -1,4 +1,4 @@
-package io.datakernel.http.stream2;
+package io.datakernel.http.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;

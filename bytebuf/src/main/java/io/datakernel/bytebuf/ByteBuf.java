@@ -18,6 +18,7 @@ package io.datakernel.bytebuf;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.util.Recyclable;
+import io.datakernel.util.Utils;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -711,17 +712,9 @@ public class ByteBuf implements Recyclable, AutoCloseable {
 		if (this == o) return true;
 		if (o == null || !(ByteBuf.class == o.getClass() || ByteBufSlice.class == o.getClass())) return false;
 		ByteBuf other = (ByteBuf) o;
-		return readRemaining() == other.readRemaining() &&
-				arraysEquals(this.array, this.readPosition, this.writePosition, other.array, other.readPosition);
-	}
-
-	private static boolean arraysEquals(byte[] array, int offset, int limit, byte[] arr, int off) {
-		for (int i = 0; i < limit - offset; i++) {
-			if (array[offset + i] != arr[off + i]) {
-				return false;
-			}
-		}
-		return true;
+		return Utils.arraysEquals(
+				this.array, this.readPosition, this.readRemaining(),
+				other.array, other.readPosition, other.readRemaining());
 	}
 
 	@Override

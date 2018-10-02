@@ -26,6 +26,7 @@ import java.net.InetAddress;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpMethod.*;
 
 /**
@@ -73,9 +74,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet       servlet for handling requests
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-			AsyncHttpServer server, AsyncServlet servlet,
-			char[] headerChars) {
-		super(eventloop, asyncTcpSocket, headerChars);
+			AsyncHttpServer server, AsyncServlet servlet) {
+		super(eventloop, asyncTcpSocket);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
@@ -142,7 +142,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		int readPosition = method.size + 1;
 
-		if (headerChars.length <= line.length - readPosition) {
+		if (MAX_HEADER_LINE_SIZE_BYTES <= line.length - readPosition) {
 			throw new ParseException("First line is too big");
 		}
 
@@ -151,7 +151,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			byte b = line[readPosition + i];
 			if (b == SP)
 				break;
-			this.headerChars[i] = (char) b;
 		}
 
 		int p;
@@ -167,8 +166,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			}
 		}
 
-		UrlParser url = UrlParser.parse(new String(headerChars, 0, i));
-		request = HttpRequest.of(method, url);
+		UrlParser url = UrlParser.parse(decodeAscii(line, readPosition, i));
+		request = new HttpRequest(method, url);
 
 		if (method == GET || method == DELETE) {
 			contentLength = 0;
@@ -193,7 +192,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	private void writeHttpResponse(HttpResponse httpResponse) {
-		httpResponse.addHeader((flags & KEEP_ALIVE) != 0 ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
+		httpResponse.setHeader(CONNECTION, (flags & KEEP_ALIVE) != 0 ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
 		writeHttpMessage(httpResponse);
 	}
 
@@ -207,7 +206,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		switchPool(server.poolServing);
 
-		servlet.serve(request)
+		servlet.tryServe(request)
 				.whenComplete((response, e) -> {
 					if (isClosed()) {
 						request.recycle();

@@ -4,6 +4,7 @@ import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
@@ -141,12 +142,12 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 				.thenApply(newId -> OTCommit.of(newId, parentDiffs, level));
 	}
 
-	private String toJson(List<D> diffs) throws IOException {
+	private String toJson(List<D> diffs) {
 		return GsonAdapters.toJson(diffsAdapter, diffs);
 	}
 
 	@SuppressWarnings("unchecked")
-	private List<D> fromJson(String json) throws IOException {
+	private List<D> fromJson(String json) throws ParseException {
 		return GsonAdapters.fromJson(diffsAdapter, json);
 	}
 

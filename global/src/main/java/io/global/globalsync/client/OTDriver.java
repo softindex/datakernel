@@ -21,6 +21,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.ot.OTCommit;
+import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.*;
 import io.global.globalsync.api.*;
 import io.global.globalsync.util.BinaryDataFormats;
@@ -28,7 +29,6 @@ import io.global.globalsync.util.BinaryDataFormats;
 import java.io.IOException;
 import java.util.*;
 
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.global.common.CryptoUtils.*;
 import static io.global.globalsync.util.BinaryDataFormats.sizeof;
@@ -38,6 +38,8 @@ import static java.util.stream.Collectors.toSet;
 
 public final class OTDriver {
 	private final RawServer server;
+
+	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	private Map<SimKeyHash, SimKey> simKeys = new HashMap<>();
 	private SimKey currentSimKey;
@@ -49,7 +51,7 @@ public final class OTDriver {
 	@SuppressWarnings("unchecked")
 	public <D> OTCommit<CommitId, D> createCommit(MyRepositoryId<D> myRepositoryId,
 			Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
-		long timestamp = getCurrentEventloop().currentTimeMillis();
+		long timestamp = now.currentTimeMillis();
 		List<CommitId> parents = new ArrayList<>();
 		List<byte[]> diffsBytes = new ArrayList<>();
 		parentDiffs.forEach((key, value) -> {

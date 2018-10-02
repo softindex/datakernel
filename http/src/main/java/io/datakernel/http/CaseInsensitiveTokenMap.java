@@ -20,8 +20,8 @@ import java.lang.reflect.Array;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 
-abstract class CaseInsensitiveTokenMap<T extends CaseInsensitiveTokenMap.Token> {
-	static abstract class Token {
+public abstract class CaseInsensitiveTokenMap<T extends CaseInsensitiveTokenMap.Token> {
+	public static abstract class Token {
 		protected byte[] lowerCaseBytes;
 		protected int lowerCaseHashCode;
 	}

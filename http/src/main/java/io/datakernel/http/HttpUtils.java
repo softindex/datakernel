@@ -149,14 +149,14 @@ public final class HttpUtils {
 		return blocksCount > 6 || shortHand;
 	}
 
-	static int skipSpaces(byte[] bytes, int pos, int end) {
+	public static int skipSpaces(byte[] bytes, int pos, int end) {
 		while (pos < end && bytes[pos] == ' ') {
 			pos++;
 		}
 		return pos;
 	}
 
-	static int parseQ(byte[] bytes, int pos, int length) throws ParseException {
+	public static int parseQ(byte[] bytes, int pos, int length) throws ParseException {
 		if (bytes[pos] == '1') {
 			return 100;
 		} else {
@@ -216,11 +216,11 @@ public final class HttpUtils {
 		}
 	}
 
-	public static String urlDecode(String string, String enc) {
+	public static String urlDecode(String string, String enc) throws ParseException {
 		try {
 			return URLDecoder.decode(string, enc);
 		} catch (UnsupportedEncodingException e) {
-			throw new IllegalArgumentException("Can't encode with supplied encoding: " + enc, e);
+			throw new ParseException("Can't encode with supplied encoding: " + enc, e);
 		}
 	}
 

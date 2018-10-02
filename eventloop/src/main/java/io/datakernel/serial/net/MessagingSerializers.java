@@ -48,7 +48,7 @@ public final class MessagingSerializers {
 							I item = fromJson(in, ByteBufStrings.decodeUtf8(buf.array(), buf.readPosition(), len));
 							buf.moveReadPosition(len + 1); // skipping msg + delimiter
 							return item;
-						} catch (IOException e) {
+						} catch (ParseException e) {
 							throw DESERIALIZE_ERR;
 						}
 					}

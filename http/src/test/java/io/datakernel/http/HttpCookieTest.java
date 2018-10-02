@@ -21,9 +21,16 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
-import java.util.*;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.CollectionUtils.first;
+import static java.time.Month.JANUARY;
+import static java.time.ZoneOffset.UTC;
 import static org.junit.Assert.*;
 
 public class HttpCookieTest {
@@ -31,16 +38,15 @@ public class HttpCookieTest {
 	public void testParser() throws ParseException {
 		String cookieString = "name1=\"value1\"; expires=Thu, 01 Jan 2015 00:00:00 GMT; Secure; name2=value2; HttpOnly";
 		List<HttpCookie> httpCookies = new ArrayList<>();
-		HttpCookie.parse(cookieString, httpCookies);
+		byte[] bytes = encodeAscii(cookieString);
+		HttpCookie.parseFull(bytes, 0, bytes.length, httpCookies);
 		assertEquals(2, httpCookies.size());
 		HttpCookie cookie1 = httpCookies.get(0);
 		HttpCookie cookie2 = httpCookies.get(1);
 
 		assertTrue(cookie1.getName().equals("name1"));
 		assertTrue(cookie1.getValue().equals("value1"));
-		GregorianCalendar calendar = new GregorianCalendar(2015, 0, 1);
-		calendar.setTimeZone(TimeZone.getTimeZone("GMT"));
-		assertEquals(cookie1.getExpirationDate(), calendar.getTime());
+		assertEquals(cookie1.getExpirationDate(), LocalDate.of(2015, JANUARY, 1).atStartOfDay().toInstant(UTC));
 		assertEquals(-1, cookie1.getMaxAge());
 		assertTrue(cookie1.isSecure());
 		assertFalse(cookie1.isHttpOnly());
@@ -53,7 +59,7 @@ public class HttpCookieTest {
 
 	@Test
 	public void testRender() {
-		Date date = new Date(987654321098l); // "Thu, 19 Apr 2001 04:25:21 GMT";
+		Instant date = Instant.ofEpochMilli(987654321098L); // "Thu, 19 Apr 2001 04:25:21 GMT";
 		HttpCookie cookie = HttpCookie.of("name", "value")
 				.withExpirationDate(date)
 				.withMaxAge(10)
@@ -72,7 +78,7 @@ public class HttpCookieTest {
 
 	@Test
 	public void testRenderMany() {
-		Date date = new Date(987654321098L); // "Thu, 19 Apr 2001 04:25:21 GMT";
+		Instant date = Instant.ofEpochMilli(987654321098L); // "Thu, 19 Apr 2001 04:25:21 GMT";
 		HttpCookie cookie1 = HttpCookie.of("name1", "value1")
 				.withExpirationDate(date)
 				.withMaxAge(10)
@@ -99,7 +105,7 @@ public class HttpCookieTest {
 		byte[] bytes = ByteBufStrings.encodeAscii(cookieName + "=" + cookieValue);
 
 		ArrayList<HttpCookie> cookies = new ArrayList<>();
-		HttpCookie.parse(bytes, 0, bytes.length, cookies);
+		HttpCookie.parseFull(bytes, 0, bytes.length, cookies);
 
 		assertEquals(1, cookies.size());
 

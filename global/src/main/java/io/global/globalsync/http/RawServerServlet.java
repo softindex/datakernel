@@ -2,6 +2,7 @@ package io.global.globalsync.http;
 
 import io.datakernel.async.Stage;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedWrapperException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -18,10 +19,10 @@ import io.global.globalsync.api.RepositoryName;
 import io.global.globalsync.util.BinaryDataFormats;
 import io.global.globalsync.util.HttpDataFormats;
 
-import java.io.IOException;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static io.datakernel.http.AsyncServlet.ensureBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.util.gson.GsonAdapters.fromJson;
@@ -40,7 +41,7 @@ public final class RawServerServlet implements AsyncServlet {
 	private final MiddlewareServlet middlewareServlet;
 
 	private interface ServletFunction {
-		Stage<HttpResponse> convert(HttpRequest in) throws IOException, ParseException;
+		Stage<HttpResponse> convert(HttpRequest in) throws ParseException;
 	}
 
 	private RawServerServlet(RawServer rawServer) {
@@ -54,72 +55,82 @@ public final class RawServerServlet implements AsyncServlet {
 
 	private MiddlewareServlet servlet() {
 		return MiddlewareServlet.create()
-				.with(GET, "/" + LIST + "/:pubKey", servlet(request ->
-						rawServer.list(urlDecodePubKey(getPathParameter(request, "pubKey")))
+				.with(GET, "/" + LIST + "/:pubKey", req ->
+						rawServer.list(req.parsePathParameter("pubKey", HttpDataFormats::urlDecodePubKey))
 								.thenApply(names ->
 										HttpResponse.ok200()
-												.withBody(toJson(SET_OF_STRINGS, names).getBytes(UTF_8)))))
-				.with(POST, "/" + SAVE + "/:pubKey/:name", servlet(request -> {
-					SaveTuple saveTuple = fromJson(SAVE_GSON, request.getBody().asString(UTF_8));
-					return rawServer.save(urlDecodeRepositoryId(request), saveTuple.commits, saveTuple.heads)
+												.withBody(toJson(SET_OF_STRINGS, names).getBytes(UTF_8))))
+				.with(POST, "/" + SAVE + "/:pubKey/:name", ensureBody(req -> {
+					SaveTuple saveTuple = fromJson(SAVE_GSON, req.getBody().asString(UTF_8));
+					return rawServer.save(urlDecodeRepositoryId(req), saveTuple.commits, saveTuple.heads)
 							.thenApply($ ->
 									HttpResponse.ok200());
 				}))
-				.with(GET, "/" + LOAD_COMMIT + "/:pubKey/:name", servlet(request ->
+				.with(GET, "/" + LOAD_COMMIT + "/:pubKey/:name", req ->
 						rawServer.loadCommit(
-								urlDecodeRepositoryId(request),
-								urlDecodeCommitId(request.getQueryParameter("commitId")))
+								urlDecodeRepositoryId(req),
+								urlDecodeCommitId(req.getQueryParameter("commitId")))
 								.thenApply(rawCommit ->
 										HttpResponse.ok200()
-												.withBody(toJson(COMMIT_JSON, rawCommit).getBytes(UTF_8)))))
-				.with(GET, "/" + GET_HEADS_INFO + "/:pubKey/:name", servlet(request ->
+												.withBody(toJson(COMMIT_JSON, rawCommit).getBytes(UTF_8))))
+				.with(GET, "/" + GET_HEADS_INFO + "/:pubKey/:name", req ->
 						rawServer.getHeadsInfo(
-								urlDecodeRepositoryId(request))
+								urlDecodeRepositoryId(req))
 								.thenApply(headsInfo ->
 										HttpResponse.ok200()
-												.withBody(toJson(HEADS_INFO_GSON, headsInfo).getBytes(UTF_8)))))
-				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", servlet(request -> {
-					SignedData<RawSnapshot> encryptedSnapshot = SignedData.ofBytes(request.getBody().asArray(), RawSnapshot::ofBytes);
+												.withBody(toJson(HEADS_INFO_GSON, headsInfo).getBytes(UTF_8))))
+				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", ensureBody(req -> {
+					SignedData<RawSnapshot> encryptedSnapshot = SignedData.ofBytes(req.getBody().asArray(), RawSnapshot::ofBytes);
 					return rawServer.saveSnapshot(encryptedSnapshot.getData().repositoryId, encryptedSnapshot)
-							.thenApply($ -> HttpResponse.ok200());
+							.thenApply($2 -> HttpResponse.ok200());
 				}))
-				.with(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", servlet(request ->
+				.with(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", req ->
 						rawServer.loadSnapshot(
-								urlDecodeRepositoryId(request),
-								urlDecodeCommitId(request.getQueryParameter("id")))
+								urlDecodeRepositoryId(req),
+								urlDecodeCommitId(req.getQueryParameter("id")))
 								.thenApply(maybeRawSnapshot -> maybeRawSnapshot.isPresent() ?
 										HttpResponse.ok200()
 												.withBody(maybeRawSnapshot.get().toBytes()) :
-										HttpResponse.ofCode(404))))
-				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", servlet(request ->
+										HttpResponse.ofCode(404)))
+				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", req ->
 						rawServer.getHeads(
-								urlDecodeRepositoryId(request),
-								HEADS_SPLITTER.splitAsStream(request.getQueryParameter("heads"))
-										.map(HttpDataFormats::urlDecodeCommitId)
+								urlDecodeRepositoryId(req),
+								req.parseQueryParameter("heads", HEADS_SPLITTER::splitAsStream)
+										.map(str -> {
+											try {
+												return HttpDataFormats.urlDecodeCommitId(str);
+											} catch (ParseException e) {
+												throw new UncheckedWrapperException(e);
+											}
+										})
 										.collect(toSet()))
 								.thenApply(heads ->
 										HttpResponse.ok200()
-												.withBody(toJson(HEADS_DELTA_GSON, heads).getBytes(UTF_8)))))
-				.with(POST, "/" + SHARE_KEY, servlet(request ->
-						rawServer.shareKey(fromJson(SHARED_SIM_KEY_JSON, request.getBody().asString(UTF_8)))
+												.withBody(toJson(HEADS_DELTA_GSON, heads).getBytes(UTF_8))))
+				.with(POST, "/" + SHARE_KEY, ensureBody(req ->
+						rawServer.shareKey(fromJson(SHARED_SIM_KEY_JSON, req.getBody().asString(UTF_8)))
 								.thenApply($ ->
 										HttpResponse.ok200())))
-				.with(GET, "/" + DOWNLOAD, request -> {
-					RepositoryName repositoryName;
-					Set<CommitId> bases;
-					Set<CommitId> heads;
-					try {
-						repositoryName = urlDecodeRepositoryId(request);
-						bases = HEADS_SPLITTER.splitAsStream(request.getQueryParameter("bases"))
-								.map(HttpDataFormats::urlDecodeCommitId)
-								.collect(toSet());
-						heads = HEADS_SPLITTER.splitAsStream(request.getQueryParameter("heads"))
-								.map(HttpDataFormats::urlDecodeCommitId)
-								.collect(toSet());
-					} catch (ParseException e) {
-						return Stage.ofException(e);
-					}
-
+				.with(GET, "/" + DOWNLOAD, req -> {
+					RepositoryName repositoryName = urlDecodeRepositoryId(req);
+					Set<CommitId> heads = req.parseQueryParameter("heads", HEADS_SPLITTER::splitAsStream)
+							.map(str -> {
+								try {
+									return HttpDataFormats.urlDecodeCommitId(str);
+								} catch (ParseException e) {
+									throw new UncheckedWrapperException(e);
+								}
+							})
+							.collect(toSet());
+					Set<CommitId> bases = req.parseQueryParameter("bases", HEADS_SPLITTER::splitAsStream)
+							.map(str -> {
+								try {
+									return HttpDataFormats.urlDecodeCommitId(str);
+								} catch (ParseException e) {
+									throw new UncheckedWrapperException(e);
+								}
+							})
+							.collect(toSet());
 					return rawServer.download(repositoryName, bases, heads)
 							.thenApply(downloader ->
 									HttpResponse.ok200()
@@ -127,30 +138,14 @@ public final class RawServerServlet implements AsyncServlet {
 													.transform(commitEntry -> wrapWithVarIntHeader(ofCommitEntry(commitEntry)))
 													.apply(SerialByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))));
 				})
-				.with(POST, "/" + UPLOAD, request -> {
-					RepositoryName repositoryName;
-					try {
-						repositoryName = urlDecodeRepositoryId(request);
-					} catch (ParseException e) {
-						return Stage.ofException(e);
-					}
-
-					return ByteBufsSupplier.of(request.getBodyStream())
+				.with(POST, "/" + UPLOAD, req -> {
+					RepositoryName repositoryName = urlDecodeRepositoryId(req);
+					return ByteBufsSupplier.of(req.getBodyStream())
 							.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
 									.andThen(BinaryDataFormats::toCommitEntry))
 							.streamTo(rawServer.uploader(repositoryName))
 							.thenApply($ -> HttpResponse.ok200());
 				});
-	}
-
-	private AsyncServlet servlet(ServletFunction fn) {
-		return AsyncServlet.ensureBody(request -> {
-			try {
-				return fn.convert(request);
-			} catch (IOException | ParseException e) {
-				return Stage.ofException(e);
-			}
-		});
 	}
 
 	@Override

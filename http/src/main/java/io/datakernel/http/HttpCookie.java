@@ -19,8 +19,9 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpUtils.skipSpaces;
@@ -63,7 +64,7 @@ public final class HttpCookie {
 
 	private final String name;
 	private String value;
-	private Date expirationDate;
+	private long expirationDate = -1;
 	private int maxAge = -1;
 	private String domain;
 	private String path = "/";
@@ -90,7 +91,7 @@ public final class HttpCookie {
 		return this;
 	}
 
-	public HttpCookie withExpirationDate(Date expirationDate) {
+	public HttpCookie withExpirationDate(Instant expirationDate) {
 		// <rfc1123-date, defined in [RFC2616], Section 3.3.1>
 		setExpirationDate(expirationDate);
 		return this;
@@ -143,12 +144,12 @@ public final class HttpCookie {
 		this.value = value;
 	}
 
-	public Date getExpirationDate() {
-		return expirationDate;
+	public Instant getExpirationDate() {
+		return Instant.ofEpochSecond(expirationDate);
 	}
 
-	public void setExpirationDate(Date expirationDate) {
-		this.expirationDate = expirationDate;
+	public void setExpirationDate(Instant expirationDate) {
+		this.expirationDate = expirationDate.getEpochSecond();
 	}
 
 	public int getMaxAge() {
@@ -200,17 +201,7 @@ public final class HttpCookie {
 	}
 	// endregion
 
-	// region etc
-	static void parse(String cookieString, List<HttpCookie> cookies) throws ParseException {
-		byte[] bytes = encodeAscii(cookieString);
-		parse(bytes, 0, bytes.length, cookies);
-	}
-
-	static void parse(ByteBuf buf, List<HttpCookie> cookies) throws ParseException {
-		parse(buf.array(), buf.readPosition(), buf.writePosition(), cookies);
-	}
-
-	static void parse(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws ParseException {
+	static void parseFull(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws ParseException {
 		try {
 			HttpCookie cookie = new HttpCookie("", "");
 			while (pos < end) {
@@ -277,11 +268,6 @@ public final class HttpCookie {
 		return pos;
 	}
 
-	static void parseSimple(String string, List<HttpCookie> cookies) throws ParseException {
-		byte[] bytes = encodeAscii(string);
-		parseSimple(bytes, 0, bytes.length, cookies);
-	}
-
 	static void parseSimple(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws ParseException {
 		try {
 			while (pos < end) {
@@ -337,11 +323,11 @@ public final class HttpCookie {
 		if (value != null) {
 			putAscii(buf, value);
 		}
-		if (expirationDate != null) {
+		if (expirationDate != -1) {
 			putAscii(buf, "; ");
 			buf.put(EXPIRES);
 			putAscii(buf, "=");
-			HttpDate.render(expirationDate.getTime(), buf);
+			HttpDate.render(expirationDate, buf);
 		}
 		if (maxAge >= 0) {
 			putAscii(buf, "; ");
@@ -424,10 +410,30 @@ public final class HttpCookie {
 		return null;
 	}
 
-	private static Date parseExpirationDate(byte[] bytes, int start, int end) throws ParseException {
+	private static Instant parseExpirationDate(byte[] bytes, int start, int end) throws ParseException {
 		assert end - start <= 29;
-		long timestamp = HttpDate.parse(bytes, start);
-		return new Date(timestamp);
+		return Instant.ofEpochSecond(HttpDate.parse(bytes, start));
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		HttpCookie that = (HttpCookie) o;
+		return maxAge == that.maxAge &&
+				secure == that.secure &&
+				httpOnly == that.httpOnly &&
+				Objects.equals(name, that.name) &&
+				Objects.equals(value, that.value) &&
+				Objects.equals(expirationDate, that.expirationDate) &&
+				Objects.equals(domain, that.domain) &&
+				Objects.equals(path, that.path) &&
+				Objects.equals(extension, that.extension);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(name, value, expirationDate, maxAge, domain, path, secure, httpOnly, extension);
 	}
 
 	@Override

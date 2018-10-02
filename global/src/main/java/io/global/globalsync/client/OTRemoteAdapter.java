@@ -1,10 +1,10 @@
 package io.global.globalsync.client;
 
 import io.datakernel.async.Stage;
-import io.global.globalsync.api.CommitId;
-import io.global.globalsync.api.RepositoryName;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemote;
+import io.global.globalsync.api.CommitId;
+import io.global.globalsync.api.RepositoryName;
 
 import java.util.List;
 import java.util.Map;

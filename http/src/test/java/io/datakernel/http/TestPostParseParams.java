@@ -17,16 +17,14 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.ParseException;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.Map;
 
-import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
-import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static org.junit.Assert.assertEquals;
 
 public class TestPostParseParams {
@@ -34,18 +32,15 @@ public class TestPostParseParams {
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
-	public void testParameters() throws ParseException {
+	public void testParameters() {
 		ByteBuf body = wrapAscii("hello=world&value=1234");
 
-		HttpRequest request = HttpRequest.post("http://127.0.0.1")
-				.withHeader(CONTENT_TYPE, encodeAscii("application/x-www-form-urlencoded"))
-				.withBody(body);
-
-		Map<String, String> params = request.getPostParameters();
+		Map<String, String> params = UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.readPosition(), body.readRemaining()));
 
 		assertEquals(2, params.size());
 		assertEquals("world", params.get("hello"));
 		assertEquals("1234", params.get("value"));
-		request.recycle();
+
+		body.recycle();
 	}
 }

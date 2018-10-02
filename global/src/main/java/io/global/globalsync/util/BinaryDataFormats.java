@@ -20,6 +20,7 @@ package io.global.globalsync.util;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.ParserFunction;
 import io.global.common.*;
 import io.global.globalsync.api.*;
 import org.spongycastle.math.ec.ECPoint;
@@ -39,11 +40,6 @@ public final class BinaryDataFormats {
 	private BinaryDataFormats() {}
 	// endregion
 
-	@FunctionalInterface
-	public interface Parser<T> {
-		T parse(ByteBuf buf) throws ParseException;
-	}
-
 	public static int sizeof(byte[] bytes) {
 		return bytes.length + 5;
 	}
@@ -53,8 +49,37 @@ public final class BinaryDataFormats {
 		buf.write(bytes);
 	}
 
-	public static byte[] readBytes(ByteBuf buf) {
-		int size = buf.readVarInt();
+	public static int readVarInt(ByteBuf buf) throws ParseException {
+		int size;
+		try {
+			size = buf.readVarInt();
+		} catch (ArrayIndexOutOfBoundsException | AssertionError e) {
+			throw new ParseException(e);
+		}
+		if (buf.readPosition() > buf.writePosition()) {
+			throw new ParseException();
+		}
+		return size;
+	}
+
+	public static long readVarLong(ByteBuf buf) throws ParseException {
+		long size;
+		try {
+			size = buf.readVarLong();
+		} catch (ArrayIndexOutOfBoundsException | AssertionError e) {
+			throw new ParseException(e);
+		}
+		if (buf.readPosition() > buf.writePosition()) {
+			throw new ParseException();
+		}
+		return size;
+	}
+
+	public static byte[] readBytes(ByteBuf buf) throws ParseException {
+		int size = readVarInt(buf);
+		if (size < 0 || size > buf.readRemaining()) {
+			throw new ParseException();
+		}
 		byte[] bytes = new byte[size];
 		buf.read(bytes);
 		return bytes;
@@ -68,7 +93,7 @@ public final class BinaryDataFormats {
 		writeBytes(buf, string.getBytes(UTF_8));
 	}
 
-	public static String readString(ByteBuf buf) {
+	public static String readString(ByteBuf buf) throws ParseException {
 		return new String(readBytes(buf), UTF_8);
 	}
 
@@ -81,10 +106,14 @@ public final class BinaryDataFormats {
 		writeBigInteger(buf, ecPoint.getYCoord().toBigInteger());
 	}
 
-	public static ECPoint readECPoint(ByteBuf buf) {
-		BigInteger x = readBigInteger(buf);
-		BigInteger y = readBigInteger(buf);
-		return CryptoUtils.CURVE.getCurve().validatePoint(x, y);
+	public static ECPoint readECPoint(ByteBuf buf) throws ParseException {
+		try {
+			BigInteger x = readBigInteger(buf);
+			BigInteger y = readBigInteger(buf);
+			return CryptoUtils.CURVE.getCurve().validatePoint(x, y);
+		} catch (IllegalArgumentException | ArithmeticException e) {
+			throw new ParseException(e);
+		}
 	}
 
 	public static int sizeof(PubKey pubKey) {
@@ -95,8 +124,12 @@ public final class BinaryDataFormats {
 		writeECPoint(buf, pubKey.getEcPublicKey().getQ());
 	}
 
-	public static PubKey readPubKey(ByteBuf buf) {
-		return PubKey.ofQ(readECPoint(buf));
+	public static PubKey readPubKey(ByteBuf buf) throws ParseException {
+		try {
+			return PubKey.ofQ(readECPoint(buf));
+		} catch (IllegalArgumentException | ArithmeticException e) {
+			throw new ParseException(e);
+		}
 	}
 
 	public static int sizeof(RepositoryName repositoryId) {
@@ -108,7 +141,7 @@ public final class BinaryDataFormats {
 		buf.writeJavaUTF8(repositoryId.getRepositoryName());
 	}
 
-	public static RepositoryName readRepositoryId(ByteBuf buf) {
+	public static RepositoryName readRepositoryId(ByteBuf buf) throws ParseException {
 		PubKey pubKey = readPubKey(buf);
 		String str = buf.readJavaUTF8();
 		return new RepositoryName(pubKey, str);
@@ -122,7 +155,7 @@ public final class BinaryDataFormats {
 		writeBytes(buf, commitId.toBytes());
 	}
 
-	public static CommitId readCommitId(ByteBuf buf) {
+	public static CommitId readCommitId(ByteBuf buf) throws ParseException {
 		return CommitId.ofBytes(readBytes(buf));
 	}
 
@@ -134,7 +167,7 @@ public final class BinaryDataFormats {
 		writeBytes(buf, simKeyHash.toBytes());
 	}
 
-	public static SimKeyHash readSimKeyHash(ByteBuf buf) {
+	public static SimKeyHash readSimKeyHash(ByteBuf buf) throws ParseException {
 		return new SimKeyHash(readBytes(buf));
 	}
 
@@ -147,7 +180,7 @@ public final class BinaryDataFormats {
 		writeBytes(buf, encryptedData.encryptedBytes);
 	}
 
-	public static EncryptedData readEncryptedData(ByteBuf buf) {
+	public static EncryptedData readEncryptedData(ByteBuf buf) throws ParseException {
 		byte[] initializationVector = readBytes(buf);
 		byte[] data = readBytes(buf);
 		return new EncryptedData(initializationVector, data);
@@ -161,8 +194,12 @@ public final class BinaryDataFormats {
 		writeBytes(buf, bigInteger.toByteArray());
 	}
 
-	public static BigInteger readBigInteger(ByteBuf buf) {
-		return new BigInteger(readBytes(buf));
+	public static BigInteger readBigInteger(ByteBuf buf) throws ParseException {
+		try {
+			return new BigInteger(readBytes(buf));
+		} catch (IllegalArgumentException | ArithmeticException e) {
+			throw new ParseException(e);
+		}
 	}
 
 	public static int sizeof(ECDSASignature signature) {
@@ -174,7 +211,7 @@ public final class BinaryDataFormats {
 		writeBigInteger(buf, signature.s);
 	}
 
-	public static ECDSASignature readEcdsaSignature(ByteBuf buf) {
+	public static ECDSASignature readEcdsaSignature(ByteBuf buf) throws ParseException {
 		BigInteger r = readBigInteger(buf);
 		BigInteger s = readBigInteger(buf);
 		return new ECDSASignature(r, s);
@@ -219,19 +256,22 @@ public final class BinaryDataFormats {
 		collection.forEach(item -> writer.accept(buf, item));
 	}
 
-	private static <T, C extends Collection<T>> C readInto(ByteBuf buf, Parser<T> parser, C collection) throws ParseException {
-		int size = buf.readVarInt();
+	private static <T, C extends Collection<T>> C readInto(ByteBuf buf, ParserFunction<ByteBuf, T> parser, C collection) throws ParseException {
+		int size = readVarInt(buf);
+		if (size < 0) {
+			throw new ParseException();
+		}
 		for (int i = 0; i < size; i++) {
 			collection.add(parser.parse(buf));
 		}
 		return collection;
 	}
 
-	public static <T> List<T> readList(ByteBuf buf, Parser<T> parser) throws ParseException {
+	public static <T> List<T> readList(ByteBuf buf, ParserFunction<ByteBuf, T> parser) throws ParseException {
 		return readInto(buf, parser, new ArrayList<>());
 	}
 
-	public static <T> Set<T> readSet(ByteBuf buf, Parser<T> parser) throws ParseException {
+	public static <T> Set<T> readSet(ByteBuf buf, ParserFunction<ByteBuf, T> parser) throws ParseException {
 		return readInto(buf, parser, new HashSet<>());
 	}
 

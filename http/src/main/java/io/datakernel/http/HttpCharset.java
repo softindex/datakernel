@@ -20,17 +20,19 @@ import io.datakernel.exception.ParseException;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.util.Utils.arraysEquals;
 import static java.nio.charset.Charset.forName;
 
 // maximum of 40 characters, us-ascii, see rfc2978,
 // http://www.iana.org/assignments/character-sets/character-sets.txt
 // case insensitive
-final class HttpCharset extends CaseInsensitiveTokenMap.Token {
+public final class HttpCharset extends CaseInsensitiveTokenMap.Token {
 	private final static CaseInsensitiveTokenMap<HttpCharset> charsets = new CaseInsensitiveTokenMap<HttpCharset>(256, 2, HttpCharset.class) {
 		@Override
 		protected HttpCharset create(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode) {
@@ -100,6 +102,22 @@ final class HttpCharset extends CaseInsensitiveTokenMap.Token {
 
 	int size() {
 		return length;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		HttpCharset that = (HttpCharset) o;
+		return arraysEquals(bytes, offset, length, that.bytes, that.offset, that.length);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = Arrays.hashCode(bytes);
+		result = 31 * result + offset;
+		result = 31 * result + length;
+		return result;
 	}
 
 	@Override

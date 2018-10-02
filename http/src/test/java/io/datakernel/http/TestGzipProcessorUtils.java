@@ -131,7 +131,7 @@ public class TestGzipProcessorUtils {
 		server.listen();
 		CompletableFuture<String> future = client.request(request)
 				.thenApply(result -> {
-					assertEquals("gzip", result.getHeader(HttpHeaders.CONTENT_ENCODING));
+					assertEquals("gzip", result.getHeaderOrNull(HttpHeaders.CONTENT_ENCODING));
 					server.close();
 					client.stop();
 					ByteBuf buf = result.getBody();

@@ -16,6 +16,7 @@
 
 package io.datakernel.bytebuf;
 
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.ConcurrentStack;
 import io.datakernel.util.MemSize;
 
@@ -29,8 +30,8 @@ import static java.lang.Math.max;
 
 public final class ByteBufPool {
 	private static final int NUMBER_OF_SLABS = 33;
-	private static int minSize = 32;
-	private static int maxSize = 1 << 30;
+	private static final int minSize = ApplicationSettings.getInt(ByteBufPool.class, "minSize", 32);
+	private static final int maxSize = ApplicationSettings.getInt(ByteBufPool.class, "maxSize", 1 << 30);
 
 	private static final ConcurrentStack<ByteBuf>[] slabs;
 	private static final AtomicInteger[] created;
@@ -59,7 +60,7 @@ public final class ByteBufPool {
 	 * @return byte buffer from this pool
 	 */
 	public static ByteBuf allocate(int size) {
-		if (size < minSize || size >= maxSize) {
+		if ((minSize != 0 && size < minSize) || (maxSize != 0 && size >= maxSize)) {
 			// not willing to register in pool
 			return ByteBuf.wrapForWriting(new byte[size]);
 		}
@@ -217,11 +218,6 @@ public final class ByteBufPool {
 			result += slotSize * slabs[i].size();
 		}
 		return result;
-	}
-
-	public static void setSizes(int minSize, int maxSize) {
-		ByteBufPool.minSize = minSize;
-		ByteBufPool.maxSize = maxSize;
 	}
 
 	public interface ByteBufPoolStatsMXBean {

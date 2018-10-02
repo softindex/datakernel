@@ -32,8 +32,8 @@ import io.datakernel.util.MemSize;
 import java.net.InetAddress;
 import java.time.Duration;
 
-import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
+import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -41,19 +41,23 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final Duration DEFAULT_KEEP_ALIVE = Duration.ofSeconds(30);
 
 	private static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = e -> {
+		HttpResponse response;
 		if (e instanceof HttpException) {
 			HttpException httpException = (HttpException) e;
-			HttpResponse response = HttpResponse.ofCode(httpException.getCode()).withNoCache();
+			response = HttpResponse.ofCode(httpException.getCode());
 			String msg = e.getLocalizedMessage();
 			if (msg != null) {
 				response.withBody(msg.getBytes(UTF_8));
 			}
-			return response;
+		} else if (e instanceof ParseException) {
+			response = HttpResponse.ofCode(400);
+		} else {
+			response = HttpResponse.ofCode(500);
 		}
-		if (e instanceof ParseException) {
-			return HttpResponse.ofCode(400).withNoCache();
-		}
-		return HttpResponse.ofCode(500).withNoCache();
+		return response
+				.withHeader(CACHE_CONTROL, "no-store")
+				.withHeader(PRAGMA, "no-cache")
+				.withHeader(AGE, "0");
 	};
 
 	private final AsyncServlet servlet;
@@ -68,8 +72,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	final ConnectionsLinkedList poolServing = new ConnectionsLinkedList();
 	private int poolKeepAliveExpired;
 	private int poolReadWriteExpired;
-
-	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE.toInt()];
 
 	@Nullable
 	private ScheduledRunnable expiredConnectionsCheck;
@@ -233,7 +235,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		assert eventloop.inEventloopThread();
 		if (expiredConnectionsCheck == null)
 			scheduleExpiredConnectionsCheck();
-		HttpServerConnection connection = new HttpServerConnection(eventloop, remoteAddress, socket, this, servlet, headerChars);
+		HttpServerConnection connection = new HttpServerConnection(eventloop, remoteAddress, socket, this, servlet);
 		connection.serve();
 	}
 

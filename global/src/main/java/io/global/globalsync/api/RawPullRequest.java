@@ -2,9 +2,9 @@ package io.global.globalsync.api;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 import io.global.common.Signable;
 
-import java.io.IOException;
 import java.util.Arrays;
 
 import static io.global.globalsync.util.BinaryDataFormats.*;
@@ -22,7 +22,7 @@ public final class RawPullRequest implements Signable {
 		this.forkRepository = forkRepository;
 	}
 
-	public static RawPullRequest ofBytes(byte[] bytes) throws IOException {
+	public static RawPullRequest ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 
 		RepositoryName repository = readRepositoryId(buf);

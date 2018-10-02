@@ -3,6 +3,7 @@ package io.global.common;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.ParserFunction;
 import io.global.globalsync.util.BinaryDataFormats;
 
 import java.math.BigInteger;
@@ -18,10 +19,10 @@ public final class SignedData<T extends Signable> {
 		this.signature = signature;
 	}
 
-	public static <T extends Signable> SignedData<T> ofBytes(byte[] bytes, Signable.Parser<T> dataParser) throws ParseException {
+	public static <T extends Signable> SignedData<T> ofBytes(byte[] bytes, ParserFunction<byte[], T> dataParser) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 		byte[] dataBytes = BinaryDataFormats.readBytes(buf);
-		T data = dataParser.parseBytes(dataBytes);
+		T data = dataParser.parse(dataBytes);
 		BigInteger r = readBigInteger(buf);
 		BigInteger s = readBigInteger(buf);
 		return new SignedData<>(data, new ECDSASignature(r, s));

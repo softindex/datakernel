@@ -33,7 +33,6 @@ public class ByteBufTest {
 	@Before
 	public void clearByteBufPool() {
 		ByteBufPool.clear();
-		ByteBufPool.setSizes(32, 1 << 30);
 	}
 
 	@After
@@ -261,7 +260,6 @@ public class ByteBufTest {
 		ByteBufPool.getStats().clearPool();
 		assertEquals(cleared, ByteBufPool.getStats().getPoolSlabs());
 	}
-
 
 	private ByteBuf createEmptyByteBufOfSize(int size) {
 		return ByteBuf.wrapForWriting(new byte[size]);
