@@ -34,7 +34,7 @@ import io.global.globalsync.util.BinaryDataFormats;
 
 import java.util.Map;
 
-import static io.datakernel.http.AsyncServlet.ensureBody;
+import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.*;
 import static io.global.globalsync.util.BinaryDataFormats.sizeof;
 
@@ -92,7 +92,7 @@ public final class GlobalFsNodeServlet {
 					return node.delete(GlobalFsName.of(pubKey, fs), glob)
 							.thenApply($ -> HttpResponse.ok200());
 				})
-				.with(POST, "/" + COPY, ensureBody(request -> {
+				.with(POST, "/" + COPY, ensureRequestBody(Integer.MAX_VALUE, request -> {
 					PubKey pubKey = PubKey.fromString(request.getQueryParameter("key"));
 					String fs = request.getQueryParameter("fs");
 					Map<String, String> changes = BinaryDataFormats.readMap(request.getBody(), BinaryDataFormats::readString, BinaryDataFormats::readString);
@@ -103,7 +103,7 @@ public final class GlobalFsNodeServlet {
 								return HttpResponse.ok200().withBody(buf);
 							});
 				}))
-				.with(POST, "/" + MOVE, ensureBody(request -> {
+				.with(POST, "/" + MOVE, ensureRequestBody(Integer.MAX_VALUE, request -> {
 					PubKey pubKey = PubKey.fromString(request.getQueryParameter("key"));
 					String fs = request.getQueryParameter("fs");
 					Map<String, String> changes = BinaryDataFormats.readMap(request.getBody(), BinaryDataFormats::readString, BinaryDataFormats::readString);

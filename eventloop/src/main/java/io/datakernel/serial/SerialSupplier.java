@@ -28,6 +28,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.asIterator;
@@ -95,6 +96,10 @@ public interface SerialSupplier<T> extends Cancellable {
 
 	static <T> SerialSupplier<T> ofIterable(Iterable<? extends T> iterable) {
 		return ofIterator(iterable.iterator());
+	}
+
+	static <T> SerialSupplier<T> ofStream(Stream<? extends T> stream) {
+		return ofIterator(stream.iterator());
 	}
 
 	static <T> SerialSupplier<T> ofIterator(Iterator<? extends T> iterator) {

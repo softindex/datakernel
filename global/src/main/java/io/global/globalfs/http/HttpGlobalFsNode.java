@@ -61,7 +61,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 
 	@Override
 	public Stage<SerialSupplier<DataFrame>> download(GlobalFsPath file, long offset, long limit) {
-		return client.requestBodyStream(
+		return client.request(
 				HttpRequest.get(
 						UrlBuilder.http(DOWNLOAD)
 								.withAuthority(address)
@@ -84,17 +84,16 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	@Override
 	public Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath file, long offset) {
 		SerialZeroBuffer<DataFrame> buffer = new SerialZeroBuffer<>();
-		MaterializedStage<Void> request = client.request(
-				HttpRequest.post(
-						UrlBuilder.http(UPLOAD)
-								.withAuthority(address)
-								.withQuery(query()
-										.with("key", file.getPubKey().asString())
-										.with("fs", file.getFsName())
-										.with("path", file.getPath())
-										.with("offset", offset))
-								.build())
-						.withBodyStream(buffer.getSupplier().apply(new FrameEncoder())))
+		MaterializedStage<Void> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
+				UrlBuilder.http(UPLOAD)
+						.withAuthority(address)
+						.withQuery(query()
+								.with("key", file.getPubKey().asString())
+								.with("fs", file.getFsName())
+								.with("path", file.getPath())
+								.with("offset", offset))
+						.build())
+				.withBodyStream(buffer.getSupplier().apply(new FrameEncoder())))
 				.thenCompose(response -> {
 					if (response.getCode() != 200) {
 						return Stage.ofException(new GlobalFsException("response: " + response));
@@ -107,7 +106,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 
 	@Override
 	public Stage<List<GlobalFsMetadata>> list(GlobalFsName name, String glob) {
-		return client.request(HttpRequest.get(
+		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
 				UrlBuilder.http(LIST)
 						.withAuthority(address)
 						.withQuery(query()
@@ -122,7 +121,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 
 	@Override
 	public Stage<Void> delete(GlobalFsName name, String glob) {
-		return client.request(HttpRequest.of(DELETE,
+		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.of(DELETE,
 				UrlBuilder.http(DEL)
 						.withAuthority(address)
 						.withQuery(query()
@@ -137,7 +136,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	public Stage<Set<String>> copy(GlobalFsName name, Map<String, String> changes) {
 		ByteBuf buf = ByteBufPool.allocate(BinaryDataFormats.sizeof(changes, BinaryDataFormats::sizeof, BinaryDataFormats::sizeof));
 		BinaryDataFormats.writeMap(buf, changes, BinaryDataFormats::writeString, BinaryDataFormats::writeString);
-		return client.request(HttpRequest.post(
+		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 				UrlBuilder.http(COPY)
 						.withAuthority(address)
 						.withQuery(query()
@@ -154,7 +153,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	public Stage<Set<String>> move(GlobalFsName name, Map<String, String> changes) {
 		ByteBuf buf = ByteBufPool.allocate(BinaryDataFormats.sizeof(changes, BinaryDataFormats::sizeof, BinaryDataFormats::sizeof));
 		BinaryDataFormats.writeMap(buf, changes, BinaryDataFormats::writeString, BinaryDataFormats::writeString);
-		return client.request(HttpRequest.post(
+		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 				UrlBuilder.http(MOVE)
 						.withAuthority(address)
 						.withQuery(query()

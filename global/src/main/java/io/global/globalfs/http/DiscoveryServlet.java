@@ -48,7 +48,7 @@ public final class DiscoveryServlet {
 				})
 				.with(HttpMethod.PUT, "/" + ANNOUNCE, request -> {
 					PubKey pubKey = PubKey.fromString(request.getQueryParameter("key"));
-					return request.getBodyStage()
+					return request.getBodyStage(Integer.MAX_VALUE)
 							.thenCompose(body -> {
 								try {
 									return service.announce(pubKey, SignedData.ofBytes(body.getArray(), AnnounceData::fromBytes));

@@ -59,7 +59,7 @@ public class AbstractHttpConnectionTest {
 		server.listen();
 
 		Map<String, String> data = new HashMap<>();
-		CompletableFuture<Void> future = client.request(HttpRequest.get(url))
+		CompletableFuture<Void> future = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
 				.whenResult(result -> {
 					data.put("body", result.getBody().asString(UTF_8));
 					data.put("header", result.getHeaderOrNull(CONTENT_TYPE));
@@ -86,7 +86,7 @@ public class AbstractHttpConnectionTest {
 
 		HttpRequest request = HttpRequest.get(url)
 				.withHeader(ACCEPT_ENCODING, "gzip");
-		CompletableFuture<String> future = client.request(request)
+		CompletableFuture<String> future = client.requestWithResponseBody(Integer.MAX_VALUE, request)
 				.thenApply(response -> {
 					assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING));
 					return response.getBody().asString(UTF_8);
@@ -109,30 +109,36 @@ public class AbstractHttpConnectionTest {
 
 		EventStats clientConnectionCount = client.getStats().getConnected();
 
-		client.request(HttpRequest.get(url))
+		client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
 				.whenResult(response1 -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
 					assertEquals("keep-alive", response1.getHeaderOrNull(CONNECTION));
 					assertEquals(1, clientConnectionCount.getTotalCount());
-					eventloop.post(() -> client.request(HttpRequest.get(url))
-							.whenResult(response2 -> {
-								clientConnectionCount.refresh(System.currentTimeMillis());
-								assertEquals("keep-alive", response2.getHeaderOrNull(CONNECTION));
-								assertEquals(1, clientConnectionCount.getTotalCount());
-								eventloop.post(() -> client.request(HttpRequest.get(url))
-										.whenResult(response3 -> {
-											clientConnectionCount.refresh(System.currentTimeMillis());
-											assertEquals("close", response3.getHeaderOrNull(CONNECTION));
-											assertEquals(1, client.getStats().getConnected().getTotalCount());
-											eventloop.post(() -> client.request(HttpRequest.get(url))
-													.whenResult(r -> {
-														clientConnectionCount.refresh(System.currentTimeMillis());
-														assertEquals("keep-alive", r.getHeaderOrNull(CONNECTION));
-														assertEquals(2, clientConnectionCount.getTotalCount());
-														stopClientAndServer(client, server);
-													}));
-										}));
-							}));
+					eventloop.post(() -> {
+						client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+								.whenResult(response2 -> {
+									clientConnectionCount.refresh(System.currentTimeMillis());
+									assertEquals("keep-alive", response2.getHeaderOrNull(CONNECTION));
+									assertEquals(1, clientConnectionCount.getTotalCount());
+									eventloop.post(() -> {
+										client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+												.whenResult(response3 -> {
+													clientConnectionCount.refresh(System.currentTimeMillis());
+													assertEquals("close", response3.getHeaderOrNull(CONNECTION));
+													assertEquals(1, client.getStats().getConnected().getTotalCount());
+													eventloop.post(() -> {
+														client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+																.whenResult(r -> {
+																	clientConnectionCount.refresh(System.currentTimeMillis());
+																	assertEquals("keep-alive", r.getHeaderOrNull(CONNECTION));
+																	assertEquals(2, clientConnectionCount.getTotalCount());
+																	stopClientAndServer(client, server);
+																});
+													});
+												});
+									});
+								});
+					});
 				});
 
 		eventloop.run();
@@ -150,30 +156,36 @@ public class AbstractHttpConnectionTest {
 		EventStats serverConnectionCount = server.getAccepts();
 		assert serverConnectionCount != null;
 
-		client.request(HttpRequest.get(url))
+		client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
 				.whenResult(response1 -> {
 					serverConnectionCount.refresh(System.currentTimeMillis());
 					assertEquals("keep-alive", response1.getHeaderOrNull(CONNECTION));
 					assertEquals(1, serverConnectionCount.getTotalCount());
-					eventloop.post(() -> client.request(HttpRequest.get(url))
-							.whenResult(response2 -> {
-								serverConnectionCount.refresh(System.currentTimeMillis());
-								assertEquals("keep-alive", response2.getHeaderOrNull(CONNECTION));
-								assertEquals(1, serverConnectionCount.getTotalCount());
-								eventloop.post(() -> client.request(HttpRequest.get(url))
-										.whenResult(response3 -> {
-											serverConnectionCount.refresh(System.currentTimeMillis());
-											assertEquals("close", response3.getHeaderOrNull(CONNECTION));
-											assertEquals(1, serverConnectionCount.getTotalCount());
-											eventloop.post(() -> client.request(HttpRequest.get(url))
-													.whenResult(r -> {
-														serverConnectionCount.refresh(System.currentTimeMillis());
-														assertEquals("keep-alive", r.getHeaderOrNull(CONNECTION));
-														assertEquals(2, serverConnectionCount.getTotalCount());
-														stopClientAndServer(client, server);
-													}));
-										}));
-							}));
+					eventloop.post(() -> {
+						client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+								.whenResult(response2 -> {
+									serverConnectionCount.refresh(System.currentTimeMillis());
+									assertEquals("keep-alive", response2.getHeaderOrNull(CONNECTION));
+									assertEquals(1, serverConnectionCount.getTotalCount());
+									eventloop.post(() -> {
+										client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+												.whenResult(response3 -> {
+													serverConnectionCount.refresh(System.currentTimeMillis());
+													assertEquals("close", response3.getHeaderOrNull(CONNECTION));
+													assertEquals(1, serverConnectionCount.getTotalCount());
+													eventloop.post(() -> {
+														client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+																.whenResult(r -> {
+																	serverConnectionCount.refresh(System.currentTimeMillis());
+																	assertEquals("keep-alive", r.getHeaderOrNull(CONNECTION));
+																	assertEquals(2, serverConnectionCount.getTotalCount());
+																	stopClientAndServer(client, server);
+																});
+													});
+												});
+									});
+								});
+					});
 				});
 
 		eventloop.run();

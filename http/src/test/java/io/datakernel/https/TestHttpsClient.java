@@ -72,7 +72,7 @@ public class TestHttpsClient {
 				.withSslEnabled(SSLContext.getDefault(), executor);
 
 		String url = "https://en.wikipedia.org/wiki/Wikipedia";
-		CompletableFuture<HttpResponse> future = client.request(get(url))
+		CompletableFuture<HttpResponse> future = client.requestWithResponseBody(Integer.MAX_VALUE, get(url))
 				.thenRunEx(client::stop)
 				.toCompletableFuture();
 

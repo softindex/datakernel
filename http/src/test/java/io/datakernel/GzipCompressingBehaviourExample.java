@@ -54,6 +54,6 @@ public final class GzipCompressingBehaviourExample {
 				.withBodyGzipCompression()
 				.withHeader(ACCEPT_ENCODING, "gzip");
 
-		client.request(request);
+		client.requestWithResponseBody(Integer.MAX_VALUE, request);
 	}
 }

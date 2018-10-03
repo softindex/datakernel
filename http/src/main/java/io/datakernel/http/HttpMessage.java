@@ -25,6 +25,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfBuf;
 import io.datakernel.http.HttpHeaderValue.ParserIntoList;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 
 import java.util.*;
@@ -184,23 +185,31 @@ public abstract class HttpMessage {
 		return body;
 	}
 
-	public Stage<ByteBuf> getBodyStage() {
+	public Stage<ByteBuf> getBodyStage(MemSize maxBodySize) {
+		return getBodyStage(maxBodySize.toInt());
+	}
+
+	public Stage<ByteBuf> getBodyStage(int maxBodySize) {
 		checkState(body != null ^ bodySupplier != null);
 		if (body != null) return Stage.of(body);
 		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		this.bodySupplier = null;
-		return bodySupplier.toCollector(ByteBufQueue.collector());
+		return bodySupplier.toCollector(ByteBufQueue.collector(maxBodySize));
 	}
 
-	protected Stage<? extends HttpMessage> doEnsureBody() {
+	protected Stage<? extends HttpMessage> doEnsureBody(int maxBodySize) {
 		if (body != null) return Stage.of(this);
 		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		if (bodySupplier != null) {
 			this.bodySupplier = null;
-			return bodySupplier.toCollector(ByteBufQueue.collector())
+			return bodySupplier.toCollector(ByteBufQueue.collector(maxBodySize))
 					.thenComposeEx((buf, e) -> {
-						this.body = buf;
-						return e == null ? Stage.of(this) : Stage.ofException(e);
+						if (e == null) {
+							this.body = buf;
+							return Stage.of(this);
+						} else {
+							return Stage.ofException(e);
+						}
 					});
 		}
 		return Stage.of(this);

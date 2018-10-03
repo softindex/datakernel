@@ -78,27 +78,26 @@ public class RawServerHttpClient implements RawServer {
 
 	@Override
 	public Stage<Set<String>> list(PubKey pubKey) {
-		return httpClient.request(request(GET, LIST, urlEncodePubKey(pubKey)))
+		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, LIST, urlEncodePubKey(pubKey)))
 				.thenCompose(r -> processResult(r, SET_OF_STRINGS));
 	}
 
 	@Override
 	public Stage<Void> save(RepositoryName repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
-		return httpClient.request(
-				request(POST, SAVE, apiQuery(repositoryId))
-						.initialize(withJson(SAVE_GSON, new SaveTuple(commits, heads))))
+		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(POST, SAVE, apiQuery(repositoryId))
+				.initialize(withJson(SAVE_GSON, new SaveTuple(commits, heads))))
 				.thenCompose(r -> processResult(r, null));
 	}
 
 	@Override
 	public Stage<RawCommit> loadCommit(RepositoryName repositoryId, CommitId id) {
-		return httpClient.request(request(GET, LOAD_COMMIT, apiQuery(repositoryId, map("commitId", urlEncodeCommitId(id)))))
+		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, LOAD_COMMIT, apiQuery(repositoryId, map("commitId", urlEncodeCommitId(id)))))
 				.thenCompose(r -> processResult(r, COMMIT_JSON));
 	}
 
 	@Override
 	public Stage<HeadsInfo> getHeadsInfo(RepositoryName repositoryId) {
-		return httpClient.request(request(GET, GET_HEADS_INFO, apiQuery(repositoryId)))
+		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, GET_HEADS_INFO, apiQuery(repositoryId)))
 				.thenCompose(r -> processResult(r, HEADS_INFO_GSON));
 	}
 
@@ -114,15 +113,14 @@ public class RawServerHttpClient implements RawServer {
 
 	@Override
 	public Stage<Void> saveSnapshot(RepositoryName repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
-		return httpClient.request(
-				request(POST, SAVE_SNAPSHOT, apiQuery(repositoryId))
-						.withBody(encryptedSnapshot.toBytes()))
+		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(POST, SAVE_SNAPSHOT, apiQuery(repositoryId))
+				.withBody(encryptedSnapshot.toBytes()))
 				.thenCompose(r -> processResult(r, null));
 	}
 
 	@Override
 	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepositoryName repositoryId, CommitId id) {
-		return httpClient.request(request(GET, LOAD_SNAPSHOT, apiQuery(repositoryId, map("id", urlEncodeCommitId(id)))))
+		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, LOAD_SNAPSHOT, apiQuery(repositoryId, map("id", urlEncodeCommitId(id)))))
 				.<Optional<SignedData<RawSnapshot>>>thenCompose(r -> {
 					if (r.getCode() != 200)
 						return Stage.ofException(HttpException.ofCode(r.getCode()));
@@ -142,7 +140,7 @@ public class RawServerHttpClient implements RawServer {
 
 	@Override
 	public Stage<Heads> getHeads(RepositoryName repositoryId, Set<CommitId> remoteHeads) {
-		return httpClient.request(request(GET, GET_HEADS, apiQuery(repositoryId, map("heads",
+		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, GET_HEADS, apiQuery(repositoryId, map("heads",
 				remoteHeads.stream()
 						.map(HttpDataFormats::urlEncodeCommitId)
 						.collect(joining(","))))))
@@ -151,7 +149,7 @@ public class RawServerHttpClient implements RawServer {
 
 	@Override
 	public Stage<Void> shareKey(SignedData<SharedSimKey> simKey) {
-		return httpClient.request(request(POST, SHARE_KEY, apiQuery((RepositoryName) null))
+		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(POST, SHARE_KEY, apiQuery((RepositoryName) null))
 				.initialize(withJson(SHARED_SIM_KEY_JSON, simKey)))
 				.thenCompose(r -> processResult(r, null));
 	}

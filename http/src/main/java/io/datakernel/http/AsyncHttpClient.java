@@ -26,7 +26,6 @@ import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.util.MemSize;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
@@ -63,7 +62,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@Nullable
 	private ScheduledRunnable expiredConnectionsCheck;
-	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	// timeouts
 	private int connectTimeoutMillis = 0;
@@ -268,11 +266,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return this;
 	}
 
-	public AsyncHttpClient withMaxHttpMessageSize(@Nullable MemSize maxHttpMessageSize) {
-		this.maxHttpMessageSize = maxHttpMessageSize != null ? maxHttpMessageSize.toInt() : Integer.MAX_VALUE;
-		return this;
-	}
-
 	public AsyncHttpClient withInspector(Inspector inspector) {
 		this.inspector = inspector;
 		return this;
@@ -330,7 +323,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	 * @param request request for server
 	 */
 	@Override
-	public Stage<HttpResponse> requestBodyStream(HttpRequest request) {
+	public Stage<HttpResponse> request(HttpRequest request) {
 		assert eventloop.inEventloopThread();
 		if (inspector != null) inspector.onRequest(request);
 		String host = request.getUrl().getHost();
@@ -384,7 +377,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 								asyncTcpSocketImpl;
 
 						HttpClientConnection connection = new HttpClientConnection(eventloop, address, asyncTcpSocket,
-								AsyncHttpClient.this, maxHttpMessageSize);
+								AsyncHttpClient.this);
 
 						if (inspector != null) inspector.onConnect(request, connection);
 

@@ -17,6 +17,8 @@
 package io.datakernel.bytebuf;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.Recyclable;
 
 import java.util.Iterator;
@@ -50,6 +52,21 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 
 	public static Collector<ByteBuf, ByteBufQueue, ByteBuf> collector() {
 		return COLLECTOR;
+	}
+
+	public static Collector<ByteBuf, ByteBufQueue, ByteBuf> collector(int maxSize) {
+		return Collector.of(
+				ByteBufQueue::new,
+				(queue, buf) -> {
+					if (queue.hasRemainingBytes(maxSize)) {
+						queue.recycle();
+						buf.recycle();
+						throw UncheckedException.of(new ParseException());
+					}
+					queue.add(buf);
+				},
+				(bufs1, bufs2) -> { throw new UnsupportedOperationException();},
+				ByteBufQueue::takeRemaining);
 	}
 
 	private int next(int i) {

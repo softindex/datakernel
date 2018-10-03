@@ -20,12 +20,13 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
-import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -36,9 +37,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.IntStream;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.http.HelloWorldServer.HELLO_WORLD;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
@@ -50,16 +53,30 @@ public class AsyncHttpClientTest {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
+	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
+		return AsyncHttpServer.create(primaryEventloop,
+				request ->
+						Stage.of(HttpResponse.ok200()
+								.withBodyStream(SerialSupplier.ofStream(
+										IntStream.range(0, HELLO_WORLD.length)
+												.mapToObj(idx -> {
+													ByteBuf buf = ByteBufPool.allocate(1);
+													buf.put(HELLO_WORLD[idx]);
+													return buf;
+												})))))
+				.withListenAddress(new InetSocketAddress("localhost", port));
+	}
+
 	@Test
 	public void testAsyncClient() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
+		AsyncHttpServer httpServer = helloWorldServer(eventloop, PORT);
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
 		httpServer.listen();
 
-		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenApply(HttpMessage::getBody)
 				.thenTry(buf -> buf.asString(UTF_8))
 				.thenRunEx(() -> {
@@ -70,7 +87,7 @@ public class AsyncHttpClientTest {
 
 		eventloop.run();
 
-		assertEquals(decodeAscii(HelloWorldServer.HELLO_WORLD), future.get());
+		assertEquals(decodeAscii(HELLO_WORLD), future.get());
 	}
 
 	@Test(expected = AsyncTimeoutException.class)
@@ -80,7 +97,7 @@ public class AsyncHttpClientTest {
 
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
 
-		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://google.com"))
+		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://google.com"))
 				.thenTry(response -> response.getBody().asString(UTF_8))
 				.thenRunEx(httpClient::stop)
 				.toCompletableFuture();
@@ -98,12 +115,12 @@ public class AsyncHttpClientTest {
 	public void testBigHttpMessage() throws Throwable {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withMaxHttpMessageSize(MemSize.of(12));
+		AsyncHttpServer httpServer = helloWorldServer(eventloop, PORT);
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
 		httpServer.listen();
 
-		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+		CompletableFuture<String> future = httpClient.requestWithResponseBody(12, HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenTry(response -> response.getBody().asString(UTF_8))
 				.thenRunEx(() -> {
 					httpClient.stop();
@@ -135,7 +152,7 @@ public class AsyncHttpClientTest {
 		server.listen();
 
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
-		CompletableFuture<String> future = httpClient.request(request)
+		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, request)
 				.thenTry(response -> response.getBody().asString(UTF_8))
 				.thenRunEx(() -> {
 					httpClient.stop();
@@ -171,11 +188,11 @@ public class AsyncHttpClientTest {
 				.withInspector(inspector);
 
 		Stages.all(
-				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
+				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)))
 				.thenRunEx(() -> {
 					server.close();
 					responses.forEach(response -> response.set(HttpResponse.ok200()));
@@ -190,7 +207,7 @@ public class AsyncHttpClientTest {
 					System.out.println(inspector.getConnectErrors().getTotal());
 					System.out.println(inspector.getTotalResponses());
 
-					assertEquals(0, inspector.getActiveRequests());
+					assertEquals(4, inspector.getActiveRequests());
 				})
 				.whenComplete(assertFailure(AsyncTimeoutException.class, "timeout"));
 

@@ -46,12 +46,11 @@ public final class HttpDiscoveryService implements DiscoveryService {
 
 	@Override
 	public Stage<SignedData<AnnounceData>> findServers(PubKey pubKey) {
-		return client.request(
-				HttpRequest.get(
-						UrlBuilder.http(FIND)
-								.withAuthority(address)
-								.withQuery(query().with("key", pubKey.asString()))
-								.build()))
+		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
+				UrlBuilder.http(FIND)
+						.withAuthority(address)
+						.withQuery(query().with("key", pubKey.asString()))
+						.build()))
 				.thenCompose(response -> {
 					if (response.getCode() == 404) {
 						return Stage.of(null);
@@ -66,13 +65,12 @@ public final class HttpDiscoveryService implements DiscoveryService {
 
 	@Override
 	public Stage<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
-		return client.request(
-				HttpRequest.of(HttpMethod.PUT,
-						UrlBuilder.http(ANNOUNCE)
-								.withAuthority(address)
-								.withQuery(query().with("key", pubKey.asString()))
-								.build())
-						.withBody(announceData.toBytes()))
+		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.of(HttpMethod.PUT,
+				UrlBuilder.http(ANNOUNCE)
+						.withAuthority(address)
+						.withQuery(query().with("key", pubKey.asString()))
+						.build())
+				.withBody(announceData.toBytes()))
 				.toVoid();
 	}
 }

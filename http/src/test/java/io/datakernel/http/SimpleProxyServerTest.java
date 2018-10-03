@@ -52,7 +52,7 @@ public class SimpleProxyServerTest {
 		return AsyncHttpServer.create(primaryEventloop,
 				request -> {
 					String path = ECHO_SERVER_PORT + request.getUrl().getPath();
-					return httpClient.request(HttpRequest.get("http://127.0.0.1:" + path))
+					return httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + path))
 							.thenApply(result -> HttpResponse.ofCode(result.getCode())
 									.withBody(encodeAscii("FORWARDED: " + result.getBody().asString(UTF_8))));
 				})

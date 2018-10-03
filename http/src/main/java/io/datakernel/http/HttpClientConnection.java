@@ -88,8 +88,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	HttpClientConnection addressNext;
 
 	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
-			AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client, int maxHttpMessageSize) {
-		super(eventloop, asyncTcpSocket, maxHttpMessageSize);
+			AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client) {
+		super(eventloop, asyncTcpSocket);
 		this.remoteAddress = remoteAddress;
 		this.client = client;
 		this.inspector = client.inspector;
@@ -100,8 +100,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (inspector != null) inspector.onHttpError(this, result == null, e);
 		if (result != null) {
 			SettableStage<HttpResponse> callback = this.result;
-			eventloop.post(() -> callback.setException(e));
 			this.result = null;
+			callback.setException(e);
 		}
 	}
 
@@ -156,6 +156,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onHeader(HttpHeader header, ByteBuf buf) throws ParseException {
 		super.onHeader(header, buf);
 		assert response != null;
+		if (response.headers.size() >= MAX_HEADERS) throw TOO_MANY_HEADERS;
 		response.addHeader(header, buf);
 	}
 
@@ -232,8 +233,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.result = new SettableStage<>();
 		switchPool(client.poolReadWrite);
 		HttpHeaderValue connectionHeader = CONNECTION_KEEP_ALIVE_HEADER;
-		if (client.maxKeepAliveRequests != -1){
-			if(++numberOfKeepAliveRequests >= client.maxKeepAliveRequests){
+		if (client.maxKeepAliveRequests != -1) {
+			if (++numberOfKeepAliveRequests >= client.maxKeepAliveRequests) {
 				connectionHeader = CONNECTION_CLOSE_HEADER;
 			}
 		}

@@ -23,7 +23,7 @@ import java.net.InetSocketAddress;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.http.AsyncServlet.ensureBody;
+import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class HelloWorldPostServer {
@@ -32,7 +32,7 @@ public final class HelloWorldPostServer {
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
-				ensureBody(request -> Stage.of(
+				ensureRequestBody(Integer.MAX_VALUE, request -> Stage.of(
 						HttpResponse.ok200()
 								.withBody(encodeAscii(HELLO_WORLD + request.getBody().asString(UTF_8))))))
 				.withListenAddress(new InetSocketAddress("localhost", port));

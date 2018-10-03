@@ -34,7 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.http.AsyncServlet.ensureBody;
+import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpHeaders.CONTENT_DISPOSITION;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.*;
@@ -92,7 +92,7 @@ public final class RemoteFsServlet {
 							});
 				})
 				.with(DELETE, "/" + DEL, request -> client.delete(request.getQueryParameter("glob")).thenApply($ -> HttpResponse.ok200()))
-				.with(POST, "/" + COPY, ensureBody(request -> {
+				.with(POST, "/" + COPY, ensureRequestBody(Integer.MAX_VALUE, request -> {
 					Map<String, String> changes = BinaryDataFormats.readMap(request.getBody(), BinaryDataFormats::readString, BinaryDataFormats::readString);
 					return client.copy(changes)
 							.thenApply(set -> {
@@ -101,7 +101,7 @@ public final class RemoteFsServlet {
 								return HttpResponse.ok200().withBody(buf);
 							});
 				}))
-				.with(POST, "/" + MOVE, ensureBody(request -> {
+				.with(POST, "/" + MOVE, ensureRequestBody(Integer.MAX_VALUE, request -> {
 					Map<String, String> changes = BinaryDataFormats.readMap(request.getBody(), BinaryDataFormats::readString, BinaryDataFormats::readString);
 					return client.move(changes)
 							.thenApply(set -> {

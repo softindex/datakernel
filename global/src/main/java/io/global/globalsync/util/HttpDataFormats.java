@@ -2,7 +2,7 @@ package io.global.globalsync.util;
 
 import com.google.gson.TypeAdapter;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedWrapperException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.util.gson.GsonAdapters;
@@ -67,7 +67,7 @@ public class HttpDataFormats {
 								try {
 									return urlDecodeCommitId(entry.getKey());
 								} catch (ParseException e) {
-									throw new UncheckedWrapperException(e);
+									throw UncheckedException.of(e);
 								}
 							},
 							Map.Entry::getValue)),

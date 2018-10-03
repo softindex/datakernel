@@ -2,15 +2,16 @@ package io.datakernel.util;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedWrapperException;
+import io.datakernel.exception.UncheckedException;
 
+@FunctionalInterface
 public interface ParserFunction<T, R> {
 	R doParse(T t) throws ParseException;
 
 	default R parse(T t) throws ParseException {
 		try {
 			return doParse(t);
-		} catch (UncheckedWrapperException e) {
+		} catch (UncheckedException e) {
 			Throwable cause = e.getCause();
 			if (cause instanceof ParseException) {
 				throw (ParseException) cause;

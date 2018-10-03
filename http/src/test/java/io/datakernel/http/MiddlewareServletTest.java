@@ -44,7 +44,7 @@ public class MiddlewareServletTest {
 	void check(Stage<HttpResponse> stage, String expectedBody, int expectedCode) {
 		if (stage.isResult()) {
 			HttpResponse result = stage.getResult();
-			assertEquals(expectedBody, result.getBodyStage().getResult().toString());
+			assertEquals(expectedBody, result.getBodyStage(Integer.MAX_VALUE).getResult().toString());
 			assertEquals(expectedCode, result.getCode());
 			result.recycle();
 		} else {

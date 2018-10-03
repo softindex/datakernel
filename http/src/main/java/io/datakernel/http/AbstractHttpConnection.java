@@ -30,6 +30,7 @@ import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.stream.*;
 import io.datakernel.serial.*;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 
 import java.util.function.BiConsumer;
@@ -54,9 +55,9 @@ public abstract class AbstractHttpConnection {
 
 	public static final SerialConsumer<ByteBuf> BUF_RECYCLER = SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle));
 
-	public static final MemSize MAX_HEADER_LINE_SIZE = MemSize.kilobytes(8); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
+	public static final MemSize MAX_HEADER_LINE_SIZE = MemSize.of(ApplicationSettings.getInt(HttpMessage.class, "maxHeaderLineSize", MemSize.kilobytes(8).toInt())); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
-	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
+	public static final int MAX_HEADERS = ApplicationSettings.getInt(HttpMessage.class, "maxHeaders", 100); // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 
 	protected static final HttpHeaderValue CONNECTION_KEEP_ALIVE_HEADER = HttpHeaderValue.of("keep-alive");
 	protected static final HttpHeaderValue CONNECTION_CLOSE_HEADER = HttpHeaderValue.of("close");
@@ -80,9 +81,7 @@ public abstract class AbstractHttpConnection {
 
 	protected static final byte[] CONTENT_ENCODING_GZIP = encodeAscii("gzip");
 
-	private final int maxHttpMessageSize;
 	protected int contentLength;
-	private int maxHeaders;
 
 	@Nullable
 	ConnectionsLinkedList pool;
@@ -97,10 +96,9 @@ public abstract class AbstractHttpConnection {
 	 *
 	 * @param eventloop eventloop which will handle its I/O operations
 	 */
-	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket socket, int maxHttpMessageSize) {
+	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket socket) {
 		this.eventloop = eventloop;
 		this.socket = socket;
-		this.maxHttpMessageSize = maxHttpMessageSize;
 	}
 
 	protected abstract void onFirstLine(byte[] line, int size) throws ParseException;
@@ -297,7 +295,7 @@ public abstract class AbstractHttpConnection {
 			hashCode = 31 * hashCode + b;
 			pos++;
 		}
-		check(pos != line.writePosition(), HEADER_NAME_ABSENT);
+		if (pos == line.writePosition()) throw HEADER_NAME_ABSENT;
 		HttpHeader httpHeader = HttpHeaders.of(line.array(), line.readPosition(), pos - line.readPosition(), hashCode);
 		pos++;
 
@@ -311,14 +309,8 @@ public abstract class AbstractHttpConnection {
 
 	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
 		assert !isClosed();
-		assert eventloop.inEventloopThread();
-
 		if (header == CONTENT_LENGTH) {
 			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.readPosition(), value.readRemaining());
-			if (contentLength > maxHttpMessageSize) {
-				value.recycle();
-				throw TOO_BIG_HTTP_MESSAGE;
-			}
 		} else if (header == CONNECTION) {
 			flags = (byte) ((flags & ~KEEP_ALIVE) |
 					(equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.readPosition(), value.readRemaining()) ? KEEP_ALIVE : 0));
@@ -340,7 +332,7 @@ public abstract class AbstractHttpConnection {
 		try {
 			buf = takeFirstLine();
 			if (buf == null) { // states that more bytes are being required
-				check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES), TOO_LONG_HEADER);
+				if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
 				socket.read().whenComplete(firstLineConsumer);
 				return;
 			}
@@ -355,7 +347,6 @@ public abstract class AbstractHttpConnection {
 			}
 		}
 
-		maxHeaders = MAX_HEADERS;
 		readHeaders();
 	}
 
@@ -365,7 +356,7 @@ public abstract class AbstractHttpConnection {
 			while (true) {
 				ByteBuf headerBuf = takeHeader();
 				if (headerBuf == null) { // states that more bytes are being required
-					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES), TOO_LONG_HEADER);
+					if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
 					socket.read().whenComplete(headersConsumer);
 					return;
 				}
@@ -375,7 +366,6 @@ public abstract class AbstractHttpConnection {
 					break;
 				}
 
-				check(--maxHeaders >= 0, TOO_MANY_HEADERS);
 				onHeader(headerBuf);
 			}
 		} catch (ParseException e) {
@@ -460,12 +450,6 @@ public abstract class AbstractHttpConnection {
 				closeWithError(e);
 			}
 		});
-	}
-
-	private static void check(boolean expression, ParseException e) throws ParseException {
-		if (!expression) {
-			throw e;
-		}
 	}
 
 	protected void switchPool(ConnectionsLinkedList newPool) {

@@ -2,7 +2,7 @@ package io.global.globalsync.http;
 
 import io.datakernel.async.Stage;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedWrapperException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -22,7 +22,7 @@ import io.global.globalsync.util.HttpDataFormats;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import static io.datakernel.http.AsyncServlet.ensureBody;
+import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.util.gson.GsonAdapters.fromJson;
@@ -60,7 +60,7 @@ public final class RawServerServlet implements AsyncServlet {
 								.thenApply(names ->
 										HttpResponse.ok200()
 												.withBody(toJson(SET_OF_STRINGS, names).getBytes(UTF_8))))
-				.with(POST, "/" + SAVE + "/:pubKey/:name", ensureBody(req -> {
+				.with(POST, "/" + SAVE + "/:pubKey/:name", ensureRequestBody(Integer.MAX_VALUE, req -> {
 					SaveTuple saveTuple = fromJson(SAVE_GSON, req.getBody().asString(UTF_8));
 					return rawServer.save(urlDecodeRepositoryId(req), saveTuple.commits, saveTuple.heads)
 							.thenApply($ ->
@@ -79,7 +79,7 @@ public final class RawServerServlet implements AsyncServlet {
 								.thenApply(headsInfo ->
 										HttpResponse.ok200()
 												.withBody(toJson(HEADS_INFO_GSON, headsInfo).getBytes(UTF_8))))
-				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", ensureBody(req -> {
+				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", ensureRequestBody(Integer.MAX_VALUE, req -> {
 					SignedData<RawSnapshot> encryptedSnapshot = SignedData.ofBytes(req.getBody().asArray(), RawSnapshot::ofBytes);
 					return rawServer.saveSnapshot(encryptedSnapshot.getData().repositoryId, encryptedSnapshot)
 							.thenApply($2 -> HttpResponse.ok200());
@@ -100,16 +100,16 @@ public final class RawServerServlet implements AsyncServlet {
 											try {
 												return HttpDataFormats.urlDecodeCommitId(str);
 											} catch (ParseException e) {
-												throw new UncheckedWrapperException(e);
+												throw UncheckedException.of(e);
 											}
 										})
 										.collect(toSet()))
 								.thenApply(heads ->
 										HttpResponse.ok200()
 												.withBody(toJson(HEADS_DELTA_GSON, heads).getBytes(UTF_8))))
-				.with(POST, "/" + SHARE_KEY, ensureBody(req ->
+				.with(POST, "/" + SHARE_KEY, ensureRequestBody(Integer.MAX_VALUE, req ->
 						rawServer.shareKey(fromJson(SHARED_SIM_KEY_JSON, req.getBody().asString(UTF_8)))
-								.thenApply($ ->
+								.thenApply($1 ->
 										HttpResponse.ok200())))
 				.with(GET, "/" + DOWNLOAD, req -> {
 					RepositoryName repositoryName = urlDecodeRepositoryId(req);
@@ -118,7 +118,7 @@ public final class RawServerServlet implements AsyncServlet {
 								try {
 									return HttpDataFormats.urlDecodeCommitId(str);
 								} catch (ParseException e) {
-									throw new UncheckedWrapperException(e);
+									throw UncheckedException.of(e);
 								}
 							})
 							.collect(toSet());
@@ -127,7 +127,7 @@ public final class RawServerServlet implements AsyncServlet {
 								try {
 									return HttpDataFormats.urlDecodeCommitId(str);
 								} catch (ParseException e) {
-									throw new UncheckedWrapperException(e);
+									throw UncheckedException.of(e);
 								}
 							})
 							.collect(toSet());

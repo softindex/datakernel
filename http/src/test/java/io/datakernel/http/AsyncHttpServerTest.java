@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.ByteBufRule;
-import io.datakernel.util.MemSize;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -35,7 +34,7 @@ import java.util.Random;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.http.AsyncServlet.ensureBody;
+import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.lang.Math.min;
@@ -332,7 +331,6 @@ public class AsyncHttpServerTest {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
 				req -> Stage.of(
 						HttpResponse.ok200().withBody(encodeAscii(req.getUrl().getPathAndQuery()))))
-				.withMaxHttpMessageSize(MemSize.kilobytes(25))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 		server.listen();
 		Thread thread = new Thread(eventloop);
@@ -356,7 +354,7 @@ public class AsyncHttpServerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				ensureBody(request ->
+				ensureRequestBody(Integer.MAX_VALUE, request ->
 						Stage.of(HttpResponse.ok200().withBody(request.getBody()))))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 

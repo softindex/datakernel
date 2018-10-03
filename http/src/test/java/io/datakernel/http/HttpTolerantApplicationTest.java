@@ -133,7 +133,7 @@ public class HttpTolerantApplicationTest {
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
-			Future<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + port))
+			Future<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + port))
 					.thenApply(response ->
 							response.getHeaderOrNull(HttpHeaders.CONTENT_TYPE))
 					.thenRunEx(httpClient::stop)

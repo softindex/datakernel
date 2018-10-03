@@ -77,7 +77,7 @@ public class HttpStreamTest {
 		server.listen();
 
 		client = AsyncHttpClient.create(eventloop);
-		client.requestBodyStream(HttpRequest.post("http://127.0.0.1:" + PORT)
+		client.request(HttpRequest.post("http://127.0.0.1:" + PORT)
 				.withBodyStream(SerialSupplier.ofIterable(expectedList)
 						.transformAsync(item -> getCurrentEventloop().delay(1, item))))
 				.async()
@@ -99,7 +99,7 @@ public class HttpStreamTest {
 				.withListenPort(PORT);
 		server.listen();
 
-		client.requestBodyStream(HttpRequest.post("http://127.0.0.1:" + PORT))
+		client.request(HttpRequest.post("http://127.0.0.1:" + PORT))
 				.async()
 				.thenApply(response -> {
 					assertEquals(200, response.getCode());
@@ -131,7 +131,7 @@ public class HttpStreamTest {
 				.withListenPort(PORT);
 		server.listen();
 
-		client.requestBodyStream(
+		client.request(
 				HttpRequest.post("http://127.0.0.1:" + PORT)
 						.withBodyStream(SerialSupplier.ofIterable(expectedList)
 								.transformAsync(item -> getCurrentEventloop().delay(1, item))))
@@ -172,7 +172,7 @@ public class HttpStreamTest {
 		SerialSupplier<ByteBuf> supplier = SerialSupplier.ofIterable(expectedList);
 		// SerialSupplier<ByteBuf> supplier = new DelayingSupplier<>(5, expectedList);
 
-		client.requestBodyStream(
+		client.request(
 				HttpRequest.post("http://127.0.0.1:" + PORT)
 						.withBodyStream(supplier))
 				.thenApply(HttpMessage::getBodyStream)

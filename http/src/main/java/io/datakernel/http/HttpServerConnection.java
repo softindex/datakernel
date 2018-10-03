@@ -74,8 +74,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet       servlet for handling requests
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-			AsyncHttpServer server, AsyncServlet servlet, int maxHttpMessageSize) {
-		super(eventloop, asyncTcpSocket, maxHttpMessageSize);
+			AsyncHttpServer server, AsyncServlet servlet) {
+		super(eventloop, asyncTcpSocket);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
@@ -188,6 +188,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				socket.write(ByteBuf.wrapForReading(EXPECT_RESPONSE_CONTINUE));
 			}
 		}
+		if (request.headers.size() >= MAX_HEADERS) throw TOO_MANY_HEADERS;
 		request.addHeader(header, value);
 	}
 

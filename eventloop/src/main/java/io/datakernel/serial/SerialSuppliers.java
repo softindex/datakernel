@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.CollectionUtils;
 
 import java.util.ArrayDeque;
@@ -103,14 +104,21 @@ public final class SerialSuppliers {
 
 	private static <T, A, R> void toCollectorImpl(SerialSupplier<T> supplier,
 			A accumulatedValue, BiConsumer<A, T> accumulator, Function<A, R> finisher,
-			SettableStage<R> result) {
+			SettableStage<R> cb) {
 		Stage<T> stage;
 		while (true) {
 			stage = supplier.get();
 			if (!stage.hasResult()) break;
 			T item = stage.getResult();
 			if (item != null) {
-				accumulator.accept(accumulatedValue, item);
+				try {
+					accumulator.accept(accumulatedValue, item);
+				} catch (UncheckedException u) {
+					Throwable cause = u.getCause();
+					supplier.closeWithError(cause);
+					cb.setException(cause);
+					return;
+				}
 				continue;
 			}
 			break;
@@ -118,14 +126,21 @@ public final class SerialSuppliers {
 		stage.whenComplete((value, e) -> {
 			if (e == null) {
 				if (value != null) {
-					accumulator.accept(accumulatedValue, value);
-					toCollectorImpl(supplier, accumulatedValue, accumulator, finisher, result);
+					try {
+						accumulator.accept(accumulatedValue, value);
+					} catch (UncheckedException u) {
+						Throwable cause = u.getCause();
+						supplier.closeWithError(cause);
+						cb.setException(cause);
+						return;
+					}
+					toCollectorImpl(supplier, accumulatedValue, accumulator, finisher, cb);
 				} else {
-					result.set(finisher.apply(accumulatedValue));
+					cb.set(finisher.apply(accumulatedValue));
 				}
 			} else {
 				deepRecycle(finisher.apply(accumulatedValue));
-				result.setException(e);
+				cb.setException(e);
 			}
 		});
 	}

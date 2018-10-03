@@ -28,7 +28,6 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
 import java.time.Duration;
@@ -66,7 +65,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private final AsyncServlet servlet;
 	private HttpExceptionFormatter errorFormatter = DEFAULT_ERROR_FORMATTER;
-	private int maxHttpMessageSize = Integer.MAX_VALUE;
 	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE.toMillis();
 	int maxKeepAliveRequests = -1;
 	private int readWriteTimeoutMillis = 0;
@@ -192,11 +190,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return this;
 	}
 
-	public AsyncHttpServer withMaxHttpMessageSize(@Nullable MemSize maxHttpMessageSize) {
-		this.maxHttpMessageSize = maxHttpMessageSize != null ? maxHttpMessageSize.toInt() : Integer.MAX_VALUE;
-		return this;
-	}
-
 	public AsyncHttpServer withHttpErrorFormatter(HttpExceptionFormatter httpExceptionFormatter) {
 		this.errorFormatter = httpExceptionFormatter;
 		return this;
@@ -205,10 +198,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public AsyncHttpServer withInspector(Inspector inspector) {
 		this.inspector = inspector;
 		return this;
-	}
-
-	public MemSize getMaxHttpMessageSize() {
-		return MemSize.of(maxHttpMessageSize);
 	}
 
 	public Duration getKeepAliveTimeout() {
@@ -239,7 +228,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		assert eventloop.inEventloopThread();
 		if (expiredConnectionsCheck == null)
 			scheduleExpiredConnectionsCheck();
-		HttpServerConnection connection = new HttpServerConnection(eventloop, remoteAddress, socket, this, servlet, maxHttpMessageSize);
+		HttpServerConnection connection = new HttpServerConnection(eventloop, remoteAddress, socket, this, servlet);
 		connection.serve();
 	}
 

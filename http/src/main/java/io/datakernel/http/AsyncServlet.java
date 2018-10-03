@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.Stage;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.MemSize;
 
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across
@@ -36,8 +37,13 @@ public interface AsyncServlet {
 		}
 	}
 
-	static AsyncServlet ensureBody(AsyncServlet delegate) {
-		return request -> request.ensureBody()
+	static AsyncServlet ensureRequestBody(MemSize maxBodySize, AsyncServlet delegate) {
+		return ensureRequestBody(maxBodySize.toInt(), delegate);
+	}
+
+	static AsyncServlet ensureRequestBody(int maxBodySize, AsyncServlet delegate) {
+		return request -> request.ensureBody(maxBodySize)
 				.thenCompose(delegate::tryServe);
 	}
+
 }

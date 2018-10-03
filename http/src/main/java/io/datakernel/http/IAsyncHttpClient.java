@@ -17,12 +17,18 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Stage;
+import io.datakernel.util.MemSize;
 
 public interface IAsyncHttpClient {
-	Stage<HttpResponse> requestBodyStream(HttpRequest request);
+	Stage<HttpResponse> request(HttpRequest request);
 
-	default Stage<HttpResponse> request(HttpRequest request) {
-		return requestBodyStream(request)
-				.thenCompose(HttpResponse::ensureBody);
+	default Stage<HttpResponse> requestWithResponseBody(int maxBodySize, HttpRequest request) {
+		return request(request)
+				.thenCompose(response -> response.ensureBody(maxBodySize));
 	}
+
+	default Stage<HttpResponse> requestWithResponseBody(MemSize maxBodySize, HttpRequest request) {
+		return requestWithResponseBody(maxBodySize.toInt(), request);
+	}
+
 }

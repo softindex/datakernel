@@ -105,7 +105,7 @@ public final class CubeHttpClient implements ICube {
 
 	@Override
 	public Stage<QueryResult> query(CubeQuery query) {
-		return httpClient.request(buildRequest(query))
+		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, buildRequest(query))
 				.thenCompose(httpResponse -> {
 					String response = httpResponse.getBody().asString(UTF_8);
 
