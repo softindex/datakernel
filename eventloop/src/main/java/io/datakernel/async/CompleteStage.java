@@ -1,6 +1,7 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 
 import java.time.Duration;
@@ -47,7 +48,7 @@ public abstract class CompleteStage<T> implements MaterializedStage<T> {
 	}
 
 	@Override
-	public final Try<T> getTry() {
+	public final Try<T> asTry() {
 		return Try.of(getResult());
 	}
 
@@ -76,12 +77,20 @@ public abstract class CompleteStage<T> implements MaterializedStage<T> {
 
 	@Override
 	public final <U> Stage<U> thenApply(Function<? super T, ? extends U> fn) {
-		return Stage.of(fn.apply(getResult()));
+		try {
+			return Stage.of(fn.apply(getResult()));
+		} catch (UncheckedException u) {
+			return Stage.ofException(u.getCause());
+		}
 	}
 
 	@Override
 	public final <U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
-		return Stage.of(fn.apply(getResult(), null));
+		try {
+			return Stage.of(fn.apply(getResult(), null));
+		} catch (UncheckedException u) {
+			return Stage.ofException(u.getCause());
+		}
 	}
 
 	@Override
@@ -98,12 +107,20 @@ public abstract class CompleteStage<T> implements MaterializedStage<T> {
 
 	@Override
 	public final <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {
-		return fn.apply(getResult());
+		try {
+			return fn.apply(getResult());
+		} catch (UncheckedException u) {
+			return Stage.ofException(u.getCause());
+		}
 	}
 
 	@Override
 	public final <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
-		return fn.apply(getResult(), null);
+		try {
+			return fn.apply(getResult(), null);
+		} catch (UncheckedException u) {
+			return Stage.ofException(u.getCause());
+		}
 	}
 
 	@Override
@@ -128,17 +145,6 @@ public abstract class CompleteStage<T> implements MaterializedStage<T> {
 		Throwable maybeException = fn.apply(getResult());
 		if (maybeException == null) return this;
 		return Stage.ofException(maybeException);
-	}
-
-	@Override
-	public final <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
-		try {
-			return Stage.of(fn.apply(getResult()));
-		} catch (RuntimeException e) {
-			throw e;
-		} catch (Exception e) {
-			return Stage.ofException(e);
-		}
 	}
 
 	@SuppressWarnings("unchecked")

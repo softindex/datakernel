@@ -17,16 +17,18 @@
 package io.datakernel.util;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.jmx.*;
 
-import java.lang.annotation.Annotation;
 import javax.management.MXBean;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -124,7 +126,7 @@ public final class ReflectionUtils {
 
 	@SuppressWarnings("unchecked")
 	@Nullable
-	private static <T> ThrowingSupplier<T> getConstructorOrFactory(Class<T> cls, String... factoryMethodNames) {
+	private static <T> Supplier<T> getConstructorOrFactory(Class<T> cls, String... factoryMethodNames) {
 		for (String methodName : factoryMethodNames) {
 			Method method;
 			try {
@@ -135,12 +137,24 @@ public final class ReflectionUtils {
 			if ((method.getModifiers() & (Modifier.PUBLIC | Modifier.STATIC)) == 0 || method.getReturnType() != cls) {
 				continue;
 			}
-			return () -> (T) method.invoke(null);
+			return () -> {
+				try {
+					return (T) method.invoke(null);
+				} catch (IllegalAccessException | InvocationTargetException e) {
+					throw new UncheckedException(e);
+				}
+			};
 		}
 		return Arrays.stream(cls.getConstructors())
 			.filter(c -> c.getParameterTypes().length == 0)
 			.findAny()
-			.<ThrowingSupplier<T>>map(c -> () -> (T) c.newInstance())
+			.<Supplier<T>>map(c -> () -> {
+				try {
+					return (T) c.newInstance();
+				} catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+					throw new UncheckedException(e);
+				}
+			})
 			.orElse(null);
 	}
 
@@ -152,9 +166,9 @@ public final class ReflectionUtils {
 	@Nullable
 	public static <T> T tryToCreateInstanceWithFactoryMethods(Class<T> cls, String... factoryMethodNames) {
 		try {
-			ThrowingSupplier<T> supplier = getConstructorOrFactory(cls, factoryMethodNames);
+			Supplier<T> supplier = getConstructorOrFactory(cls, factoryMethodNames);
 			return supplier != null ? supplier.get() : null;
-		} catch (Throwable throwable) {
+		} catch (UncheckedException u) {
 			return null;
 		}
 	}

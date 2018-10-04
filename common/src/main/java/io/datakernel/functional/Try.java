@@ -1,8 +1,7 @@
 package io.datakernel.functional;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.util.ThrowingRunnable;
-import io.datakernel.util.ThrowingSupplier;
+import io.datakernel.exception.UncheckedException;
 
 import java.util.function.*;
 
@@ -33,20 +32,20 @@ public final class Try<T> {
 		return new Try<>(null, throwable);
 	}
 
-	public static <T> Try<T> wrap(ThrowingSupplier<T> computation) {
+	public static <T> Try<T> wrap(Supplier<T> computation) {
 		try {
 			return new Try<>(computation.get(), null);
-		} catch (Throwable t) {
-			return new Try<>(null, t);
+		} catch (UncheckedException u) {
+			return new Try<>(null, u.getCause());
 		}
 	}
 
-	public static <T> Try<T> wrap(ThrowingRunnable computation) {
+	public static <T> Try<T> wrap(Runnable computation) {
 		try {
 			computation.run();
 			return new Try<>(null, null);
-		} catch (Throwable t) {
-			return new Try<>(null, t);
+		} catch (UncheckedException u) {
+			return new Try<>(null, u.getCause());
 		}
 	}
 

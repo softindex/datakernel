@@ -19,12 +19,10 @@ package io.datakernel.http;
 
 import io.datakernel.annotation.NotNull;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 
 import java.net.InetAddress;
@@ -351,15 +349,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 			pathParameters = new HashMap<>();
 		}
 		pathParameters.put(key, value);
-	}
-
-	public Stage<HttpRequest> ensureBody(MemSize maxBodySize) {
-		return ensureBody(maxBodySize.toInt());
-	}
-
-	@SuppressWarnings("unchecked")
-	public Stage<HttpRequest> ensureBody(int maxBodySize) {
-		return (Stage<HttpRequest>) doEnsureBody(maxBodySize);
 	}
 
 	@Override

@@ -20,16 +20,14 @@ package io.datakernel.async;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
-import io.datakernel.util.ThrowingRunnable;
-import io.datakernel.util.ThrowingSupplier;
 
 import java.time.Duration;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.concurrent.*;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.*;
 
 /**
  * Replacement of default java CompletionStage interface.
@@ -69,6 +67,11 @@ public interface Stage<T> {
 		return cb;
 	}
 
+	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+	static <T> Stage<T> ofOptional(Optional<T> optional) {
+		return optional.<Stage<T>>map(Stage::of).orElseGet(() -> Stage.ofException(new NoSuchElementException()));
+	}
+
 	/**
 	 * Creates a completed stage from value and throwable variables.
 	 * Useful for {@link #thenComposeEx(BiFunction)} passthroughs (eg. when mapping specific exceptions).
@@ -87,11 +90,11 @@ public interface Stage<T> {
 	 *
 	 * @param computation a block of code which may throw an exception.
 	 */
-	static <T> Stage<T> compute(ThrowingSupplier<T> computation) {
+	static <T> Stage<T> compute(Supplier<T> computation) {
 		try {
 			return of(computation.get());
-		} catch (Throwable e) {
-			return ofException(e);
+		} catch (UncheckedException u) {
+			return ofException(u.getCause());
 		}
 	}
 
@@ -171,8 +174,8 @@ public interface Stage<T> {
 				try {
 					T result = callable.call();
 					eventloop.execute(() -> stage.set(result));
-				} catch (CompletionException e) {
-					eventloop.execute(() -> stage.setException(e));
+				} catch (UncheckedException u) {
+					eventloop.execute(() -> stage.setException(u.getCause()));
 				} catch (RuntimeException e) {
 					eventloop.execute(() -> eventloop.recordFatalError(e, callable));
 				} catch (Exception e) {
@@ -193,7 +196,7 @@ public interface Stage<T> {
 	/**
 	 * Same as {@link #ofCallable(Executor, Callable)}, but without a result (returned stage is only a marker of completion).
 	 */
-	static Stage<Void> ofThrowingRunnable(Executor executor, ThrowingRunnable runnable) {
+	static Stage<Void> ofRunnable(Executor executor, Runnable runnable) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
 		SettableStage<Void> stage = new SettableStage<>();
@@ -202,12 +205,8 @@ public interface Stage<T> {
 				try {
 					runnable.run();
 					eventloop.execute(() -> stage.set(null));
-				} catch (CompletionException e) {
-					eventloop.execute(() -> stage.setException(e));
-				} catch (RuntimeException e) {
-					eventloop.execute(() -> eventloop.recordFatalError(e, runnable));
-				} catch (Exception e) {
-					eventloop.execute(() -> stage.setException(e));
+				} catch (UncheckedException u) {
+					eventloop.execute(() -> stage.setException(u.getCause()));
 				} catch (Throwable e) {
 					eventloop.execute(() -> eventloop.recordFatalError(e, runnable));
 				} finally {
@@ -219,13 +218,6 @@ public interface Stage<T> {
 			stage.setException(e);
 		}
 		return stage;
-	}
-
-	/**
-	 * Adapter for {@link #ofThrowingRunnable(Executor, ThrowingRunnable)}
-	 */
-	static Stage<Void> ofRunnable(Executor executor, Runnable runnable) {
-		return ofThrowingRunnable(executor, runnable::run);
 	}
 
 	default boolean isComplete() {
@@ -253,7 +245,7 @@ public interface Stage<T> {
 	Throwable getException();
 
 	@Nullable
-	default Try<T> getTry() {
+	default Try<T> asTry() {
 		if (hasResult()) return Try.of(getResult());
 		else if (hasException()) return Try.ofException(getException());
 		else return null;
@@ -400,21 +392,6 @@ public interface Stage<T> {
 	Stage<T> whenException(Consumer<Throwable> action);
 
 	Stage<T> thenException(Function<? super T, Throwable> fn);
-
-	@FunctionalInterface
-	interface ThrowingFunction<T, R> {
-		R apply(T t) throws Exception;
-	}
-
-	default <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
-		return thenCompose(result -> {
-			try {
-				return Stage.of(fn.apply(result));
-			} catch (Throwable throwable) {
-				return Stage.ofException(throwable);
-			}
-		});
-	}
 
 	/**
 	 * Combines two {@code Stage} in one using fn.

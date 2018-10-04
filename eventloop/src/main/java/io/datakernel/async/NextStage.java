@@ -35,7 +35,7 @@ public abstract class NextStage<T, R> extends AbstractStage<R> implements BiCons
 	}
 
 	@Override
-	public Try<R> getTry() {
+	public Try<R> asTry() {
 		return null;
 	}
 

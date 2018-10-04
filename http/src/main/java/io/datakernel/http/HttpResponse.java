@@ -17,12 +17,10 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.MemSize;
 
 import java.util.List;
 
@@ -134,15 +132,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	// endregion
-
-	public Stage<HttpResponse> ensureBody(MemSize maxBodySize) {
-		return ensureBody(maxBodySize.toInt());
-	}
-
-	@SuppressWarnings("unchecked")
-	public Stage<HttpResponse> ensureBody(int maxBodySize) {
-		return (Stage<HttpResponse>) doEnsureBody(maxBodySize);
-	}
 
 	public int getCode() {
 		assert !isRecycled();

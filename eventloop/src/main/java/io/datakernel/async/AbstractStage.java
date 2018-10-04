@@ -2,6 +2,7 @@ package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 
 import java.time.Duration;
@@ -117,7 +118,13 @@ abstract class AbstractStage<T> implements Stage<T> {
 			@Override
 			protected void onComplete(T result, Throwable e) {
 				if (e == null) {
-					U newResult = fn.apply(result);
+					U newResult;
+					try {
+						newResult = fn.apply(result);
+					} catch (UncheckedException u) {
+						completeExceptionally(u.getCause());
+						return;
+					}
 					complete(newResult);
 				} else {
 					completeExceptionally(e);
@@ -132,7 +139,13 @@ abstract class AbstractStage<T> implements Stage<T> {
 			@Override
 			protected void onComplete(T result, Throwable e) {
 				if (e == null) {
-					U newResult = fn.apply(result, null);
+					U newResult;
+					try {
+						newResult = fn.apply(result, null);
+					} catch (UncheckedException u) {
+						completeExceptionally(u.getCause());
+						return;
+					}
 					complete(newResult);
 				} else {
 					U newResult = fn.apply(null, e);
@@ -162,7 +175,14 @@ abstract class AbstractStage<T> implements Stage<T> {
 			@Override
 			protected void onComplete(T result, Throwable e) {
 				if (e == null) {
-					fn.apply(result).whenComplete(this::complete);
+					Stage<U> stage;
+					try {
+						stage = fn.apply(result);
+					} catch (UncheckedException u) {
+						completeExceptionally(u.getCause());
+						return;
+					}
+					stage.whenComplete(this::complete);
 				} else {
 					completeExceptionally(e);
 				}
@@ -176,7 +196,14 @@ abstract class AbstractStage<T> implements Stage<T> {
 			@Override
 			protected void onComplete(T result, Throwable e) {
 				if (e == null) {
-					fn.apply(result, null).whenComplete(this::complete);
+					Stage<U> stage;
+					try {
+						stage = fn.apply(result, null);
+					} catch (UncheckedException u) {
+						completeExceptionally(u.getCause());
+						return;
+					}
+					stage.whenComplete(this::complete);
 				} else {
 					fn.apply(null, e).whenComplete(this::complete);
 				}
@@ -219,26 +246,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 						complete(result);
 					} else {
 						completeExceptionally(maybeException);
-					}
-				} else {
-					completeExceptionally(e);
-				}
-			}
-		});
-	}
-
-	@Override
-	public <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
-		return then(new NextStage<T, U>() {
-			@Override
-			protected void onComplete(T result, Throwable e) {
-				if (e == null) {
-					try {
-						complete(fn.apply(result));
-					} catch (RuntimeException e1) {
-						throw e1;
-					} catch (Exception e1) {
-						completeExceptionally(e1);
 					}
 				} else {
 					completeExceptionally(e);

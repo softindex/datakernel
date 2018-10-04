@@ -2,6 +2,7 @@ package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 
 import java.time.Duration;
@@ -182,7 +183,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	}
 
 	@Override
-	public Try<T> getTry() {
+	public Try<T> asTry() {
 		return isComplete() ? Try.of(result, exception) : null;
 	}
 
@@ -234,13 +235,25 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Stage<U> thenApply(Function<? super T, ? extends U> fn) {
-		if (isComplete()) return isResult() ? Stage.of(fn.apply(result)) : (Stage<U>) this;
+		if (isComplete()) {
+			try {
+				return isResult() ? Stage.of(fn.apply(result)) : (Stage<U>) this;
+			} catch (UncheckedException u) {
+				return Stage.ofException(u.getCause());
+			}
+		}
 		return super.thenApply(fn);
 	}
 
 	@Override
 	public <U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
-		if (isComplete()) return Stage.of(fn.apply(result, exception));
+		if (isComplete()) {
+			try {
+				return Stage.of(fn.apply(result, exception));
+			} catch (UncheckedException u) {
+				return Stage.ofException(u.getCause());
+			}
+		}
 		return super.thenApplyEx(fn);
 	}
 
@@ -266,7 +279,11 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	@Override
 	public <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {
 		if (isComplete()) {
-			return isResult() ? fn.apply(result) : (Stage<U>) this;
+			try {
+				return isResult() ? fn.apply(result) : (Stage<U>) this;
+			} catch (UncheckedException u) {
+				return Stage.ofException(u.getCause());
+			}
 		}
 		return super.thenCompose(fn);
 	}
@@ -274,7 +291,11 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 	@Override
 	public <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
 		if (isComplete()) {
-			return fn.apply(result, exception);
+			try {
+				return fn.apply(result, exception);
+			} catch (UncheckedException u) {
+				return Stage.ofException(u.getCause());
+			}
 		}
 		return super.thenComposeEx(fn);
 	}
@@ -318,22 +339,6 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 			}
 		}
 		return super.thenException(fn);
-	}
-
-	@SuppressWarnings("unchecked")
-	@Override
-	public <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
-		if (isComplete()) {
-			if (isException()) return (Stage<U>) this;
-			try {
-				return Stage.of(fn.apply(result));
-			} catch (RuntimeException e) {
-				throw e;
-			} catch (Exception e) {
-				return Stage.ofException(e);
-			}
-		}
-		return super.thenTry(fn);
 	}
 
 	@Override

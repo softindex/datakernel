@@ -21,6 +21,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.exception.UncheckedException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -33,7 +34,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.Stage.ofThrowingRunnable;
+import static io.datakernel.async.Stage.ofRunnable;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.nio.file.StandardOpenOption.*;
@@ -101,7 +102,13 @@ public final class AsyncFile {
 	 * @param path the path of the file to open or create
 	 */
 	public static Stage<Void> delete(ExecutorService executor, Path path) {
-		return Stage.ofThrowingRunnable(executor, () -> Files.delete(path));
+		return Stage.ofRunnable(executor, () -> {
+			try {
+				Files.delete(path);
+			} catch (IOException e) {
+				throw new UncheckedException(e);
+			}
+		});
 	}
 
 	/**
@@ -124,7 +131,13 @@ public final class AsyncFile {
 	 * @param options  options specifying how the move should be done
 	 */
 	public static Stage<Void> move(ExecutorService executor, Path source, Path target, CopyOption... options) {
-		return Stage.ofThrowingRunnable(executor, () -> Files.move(source, target, options));
+		return Stage.ofRunnable(executor, () -> {
+			try {
+				Files.move(source, target, options);
+			} catch (IOException e) {
+				throw new UncheckedException(e);
+			}
+		});
 	}
 
 	/**
@@ -136,7 +149,13 @@ public final class AsyncFile {
 	 * @param options  options specifying how the move should be done
 	 */
 	public static Stage<Void> copy(ExecutorService executor, Path source, Path target, CopyOption... options) {
-		return Stage.ofThrowingRunnable(executor, () -> Files.copy(source, target, options));
+		return Stage.ofRunnable(executor, () -> {
+			try {
+				Files.copy(source, target, options);
+			} catch (IOException e) {
+				throw new UncheckedException(e);
+			}
+		});
 	}
 
 	/**
@@ -147,7 +166,13 @@ public final class AsyncFile {
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
 	public static Stage<Void> createDirectory(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
-		return Stage.ofThrowingRunnable(executor, () -> Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs));
+		return Stage.ofRunnable(executor, () -> {
+			try {
+				Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
+			} catch (IOException e) {
+				throw new UncheckedException(e);
+			}
+		});
 	}
 
 	/**
@@ -158,7 +183,13 @@ public final class AsyncFile {
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
 	public static Stage<Void> createDirectories(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
-		return Stage.ofThrowingRunnable(executor, () -> Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs));
+		return Stage.ofRunnable(executor, () -> {
+			try {
+				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
+			} catch (IOException e) {
+				throw new UncheckedException(e);
+			}
+		});
 	}
 
 	/**
@@ -202,7 +233,13 @@ public final class AsyncFile {
 	}
 
 	public Stage<Void> seek(long position) {
-		return sanitize(ofThrowingRunnable(executor, () -> channel.position(position)));
+		return sanitize(ofRunnable(executor, () -> {
+			try {
+				channel.position(position);
+			} catch (IOException e) {
+				throw new UncheckedException(e);
+			}
+		}));
 	}
 
 	public Stage<Long> tell() {
@@ -215,7 +252,7 @@ public final class AsyncFile {
 	 * @param buf byte buffer to be written
 	 */
 	public Stage<Void> write(ByteBuf buf) {
-		return sanitize(ofThrowingRunnable(executor, () -> {
+		return sanitize(ofRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				try {
 					int writtenBytes;
@@ -224,6 +261,8 @@ public final class AsyncFile {
 						writtenBytes = channel.write(byteBuffer);
 						buf.ofReadByteBuffer(byteBuffer);
 					} while (writtenBytes != -1 && buf.canRead());
+				} catch (IOException e) {
+					throw new UncheckedException(e);
 				} finally {
 					buf.recycle();
 				}
@@ -238,7 +277,7 @@ public final class AsyncFile {
 	 * @param buf      byte buffer to be written
 	 */
 	public Stage<Void> write(ByteBuf buf, long position) {
-		return sanitize(ofThrowingRunnable(executor, () -> {
+		return sanitize(ofRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				int writtenBytes = 0;
 				long pos = position;
@@ -248,6 +287,8 @@ public final class AsyncFile {
 						writtenBytes = channel.write(byteBuffer, pos += writtenBytes);
 						buf.ofReadByteBuffer(byteBuffer);
 					} while (writtenBytes != -1 && buf.canRead());
+				} catch (IOException e) {
+					throw new UncheckedException(e);
 				} finally {
 					buf.recycle();
 				}
@@ -291,13 +332,17 @@ public final class AsyncFile {
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 */
 	public Stage<Void> read(ByteBuf buf, long position) {
-		return sanitize(ofThrowingRunnable(executor, () -> {
+		return sanitize(ofRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				int readBytes = 0;
 				long pos = position;
 				do {
 					ByteBuffer byteBuffer = buf.toWriteByteBuffer();
-					readBytes = channel.read(byteBuffer, pos += readBytes);
+					try {
+						readBytes = channel.read(byteBuffer, pos += readBytes);
+					} catch (IOException e) {
+						throw new UncheckedException(e);
+					}
 					buf.ofWriteByteBuffer(byteBuffer);
 				} while (readBytes != -1 && buf.canWrite());
 			}
@@ -311,9 +356,13 @@ public final class AsyncFile {
 	 */
 	public Stage<Void> forceAndClose(boolean forceMetadata) {
 		if (!isOpen()) return Stage.ofException(FILE_CLOSED);
-		return ofThrowingRunnable(executor, () -> {
-			channel.force(forceMetadata);
-			channel.close();
+		return ofRunnable(executor, () -> {
+			try {
+				channel.force(forceMetadata);
+				channel.close();
+			} catch (IOException e) {
+				throw new UncheckedException(e);
+			}
 		});
 	}
 
@@ -324,7 +373,13 @@ public final class AsyncFile {
 		if (!isOpen()) {
 			return Stage.ofException(FILE_CLOSED);
 		}
-		return ofThrowingRunnable(executor, channel::close);
+		return ofRunnable(executor, () -> {
+			try {
+				channel.close();
+			} catch (IOException e) {
+				throw new UncheckedException(e);
+			}
+		});
 	}
 
 	/**
@@ -333,7 +388,13 @@ public final class AsyncFile {
 	 * @param size the new size, a non-negative byte count
 	 */
 	public Stage<Void> truncate(long size) {
-		return sanitize(ofThrowingRunnable(executor, () -> channel.truncate(size)));
+		return sanitize(ofRunnable(executor, () -> {
+			try {
+				channel.truncate(size);
+			} catch (IOException e) {
+				throw new UncheckedException(e);
+			}
+		}));
 	}
 
 	/**
@@ -344,7 +405,13 @@ public final class AsyncFile {
 	 *                 otherwise, it need only force content changes to be written
 	 */
 	public Stage<Void> force(boolean metaData) {
-		return sanitize(ofThrowingRunnable(executor, () -> channel.force(metaData)));
+		return sanitize(ofRunnable(executor, () -> {
+			try {
+				channel.force(metaData);
+			} catch (IOException e) {
+				throw new UncheckedException(e);
+			}
+		}));
 	}
 
 	public boolean isOpen() {

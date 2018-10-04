@@ -109,7 +109,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	@Override
 	public Stage<RawCommit> loadCommit(RepositoryName repositoryId, CommitId id) {
 		return commitStorage.loadCommit(id)
-				.thenApply(Optional::get);
+				.thenCompose(Stage::ofOptional);
 	}
 
 	@Override
@@ -303,12 +303,12 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepositoryName repositoryId, CommitId commitId) {
 		return Stages.firstSuccessful(
 				() -> commitStorage.loadSnapshot(repositoryId, commitId)
-						.thenTry(Optional::get),
+						.thenCompose(Stage::ofOptional),
 				() -> ensureServers(repositoryId)
 						.thenCompose(servers -> Stages.firstSuccessful(
 								servers.stream()
 										.map(server -> server.loadSnapshot(repositoryId, commitId)
-												.thenTry(Optional::get)))))
+												.thenCompose(Stage::ofOptional)))))
 				.thenApplyEx((maybeResult, e) -> e == null ? Optional.of(maybeResult) : Optional.empty());
 	}
 

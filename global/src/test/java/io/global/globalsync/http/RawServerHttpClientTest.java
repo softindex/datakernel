@@ -3,6 +3,7 @@ package io.global.globalsync.http;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.IAsyncHttpClient;
@@ -139,7 +140,11 @@ public class RawServerHttpClientTest {
 		IAsyncHttpClient httpClient = new IAsyncHttpClient() {
 			@Override
 			public Stage<HttpResponse> request(HttpRequest request) {
-				return servlet.serve(request);
+				try {
+					return servlet.serve(request);
+				} catch (ParseException e) {
+					return Stage.ofException(e);
+				}
 			}
 		};
 

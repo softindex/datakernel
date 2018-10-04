@@ -19,12 +19,13 @@ package io.datakernel.stream;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.serial.SerialConsumer;
-import io.datakernel.util.ThrowingConsumer;
 
 import java.util.ArrayDeque;
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
@@ -63,22 +64,20 @@ public final class StreamConsumers {
 	}
 
 	static final class OfConsumerImpl<T> extends AbstractStreamConsumer<T> {
-		private final ThrowingConsumer<T> consumer;
+		private final Consumer<T> consumer;
 
-		OfConsumerImpl(ThrowingConsumer<T> consumer) {
+		OfConsumerImpl(Consumer<T> consumer) {
 			this.consumer = consumer;
 		}
 
 		@Override
 		protected void onStarted() {
 			assert getSupplier() != null;
-			getSupplier().resume(t -> {
+			getSupplier().resume(item -> {
 				try {
-					consumer.accept(t);
-				} catch (RuntimeException e) {
-					throw e;
-				} catch (Throwable e) {
-					closeWithError(e);
+					consumer.accept(item);
+				} catch (UncheckedException u) {
+					closeWithError(u.getCause());
 				}
 			});
 		}
@@ -88,10 +87,8 @@ public final class StreamConsumers {
 			try {
 				consumer.accept(null);
 				return Stage.complete();
-			} catch (RuntimeException e) {
-				throw e;
-			} catch (Throwable e) {
-				return Stage.ofException(e);
+			} catch (UncheckedException u) {
+				return Stage.ofException(u.getCause());
 			}
 		}
 

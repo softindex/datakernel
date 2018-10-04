@@ -55,7 +55,7 @@ public final class CompleteExceptionallyStage<T> implements MaterializedStage<T>
 	}
 
 	@Override
-	public Try<T> getTry() {
+	public Try<T> asTry() {
 		return Try.ofException(exception);
 	}
 
@@ -141,12 +141,6 @@ public final class CompleteExceptionallyStage<T> implements MaterializedStage<T>
 	@Override
 	public Stage<T> thenException(Function<? super T, Throwable> fn) {
 		return this;
-	}
-
-	@SuppressWarnings("unchecked")
-	@Override
-	public <U> Stage<U> thenTry(ThrowingFunction<? super T, ? extends U> fn) {
-		return (CompleteExceptionallyStage<U>) this;
 	}
 
 	@SuppressWarnings("unchecked")

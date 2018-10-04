@@ -100,7 +100,7 @@ public final class RawServerServlet implements AsyncServlet {
 											try {
 												return HttpDataFormats.urlDecodeCommitId(str);
 											} catch (ParseException e) {
-												throw UncheckedException.of(e);
+												throw new UncheckedException(e);
 											}
 										})
 										.collect(toSet()))
@@ -118,7 +118,7 @@ public final class RawServerServlet implements AsyncServlet {
 								try {
 									return HttpDataFormats.urlDecodeCommitId(str);
 								} catch (ParseException e) {
-									throw UncheckedException.of(e);
+									throw new UncheckedException(e);
 								}
 							})
 							.collect(toSet());
@@ -127,7 +127,7 @@ public final class RawServerServlet implements AsyncServlet {
 								try {
 									return HttpDataFormats.urlDecodeCommitId(str);
 								} catch (ParseException e) {
-									throw UncheckedException.of(e);
+									throw new UncheckedException(e);
 								}
 							})
 							.collect(toSet());
@@ -149,7 +149,7 @@ public final class RawServerServlet implements AsyncServlet {
 	}
 
 	@Override
-	public Stage<HttpResponse> serve(HttpRequest request) {
+	public Stage<HttpResponse> serve(HttpRequest request) throws ParseException {
 		return middlewareServlet.serve(request);
 	}
 }

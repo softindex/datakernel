@@ -53,7 +53,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testBase() {
+	public void testBase() throws ParseException {
 		MiddlewareServlet servlet1 = MiddlewareServlet.create();
 		servlet1.with(HttpMethod.GET, "/a/b/c", request -> Stage.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
@@ -71,7 +71,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testProcessWildCardRequest() {
+	public void testProcessWildCardRequest() throws ParseException {
 		MiddlewareServlet servlet = MiddlewareServlet.create();
 		servlet.with("/a/b/c/d", request -> Stage.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
@@ -81,7 +81,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testMicroMapping() {
+	public void testMicroMapping() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/a/c");  // ok
@@ -126,7 +126,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testLongMapping() {
+	public void testLongMapping() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/a/c");  // ok
@@ -175,7 +175,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testMerge() {
+	public void testMerge() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");         // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");        // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/b");        // ok
@@ -211,7 +211,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testFailMerge() {
+	public void testFailMerge() throws ParseException {
 		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/c/f");    // fail
 
 		AsyncServlet action = req -> {
@@ -241,7 +241,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testParameter() {
+	public void testParameter() throws ParseException {
 		AsyncServlet printParameters = request -> {
 			String body = request.getPathParameter("id")
 					+ " " + request.getPathParameter("uid")
@@ -264,7 +264,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testMultiParameters() {
+	public void testMultiParameters() throws ParseException {
 		AsyncServlet serveCar = request -> {
 			ByteBuf body = ByteBufStrings.wrapUtf8("served car: " + request.getPathParameter("cid"));
 			return Stage.of(HttpResponse.ofCode(200).withBody(body));
@@ -286,7 +286,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testDifferentMethods() {
+	public void testDifferentMethods() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/a/b/c/action");
 		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
 		HttpRequest request3 = HttpRequest.of(CONNECT, TEMPLATE + "/a/b/c/action");
@@ -313,7 +313,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testDefault() {
+	public void testDefault() throws ParseException {
 		AsyncServlet def = request -> Stage.of(
 				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getPartialPath())));
 
@@ -334,7 +334,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void test404() {
+	public void test404() throws ParseException {
 		AsyncServlet servlet = request -> Stage.of(
 				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -347,7 +347,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void test405() {
+	public void test405() throws ParseException {
 		AsyncServlet servlet = request -> Stage.of(
 				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
 
@@ -359,7 +359,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void test405WithFallback() {
+	public void test405WithFallback() throws ParseException {
 		AsyncServlet servlet = request -> Stage.of(
 				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
 

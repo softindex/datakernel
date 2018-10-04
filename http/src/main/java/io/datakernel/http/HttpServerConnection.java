@@ -16,10 +16,12 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.serial.SerialSupplier;
 
 import java.net.InetAddress;
@@ -213,23 +215,30 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		switchPool(server.poolServing);
 
-		servlet.tryServe(request)
-				.whenComplete((response, e) -> {
-					if (isClosed()) {
-						request.recycle();
-						if (response != null) response.recycle();
-						return;
-					}
-					if (e == null) {
-						if (inspector != null) inspector.onHttpResponse(request, response);
-						switchPool(server.poolReadWrite);
-						writeHttpResponse(response);
-					} else {
-						if (inspector != null) inspector.onServletException(request, e);
-						switchPool(server.poolReadWrite);
-						writeException(e);
-					}
-				});
+		Stage<HttpResponse> promise;
+		try {
+			promise = servlet.serve(request);
+		} catch (UncheckedException u) {
+			promise = Stage.ofException(u.getCause());
+		} catch (ParseException e) {
+			promise = Stage.ofException(e);
+		}
+		promise.whenComplete((response, e) -> {
+			if (isClosed()) {
+				request.recycle();
+				if (response != null) response.recycle();
+				return;
+			}
+			if (e == null) {
+				if (inspector != null) inspector.onHttpResponse(request, response);
+				switchPool(server.poolReadWrite);
+				writeHttpResponse(response);
+			} else {
+				if (inspector != null) inspector.onServletException(request, e);
+				switchPool(server.poolReadWrite);
+				writeException(e);
+			}
+		});
 
 		if (request.body != null) {
 			request.body.recycle();

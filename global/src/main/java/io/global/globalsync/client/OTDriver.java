@@ -20,11 +20,14 @@ package io.global.globalsync.client;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.*;
 import io.global.globalsync.api.*;
 import io.global.globalsync.util.BinaryDataFormats;
+import org.spongycastle.crypto.CryptoException;
 
 import java.io.IOException;
 import java.util.*;
@@ -78,7 +81,7 @@ public final class OTDriver {
 	public Stage<Optional<SimKey>> getSharedKey(MyRepositoryId<?> myRepositoryId,
 			PubKey senderPubKey, SimKeyHash simKeyHash) {
 		return server.getSharedKey(senderPubKey, myRepositoryId.getRepositoryId().getPubKey(), simKeyHash)
-				.thenTry(maybeSignedSimKey -> {
+				.thenApply(maybeSignedSimKey -> {
 					if (!maybeSignedSimKey.isPresent()) {
 						return Optional.empty();
 					}
@@ -112,7 +115,7 @@ public final class OTDriver {
 						.collect(toSet())
 						.stream()
 						.map(originPubKey -> getSharedKey(myRepositoryId, originPubKey, simKeyHash)
-								.thenTry(Optional::get)));
+								.thenCompose(Stage::ofOptional)));
 	}
 
 	public <D> Stage<Void> push(MyRepositoryId<D> myRepositoryId,
@@ -158,19 +161,23 @@ public final class OTDriver {
 						Arrays.equals(revisionId.toBytes(), sha256(rawCommit.toBytes())) ?
 								null : new IOException())
 				.thenCompose(rawCommit -> ensureSimKey(myRepositoryId, originRepositoryIds, rawCommit.getSimKeyHash())
-						.thenTry(simKey -> {
-							ByteBuf buf = ByteBuf.wrapForReading(decryptAES(
-									rawCommit.getEncryptedDiffs(),
-									simKey.getAesKey()));
-							Map<CommitId, List<? extends D>> parents = new HashMap<>();
-							for (CommitId parent : rawCommit.getParents()) {
-								byte[] bytes = BinaryDataFormats.readBytes(buf);
-								List<? extends D> diffs = myRepositoryId.getDiffsDeserializer().apply(bytes);
-								parents.put(parent, diffs);
-							}
+						.thenApply(simKey -> {
+							try {
+								ByteBuf buf = ByteBuf.wrapForReading(decryptAES(
+										rawCommit.getEncryptedDiffs(),
+										simKey.getAesKey()));
+								Map<CommitId, List<? extends D>> parents = new HashMap<>();
+								for (CommitId parent : rawCommit.getParents()) {
+									byte[] bytes = BinaryDataFormats.readBytes(buf);
+									List<? extends D> diffs = myRepositoryId.getDiffsDeserializer().parse(bytes);
+									parents.put(parent, diffs);
+								}
 
-							return OTCommit.of(revisionId, parents, rawCommit.getLevel())
-									.withTimestamp(rawCommit.getTimestamp());
+								return OTCommit.of(revisionId, parents, rawCommit.getLevel())
+										.withTimestamp(rawCommit.getTimestamp());
+							} catch (CryptoException | ParseException e) {
+								throw new UncheckedException(e);
+							}
 						}));
 	}
 
@@ -179,7 +186,7 @@ public final class OTDriver {
 		return Stages.any(
 				union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds).stream()
 						.map(repositoryId -> loadSnapshot(myRepositoryId, repositoryId, revisionId)
-								.thenTry(Optional::get)))
+								.thenCompose(Stage::ofOptional)))
 				.thenApplyEx((snapshot, e) -> e == null ? Optional.of(snapshot) : Optional.empty());
 	}
 
@@ -199,8 +206,20 @@ public final class OTDriver {
 
 					RawSnapshot rawSnapshot = signedSnapshot.getData();
 					return ensureSimKey(myRepositoryId, singleton(repositoryId), rawSnapshot.getSimKeyHash())
-							.thenTry(simKey -> decryptAES(rawSnapshot.encryptedDiffs, simKey.getAesKey()))
-							.thenTry(diffs -> myRepositoryId.getDiffsDeserializer().apply(diffs))
+							.thenApply(simKey -> {
+								try {
+									return decryptAES(rawSnapshot.encryptedDiffs, simKey.getAesKey());
+								} catch (CryptoException e) {
+									throw new UncheckedException(e);
+								}
+							})
+							.thenApply(diffs -> {
+								try {
+									return myRepositoryId.getDiffsDeserializer().parse(diffs);
+								} catch (ParseException e) {
+									throw new UncheckedException(e);
+								}
+							})
 							.thenApply(Optional::of);
 				});
 	}

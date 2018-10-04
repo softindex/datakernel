@@ -197,8 +197,12 @@ public abstract class HttpMessage {
 		return bodySupplier.toCollector(ByteBufQueue.collector(maxBodySize));
 	}
 
-	protected Stage<? extends HttpMessage> doEnsureBody(int maxBodySize) {
-		if (body != null) return Stage.of(this);
+	public final Stage<Void> ensureBody(MemSize maxBodySize) {
+		return ensureBody(maxBodySize.toInt());
+	}
+
+	public final Stage<Void> ensureBody(int maxBodySize) {
+		if (body != null) return Stage.of(null);
 		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		if (bodySupplier != null) {
 			this.bodySupplier = null;
@@ -206,13 +210,13 @@ public abstract class HttpMessage {
 					.thenComposeEx((buf, e) -> {
 						if (e == null) {
 							this.body = buf;
-							return Stage.of(this);
+							return Stage.of(null);
 						} else {
 							return Stage.ofException(e);
 						}
 					});
 		}
-		return Stage.of(this);
+		return Stage.of(null);
 	}
 
 	public SerialSupplier<ByteBuf> getBodyStream() {

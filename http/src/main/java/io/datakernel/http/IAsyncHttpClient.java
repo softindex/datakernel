@@ -24,7 +24,7 @@ public interface IAsyncHttpClient {
 
 	default Stage<HttpResponse> requestWithResponseBody(int maxBodySize, HttpRequest request) {
 		return request(request)
-				.thenCompose(response -> response.ensureBody(maxBodySize));
+				.thenCompose(response -> response.ensureBody(maxBodySize).thenApply($ -> response));
 	}
 
 	default Stage<HttpResponse> requestWithResponseBody(MemSize maxBodySize, HttpRequest request) {

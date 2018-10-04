@@ -61,16 +61,22 @@ public class HttpDataFormats {
 			CommitId::toBytes);
 
 	public static final TypeAdapter<Map<CommitId, RawCommit>> COMMIT_MAP_JSON = GsonAdapters.transform(GsonAdapters.ofMap(COMMIT_JSON),
-			map -> map.entrySet().stream()
-					.collect(toMap(
-							entry -> {
-								try {
-									return urlDecodeCommitId(entry.getKey());
-								} catch (ParseException e) {
-									throw UncheckedException.of(e);
-								}
-							},
-							Map.Entry::getValue)),
+			map -> {
+				try {
+					return map.entrySet().stream()
+							.collect(toMap(
+									entry -> {
+										try {
+											return urlDecodeCommitId(entry.getKey());
+										} catch (ParseException e) {
+											throw new UncheckedException(e);
+										}
+									},
+									Map.Entry::getValue));
+				} catch (UncheckedException u) {
+					throw u.propagate(ParseException.class);
+				}
+			},
 			map -> map.entrySet().stream()
 					.collect(toMap(
 							entry -> urlEncodeCommitId(entry.getKey()),

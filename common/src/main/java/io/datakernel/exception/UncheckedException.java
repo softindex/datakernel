@@ -1,16 +1,21 @@
 package io.datakernel.exception;
 
 public final class UncheckedException extends RuntimeException {
-	private UncheckedException(Throwable cause) {
+	public UncheckedException(Throwable cause) {
 		super(cause);
-	}
-
-	public static UncheckedException of(Exception checkedException) {
-		return new UncheckedException(checkedException);
 	}
 
 	@Override
 	public synchronized Throwable fillInStackTrace() {
 		return this;
+	}
+
+	@SuppressWarnings("unchecked")
+	public <E extends Throwable> E propagate(Class<? extends E> exceptionType) {
+		Throwable cause = getCause();
+		if (exceptionType.isAssignableFrom(cause.getClass())) {
+			return (E) cause;
+		}
+		throw this;
 	}
 }

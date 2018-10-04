@@ -21,6 +21,8 @@ import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.serial.SerialConsumer;
@@ -115,8 +117,13 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 								.with("glob", glob))
 						.build()))
 				.thenCompose(response ->
-						Stage.compute(() ->
-								BinaryDataFormats.readList(response.getBody(), BinaryDataFormats::readGlobalFsMetadata)));
+						Stage.compute(() -> {
+							try {
+								return BinaryDataFormats.readList(response.getBody(), BinaryDataFormats::readGlobalFsMetadata);
+							} catch (ParseException e) {
+								throw new UncheckedException(e);
+							}
+						}));
 	}
 
 	@Override
@@ -145,8 +152,13 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.build())
 				.withBody(buf))
 				.thenCompose(response ->
-						Stage.compute(() ->
-								BinaryDataFormats.readSet(response.getBody(), BinaryDataFormats::readString)));
+						Stage.compute(() -> {
+							try {
+								return BinaryDataFormats.readSet(response.getBody(), BinaryDataFormats::readString);
+							} catch (ParseException e) {
+								throw new UncheckedException(e);
+							}
+						}));
 	}
 
 	@Override
@@ -162,7 +174,12 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.build())
 				.withBody(buf))
 				.thenCompose(response ->
-						Stage.compute(() ->
-								BinaryDataFormats.readSet(response.getBody(), BinaryDataFormats::readString)));
+						Stage.compute(() -> {
+							try {
+								return BinaryDataFormats.readSet(response.getBody(), BinaryDataFormats::readString);
+							} catch (ParseException e) {
+								throw new UncheckedException(e);
+							}
+						}));
 	}
 }

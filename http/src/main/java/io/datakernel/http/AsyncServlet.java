@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.Stage;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.MemSize;
 
 /**
@@ -27,15 +28,7 @@ import io.datakernel.util.MemSize;
  */
 @FunctionalInterface
 public interface AsyncServlet {
-	Stage<HttpResponse> serve(HttpRequest request) throws ParseException;
-
-	default Stage<HttpResponse> tryServe(HttpRequest request) {
-		try {
-			return serve(request);
-		} catch (ParseException e) {
-			return Stage.ofException(e);
-		}
-	}
+	Stage<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException;
 
 	static AsyncServlet ensureRequestBody(MemSize maxBodySize, AsyncServlet delegate) {
 		return ensureRequestBody(maxBodySize.toInt(), delegate);
@@ -43,7 +36,15 @@ public interface AsyncServlet {
 
 	static AsyncServlet ensureRequestBody(int maxBodySize, AsyncServlet delegate) {
 		return request -> request.ensureBody(maxBodySize)
-				.thenCompose(delegate::tryServe);
+				.thenCompose($ -> {
+					try {
+						return delegate.serve(request);
+					} catch (UncheckedException u) {
+						return Stage.ofException(u.getCause());
+					} catch (ParseException e) {
+						return Stage.ofException(e);
+					}
+				});
 	}
 
 }

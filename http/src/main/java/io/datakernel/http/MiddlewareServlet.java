@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
+import io.datakernel.exception.ParseException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -101,7 +102,7 @@ public class MiddlewareServlet implements AsyncServlet {
 	}
 
 	@Override
-	public Stage<HttpResponse> serve(HttpRequest request) {
+	public Stage<HttpResponse> serve(HttpRequest request) throws ParseException {
 		Stage<HttpResponse> processed = tryServeAsync(request);
 		if (processed == null) {
 			return Stage.ofException(HttpException.notFound404());
@@ -109,7 +110,7 @@ public class MiddlewareServlet implements AsyncServlet {
 		return processed;
 	}
 
-	protected Stage<HttpResponse> tryServeAsync(HttpRequest request) {
+	protected Stage<HttpResponse> tryServeAsync(HttpRequest request) throws ParseException {
 		int introPosition = request.getPos();
 		String urlPart = request.pollUrlPart();
 		HttpMethod method = request.getMethod();
@@ -117,7 +118,7 @@ public class MiddlewareServlet implements AsyncServlet {
 		if (urlPart.isEmpty()) {
 			AsyncServlet servlet = getRootServletOrWildcard(method);
 			if (servlet != null) {
-				return servlet.tryServe(request);
+				return servlet.serve(request);
 			} else if (fallbackServlet == null) {
 				if (!rootServlets.isEmpty()) {
 					return null;
@@ -146,7 +147,7 @@ public class MiddlewareServlet implements AsyncServlet {
 
 		if (result == null && fallbackServlet != null) {
 			request.setPos(introPosition);
-			result = fallbackServlet.tryServe(request);
+			result = fallbackServlet.serve(request);
 		}
 		return result;
 	}

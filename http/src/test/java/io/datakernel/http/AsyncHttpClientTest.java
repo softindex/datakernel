@@ -78,7 +78,7 @@ public class AsyncHttpClientTest {
 
 		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenApply(HttpMessage::getBody)
-				.thenTry(buf -> buf.asString(UTF_8))
+				.thenApply(buf -> buf.asString(UTF_8))
 				.thenRunEx(() -> {
 					httpClient.stop();
 					httpServer.close();
@@ -98,7 +98,7 @@ public class AsyncHttpClientTest {
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
 
 		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://google.com"))
-				.thenTry(response -> response.getBody().asString(UTF_8))
+				.thenApply(response -> response.getBody().asString(UTF_8))
 				.thenRunEx(httpClient::stop)
 				.toCompletableFuture();
 
@@ -121,7 +121,7 @@ public class AsyncHttpClientTest {
 		httpServer.listen();
 
 		CompletableFuture<String> future = httpClient.requestWithResponseBody(12, HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenTry(response -> response.getBody().asString(UTF_8))
+				.thenApply(response -> response.getBody().asString(UTF_8))
 				.thenRunEx(() -> {
 					httpClient.stop();
 					httpServer.close();
@@ -153,7 +153,7 @@ public class AsyncHttpClientTest {
 
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
 		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, request)
-				.thenTry(response -> response.getBody().asString(UTF_8))
+				.thenApply(response -> response.getBody().asString(UTF_8))
 				.thenRunEx(() -> {
 					httpClient.stop();
 					server.close();

@@ -21,6 +21,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
@@ -186,44 +187,49 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Stage<Void> move(String filename, String targetName) {
-		return Stage.ofThrowingRunnable(executor, () -> {
-			synchronized (this) {
-				Path filePath = resolveFilePath(filename);
-				Path targetPath = resolveFilePath(targetName);
+		return Stage.ofRunnable(executor,
+				() -> {
+					synchronized (this) {
+						try {
+							Path filePath = resolveFilePath(filename);
+							Path targetPath = resolveFilePath(targetName);
 
-				if (Files.isDirectory(filePath)) {
-					if (Files.exists(targetPath)) {
-						throw new RemoteFsException("Trying to move directory " + filename + " into existing file " + targetName);
-					}
-				} else {
-					long fileSize = Files.isRegularFile(filePath) ? Files.size(filePath) : -1;
-					long targetSize = Files.isRegularFile(targetPath) ? Files.size(targetPath) : -1;
+							if (Files.isDirectory(filePath)) {
+								if (Files.exists(targetPath)) {
+									throw new RemoteFsException("Trying to move directory " + filename + " into existing file " + targetName);
+								}
+							} else {
+								long fileSize = Files.isRegularFile(filePath) ? Files.size(filePath) : -1;
+								long targetSize = Files.isRegularFile(targetPath) ? Files.size(targetPath) : -1;
 
-					if (fileSize == -1 && targetSize == -1) {
-						throw new RemoteFsException("No file " + filename + ", neither file " + targetName + " were found");
-					}
+								if (fileSize == -1 && targetSize == -1) {
+									throw new RemoteFsException("No file " + filename + ", neither file " + targetName + " were found");
+								}
 
-					// assuming it did move in a possible previous erroneous attempt
-					if (targetSize >= fileSize) {
-						if (fileSize != -1) { // if original still exists, delete it
-							Files.delete(filePath);
+								// assuming it did move in a possible previous erroneous attempt
+								if (targetSize >= fileSize) {
+									if (fileSize != -1) { // if original still exists, delete it
+										Files.delete(filePath);
+									}
+									return;
+								}
+							}
+
+							// explicitly set timestamp to eventloop time source
+							Files.setLastModifiedTime(filePath, FileTime.fromMillis(eventloop.currentTimeMillis()));
+							// not using ensureDirectory so we have only one executor task
+							Files.createDirectories(targetPath.getParent());
+							try {
+								Files.move(filePath, targetPath, REPLACE_EXISTING, ATOMIC_MOVE);
+							} catch (AtomicMoveNotSupportedException e) {
+								logger.warn("Atomic move were not supported when moving {} into {}", filename, targetName, e);
+								Files.move(filePath, targetPath, REPLACE_EXISTING);
+							}
+						} catch (IOException | RemoteFsException e) {
+							throw new UncheckedException(e);
 						}
-						return;
 					}
-				}
-
-				// explicitly set timestamp to eventloop time source
-				Files.setLastModifiedTime(filePath, FileTime.fromMillis(eventloop.currentTimeMillis()));
-				// not using ensureDirectory so we have only one executor task
-				Files.createDirectories(targetPath.getParent());
-				try {
-					Files.move(filePath, targetPath, REPLACE_EXISTING, ATOMIC_MOVE);
-				} catch (AtomicMoveNotSupportedException e) {
-					logger.warn("Atomic move were not supported when moving {} into {}", filename, targetName, e);
-					Files.move(filePath, targetPath, REPLACE_EXISTING);
-				}
-			}
-		})
+				})
 				.whenComplete(toLogger(logger, TRACE, "move", filename, targetName, this))
 				.whenComplete(singleMoveStage.recordStats());
 	}
@@ -241,54 +247,65 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Stage<Void> copy(String filename, String copyName) {
-		return Stage.ofThrowingRunnable(executor, () -> {
-			synchronized (this) {
-				Path filePath = resolveFilePath(filename);
-				Path copyPath = resolveFilePath(copyName);
+		return Stage.ofRunnable(executor,
+				() -> {
+					synchronized (this) {
+						try {
+							Path filePath = resolveFilePath(filename);
+							Path copyPath = resolveFilePath(copyName);
 
-				if (!Files.isRegularFile(filePath)) {
-					throw new RemoteFsException("No file " + filename + " were found");
-				}
-				if (Files.isRegularFile(copyPath)) {
-					throw new RemoteFsException("File " + copyName + " already exists!");
-				}
+							if (!Files.isRegularFile(filePath)) {
+								throw new RemoteFsException("No file " + filename + " were found");
+							}
+							if (Files.isRegularFile(copyPath)) {
+								throw new RemoteFsException("File " + copyName + " already exists!");
+							}
 
-				// not using ensureDirectory so we have only one executor task
-				Files.createDirectories(copyPath.getParent());
-				try {
-					// try to create a hardlink
-					Files.createLink(copyPath, filePath);
-				} catch (UnsupportedOperationException | SecurityException e) {
-					// if couldnt, then just actually copy it
-					Files.copy(filePath, copyPath);
-				}
-			}
-		})
+							// not using ensureDirectory so we have only one executor task
+							Files.createDirectories(copyPath.getParent());
+							try {
+								// try to create a hardlink
+								Files.createLink(copyPath, filePath);
+							} catch (UnsupportedOperationException | SecurityException e) {
+								// if couldnt, then just actually copy it
+								Files.copy(filePath, copyPath);
+							}
+						} catch (IOException | RemoteFsException e) {
+							throw new UncheckedException(e);
+						}
+					}
+				})
 				.whenComplete(toLogger(logger, TRACE, "copy", filename, copyName, this))
 				.whenComplete(singleCopyStage.recordStats());
 	}
 
 	@Override
 	public Stage<Void> delete(String glob) {
-		return Stage.ofThrowingRunnable(executor, () -> {
-			synchronized (this) {
-				walkFiles(glob, (meta, path) -> {
-					logger.trace("deleting file: {}: {}", meta, this);
-					Files.delete(path);
-				});
-			}
-		})
+		return Stage.ofRunnable(executor,
+				() -> {
+					synchronized (this) {
+						try {
+							walkFiles(glob, (meta, path) -> {
+								logger.trace("deleting file: {}: {}", meta, this);
+								Files.delete(path);
+							});
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+				})
 				.whenComplete(toLogger(logger, TRACE, "delete", glob, this))
 				.whenComplete(deleteStage.recordStats());
 	}
 
 	@Override
 	public Stage<List<FileMetadata>> list(String glob) {
-		return Stage.ofCallable(executor, () -> {
-			List<FileMetadata> list = new ArrayList<>();
-			walkFiles(glob, (meta, $) -> list.add(meta));
-			return list;
-		})
+		return Stage.ofCallable(executor,
+				() -> {
+					List<FileMetadata> list = new ArrayList<>();
+					walkFiles(glob, (meta, $) -> list.add(meta));
+					return list;
+				})
 				.whenComplete(toLogger(logger, TRACE, "list", glob, this))
 				.whenComplete(listStage.recordStats());
 	}
@@ -300,14 +317,15 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Stage<FileMetadata> getMetadata(String filename) {
-		return Stage.ofCallable(executor, () -> {
-			Path file = storageDir.resolve(filename);
-			if (Files.isRegularFile(file)) {
-				return getFileMeta(file);
-			}
-			//noinspection ReturnOfNull - cannot add @Nullable to Callable interface
-			return null;
-		});
+		return Stage.ofCallable(executor,
+				() -> {
+					Path file = storageDir.resolve(filename);
+					if (Files.isRegularFile(file)) {
+						return getFileMeta(file);
+					}
+					//noinspection ReturnOfNull - cannot add @Nullable to Callable interface
+					return null;
+				});
 	}
 
 	@Override
@@ -339,11 +357,12 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	private Stage<Path> ensureDirectory(String filePath) {
-		return Stage.ofCallable(executor, () -> {
-			Path path = resolveFilePath(filePath);
-			Files.createDirectories(path.getParent());
-			return path;
-		}).whenComplete(toLogger(logger, TRACE, "ensureDirectory", filePath, this));
+		return Stage.ofCallable(executor,
+				() -> {
+					Path path = resolveFilePath(filePath);
+					Files.createDirectories(path.getParent());
+					return path;
+				}).whenComplete(toLogger(logger, TRACE, "ensureDirectory", filePath, this));
 	}
 
 	private void walkFiles(String glob, Walker walker) throws IOException {

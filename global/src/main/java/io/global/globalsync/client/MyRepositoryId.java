@@ -1,5 +1,6 @@
 package io.global.globalsync.client;
 
+import io.datakernel.util.ParserFunction;
 import io.global.common.PrivKey;
 import io.global.globalsync.api.RepositoryName;
 
@@ -10,10 +11,10 @@ public class MyRepositoryId<D> {
 	private final RepositoryName repositoryId;
 	private final PrivKey privKey;
 	private final Function<List<D>, byte[]> diffsSerializer;
-	private final Function<byte[], List<D>> diffsDeserializer;
+	private final ParserFunction<byte[], List<D>> diffsDeserializer;
 
 	public MyRepositoryId(RepositoryName repositoryId, PrivKey privKey,
-			Function<List<D>, byte[]> diffsSerializer, Function<byte[], List<D>> diffsDeserializer) {
+			Function<List<D>, byte[]> diffsSerializer, ParserFunction<byte[], List<D>> diffsDeserializer) {
 		this.repositoryId = repositoryId;
 		this.privKey = privKey;
 		this.diffsSerializer = diffsSerializer;
@@ -32,7 +33,7 @@ public class MyRepositoryId<D> {
 		return diffsSerializer;
 	}
 
-	public Function<byte[], List<D>> getDiffsDeserializer() {
+	public ParserFunction<byte[], List<D>> getDiffsDeserializer() {
 		return diffsDeserializer;
 	}
 }
