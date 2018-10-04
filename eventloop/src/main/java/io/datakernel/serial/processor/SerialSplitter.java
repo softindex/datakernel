@@ -66,7 +66,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 									return;
 								}
 								lenientExceptions.forEach(e::addSuppressed);
-								closeWithError(e);
+								close(e);
 							})));
 		}
 	}
@@ -83,7 +83,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 										if (e2 == null) {
 											doProcess();
 										} else if (!lenient) {
-											closeWithError(e2);
+											close(e2);
 										}
 									});
 						} else {
@@ -91,14 +91,14 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 									.whenComplete(($, e1) -> completeProcess(e1));
 						}
 					} else {
-						closeWithError(e);
+						close(e);
 					}
 				});
 	}
 
 	@Override
 	protected void doCloseWithError(Throwable e) {
-		input.closeWithError(e);
-		outputs.forEach(output -> output.closeWithError(e));
+		input.close(e);
+		outputs.forEach(output -> output.close(e));
 	}
 }

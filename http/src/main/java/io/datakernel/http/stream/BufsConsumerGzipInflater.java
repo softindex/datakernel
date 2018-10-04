@@ -98,19 +98,19 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 							//header validation
 							if (buf.get() != GZIP_HEADER[0] || buf.get() != GZIP_HEADER[1]) {
 								buf.recycle();
-								closeWithError(INCORRECT_ID_HEADER_BYTES);
+								close(INCORRECT_ID_HEADER_BYTES);
 								return;
 							}
 							if (buf.get() != GZIP_HEADER[2]) {
 								buf.recycle();
-								closeWithError(UNSUPPORTED_COMPRESSION_METHOD);
+								close(UNSUPPORTED_COMPRESSION_METHOD);
 								return;
 							}
 
 							byte flag = buf.get();
 							if ((flag & 0b11100000) > 0) {
 								buf.recycle();
-								closeWithError(MALFORMED_FLAG);
+								close(MALFORMED_FLAG);
 								return;
 							}
 							// unsetting FTEXT bit
@@ -132,7 +132,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 				inflate(queue);
 			} catch (DataFormatException e) {
 				queue.recycle();
-				closeWithError(e);
+				close(e);
 				return;
 			}
 			if (inflater.finished()) {
@@ -151,13 +151,13 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 		input.parse(ofFixedSize(GZIP_FOOTER_SIZE))
 				.whenResult(buf -> {
 					if ((int) crc32.getValue() != reverseBytes(buf.readInt())) {
-						closeWithError(CRC32_VALUE_DIFFERS);
+						close(CRC32_VALUE_DIFFERS);
 						buf.recycle();
 						return;
 					}
 
 					if (inflater.getTotalOut() != reverseBytes(buf.readInt())) {
-						closeWithError(ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED);
+						close(ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED);
 						buf.recycle();
 						return;
 					}
@@ -205,7 +205,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 
 	private void skipTerminatorByte(int flag, int part) {
 		input.parse(ByteBufsParser.ofNullTerminatedBytes(MAX_HEADER_FIELD_LENGTH))
-				.whenException(e -> closeWithError(FNAME_FCOMMENT_TOO_LARGE))
+				.whenException(e -> close(FNAME_FCOMMENT_TOO_LARGE))
 				.whenResult(ByteBuf::recycle)
 				.whenResult($ -> runNext(flag - part).run());
 	}
@@ -219,7 +219,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 				})
 				.thenCompose(toSkip -> {
 					if (toSkip > MAX_HEADER_FIELD_LENGTH) {
-						closeWithError(FEXTRA_TOO_LARGE);
+						close(FEXTRA_TOO_LARGE);
 					}
 					return input.parse(ofFixedSize(toSkip));
 				})
@@ -244,7 +244,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 	@Override
 	protected void doCloseWithError(Throwable e) {
 		inflater.end();
-		input.closeWithError(e);
-		output.closeWithError(e);
+		input.close(e);
+		output.close(e);
 	}
 }

@@ -70,7 +70,7 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 
 		@Override
 		protected void onError(Throwable t) {
-			output.closeWithError(t);
+			output.close(t);
 		}
 	}
 
@@ -95,7 +95,7 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 
 		@Override
 		protected void onError(Throwable t) {
-			inputs.forEach(input -> input.closeWithError(t));
+			inputs.forEach(input -> input.close(t));
 		}
 	}
 

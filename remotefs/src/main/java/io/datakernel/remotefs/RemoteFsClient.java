@@ -119,12 +119,12 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 													return Stage.ofException(new RemoteFsException());
 												})
 												.whenException(e -> {
-													messaging.closeWithError(e);
+													messaging.close(e);
 													logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
 												})
 												.whenComplete(uploadFinishStage.recordStats())))
 								.whenException(e -> {
-									messaging.closeWithError(e);
+									messaging.close(e);
 									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
 								}))
 				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
@@ -169,7 +169,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 									return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
 								})
 								.whenException(e -> {
-									messaging.closeWithError(e);
+									messaging.close(e);
 									logger.warn("Error trying to download file " + filename + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
 								}))
 				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))
@@ -231,7 +231,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 									return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
 								})
 								.whenException(e -> {
-									messaging.closeWithError(e);
+									messaging.close(e);
 									logger.warn("Error while processing command " + command + " (" + e + ") : " + this);
 								}));
 	}

@@ -156,7 +156,7 @@ public class SerialFileReaderWriterTest {
 		producer.streamTo(writer)
 				.thenCompose($ -> writer.accept(ByteBuf.wrapForReading("abc".getBytes())))
 				.whenComplete(assertFailure(Exception.class, "Test Exception"));
-		writer.closeWithError(new Exception("Test Exception"));
+		writer.close(new Exception("Test Exception"));
 
 		eventloop.run();
 	}
@@ -204,7 +204,7 @@ public class SerialFileReaderWriterTest {
 					System.out.println("COMPLETED");
 					assertSame(testException, e);
 				});
-		serialFileReader.closeWithError(testException);
+		serialFileReader.close(testException);
 
 		eventloop.run();
 	}

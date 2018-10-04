@@ -68,7 +68,7 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 										if (e2 == null) {
 											doProcess();
 										} else {
-											closeWithError(e2);
+											close(e2);
 										}
 									});
 						} else {
@@ -76,14 +76,14 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 									.whenComplete(($, e2) -> completeProcess(e2));
 						}
 					} else {
-						closeWithError(e);
+						close(e);
 					}
 				});
 	}
 
 	@Override
 	protected void doCloseWithError(Throwable e) {
-		input.closeWithError(e);
-		output.closeWithError(e);
+		input.close(e);
+		output.close(e);
 	}
 }

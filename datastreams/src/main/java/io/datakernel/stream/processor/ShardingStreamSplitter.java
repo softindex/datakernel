@@ -89,7 +89,7 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 
 		@Override
 		protected void onError(Throwable t) {
-			outputs.forEach(output -> output.closeWithError(t));
+			outputs.forEach(output -> output.close(t));
 		}
 	}
 
@@ -121,7 +121,7 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 
 		@Override
 		protected void onError(Throwable t) {
-			input.closeWithError(t);
+			input.close(t);
 		}
 	}
 }

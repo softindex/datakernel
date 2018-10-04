@@ -112,10 +112,10 @@ abstract class FramesToByteBufs extends AbstractIOAsyncProcess
 	@Override
 	protected final void doCloseWithError(Throwable e) {
 		if (input != null) {
-			input.closeWithError(e);
+			input.close(e);
 		}
 		if (output != null) {
-			output.closeWithError(e);
+			output.close(e);
 		}
 	}
 }

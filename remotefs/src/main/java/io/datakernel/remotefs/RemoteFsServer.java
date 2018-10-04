@@ -103,7 +103,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					String prefix = e.getClass() != RemoteFsException.class ? e.getClass().getSimpleName() + ": " : "";
 					return messaging.send(new ServerError(prefix + e.getMessage()))
 							.thenCompose($1 -> messaging.sendEndOfStream())
-							.whenResult($1 -> messaging.closeWithError(e));
+							.whenResult($1 -> messaging.close(e));
 				});
 	}
 

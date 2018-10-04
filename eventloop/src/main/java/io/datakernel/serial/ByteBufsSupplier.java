@@ -61,9 +61,9 @@ public abstract class ByteBufsSupplier implements Cancellable {
 			}
 
 			@Override
-			public void closeWithError(Throwable e) {
+			public void close(Throwable e) {
 				bufs.recycle();
-				input.closeWithError(e);
+				input.close(e);
 			}
 		};
 	}
@@ -82,8 +82,8 @@ public abstract class ByteBufsSupplier implements Cancellable {
 			}
 
 			@Override
-			public void closeWithError(Throwable e) {
-				cancellable.closeWithError(e);
+			public void close(Throwable e) {
+				cancellable.close(e);
 			}
 		};
 	}
@@ -113,7 +113,7 @@ public abstract class ByteBufsSupplier implements Cancellable {
 						try {
 							result = parser.tryParse(bufs);
 						} catch (Exception e2) {
-							closeWithError(e2);
+							close(e2);
 							cb.setException(e2);
 							return;
 						}
@@ -132,7 +132,7 @@ public abstract class ByteBufsSupplier implements Cancellable {
 		return parse(parser)
 				.thenCompose(result -> {
 					if (!bufs.isEmpty()) {
-						closeWithError(UNEXPECTED_DATA_EXCEPTION);
+						close(UNEXPECTED_DATA_EXCEPTION);
 						return Stage.ofException(UNEXPECTED_DATA_EXCEPTION);
 					}
 					return endOfStream().thenApply($ -> result);

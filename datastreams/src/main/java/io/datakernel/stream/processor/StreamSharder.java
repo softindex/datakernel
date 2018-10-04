@@ -82,7 +82,7 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 
 		@Override
 		protected void onError(Throwable t) {
-			outputs.forEach(output -> output.closeWithError(t));
+			outputs.forEach(output -> output.close(t));
 		}
 	}
 
@@ -109,7 +109,7 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 
 		@Override
 		protected void onError(Throwable t) {
-			input.closeWithError(t);
+			input.close(t);
 		}
 	}
 

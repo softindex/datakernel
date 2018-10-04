@@ -74,6 +74,6 @@ public final class FrameSigner extends ByteBufsToFrames {
 										postNextCheckpoint()
 												.thenCompose($ -> output.accept(null)))
 										.whenResult($ -> completeProcess()))
-				.whenException(this::closeWithError);
+				.whenException(this::close);
 	}
 }

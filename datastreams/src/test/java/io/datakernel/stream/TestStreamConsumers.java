@@ -57,8 +57,8 @@ public class TestStreamConsumers {
 			}
 
 			@Override
-			public void closeWithError(Throwable e) {
-				super.closeWithError(e);
+			public void close(Throwable e) {
+				super.close(e);
 				acknowledgement.trySetException(e);
 			}
 		};

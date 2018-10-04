@@ -40,7 +40,7 @@ import static io.datakernel.util.Recyclable.deepRecycle;
  * <p>
  * After supplier is closed, all subsequent calls to {@link #get()} will return stage, completed exceptionally.
  * <p>
- * If any exception is caught while supplying data items, {@link #closeWithError(Throwable)} method should
+ * If any exception is caught while supplying data items, {@link #close(Throwable)} method should
  * be called. All resources should be freed and the caught exception should be propagated to all related processes.
  * <p>
  * If {@link #get()} returns {@link Stage} of {@code null}, it represents end-of-stream and means that no additional
@@ -139,7 +139,7 @@ public interface SerialSupplier<T> extends Cancellable {
 			@Override
 			protected void onClosed(Throwable e) {
 				exception = e;
-				materializedStage.whenResult(supplier -> supplier.closeWithError(e));
+				materializedStage.whenResult(supplier -> supplier.close(e));
 			}
 		};
 	}
@@ -157,7 +157,7 @@ public interface SerialSupplier<T> extends Cancellable {
 			@Override
 			protected void onClosed(Throwable e) {
 				if (supplier == null) supplier = provider.get();
-				supplier.closeWithError(e);
+				supplier.close(e);
 			}
 		};
 	}

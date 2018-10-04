@@ -47,7 +47,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 
 		@Override
 		protected void onError(Throwable t) {
-			output.closeWithError(t);
+			output.close(t);
 		}
 
 		@Override
@@ -79,7 +79,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 
 		@Override
 		protected void onError(Throwable t) {
-			input.closeWithError(t);
+			input.close(t);
 		}
 
 		@Override

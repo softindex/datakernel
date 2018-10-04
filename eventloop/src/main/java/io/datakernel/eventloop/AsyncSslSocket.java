@@ -92,7 +92,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			if (e == null) {
 				return Stage.of(value);
 			} else {
-				closeWithError(e);
+				close(e);
 				return Stage.ofException(e);
 			}
 		});
@@ -144,7 +144,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 						try {
 							engine.closeInbound();
 						} catch (SSLException e) {
-							closeWithError(new CloseWithoutNotifyException(e));
+							close(new CloseWithoutNotifyException(e));
 						}
 					}
 				});
@@ -265,7 +265,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 						try {
 							doHandshake();
 						} catch (SSLException e) {
-							closeWithError(e);
+							close(e);
 						}
 					});
 		}
@@ -275,7 +275,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		try {
 			doSync();
 		} catch (SSLException e) {
-			closeWithError(e);
+			close(e);
 		}
 	}
 
@@ -330,7 +330,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			engine.beginHandshake();
 			sync();
 		} catch (SSLException e) {
-			closeWithError(e);
+			close(e);
 		}
 	}
 
@@ -347,12 +347,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
+	public void close(Throwable e) {
 		if (!isOpen()) return;
 		engine.closeOutbound();
 		sync(); // sync is used here to send close_notify message to recepient
 		recycleByteBufs();
-		upstream.closeWithError(e);
+		upstream.close(e);
 		if (write != null) {
 			write.setException(e);
 			write = null;

@@ -21,7 +21,7 @@ import io.datakernel.exception.StacklessException;
 /**
  * This interface describes methods that are used to handle exceptional behaviour or to handle closing.
  * <p>
- * After {@link #close()}, {@link #closeWithError(Throwable)} or {@link #cancel()} is called, the following things
+ * After {@link #close()}, {@link #close(Throwable)} or {@link #cancel()} is called, the following things
  * should be done:
  * <ul>
  * <li>Resources held by an object should be freed</li>
@@ -39,19 +39,19 @@ public interface Cancellable {
 	 *
 	 * @param e exception that is used to close process with
 	 */
-	void closeWithError(Throwable e);
+	void close(Throwable e);
 
 	/**
 	 * This method should be called in case user wants to cancel some process
 	 */
 	default void cancel() {
-		closeWithError(CANCEL_EXCEPTION);
+		close(CANCEL_EXCEPTION);
 	}
 
 	/**
 	 * This method should be called after process has finished its job
 	 */
 	default void close() {
-		closeWithError(CLOSE_EXCEPTION);
+		close(CLOSE_EXCEPTION);
 	}
 }

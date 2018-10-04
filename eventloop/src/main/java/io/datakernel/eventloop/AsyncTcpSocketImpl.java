@@ -234,7 +234,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			scheduledReadTimeout = eventloop.delayBackground(readTimeout, () -> {
 				if (inspector != null) inspector.onReadTimeout();
 				scheduledReadTimeout = null;
-				closeWithError(TIMEOUT_EXCEPTION);
+				close(TIMEOUT_EXCEPTION);
 			});
 		}
 	}
@@ -244,7 +244,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			scheduledWriteTimeout = eventloop.delayBackground(writeTimeout, () -> {
 				if (inspector != null) inspector.onWriteTimeout();
 				scheduledWriteTimeout = null;
-				closeWithError(TIMEOUT_EXCEPTION);
+				close(TIMEOUT_EXCEPTION);
 			});
 		}
 	}
@@ -272,7 +272,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			key = channel.register(eventloop.ensureSelector(), ops, this);
 			connectionCount.incrementAndGet();
 		} catch (IOException e) {
-			closeWithError(e);
+			close(e);
 		}
 	}
 
@@ -314,7 +314,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			} catch (IOException e) {
 				buf.recycle();
 				if (inspector != null) inspector.onReadError(e);
-				closeWithError(e);
+				close(e);
 				return;
 			}
 
@@ -368,7 +368,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				return Stage.complete();
 			}
 		} catch (IOException e) {
-			closeWithError(e);
+			close(e);
 			return Stage.ofException(e);
 		}
 		write = new SettableStage<>();
@@ -390,7 +390,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				write.set(null);
 			}
 		} catch (IOException e) {
-			closeWithError(e);
+			close(e);
 		}
 		reentrantCall = false;
 		updateInterests();
@@ -460,7 +460,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	@Override
-	public void closeWithError(@Nullable Throwable e) {
+	public void close(@Nullable Throwable e) {
 		assert eventloop.inEventloopThread();
 		if (channel == null) return;
 		doClose();

@@ -43,7 +43,7 @@ public abstract class ForwardingStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
-		consumer.closeWithError(e);
+	public void close(Throwable e) {
+		consumer.close(e);
 	}
 }

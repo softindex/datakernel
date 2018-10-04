@@ -36,8 +36,8 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 
 			@Override
 			protected void onClosed(Throwable e) {
-				supplier.closeWithError(e);
-				AbstractIOAsyncProcess.this.closeWithError(e);
+				supplier.close(e);
+				AbstractIOAsyncProcess.this.close(e);
 			}
 		};
 	}
@@ -51,8 +51,8 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 
 			@Override
 			protected void onClosed(Throwable e) {
-				consumer.closeWithError(e);
-				AbstractIOAsyncProcess.this.closeWithError(e);
+				consumer.close(e);
+				AbstractIOAsyncProcess.this.close(e);
 			}
 		};
 	}
@@ -70,9 +70,9 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 			}
 
 			@Override
-			public void closeWithError(Throwable e) {
-				supplier.closeWithError(e);
-				AbstractIOAsyncProcess.this.closeWithError(e);
+			public void close(Throwable e) {
+				supplier.close(e);
+				AbstractIOAsyncProcess.this.close(e);
 			}
 		};
 	}
@@ -88,7 +88,7 @@ public abstract class AbstractIOAsyncProcess extends AbstractAsyncProcess {
 					if (e == null) {
 						return Stage.of(value);
 					} else {
-						closeWithError(e);
+						close(e);
 						return Stage.ofException(e);
 					}
 				});

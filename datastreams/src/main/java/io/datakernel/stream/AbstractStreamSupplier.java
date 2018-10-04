@@ -84,7 +84,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		this.consumer = consumer;
 		onWired();
 		consumer.getAcknowledgement()
-				.whenException(this::closeWithError)
+				.whenException(this::close)
 				.whenComplete(acknowledgement::set);
 	}
 
@@ -209,7 +209,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public final void closeWithError(Throwable e) {
+	public final void close(Throwable e) {
 		if (endOfStream.isComplete()) return;
 		if (!(e instanceof ExpectedException)) {
 			if (logger.isWarnEnabled()) {

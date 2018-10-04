@@ -108,7 +108,7 @@ public class StreamConsumersTest {
 
 			@Override
 			protected void onError(Throwable t) {
-				output.closeWithError(t);
+				output.close(t);
 			}
 
 		}
@@ -122,7 +122,7 @@ public class StreamConsumersTest {
 
 			@Override
 			protected void onError(Throwable t) {
-				input.closeWithError(t);
+				input.close(t);
 			}
 
 			@Override

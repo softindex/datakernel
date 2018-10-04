@@ -127,8 +127,8 @@ public final class SerialLZ4Compressor extends AbstractIOAsyncProcess
 
 	@Override
 	protected void doCloseWithError(Throwable e) {
-		input.closeWithError(e);
-		output.closeWithError(e);
+		input.close(e);
+		output.close(e);
 	}
 
 	// endregion

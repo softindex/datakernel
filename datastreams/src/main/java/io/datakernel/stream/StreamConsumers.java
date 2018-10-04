@@ -58,7 +58,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public void closeWithError(Throwable e) {
+		public void close(Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -77,7 +77,7 @@ public final class StreamConsumers {
 				try {
 					consumer.accept(item);
 				} catch (UncheckedException u) {
-					closeWithError(u.getCause());
+					close(u.getCause());
 				}
 			});
 		}
@@ -145,7 +145,7 @@ public final class StreamConsumers {
 					if (e == null) {
 						produce();
 					} else {
-						closeWithError(e);
+						close(e);
 					}
 				});
 				return;
@@ -161,7 +161,7 @@ public final class StreamConsumers {
 		@Override
 		protected void onError(Throwable t) {
 			deque.clear();
-			consumer.closeWithError(t);
+			consumer.close(t);
 			result.trySetException(t);
 		}
 
@@ -195,7 +195,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public void closeWithError(Throwable e) {
+		public void close(Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -220,7 +220,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public void closeWithError(Throwable e) {
+		public void close(Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}

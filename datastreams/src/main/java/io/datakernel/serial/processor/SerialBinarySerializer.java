@@ -136,7 +136,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 			input.buf.recycle();
 			input.buf = ByteBuf.empty();
 		}
-		output.closeWithError(e);
+		output.close(e);
 	}
 
 	private void doFlush() {
@@ -149,7 +149,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 							flushing = false;
 							doFlush();
 						} else {
-							this.closeWithError(e);
+							this.close(e);
 						}
 					});
 		} else {
@@ -280,7 +280,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 			if (skipSerializationErrors) {
 				logger.warn("Skipping serialization error in {}", this, e);
 			} else {
-				closeWithError(e);
+				close(e);
 			}
 		}
 

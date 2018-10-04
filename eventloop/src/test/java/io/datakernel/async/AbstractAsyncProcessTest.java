@@ -127,11 +127,11 @@ public class AbstractAsyncProcessTest {
 					.whenComplete((data, e) -> {
 						if (data == null) {
 							output.accept(null)
-									.whenException(this::closeWithError)
+									.whenException(this::close)
 									.whenResult($ -> completeProcess());
 						} else {
 							output.accept(data)
-									.whenException(this::closeWithError)
+									.whenException(this::close)
 									.whenResult($ -> doProcess());
 						}
 					});
@@ -139,8 +139,8 @@ public class AbstractAsyncProcessTest {
 
 		@Override
 		protected void doCloseWithError(Throwable e) {
-			output.closeWithError(e);
-			input.closeWithError(e);
+			output.close(e);
+			input.close(e);
 		}
 	}
 	// endregion

@@ -48,7 +48,7 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 
 		@Override
 		protected void onError(Throwable t) {
-			output.closeWithError(t);
+			output.close(t);
 		}
 
 		@Override
@@ -75,7 +75,7 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		@Override
 		protected void onError(Throwable t) {
 			stats.onError(t);
-			input.closeWithError(t);
+			input.close(t);
 		}
 
 		@Override

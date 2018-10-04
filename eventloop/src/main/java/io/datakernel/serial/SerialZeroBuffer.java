@@ -88,7 +88,7 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public void closeWithError(Throwable e) {
+	public void close(Throwable e) {
 		if (exception != null) return;
 		exception = e instanceof Exception ? (Exception) e : new RuntimeException(e);
 		if (put != null) {

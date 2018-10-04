@@ -65,10 +65,10 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		onWired();
 		supplier.getEndOfStream()
 				.whenComplete(endOfStream::set)
-				.whenException(this::closeWithError)
+				.whenException(this::close)
 				.post()
 				.whenResult($1 -> onEndOfStream()
-						.whenException(this::closeWithError)
+						.whenException(this::close)
 						.post()
 						.whenResult($2 -> acknowledge()));
 	}
@@ -97,7 +97,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected abstract Stage<Void> onEndOfStream();
 
 	@Override
-	public final void closeWithError(Throwable e) {
+	public final void close(Throwable e) {
 		if (acknowledgement.isComplete()) return;
 		acknowledgement.setException(e);
 		if (!(e instanceof ExpectedException)) {

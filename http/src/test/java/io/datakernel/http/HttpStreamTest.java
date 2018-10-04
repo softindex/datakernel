@@ -161,7 +161,7 @@ public class HttpStreamTest {
 					return stream.get()
 							.thenCompose(buf -> {
 								HttpException testException = new HttpException(432, exceptionMessage);
-								stream.closeWithError(testException);
+								stream.close(testException);
 								buf.recycle();
 								return Stage.ofException(testException);
 							});

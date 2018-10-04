@@ -34,7 +34,7 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 		} catch (RuntimeException e) {
 			throw e;
 		} catch (Exception e) {
-			closeWithError(e);
+			close(e);
 			return;
 		}
 		if (buffer.isSaturated()) {
@@ -49,7 +49,7 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 
 	@Override
 	protected void onError(Throwable t) {
-		buffer.closeWithError(t);
+		buffer.close(t);
 	}
 
 	public Stage<T> take() {

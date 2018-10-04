@@ -79,7 +79,7 @@ public final class SerialSuppliers {
 								}
 							} else {
 								while (iterator.hasNext()) {
-									iterator.next().closeWithError(e);
+									iterator.next().close(e);
 								}
 								return Stage.ofException(e);
 							}
@@ -88,9 +88,9 @@ public final class SerialSuppliers {
 
 			@Override
 			protected void onClosed(Throwable e) {
-				current.closeWithError(e);
+				current.close(e);
 				while (iterator.hasNext()) {
-					iterator.next().closeWithError(e);
+					iterator.next().close(e);
 				}
 			}
 		};
@@ -115,7 +115,7 @@ public final class SerialSuppliers {
 					accumulator.accept(accumulatedValue, item);
 				} catch (UncheckedException u) {
 					Throwable cause = u.getCause();
-					supplier.closeWithError(cause);
+					supplier.close(cause);
 					cb.setException(cause);
 					return;
 				}
@@ -130,7 +130,7 @@ public final class SerialSuppliers {
 						accumulator.accept(accumulatedValue, value);
 					} catch (UncheckedException u) {
 						Throwable cause = u.getCause();
-						supplier.closeWithError(cause);
+						supplier.close(cause);
 						cb.setException(cause);
 						return;
 					}
@@ -164,7 +164,7 @@ public final class SerialSuppliers {
 				if (e == null) {
 					streamImpl(supplier, consumer, result);
 				} else {
-					supplier.closeWithError(e);
+					supplier.close(e);
 					result.trySetException(e);
 				}
 			});
@@ -182,12 +182,12 @@ public final class SerialSuppliers {
 											result.trySet(null);
 										}
 									} else {
-										supplier.closeWithError(e2);
+										supplier.close(e2);
 										result.trySetException(e2);
 									}
 								});
 					} else {
-						consumer.closeWithError(e1);
+						consumer.close(e1);
 						result.trySetException(e1);
 					}
 				});
@@ -235,7 +235,7 @@ public final class SerialSuppliers {
 											endOfStream = true;
 										}
 									} else {
-										closeWithError(e);
+										close(e);
 									}
 								});
 					}
@@ -258,7 +258,7 @@ public final class SerialSuppliers {
 					@Override
 					protected void onClosed(Throwable e) {
 						deepRecycle(deque);
-						actual.closeWithError(e);
+						actual.close(e);
 						if (pending != null) {
 							pending.trySetException(e);
 							pending = null;
@@ -307,7 +307,7 @@ public final class SerialSuppliers {
 									endOfStream = true;
 								}
 							} else {
-								closeWithError(e);
+								close(e);
 							}
 						});
 			}
@@ -332,7 +332,7 @@ public final class SerialSuppliers {
 			protected void onClosed(Throwable e) {
 				tryRecycle(prefetched);
 				prefetched = null;
-				actual.closeWithError(e);
+				actual.close(e);
 				if (pending != null) {
 					pending.setException(e);
 					pending = null;

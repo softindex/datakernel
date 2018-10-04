@@ -97,7 +97,7 @@ public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 				.thenComposeEx(($, e) -> {
 					if (e != null) {
 						buf.recycle();
-						closeWithError(e);
+						close(e);
 						return Stage.ofException(getException());
 					}
 					int bytesRead = buf.readRemaining(); // bytes written (as they were read from file, thus the name) to be read by a consumer (thus the method)

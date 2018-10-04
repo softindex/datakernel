@@ -91,8 +91,8 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 	@Override
 	protected void doCloseWithError(Throwable e) {
 		bufs.recycle();
-		input.closeWithError(e);
-		output.closeWithError(e);
+		input.close(e);
+		output.close(e);
 	}
 
 }

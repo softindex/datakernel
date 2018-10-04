@@ -101,23 +101,23 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamSupplier<T>
 								if (queue.isEmpty()) {
 									sendEndOfStream();
 								} else {
-									closeWithError(new TruncatedDataException(format("Truncated serialized data stream, %s : %s", this, queue)));
+									close(new TruncatedDataException(format("Truncated serialized data stream, %s : %s", this, queue)));
 								}
 							}
 						})
-						.whenException(this::closeWithError);
+						.whenException(this::close);
 			} else {
 				async.end();
 			}
 		} catch (ParseException e) {
-			closeWithError(e);
+			close(e);
 		}
 	}
 
 	@Override
 	protected void onError(Throwable t) {
 		queue.recycle();
-		input.closeWithError(t);
+		input.close(t);
 	}
 
 	private static int tryPeekSize(ByteBufQueue queue) throws ParseException {

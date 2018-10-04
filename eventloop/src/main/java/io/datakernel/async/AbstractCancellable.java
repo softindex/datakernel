@@ -38,12 +38,12 @@ public abstract class AbstractCancellable implements Cancellable {
 	}
 
 	@Override
-	public final void closeWithError(Throwable e) {
+	public final void close(Throwable e) {
 		if (isClosed()) return;
 		this.exception = e;
 		onClosed(e);
 		if (cancellable != null) {
-			cancellable.closeWithError(e);
+			cancellable.close(e);
 		}
 	}
 

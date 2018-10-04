@@ -53,7 +53,7 @@ public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
-		supplier.closeWithError(e);
+	public void close(Throwable e) {
+		supplier.close(e);
 	}
 }

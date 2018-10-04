@@ -101,7 +101,7 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 		try (ByteBuf headerBuf = bufs.takeExactSize(HEADER_LENGTH)) {
 			readHeader(header, headerBuf.array(), headerBuf.readPosition());
 		} catch (ParseException e) {
-			closeWithError(e);
+			close(e);
 			return;
 		}
 
@@ -128,7 +128,7 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 			outputBuf = decompress(decompressor, checksum, header, inputBuf.array(), inputBuf.readPosition());
 			if (inspector != null) inspector.onBlock(this, header, inputBuf, outputBuf);
 		} catch (ParseException e) {
-			closeWithError(e);
+			close(e);
 			return;
 		} finally {
 			inputBuf.recycle();
@@ -140,8 +140,8 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 
 	@Override
 	protected void doCloseWithError(Throwable e) {
-		input.closeWithError(e);
-		output.closeWithError(e);
+		input.close(e);
+		output.close(e);
 	}
 
 	public final static class Header {

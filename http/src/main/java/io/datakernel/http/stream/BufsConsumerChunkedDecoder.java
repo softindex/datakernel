@@ -131,7 +131,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 		input.parse(assertBytes(CRLF))
 				.whenException(e -> {
 					queue.recycle();
-					closeWithError(MALFORMED_CHUNK);
+					close(MALFORMED_CHUNK);
 				})
 				.thenCompose($ -> output.acceptAll(queue.asIterator()))
 				.whenResult($1 -> processLength());
@@ -140,7 +140,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 	private void consumeCRLF(int chunkLength) {
 		input.parse(ofCrlfTerminatedBytes(maxExtLength))
 				.whenResult(ByteBuf::recycle)
-				.whenException(e -> closeWithError(EXT_TOO_LARGE))
+				.whenException(e -> close(EXT_TOO_LARGE))
 				.whenResult($ -> processData(chunkLength, new ByteBufQueue()));
 	}
 
@@ -161,7 +161,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 		}
 
 		if (remainingBytes > maxExtLength) {
-			closeWithError(TRAILER_TOO_LARGE);
+			close(TRAILER_TOO_LARGE);
 			return;
 		}
 		input.needMoreData()
@@ -170,7 +170,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 
 	@Override
 	protected void doCloseWithError(Throwable e) {
-		input.closeWithError(e);
-		output.closeWithError(e);
+		input.close(e);
+		output.close(e);
 	}
 }

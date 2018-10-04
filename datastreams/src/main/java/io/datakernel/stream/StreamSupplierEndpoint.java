@@ -45,13 +45,13 @@ public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 		} catch (RuntimeException e) {
 			throw e;
 		} catch (Exception e) {
-			closeWithError(e);
+			close(e);
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void onError(Throwable e) {
-		buffer.closeWithError(e);
+		buffer.close(e);
 	}
 }

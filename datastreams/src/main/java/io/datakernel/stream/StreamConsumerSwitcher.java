@@ -107,7 +107,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		public void setConsumer(StreamConsumer<T> consumer) {
 			assert consumer == this.consumer;
 			consumer.getAcknowledgement()
-					.whenException(this::closeWithError)
+					.whenException(this::close)
 					.post()
 					.whenResult($ -> {
 						if (--pendingConsumers == 0) {
@@ -163,8 +163,8 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public void closeWithError(Throwable t) {
-			StreamConsumerSwitcher.this.closeWithError(t);
+		public void close(Throwable t) {
+			StreamConsumerSwitcher.this.close(t);
 		}
 
 		@Override

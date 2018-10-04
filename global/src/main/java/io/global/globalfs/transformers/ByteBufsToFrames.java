@@ -59,8 +59,8 @@ abstract class ByteBufsToFrames extends AbstractIOAsyncProcess
 
 	@Override
 	protected final void doCloseWithError(Throwable e) {
-		input.closeWithError(e);
-		output.closeWithError(e);
+		input.close(e);
+		output.close(e);
 	}
 
 	protected abstract Stage<Void> postNextCheckpoint();

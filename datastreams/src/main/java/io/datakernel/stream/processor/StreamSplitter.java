@@ -91,7 +91,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 
 		@Override
 		protected void onError(Throwable t) {
-			outputs.forEach(output -> output.closeWithError(t));
+			outputs.forEach(output -> output.close(t));
 		}
 	}
 
@@ -125,7 +125,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 
 		@Override
 		protected void onError(Throwable t) {
-			input.closeWithError(t);
+			input.close(t);
 		}
 	}
 }

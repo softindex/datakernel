@@ -73,7 +73,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public void closeWithError(Throwable e) {
+		public void close(Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}
@@ -112,7 +112,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public void closeWithError(Throwable e) {
+		public void close(Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}
@@ -145,7 +145,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public void closeWithError(Throwable e) {
+		public void close(Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}
@@ -210,14 +210,14 @@ public final class StreamSuppliers {
 								sendEndOfStream();
 							}
 						} else {
-							closeWithError(e);
+							close(e);
 						}
 					});
 		}
 
 		@Override
 		protected void onError(Throwable t) {
-			supplier.closeWithError(t);
+			supplier.close(t);
 		}
 
 		@Override

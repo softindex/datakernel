@@ -48,7 +48,7 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 			processResult.trySet(null);
 			afterProcess(null);
 		} else {
-			closeWithError(e);
+			close(e);
 		}
 	}
 
@@ -70,7 +70,7 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	protected abstract void doProcess();
 
 	@Override
-	public final void closeWithError(Throwable e) {
+	public final void close(Throwable e) {
 		if (isProcessComplete()) return;
 		processComplete = true;
 		doCloseWithError(e);

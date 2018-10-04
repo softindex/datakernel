@@ -63,7 +63,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 								return Stage.ofException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
 							}
 						})
-						.whenException(this::closeWithError),
+						.whenException(this::close),
 				Stage::complete,
 				this);
 		this.parser = bufs -> {
@@ -97,7 +97,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 							closeIfDone();
 						}
 					})
-					.whenException(this::closeWithError);
+					.whenException(this::close);
 		}
 	}
 
@@ -105,7 +105,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	public Stage<I> receive() {
 		return bufsSupplier.parse(parser)
 				.whenResult($ -> prefetch())
-				.whenException(this::closeWithError);
+				.whenException(this::close);
 	}
 
 	@Override
@@ -120,7 +120,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 					writeDone = true;
 					closeIfDone();
 				})
-				.whenException(this::closeWithError);
+				.whenException(this::close);
 	}
 
 	@Override
@@ -144,10 +144,10 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	}
 
 	@Override
-	public void closeWithError(Throwable e) {
+	public void close(Throwable e) {
 		if (isClosed()) return;
 		closedException = e;
-		socket.closeWithError(e);
+		socket.close(e);
 		bufs.recycle();
 	}
 

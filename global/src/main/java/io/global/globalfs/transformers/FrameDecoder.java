@@ -60,8 +60,8 @@ public final class FrameDecoder extends AbstractIOAsyncProcess implements WithSe
 
 	@Override
 	protected final void doCloseWithError(Throwable e) {
-		input.closeWithError(e);
-		output.closeWithError(e);
+		input.close(e);
+		output.close(e);
 	}
 
 	private DataFrame parseDataFrame(ByteBuf buf) throws ParseException {

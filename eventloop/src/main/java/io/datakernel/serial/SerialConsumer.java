@@ -35,7 +35,7 @@ import static io.datakernel.util.Recyclable.tryRecycle;
  * <p>
  * After consumer is closed, all subsequent calls to {@link #accept(Object)} will return stage, completed exceptionally.
  * <p>
- * If any exception is caught while consuming data items, {@link #closeWithError(Throwable)} method should
+ * If any exception is caught while consuming data items, {@link #close(Throwable)} method should
  * be called. All resources should be freed and the caught exception should be propagated to all related processes.
  * <p>
  * If {@link #accept(Object)} takes {@code null} as argument, it represents end-of-stream and means that no additional
@@ -153,7 +153,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			@Override
 			protected void onClosed(Throwable e) {
 				exception = e;
-				materializedStage.whenResult(supplier -> supplier.closeWithError(e));
+				materializedStage.whenResult(supplier -> supplier.close(e));
 			}
 		};
 	}
@@ -171,7 +171,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			@Override
 			protected void onClosed(Throwable e) {
 				if (consumer == null) consumer = provider.get();
-				consumer.closeWithError(e);
+				consumer.close(e);
 			}
 		};
 	}

@@ -83,7 +83,7 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 					if (isClosed()) return Stage.ofException(getException());
 					if (e != null) {
 						buf.recycle();
-						closeWithError(e);
+						close(e);
 						return Stage.ofException(e);
 					}
 					if (buf == null) {
@@ -94,7 +94,7 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 							.thenComposeEx(($2, e2) -> {
 								if (isClosed()) return Stage.ofException(getException());
 								if (e2 != null) {
-									closeWithError(e2);
+									close(e2);
 								}
 								return Stage.of($2, e2);
 							});
