@@ -22,6 +22,7 @@ import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffJson;
 import io.datakernel.cube.ot.CubeOT;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.logfs.LocalFsLogFileSystem;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
@@ -346,7 +347,7 @@ public class CubeMeasureRemovalTest {
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql2 = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
 
-		exception.expectCause(instanceOf(IOException.class));
+		exception.expectCause(instanceOf(ParseException.class));
 		exception.expectMessage("Unknown fields: [clicks, conversions]");
 
 		CompletableFuture<OTCommit<Long, LogDiff<CubeDiff>>> future = otSourceSql2.getHeads()
@@ -423,7 +424,7 @@ public class CubeMeasureRemovalTest {
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql2 = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
 
-		exception.expectCause(instanceOf(IOException.class));
+		exception.expectCause(instanceOf(ParseException.class));
 		exception.expectMessage("Unknown aggregations: [impressionsAggregation, otherAggregation]");
 
 		CompletableFuture<OTCommit<Long, LogDiff<CubeDiff>>> future = otSourceSql2.getHeads()

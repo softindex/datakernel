@@ -26,9 +26,9 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import static io.datakernel.http.HttpMethod.*;
-import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class MiddlewareServletTest {
 
@@ -256,8 +256,11 @@ public class MiddlewareServletTest {
 
 		System.out.println("Parameter test " + DELIM);
 		check(main.serve(HttpRequest.get("http://www.coursera.org/123/a/456/b/789")), "123 456 789", 200);
-		main.serve(HttpRequest.get("http://www.coursera.org/555/a/777"))
-				.whenComplete(assertFailure(ParseException.class));
+		try {
+			main.serve(HttpRequest.get("http://www.coursera.org/555/a/777"));
+			fail();
+		} catch (ParseException ignored) {
+		}
 		HttpRequest request = HttpRequest.get("http://www.coursera.org");
 		check(main.serve(request), "", 404);
 		System.out.println();
