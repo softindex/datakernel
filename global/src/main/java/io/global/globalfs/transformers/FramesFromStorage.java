@@ -72,10 +72,11 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 	@Override
 	protected void iteration() {
 		input.get()
-				.thenCompose(buf ->
-						buf != null ?
-								handleBuffer(buf).thenRun(this::iteration) :
-								output.accept(null).thenRun(this::completeProcess))
+				.thenCompose(buf -> buf != null ?
+						handleBuffer(buf)
+								.whenResult($ -> iteration()) :
+						output.accept(null)
+								.whenResult($1 -> completeProcess()))
 				.whenException(this::closeWithError);
 	}
 }

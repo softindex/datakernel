@@ -157,7 +157,8 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 				Iterator<T> iterator = !distinct ?
 						input.list.iterator() :
 						new DistinctIterator<>(input.list, keyFunction, keyComparator);
-				writeToTemporaryStorage(iterator).thenRun(this::suspendOrResume);
+				writeToTemporaryStorage(iterator)
+						.whenResult($ -> suspendOrResume());
 				suspendOrResume();
 				list = new ArrayList<>(itemsInMemory);
 			}

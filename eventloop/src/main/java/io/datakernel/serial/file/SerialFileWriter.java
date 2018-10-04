@@ -88,7 +88,7 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 					}
 					if (buf == null) {
 						return closeFile()
-								.thenRunEx(this::close);
+								.whenComplete(($1, e1) -> close());
 					}
 					return asyncFile.write(buf)
 							.thenComposeEx(($2, e2) -> {

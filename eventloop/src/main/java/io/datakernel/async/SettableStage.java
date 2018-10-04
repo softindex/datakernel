@@ -257,24 +257,6 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 		return super.thenApplyEx(fn);
 	}
 
-	@Override
-	public Stage<T> thenRun(Runnable action) {
-		if (isComplete()) {
-			if (isResult()) action.run();
-			return this;
-		}
-		return super.thenRun(action);
-	}
-
-	@Override
-	public Stage<T> thenRunEx(Runnable action) {
-		if (isComplete()) {
-			action.run();
-			return this;
-		}
-		return super.thenRunEx(action);
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {

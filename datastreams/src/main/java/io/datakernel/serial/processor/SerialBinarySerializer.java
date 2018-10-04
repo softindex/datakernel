@@ -156,7 +156,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 			if (getEndOfStream().isResult()) {
 				flushing = true;
 				output.accept(null)
-						.thenRun(this::acknowledge);
+						.whenResult($ -> acknowledge());
 			} else {
 				getSupplier().resume(input);
 			}

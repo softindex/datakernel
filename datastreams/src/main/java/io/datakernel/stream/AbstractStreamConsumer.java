@@ -67,10 +67,10 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 				.whenComplete(endOfStream::set)
 				.whenException(this::closeWithError)
 				.post()
-				.thenRun(() -> onEndOfStream()
+				.whenResult($1 -> onEndOfStream()
 						.whenException(this::closeWithError)
 						.post()
-						.thenRun(this::acknowledge));
+						.whenResult($2 -> acknowledge()));
 	}
 
 	protected void onWired() {

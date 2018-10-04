@@ -109,7 +109,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 			consumer.getAcknowledgement()
 					.whenException(this::closeWithError)
 					.post()
-					.thenRun(() -> {
+					.whenResult($ -> {
 						if (--pendingConsumers == 0) {
 							StreamConsumerSwitcher.this.acknowledge();
 						}

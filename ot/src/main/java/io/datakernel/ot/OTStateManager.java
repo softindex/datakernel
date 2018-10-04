@@ -261,7 +261,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	Stage<Void> doPush() {
 		List<OTCommit<K, D>> list = new ArrayList<>(pendingCommits.values());
 		return remote.push(list)
-				.thenRun(() -> list.stream().map(OTCommit::getId).forEach(pendingCommits::remove))
+				.whenResult($ -> list.stream().map(OTCommit::getId).forEach(pendingCommits::remove))
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 

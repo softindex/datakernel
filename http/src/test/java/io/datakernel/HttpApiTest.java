@@ -131,7 +131,7 @@ public class HttpApiTest {
 						}
 					}
 				})
-				.thenRun(() -> {
+				.whenResult($ -> {
 					server.close();
 					client.stop();
 				});

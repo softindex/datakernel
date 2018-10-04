@@ -123,7 +123,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 				supplier.streamTo(chunker)
 						.thenCompose($ -> chunker.getResult()),
 				List::addAll)
-				.thenRun(this::suspendOrResume);
+				.whenResult($ -> suspendOrResume());
 	}
 
 	private void suspendOrResume() {

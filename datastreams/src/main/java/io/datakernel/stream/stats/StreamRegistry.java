@@ -102,7 +102,8 @@ public final class StreamRegistry<V> implements Iterable<V> {
 	private Function<Stage<Void>, Stage<Void>> subscribe(V value) {
 		Entry<V> entry = new Entry<>(value);
 		IntrusiveLinkedList.Node<Entry<V>> node = list.addFirstValue(entry);
-		return stage -> stage.thenRunEx(() -> list.removeNode(node));
+		return stage -> stage
+				.whenComplete(($, e) -> list.removeNode(node));
 	}
 
 	@Override

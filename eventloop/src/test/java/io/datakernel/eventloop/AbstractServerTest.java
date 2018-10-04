@@ -47,7 +47,7 @@ public class AbstractServerTest {
 									if (buf != null) {
 										eventloop.delay(5, () ->
 												socket.write(buf)
-														.thenRun(socket::close));
+														.whenResult($ -> socket.close()));
 									} else {
 										socket.close();
 									}
@@ -72,7 +72,7 @@ public class AbstractServerTest {
 													buf.recycle();
 												}
 											}))
-							.thenRunEx(socket::close);
+							.whenComplete(($1, e1) -> socket.close());
 				});
 
 		eventloop.run();

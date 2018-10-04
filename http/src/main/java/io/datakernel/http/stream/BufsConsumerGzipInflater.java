@@ -137,14 +137,14 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 			}
 			if (inflater.finished()) {
 				output.acceptAll(queue.asIterator())
-						.thenRun(this::processFooter);
+						.whenResult($ -> processFooter());
 				return;
 			}
 		}
 
 		output.acceptAll(queue.asIterator())
 				.thenCompose($ -> input.needMoreData())
-				.thenRun(this::processBody);
+				.whenResult($1 -> processBody());
 	}
 
 	private void processFooter() {
@@ -164,7 +164,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 					buf.recycle();
 					input.endOfStream()
 							.thenCompose($ -> output.accept(null))
-							.thenRun(this::completeProcess);
+							.whenResult($1 -> completeProcess());
 				});
 	}
 
@@ -207,7 +207,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 		input.parse(ByteBufsParser.ofNullTerminatedBytes(MAX_HEADER_FIELD_LENGTH))
 				.whenException(e -> closeWithError(FNAME_FCOMMENT_TOO_LARGE))
 				.whenResult(ByteBuf::recycle)
-				.thenRun(runNext(flag - part));
+				.whenResult($ -> runNext(flag - part).run());
 	}
 
 	private void skipExtra(int flag) {
@@ -224,13 +224,13 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 					return input.parse(ofFixedSize(toSkip));
 				})
 				.whenResult(ByteBuf::recycle)
-				.thenRun(runNext(flag - FEXTRA));
+				.whenResult($ -> runNext(flag - FEXTRA).run());
 	}
 
 	private void skipCRC16(int flag) {
 		input.parse(ofFixedSize(2))
 				.whenResult(ByteBuf::recycle)
-				.thenRun(runNext(flag - FHCRC));
+				.whenResult($ -> runNext(flag - FHCRC).run());
 	}
 
 	private Runnable runNext(int flag) {

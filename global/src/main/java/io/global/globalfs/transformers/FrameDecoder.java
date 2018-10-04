@@ -55,7 +55,7 @@ public final class FrameDecoder extends AbstractIOAsyncProcess implements WithSe
 		ByteBufsSupplier.of(input)
 				.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes().andThen(this::parseDataFrame))
 				.streamTo(output)
-				.thenRun(this::completeProcess);
+				.whenResult($ -> completeProcess());
 	}
 
 	@Override

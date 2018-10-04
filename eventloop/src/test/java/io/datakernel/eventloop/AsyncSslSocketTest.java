@@ -81,7 +81,7 @@ public class AsyncSslSocketTest {
 							System.out.println(result);
 							assertEquals(TEST_STRING, result);
 						}))
-						.thenRunEx(serverSsl::close))
+						.whenComplete(($, e) -> serverSsl.close()))
 				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
 				.withAcceptOnce(true);
 
@@ -93,7 +93,7 @@ public class AsyncSslSocketTest {
 					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
 
 					clientSsl.write(wrapAscii(TEST_STRING))
-							.thenRunEx(clientSsl::close);
+							.whenComplete(($, e) -> clientSsl.close());
 				});
 
 		eventloop.run();
@@ -120,7 +120,7 @@ public class AsyncSslSocketTest {
 								System.out.println(result);
 								assertEquals(TEST_STRING, result);
 							}))
-							.thenRunEx(clientSsl::close);
+							.whenComplete(($, e) -> clientSsl.close());
 				});
 
 		eventloop.run();
@@ -135,7 +135,7 @@ public class AsyncSslSocketTest {
 							return serverSsl.write(wrapAscii(result));
 						})
 						.whenComplete(assertComplete())
-						.thenRunEx(serverSsl::close))
+						.whenComplete(($, e) -> serverSsl.close()))
 				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
 				.withAcceptOnce(true);
 
@@ -155,7 +155,7 @@ public class AsyncSslSocketTest {
 								System.out.println(result);
 								assertEquals(TEST_STRING, result);
 							}))
-							.thenRunEx(clientSsl::close);
+							.whenComplete(($, e) -> clientSsl.close());
 
 				});
 
@@ -170,7 +170,7 @@ public class AsyncSslSocketTest {
 							assertEquals(LENGTH, result.length());
 							assertEquals(result, sentData.toString());
 						}))
-						.thenRunEx(serverSsl::close))
+						.whenComplete(($, e) -> serverSsl.close()))
 				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
 				.withAcceptOnce(true);
 
@@ -183,7 +183,7 @@ public class AsyncSslSocketTest {
 
 					sendData(clientSsl)
 							.whenComplete(assertComplete())
-							.thenRunEx(clientSsl::close);
+							.whenComplete(($, e) -> clientSsl.close());
 				});
 
 		eventloop.run();
@@ -194,7 +194,7 @@ public class AsyncSslSocketTest {
 		server = SimpleServer.create(eventloop,
 				serverSsl -> sendData(serverSsl)
 						.whenComplete(assertComplete())
-						.thenRunEx(serverSsl::close))
+						.whenComplete(($, e) -> serverSsl.close()))
 				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
 				.withAcceptOnce(true);
 
@@ -210,7 +210,7 @@ public class AsyncSslSocketTest {
 								assertEquals(LENGTH, result.length());
 								assertEquals(result, sentData.toString());
 							}))
-							.thenRunEx(clientSsl::close);
+							.whenComplete(($, e) -> clientSsl.close());
 				});
 
 		eventloop.run();
@@ -220,13 +220,11 @@ public class AsyncSslSocketTest {
 	public void testCloseAndOperationAfterClose() throws IOException {
 		server = SimpleServer.create(eventloop,
 				socket -> socket.write(wrapAscii("He"))
-						.thenRun(socket::close)
+						.whenResult($ -> socket.close())
 						.whenComplete(assertComplete(r -> {
 							ByteBuf message = wrapAscii("ello");
 							socket.write(message)
-									.whenComplete(assertFailure(e -> {
-										assertSame(CLOSE_EXCEPTION, e);
-									}));
+									.whenComplete(assertFailure(e -> assertSame(CLOSE_EXCEPTION, e)));
 						})))
 				.withSslListenAddress(sslContext, new ExecutorServiceStub(), ADDRESS)
 				.withAcceptOnce(true);

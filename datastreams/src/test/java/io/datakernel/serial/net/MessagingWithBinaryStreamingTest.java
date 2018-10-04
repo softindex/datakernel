@@ -271,7 +271,7 @@ public class MessagingWithBinaryStreamingTest {
 									messaging.receiveBinaryStream()
 											.apply(SerialBinaryDeserializer.create(LONG_SERIALIZER))
 											.streamTo(consumerToList)
-											.thenRun(() -> {
+											.whenResult($ -> {
 												messaging.send("ack");
 												messaging.sendEndOfStream();
 											});
@@ -297,7 +297,7 @@ public class MessagingWithBinaryStreamingTest {
 							.streamTo(messaging.sendBinaryStream());
 
 					return messaging.receive()
-							.thenRun(messaging::close);
+							.whenResult($ -> messaging.close());
 				})
 				.toCompletableFuture();
 

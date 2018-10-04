@@ -66,9 +66,11 @@ abstract class FramesToByteBufs extends AbstractIOAsyncProcess
 		input.get()
 				.whenResult(frame -> {
 					if (frame != null) {
-						handleFrame(frame).thenRun(this::doProcess);
+						handleFrame(frame)
+								.whenResult($ -> doProcess());
 					} else {
-						output.accept(null).thenRun(this::completeProcess);
+						output.accept(null)
+								.whenResult($ -> completeProcess());
 					}
 				});
 	}

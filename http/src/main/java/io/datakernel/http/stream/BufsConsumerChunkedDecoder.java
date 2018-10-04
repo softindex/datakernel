@@ -81,36 +81,37 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 	}
 
 	private void processLength() {
-		input.parse(queue -> {
-			int remainingBytes = queue.remainingBytes();
-			int chunkLength = 0;
-			for (int i = 0; i < min(remainingBytes, MAX_CHUNK_LENGTH_DIGITS); i++) {
-				byte c = queue.peekByte(i);
-				if (c >= '0' && c <= '9') {
-					chunkLength = (chunkLength << 4) + (c - '0');
-				} else if (c >= 'a' && c <= 'f') {
-					chunkLength = (chunkLength << 4) + (c - 'a' + 10);
-				} else if (c >= 'A' && c <= 'F') {
-					chunkLength = (chunkLength << 4) + (c - 'A' + 10);
-				} else if (c == ';' || c == CR) {
-					// Success
-					if (i == 0 || chunkLength > maxChunkLength || chunkLength < 0) {
-						throw MALFORMED_CHUNK_LENGTH;
+		input.parse(
+				queue -> {
+					int remainingBytes = queue.remainingBytes();
+					int chunkLength = 0;
+					for (int i = 0; i < min(remainingBytes, MAX_CHUNK_LENGTH_DIGITS); i++) {
+						byte c = queue.peekByte(i);
+						if (c >= '0' && c <= '9') {
+							chunkLength = (chunkLength << 4) + (c - '0');
+						} else if (c >= 'a' && c <= 'f') {
+							chunkLength = (chunkLength << 4) + (c - 'a' + 10);
+						} else if (c >= 'A' && c <= 'F') {
+							chunkLength = (chunkLength << 4) + (c - 'A' + 10);
+						} else if (c == ';' || c == CR) {
+							// Success
+							if (i == 0 || chunkLength > maxChunkLength || chunkLength < 0) {
+								throw MALFORMED_CHUNK_LENGTH;
+							}
+							queue.skip(i);
+							return chunkLength;
+						} else {
+							throw MALFORMED_CHUNK_LENGTH;
+						}
 					}
-					queue.skip(i);
-					return chunkLength;
-				} else {
-					throw MALFORMED_CHUNK_LENGTH;
-				}
-			}
 
-			if (remainingBytes > MAX_CHUNK_LENGTH_DIGITS) {
-				throw MALFORMED_CHUNK;
-			}
+					if (remainingBytes > MAX_CHUNK_LENGTH_DIGITS) {
+						throw MALFORMED_CHUNK;
+					}
 
-			return null;
-		})
-		.whenResult(chunkLength -> {
+					return null;
+				})
+				.whenResult(chunkLength -> {
 					if (chunkLength != 0) {
 						consumeCRLF(chunkLength);
 					} else {
@@ -124,7 +125,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 		if (chunkLength != 0) {
 			int newChunkLength = chunkLength;
 			input.needMoreData()
-					.thenRun(() -> processData(newChunkLength, queue));
+					.whenResult($ -> processData(newChunkLength, queue));
 			return;
 		}
 		input.parse(assertBytes(CRLF))
@@ -133,14 +134,14 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 					closeWithError(MALFORMED_CHUNK);
 				})
 				.thenCompose($ -> output.acceptAll(queue.asIterator()))
-				.thenRun(this::processLength);
+				.whenResult($1 -> processLength());
 	}
 
 	private void consumeCRLF(int chunkLength) {
 		input.parse(ofCrlfTerminatedBytes(maxExtLength))
 				.whenResult(ByteBuf::recycle)
 				.whenException(e -> closeWithError(EXT_TOO_LARGE))
-				.thenRun(() -> processData(chunkLength, new ByteBufQueue()));
+				.whenResult($ -> processData(chunkLength, new ByteBufQueue()));
 	}
 
 	private void validateLastChunk() {
@@ -154,7 +155,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 
 				input.endOfStream()
 						.thenCompose($ -> output.accept(null))
-						.thenRun(this::completeProcess);
+						.whenResult($1 -> completeProcess());
 				return;
 			}
 		}
@@ -164,7 +165,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 			return;
 		}
 		input.needMoreData()
-				.thenRun(this::validateLastChunk);
+				.whenResult($ -> validateLastChunk());
 	}
 
 	@Override

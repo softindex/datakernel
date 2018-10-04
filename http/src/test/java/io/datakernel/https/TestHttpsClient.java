@@ -73,7 +73,7 @@ public class TestHttpsClient {
 
 		String url = "https://en.wikipedia.org/wiki/Wikipedia";
 		CompletableFuture<HttpResponse> future = client.requestWithResponseBody(Integer.MAX_VALUE, get(url))
-				.thenRunEx(client::stop)
+				.whenComplete(($, e) -> client.stop())
 				.toCompletableFuture();
 
 		eventloop.run();

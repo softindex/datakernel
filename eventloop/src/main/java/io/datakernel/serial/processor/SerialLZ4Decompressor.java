@@ -94,7 +94,7 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 	public void processHeader() {
 		if (!bufs.hasRemainingBytes(HEADER_LENGTH)) {
 			input.needMoreData()
-					.thenRun(this::processHeader);
+					.whenResult($ -> processHeader());
 			return;
 		}
 
@@ -112,13 +112,13 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 
 		input.endOfStream()
 				.thenCompose($ -> output.accept(null))
-				.thenRun(this::completeProcess);
+				.whenResult($1 -> completeProcess());
 	}
 
 	public void processBody() {
 		if (!bufs.hasRemainingBytes(header.compressedLen)) {
 			input.needMoreData()
-					.thenRun(this::processBody);
+					.whenResult($ -> processBody());
 			return;
 		}
 
@@ -135,7 +135,7 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 		}
 
 		output.accept(outputBuf)
-				.thenRun(this::processHeader);
+				.whenResult($ -> processHeader());
 	}
 
 	@Override

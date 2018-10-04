@@ -250,7 +250,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 							deleted[0]++;
 							return client.delete(file.getName());
 						}))
-						.thenRun(() -> {
+						.whenResult($ -> {
 							cleanupPreservedFiles = preserveChunks.size();
 							cleanupDeletedFiles = deleted[0];
 							cleanupDeletedFilesTotal += deleted[0];

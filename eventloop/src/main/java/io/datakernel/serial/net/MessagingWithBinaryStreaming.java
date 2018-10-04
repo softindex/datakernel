@@ -104,7 +104,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	@Override
 	public Stage<I> receive() {
 		return bufsSupplier.parse(parser)
-				.thenRun(this::prefetch)
+				.whenResult($ -> prefetch())
 				.whenException(this::closeWithError);
 	}
 
@@ -116,7 +116,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	@Override
 	public Stage<Void> sendEndOfStream() {
 		return socket.write(null)
-				.thenRun(() -> {
+				.whenResult($ -> {
 					writeDone = true;
 					closeIfDone();
 				})
@@ -127,7 +127,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	public SerialConsumer<ByteBuf> sendBinaryStream() {
 		return socket.writer()
 				.withAcknowledgement(ack -> ack
-						.thenRun(() -> {
+						.whenResult($ -> {
 							writeDone = true;
 							closeIfDone();
 						}));
@@ -137,7 +137,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	public SerialSupplier<ByteBuf> receiveBinaryStream() {
 		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.asIterator()), socket.reader())
 				.withEndOfStream(eos -> eos
-						.thenRun(() -> {
+						.whenResult($ -> {
 							readDone = true;
 							closeIfDone();
 						}));

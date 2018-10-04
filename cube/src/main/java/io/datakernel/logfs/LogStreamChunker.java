@@ -65,21 +65,20 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 	protected void doProcess() {
 		input.get()
 				.whenResult(buf -> {
-					if (buf != null) {
+					if (buf != null)
 						ensureConsumer()
-								.thenRun(() -> {
-									currentConsumer.accept(buf)
-											.thenRun(() -> {
-												if (isProcessComplete()) return;
-												doProcess();
-											})
-											.whenException(this::closeWithError);
-								})
+								.whenResult($1 ->
+										currentConsumer.accept(buf)
+												.whenResult($2 -> {
+													if (isProcessComplete()) return;
+													doProcess();
+												})
+												.whenException(this::closeWithError))
 								.whenException(e -> buf.recycle())
 								.whenException(this::closeWithError);
-					} else {
+					else {
 						flush()
-								.thenRun(this::completeProcess)
+								.whenResult($ -> completeProcess())
 								.whenException(this::closeWithError);
 					}
 				})
@@ -114,7 +113,7 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 	private Stage<Void> flush() {
 		if (currentConsumer == null) return Stage.complete();
 		return currentConsumer.accept(null)
-				.thenRun(() -> currentConsumer = null);
+				.whenResult($ -> currentConsumer = null);
 	}
 
 	@Override

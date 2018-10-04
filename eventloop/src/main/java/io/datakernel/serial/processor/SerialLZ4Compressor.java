@@ -117,10 +117,10 @@ public final class SerialLZ4Compressor extends AbstractIOAsyncProcess
 						ByteBuf outputBuf = compressBlock(compressor, checksum, buf.array(), buf.readPosition(), buf.readRemaining());
 						buf.recycle();
 						output.accept(outputBuf)
-								.thenRun(this::doProcess);
+								.whenResult($ -> doProcess());
 					} else {
 						output.accept(createEndOfStreamBlock(), null)
-								.thenRun(this::completeProcess);
+								.whenResult($ -> completeProcess());
 					}
 				});
 	}

@@ -91,7 +91,7 @@ public class AbstractHttpConnectionTest {
 					assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING));
 					return response.getBody().asString(UTF_8);
 				})
-				.thenRunEx(() -> stopClientAndServer(client, server))
+				.whenComplete(($, e) -> stopClientAndServer(client, server))
 				.toCompletableFuture();
 
 		eventloop.run();

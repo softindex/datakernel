@@ -85,8 +85,7 @@ public class RpcBinaryProtocolTest {
 				.thenCompose($ -> Stages.all(IntStream.range(0, countRequests).mapToObj(i ->
 						client.<String, String>sendRequest(testMessage, 1000)
 								.whenResult(results::add))))
-				.thenRunEx(() ->
-						client.stop().thenRun(server::close));
+				.whenComplete(($1, e1) -> Stages.all(client.stop(), server.close()));
 
 		eventloop.run();
 

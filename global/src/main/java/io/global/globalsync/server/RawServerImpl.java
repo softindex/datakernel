@@ -229,7 +229,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 														bases.add(parentId);
 													}
 												}))))
-				.thenRun(() -> extractHeadInfoImpl(queue, bases, cb))
+				.whenResult($ -> extractHeadInfoImpl(queue, bases, cb))
 				.whenException(cb::setException);
 	}
 
@@ -356,11 +356,10 @@ public final class RawServerImpl implements RawServer, EventloopService {
 										.whenResult(optional -> optional.ifPresent(
 												parentRawCommit ->
 														queue.add(new RawCommitEntry(parentId, parentRawCommit))))))
-				.thenRun(() ->
-						doExcludeParents(
-								queue, minLevel,
-								resultHeads,
-								cb))
+				.whenResult($ -> doExcludeParents(
+						queue, minLevel,
+						resultHeads,
+						cb))
 				.whenException(cb::setException);
 	}
 
@@ -444,7 +443,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 									rawServerFactory.create(newServerId));
 						}
 					})
-					.thenRun(() -> updateServersTimestamp = currentTimeMillis())
+					.whenResult($ -> updateServersTimestamp = currentTimeMillis())
 					.thenApply($ -> getServers());
 		}
 
@@ -506,7 +505,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 					return Stage.complete();
 				}
 				return Stages.all(updateHeads(), updatePullRequests())
-						.thenRun(() -> this.updateTimestamp = now.currentTimeMillis());
+						.whenResult($ -> this.updateTimestamp = now.currentTimeMillis());
 			}
 
 			private Stage<Void> doUpdateHeads() {
@@ -546,7 +545,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				long timestampBegin = now.currentTimeMillis();
 				fetch()
 						.thenCompose($ -> commitStorage.markCompleteCommits())
-						.thenRun(() -> {
+						.whenResult($ -> {
 							long timestampEnd = now.currentTimeMillis();
 							if (timestampEnd - timestampBegin > latencyMargin.toMillis()) {
 								cb.set(null);

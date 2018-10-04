@@ -241,7 +241,7 @@ public class TestLocalFsClient {
 											"Concurrent data + new line\n";
 									assertEquals(expected, actual);
 								}))))
-				.thenRunEx(() -> System.out.println("finished"))
+				.whenComplete(($, e) -> System.out.println("finished"))
 				.whenComplete(assertComplete());
 
 		eventloop.run();

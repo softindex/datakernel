@@ -327,22 +327,6 @@ public interface Stage<T> {
 	<U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn);
 
 	/**
-	 * Runs action after successful completion of this stage
-	 *
-	 * @param action to be executed
-	 * @return this stage
-	 */
-	Stage<T> thenRun(Runnable action);
-
-	/**
-	 * Runs action after completion of this stage
-	 *
-	 * @param action to be executed
-	 * @return this stage
-	 */
-	Stage<T> thenRunEx(Runnable action);
-
-	/**
 	 * Applies function to the result of this stage if it completes successfully.
 	 * Returned stage will be completed when stage returned from function completes.
 	 *

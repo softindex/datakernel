@@ -60,7 +60,7 @@ public class PingPongSocketConnectionTest {
 							PARSER.parse(bufsSupplier)
 									.whenResult(System.out::println)
 									.thenCompose($ -> socket.write(wrapAscii(RESPONSE_MSG))))
-							.thenRunEx(socket::close);
+							.whenComplete(($, e) -> socket.close());
 				})
 				.withListenAddress(ADDRESS)
 				.withAcceptOnce();
@@ -76,7 +76,7 @@ public class PingPongSocketConnectionTest {
 									.thenCompose($ -> PARSER.parse(bufsSupplier)
 											.whenResult(System.out::println)
 											.thenApply($2 -> i - 1)))
-							.thenRunEx(socket::close);
+							.whenComplete(($, e) -> socket.close());
 				})
 				.whenException(e -> { throw new RuntimeException(e); });
 

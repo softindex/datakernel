@@ -102,8 +102,8 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					logger.warn("got an error while handling message (" + e + ") : " + this);
 					String prefix = e.getClass() != RemoteFsException.class ? e.getClass().getSimpleName() + ": " : "";
 					return messaging.send(new ServerError(prefix + e.getMessage()))
-							.thenCompose($2 -> messaging.sendEndOfStream())
-							.thenRun(() -> messaging.closeWithError(e));
+							.thenCompose($1 -> messaging.sendEndOfStream())
+							.whenResult($1 -> messaging.closeWithError(e));
 				});
 	}
 
@@ -115,9 +115,9 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					.streamTo(client.uploadSerial(file, msg.getOffset()))
 					.thenCompose($ -> messaging.send(new UploadFinished()))
 					.thenCompose($ -> messaging.sendEndOfStream())
-					.thenRun(messaging::close)
+					.whenResult($ -> messaging.close())
 					.whenComplete(uploadStage.recordStats())
-					.thenRun(() -> logger.trace("finished receiving data for {}: {}", file, this))
+					.whenResult($ -> logger.trace("finished receiving data for {}: {}", file, this))
 					.toVoid();
 		});
 
@@ -149,7 +149,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 									logger.trace("sending data for {}: {}", repr, this);
 									return client.downloadSerial(fileName, offset, fixedLength)
 											.streamTo(messaging.sendBinaryStream())
-											.thenRun(() -> logger.trace("finished sending data for {}: {}", repr, this));
+											.whenResult($1 -> logger.trace("finished sending data for {}: {}", repr, this));
 								});
 					})
 					.whenComplete(downloadStage.recordStats());

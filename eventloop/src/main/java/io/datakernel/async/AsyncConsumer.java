@@ -52,14 +52,6 @@ public interface AsyncConsumer<T> {
 		return value -> fn.apply(value).thenCompose(this::accept);
 	}
 
-	default AsyncConsumer<T> thenRun(Runnable action) {
-		return value -> accept(value).thenRun(action);
-	}
-
-	default AsyncConsumer<T> thenRunEx(Runnable action) {
-		return value -> accept(value).thenRunEx(action);
-	}
-
 	default AsyncConsumer<T> whenException(Consumer<Throwable> action) {
 		return value -> accept(value).whenException(action);
 	}

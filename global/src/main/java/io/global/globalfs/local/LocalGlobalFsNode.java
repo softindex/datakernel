@@ -135,7 +135,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode {
 									Stages.firstSuccessful(nodes
 											.stream()
 											.map(node -> downloadFrom(node, fs, address, offset, limit))))
-							.thenRunEx(() -> searchingForDownload.remove(address));
+							.whenComplete(($, e1) -> searchingForDownload.remove(address));
 				});
 	}
 
@@ -245,7 +245,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode {
 			private void catchUpIteration(SettableStage<Void> callback) {
 				long started = now.currentTimeMillis();
 				fetch()
-						.thenRun(() -> {
+						.whenResult($ -> {
 							long timestampEnd = now.currentTimeMillis();
 							if (timestampEnd - started > getSettings().getLatencyMargin().toMillis()) {
 								callback.set(null);

@@ -156,20 +156,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> thenRun(Runnable action) {
-		return whenComplete((result, throwable) -> {
-			if (throwable == null) {
-				action.run();
-			}
-		});
-	}
-
-	@Override
-	public Stage<T> thenRunEx(Runnable action) {
-		return whenComplete((result, throwable) -> action.run());
-	}
-
-	@Override
 	public <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {
 		return then(new NextStage<T, U>() {
 			@Override

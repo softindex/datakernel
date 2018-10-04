@@ -32,17 +32,17 @@ public final class BufsConsumerGzipDeflater extends AbstractIOAsyncProcess
 	// region creators
 	private BufsConsumerGzipDeflater() {}
 
-	public static BufsConsumerGzipDeflater create(){
+	public static BufsConsumerGzipDeflater create() {
 		return new BufsConsumerGzipDeflater();
 	}
 
-	public BufsConsumerGzipDeflater withDeflater(Deflater deflater){
+	public BufsConsumerGzipDeflater withDeflater(Deflater deflater) {
 		checkArgument(deflater != null, "Cannot use null Deflater");
 		this.deflater = deflater;
 		return this;
 	}
 
-	public BufsConsumerGzipDeflater withMaxBufSize(int maxBufSize){
+	public BufsConsumerGzipDeflater withMaxBufSize(int maxBufSize) {
 		checkArgument(maxBufSize > 0, "Cannot use buf size that is less than 0");
 		this.maxBufSize = maxBufSize;
 		return this;
@@ -75,26 +75,26 @@ public final class BufsConsumerGzipDeflater extends AbstractIOAsyncProcess
 
 	private void writeHeader() {
 		output.accept(ByteBuf.wrapForReading(GZIP_HEADER))
-				.thenRun(this::writeBody);
+				.whenResult($ -> writeBody());
 	}
 
 	private void writeBody() {
 		input.get()
 				.whenComplete((buf, e) -> {
-						if (buf != null) {
-							if (buf.canRead()) {
-								crc32.update(buf.array(), buf.readPosition(), buf.readRemaining());
-								deflater.setInput(buf.array(), buf.readPosition(), buf.readRemaining());
-								buf.recycle();
-								ByteBufQueue queue = deflate();
-								output.acceptAll(queue.asIterator())
-										.thenRun(this::writeBody);
-							} else {
-								buf.recycle();
-							}
+					if (buf != null) {
+						if (buf.canRead()) {
+							crc32.update(buf.array(), buf.readPosition(), buf.readRemaining());
+							deflater.setInput(buf.array(), buf.readPosition(), buf.readRemaining());
+							buf.recycle();
+							ByteBufQueue queue = deflate();
+							output.acceptAll(queue.asIterator())
+									.whenResult($ -> writeBody());
 						} else {
-							writeFooter();
+							buf.recycle();
 						}
+					} else {
+						writeFooter();
+					}
 				});
 	}
 
@@ -107,7 +107,7 @@ public final class BufsConsumerGzipDeflater extends AbstractIOAsyncProcess
 		queue.add(footer);
 		output.acceptAll(queue.asIterator())
 				.thenCompose($ -> output.accept(null))
-				.thenRun(this::completeProcess);
+				.whenResult($1 -> completeProcess());
 	}
 
 	private ByteBufQueue deflate() {

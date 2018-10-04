@@ -54,7 +54,7 @@ public final class BufsConsumerDelimiter extends AbstractIOAsyncProcess
 		if (remaining == 0) {
 			input.endOfStream()
 					.thenCompose($2 -> output.accept(null))
-					.thenRun(this::completeProcess);
+					.whenResult($ -> completeProcess());
 			return;
 		}
 		ByteBufQueue outputBufs = new ByteBufQueue();
@@ -63,11 +63,11 @@ public final class BufsConsumerDelimiter extends AbstractIOAsyncProcess
 				.whenResult($ -> {
 					if (remaining != 0) {
 						input.needMoreData()
-								.thenRun(this::doProcess);
+								.whenResult($1 -> doProcess());
 					} else {
 						input.endOfStream()
 								.thenCompose($2 -> output.accept(null))
-								.thenRun(this::completeProcess);
+								.whenResult($1 -> completeProcess());
 					}
 				});
 	}

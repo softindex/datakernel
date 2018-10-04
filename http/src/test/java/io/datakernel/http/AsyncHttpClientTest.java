@@ -79,7 +79,7 @@ public class AsyncHttpClientTest {
 		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenApply(HttpMessage::getBody)
 				.thenApply(buf -> buf.asString(UTF_8))
-				.thenRunEx(() -> {
+				.whenComplete(($, e) -> {
 					httpClient.stop();
 					httpServer.close();
 				})
@@ -99,7 +99,7 @@ public class AsyncHttpClientTest {
 
 		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://google.com"))
 				.thenApply(response -> response.getBody().asString(UTF_8))
-				.thenRunEx(httpClient::stop)
+				.whenComplete(($, e) -> httpClient.stop())
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -122,7 +122,7 @@ public class AsyncHttpClientTest {
 
 		CompletableFuture<String> future = httpClient.requestWithResponseBody(12, HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenApply(response -> response.getBody().asString(UTF_8))
-				.thenRunEx(() -> {
+				.whenComplete(($, e) -> {
 					httpClient.stop();
 					httpServer.close();
 				})
@@ -145,7 +145,7 @@ public class AsyncHttpClientTest {
 				socket -> socket.read()
 						.whenResult(ByteBuf::recycle)
 						.thenCompose($ -> socket.write(wrapAscii("\r\n")))
-						.thenRunEx(socket::close))
+						.whenComplete(($, e) -> socket.close()))
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
@@ -154,7 +154,7 @@ public class AsyncHttpClientTest {
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
 		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, request)
 				.thenApply(response -> response.getBody().asString(UTF_8))
-				.thenRunEx(() -> {
+				.whenComplete(($, e) -> {
 					httpClient.stop();
 					server.close();
 				})
@@ -193,7 +193,7 @@ public class AsyncHttpClientTest {
 				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)))
-				.thenRunEx(() -> {
+				.whenComplete(($, e) -> {
 					server.close();
 					responses.forEach(response -> response.set(HttpResponse.ok200()));
 

@@ -78,12 +78,12 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 						}
 						ByteBuf out = bufs.takeExactSize(min(exactSize, maxChunkSize));
 						output.accept(out)
-								.thenRun(this::doProcess);
+								.whenResult($ -> doProcess());
 					} else {
 						Stage.complete()
 								.thenCompose($ -> bufs.hasRemaining() ? output.accept(bufs.takeRemaining()) : Stage.complete())
 								.thenCompose($ -> output.accept(null))
-								.thenRun(this::completeProcess);
+								.whenResult($1 -> completeProcess());
 					}
 				});
 	}

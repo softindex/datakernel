@@ -196,7 +196,6 @@ public class GlobalFsTest {
 				.whenComplete(assertComplete(res -> assertEquals(first + second, res.asString(UTF_8))))
 				.whenComplete(($, e) -> server.close());
 
-
 		eventloop.run();
 	}
 
@@ -230,7 +229,7 @@ public class GlobalFsTest {
 				.thenCompose(s -> s.toCollector(ByteBufQueue.collector()))
 				.whenResult(s -> System.out.println("  downloaded: " + s.getString(UTF_8)))
 				.whenResult(res -> assertEquals(text1 + text2, res.asString(UTF_8)))
-				.thenRun(() -> System.out.println("Download from second server finished"))
+				.whenResult($ -> System.out.println("Download from second server finished"))
 				.whenComplete(assertComplete());
 
 		eventloop.run();

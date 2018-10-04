@@ -22,7 +22,7 @@ public final class BufsConsumerChunkedEncoder extends AbstractIOAsyncProcess
 	// region creators
 	private BufsConsumerChunkedEncoder() {}
 
-	public static BufsConsumerChunkedEncoder create(){
+	public static BufsConsumerChunkedEncoder create() {
 		return new BufsConsumerChunkedEncoder();
 	}
 
@@ -50,18 +50,18 @@ public final class BufsConsumerChunkedEncoder extends AbstractIOAsyncProcess
 	protected void doProcess() {
 		input.get()
 				.whenResult(buf -> {
-						if (buf != null) {
-							if (buf.canRead()) {
-								output.accept(encodeBuf(buf))
-										.thenRun(this::doProcess);
-							} else {
-								buf.recycle();
-								doProcess();
-							}
+					if (buf != null) {
+						if (buf.canRead()) {
+							output.accept(encodeBuf(buf))
+									.whenResult($ -> doProcess());
 						} else {
-							output.accept(LAST_CHUNK, null)
-									.thenRun(this::completeProcess);
+							buf.recycle();
+							doProcess();
 						}
+					} else {
+						output.accept(LAST_CHUNK, null)
+								.whenResult($ -> completeProcess());
+					}
 				});
 	}
 

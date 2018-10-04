@@ -54,7 +54,7 @@ abstract class ByteBufsToFrames extends AbstractIOAsyncProcess
 	@Override
 	protected void doProcess() {
 		postNextCheckpoint()
-				.thenRun(this::iteration);
+				.whenResult($ -> iteration());
 	}
 
 	@Override

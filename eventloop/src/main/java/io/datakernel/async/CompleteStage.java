@@ -94,18 +94,6 @@ public abstract class CompleteStage<T> implements MaterializedStage<T> {
 	}
 
 	@Override
-	public final Stage<T> thenRun(Runnable action) {
-		action.run();
-		return this;
-	}
-
-	@Override
-	public final Stage<T> thenRunEx(Runnable action) {
-		action.run();
-		return this;
-	}
-
-	@Override
 	public final <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {
 		try {
 			return fn.apply(getResult());

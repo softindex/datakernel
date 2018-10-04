@@ -81,14 +81,6 @@ public interface AsyncSupplier<T> {
 		return () -> get().thenCompose(fn::apply);
 	}
 
-	default AsyncSupplier<T> thenRun(Runnable action) {
-		return () -> get().thenRun(action);
-	}
-
-	default AsyncSupplier<T> thenRunEx(Runnable action) {
-		return () -> get().thenRunEx(action);
-	}
-
 	default AsyncSupplier<T> whenComplete(BiConsumer<? super T, Throwable> action) {
 		return () -> get().whenComplete(action);
 	}

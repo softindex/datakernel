@@ -152,7 +152,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 
 	private void doWrite(ByteBuf dstBuf) {
 		sanitize(upstream.write(dstBuf))
-				.thenRun(() -> {
+				.whenResult($ -> {
 					assert isOpen();
 					if (engine.isOutboundDone()) {
 						close();
@@ -260,7 +260,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			Runnable task = engine.getDelegatedTask();
 			if (task == null) break;
 			Stage.ofRunnable(executor, task)
-					.thenRun(() -> {
+					.whenResult($ -> {
 						if (!isOpen()) return;
 						try {
 							doHandshake();

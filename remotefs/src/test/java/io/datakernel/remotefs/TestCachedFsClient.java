@@ -86,10 +86,8 @@ public class TestCachedFsClient {
 		cacheRemote.download("test.txt")
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.thenApply(buf -> buf.asString(UTF_8))
-				.thenRunEx(server::close)
-				.whenComplete(assertComplete(s -> {
-					assertEquals(testTxtContent, s);
-				}))
+				.whenComplete(($, e) -> server.close())
+				.whenComplete(assertComplete(s -> assertEquals(testTxtContent, s)))
 				.thenCompose($ -> cache.download("test.txt")
 						.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 						.thenApply(buf -> buf.asString(UTF_8))
@@ -122,10 +120,8 @@ public class TestCachedFsClient {
 		cacheRemote.download("test.txt")
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.thenApply(buf -> buf.asString(UTF_8))
-				.thenRunEx(server::close)
-				.whenComplete(assertComplete(s -> {
-					assertEquals(testTxtContent, s);
-				}))
+				.whenComplete(($, e) -> server.close())
+				.whenComplete(assertComplete(s -> assertEquals(testTxtContent, s)))
 				.thenCompose($ -> cache.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf -> assertEquals(testTxtContent, buf.asString(UTF_8))));
@@ -140,7 +136,7 @@ public class TestCachedFsClient {
 		cacheRemote.download("test.txt", 1, 2)
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.thenApply(buf -> buf.asString(UTF_8))
-				.thenRunEx(server::close)
+				.whenComplete(($, e) -> server.close())
 				.whenComplete((res, err) -> assertEquals("in", res))
 				.whenComplete(assertComplete());
 
@@ -157,7 +153,7 @@ public class TestCachedFsClient {
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> q.takeRemaining().asString(UTF_8));
 				})
-				.thenRunEx(server::close)
+				.whenComplete(($, e) -> server.close())
 				.whenResult(s -> assertEquals(testTxtContent, s))
 				.whenComplete(assertComplete());
 
@@ -176,7 +172,7 @@ public class TestCachedFsClient {
 				})
 				.whenComplete((res, err) -> assertEquals("in", res))
 				.whenComplete(assertComplete())
-				.thenRunEx(server::close);
+				.whenComplete(($, e) -> server.close());
 
 		eventloop.run();
 	}
@@ -193,7 +189,7 @@ public class TestCachedFsClient {
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(q::add)))
 							.thenApply($ -> q.takeRemaining().asString(UTF_8));
 				})
-				.thenRunEx(server::close)
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete())
 				.whenResult(s -> assertEquals(fileContent, s));
 
@@ -214,7 +210,7 @@ public class TestCachedFsClient {
 				})
 				.whenComplete((res, err) -> assertEquals("hi", res))
 				.whenComplete(assertComplete())
-				.thenRunEx(server::close);
+				.whenComplete(($, e) -> server.close());
 
 		eventloop.run();
 	}
@@ -330,7 +326,7 @@ public class TestCachedFsClient {
 					assertTrue(sizeLimit.toLong() >= cacheSize.toLong());
 					server.close();
 				})
-				.thenRunEx(() -> server.close());
+				.whenComplete(($, e) -> server.close());
 
 		eventloop.run();
 	}
@@ -408,7 +404,6 @@ public class TestCachedFsClient {
 		initializeFiles(20, "newTestFile_");
 		downloadFiles(20, 1, "newTestFile_");
 
-
 		cache.list()
 				.whenResult(list -> list.forEach(val -> assertTrue(val.getName().startsWith("new"))));
 		eventloop.run();
@@ -444,7 +439,7 @@ public class TestCachedFsClient {
 				.thenCompose(supplier -> supplier.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle))))
 				.thenCompose($ -> cacheRemote.download("bigFile.txt"))
 				.thenCompose(supplier -> supplier.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle))))
-				.thenRunEx(server::close);
+				.whenComplete(($, e) -> server.close());
 		eventloop.run();
 
 		server.listen();
@@ -458,7 +453,7 @@ public class TestCachedFsClient {
 							System.out.println(value);
 							assertTrue(value.getName().startsWith("test"));
 						}))
-				.thenRunEx(server::close);
+				.whenComplete(($, e) -> server.close());
 		eventloop.run();
 	}
 
@@ -473,7 +468,6 @@ public class TestCachedFsClient {
 		Files.write(cacheStorage.resolve("b/test3.txt"), "Yet Another File".getBytes());
 		Files.write(cacheStorage.resolve("c/d/test4.txt"), "The other one file".getBytes());
 	}
-
 
 	private void initializeCacheDownloadFiles(int numberOfFiles, String prefix) throws IOException {
 		initializeFiles(numberOfFiles, prefix);
@@ -501,7 +495,7 @@ public class TestCachedFsClient {
 				server.listen();
 				cacheRemote.download(prefix + i)
 						.thenCompose(supplier -> supplier.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle))))
-						.thenRunEx(server::close);
+						.whenComplete(($, e) -> server.close());
 				eventloop.run();
 			}
 		}

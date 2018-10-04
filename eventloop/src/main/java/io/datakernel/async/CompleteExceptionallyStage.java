@@ -98,17 +98,6 @@ public final class CompleteExceptionallyStage<T> implements MaterializedStage<T>
 		return Stage.of(fn.apply(null, exception));
 	}
 
-	@Override
-	public Stage<T> thenRun(Runnable action) {
-		return this;
-	}
-
-	@Override
-	public Stage<T> thenRunEx(Runnable action) {
-		action.run();
-		return this;
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {

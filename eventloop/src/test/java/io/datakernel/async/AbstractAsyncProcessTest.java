@@ -55,7 +55,6 @@ public class AbstractAsyncProcessTest {
 	private List<ByteBuf> expectedData = new ArrayList<>();
 	private boolean consumedAll = false;
 
-
 	@Before
 	public void setUp() {
 		eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError()).withCurrentThread();
@@ -129,11 +128,11 @@ public class AbstractAsyncProcessTest {
 						if (data == null) {
 							output.accept(null)
 									.whenException(this::closeWithError)
-									.thenRun(this::completeProcess);
+									.whenResult($ -> completeProcess());
 						} else {
 							output.accept(data)
 									.whenException(this::closeWithError)
-									.thenRun(this::doProcess);
+									.whenResult($ -> doProcess());
 						}
 					});
 		}

@@ -59,9 +59,10 @@ public final class FrameEncoder extends AbstractIOAsyncProcess implements WithSe
 						output.accept(sizeBuf)
 								.thenCompose($ -> output.accept(ByteBuf.wrapForReading(item.isBuf() ? DATA_HEADER : CHECKPOINT_HEADER)))
 								.thenCompose($ -> output.accept(data))
-								.thenRun(this::doProcess);
+								.whenResult($ -> doProcess());
 					} else {
-						output.accept(null).thenRun(this::completeProcess);
+						output.accept(null)
+								.whenResult($ -> completeProcess());
 					}
 				});
 	}
