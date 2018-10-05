@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@ import java.nio.channels.DatagramChannel;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.fail;
 
 public class UdpSocketHandlerTest {
 	private static final int SERVER_PORT = 45555;
@@ -105,7 +104,7 @@ public class UdpSocketHandlerTest {
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
-	public void testEchoUdpServer() throws Exception {
+	public void testEchoUdpServer() {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
@@ -121,8 +120,7 @@ public class UdpSocketHandlerTest {
 					clientConnection.register();
 
 				} catch (IOException e) {
-					e.printStackTrace();
-					fail();
+					throw new AssertionError(e);
 				}
 			}
 		});

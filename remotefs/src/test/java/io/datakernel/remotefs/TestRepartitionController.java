@@ -127,7 +127,7 @@ public class TestRepartitionController {
 					System.out.println("Starting server_2 again");
 					servers.get(2).listen();
 				} catch (IOException e) {
-					e.printStackTrace();
+					throw new AssertionError(e);
 				}
 			});
 		});

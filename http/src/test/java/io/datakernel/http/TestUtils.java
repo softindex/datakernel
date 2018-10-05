@@ -22,16 +22,20 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.serial.AbstractSerialConsumer;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 import static io.datakernel.bytebuf.ByteBufStrings.asAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class TestUtils {
 
 	public static byte[] toByteArray(InputStream is) {
-		byte[] bytes = null;
+		byte[] bytes;
 
 		try {
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -49,13 +53,12 @@ public class TestUtils {
 
 			bytes = bos.toByteArray();
 		} catch (IOException e) {
-			e.printStackTrace();
-			fail();
+			throw new AssertionError(e);
 		}
 		return bytes;
 	}
 
-	public static void readFully(InputStream is, byte[] bytes) throws UnsupportedEncodingException {
+	public static void readFully(InputStream is, byte[] bytes) {
 		DataInputStream dis = new DataInputStream(is);
 		try {
 			dis.readFully(bytes);
