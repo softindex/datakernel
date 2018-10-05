@@ -1,8 +1,23 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.test;
 
 import ch.qos.logback.classic.Level;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
+import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import io.datakernel.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,12 +62,16 @@ public class TestUtils {
 		}
 	}
 
-	public static HikariDataSource dataSource(String databasePropertiesPath) throws IOException {
+	public static DataSource dataSource(String databasePropertiesPath) throws IOException {
 		Properties properties = new Properties();
 		properties.load(new InputStreamReader(new BufferedInputStream(new FileInputStream(new File(databasePropertiesPath))), StandardCharsets.UTF_8));
-		HikariConfig configuration = new HikariConfig(properties);
-		configuration.addDataSourceProperty("allowMultiQueries", true);
-		return new HikariDataSource(configuration);
+
+		MysqlDataSource dataSource = new MysqlDataSource();
+		dataSource.setUrl("jdbc:mysql://" + properties.getProperty("dataSource.serverName") + '/' + properties.getProperty("dataSource.databaseName"));
+		dataSource.setUser(properties.getProperty("dataSource.user"));
+		dataSource.setPassword(properties.getProperty("dataSource.password"));
+		dataSource.setAllowMultiQueries(true);
+		return dataSource;
 	}
 
 	public static void executeScript(DataSource dataSource, Class<?> clazz) throws SQLException {

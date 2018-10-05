@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import static org.objectweb.asm.Type.getType;
 @SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenSubclass implements SerializerGen, NullableOptimization {
 	@Override
-	public SerializerGen setNullable() {
+	public SerializerGen asNullable() {
 		return new SerializerGenSubclass(dataType, subclassSerializers, true, startIndex);
 	}
 
@@ -147,9 +147,7 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 		SerializerGenSubclass that = (SerializerGenSubclass) o;
 
 		if (!dataType.equals(that.dataType)) return false;
-		if (!subclassSerializers.equals(that.subclassSerializers)) return false;
-
-		return true;
+		return subclassSerializers.equals(that.subclassSerializers);
 	}
 
 	@Override

@@ -14,30 +14,32 @@
  * limitations under the License.
  */
 
-package io.datakernel.codegen;
+package io.datakernel.serializer.examples;
 
-import java.util.Map;
+import io.datakernel.codegen.AbstractExpressionMapForEach;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.VarLocal;
 
-import static io.datakernel.codegen.Expressions.call;
+import static io.datakernel.codegen.Expressions.field;
 
-final class ExpressionMapForEach extends AbstractExpressionMapForEach {
+public final class ForEachHppcMap extends AbstractExpressionMapForEach {
 
-	ExpressionMapForEach(Expression collection, Expression forKey, Expression forValue) {
-		super(collection, forKey, forValue, Map.Entry.class);
+	public ForEachHppcMap(Expression collection, Expression forValue, Expression forKey, Class<?> entryType) {
+		super(collection, forKey, forValue, entryType);
 	}
 
 	@Override
 	protected Expression getEntries() {
-		return call(collection, "entrySet");
+		return collection;
 	}
 
 	@Override
 	protected Expression getKey(VarLocal entry) {
-		return call(entry, "getKey");
+		return field(entry, "key");
 	}
 
 	@Override
 	protected Expression getValue(VarLocal entry) {
-		return call(entry, "getValue");
+		return field(entry, "value");
 	}
 }

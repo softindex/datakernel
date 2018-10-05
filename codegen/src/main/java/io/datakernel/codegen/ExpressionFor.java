@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.codegen.Utils.newLocal;
+import static io.datakernel.codegen.Expressions.newLocal;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionFor implements Expression {
@@ -83,9 +83,7 @@ final class ExpressionFor implements Expression {
 
 		if (!to.equals(that.to)) return false;
 		if (!from.equals(that.from)) return false;
-		if (!forVar.equals(that.forVar)) return false;
-
-		return true;
+		return forVar.equals(that.forVar);
 
 	}
 

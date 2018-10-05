@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -250,15 +250,6 @@ final class Utils {
 			g.invokeInterface(getType(owner), method);
 		else
 			g.invokeVirtual(getType(owner), method);
-	}
-
-	public static VarLocal newLocal(Context ctx, Type type) {
-		int local = ctx.getGeneratorAdapter().newLocal(type);
-		return new VarLocal(local);
-	}
-
-	public static Expression argumentVar(int argument) {
-		return new VarArg(argument);
 	}
 
 	public static void loadAndCast(Context ctx, Expression expression, Type targetType) {

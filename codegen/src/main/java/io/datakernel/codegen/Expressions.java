@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -394,7 +394,7 @@ public final class Expressions {
 	}
 
 	public static Class<?> unifyArithmeticTypes(List<Class<?>> types) {
-		return ExpressionArithmeticOp.unifyArithmeticTypes(types.toArray(new Class[types.size()]));
+		return ExpressionArithmeticOp.unifyArithmeticTypes(types.toArray(new Class[0]));
 	}
 
 	public static ExpressionArithmeticOp arithmeticOp(ArithmeticOperation op, Expression left, Expression right) {
@@ -475,6 +475,28 @@ public final class Expressions {
 		return new ExpressionNewArray(type, length);
 	}
 
+	/**
+	 * Returns a new local variable which ordinal number is 'local'
+	 *
+	 * @param local ordinal number of local variable
+	 * @return new instance of the VarArg
+	 */
+	public static VarLocal local(int local) {
+		return new VarLocal(local);
+	}
+
+	/**
+	 * Returns a new local variable from a given context
+	 *
+	 * @param ctx  context of a dynamic class
+	 * @param type the type of the local variable to be created
+	 * @return new instance of {@link VarLocal}
+	 */
+	public static VarLocal newLocal(Context ctx, Type type) {
+		int local = ctx.getGeneratorAdapter().newLocal(type);
+		return new VarLocal(local);
+	}
+
 	public static Expression callStatic(Class<?> owner, String method, Expression... arguments) {
 		return new ExpressionCallStatic(owner, method, asList(arguments));
 	}
@@ -553,18 +575,6 @@ public final class Expressions {
 			Function<ExpressionParameter, Expression> key, Function<ExpressionParameter, Expression> value) {
 		return new ExpressionMapForEach(collection,
 				ExpressionParameter.bind("key", key), ExpressionParameter.bind("value", value));
-	}
-
-	public static Expression hppcMapForEach(Class<?> iteratorType, Expression collection,
-			Function<ExpressionParameter, Expression> key, Function<ExpressionParameter, Expression> value) {
-		return new ForEachHppcMap(iteratorType, collection,
-				ExpressionParameter.bind("key", key), ExpressionParameter.bind("value", value));
-	}
-
-	public static Expression hppcSetForEach(Class<?> iteratorType, Expression field,
-			Function<ExpressionParameter, Expression> forVar) {
-		return new ForEachHppcSet(iteratorType, field,
-				ExpressionParameter.bind("it", forVar));
 	}
 
 	public static Expression neg(Expression arg) {

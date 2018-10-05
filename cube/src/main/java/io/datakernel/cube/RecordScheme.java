@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 
 package io.datakernel.cube;
 
-import com.carrotsearch.hppc.ObjectIntOpenHashMap;
-
 import java.lang.reflect.Type;
 import java.util.*;
 
@@ -32,8 +30,8 @@ public final class RecordScheme {
 	protected int longs;
 	protected int floats;
 
-	protected ObjectIntOpenHashMap<String> fieldIndices = new ObjectIntOpenHashMap<>();
-	protected ObjectIntOpenHashMap<String> fieldRawIndices = new ObjectIntOpenHashMap<>();
+	protected Map<String, Integer> fieldIndices = new HashMap<>();
+	protected Map<String, Integer> fieldRawIndices = new HashMap<>();
 	protected String[] fields = new String[]{};
 	protected int[] rawIndices = new int[]{};
 

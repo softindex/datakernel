@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package io.datakernel.codegen;
 
 import org.objectweb.asm.Type;
 
-import static io.datakernel.codegen.Utils.newLocal;
+import static io.datakernel.codegen.Expressions.newLocal;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionLet implements Variable {
