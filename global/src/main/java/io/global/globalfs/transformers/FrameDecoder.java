@@ -17,13 +17,9 @@
 
 package io.global.globalfs.transformers;
 
-import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
-import io.datakernel.serial.ByteBufsParser;
-import io.datakernel.serial.ByteBufsSupplier;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.*;
 import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
 import io.global.common.SignedData;
@@ -40,14 +36,16 @@ public final class FrameDecoder extends AbstractIOAsyncProcess implements WithSe
 	protected SerialConsumer<DataFrame> output;
 
 	@Override
-	public final void setOutput(SerialConsumer<DataFrame> output) {
-		this.output = sanitize(output);
+	public SerialInput<ByteBuf> getInput() {
+		return input -> {
+			this.input = sanitize(input);
+			return getResult();
+		};
 	}
 
 	@Override
-	public final MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
-		this.input = sanitize(input);
-		return getResult();
+	public SerialOutput<DataFrame> getOutput() {
+		return output -> this.output = sanitize(output);
 	}
 
 	@Override

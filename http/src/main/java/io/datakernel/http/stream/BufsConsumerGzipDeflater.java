@@ -1,10 +1,11 @@
 package io.datakernel.http.stream;
 
-import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialInput;
+import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
@@ -49,16 +50,20 @@ public final class BufsConsumerGzipDeflater extends AbstractIOAsyncProcess
 	}
 
 	@Override
-	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
-		checkState(this.input == null, "Input already set");
-		this.input = sanitize(input);
-		return getResult();
+	public SerialInput<ByteBuf> getInput() {
+		return input -> {
+			checkState(this.input == null, "Input already set");
+			this.input = sanitize(input);
+			return getResult();
+		};
 	}
 
 	@Override
-	public void setOutput(SerialConsumer<ByteBuf> output) {
-		checkState(this.output == null, "Output already set");
-		this.output = sanitize(output);
+	public SerialOutput<ByteBuf> getOutput() {
+		return output -> {
+			checkState(this.output == null, "Output already set");
+			this.output = sanitize(output);
+		};
 	}
 	// endregion
 

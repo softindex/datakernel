@@ -21,6 +21,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialOutput;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
@@ -113,8 +114,8 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	public void setOutput(SerialConsumer<ByteBuf> output) {
-		this.output = output;
+	public SerialOutput<ByteBuf> getOutput() {
+		return output -> this.output = output;
 	}
 	// endregion
 

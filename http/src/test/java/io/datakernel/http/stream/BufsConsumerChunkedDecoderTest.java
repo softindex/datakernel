@@ -53,7 +53,7 @@ public class BufsConsumerChunkedDecoderTest {
 		queue.recycle();
 		list.clear();
 		consumer.reset();
-		chunkedDecoder.setOutput(consumer);
+		chunkedDecoder.getOutput().set(consumer);
 	}
 
 	@Test
@@ -252,7 +252,7 @@ public class BufsConsumerChunkedDecoderTest {
 	}
 
 	private void doTest(Exception exception) {
-		chunkedDecoder.setInput(ByteBufsSupplier.of(SerialSupplier.ofIterable(list)));
+		chunkedDecoder.getByteBufsInput().setInput(ByteBufsSupplier.of(SerialSupplier.ofIterable(list)));
 		eventloop.post(() -> chunkedDecoder.start()
 				.whenComplete(($, e) -> {
 					if (exception == null) {

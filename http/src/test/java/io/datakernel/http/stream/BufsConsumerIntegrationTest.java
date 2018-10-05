@@ -38,37 +38,37 @@ public class BufsConsumerIntegrationTest {
 
 	@Test
 	public void testEncodeDecodeSingleBuf() {
-		chunkedEncoder.setOutput(chunkedDecoder.getInputConsumer());
-		chunkedDecoder.setOutput(consumer);
+		chunkedEncoder.getOutput().set(chunkedDecoder.getInput().getConsumer());
+		chunkedDecoder.getOutput().set(consumer);
 		writeSingleBuf();
-		chunkedEncoder.setInput(ofIterable(list));
+		chunkedEncoder.getInput().set(ofIterable(list));
 		doTest(chunkedEncoder, chunkedDecoder);
 	}
 
 	@Test
 	public void testEncodeDecodeMultipleBufs() {
-		chunkedEncoder.setOutput(chunkedDecoder.getInputConsumer());
-		chunkedDecoder.setOutput(consumer);
+		chunkedEncoder.getOutput().set(chunkedDecoder.getInput().getConsumer());
+		chunkedDecoder.getOutput().set(consumer);
 		writeMultipleBufs();
-		chunkedEncoder.setInput(ofIterable(list));
+		chunkedEncoder.getInput().set(ofIterable(list));
 		doTest(chunkedEncoder, chunkedDecoder);
 	}
 
 	@Test
 	public void testGzipGunzipSingleBuf() {
-		gzipDeflater.setOutput(gzipInflater.getInputConsumer());
-		gzipInflater.setOutput(consumer);
+		gzipDeflater.getOutput().set(gzipInflater.getInput().getConsumer());
+		gzipInflater.getOutput().set(consumer);
 		writeSingleBuf();
-		gzipDeflater.setInput(ofIterable(list));
+		gzipDeflater.getInput().set(ofIterable(list));
 		doTest(gzipInflater, gzipDeflater);
 	}
 
 	@Test
 	public void testGzipGunzipMultipleBufs() {
-		gzipDeflater.setOutput(gzipInflater.getInputConsumer());
-		gzipInflater.setOutput(consumer);
+		gzipDeflater.getOutput().set(gzipInflater.getInput().getConsumer());
+		gzipInflater.getOutput().set(consumer);
 		writeMultipleBufs();
-		gzipDeflater.setInput(ofIterable(list));
+		gzipDeflater.getInput().set(ofIterable(list));
 		doTest(gzipInflater, gzipDeflater);
 	}
 

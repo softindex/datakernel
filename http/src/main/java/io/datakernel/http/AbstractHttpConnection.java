@@ -161,8 +161,8 @@ public abstract class AbstractHttpConnection {
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 				httpMessage.writeTo(buf);
 				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
-				chunker.setInput(httpMessage.bodySupplier);
-				SerialSupplier<ByteBuf> result = SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutputSupplier());
+				chunker.getInput().set(httpMessage.bodySupplier);
+				SerialSupplier<ByteBuf> result = SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutput().getSupplier());
 				chunker.start();
 				return result;
 			} else {
@@ -171,11 +171,11 @@ public abstract class AbstractHttpConnection {
 				httpMessage.writeTo(buf);
 				BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
 				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
-				deflater.setInput(httpMessage.bodySupplier);
+				deflater.getInput().set(httpMessage.bodySupplier);
 				SerialQueue<ByteBuf> queue = new SerialZeroBuffer<>();
-				deflater.setOutput(queue.getConsumer());
-				chunker.setInput(queue.getSupplier());
-				SerialSupplier<ByteBuf> result = SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutputSupplier());
+				deflater.getOutput().set(queue.getConsumer());
+				chunker.getInput().set(queue.getSupplier());
+				SerialSupplier<ByteBuf> result = SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutput().getSupplier());
 				deflater.start();
 				chunker.start();
 				return result;
@@ -393,13 +393,13 @@ public abstract class AbstractHttpConnection {
 		if ((flags & CHUNKED) == 0) {
 			BufsConsumerDelimiter decoder = BufsConsumerDelimiter.create(contentLength);
 			transferDecoder = decoder;
-			input = decoder;
-			transferDecoderOutput = decoder;
+			input = decoder.getByteBufsInput();
+			transferDecoderOutput = decoder.getOutput();
 		} else {
 			BufsConsumerChunkedDecoder decoder = BufsConsumerChunkedDecoder.create();
 			transferDecoder = decoder;
-			input = decoder;
-			transferDecoderOutput = decoder;
+			input = decoder.getByteBufsInput();
+			transferDecoderOutput = decoder.getOutput();
 		}
 
 		AsyncProcess contentDecoder;
@@ -411,10 +411,10 @@ public abstract class AbstractHttpConnection {
 		} else {
 			BufsConsumerGzipInflater decoder = BufsConsumerGzipInflater.create();
 			contentDecoder = decoder;
-			contentDecoderOutput = decoder;
+			contentDecoderOutput = decoder.getOutput();
 			SerialQueue<ByteBuf> queue = new SerialZeroBuffer<>();
-			transferDecoderOutput.setOutput(queue.getConsumer());
-			decoder.setInput(queue.getSupplier());
+			transferDecoderOutput.set(queue.getConsumer());
+			decoder.getInput().set(queue.getSupplier());
 		}
 
 		input.setInput(ByteBufsSupplier.ofProvidedQueue(
@@ -432,7 +432,7 @@ public abstract class AbstractHttpConnection {
 				Stage::complete,
 				this::closeWithError));
 
-		onHeadersReceived(null, contentDecoderOutput.getOutputSupplier(new SerialZeroBuffer<>()));
+		onHeadersReceived(null, contentDecoderOutput.getSupplier(new SerialZeroBuffer<>()));
 		if (isClosed()) return;
 
 		Stage<Void> stage;

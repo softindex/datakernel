@@ -4,9 +4,7 @@ import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialSuppliers;
+import io.datakernel.serial.*;
 import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
@@ -160,24 +158,17 @@ public class CachedFsClient implements FsClient, EventloopService {
 					}
 
 					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create()
-							.withInput(supplier.transform(ByteBuf::slice));
+							.withInput(supplier);
 
-					SerialSupplier<ByteBuf> output = splitter.addOutput().getOutputSupplier().transform(b -> {
-						ByteBuf slice = b.slice();
-						b.recycle();
-						return slice;
-					});
+					SerialQueue<ByteBuf> queue = new SerialZeroBuffer<>();
+					splitter.addOutput().set(queue.getConsumer().transform(ByteBuf::slice));
 
 					long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
 					downloadingNowSize += size;
 
 					MaterializedStage<Void> cacheAppendProcess = splitter.addOutput()
-							.getOutputSupplier()
-							.transform(b -> {
-								ByteBuf slice = b.slice();
-								b.recycle();
-								return slice;
-							})
+							.getSupplier()
+							.transform(ByteBuf::slice)
 							.streamTo(cacheClient.uploadSerial(fileName, cacheOffset))
 //							.thenCompose($ -> cacheClient.list())
 							.thenCompose($ -> updateCacheStats(fileName))
@@ -185,9 +176,11 @@ public class CachedFsClient implements FsClient, EventloopService {
 							.whenResult($ -> downloadingNowSize -= size)
 							.materialize();
 
+					splitter.addOutput().set(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
+
 					splitter.start();
 
-					return (sizeInCache == 0 ? output : SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, sizeInCache), output))
+					return (sizeInCache == 0 ? queue.getSupplier() : SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, sizeInCache), queue.getSupplier()))
 							.withEndOfStream(eos -> eos.thenCompose($ -> cacheAppendProcess));
 				});
 	}

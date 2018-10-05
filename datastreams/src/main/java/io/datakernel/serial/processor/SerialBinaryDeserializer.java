@@ -16,11 +16,11 @@
 
 package io.datakernel.serial.processor;
 
-import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.TruncatedDataException;
+import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamSupplier;
@@ -53,9 +53,11 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamSupplier<T>
 	}
 
 	@Override
-	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
-		this.input = input;
-		return getAcknowledgement();
+	public SerialInput<ByteBuf> getInput() {
+		return input -> {
+			this.input = input;
+			return getAcknowledgement();
+		};
 	}
 	// endregion
 

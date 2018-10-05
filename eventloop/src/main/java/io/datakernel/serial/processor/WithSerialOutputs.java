@@ -3,11 +3,11 @@ package io.datakernel.serial.processor;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialOutput;
 
-public interface WithSerialOutputs<B extends WithSerialOutputs<B, T>, T> {
+public interface WithSerialOutputs<B, T> {
 	SerialOutput<T> addOutput();
 
 	default void addOutput(SerialConsumer<T> output) {
-		addOutput().setOutput(output);
+		addOutput().set(output);
 	}
 
 	@SuppressWarnings("unchecked")

@@ -3,11 +3,11 @@ package io.datakernel.serial.processor;
 import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialSupplier;
 
-public interface WithSerialInputs<B extends WithSerialInputs<B, T>, T> {
+public interface WithSerialInputs<B, T> {
 	SerialInput<T> addInput();
 
 	default void addInput(SerialSupplier<T> input) {
-		addInput().setInput(input);
+		addInput().set(input);
 	}
 
 	@SuppressWarnings("unchecked")

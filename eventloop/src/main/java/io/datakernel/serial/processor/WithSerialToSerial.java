@@ -1,15 +1,20 @@
 package io.datakernel.serial.processor;
 
 import io.datakernel.async.AsyncProcess;
-import io.datakernel.serial.*;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialConsumerFunction;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialSupplierFunction;
 
-public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O> extends
-		WithSerialInput<B, I>, WithSerialOutput<B, O>,
-		SerialSupplierFunction<I, SerialSupplier<O>>, SerialConsumerFunction<O, SerialConsumer<I>> {
+public interface WithSerialToSerial<B, I, O> extends
+		WithSerialInput<B, I>,
+		WithSerialOutput<B, O>,
+		SerialSupplierFunction<I, SerialSupplier<O>>,
+		SerialConsumerFunction<O, SerialConsumer<I>> {
 	@Override
 	default SerialSupplier<O> apply(SerialSupplier<I> supplier) {
-		this.setInput(supplier);
-		SerialSupplier<O> outputSupplier = getOutputSupplier(new SerialZeroBuffer<>());
+		getInput().set(supplier);
+		SerialSupplier<O> outputSupplier = getOutput().getSupplier();
 		if (this instanceof AsyncProcess) {
 			((AsyncProcess) this).start();
 		}
@@ -18,8 +23,8 @@ public interface WithSerialToSerial<B extends WithSerialToSerial<B, I, O>, I, O>
 
 	@Override
 	default SerialConsumer<I> apply(SerialConsumer<O> consumer) {
-		this.setOutput(consumer);
-		SerialConsumer<I> outputConsumer = getInputConsumer(new SerialZeroBuffer<>());
+		getOutput().set(consumer);
+		SerialConsumer<I> outputConsumer = getInput().getConsumer();
 		if (this instanceof AsyncProcess) {
 			((AsyncProcess) this).start();
 		}

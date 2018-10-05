@@ -17,10 +17,11 @@
 
 package io.global.globalfs.transformers;
 
-import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialInput;
+import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
@@ -51,14 +52,16 @@ abstract class FramesToByteBufs extends AbstractIOAsyncProcess
 	// endregion
 
 	@Override
-	public MaterializedStage<Void> setInput(SerialSupplier<DataFrame> input) {
-		this.input = sanitize(input);
-		return getResult();
+	public SerialInput<DataFrame> getInput() {
+		return input -> {
+			this.input = sanitize(input);
+			return getResult();
+		};
 	}
 
 	@Override
-	public void setOutput(SerialConsumer<ByteBuf> output) {
-		this.output = sanitize(output);
+	public SerialOutput<ByteBuf> getOutput() {
+		return output -> this.output = sanitize(output);
 	}
 
 	@Override

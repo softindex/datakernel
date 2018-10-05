@@ -22,6 +22,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialInput;
+import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
 import io.datakernel.stream.processor.ByteBufRule;
@@ -71,7 +73,7 @@ public class AbstractAsyncProcessTest {
 		}
 
 		for (int i = 0; i < size - 1; i++) {
-			processes[i].streamTo(processes[i + 1]);
+			processes[i].getOutput().streamTo(processes[i + 1].getInput());
 		}
 
 		acknowledgement = SerialSupplier.ofIterable(expectedData).streamTo(processes[0]);
@@ -79,7 +81,7 @@ public class AbstractAsyncProcessTest {
 
 	@Test
 	public void testAckPropagation() {
-		processes[size - 1].streamTo(SerialConsumer.of(value -> {
+		processes[size - 1].getOutput().streamTo(SerialConsumer.of(value -> {
 			actualData.add(value);
 			if (expectedData.size() == actualData.size()) {
 				deepRecycle(actualData);
@@ -95,7 +97,7 @@ public class AbstractAsyncProcessTest {
 
 	@Test
 	public void testAckPropagationWithFailure() {
-		processes[size - 1].streamTo(SerialConsumer.of(value -> {
+		processes[size - 1].getOutput().streamTo(SerialConsumer.of(value -> {
 			tryRecycle(value);
 			return Stage.ofException(error);
 		}));
@@ -111,14 +113,16 @@ public class AbstractAsyncProcessTest {
 		SerialConsumer<ByteBuf> output;
 
 		@Override
-		public void setOutput(SerialConsumer<ByteBuf> output) {
-			this.output = output;
+		public SerialInput<ByteBuf> getInput() {
+			return input -> {
+				this.input = input;
+				return getResult();
+			};
 		}
 
 		@Override
-		public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
-			this.input = input;
-			return getResult();
+		public SerialOutput<ByteBuf> getOutput() {
+			return output -> this.output = output;
 		}
 
 		@Override

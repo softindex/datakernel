@@ -16,11 +16,12 @@
 
 package io.datakernel.serial.processor;
 
-import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialInput;
+import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
@@ -99,14 +100,16 @@ public final class SerialLZ4Compressor extends AbstractIOAsyncProcess
 	}
 
 	@Override
-	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
-		this.input = sanitize(input);
-		return getResult();
+	public SerialInput<ByteBuf> getInput() {
+		return input -> {
+			this.input = sanitize(input);
+			return getResult();
+		};
 	}
 
 	@Override
-	public void setOutput(SerialConsumer<ByteBuf> output) {
-		this.output = sanitize(output);
+	public SerialOutput<ByteBuf> getOutput() {
+		return output -> this.output = sanitize(output);
 	}
 
 	@Override

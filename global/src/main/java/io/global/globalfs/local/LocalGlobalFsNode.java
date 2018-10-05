@@ -96,14 +96,14 @@ public final class LocalGlobalFsNode implements GlobalFsNode {
 
 					SerialSupplier<DataFrame> output = splitter
 							.addOutput()
-							.getOutputSupplier()
+							.getSupplier()
 							.transform(df -> {
 								DataFrame slice = df.slice();
 								df.recycle();
 								return slice;
 							});
 					MaterializedStage<Void> cacheProcess = splitter.addOutput()
-							.getOutputSupplier()
+							.getSupplier()
 							.transform(df -> {
 								DataFrame slice = df.slice();
 								df.recycle();

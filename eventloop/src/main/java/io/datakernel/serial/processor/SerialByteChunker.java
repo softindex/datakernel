@@ -17,11 +17,12 @@
 package io.datakernel.serial.processor;
 
 import io.datakernel.async.AbstractAsyncProcess;
-import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialInput;
+import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.MemSize;
 
@@ -47,14 +48,16 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 	}
 
 	@Override
-	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
-		this.input = input;
-		return getResult();
+	public SerialInput<ByteBuf> getInput() {
+		return input -> {
+			this.input = input;
+			return getResult();
+		};
 	}
 
 	@Override
-	public void setOutput(SerialConsumer<ByteBuf> output) {
-		this.output = output;
+	public SerialOutput<ByteBuf> getOutput() {
+		return output -> this.output = output;
 	}
 	// endregion
 

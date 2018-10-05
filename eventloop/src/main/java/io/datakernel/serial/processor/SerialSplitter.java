@@ -1,9 +1,9 @@
 package io.datakernel.serial.processor;
 
 import io.datakernel.async.AbstractAsyncProcess;
-import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stages;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 
@@ -29,10 +29,12 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 	}
 
 	@Override
-	public MaterializedStage<Void> setInput(SerialSupplier<T> input) {
-		checkState(!isProcessStarted(), "Can't configure splitter while it is running");
-		this.input = input;
-		return getResult();
+	public SerialInput<T> getInput() {
+		return input -> {
+			checkState(!isProcessStarted(), "Can't configure splitter while it is running");
+			this.input = input;
+			return getResult();
+		};
 	}
 
 	@Override

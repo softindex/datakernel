@@ -167,8 +167,12 @@ public interface SerialSupplier<T> extends Cancellable {
 		return SerialSuppliers.stream(this, consumer);
 	}
 
+	default MaterializedStage<Void> streamTo(HasSerialInput<T> to) {
+		return streamTo(to.getInput());
+	}
+
 	default MaterializedStage<Void> streamTo(SerialInput<T> to) {
-		MaterializedStage<Void> extraAcknowledge = to.setInput(this);
+		MaterializedStage<Void> extraAcknowledge = to.set(this);
 		if (to instanceof AsyncProcess) {
 			getCurrentEventloop().post(((AsyncProcess) to)::start);
 		}

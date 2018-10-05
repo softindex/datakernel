@@ -56,7 +56,7 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 	}
 
 	@Override
-	public MaterializedStage<Void> setInput(SerialSupplier<ByteBuf> input) {
+	public MaterializedStage<Void> set(SerialSupplier<ByteBuf> input) {
 		this.input = input;
 		return getResult();
 	}

@@ -18,10 +18,12 @@ package io.datakernel.rpc.protocol.stream;
 
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.server.RpcServer;
+import io.datakernel.serial.HasSerialInput;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serial.processor.SerialLZ4Compressor;
@@ -125,9 +127,9 @@ public class RpcBinaryProtocolTest {
 		StreamConsumerToList<RpcMessage> results = StreamConsumerToList.create();
 
 		client.streamTo(serializer);
-		serializer.streamTo(compressor);
-		compressor.streamTo(decompressor);
-		decompressor.streamTo(deserializer);
+		serializer.getOutput().streamTo(((HasSerialInput<ByteBuf>) compressor).getInput());
+		compressor.getOutput().streamTo(((HasSerialInput<ByteBuf>) decompressor).getInput());
+		decompressor.getOutput().streamTo(((HasSerialInput<ByteBuf>) deserializer).getInput());
 		deserializer.streamTo(results);
 
 		eventloop.run();

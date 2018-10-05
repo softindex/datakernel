@@ -20,18 +20,42 @@ import io.datakernel.async.AsyncProcess;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public interface SerialOutput<T> {
-	void setOutput(SerialConsumer<T> output);
+	void set(SerialConsumer<T> output);
 
-	default SerialSupplier<T> getOutputSupplier() {
-		return getOutputSupplier(new SerialZeroBuffer<>());
+	default SerialSupplier<T> getSupplier() {
+		return getSupplier(new SerialZeroBuffer<>());
 	}
 
-	default SerialSupplier<T> getOutputSupplier(SerialQueue<T> queue) {
-		setOutput(queue.getConsumer());
+	default SerialSupplier<T> getSupplier(SerialQueue<T> queue) {
+		set(queue.getConsumer());
 		return queue.getSupplier();
+	}
+
+	default <R> SerialOutput<R> apply(SerialConsumerFunction<R, SerialConsumer<T>> fn) {
+		return output -> SerialOutput.this.set(output.apply(fn));
+	}
+
+	default <R> SerialOutput<R> transform(Function<? super T, ? extends R> fn) {
+		return output -> SerialOutput.this.set(output.transform(fn));
+	}
+
+	default <R> SerialOutput<R> transformAsync(Function<? super T, ? extends Stage<R>> fn) {
+		return output -> SerialOutput.this.set(output.transformAsync(fn));
+	}
+
+	default SerialOutput<T> filter(Predicate<? super T> predicate) {
+		return output -> SerialOutput.this.set(output.filter(predicate));
+	}
+
+	default SerialOutput<T> peek(Consumer<? super T> peek) {
+		return output -> SerialOutput.this.set(output.peek(peek));
 	}
 
 	default void streamTo(SerialInput<T> to) {
@@ -39,8 +63,8 @@ public interface SerialOutput<T> {
 	}
 
 	default void streamTo(SerialInput<T> to, SerialQueue<T> queue) {
-		MaterializedStage<Void> extraAcknowledgement = to.setInput(queue.getSupplier());
-		this.setOutput(queue.getConsumer().withAcknowledgement(ack -> ack.both(extraAcknowledgement)));
+		MaterializedStage<Void> extraAcknowledgement = to.set(queue.getSupplier());
+		this.set(queue.getConsumer().withAcknowledgement(ack -> ack.both(extraAcknowledgement)));
 		if (this instanceof AsyncProcess) {
 			getCurrentEventloop().post(((AsyncProcess) this)::start);
 		}
@@ -54,7 +78,7 @@ public interface SerialOutput<T> {
 	}
 
 	default Stage<Void> streamTo(SerialConsumer<T> to, SerialQueue<T> queue) {
-		this.setOutput(queue.getConsumer());
+		this.set(queue.getConsumer());
 		Stage<Void> result = queue.getSupplier().streamTo(to);
 		if (this instanceof AsyncProcess) {
 			((AsyncProcess) this).start();

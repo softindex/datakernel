@@ -1,13 +1,10 @@
 package io.datakernel.http.stream;
 
-import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
-import io.datakernel.serial.ByteBufsParser;
-import io.datakernel.serial.ByteBufsSupplier;
-import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.*;
 import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithByteBufsInput;
 import io.datakernel.serial.processor.WithSerialToSerial;
@@ -67,17 +64,21 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 	}
 
 	@Override
-	public MaterializedStage<Void> setInput(ByteBufsSupplier input) {
-		checkState(this.input == null, "Input already set");
-		this.input = sanitize(input);
-		this.bufs = input.bufs;
-		return getResult();
+	public ByteBufsInput getByteBufsInput() {
+		return input -> {
+			checkState(this.input == null, "Input already set");
+			this.input = sanitize(input);
+			this.bufs = input.bufs;
+			return getResult();
+		};
 	}
 
 	@Override
-	public void setOutput(SerialConsumer<ByteBuf> output) {
-		checkState(this.output == null, "Output already set");
-		this.output = sanitize(output);
+	public SerialOutput<ByteBuf> getOutput() {
+		return output -> {
+			checkState(this.output == null, "Output already set");
+			this.output = sanitize(output);
+		};
 	}
 	// endregion
 

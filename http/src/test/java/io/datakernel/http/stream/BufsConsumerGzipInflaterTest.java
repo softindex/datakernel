@@ -49,7 +49,7 @@ public class BufsConsumerGzipInflaterTest {
 	@Before
 	public void setUp() {
 		consumer.reset();
-		gunzip.setOutput(consumer);
+		gunzip.getOutput().set(consumer);
 	}
 
 	@Test
@@ -205,7 +205,7 @@ public class BufsConsumerGzipInflaterTest {
 	}
 
 	private void doTest(Exception exception) {
-		gunzip.setInput(SerialSupplier.ofIterable(list));
+		gunzip.getInput().set(SerialSupplier.ofIterable(list));
 		eventloop.post(() -> gunzip.start().whenComplete(($, e) -> {
 			if (exception == null) {
 				assertNull(e);

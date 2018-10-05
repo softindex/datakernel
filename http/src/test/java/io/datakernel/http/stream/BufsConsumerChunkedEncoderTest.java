@@ -30,7 +30,7 @@ public class BufsConsumerChunkedEncoderTest {
 	@Before
 	public void setUp() {
 		consumer.reset();
-		chunkedEncoder.setOutput(consumer);
+		chunkedEncoder.getOutput().set(consumer);
 	}
 
 	@Test
@@ -78,7 +78,7 @@ public class BufsConsumerChunkedEncoderTest {
 	}
 
 	private void doTest() {
-		chunkedEncoder.setInput(SerialSupplier.ofIterable(list));
+		chunkedEncoder.getInput().set(SerialSupplier.ofIterable(list));
 		eventloop.post(() -> chunkedEncoder.start()
 				.whenComplete(assertComplete()));
 		eventloop.run();

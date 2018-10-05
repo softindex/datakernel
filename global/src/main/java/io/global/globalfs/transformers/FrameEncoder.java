@@ -17,10 +17,11 @@
 
 package io.global.globalfs.transformers;
 
-import io.datakernel.async.MaterializedStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialInput;
+import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
@@ -38,14 +39,16 @@ public final class FrameEncoder extends AbstractIOAsyncProcess implements WithSe
 	protected SerialConsumer<ByteBuf> output;
 
 	@Override
-	public final void setOutput(SerialConsumer<ByteBuf> output) {
-		this.output = sanitize(output);
+	public SerialInput<DataFrame> getInput() {
+		return input -> {
+			this.input = sanitize(input);
+			return getResult();
+		};
 	}
 
 	@Override
-	public final MaterializedStage<Void> setInput(SerialSupplier<DataFrame> input) {
-		this.input = sanitize(input);
-		return getResult();
+	public SerialOutput<ByteBuf> getOutput() {
+		return output -> this.output = sanitize(output);
 	}
 
 	@Override
