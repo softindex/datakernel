@@ -18,6 +18,7 @@ package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
+import io.datakernel.exception.UncheckedException;
 
 import java.util.Iterator;
 import java.util.function.Consumer;
@@ -208,22 +209,22 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
-	default SerialConsumer<T> peekAsync(AsyncConsumer<? super T> fn) {
-		return new AbstractSerialConsumer<T>(this) {
-			@Override
-			protected Stage<Void> doAccept(T value) {
-				return value != null ?
-						Stages.all(SerialConsumer.this.accept(value), fn.accept(value)) :
-						SerialConsumer.this.accept(null);
-			}
-		};
-	}
-
 	default <V> SerialConsumer<V> transform(Function<? super V, ? extends T> fn) {
 		return new AbstractSerialConsumer<V>(this) {
 			@Override
 			protected Stage<Void> doAccept(V value) {
-				return SerialConsumer.this.accept(value != null ? fn.apply(value) : null);
+				if (value != null) {
+					T newValue;
+					try {
+						newValue = fn.apply(value);
+					} catch (UncheckedException u) {
+						SerialConsumer.this.close(u.getCause());
+						return Stage.ofException(u.getCause());
+					}
+					return SerialConsumer.this.accept(newValue);
+				} else {
+					return SerialConsumer.this.accept(null);
+				}
 			}
 		};
 	}
@@ -247,22 +248,7 @@ public interface SerialConsumer<T> extends Cancellable {
 				if (value != null && predicate.test(value)) {
 					return SerialConsumer.this.accept(value);
 				} else {
-					return Stage.complete();
-				}
-			}
-		};
-	}
-
-	default SerialConsumer<T> filterAsync(AsyncPredicate<? super T> predicate) {
-		return new AbstractSerialConsumer<T>(this) {
-			@Override
-			protected Stage<Void> doAccept(T value) {
-				if (value != null) {
-					return predicate.test(value)
-							.thenCompose(test -> test ?
-									SerialConsumer.this.accept(value) :
-									Stage.complete());
-				} else {
+					tryRecycle(value);
 					return Stage.complete();
 				}
 			}

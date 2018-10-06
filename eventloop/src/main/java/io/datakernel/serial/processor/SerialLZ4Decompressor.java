@@ -112,7 +112,7 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 
 		input.endOfStream()
 				.thenCompose($ -> output.accept(null))
-				.whenResult($1 -> completeProcess());
+				.whenResult($ -> completeProcess());
 	}
 
 	public void processBody() {

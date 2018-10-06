@@ -148,7 +148,13 @@ abstract class AbstractStage<T> implements Stage<T> {
 					}
 					complete(newResult);
 				} else {
-					U newResult = fn.apply(null, e);
+					U newResult;
+					try {
+						newResult = fn.apply(null, e);
+					} catch (UncheckedException u) {
+						completeExceptionally(u.getCause());
+						return;
+					}
 					complete(newResult);
 				}
 			}
@@ -191,7 +197,14 @@ abstract class AbstractStage<T> implements Stage<T> {
 					}
 					stage.whenComplete(this::complete);
 				} else {
-					fn.apply(null, e).whenComplete(this::complete);
+					Stage<U> stage;
+					try {
+						stage = fn.apply(null, e);
+					} catch (UncheckedException u) {
+						completeExceptionally(u.getCause());
+						return;
+					}
+					stage.whenComplete(this::complete);
 				}
 			}
 		});

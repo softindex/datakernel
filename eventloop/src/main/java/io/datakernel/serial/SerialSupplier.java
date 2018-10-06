@@ -18,7 +18,7 @@ package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
-import io.datakernel.util.CollectionUtils;
+import io.datakernel.exception.UncheckedException;
 
 import java.util.Iterator;
 import java.util.List;
@@ -33,6 +33,7 @@ import java.util.stream.Stream;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.Recyclable.deepRecycle;
+import static io.datakernel.util.Recyclable.tryRecycle;
 
 /**
  * This interface represents supplier of {@link Stage} of data that should be used serially (each consecutive {@link #get()})
@@ -215,29 +216,23 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
-	default SerialSupplier<T> peekAsync(AsyncConsumer<? super T> fn) {
-		return new AbstractSerialSupplier<T>(this) {
-			@Override
-			protected Stage<T> doGet() {
-				return SerialSupplier.this.get()
-						.thenCompose(item -> {
-							if (item != null) {
-								return fn.accept(item)
-										.thenCompose($ -> Stage.of(item));
-							} else {
-								return Stage.of(null);
-							}
-						});
-			}
-		};
-	}
-
 	default <V> SerialSupplier<V> transform(Function<? super T, ? extends V> fn) {
 		return new AbstractSerialSupplier<V>(this) {
 			@Override
 			protected Stage<V> doGet() {
 				return SerialSupplier.this.get()
-						.thenApply(value -> value != null ? fn.apply(value) : null);
+						.thenApply(value -> {
+							if (value != null) {
+								try {
+									return fn.apply(value);
+								} catch (UncheckedException u) {
+									SerialSupplier.this.close(u.getCause());
+									throw u;
+								}
+							} else {
+								return null;
+							}
+						});
 			}
 		};
 	}
@@ -255,42 +250,6 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
-	default <V> SerialSupplier<V> remap(Function<? super T, ? extends Iterator<? extends V>> fn) {
-		return new AbstractSerialSupplier<V>(this) {
-			Iterator<? extends V> iterator = CollectionUtils.emptyIterator();
-			boolean endOfStream;
-
-			@Override
-			protected Stage<V> doGet() {
-				if (iterator.hasNext()) return Stage.of(iterator.next());
-				SettableStage<V> cb = new SettableStage<>();
-				next(cb);
-				return cb;
-			}
-
-			private void next(SettableStage<V> cb) {
-				if (!endOfStream) {
-					SerialSupplier.this.get()
-							.whenComplete((item, e) -> {
-								if (e == null) {
-									if (item == null) endOfStream = true;
-									iterator = fn.apply(item);
-									if (iterator.hasNext()) {
-										cb.set(iterator.next());
-									} else {
-										next(cb);
-									}
-								} else {
-									cb.setException(e);
-								}
-							});
-				} else {
-					cb.set(null);
-				}
-			}
-		};
-	}
-
 	default SerialSupplier<T> filter(Predicate<? super T> predicate) {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
@@ -298,24 +257,20 @@ public interface SerialSupplier<T> extends Cancellable {
 				while (true) {
 					Stage<T> stage = SerialSupplier.this.get();
 					if (stage.hasResult()) {
-						if (predicate.test(stage.getResult())) return stage;
+						T value = stage.getResult();
+						if (predicate.test(value)) return stage;
+						tryRecycle(value);
 						continue;
 					}
-					return stage.thenCompose(value -> value == null || predicate.test(value) ? Stage.of(value) : get());
+					return stage.thenCompose(value -> {
+						if (value == null || predicate.test(value)) {
+							return Stage.of(value);
+						} else {
+							tryRecycle(value);
+							return get();
+						}
+					});
 				}
-			}
-		};
-	}
-
-	default SerialSupplier<T> filterAsync(AsyncPredicate<? super T> predicate) {
-		return new AbstractSerialSupplier<T>(this) {
-			@Override
-			protected Stage<T> doGet() {
-				return SerialSupplier.this.get()
-						.thenCompose(value -> value != null ?
-								predicate.test(value)
-										.thenCompose(testResult -> testResult ? Stage.of(value) : get()) :
-								Stage.of(null));
 			}
 		};
 	}

@@ -134,7 +134,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 					close(MALFORMED_CHUNK);
 				})
 				.thenCompose($ -> output.acceptAll(queue.asIterator()))
-				.whenResult($1 -> processLength());
+				.whenResult($ -> processLength());
 	}
 
 	private void consumeCRLF(int chunkLength) {
@@ -155,7 +155,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 
 				input.endOfStream()
 						.thenCompose($ -> output.accept(null))
-						.whenResult($1 -> completeProcess());
+						.whenResult($ -> completeProcess());
 				return;
 			}
 		}

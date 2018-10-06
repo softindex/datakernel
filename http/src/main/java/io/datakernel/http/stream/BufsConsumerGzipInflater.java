@@ -144,7 +144,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 
 		output.acceptAll(queue.asIterator())
 				.thenCompose($ -> input.needMoreData())
-				.whenResult($1 -> processBody());
+				.whenResult($ -> processBody());
 	}
 
 	private void processFooter() {
@@ -164,7 +164,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 					buf.recycle();
 					input.endOfStream()
 							.thenCompose($ -> output.accept(null))
-							.whenResult($1 -> completeProcess());
+							.whenResult($ -> completeProcess());
 				});
 	}
 

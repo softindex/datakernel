@@ -53,7 +53,7 @@ public final class BufsConsumerDelimiter extends AbstractIOAsyncProcess
 	protected void doProcess() {
 		if (remaining == 0) {
 			input.endOfStream()
-					.thenCompose($2 -> output.accept(null))
+					.thenCompose($ -> output.accept(null))
 					.whenResult($ -> completeProcess());
 			return;
 		}
@@ -66,7 +66,7 @@ public final class BufsConsumerDelimiter extends AbstractIOAsyncProcess
 								.whenResult($1 -> doProcess());
 					} else {
 						input.endOfStream()
-								.thenCompose($2 -> output.accept(null))
+								.thenCompose($1 -> output.accept(null))
 								.whenResult($1 -> completeProcess());
 					}
 				});

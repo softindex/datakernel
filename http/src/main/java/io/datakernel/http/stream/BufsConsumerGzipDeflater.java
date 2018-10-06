@@ -107,7 +107,7 @@ public final class BufsConsumerGzipDeflater extends AbstractIOAsyncProcess
 		queue.add(footer);
 		output.acceptAll(queue.asIterator())
 				.thenCompose($ -> output.accept(null))
-				.whenResult($1 -> completeProcess());
+				.whenResult($ -> completeProcess());
 	}
 
 	private ByteBufQueue deflate() {

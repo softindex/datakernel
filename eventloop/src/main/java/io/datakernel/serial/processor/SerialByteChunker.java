@@ -83,7 +83,7 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 						Stage.complete()
 								.thenCompose($ -> bufs.hasRemaining() ? output.accept(bufs.takeRemaining()) : Stage.complete())
 								.thenCompose($ -> output.accept(null))
-								.whenResult($1 -> completeProcess());
+								.whenResult($ -> completeProcess());
 					}
 				});
 	}

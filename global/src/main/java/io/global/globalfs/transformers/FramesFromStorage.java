@@ -76,7 +76,7 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 						handleBuffer(buf)
 								.whenResult($ -> iteration()) :
 						output.accept(null)
-								.whenResult($1 -> completeProcess()))
+								.whenResult($ -> completeProcess()))
 				.whenException(this::close);
 	}
 }

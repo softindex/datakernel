@@ -91,13 +91,13 @@ public class TestRepartitionController {
 
 		eventloop.delay(200, () -> {
 			System.out.println("Closing server_2");
-			servers.get(2).close().whenResult($4 -> System.out.println("server_2 closed indeed"));
+			servers.get(2).close().whenResult($ -> System.out.println("server_2 closed indeed"));
 			System.out.println("Closing server_4");
-			servers.get(4).close().whenResult($3 -> System.out.println("server_4 closed indeed"));
+			servers.get(4).close().whenResult($ -> System.out.println("server_4 closed indeed"));
 			System.out.println("Closing server_7");
-			servers.get(7).close().whenResult($2 -> System.out.println("server_7 closed indeed"));
+			servers.get(7).close().whenResult($ -> System.out.println("server_7 closed indeed"));
 			System.out.println("Closing server_8");
-			servers.get(8).close().whenResult($1 -> System.out.println("server_8 closed indeed"));
+			servers.get(8).close().whenResult($ -> System.out.println("server_8 closed indeed"));
 			System.out.println("Closing server_9");
 			servers.get(9).close().whenResult($ -> System.out.println("server_9 closed indeed"));
 			eventloop.delay(200, () -> {

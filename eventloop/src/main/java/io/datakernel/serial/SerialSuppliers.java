@@ -341,4 +341,40 @@ public final class SerialSuppliers {
 		};
 	}
 
+	public static <T, V> SerialSupplier<V> remap(SerialSupplier<T> supplier, Function<? super T, ? extends Iterator<? extends V>> fn) {
+		return new AbstractSerialSupplier<V>(supplier) {
+			Iterator<? extends V> iterator = CollectionUtils.emptyIterator();
+			boolean endOfStream;
+
+			@Override
+			protected Stage<V> doGet() {
+				if (iterator.hasNext()) return Stage.of(iterator.next());
+				SettableStage<V> cb = new SettableStage<>();
+				next(cb);
+				return cb;
+			}
+
+			private void next(SettableStage<V> cb) {
+				if (!endOfStream) {
+					supplier.get()
+							.whenComplete((item, e) -> {
+								if (e == null) {
+									if (item == null) endOfStream = true;
+									iterator = fn.apply(item);
+									if (iterator.hasNext()) {
+										cb.set(iterator.next());
+									} else {
+										next(cb);
+									}
+								} else {
+									cb.setException(e);
+								}
+							});
+				} else {
+					cb.set(null);
+				}
+			}
+		};
+	}
+
 }

@@ -1,6 +1,7 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 
 import java.time.Duration;
@@ -95,7 +96,11 @@ public final class CompleteExceptionallyStage<T> implements MaterializedStage<T>
 
 	@Override
 	public <U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
-		return Stage.of(fn.apply(null, exception));
+		try {
+			return Stage.of(fn.apply(null, exception));
+		} catch (UncheckedException u) {
+			return Stage.ofException(u.getCause());
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -106,7 +111,11 @@ public final class CompleteExceptionallyStage<T> implements MaterializedStage<T>
 
 	@Override
 	public <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
-		return fn.apply(null, exception);
+		try {
+			return fn.apply(null, exception);
+		} catch (UncheckedException u) {
+			return Stage.ofException(u.getCause());
+		}
 	}
 
 	@Override
