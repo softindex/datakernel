@@ -9,6 +9,7 @@ import io.datakernel.serial.SerialSupplier;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static io.datakernel.util.Preconditions.checkState;
 
@@ -33,6 +34,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 		return input -> {
 			checkState(!isProcessStarted(), "Can't configure splitter while it is running");
 			this.input = input;
+			if (this.input != null && this.outputs.stream().allMatch(Objects::nonNull)) start();
 			return getResult();
 		};
 	}
@@ -41,7 +43,10 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 	public SerialOutput<T> addOutput() {
 		int index = outputs.size();
 		outputs.add(null);
-		return output -> outputs.set(index, output);
+		return output -> {
+			outputs.set(index, output);
+			if (this.input != null && this.outputs.stream().allMatch(Objects::nonNull)) start();
+		};
 	}
 
 	public void setLenient(boolean lenient) {

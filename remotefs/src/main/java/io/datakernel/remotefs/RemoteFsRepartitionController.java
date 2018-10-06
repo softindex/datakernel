@@ -179,8 +179,6 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					splitter.addOutput()
 							.streamTo(SerialConsumer.of(AsyncConsumer.of(buf -> eventloop.post(buf::recycle))));
 
-					splitter.start();
-
 					return Stages.toList(uploadTargets.stream() // upload file to target partitions
 							.map(partitionId -> {
 								if (partitionId == localPartitionId) {

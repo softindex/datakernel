@@ -103,13 +103,17 @@ public final class SerialLZ4Compressor extends AbstractIOAsyncProcess
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = sanitize(input);
+			if (this.input != null && this.output != null) start();
 			return getResult();
 		};
 	}
 
 	@Override
 	public SerialOutput<ByteBuf> getOutput() {
-		return output -> this.output = sanitize(output);
+		return output -> {
+			this.output = sanitize(output);
+			if (this.input != null && this.output != null) start();
+		};
 	}
 
 	@Override

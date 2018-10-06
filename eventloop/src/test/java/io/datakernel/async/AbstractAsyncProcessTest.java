@@ -116,13 +116,17 @@ public class AbstractAsyncProcessTest {
 		public SerialInput<ByteBuf> getInput() {
 			return input -> {
 				this.input = input;
+				if (this.input != null && this.output != null) start();
 				return getResult();
 			};
 		}
 
 		@Override
 		public SerialOutput<ByteBuf> getOutput() {
-			return output -> this.output = output;
+			return output -> {
+				this.output = output;
+				if (this.input != null && this.output != null) start();
+			};
 		}
 
 		@Override

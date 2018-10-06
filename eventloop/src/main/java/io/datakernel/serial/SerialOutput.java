@@ -16,15 +16,12 @@
 
 package io.datakernel.serial;
 
-import io.datakernel.async.AsyncProcess;
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public interface SerialOutput<T> {
 	void set(SerialConsumer<T> output);
@@ -65,12 +62,6 @@ public interface SerialOutput<T> {
 	default void streamTo(SerialInput<T> to, SerialQueue<T> queue) {
 		MaterializedStage<Void> extraAcknowledgement = to.set(queue.getSupplier());
 		this.set(queue.getConsumer().withAcknowledgement(ack -> ack.both(extraAcknowledgement)));
-		if (this instanceof AsyncProcess) {
-			getCurrentEventloop().post(((AsyncProcess) this)::start);
-		}
-		if (to instanceof AsyncProcess) {
-			getCurrentEventloop().post(((AsyncProcess) to)::start);
-		}
 	}
 
 	default Stage<Void> streamTo(SerialConsumer<T> to) {
@@ -79,11 +70,7 @@ public interface SerialOutput<T> {
 
 	default Stage<Void> streamTo(SerialConsumer<T> to, SerialQueue<T> queue) {
 		this.set(queue.getConsumer());
-		Stage<Void> result = queue.getSupplier().streamTo(to);
-		if (this instanceof AsyncProcess) {
-			((AsyncProcess) this).start();
-		}
-		return result;
+		return queue.getSupplier().streamTo(to);
 	}
 
 }

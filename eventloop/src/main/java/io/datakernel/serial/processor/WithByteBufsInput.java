@@ -7,7 +7,7 @@ import io.datakernel.serial.HasByteBufsInput;
 public interface WithByteBufsInput<B> extends WithSerialInput<B, ByteBuf>, HasByteBufsInput {
 	@SuppressWarnings("unchecked")
 	default B withInput(ByteBufsSupplier byteBufsInput) {
-		getByteBufsInput().setInput(byteBufsInput);
+		getInput().set(byteBufsInput);
 		return (B) this;
 	}
 }

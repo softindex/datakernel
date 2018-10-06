@@ -74,17 +74,21 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 	}
 
 	@Override
-	public ByteBufsInput getByteBufsInput() {
+	public ByteBufsInput getInput() {
 		return input -> {
 			this.input = sanitize(input);
 			this.bufs = input.bufs;
+			if (this.input != null && this.output != null) start();
 			return getResult();
 		};
 	}
 
 	@Override
 	public SerialOutput<ByteBuf> getOutput() {
-		return output -> this.output = sanitize(output);
+		return output -> {
+			this.output = sanitize(output);
+			if (this.input != null && this.output != null) start();
+		};
 	}
 
 	// endregion

@@ -1,6 +1,5 @@
 package io.datakernel.serial.processor;
 
-import io.datakernel.async.AsyncProcess;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialConsumerFunction;
 import io.datakernel.serial.SerialSupplier;
@@ -11,24 +10,17 @@ public interface WithSerialToSerial<B, I, O> extends
 		WithSerialOutput<B, O>,
 		SerialSupplierFunction<I, SerialSupplier<O>>,
 		SerialConsumerFunction<O, SerialConsumer<I>> {
+
 	@Override
 	default SerialSupplier<O> apply(SerialSupplier<I> supplier) {
 		getInput().set(supplier);
-		SerialSupplier<O> outputSupplier = getOutput().getSupplier();
-		if (this instanceof AsyncProcess) {
-			((AsyncProcess) this).start();
-		}
-		return outputSupplier;
+		return getOutput().getSupplier();
 	}
 
 	@Override
 	default SerialConsumer<I> apply(SerialConsumer<O> consumer) {
 		getOutput().set(consumer);
-		SerialConsumer<I> outputConsumer = getInput().getConsumer();
-		if (this instanceof AsyncProcess) {
-			((AsyncProcess) this).start();
-		}
-		return outputConsumer;
+		return getInput().getConsumer();
 	}
 
 }

@@ -99,9 +99,9 @@ public class BufsConsumerIntegrationTest {
 	}
 
 	private void doTest(AsyncProcess process1, AsyncProcess process2) {
-		eventloop.post(() -> Stages.all(process1.start(), process2.start())
+		Stages.all(process1.getResult(), process2.getResult())
 				.whenComplete(assertComplete())
-				.whenComplete(($, e) -> assertTrue(consumer.executed)));
+				.whenComplete(($, e) -> assertTrue(consumer.executed));
 
 		eventloop.run();
 	}

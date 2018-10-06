@@ -30,7 +30,6 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.Recyclable.deepRecycle;
 import static io.datakernel.util.Recyclable.tryRecycle;
@@ -172,11 +171,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	}
 
 	default MaterializedStage<Void> streamTo(SerialInput<T> to) {
-		MaterializedStage<Void> extraAcknowledge = to.set(this);
-		if (to instanceof AsyncProcess) {
-			getCurrentEventloop().post(((AsyncProcess) to)::start);
-		}
-		return extraAcknowledge;
+		return to.set(this);
 	}
 
 	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {

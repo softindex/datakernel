@@ -162,9 +162,7 @@ public abstract class AbstractHttpConnection {
 				httpMessage.writeTo(buf);
 				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
 				chunker.getInput().set(httpMessage.bodySupplier);
-				SerialSupplier<ByteBuf> result = SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutput().getSupplier());
-				chunker.start();
-				return result;
+				return SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutput().getSupplier());
 			} else {
 				httpMessage.setHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
@@ -175,10 +173,7 @@ public abstract class AbstractHttpConnection {
 				SerialQueue<ByteBuf> queue = new SerialZeroBuffer<>();
 				deflater.getOutput().set(queue.getConsumer());
 				chunker.getInput().set(queue.getSupplier());
-				SerialSupplier<ByteBuf> result = SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutput().getSupplier());
-				deflater.start();
-				chunker.start();
-				return result;
+				return SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutput().getSupplier());
 			}
 		} else {
 			httpMessage.setHeader(CONTENT_LENGTH, ofDecimal(0));
@@ -393,12 +388,12 @@ public abstract class AbstractHttpConnection {
 		if ((flags & CHUNKED) == 0) {
 			BufsConsumerDelimiter decoder = BufsConsumerDelimiter.create(contentLength);
 			transferDecoder = decoder;
-			input = decoder.getByteBufsInput();
+			input = decoder.getInput();
 			transferDecoderOutput = decoder.getOutput();
 		} else {
 			BufsConsumerChunkedDecoder decoder = BufsConsumerChunkedDecoder.create();
 			transferDecoder = decoder;
-			input = decoder.getByteBufsInput();
+			input = decoder.getInput();
 			transferDecoderOutput = decoder.getOutput();
 		}
 
@@ -417,7 +412,7 @@ public abstract class AbstractHttpConnection {
 			decoder.getInput().set(queue.getSupplier());
 		}
 
-		input.setInput(ByteBufsSupplier.ofProvidedQueue(
+		input.set(ByteBufsSupplier.ofProvidedQueue(
 				readQueue,
 				() -> socket.read()
 						.thenComposeEx((buf, e) -> {
@@ -435,13 +430,7 @@ public abstract class AbstractHttpConnection {
 		onHeadersReceived(null, contentDecoderOutput.getSupplier(new SerialZeroBuffer<>()));
 		if (isClosed()) return;
 
-		Stage<Void> stage;
-		if (contentDecoder == null) {
-			stage = transferDecoder.start();
-		} else {
-			transferDecoder.start();
-			stage = contentDecoder.start();
-		}
+		Stage<Void> stage = contentDecoder == null ? transferDecoder.getResult() : contentDecoder.getResult();
 		stage.whenComplete(($, e) -> {
 			if (e == null) {
 				flags |= BODY_RECEIVED;

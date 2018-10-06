@@ -55,13 +55,17 @@ abstract class FramesToByteBufs extends AbstractIOAsyncProcess
 	public SerialInput<DataFrame> getInput() {
 		return input -> {
 			this.input = sanitize(input);
+			if (this.input != null && this.output != null) start();
 			return getResult();
 		};
 	}
 
 	@Override
 	public SerialOutput<ByteBuf> getOutput() {
-		return output -> this.output = sanitize(output);
+		return output -> {
+			this.output = sanitize(output);
+			if (this.input != null && this.output != null) start();
+		};
 	}
 
 	@Override

@@ -64,11 +64,12 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 	}
 
 	@Override
-	public ByteBufsInput getByteBufsInput() {
+	public ByteBufsInput getInput() {
 		return input -> {
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
 			this.bufs = input.bufs;
+			if (this.input != null && this.output != null) start();
 			return getResult();
 		};
 	}
@@ -78,6 +79,7 @@ public final class BufsConsumerGzipInflater extends AbstractIOAsyncProcess
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = sanitize(output);
+			if (this.input != null && this.output != null) start();
 		};
 	}
 	// endregion

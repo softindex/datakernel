@@ -111,7 +111,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode {
 							})
 							.streamTo(SerialConsumer.ofStage(local.upload(address.getPath(), offset)))
 							.materialize();
-					splitter.start();
 					return output.withEndOfStream(eos -> eos.both(cacheProcess));
 				});
 	}

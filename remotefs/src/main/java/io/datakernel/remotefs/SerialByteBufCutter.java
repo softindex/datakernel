@@ -33,6 +33,7 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 		return input -> {
 			checkState(this.input == null, "Input already set");
 			this.input = input;
+			if (this.input != null && this.output != null) start();
 			return getResult();
 		};
 	}
@@ -42,6 +43,7 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = output;
+			if (this.input != null && this.output != null) start();
 		};
 	}
 

@@ -178,8 +178,6 @@ public class CachedFsClient implements FsClient, EventloopService {
 
 					splitter.addOutput().set(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
 
-					splitter.start();
-
 					return (sizeInCache == 0 ? queue.getSupplier() : SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, sizeInCache), queue.getSupplier()))
 							.withEndOfStream(eos -> eos.thenCompose($ -> cacheAppendProcess));
 				});

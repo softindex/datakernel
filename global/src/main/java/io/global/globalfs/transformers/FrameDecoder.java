@@ -39,13 +39,17 @@ public final class FrameDecoder extends AbstractIOAsyncProcess implements WithSe
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = sanitize(input);
+			if (this.input != null && this.output != null) start();
 			return getResult();
 		};
 	}
 
 	@Override
 	public SerialOutput<DataFrame> getOutput() {
-		return output -> this.output = sanitize(output);
+		return output -> {
+			this.output = sanitize(output);
+			if (this.input != null && this.output != null) start();
+		};
 	}
 
 	@Override
