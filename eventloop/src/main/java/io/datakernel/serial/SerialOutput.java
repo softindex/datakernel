@@ -55,20 +55,20 @@ public interface SerialOutput<T> {
 		return output -> SerialOutput.this.set(output.peek(peek));
 	}
 
-	default void streamTo(SerialInput<T> to) {
-		streamTo(to, new SerialZeroBuffer<>());
+	default void bindTo(SerialInput<T> to) {
+		bindTo(to, new SerialZeroBuffer<>());
 	}
 
-	default void streamTo(SerialInput<T> to, SerialQueue<T> queue) {
+	default void bindTo(SerialInput<T> to, SerialQueue<T> queue) {
 		MaterializedStage<Void> extraAcknowledgement = to.set(queue.getSupplier());
 		this.set(queue.getConsumer().withAcknowledgement(ack -> ack.both(extraAcknowledgement)));
 	}
 
-	default Stage<Void> streamTo(SerialConsumer<T> to) {
-		return streamTo(to, new SerialZeroBuffer<>());
+	default Stage<Void> bindTo(SerialConsumer<T> to) {
+		return bindTo(to, new SerialZeroBuffer<>());
 	}
 
-	default Stage<Void> streamTo(SerialConsumer<T> to, SerialQueue<T> queue) {
+	default Stage<Void> bindTo(SerialConsumer<T> to, SerialQueue<T> queue) {
 		this.set(queue.getConsumer());
 		return queue.getSupplier().streamTo(to);
 	}

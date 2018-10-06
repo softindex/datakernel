@@ -73,15 +73,15 @@ public class AbstractAsyncProcessTest {
 		}
 
 		for (int i = 0; i < size - 1; i++) {
-			processes[i].getOutput().streamTo(processes[i + 1].getInput());
+			processes[i].getOutput().bindTo(processes[i + 1].getInput());
 		}
 
-		acknowledgement = SerialSupplier.ofIterable(expectedData).streamTo(processes[0]);
+		acknowledgement = SerialSupplier.ofIterable(expectedData).bindTo(processes[0].getInput());
 	}
 
 	@Test
 	public void testAckPropagation() {
-		processes[size - 1].getOutput().streamTo(SerialConsumer.of(value -> {
+		processes[size - 1].getOutput().bindTo(SerialConsumer.of(value -> {
 			actualData.add(value);
 			if (expectedData.size() == actualData.size()) {
 				deepRecycle(actualData);
@@ -97,7 +97,7 @@ public class AbstractAsyncProcessTest {
 
 	@Test
 	public void testAckPropagationWithFailure() {
-		processes[size - 1].getOutput().streamTo(SerialConsumer.of(value -> {
+		processes[size - 1].getOutput().bindTo(SerialConsumer.of(value -> {
 			tryRecycle(value);
 			return Stage.ofException(error);
 		}));

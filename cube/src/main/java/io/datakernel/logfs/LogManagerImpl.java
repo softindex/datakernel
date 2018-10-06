@@ -107,7 +107,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 								.withInitialBufferSize(bufferSize)
 								.withSkipSerializationErrors())
 						.apply(SerialLZ4Compressor.createFastCompressor())
-						.streamTo(LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition)))
+						.bindTo(LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition)))
 				.withLateBinding());
 	}
 

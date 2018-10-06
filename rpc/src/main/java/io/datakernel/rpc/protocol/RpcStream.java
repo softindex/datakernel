@@ -125,14 +125,14 @@ public final class RpcStream {
 			SerialLZ4Decompressor decompressor = SerialLZ4Decompressor.create();
 			SerialLZ4Compressor compressor = SerialLZ4Compressor.createFastCompressor();
 
-			socket.reader().streamTo(decompressor);
-			decompressor.getOutput().streamTo(deserializer.getInput());
+			socket.reader().bindTo(decompressor.getInput());
+			decompressor.getOutput().bindTo(deserializer.getInput());
 
-			serializer.getOutput().streamTo(compressor.getInput());
-			compressor.getOutput().streamTo(socket.writer());
+			serializer.getOutput().bindTo(compressor.getInput());
+			compressor.getOutput().bindTo(socket.writer());
 		} else {
-			socket.reader().streamTo(deserializer);
-			serializer.getOutput().streamTo(socket.writer());
+			socket.reader().bindTo(deserializer.getInput());
+			serializer.getOutput().bindTo(socket.writer());
 		}
 
 		deserializer.streamTo(receiver);

@@ -177,7 +177,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 					// recycle original non-slice buffer
 					splitter.addOutput()
-							.streamTo(SerialConsumer.of(AsyncConsumer.of(buf -> eventloop.post(buf::recycle))));
+							.bindTo(SerialConsumer.of(AsyncConsumer.of(buf -> eventloop.post(buf::recycle))));
 
 					return Stages.toList(uploadTargets.stream() // upload file to target partitions
 							.map(partitionId -> {
@@ -185,7 +185,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 									return Stage.of(Try.of(null)); // just skip it here
 								}
 								return splitter.addOutput()
-										.streamTo(clients.get(partitionId) // upload file to this partition
+										.bindTo(clients.get(partitionId) // upload file to this partition
 												.uploadSerial(name)
 												.transform(ByteBuf::slice)) // using bytebuf slices
 										.whenException(err -> {

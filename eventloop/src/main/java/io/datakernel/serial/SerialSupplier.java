@@ -166,11 +166,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		return SerialSuppliers.stream(this, consumer);
 	}
 
-	default MaterializedStage<Void> streamTo(HasSerialInput<T> to) {
-		return streamTo(to.getInput());
-	}
-
-	default MaterializedStage<Void> streamTo(SerialInput<T> to) {
+	default MaterializedStage<Void> bindTo(SerialInput<T> to) {
 		return to.set(this);
 	}
 

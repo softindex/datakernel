@@ -125,9 +125,9 @@ public class RpcBinaryProtocolTest {
 		StreamConsumerToList<RpcMessage> results = StreamConsumerToList.create();
 
 		client.streamTo(serializer);
-		serializer.getOutput().streamTo(compressor.getInput());
-		compressor.getOutput().streamTo(decompressor.getInput());
-		decompressor.getOutput().streamTo(deserializer.getInput());
+		serializer.getOutput().bindTo(compressor.getInput());
+		compressor.getOutput().bindTo(decompressor.getInput());
+		decompressor.getOutput().bindTo(deserializer.getInput());
 		deserializer.streamTo(results);
 
 		eventloop.run();
