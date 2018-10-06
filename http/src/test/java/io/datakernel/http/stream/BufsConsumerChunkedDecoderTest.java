@@ -253,7 +253,7 @@ public class BufsConsumerChunkedDecoderTest {
 
 	private void doTest(Exception exception) {
 		chunkedDecoder.getInput().set(ByteBufsSupplier.of(SerialSupplier.ofIterable(list)));
-		chunkedDecoder.getResult()
+		chunkedDecoder.getProcessResult()
 				.whenComplete(($, e) -> {
 					if (exception == null) {
 						assertNull(e);

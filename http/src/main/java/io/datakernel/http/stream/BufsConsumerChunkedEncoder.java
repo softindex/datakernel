@@ -1,19 +1,19 @@
 package io.datakernel.http.stream;
 
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class BufsConsumerChunkedEncoder extends AbstractIOAsyncProcess
+public final class BufsConsumerChunkedEncoder extends AbstractAsyncProcess
 		implements WithSerialToSerial<BufsConsumerChunkedEncoder, ByteBuf, ByteBuf> {
 	private final ByteBuf LAST_CHUNK = ByteBuf.wrapForReading(new byte[]{48, 13, 10, 13, 10});
 
@@ -32,8 +32,8 @@ public final class BufsConsumerChunkedEncoder extends AbstractIOAsyncProcess
 		return input -> {
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
-			if (this.input != null && this.output != null) start();
-			return getResult();
+			if (this.input != null && this.output != null) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -42,7 +42,7 @@ public final class BufsConsumerChunkedEncoder extends AbstractIOAsyncProcess
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) start();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 	// endregion

@@ -1,5 +1,6 @@
 package io.datakernel.http.stream;
 
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -7,7 +8,6 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
 
 import java.util.zip.CRC32;
@@ -16,7 +16,7 @@ import java.util.zip.Deflater;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class BufsConsumerGzipDeflater extends AbstractIOAsyncProcess
+public final class BufsConsumerGzipDeflater extends AbstractAsyncProcess
 		implements WithSerialToSerial<BufsConsumerGzipDeflater, ByteBuf, ByteBuf> {
 	public static final int DEFAULT_MAX_BUF_SIZE = 512;
 	// rfc 1952 section 2.3.1
@@ -54,8 +54,8 @@ public final class BufsConsumerGzipDeflater extends AbstractIOAsyncProcess
 		return input -> {
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
-			if (this.input != null && this.output != null) start();
-			return getResult();
+			if (this.input != null && this.output != null) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -64,7 +64,7 @@ public final class BufsConsumerGzipDeflater extends AbstractIOAsyncProcess
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) start();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 	// endregion

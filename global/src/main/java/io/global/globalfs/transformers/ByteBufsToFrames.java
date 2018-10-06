@@ -17,17 +17,17 @@
 
 package io.global.globalfs.transformers;
 
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
 import io.global.globalfs.api.DataFrame;
 
-abstract class ByteBufsToFrames extends AbstractIOAsyncProcess
+abstract class ByteBufsToFrames extends AbstractAsyncProcess
 		implements WithSerialToSerial<ByteBufsToFrames, ByteBuf, DataFrame> {
 	protected long position;
 	protected long nextCheckpoint;
@@ -45,8 +45,8 @@ abstract class ByteBufsToFrames extends AbstractIOAsyncProcess
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			if (this.input != null && this.output != null) start();
-			return getResult();
+			if (this.input != null && this.output != null) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -54,7 +54,7 @@ abstract class ByteBufsToFrames extends AbstractIOAsyncProcess
 	public SerialOutput<DataFrame> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) start();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 

@@ -1,18 +1,18 @@
 package io.datakernel.http.stream;
 
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.serial.ByteBufsInput;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialOutput;
-import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithByteBufsInput;
 import io.datakernel.serial.processor.WithSerialToSerial;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class BufsConsumerDelimiter extends AbstractIOAsyncProcess
+public final class BufsConsumerDelimiter extends AbstractAsyncProcess
 		implements WithSerialToSerial<BufsConsumerDelimiter, ByteBuf, ByteBuf>, WithByteBufsInput<BufsConsumerDelimiter> {
 
 	private ByteBufQueue bufs;
@@ -35,8 +35,8 @@ public final class BufsConsumerDelimiter extends AbstractIOAsyncProcess
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
 			this.bufs = input.bufs;
-			if (this.input != null && this.output != null) start();
-			return getResult();
+			if (this.input != null && this.output != null) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -45,7 +45,7 @@ public final class BufsConsumerDelimiter extends AbstractIOAsyncProcess
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) start();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 	// endregion

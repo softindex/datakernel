@@ -99,7 +99,7 @@ public class BufsConsumerIntegrationTest {
 	}
 
 	private void doTest(AsyncProcess process1, AsyncProcess process2) {
-		Stages.all(process1.getResult(), process2.getResult())
+		Stages.all(process1.getProcessResult(), process2.getProcessResult())
 				.whenComplete(assertComplete())
 				.whenComplete(($, e) -> assertTrue(consumer.executed));
 

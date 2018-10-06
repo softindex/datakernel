@@ -430,7 +430,9 @@ public abstract class AbstractHttpConnection {
 		onHeadersReceived(null, contentDecoderOutput.getSupplier(new SerialZeroBuffer<>()));
 		if (isClosed()) return;
 
-		Stage<Void> stage = contentDecoder == null ? transferDecoder.getResult() : contentDecoder.getResult();
+		Stage<Void> stage = contentDecoder == null ?
+				transferDecoder.getProcessResult() :
+				contentDecoder.getProcessResult();
 		stage.whenComplete(($, e) -> {
 			if (e == null) {
 				flags |= BODY_RECEIVED;

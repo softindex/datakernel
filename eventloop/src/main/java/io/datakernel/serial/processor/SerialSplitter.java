@@ -34,8 +34,8 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 		return input -> {
 			checkState(!isProcessStarted(), "Can't configure splitter while it is running");
 			this.input = input;
-			if (this.input != null && this.outputs.stream().allMatch(Objects::nonNull)) start();
-			return getResult();
+			if (this.input != null && this.outputs.stream().allMatch(Objects::nonNull)) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -45,7 +45,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 		outputs.add(null);
 		return output -> {
 			outputs.set(index, output);
-			if (this.input != null && this.outputs.stream().allMatch(Objects::nonNull)) start();
+			if (this.input != null && this.outputs.stream().allMatch(Objects::nonNull)) startProcess();
 		};
 	}
 

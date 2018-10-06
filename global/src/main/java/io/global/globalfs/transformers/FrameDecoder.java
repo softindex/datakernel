@@ -17,10 +17,10 @@
 
 package io.global.globalfs.transformers;
 
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.*;
-import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
 import io.global.common.SignedData;
 import io.global.globalfs.api.DataFrame;
@@ -31,7 +31,7 @@ import io.global.globalfs.api.GlobalFsCheckpoint;
  * <p>
  * It's counterpart is the {@link FrameEncoder}.
  */
-public final class FrameDecoder extends AbstractIOAsyncProcess implements WithSerialToSerial<FrameDecoder, ByteBuf, DataFrame> {
+public final class FrameDecoder extends AbstractAsyncProcess implements WithSerialToSerial<FrameDecoder, ByteBuf, DataFrame> {
 	protected SerialSupplier<ByteBuf> input;
 	protected SerialConsumer<DataFrame> output;
 
@@ -39,8 +39,8 @@ public final class FrameDecoder extends AbstractIOAsyncProcess implements WithSe
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			if (this.input != null && this.output != null) start();
-			return getResult();
+			if (this.input != null && this.output != null) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -48,7 +48,7 @@ public final class FrameDecoder extends AbstractIOAsyncProcess implements WithSe
 	public SerialOutput<DataFrame> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) start();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 

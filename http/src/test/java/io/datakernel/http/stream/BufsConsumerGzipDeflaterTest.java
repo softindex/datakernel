@@ -93,7 +93,7 @@ public class BufsConsumerGzipDeflaterTest {
 
 	private void doTest() {
 		gzip.getInput().set(SerialSupplier.ofIterable(list));
-		gzip.getResult().whenComplete(assertComplete());
+		gzip.getProcessResult().whenComplete(assertComplete());
 
 		eventloop.run();
 	}

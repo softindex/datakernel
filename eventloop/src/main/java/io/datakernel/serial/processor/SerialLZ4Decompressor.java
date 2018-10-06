@@ -16,6 +16,7 @@
 
 package io.datakernel.serial.processor;
 
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -33,7 +34,7 @@ import net.jpountz.xxhash.XXHashFactory;
 
 import static io.datakernel.serial.processor.SerialLZ4Compressor.*;
 
-public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
+public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 		implements WithSerialToSerial<SerialLZ4Decompressor, ByteBuf, ByteBuf>, WithByteBufsInput<SerialLZ4Decompressor> {
 	public static final int HEADER_LENGTH = SerialLZ4Compressor.HEADER_LENGTH;
 
@@ -78,8 +79,8 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 		return input -> {
 			this.input = sanitize(input);
 			this.bufs = input.bufs;
-			if (this.input != null && this.output != null) start();
-			return getResult();
+			if (this.input != null && this.output != null) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -87,7 +88,7 @@ public final class SerialLZ4Decompressor extends AbstractIOAsyncProcess
 	public SerialOutput<ByteBuf> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) start();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 

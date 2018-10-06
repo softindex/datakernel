@@ -17,8 +17,14 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.exception.StacklessException;
+import io.datakernel.serial.*;
+
+import static io.datakernel.util.Recyclable.tryRecycle;
 
 public abstract class AbstractAsyncProcess implements AsyncProcess {
+	public static final StacklessException ASYNC_PROCESS_IS_COMPLETE = new StacklessException("AsyncProcess is complete");
+
 	private boolean processStarted;
 	private boolean processComplete;
 	private SettableStage<Void> processResult = new SettableStage<>();
@@ -53,12 +59,12 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	}
 
 	@Override
-	public MaterializedStage<Void> getResult() {
+	public MaterializedStage<Void> getProcessResult() {
 		return processResult;
 	}
 
 	@Override
-	public final MaterializedStage<Void> start() {
+	public final MaterializedStage<Void> startProcess() {
 		if (!processStarted) {
 			processStarted = true;
 			beforeProcess();
@@ -84,4 +90,72 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	}
 
 	protected abstract void doCloseWithError(Throwable e);
+
+	protected final <T> SerialSupplier<T> sanitize(SerialSupplier<T> supplier) {
+		return new AbstractSerialSupplier<T>() {
+			@Override
+			protected Stage<T> doGet() {
+				return sanitize(supplier.get());
+			}
+
+			@Override
+			protected void onClosed(Throwable e) {
+				supplier.close(e);
+				AbstractAsyncProcess.this.close(e);
+			}
+		};
+	}
+
+	protected final <T> SerialConsumer<T> sanitize(SerialConsumer<T> consumer) {
+		return new AbstractSerialConsumer<T>() {
+			@Override
+			protected Stage<Void> doAccept(@Nullable T item) {
+				return sanitize(consumer.accept(item));
+			}
+
+			@Override
+			protected void onClosed(Throwable e) {
+				consumer.close(e);
+				AbstractAsyncProcess.this.close(e);
+			}
+		};
+	}
+
+	protected final ByteBufsSupplier sanitize(ByteBufsSupplier supplier) {
+		return new ByteBufsSupplier(supplier.bufs) {
+			@Override
+			public Stage<Void> needMoreData() {
+				return sanitize(supplier.needMoreData());
+			}
+
+			@Override
+			public Stage<Void> endOfStream() {
+				return sanitize(supplier.endOfStream());
+			}
+
+			@Override
+			public void close(Throwable e) {
+				supplier.close(e);
+				AbstractAsyncProcess.this.close(e);
+			}
+		};
+	}
+
+	protected final <T> Stage<T> sanitize(Stage<T> stage) {
+		assert !isProcessComplete();
+		return stage
+				.thenComposeEx((value, e) -> {
+					if (isProcessComplete()) {
+						tryRecycle(value);
+						return Stage.ofException(ASYNC_PROCESS_IS_COMPLETE);
+					}
+					if (e == null) {
+						return Stage.of(value);
+					} else {
+						close(e);
+						return Stage.ofException(e);
+					}
+				});
+	}
+
 }

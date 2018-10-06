@@ -1,5 +1,6 @@
 package io.datakernel.http.stream;
 
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
@@ -7,7 +8,6 @@ import io.datakernel.serial.ByteBufsInput;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialOutput;
-import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithByteBufsInput;
 import io.datakernel.serial.processor.WithSerialToSerial;
 
@@ -18,7 +18,7 @@ import static io.datakernel.serial.ByteBufsParser.ofCrlfTerminatedBytes;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.Math.min;
 
-public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
+public final class BufsConsumerChunkedDecoder extends AbstractAsyncProcess
 		implements WithSerialToSerial<BufsConsumerChunkedDecoder, ByteBuf, ByteBuf>, WithByteBufsInput<BufsConsumerChunkedDecoder> {
 	public static final int DEFAULT_MAX_EXT_LENGTH = 1024; //1 Kb
 	public static final int DEFAULT_MAX_CHUNK_LENGTH = 1024; //1 Kb
@@ -61,8 +61,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
 			this.bufs = input.bufs;
-			if (this.input != null && this.output != null) start();
-			return getResult();
+			if (this.input != null && this.output != null) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -71,7 +71,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractIOAsyncProcess
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) start();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 	// endregion

@@ -51,8 +51,8 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = input;
-			if (this.input != null && this.output != null) start();
-			return getResult();
+			if (this.input != null && this.output != null) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -60,7 +60,7 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 	public SerialOutput<ByteBuf> getOutput() {
 		return output -> {
 			this.output = output;
-			if (this.input != null && this.output != null) start();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 	// endregion

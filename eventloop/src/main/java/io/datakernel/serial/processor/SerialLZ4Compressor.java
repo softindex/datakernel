@@ -16,6 +16,7 @@
 
 package io.datakernel.serial.processor;
 
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.jmx.ValueStats;
@@ -30,7 +31,7 @@ import net.jpountz.xxhash.XXHashFactory;
 
 import java.time.Duration;
 
-public final class SerialLZ4Compressor extends AbstractIOAsyncProcess
+public final class SerialLZ4Compressor extends AbstractAsyncProcess
 		implements WithSerialToSerial<SerialLZ4Compressor, ByteBuf, ByteBuf> {
 	static final byte[] MAGIC = new byte[]{'L', 'Z', '4', 'B', 'l', 'o', 'c', 'k'};
 	static final int MAGIC_LENGTH = MAGIC.length;
@@ -103,8 +104,8 @@ public final class SerialLZ4Compressor extends AbstractIOAsyncProcess
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			if (this.input != null && this.output != null) start();
-			return getResult();
+			if (this.input != null && this.output != null) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -112,7 +113,7 @@ public final class SerialLZ4Compressor extends AbstractIOAsyncProcess
 	public SerialOutput<ByteBuf> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) start();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 

@@ -17,13 +17,13 @@
 
 package io.global.globalfs.transformers;
 
+import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.AbstractIOAsyncProcess;
 import io.datakernel.serial.processor.WithSerialToSerial;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -34,7 +34,7 @@ import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
 
-abstract class FramesToByteBufs extends AbstractIOAsyncProcess
+abstract class FramesToByteBufs extends AbstractAsyncProcess
 		implements WithSerialToSerial<FramesToByteBufs, DataFrame, ByteBuf> {
 	private final PubKey pubKey;
 
@@ -55,8 +55,8 @@ abstract class FramesToByteBufs extends AbstractIOAsyncProcess
 	public SerialInput<DataFrame> getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			if (this.input != null && this.output != null) start();
-			return getResult();
+			if (this.input != null && this.output != null) startProcess();
+			return getProcessResult();
 		};
 	}
 
@@ -64,7 +64,7 @@ abstract class FramesToByteBufs extends AbstractIOAsyncProcess
 	public SerialOutput<ByteBuf> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) start();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 

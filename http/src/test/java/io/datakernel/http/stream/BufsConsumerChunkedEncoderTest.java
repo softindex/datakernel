@@ -79,7 +79,7 @@ public class BufsConsumerChunkedEncoderTest {
 
 	private void doTest() {
 		chunkedEncoder.getInput().set(SerialSupplier.ofIterable(list));
-		chunkedEncoder.getResult()
+		chunkedEncoder.getProcessResult()
 				.whenComplete(assertComplete());
 		eventloop.run();
 	}
