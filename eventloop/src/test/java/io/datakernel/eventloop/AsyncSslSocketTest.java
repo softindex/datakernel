@@ -239,7 +239,7 @@ public class AsyncSslSocketTest {
 					ByteBufsSupplier supplier = ByteBufsSupplier.of(clientSsl.reader());
 					PARSER.parse(supplier)
 							.whenComplete(assertFailure(e -> {
-								supplier.bufs.recycle();
+								supplier.getBufs().recycle();
 								assertSame(CLOSE_EXCEPTION, e);
 							}));
 				});

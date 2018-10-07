@@ -68,7 +68,7 @@ public final class BufsConsumerGzipInflater extends AbstractAsyncProcess
 		return input -> {
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
-			this.bufs = input.bufs;
+			this.bufs = input.getBufs();
 			if (this.input != null && this.output != null) startProcess();
 			return getProcessResult();
 		};

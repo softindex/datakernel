@@ -215,15 +215,16 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		switchPool(server.poolServing);
 
-		Stage<HttpResponse> promise;
+		HttpRequest request = this.request;
+		Stage<HttpResponse> servletResult;
 		try {
-			promise = servlet.serve(request);
+			servletResult = servlet.serve(request);
 		} catch (UncheckedException u) {
-			promise = Stage.ofException(u.getCause());
+			servletResult = Stage.ofException(u.getCause());
 		} catch (ParseException e) {
-			promise = Stage.ofException(e);
+			servletResult = Stage.ofException(e);
 		}
-		promise.whenComplete((response, e) -> {
+		servletResult.whenComplete((response, e) -> {
 			if (isClosed()) {
 				request.recycle();
 				if (response != null) response.recycle();

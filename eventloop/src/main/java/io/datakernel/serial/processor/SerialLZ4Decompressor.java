@@ -78,7 +78,7 @@ public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 	public ByteBufsInput getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			this.bufs = input.bufs;
+			this.bufs = input.getBufs();
 			if (this.input != null && this.output != null) startProcess();
 			return getProcessResult();
 		};

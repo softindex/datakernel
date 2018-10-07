@@ -157,14 +157,8 @@ public class HttpStreamTest {
 
 		server = AsyncHttpServer.create(eventloop,
 				request -> {
-					SerialSupplier<ByteBuf> stream = request.getBodyStream();
-					return stream.get()
-							.thenCompose(buf -> {
-								HttpException testException = new HttpException(432, exceptionMessage);
-								stream.close(testException);
-								buf.recycle();
-								return Stage.ofException(testException);
-							});
+					HttpException testException = new HttpException(432, exceptionMessage);
+					return Stage.ofException(testException);
 				})
 				.withListenPort(PORT);
 		server.listen();

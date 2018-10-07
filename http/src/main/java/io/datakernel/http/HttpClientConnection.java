@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
@@ -76,9 +75,7 @@ import static io.datakernel.http.HttpHeaders.CONNECTION;
  */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
-	@Nullable
-	private SettableStage<HttpResponse> result;
-	@Nullable
+	private SettableStage<HttpResponse> callback;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
 	private final AsyncHttpClient.Inspector inspector;
@@ -97,10 +94,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Throwable e) {
-		if (inspector != null) inspector.onHttpError(this, result == null, e);
-		if (result != null) {
-			SettableStage<HttpResponse> callback = this.result;
-			this.result = null;
+		if (inspector != null) inspector.onHttpError(this, callback == null, e);
+		if (callback != null) {
+			SettableStage<HttpResponse> callback = this.callback;
+			this.callback = null;
 			callback.setException(e);
 		}
 	}
@@ -165,15 +162,14 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		assert !isClosed();
 		assert body != null ^ bodySupplier != null;
 
-		assert response != null;
+		HttpResponse response = this.response;
 		response.body = body;
 		response.bodySupplier = bodySupplier;
-
 		if (inspector != null) inspector.onHttpResponse(this, response);
 
-		assert result != null;
-		result.set(response);
-		result = null;
+		SettableStage<HttpResponse> callback = this.callback;
+		this.callback = null;
+		callback.set(response);
 
 		if (response.body != null) {
 			response.body.recycle();
@@ -230,7 +226,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param request request for sending
 	 */
 	public Stage<HttpResponse> send(HttpRequest request) {
-		this.result = new SettableStage<>();
+		this.callback = new SettableStage<>();
 		switchPool(client.poolReadWrite);
 		HttpHeaderValue connectionHeader = CONNECTION_KEEP_ALIVE_HEADER;
 		if (client.maxKeepAliveRequests != -1) {
@@ -241,7 +237,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		request.setHeader(CONNECTION, connectionHeader);
 		writeHttpMessage(request);
 		readHttpMessage();
-		return this.result;
+		return this.callback;
 	}
 
 	/**
@@ -250,7 +246,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onClosed() {
-		assert result == null;
+		assert callback == null;
 		if (pool == client.poolKeepAlive) {
 			AddressLinkedList addresses = client.addresses.get(remoteAddress);
 			addresses.removeNode(this);
@@ -273,7 +269,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public String toString() {
 		return "HttpClientConnection{" +
-				"callback=" + result +
+				"callback=" + callback +
 				", response=" + response +
 				", httpClient=" + client +
 				", keepAlive=" + (pool == client.poolKeepAlive) +

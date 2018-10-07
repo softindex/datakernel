@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.Preconditions.checkState;
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static io.datakernel.util.Sliceable.trySlice;
@@ -36,7 +37,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 		return input -> {
 			checkState(!isProcessStarted(), "Can't configure splitter while it is running");
 			this.input = input;
-			if (this.input != null && this.outputs.stream().allMatch(Objects::nonNull)) startProcess();
+			tryStart();
 			return getProcessResult();
 		};
 	}
@@ -47,8 +48,14 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 		outputs.add(null);
 		return output -> {
 			outputs.set(index, output);
-			if (this.input != null && this.outputs.stream().allMatch(Objects::nonNull)) startProcess();
+			tryStart();
 		};
+	}
+
+	private void tryStart() {
+		if (this.input != null && this.outputs.stream().allMatch(Objects::nonNull)) {
+			getCurrentEventloop().post(this::startProcess);
+		}
 	}
 
 	public void setLenient(boolean lenient) {

@@ -1,9 +1,6 @@
 package io.datakernel.serial;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ExpectedException;
@@ -14,7 +11,7 @@ public abstract class ByteBufsSupplier implements Cancellable {
 	public static final Exception UNEXPECTED_DATA_EXCEPTION = new ParseException("Unexpected data after end-of-stream");
 	public static final Exception UNEXPECTED_END_OF_STREAM_EXCEPTION = new ParseException("Unexpected end-of-stream");
 
-	public final ByteBufQueue bufs;
+	protected final ByteBufQueue bufs;
 
 	protected ByteBufsSupplier(ByteBufQueue bufs) {
 		this.bufs = bufs;
@@ -22,6 +19,10 @@ public abstract class ByteBufsSupplier implements Cancellable {
 
 	protected ByteBufsSupplier() {
 		this.bufs = new ByteBufQueue();
+	}
+
+	public ByteBufQueue getBufs() {
+		return bufs;
 	}
 
 	public abstract Stage<Void> needMoreData();
@@ -150,4 +151,7 @@ public abstract class ByteBufsSupplier implements Cancellable {
 				this);
 	}
 
+	public MaterializedStage<Void> bindTo(ByteBufsInput input) {
+		return input.set(this);
+	}
 }

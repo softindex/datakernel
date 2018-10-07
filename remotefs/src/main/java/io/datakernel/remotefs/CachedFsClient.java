@@ -161,22 +161,21 @@ public class CachedFsClient implements FsClient, EventloopService {
 							.withInput(supplier);
 
 					SerialQueue<ByteBuf> queue = new SerialZeroBuffer<>();
-					splitter.addOutput().set(queue.getConsumer().transform(ByteBuf::slice));
+					splitter.addOutput()
+							.set(queue.getConsumer());
 
 					long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
 					downloadingNowSize += size;
 
-					MaterializedStage<Void> cacheAppendProcess = splitter.addOutput()
-							.getSupplier()
-							.transform(ByteBuf::slice)
-							.streamTo(cacheClient.uploadSerial(fileName, cacheOffset))
+					MaterializedStage<Void> cacheAppendProcess = SerialConsumer.getAcknowledgement(cb ->
+							splitter.addOutput()
+									.set(cacheClient.uploadSerial(fileName, cacheOffset)
+											.withAcknowledgement(cb)))
 //							.thenCompose($ -> cacheClient.list())
 							.thenCompose($ -> updateCacheStats(fileName))
 							.thenCompose($ -> ensureSpace())
 							.whenResult($ -> downloadingNowSize -= size)
 							.materialize();
-
-					splitter.addOutput().set(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
 
 					return (sizeInCache == 0 ? queue.getSupplier() : SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, sizeInCache), queue.getSupplier()))
 							.withEndOfStream(eos -> eos.thenCompose($ -> cacheAppendProcess));

@@ -161,7 +161,7 @@ public abstract class AbstractHttpConnection {
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 				httpMessage.writeTo(buf);
 				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
-				chunker.getInput().set(httpMessage.bodySupplier);
+				httpMessage.bodySupplier.bindTo(chunker.getInput());
 				return SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutput().getSupplier());
 			} else {
 				httpMessage.setHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
@@ -169,10 +169,8 @@ public abstract class AbstractHttpConnection {
 				httpMessage.writeTo(buf);
 				BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
 				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
-				deflater.getInput().set(httpMessage.bodySupplier);
-				SerialQueue<ByteBuf> queue = new SerialZeroBuffer<>();
-				deflater.getOutput().set(queue.getConsumer());
-				chunker.getInput().set(queue.getSupplier());
+				httpMessage.bodySupplier.bindTo(deflater.getInput());
+				deflater.getOutput().bindTo(chunker.getInput());
 				return SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutput().getSupplier());
 			}
 		} else {
@@ -381,38 +379,7 @@ public abstract class AbstractHttpConnection {
 			return;
 		}
 
-		ByteBufsInput input;
-		AsyncProcess transferDecoder;
-		SerialOutput<ByteBuf> transferDecoderOutput;
-
-		if ((flags & CHUNKED) == 0) {
-			BufsConsumerDelimiter decoder = BufsConsumerDelimiter.create(contentLength);
-			transferDecoder = decoder;
-			input = decoder.getInput();
-			transferDecoderOutput = decoder.getOutput();
-		} else {
-			BufsConsumerChunkedDecoder decoder = BufsConsumerChunkedDecoder.create();
-			transferDecoder = decoder;
-			input = decoder.getInput();
-			transferDecoderOutput = decoder.getOutput();
-		}
-
-		AsyncProcess contentDecoder;
-		SerialOutput<ByteBuf> contentDecoderOutput;
-
-		if ((flags & GZIPPED) == 0) {
-			contentDecoder = null;
-			contentDecoderOutput = transferDecoderOutput;
-		} else {
-			BufsConsumerGzipInflater decoder = BufsConsumerGzipInflater.create();
-			contentDecoder = decoder;
-			contentDecoderOutput = decoder.getOutput();
-			SerialQueue<ByteBuf> queue = new SerialZeroBuffer<>();
-			transferDecoderOutput.set(queue.getConsumer());
-			decoder.getInput().set(queue.getSupplier());
-		}
-
-		input.set(ByteBufsSupplier.ofProvidedQueue(
+		ByteBufsSupplier encodedStream = ByteBufsSupplier.ofProvidedQueue(
 				readQueue,
 				() -> socket.read()
 						.thenComposeEx((buf, e) -> {
@@ -425,22 +392,42 @@ public abstract class AbstractHttpConnection {
 							}
 						}),
 				Stage::complete,
-				this::closeWithError));
+				this::closeWithError);
 
-		onHeadersReceived(null, contentDecoderOutput.getSupplier(new SerialZeroBuffer<>()));
+		SerialOutput<ByteBuf> bodyStream;
+		AsyncProcess process;
+
+		if ((flags & CHUNKED) == 0) {
+			BufsConsumerDelimiter decoder = BufsConsumerDelimiter.create(contentLength);
+			process = decoder;
+			encodedStream.bindTo(decoder.getInput());
+			bodyStream = decoder.getOutput();
+		} else {
+			BufsConsumerChunkedDecoder decoder = BufsConsumerChunkedDecoder.create();
+			process = decoder;
+			encodedStream.bindTo(decoder.getInput());
+			bodyStream = decoder.getOutput();
+		}
+
+		if ((flags & GZIPPED) != 0) {
+			BufsConsumerGzipInflater decoder = BufsConsumerGzipInflater.create();
+			process = decoder;
+			bodyStream.bindTo(decoder.getInput());
+			bodyStream = decoder.getOutput();
+		}
+
+		onHeadersReceived(null, bodyStream.getSupplier());
 		if (isClosed()) return;
 
-		Stage<Void> stage = contentDecoder == null ?
-				transferDecoder.getProcessResult() :
-				contentDecoder.getProcessResult();
-		stage.whenComplete(($, e) -> {
-			if (e == null) {
-				flags |= BODY_RECEIVED;
-				onBodyReceived();
-			} else {
-				closeWithError(e);
-			}
-		});
+		process.getProcessResult()
+				.whenComplete(($, e) -> {
+					if (e == null) {
+						flags |= BODY_RECEIVED;
+						onBodyReceived();
+					} else {
+						closeWithError(e);
+					}
+				});
 	}
 
 	protected void switchPool(ConnectionsLinkedList newPool) {

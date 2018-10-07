@@ -122,7 +122,7 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	}
 
 	protected final ByteBufsSupplier sanitize(ByteBufsSupplier supplier) {
-		return new ByteBufsSupplier(supplier.bufs) {
+		return new ByteBufsSupplier(supplier.getBufs()) {
 			@Override
 			public Stage<Void> needMoreData() {
 				return sanitize(supplier.needMoreData());

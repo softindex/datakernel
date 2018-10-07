@@ -16,10 +16,7 @@ public interface SerialInput<T> {
 
 	default SerialConsumer<T> getConsumer(SerialQueue<T> queue) {
 		MaterializedStage<Void> extraAcknowledge = set(queue.getSupplier());
-		SerialConsumer<T> consumer = queue.getConsumer();
-		return extraAcknowledge == Stage.complete() ?
-				consumer :
-				consumer.withAcknowledgement(ack -> ack.both(extraAcknowledge));
+		return queue.getConsumer(extraAcknowledge);
 	}
 
 	default <R> SerialInput<R> apply(SerialSupplierFunction<R, SerialSupplier<T>> fn) {
