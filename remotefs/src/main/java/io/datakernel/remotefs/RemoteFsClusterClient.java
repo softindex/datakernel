@@ -1,7 +1,6 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
@@ -25,6 +24,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
+import static io.datakernel.serial.SerialConsumer.getAcknowledgement;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.*;
 import static java.util.Collections.emptyList;
@@ -262,14 +262,14 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create().lenient();
 
 					Stage<List<Try<Void>>> uploadResults = Stages.collect(toList(), successes.stream()
-							.map(s -> splitter.addOutput().bindTo(s.consumer.transform(ByteBuf::slice)).toTry()));
+							.map(s -> getAcknowledgement(cb ->
+									splitter.addOutput()
+											.set(s.consumer.withAcknowledgement(cb)))
+									.toTry()));
 
 					if (logger.isTraceEnabled()) {
 						logger.trace("uploading file {} to {}, {}", filename, successes.stream().map(s -> s.id.toString()).collect(joining(", ", "[", "]")), this);
 					}
-
-					// and also dont forget to recycle original bytebufs
-					splitter.addOutput().bindTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
 
 					SerialConsumer<ByteBuf> consumer = splitter.getInput().getConsumer();
 

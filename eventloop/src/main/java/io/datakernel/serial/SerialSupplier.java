@@ -162,22 +162,6 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
-	default MaterializedStage<Void> streamTo(SerialConsumer<T> consumer) {
-		return SerialSuppliers.stream(this, consumer);
-	}
-
-	default MaterializedStage<Void> bindTo(SerialInput<T> to) {
-		return to.set(this);
-	}
-
-	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {
-		return SerialSuppliers.toCollector(this, collector);
-	}
-
-	default Stage<List<T>> toList() {
-		return toCollector(Collectors.toList());
-	}
-
 	default <R> R apply(SerialSupplierFunction<T, R> fn) {
 		return fn.apply(this);
 	}
@@ -270,6 +254,22 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
+	default MaterializedStage<Void> streamTo(SerialConsumer<T> consumer) {
+		return SerialSuppliers.stream(this, consumer);
+	}
+
+	default MaterializedStage<Void> bindTo(SerialInput<T> to) {
+		return to.set(this);
+	}
+
+	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {
+		return SerialSuppliers.toCollector(this, collector);
+	}
+
+	default Stage<List<T>> toList() {
+		return toCollector(Collectors.toList());
+	}
+
 	default SerialSupplier<T> withEndOfStream(Function<Stage<Void>, Stage<Void>> fn) {
 		SettableStage<Void> endOfStream = new SettableStage<>();
 		MaterializedStage<Void> newEndOfStream = fn.apply(endOfStream).materialize();
@@ -296,4 +296,11 @@ public interface SerialSupplier<T> extends Cancellable {
 			}
 		};
 	}
+
+	static MaterializedStage<Void> getEndOfStream(Consumer<Function<Stage<Void>, Stage<Void>>> cb) {
+		SettableStage<Void> result = new SettableStage<>();
+		cb.accept(endOfStream -> endOfStream.whenComplete(result::set));
+		return result;
+	}
+
 }

@@ -1,7 +1,6 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
@@ -12,7 +11,6 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
-import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
@@ -25,6 +23,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static io.datakernel.serial.SerialConsumer.getAcknowledgement;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -176,21 +175,20 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 							.withInput(localStorage.downloadSerial(name));
 
 					// recycle original non-slice buffer
-					splitter.addOutput()
-							.bindTo(SerialConsumer.of(AsyncConsumer.of(buf -> eventloop.post(buf::recycle))));
-
 					return Stages.toList(uploadTargets.stream() // upload file to target partitions
 							.map(partitionId -> {
 								if (partitionId == localPartitionId) {
 									return Stage.of(Try.of(null)); // just skip it here
 								}
-								return splitter.addOutput()
-										.bindTo(clients.get(partitionId) // upload file to this partition
-												.uploadSerial(name)
-												.transform(ByteBuf::slice)) // using bytebuf slices
-										.whenException(err -> {
-											logger.warn("failed uploading to partition " + partitionId + " (" + err + ')');
-											cluster.markDead(partitionId, err);
+								// upload file to this partition
+								return getAcknowledgement(cb ->
+										splitter.addOutput()
+												.set(clients.get(partitionId) // upload file to this partition
+														.uploadSerial(name)
+														.withAcknowledgement(cb)))
+										.whenException(e -> {
+											logger.warn("failed uploading to partition " + partitionId + " (" + e + ')');
+											cluster.markDead(partitionId, e);
 										})
 										.whenResult($ -> logger.trace("file {} uploaded to '{}'", meta, partitionId))
 										.toTry();

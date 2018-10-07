@@ -19,11 +19,13 @@ package io.global.globalfs.api;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.util.Recyclable;
+import io.datakernel.util.Sliceable;
 import io.global.common.SignedData;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class DataFrame {
+public final class DataFrame implements Recyclable, Sliceable<DataFrame> {
 	@Nullable
 	private final ByteBuf buf;
 
@@ -54,6 +56,7 @@ public final class DataFrame {
 		return checkpoint != null;
 	}
 
+	@Override
 	public DataFrame slice() {
 		if (buf == null) {
 			return this;
@@ -61,6 +64,7 @@ public final class DataFrame {
 		return new DataFrame(buf.slice(), null);
 	}
 
+	@Override
 	public void recycle() {
 		if (buf != null) {
 			buf.recycle();

@@ -129,10 +129,10 @@ public final class RpcStream {
 			decompressor.getOutput().bindTo(deserializer.getInput());
 
 			serializer.getOutput().bindTo(compressor.getInput());
-			compressor.getOutput().bindTo(socket.writer());
+			compressor.getOutput().set(socket.writer());
 		} else {
 			socket.reader().bindTo(deserializer.getInput());
-			serializer.getOutput().bindTo(socket.writer());
+			serializer.getOutput().set(socket.writer());
 		}
 
 		deserializer.streamTo(receiver);

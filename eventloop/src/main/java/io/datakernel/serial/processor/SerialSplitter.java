@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.util.Recyclable.tryRecycle;
+import static io.datakernel.util.Sliceable.trySlice;
 
 public final class SerialSplitter<T> extends AbstractAsyncProcess
 		implements WithSerialInput<SerialSplitter<T>, T>, WithSerialOutputs<SerialSplitter<T>, T> {
@@ -85,7 +87,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 				.whenComplete((item, e) -> {
 					if (e == null) {
 						if (item != null) {
-							Stages.all(outputs.stream().map(output -> output.accept(item)))
+							Stages.all(outputs.stream().map(output -> output.accept(trySlice(item))))
 									.whenComplete(($, e2) -> {
 										if (e2 == null) {
 											doProcess();
@@ -93,6 +95,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 											close(e2);
 										}
 									});
+							tryRecycle(item);
 						} else {
 							Stages.all(outputs.stream().map(output -> output.accept(null)))
 									.whenComplete(($, e1) -> completeProcess(e1));

@@ -282,4 +282,10 @@ public interface SerialConsumer<T> extends Cancellable {
 			}
 		};
 	}
+
+	static MaterializedStage<Void> getAcknowledgement(Consumer<Function<Stage<Void>, Stage<Void>>> cb) {
+		SettableStage<Void> result = new SettableStage<>();
+		cb.accept(ack -> ack.whenComplete(result::set));
+		return result;
+	}
 }

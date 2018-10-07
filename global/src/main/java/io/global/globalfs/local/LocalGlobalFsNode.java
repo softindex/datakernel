@@ -18,7 +18,10 @@
 package io.global.globalfs.local;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
@@ -92,26 +95,12 @@ public final class LocalGlobalFsNode implements GlobalFsNode {
 				})
 				.thenApply(supplier -> {
 					SerialSplitter<DataFrame> splitter = SerialSplitter.<DataFrame>create()
-							.withInput(supplier.transform(DataFrame::slice));
+							.withInput(supplier);
 
-					SerialSupplier<DataFrame> output = splitter
-							.addOutput()
-							.getSupplier()
-							.transform(df -> {
-								DataFrame slice = df.slice();
-								df.recycle();
-								return slice;
-							});
-					MaterializedStage<Void> cacheProcess = splitter.addOutput()
-							.getSupplier()
-							.transform(df -> {
-								DataFrame slice = df.slice();
-								df.recycle();
-								return slice;
-							})
-							.streamTo(SerialConsumer.ofStage(local.upload(address.getPath(), offset)))
-							.materialize();
-					return output.withEndOfStream(eos -> eos.both(cacheProcess));
+					splitter.addOutput()
+							.set(SerialConsumer.ofStage(local.upload(address.getPath(), offset)));
+
+					return splitter.addOutput().getSupplier();
 				});
 	}
 

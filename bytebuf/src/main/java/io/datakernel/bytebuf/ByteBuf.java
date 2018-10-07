@@ -18,6 +18,7 @@ package io.datakernel.bytebuf;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.util.Recyclable;
+import io.datakernel.util.Sliceable;
 import io.datakernel.util.Utils;
 
 import java.nio.ByteBuffer;
@@ -26,7 +27,7 @@ import java.nio.charset.Charset;
 import static java.lang.Math.min;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class ByteBuf implements Recyclable, AutoCloseable {
+public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	static final class ByteBufSlice extends ByteBuf {
 		private ByteBuf root;
 
@@ -93,6 +94,7 @@ public class ByteBuf implements Recyclable, AutoCloseable {
 	}
 
 	// slicing
+	@Override
 	public ByteBuf slice() {
 		return slice(readPosition, readRemaining());
 	}
