@@ -63,13 +63,23 @@ public interface Stage<T> {
 
 	static <T> Stage<T> ofCallback(Consumer<SettableStage<T>> callbackConsumer) {
 		SettableStage<T> cb = new SettableStage<>();
-		callbackConsumer.accept(cb);
+		try {
+			callbackConsumer.accept(cb);
+		} catch (UncheckedException u) {
+			return Stage.ofException(u.getCause());
+		}
 		return cb;
 	}
 
 	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 	static <T> Stage<T> ofOptional(Optional<T> optional) {
-		return optional.<Stage<T>>map(Stage::of).orElseGet(() -> Stage.ofException(new NoSuchElementException()));
+		return ofOptional(optional, NoSuchElementException::new);
+	}
+
+	@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "OptionalIsPresent"})
+	static <T> Stage<T> ofOptional(Optional<T> optional, Supplier<? extends Throwable> errorSupplier) {
+		if (optional.isPresent()) return Stage.of(optional.get());
+		return Stage.ofException(errorSupplier.get());
 	}
 
 	/**

@@ -14,7 +14,7 @@ public interface CollectListener<T, A, R> {
 	default void onResult(T stageResult, int index) {
 	}
 
-	default void onException(Throwable throwable, int index) {
+	default void onException(Throwable e, int index) {
 	}
 
 	default void onCollectResult(R result) {

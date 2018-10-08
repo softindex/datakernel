@@ -1,14 +1,11 @@
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.functional.Try;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public abstract class NextStage<T, R> extends AbstractStage<R> implements BiConsumer<T, Throwable> {
-	BiConsumer<? super T, Throwable> prev; // optimization
-
 	@Override
 	public boolean isMaterialized() {
 		return false;
@@ -57,16 +54,6 @@ public abstract class NextStage<T, R> extends AbstractStage<R> implements BiCons
 	@Override
 	public Stage<R> async() {
 		return this;
-	}
-
-	protected abstract void onComplete(T result, Throwable e);
-
-	@Override
-	public final void accept(@Nullable T result, @Nullable Throwable e) {
-		if (prev != null) {
-			prev.accept(result, e);
-		}
-		onComplete(result, e);
 	}
 
 }
