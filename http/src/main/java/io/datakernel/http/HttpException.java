@@ -22,7 +22,7 @@ public class HttpException extends StacklessException {
 	private final int code;
 
 	protected HttpException(int code) {
-		super(null);
+		super(null, "");
 		this.code = code;
 	}
 
@@ -37,7 +37,7 @@ public class HttpException extends StacklessException {
 	}
 
 	protected HttpException(int code, Throwable cause) {
-		super(null, cause);
+		super(null, "", cause);
 		this.code = code;
 	}
 
@@ -58,19 +58,19 @@ public class HttpException extends StacklessException {
 	}
 
 	public static HttpException badRequest400() {
-		return new HttpException(400);
+		return new HttpException(400, "Bad request");
 	}
 
 	public static HttpException notFound404() {
-		return new HttpException(404);
+		return new HttpException(404, "Not found");
 	}
 
 	public static HttpException internalServerError500() {
-		return new HttpException(500);
+		return new HttpException(500, "Internal server error");
 	}
 
 	public static HttpException notAllowed405() {
-		return new HttpException(405);
+		return new HttpException(405, "Not allowed");
 	}
 
 	public final int getCode() {

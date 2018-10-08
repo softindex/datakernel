@@ -22,15 +22,6 @@ import io.datakernel.exception.ParseException;
  * Exception which will be thrown when parsing DNS response from UDP packet payload fails
  */
 public class DnsResponseParseException extends ParseException {
-
-	public DnsResponseParseException(Class<?> component) {
-		super(component);
-	}
-
-	public DnsResponseParseException(Class<?> component, Throwable cause) {
-		super(component, cause);
-	}
-
 	public DnsResponseParseException(Class<?> component, String message) {
 		super(component, message);
 	}

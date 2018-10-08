@@ -686,7 +686,7 @@ public final class GsonAdapters {
 		try {
 			return typeAdapter.read(jsonReader);
 		} catch (IOException e) {
-			throw new ParseException(GsonAdapters.class, e);
+			throw new ParseException(GsonAdapters.class, "Failed to read value from JSON", e);
 		}
 	}
 

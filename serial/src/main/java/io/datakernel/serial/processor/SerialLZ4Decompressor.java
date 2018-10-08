@@ -37,6 +37,7 @@ import static io.datakernel.serial.processor.SerialLZ4Compressor.*;
 public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 		implements WithSerialToSerial<SerialLZ4Decompressor, ByteBuf, ByteBuf>, WithByteBufsInput<SerialLZ4Decompressor> {
 	public static final int HEADER_LENGTH = SerialLZ4Compressor.HEADER_LENGTH;
+	public static final ParseException STREAM_IS_CORRUPTED = new ParseException(SerialLZ4Decompressor.class, "Stream is corrupted");
 
 	private final LZ4FastDecompressor decompressor;
 	private final StreamingXXHash32 checksum;
@@ -170,7 +171,7 @@ public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 		header.compressionMethod = token & 0xF0;
 		int compressionLevel = COMPRESSION_LEVEL_BASE + (token & 0x0F);
 		if (header.compressionMethod != COMPRESSION_METHOD_RAW && header.compressionMethod != COMPRESSION_METHOD_LZ4) {
-			throw new ParseException(SerialLZ4Decompressor.class, "Stream is corrupted");
+			throw STREAM_IS_CORRUPTED;
 		}
 		header.compressedLen = SafeUtils.readIntLE(buf, off + MAGIC_LENGTH + 1);
 		header.originalLen = SafeUtils.readIntLE(buf, off + MAGIC_LENGTH + 5);
@@ -184,7 +185,7 @@ public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 		}
 		if (header.originalLen == 0) {
 			if (header.check != 0) {
-				throw new ParseException(SerialLZ4Decompressor.class, "Stream is corrupted");
+				throw STREAM_IS_CORRUPTED;
 			}
 			header.finished = true;
 		}
@@ -209,7 +210,7 @@ public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 				}
 				break;
 			default:
-				throw new ParseException(SerialLZ4Decompressor.class);
+				throw STREAM_IS_CORRUPTED;
 		}
 		checksum.reset();
 		checksum.update(outputBuf.array(), 0, header.originalLen);

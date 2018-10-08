@@ -61,7 +61,8 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 					if (queue.hasRemainingBytes(maxSize)) {
 						queue.recycle();
 						buf.recycle();
-						throw new UncheckedException(new ParseException(ByteBufQueue.class));
+						throw new UncheckedException(new ParseException(ByteBufQueue.class,
+								"ByteBufQueue exceeds maximum size of " + maxSize + " bytes"));
 					}
 					queue.add(buf);
 				},

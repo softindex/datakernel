@@ -36,7 +36,7 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
  * @param <T> Result type
  */
 public final class SettableStage<T> extends AbstractStage<T> implements MaterializedStage<T> {
-	private static final Throwable STAGE_NOT_SET = new StacklessException(SettableStage.class);
+	private static final Throwable STAGE_NOT_SET = new StacklessException(SettableStage.class, "Stage has not been completed yet");
 
 	@SuppressWarnings("unchecked")
 	@Nullable

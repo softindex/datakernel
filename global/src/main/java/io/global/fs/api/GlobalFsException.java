@@ -19,14 +19,6 @@ package io.global.fs.api;
 import io.datakernel.exception.StacklessException;
 
 public class GlobalFsException extends StacklessException {
-	public GlobalFsException(Class<?> component) {
-		super(component);
-	}
-
-	public GlobalFsException(Class<?> component, Throwable cause) {
-		super(component, cause);
-	}
-
 	public GlobalFsException(Class<?> component, String message) {
 		super(component, message);
 	}

@@ -25,14 +25,6 @@ package io.datakernel.exception;
 public class StacklessException extends Exception {
 	private final Class<?> component;
 
-	public StacklessException(Class<?> component) {
-		this(component, "");
-	}
-
-	public StacklessException(Class<?> component, Throwable cause) {
-		this(component, "", cause);
-	}
-
 	public StacklessException(Class<?> component, String message) {
 		super(message);
 		this.component = component;

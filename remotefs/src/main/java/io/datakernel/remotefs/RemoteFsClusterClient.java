@@ -23,7 +23,6 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.functional.Try;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -226,7 +225,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				return Stage.of(res);
 			}
 			markIfDead(partitionId, err);
-			return Stage.ofException(new StacklessException(RemoteFsClusterClient.class));
+			return Stage.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Node failed with exception", err));
 		};
 	}
 

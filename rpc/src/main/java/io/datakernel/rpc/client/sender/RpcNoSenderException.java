@@ -19,15 +19,6 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.rpc.protocol.RpcException;
 
 public class RpcNoSenderException extends RpcException {
-
-	public RpcNoSenderException(Class<?> component) {
-		super(component);
-	}
-
-	public RpcNoSenderException(Class<?> component, Throwable cause) {
-		super(component, cause);
-	}
-
 	public RpcNoSenderException(Class<?> component, String message) {
 		super(component, message);
 	}

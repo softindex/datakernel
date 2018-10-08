@@ -115,7 +115,7 @@ final class HttpDate {
 
 			return timestamp;
 		} catch (RuntimeException e) {
-			throw new ParseException(HttpDate.class);
+			throw new ParseException(HttpDate.class, "Failed to parse date");
 		}
 	}
 

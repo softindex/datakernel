@@ -110,7 +110,7 @@ public final class AcceptCharset {
 				}
 			}
 		} catch (RuntimeException e) {
-			throw new ParseException(AcceptCharset.class, e);
+			throw new ParseException(AcceptCharset.class, "Failed to parse accept-charset", e);
 		}
 	}
 

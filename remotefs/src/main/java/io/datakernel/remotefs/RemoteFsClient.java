@@ -116,7 +116,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 													if (msg != null) {
 														return Stage.ofException(new RemoteFsException(RemoteFsClient.class, "Invalid message received: " + msg));
 													}
-													return Stage.ofException(new RemoteFsException(RemoteFsClient.class));
+													return Stage.ofException(new RemoteFsException(RemoteFsClient.class, "Unexpected end of stream for: " + filename));
 												})
 												.whenException(e -> {
 													messaging.close(e);

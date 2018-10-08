@@ -80,17 +80,17 @@ public abstract class HttpMessage {
 	public ByteBuf getHeaderBuf(HttpHeader header) throws ParseException {
 		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
 		if (headerBuf != null) {
-			if (headerBuf.bufs != null) throw new ParseException(HttpMessage.class);
+			if (headerBuf.bufs != null) throw new ParseException(HttpMessage.class, "Header has multiple values");
 			return headerBuf.buf;
 		}
-		throw new ParseException(HttpMessage.class);
+		throw new ParseException(HttpMessage.class, "There is no header: " + header);
 	}
 
 	@Nullable
 	public ByteBuf getHeaderBufOrNull(HttpHeader header) throws ParseException {
 		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
 		if (headerBuf != null) {
-			if (headerBuf.bufs != null) throw new ParseException(HttpMessage.class);
+			if (headerBuf.bufs != null) throw new ParseException(HttpMessage.class, "Header has multiple values");
 			return headerBuf.buf;
 		}
 		return null;
@@ -107,7 +107,7 @@ public abstract class HttpMessage {
 	public final String getHeader(HttpHeader header) throws ParseException {
 		HttpHeaderValue headerValue = headers.get(header);
 		if (headerValue != null) return headerValue.toString();
-		throw new ParseException(HttpMessage.class);
+		throw new ParseException(HttpMessage.class, "There is no header: " + header);
 	}
 
 	@Nullable
@@ -165,7 +165,7 @@ public abstract class HttpMessage {
 	public HttpCookie getCookie(String cookie) throws ParseException {
 		HttpCookie httpCookie = getCookies().get(cookie);
 		if (httpCookie != null) return httpCookie;
-		throw new ParseException(HttpMessage.class);
+		throw new ParseException(HttpMessage.class, "There is no cookie: " + cookie);
 	}
 
 	@Nullable

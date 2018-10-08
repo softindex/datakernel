@@ -17,14 +17,6 @@
 package io.datakernel.exception;
 
 public class TruncatedDataException extends ParseException {
-	public TruncatedDataException(Class<?> component) {
-		this(component, "");
-	}
-
-	public TruncatedDataException(Class<?> component, Throwable cause) {
-		this(component, "", cause);
-	}
-
 	public TruncatedDataException(Class<?> component, String message) {
 		super(component, message);
 	}

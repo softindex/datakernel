@@ -17,14 +17,6 @@
 package io.datakernel.exception;
 
 public class AsyncTimeoutException extends StacklessException {
-	public AsyncTimeoutException(Class<?> component) {
-		this(component, "");
-	}
-
-	public AsyncTimeoutException(Class<?> component, Throwable cause) {
-		this(component, "", cause);
-	}
-
 	public AsyncTimeoutException(Class<?> component, String message) {
 		super(component, message);
 	}

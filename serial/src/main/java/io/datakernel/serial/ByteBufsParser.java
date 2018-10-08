@@ -49,7 +49,8 @@ public interface ByteBufsParser<T> {
 			if (!bufs.hasRemainingBytes(data.length)) return null;
 			for (int i = 0; i < data.length; i++) {
 				if (data[i] != bufs.peekByte(i)) {
-					throw new ParseException(ByteBufsParser.class);
+					throw new ParseException(ByteBufsParser.class, "Array of bytes differs at index " + i +
+							"[Expected: " + data[i] + ", actual: " + bufs.peekByte(i) + ']');
 				}
 			}
 			bufs.skip(data.length);
@@ -93,7 +94,9 @@ public interface ByteBufsParser<T> {
 					return buf;
 				}
 			}
-			if (bufs.remainingBytes() >= maxSize) throw new ParseException(ByteBufsParser.class);
+			if (bufs.remainingBytes() >= maxSize) {
+				throw new ParseException(ByteBufsParser.class, "No CRLF is found in " + maxSize + " bytes");
+			}
 			return null;
 		};
 	}
@@ -109,7 +112,10 @@ public interface ByteBufsParser<T> {
 					| (bufs.peekByte(1) & 0xFF) << 16
 					| (bufs.peekByte(2) & 0xFF) << 8
 					| (bufs.peekByte(3) & 0xFF);
-			if (size < 0 || size > maxSize) throw new ParseException(ByteBufsParser.class);
+			if (size < 0 || size > maxSize) {
+				throw new ParseException(ByteBufsParser.class,
+						"Size is either less than 0 or greater than maxSize. Parsed size: " + size);
+			}
 			if (!bufs.hasRemainingBytes(4 + size)) return null;
 			bufs.skip(4);
 			return bufs.takeExactSize(size);
@@ -125,7 +131,10 @@ public interface ByteBufsParser<T> {
 			if (!bufs.hasRemainingBytes(2)) return null;
 			int size = (bufs.peekByte(0) & 0xFF) << 8
 					| (bufs.peekByte(1) & 0xFF);
-			if (size < 0 || size > maxSize) throw new ParseException(ByteBufsParser.class);
+			if (size < 0 || size > maxSize) {
+				throw new ParseException(ByteBufsParser.class,
+						"Size is either less than 0 or greater than maxSize. Parsed size: " + size);
+			}
 			if (!bufs.hasRemainingBytes(2 + size)) return null;
 			bufs.skip(2);
 			return bufs.takeExactSize(size);
@@ -140,7 +149,10 @@ public interface ByteBufsParser<T> {
 		return bufs -> {
 			if (!bufs.hasRemaining()) return null;
 			int size = bufs.peekByte(0) & 0xFF;
-			if (size > maxSize) throw new ParseException(ByteBufsParser.class);
+			if (size > maxSize) {
+				throw new ParseException(ByteBufsParser.class,
+						"Size is either less than 0 or greater than maxSize. Parsed size: " + size);
+			}
 			if (!bufs.hasRemainingBytes(1 + size)) return null;
 			bufs.skip(1);
 			return bufs.takeExactSize(size);
@@ -185,13 +197,17 @@ public interface ByteBufsParser<T> {
 							if ((b = bufs.peekByte(4)) >= 0) {
 								size |= b << 28;
 								prefixSize = 5;
-							} else
-								throw new ParseException(ByteBufsParser.class);
+							} else {
+								throw new ParseException(ByteBufsParser.class, "Varint is too long for 32-bit integer");
+							}
 						}
 					}
 				}
 			}
-			if (size < 0 || size > maxSize) throw new ParseException(ByteBufsParser.class);
+			if (size < 0 || size > maxSize) {
+				throw new ParseException(ByteBufsParser.class,
+						"Size is either less than 0 or greater than maxSize. Parsed size: " + size);
+			}
 			if (!bufs.hasRemainingBytes(prefixSize + size)) return null;
 			bufs.skip(prefixSize);
 			return bufs.takeExactSize(size);

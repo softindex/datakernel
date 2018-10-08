@@ -61,7 +61,7 @@ class Utils {
 		for (String s : tokens) {
 			int i = s.indexOf(':');
 			if (i == -1) {
-				throw new ParseException(Utils.class);
+				throw new ParseException(Utils.class, "Failed to parse orderings, missing semicolon");
 			}
 			String field = s.substring(0, i);
 			String tail = s.substring(i + 1).toLowerCase();
@@ -69,8 +69,9 @@ class Utils {
 				result.add(CubeQuery.Ordering.asc(field));
 			else if ("desc".equals(tail))
 				result.add(CubeQuery.Ordering.desc(field));
-			else
-				throw new ParseException(Utils.class);
+			else {
+				throw new ParseException(Utils.class, "Tail is neither 'asc' nor 'desc'");
+			}
 		}
 		return result;
 	}

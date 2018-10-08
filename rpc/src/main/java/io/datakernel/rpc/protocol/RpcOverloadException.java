@@ -19,14 +19,6 @@ package io.datakernel.rpc.protocol;
 import io.datakernel.exception.StacklessException;
 
 public class RpcOverloadException extends StacklessException {
-	public RpcOverloadException(Class<?> component) {
-		super(component);
-	}
-
-	public RpcOverloadException(Class<?> component, Throwable cause) {
-		super(component, cause);
-	}
-
 	public RpcOverloadException(Class<?> component, String message) {
 		super(component, message);
 	}

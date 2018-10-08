@@ -310,7 +310,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		assert !isRecycled();
 		String result = pathParameters != null ? pathParameters.get(key) : null;
 		if (result != null) return result;
-		throw new ParseException(HttpRequest.class);
+		throw new ParseException(HttpRequest.class, "There is no path parameter with key: " + key);
 	}
 
 	@Nullable

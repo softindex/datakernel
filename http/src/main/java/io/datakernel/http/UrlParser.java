@@ -588,13 +588,11 @@ public final class UrlParser {
 		}
 	}
 
-	private static final ParseException PARSE_EXCEPTION = new ParseException(UrlParser.class);
-
 	private static byte parseHex(char c) throws ParseException {
 		if (c >= '0' && c <= '9') return (byte) (c - '0');
 		if (c >= 'a' && c <= 'f') return (byte) (c - 'a' + 10);
 		if (c >= 'A' && c <= 'F') return (byte) (c - 'A' + 10);
-		throw PARSE_EXCEPTION;
+		throw new ParseException(UrlParser.class, "Failed to parse hex digit from '" + c + '\'');
 	}
 
 	@Override

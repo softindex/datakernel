@@ -17,14 +17,6 @@
 package io.datakernel.exception;
 
 public class ParseException extends StacklessException {
-	public ParseException(Class<?> component) {
-		this(component, "");
-	}
-
-	public ParseException(Class<?> component, Throwable cause) {
-		this(component, "", cause);
-	}
-
 	public ParseException(Class<?> component, String message) {
 		super(component, message);
 	}

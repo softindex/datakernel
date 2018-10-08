@@ -136,7 +136,7 @@ public class HttpDataFormats {
 		try {
 			return CommitId.ofBytes(Base64.getUrlDecoder().decode(str));
 		} catch (IllegalArgumentException e) {
-			throw new ParseException(HttpDataFormats.class, e);
+			throw new ParseException(HttpDataFormats.class, "Failed to decode CommitId from string: " + str, e);
 		}
 	}
 
@@ -164,7 +164,7 @@ public class HttpDataFormats {
 			BigInteger y = new BigInteger(Base64.getUrlDecoder().decode(str.substring(pos + 1)));
 			return PubKey.ofQ(CryptoUtils.CURVE.getCurve().validatePoint(x, y));
 		} catch (IllegalArgumentException | ArithmeticException e) {
-			throw new ParseException(HttpDataFormats.class, e);
+			throw new ParseException(HttpDataFormats.class, "Failed to decode public key from string: " + str, e);
 		}
 	}
 

@@ -31,7 +31,9 @@ class Utils {
 					return buf;
 				}
 			}
-			if (bufs.remainingBytes() >= maxSize) throw new ParseException(ByteBufsParser.class);
+			if (bufs.remainingBytes() >= maxSize) {
+				throw new ParseException(ByteBufsParser.class, "No terminator byte is found in " + maxSize + " bytes");
+			}
 			return null;
 		};
 	}

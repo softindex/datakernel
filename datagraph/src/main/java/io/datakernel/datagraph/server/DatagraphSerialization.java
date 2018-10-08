@@ -77,7 +77,7 @@ public final class DatagraphSerialization {
 				try {
 					return new InetSocketAddress(InetAddress.getByName(split[0]), Integer.parseInt(split[1]));
 				} catch (UnknownHostException e) {
-					throw new ParseException(DatagraphSerialization.class, e);
+					throw new ParseException(DatagraphSerialization.class, "Failed to create InetSocketAdress", e);
 				}
 			},
 			(InetSocketAddress addr) ->

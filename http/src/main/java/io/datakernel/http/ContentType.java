@@ -85,7 +85,7 @@ public final class ContentType {
 			}
 			return lookup(type, charset);
 		} catch (RuntimeException e) {
-			throw new ParseException(ContentType.class, e);
+			throw new ParseException(ContentType.class, "Failed to parse content-type", e);
 		}
 	}
 
