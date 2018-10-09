@@ -18,6 +18,8 @@ package io.datakernel.rpc.protocol;
 
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serial.processor.SerialLZ4Compressor;
@@ -125,14 +127,14 @@ public final class RpcStream {
 			SerialLZ4Decompressor decompressor = SerialLZ4Decompressor.create();
 			SerialLZ4Compressor compressor = SerialLZ4Compressor.createFastCompressor();
 
-			socket.reader().bindTo(decompressor.getInput());
+			SerialSupplier.ofSocket(socket).bindTo(decompressor.getInput());
 			decompressor.getOutput().bindTo(deserializer.getInput());
 
 			serializer.getOutput().bindTo(compressor.getInput());
-			compressor.getOutput().set(socket.writer());
+			compressor.getOutput().set(SerialConsumer.ofSocket(socket));
 		} else {
-			socket.reader().bindTo(deserializer.getInput());
-			serializer.getOutput().set(socket.writer());
+			SerialSupplier.ofSocket(socket).bindTo(deserializer.getInput());
+			serializer.getOutput().set(SerialConsumer.ofSocket(socket));
 		}
 
 		deserializer.streamTo(receiver);

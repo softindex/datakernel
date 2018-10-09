@@ -20,9 +20,6 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialSuppliers;
 
 /**
  * Common interface for connection-oriented transport protocols.
@@ -59,24 +56,4 @@ public interface AsyncTcpSocket extends Cancellable {
 	 * @return stage that represents succesful write operation
 	 */
 	Stage<Void> write(@Nullable ByteBuf buf);
-
-	/**
-	 * Wraps {@link #read()} operation into {@link SerialSupplier}
-	 *
-	 * @return {@link SerialSupplier} of ByteBufs that are read from network
-	 */
-	default SerialSupplier<ByteBuf> reader() {
-		return SerialSuppliers.prefetch(SerialSupplier.of(this::read, this));
-	}
-
-	/**
-	 * Wraps {@link #write(ByteBuf)} operation into {@link SerialConsumer}
-	 *
-	 * @return {@link SerialConsumer} of  ByteBufs that will be sent to network
-	 */
-	default SerialConsumer<ByteBuf> writer() {
-		return SerialConsumer.of(this::write, this)
-				.withAcknowledgement(ack -> ack
-						.thenCompose($ -> write(null)));
-	}
 }

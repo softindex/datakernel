@@ -125,7 +125,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	@Override
 	public SerialConsumer<ByteBuf> sendBinaryStream() {
-		return socket.writer()
+		return SerialConsumer.ofSocket(socket)
 				.withAcknowledgement(ack -> ack
 						.whenResult($ -> {
 							writeDone = true;
@@ -135,7 +135,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	@Override
 	public SerialSupplier<ByteBuf> receiveBinaryStream() {
-		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.asIterator()), socket.reader())
+		return SerialSuppliers.concat(SerialSupplier.ofIterator(bufs.asIterator()), SerialSupplier.ofSocket(socket))
 				.withEndOfStream(eos -> eos
 						.whenResult($ -> {
 							readDone = true;

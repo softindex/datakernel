@@ -20,6 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -55,7 +56,7 @@ public class PingPongSocketConnectionTest {
 
 		SimpleServer server = SimpleServer.create(eventloop,
 				socket -> {
-					ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(socket.reader());
+					ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(socket));
 					repeat(() ->
 							PARSER.parse(bufsSupplier)
 									.whenResult(System.out::println)
@@ -70,7 +71,7 @@ public class PingPongSocketConnectionTest {
 		eventloop.connect(ADDRESS)
 				.whenResult(socketChannel -> {
 					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(socket.reader());
+					ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(socket));
 					loop(3, i -> i != 0,
 							i -> socket.write(wrapAscii(REQUEST_MSG))
 									.thenCompose($ -> PARSER.parse(bufsSupplier)

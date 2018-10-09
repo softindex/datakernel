@@ -28,6 +28,11 @@
 			<artifactId>datakernel-serializer</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-serial</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 
 		<dependency>
 			<groupId>com.google.code.gson</groupId>

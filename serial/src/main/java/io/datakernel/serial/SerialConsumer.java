@@ -18,6 +18,8 @@ package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.exception.UncheckedException;
 
 import java.util.Iterator;
@@ -176,6 +178,19 @@ public interface SerialConsumer<T> extends Cancellable {
 			}
 		};
 	}
+
+
+	/**
+	 * Wraps {@link AsyncTcpSocket#write(ByteBuf)} operation into {@link SerialConsumer}
+	 *
+	 * @return {@link SerialConsumer} of  ByteBufs that will be sent to network
+	 */
+	static SerialConsumer<ByteBuf> ofSocket(AsyncTcpSocket socket) {
+		return SerialConsumer.of(socket::write, socket)
+				.withAcknowledgement(ack -> ack
+						.thenCompose($ -> socket.write(null)));
+	}
+
 
 	default <R> R apply(SerialConsumerFunction<T, R> fn) {
 		return fn.apply(this);

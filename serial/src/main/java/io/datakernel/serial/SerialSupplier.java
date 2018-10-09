@@ -18,6 +18,8 @@ package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.exception.UncheckedException;
 
 import java.util.Iterator;
@@ -114,6 +116,15 @@ public interface SerialSupplier<T> extends Cancellable {
 				deepRecycle(iterator);
 			}
 		};
+	}
+
+	/**
+	 * Wraps {@link AsyncTcpSocket#read()} operation into {@link SerialSupplier}
+	 *
+	 * @return {@link SerialSupplier} of ByteBufs that are read from network
+	 */
+	static SerialSupplier<ByteBuf> ofSocket(AsyncTcpSocket socket) {
+		return SerialSuppliers.prefetch(SerialSupplier.of(socket::read, socket));
 	}
 
 	static <T> SerialSupplier<T> ofStage(Stage<? extends SerialSupplier<T>> stage) {

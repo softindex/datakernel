@@ -39,6 +39,7 @@
 		<module>common</module>
 		<module>test</module>
 		<module>launchers</module>
+		<module>serial</module>
 	</modules>
 
 	<licenses>

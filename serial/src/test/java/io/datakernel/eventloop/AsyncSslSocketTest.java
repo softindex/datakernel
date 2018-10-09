@@ -6,6 +6,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -29,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 import static io.datakernel.async.Cancellable.CLOSE_EXCEPTION;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.serial.ByteBufsSupplier.of;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static org.junit.Assert.assertEquals;
@@ -76,7 +76,7 @@ public class AsyncSslSocketTest {
 	@Test
 	public void testWrite() throws IOException {
 		server = SimpleServer.create(eventloop,
-				serverSsl -> PARSER.parse(of(serverSsl.reader()))
+				serverSsl -> PARSER.parse(ByteBufsSupplier.of(SerialSupplier.ofSocket(serverSsl)))
 						.whenComplete(assertComplete(result -> {
 							System.out.println(result);
 							assertEquals(TEST_STRING, result);
@@ -114,7 +114,7 @@ public class AsyncSslSocketTest {
 					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
 
-					ByteBufsSupplier supplier = of(clientSsl.reader());
+					ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(clientSsl));
 					PARSER.parse(supplier)
 							.whenComplete(assertComplete(result -> {
 								System.out.println(result);
@@ -129,7 +129,7 @@ public class AsyncSslSocketTest {
 	@Test
 	public void testLoopBack() throws IOException {
 		server = SimpleServer.create(eventloop,
-				serverSsl -> PARSER.parse(of(serverSsl.reader()))
+				serverSsl -> PARSER.parse(ByteBufsSupplier.of(SerialSupplier.ofSocket(serverSsl)))
 						.thenCompose(result -> {
 							assertEquals(TEST_STRING, result);
 							return serverSsl.write(wrapAscii(result));
@@ -148,7 +148,7 @@ public class AsyncSslSocketTest {
 
 					clientSsl.write(wrapAscii(TEST_STRING))
 							.thenCompose($ -> {
-								ByteBufsSupplier supplier = of(clientSsl.reader());
+								ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(clientSsl));
 								return PARSER.parse(supplier);
 							})
 							.whenComplete(assertComplete(result -> {
@@ -165,7 +165,7 @@ public class AsyncSslSocketTest {
 	@Test
 	public void sendsLargeAmountOfDataFromClientToServer() throws IOException {
 		server = SimpleServer.create(eventloop,
-				serverSsl -> PARSER_LARGE.parse(of(serverSsl.reader()))
+				serverSsl -> PARSER_LARGE.parse(ByteBufsSupplier.of(SerialSupplier.ofSocket(serverSsl)))
 						.whenComplete(assertComplete(result -> {
 							assertEquals(LENGTH, result.length());
 							assertEquals(result, sentData.toString());
@@ -204,7 +204,7 @@ public class AsyncSslSocketTest {
 				.whenResult(socketChannel -> {
 					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
-					ByteBufsSupplier supplier = of(clientSsl.reader());
+					ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(clientSsl));
 					PARSER_LARGE.parse(supplier)
 							.whenComplete(assertComplete(result -> {
 								assertEquals(LENGTH, result.length());
@@ -236,7 +236,7 @@ public class AsyncSslSocketTest {
 					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
 
-					ByteBufsSupplier supplier = ByteBufsSupplier.of(clientSsl.reader());
+					ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(clientSsl));
 					PARSER.parse(supplier)
 							.whenComplete(assertFailure(e -> {
 								supplier.getBufs().recycle();
