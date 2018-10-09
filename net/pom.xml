@@ -10,14 +10,14 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>datakernel-serial</artifactId>
+	<artifactId>datakernel-net</artifactId>
 
-	<name>DataKernel: Serial IO</name>
+	<name>DataKernel: Net</name>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-net</artifactId>
+			<artifactId>datakernel-async</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 

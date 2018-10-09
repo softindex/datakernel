@@ -20,11 +20,6 @@
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-eventloop</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
 			<artifactId>datakernel-serializer</artifactId>
 			<version>${project.version}</version>
 		</dependency>

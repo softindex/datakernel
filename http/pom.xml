@@ -20,7 +20,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-eventloop</artifactId>
+			<artifactId>datakernel-net</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
