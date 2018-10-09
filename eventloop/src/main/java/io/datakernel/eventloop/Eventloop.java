@@ -73,6 +73,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException(Eventloop.class, "Connection timed out");
+	public static final StacklessException NOT_CONNECTED = new StacklessException(Eventloop.class, "Not connected");
 	public static final Duration DEFAULT_IDLE_INTERVAL = Duration.ofSeconds(1);
 
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
@@ -690,7 +691,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			if (connected) {
 				callback.onConnect(channel);
 			} else {
-				callback.onException(new StacklessException(Eventloop.class, "Not connected"));
+				callback.onException(NOT_CONNECTED);
 			}
 		} catch (Throwable e) {
 			recordFatalError(e, channel);

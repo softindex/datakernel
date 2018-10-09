@@ -16,28 +16,29 @@
 
 package io.datakernel.http;
 
-import io.datakernel.exception.StacklessException;
+/**
+ * This Http exception has no stacktrace which makes it a "light-weight" exception, suitable for transfering via http
+ */
 
-public class HttpException extends StacklessException {
+public class HttpException extends Exception {
 	private final int code;
 
 	protected HttpException(int code) {
-		super(null, "");
 		this.code = code;
 	}
 
 	protected HttpException(int code, String message) {
-		super(null, message);
+		super(message);
 		this.code = code;
 	}
 
 	protected HttpException(int code, String message, Throwable cause) {
-		super(null, message, cause);
+		super(message, cause);
 		this.code = code;
 	}
 
 	protected HttpException(int code, Throwable cause) {
-		super(null, "", cause);
+		super(cause);
 		this.code = code;
 	}
 
@@ -75,6 +76,11 @@ public class HttpException extends StacklessException {
 
 	public final int getCode() {
 		return code;
+	}
+
+	@Override
+	public final Throwable fillInStackTrace() {
+		return this;
 	}
 
 	@Override

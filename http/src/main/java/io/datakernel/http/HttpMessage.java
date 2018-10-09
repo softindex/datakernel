@@ -80,7 +80,9 @@ public abstract class HttpMessage {
 	public ByteBuf getHeaderBuf(HttpHeader header) throws ParseException {
 		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
 		if (headerBuf != null) {
-			if (headerBuf.bufs != null) throw new ParseException(HttpMessage.class, "Header has multiple values");
+			if (headerBuf.bufs != null) {
+				throw new ParseException(HttpMessage.class, "Header '" + header + "' has multiple values");
+			}
 			return headerBuf.buf;
 		}
 		throw new ParseException(HttpMessage.class, "There is no header: " + header);
@@ -90,7 +92,9 @@ public abstract class HttpMessage {
 	public ByteBuf getHeaderBufOrNull(HttpHeader header) throws ParseException {
 		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
 		if (headerBuf != null) {
-			if (headerBuf.bufs != null) throw new ParseException(HttpMessage.class, "Header has multiple values");
+			if (headerBuf.bufs != null) {
+				throw new ParseException(HttpMessage.class, "Header '" + header + "' has multiple values");
+			}
 			return headerBuf.buf;
 		}
 		return null;

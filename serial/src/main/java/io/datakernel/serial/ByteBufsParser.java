@@ -29,6 +29,9 @@ import static io.datakernel.serial.Utils.parseUntilTerminatorByte;
 import static java.lang.Math.min;
 
 public interface ByteBufsParser<T> {
+	ParseException SIZE_EXCEEDS_MAX_SIZE = new ParseException(ByteBufsParser.class, "Size exceeds max size");
+	ParseException NEGATIVE_SIZE = new ParseException(ByteBufsParser.class, "Invalid size of bytes to be read, should be greater than 0");
+
 	@Nullable
 	T tryParse(ByteBufQueue bufs) throws ParseException;
 
@@ -131,10 +134,7 @@ public interface ByteBufsParser<T> {
 			if (!bufs.hasRemainingBytes(2)) return null;
 			int size = (bufs.peekByte(0) & 0xFF) << 8
 					| (bufs.peekByte(1) & 0xFF);
-			if (size < 0 || size > maxSize) {
-				throw new ParseException(ByteBufsParser.class,
-						"Size is either less than 0 or greater than maxSize. Parsed size: " + size);
-			}
+			if (size > maxSize) throw SIZE_EXCEEDS_MAX_SIZE;
 			if (!bufs.hasRemainingBytes(2 + size)) return null;
 			bufs.skip(2);
 			return bufs.takeExactSize(size);
@@ -149,10 +149,7 @@ public interface ByteBufsParser<T> {
 		return bufs -> {
 			if (!bufs.hasRemaining()) return null;
 			int size = bufs.peekByte(0) & 0xFF;
-			if (size > maxSize) {
-				throw new ParseException(ByteBufsParser.class,
-						"Size is either less than 0 or greater than maxSize. Parsed size: " + size);
-			}
+			if (size > maxSize) throw SIZE_EXCEEDS_MAX_SIZE;
 			if (!bufs.hasRemainingBytes(1 + size)) return null;
 			bufs.skip(1);
 			return bufs.takeExactSize(size);
@@ -204,10 +201,8 @@ public interface ByteBufsParser<T> {
 					}
 				}
 			}
-			if (size < 0 || size > maxSize) {
-				throw new ParseException(ByteBufsParser.class,
-						"Size is either less than 0 or greater than maxSize. Parsed size: " + size);
-			}
+			if (size < 0) throw NEGATIVE_SIZE;
+			if (size > maxSize) throw SIZE_EXCEEDS_MAX_SIZE;
 			if (!bufs.hasRemainingBytes(prefixSize + size)) return null;
 			bufs.skip(prefixSize);
 			return bufs.takeExactSize(size);

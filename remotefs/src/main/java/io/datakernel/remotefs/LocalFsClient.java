@@ -21,6 +21,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.JmxAttribute;
@@ -58,6 +59,9 @@ import static java.util.stream.Collectors.toSet;
  */
 public final class LocalFsClient implements FsClient, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(LocalFsClient.class);
+
+	public static final StacklessException APPEND_OFFSET_EXCEEDS_SIZE = new StacklessException(LocalFsClient.class, "Trying to append at offset greater than the file size");
+	public static final StacklessException APPEND_NON_EXISTENT = new StacklessException(LocalFsClient.class, "Trying to append to non-existent file");
 
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
@@ -116,10 +120,10 @@ public final class LocalFsClient implements FsClient, EventloopService {
 							.thenCompose(size -> {
 								if (offset != -1) {
 									if (size == null) {
-										return Stage.ofException(new RemoteFsException(LocalFsClient.class, "Trying to append to non-existent file"));
+										return Stage.ofException(APPEND_NON_EXISTENT);
 									}
 									if (offset > size) {
-										return Stage.ofException(new RemoteFsException(LocalFsClient.class, "Trying to append at offset greater than the file size"));
+										return Stage.ofException(APPEND_OFFSET_EXCEEDS_SIZE);
 									}
 								}
 								return Stage.of(
@@ -151,14 +155,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return AsyncFile.size(executor, path)
 				.thenCompose(size -> {
 					if (size == null) {
-						return Stage.ofException(new RemoteFsException(LocalFsClient.class, "File not found: " + filename));
+						return Stage.ofException(new StacklessException(LocalFsClient.class, "File not found: " + filename));
 					}
 					String repr = filename + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "");
 					if (offset > size) {
-						return Stage.ofException(new RemoteFsException(LocalFsClient.class, "Offset exceeds file size for " + repr));
+						return Stage.ofException(new StacklessException(LocalFsClient.class, "Offset exceeds file size for " + repr));
 					}
 					if (length != -1 && offset + length > size) {
-						return Stage.ofException(new RemoteFsException(LocalFsClient.class, "Boundaries exceed file for " + repr));
+						return Stage.ofException(new StacklessException(LocalFsClient.class, "Boundaries exceed file for " + repr));
 					}
 					return AsyncFile.openAsync(executor, path, SerialFileReader.READ_OPTIONS, this)
 							.thenApply(file -> {
@@ -197,14 +201,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 							if (Files.isDirectory(filePath)) {
 								if (Files.exists(targetPath)) {
-									throw new RemoteFsException(LocalFsClient.class, "Trying to move directory " + filename + " into existing file " + targetName);
+									throw new StacklessException(LocalFsClient.class, "Trying to move directory " + filename + " into existing file " + targetName);
 								}
 							} else {
 								long fileSize = Files.isRegularFile(filePath) ? Files.size(filePath) : -1;
 								long targetSize = Files.isRegularFile(targetPath) ? Files.size(targetPath) : -1;
 
 								if (fileSize == -1 && targetSize == -1) {
-									throw new RemoteFsException(LocalFsClient.class, "No file " + filename + ", neither file " + targetName + " were found");
+									throw new StacklessException(LocalFsClient.class, "No file " + filename + ", neither file " + targetName + " were found");
 								}
 
 								// assuming it did move in a possible previous erroneous attempt
@@ -226,7 +230,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 								logger.warn("Atomic move were not supported when moving {} into {}", filename, targetName, e);
 								Files.move(filePath, targetPath, REPLACE_EXISTING);
 							}
-						} catch (IOException | RemoteFsException e) {
+						} catch (IOException | StacklessException e) {
 							throw new UncheckedException(e);
 						}
 					}
@@ -256,10 +260,10 @@ public final class LocalFsClient implements FsClient, EventloopService {
 							Path copyPath = resolveFilePath(copyName);
 
 							if (!Files.isRegularFile(filePath)) {
-								throw new RemoteFsException(LocalFsClient.class, "No file " + filename + " were found");
+								throw new StacklessException(LocalFsClient.class, "No file " + filename + " were found");
 							}
 							if (Files.isRegularFile(copyPath)) {
-								throw new RemoteFsException(LocalFsClient.class, "File " + copyName + " already exists!");
+								throw new StacklessException(LocalFsClient.class, "File " + copyName + " already exists!");
 							}
 
 							// not using ensureDirectory so we have only one executor task
@@ -271,7 +275,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 								// if couldnt, then just actually copy it
 								Files.copy(filePath, copyPath);
 							}
-						} catch (IOException | RemoteFsException e) {
+						} catch (IOException | StacklessException e) {
 							throw new UncheckedException(e);
 						}
 					}

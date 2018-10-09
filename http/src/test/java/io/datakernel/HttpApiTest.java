@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaderValue.*;
@@ -117,7 +116,7 @@ public class HttpApiTest {
 	}
 
 	@Test
-	public void test() throws IOException, ExecutionException, InterruptedException {
+	public void test() throws IOException {
 		server.listen();
 		client.requestWithResponseBody(Integer.MAX_VALUE, createRequest())
 				.whenComplete((response, throwable) -> {

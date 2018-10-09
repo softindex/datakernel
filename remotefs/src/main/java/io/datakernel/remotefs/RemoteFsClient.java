@@ -35,7 +35,6 @@ import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.List;
@@ -54,6 +53,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class RemoteFsClient implements FsClient, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClient.class);
 
+	public static final RemoteFsException UNEXPECTED_END_OF_STREAM = new RemoteFsException(RemoteFsClient.class, "Unexpected end of stream");
 	private static final MessagingSerializer<FsResponse, FsCommand> SERIALIZER =
 			ofJson(RemoteFsResponses.ADAPTER, RemoteFsCommands.ADAPTER);
 
@@ -151,7 +151,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 												.withEndOfStream(eos -> eos
 														.thenCompose($ -> messaging.sendEndOfStream())
 														.thenException($ -> size[0] != receivingSize ?
-																new IOException("Invalid stream size for file " + filename +
+																new RemoteFsException(RemoteFsClient.class, "Invalid stream size for file " + filename +
 																		" (offset " + offset + ", length " + length +
 																		"), expected: " + receivingSize +
 																		" actual: " + size[0]) :
@@ -220,7 +220,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 								.thenCompose(msg -> {
 									messaging.close();
 									if (msg == null) {
-										return Stage.ofException(new RemoteFsException(RemoteFsClient.class, "Unexpected end of stream"));
+										return Stage.ofException(UNEXPECTED_END_OF_STREAM);
 									}
 									if (msg.getClass() == responseType) {
 										return Stage.of(answerExtractor.apply(responseType.cast(msg)));

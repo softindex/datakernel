@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,10 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.Callback;
+import io.datakernel.rpc.protocol.RpcException;
 
 public interface RpcSender {
+	RpcException NO_SENDER_AVAILABLE_EXCEPTION = new RpcException(RpcSender.class, "No senders available");
+
 	<I, O> void sendRequest(I request, int timeout, Callback<O> cb);
 }

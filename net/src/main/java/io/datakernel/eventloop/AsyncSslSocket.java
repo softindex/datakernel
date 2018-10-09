@@ -349,8 +349,10 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	@Override
 	public void close(Throwable e) {
 		if (!isOpen()) return;
-		engine.closeOutbound();
-		sync(); // sync is used here to send close_notify message to recepient
+		if (!engine.isOutboundDone()) {
+			engine.closeOutbound();
+			sync(); // sync is used here to send close_notify message to recepient (will be sent once)
+		}
 		recycleByteBufs();
 		upstream.close(e);
 		if (write != null) {

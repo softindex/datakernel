@@ -71,9 +71,6 @@ public final class RpcStrategySharding implements RpcStrategy {
 	}
 
 	static final class Sender implements RpcSender {
-		@SuppressWarnings("ThrowableInstanceNeverThrown")
-		private static final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION = new RpcNoSenderException(RpcStrategySharding.class, "No senders available");
-
 		private final ShardingFunction<?> shardingFunction;
 		private final RpcSender[] subSenders;
 

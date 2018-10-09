@@ -21,7 +21,7 @@ package io.datakernel.exception;
  * where the default Java call stacktrace has no useful meaning and is redundant
  * to fetch, store or print.
  */
-@SuppressWarnings("ThrowableInstanceNeverThrown")
+
 public class StacklessException extends Exception {
 	private final Class<?> component;
 
@@ -33,6 +33,10 @@ public class StacklessException extends Exception {
 	public StacklessException(Class<?> component, String message, Throwable cause) {
 		super(message, cause);
 		this.component = component;
+	}
+
+	public Class<?> getComponent() {
+		return component;
 	}
 
 	@Override

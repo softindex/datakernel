@@ -31,7 +31,8 @@ import static io.datakernel.util.gson.GsonAdapters.PRIMITIVES_MAP;
 import static java.util.stream.Collectors.toList;
 
 class Utils {
-	private static final Pattern splitter = Pattern.compile(",");
+	public static final ParseException MALFORMED_TAIL = new ParseException(Utils.class, "Tail is neither 'asc' nor 'desc'");
+	public static final ParseException MISSING_SEMICOLON = new ParseException(Utils.class, "Failed to parse orderings, missing semicolon");
 
 	static final String MEASURES_PARAM = "measures";
 	static final String ATTRIBUTES_PARAM = "attributes";
@@ -41,6 +42,8 @@ class Utils {
 	static final String LIMIT_PARAM = "limit";
 	static final String OFFSET_PARAM = "offset";
 	static final String REPORT_TYPE_PARAM = "reportType";
+
+	private static final Pattern splitter = Pattern.compile(",");
 
 	static String formatOrderings(List<CubeQuery.Ordering> orderings) {
 		StringBuilder sb = new StringBuilder();
@@ -61,7 +64,7 @@ class Utils {
 		for (String s : tokens) {
 			int i = s.indexOf(':');
 			if (i == -1) {
-				throw new ParseException(Utils.class, "Failed to parse orderings, missing semicolon");
+				throw MISSING_SEMICOLON;
 			}
 			String field = s.substring(0, i);
 			String tail = s.substring(i + 1).toLowerCase();
@@ -70,7 +73,7 @@ class Utils {
 			else if ("desc".equals(tail))
 				result.add(CubeQuery.Ordering.desc(field));
 			else {
-				throw new ParseException(Utils.class, "Tail is neither 'asc' nor 'desc'");
+				throw MALFORMED_TAIL;
 			}
 		}
 		return result;

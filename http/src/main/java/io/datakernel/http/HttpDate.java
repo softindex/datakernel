@@ -24,6 +24,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 /* <[RFC2616], Section 3.3.1> case-sensitive
  Can't parse dates earlier than 1970*/
 final class HttpDate {
+	public static final ParseException FAILED_TO_PARSE_DATE = new ParseException(HttpDate.class, "Failed to parse date");
 	private static final int HOUR_SECONDS = (60 * 60);
 	private static final int DAY_SECONDS = 24 * HOUR_SECONDS;
 	private static final int YEAR_SECONDS = 365 * DAY_SECONDS;
@@ -115,7 +116,7 @@ final class HttpDate {
 
 			return timestamp;
 		} catch (RuntimeException e) {
-			throw new ParseException(HttpDate.class, "Failed to parse date");
+			throw FAILED_TO_PARSE_DATE;
 		}
 	}
 

@@ -44,6 +44,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements RpcStream.Listener, RpcSender, JmxRefreshable {
+	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed.");
 	public static final Duration DEFAULT_TIMEOUT_PRECISION = Duration.ofMillis(10);
 
 	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
@@ -294,7 +295,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	private void closeNotify() {
 		for (Integer cookie : new HashSet<>(activeRequests.keySet())) {
-			returnProtocolError(activeRequests.remove(cookie), new RpcException(RpcClientConnection.class, "Connection closed."));
+			returnProtocolError(activeRequests.remove(cookie), CONNECTION_CLOSED);
 		}
 	}
 

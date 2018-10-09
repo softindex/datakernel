@@ -18,6 +18,7 @@ package io.datakernel.remotefs;
 
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 
@@ -179,7 +180,7 @@ public interface FsClient {
 					if (res.size() < changes.size()) {
 						Set<String> set = new HashSet<>(changes.keySet());
 						set.removeAll(res);
-						return Stage.ofException(new RemoteFsException(FsClient.class, "Those files were not moved: " + set));
+						return Stage.ofException(new StacklessException(FsClient.class, "Those files were not moved: " + set));
 					}
 					return Stage.complete();
 				});
@@ -216,7 +217,7 @@ public interface FsClient {
 					if (res.size() < changes.size()) {
 						Set<String> set = new HashSet<>(changes.keySet());
 						set.removeAll(res);
-						return Stage.ofException(new RemoteFsException(FsClient.class, "Those files were not copied: " + set));
+						return Stage.ofException(new StacklessException(FsClient.class, "Those files were not copied: " + set));
 					}
 					return Stage.complete();
 				});

@@ -25,6 +25,7 @@ import io.datakernel.eventloop.AsyncUdpSocket;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.UdpPacket;
+import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.net.DatagramSocketSettings;
 import org.slf4j.Logger;
@@ -185,7 +186,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 				stage.setException(new DnsQueryException(RemoteAsyncDnsClient.class, queryResult));
 			}
 			closeIfDone();
-		} catch (DnsResponseParseException e) {
+		} catch (ParseException e) {
 			logger.warn("Received a UDP packet than cannot be parsed as a DNS server response.", e);
 		} finally {
 			packet.recycle();

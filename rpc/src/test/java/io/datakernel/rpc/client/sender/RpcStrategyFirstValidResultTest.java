@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -128,7 +128,7 @@ public class RpcStrategyFirstValidResultTest {
 		assertEquals(validKey, future.get());
 	}
 
-	@Test(expected = Exception.class)
+	@Test(expected = ExecutionException.class)
 	public void itShouldCallOnExceptionIfNoSenderReturnsValidResultButExceptionWasSpecified() throws ExecutionException, InterruptedException {
 		int invalidKey = 1;
 		int validKey = 2;

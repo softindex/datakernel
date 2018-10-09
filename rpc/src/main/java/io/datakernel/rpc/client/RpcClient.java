@@ -31,7 +31,6 @@ import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
-import io.datakernel.rpc.client.sender.RpcNoSenderException;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.client.sender.RpcStrategies;
 import io.datakernel.rpc.client.sender.RpcStrategy;
@@ -477,8 +476,6 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	}
 
 	private final class NoSenderAvailable implements RpcSender {
-		private final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION = new RpcNoSenderException(RpcClient.class, "No senders available");
-
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 			eventloop.post(() -> cb.setException(NO_SENDER_AVAILABLE_EXCEPTION));

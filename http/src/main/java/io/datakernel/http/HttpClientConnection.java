@@ -76,6 +76,7 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
  */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
+	public static final ParseException INVALID_RESPONSE = new ParseException(HttpClientConnection.class, "Invalid response");
 	private SettableStage<HttpResponse> callback;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
@@ -107,7 +108,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onFirstLine(byte[] line, int size) throws ParseException {
 		assert line.length >= 16;
 		if (line[0] != 'H' || line[1] != 'T' || line[2] != 'T' || line[3] != 'P' || line[4] != '/' || line[5] != '1') {
-			throw new ParseException(HttpClientConnection.class, "Invalid response");
+			throw INVALID_RESPONSE;
 		}
 
 		int sp1;

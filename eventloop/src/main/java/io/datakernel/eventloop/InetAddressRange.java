@@ -29,9 +29,10 @@ import java.util.NoSuchElementException;
 
 @SuppressWarnings("unused, WeakerAccess")
 public final class InetAddressRange implements Comparable<InetAddressRange>, Iterable<InetAddress> {
-	private static final int[] EMPTY_MASK = {0, 0, 0, 0};
+	public static final ParseException INVALID_RANGE = new ParseException(InetAddressRange.class, "Invalid inet addresses range. You should specify either ipv4 or ipv6");
 	public static final int[] START = new int[]{0, 0, 0, 0};
 	public static final int[] END = new int[]{-1, -1, -1, -1};
+	private static final int[] EMPTY_MASK = {0, 0, 0, 0};
 
 	/*
 	*   Represents address in binary form:
@@ -92,7 +93,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 					return fromCidr((Inet6Address) inetAddress, cidrPrefix);
 				}
 			} catch (NumberFormatException e) {
-				throw new ParseException(InetAddressRange.class, "Invalid cidrPrefix");
+				throw new ParseException(InetAddressRange.class, "Invalid cidrPrefix", e);
 			}
 		}
 
@@ -106,7 +107,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 			} else if (address1 instanceof Inet6Address && address2 instanceof Inet6Address) {
 				return fromRange((Inet6Address) address1, (Inet6Address) address2);
 			} else {
-				throw new ParseException(InetAddressRange.class, "Invalid inet addresses range. You should specify either ipv4 or ipv6");
+				throw INVALID_RANGE;
 			}
 		}
 

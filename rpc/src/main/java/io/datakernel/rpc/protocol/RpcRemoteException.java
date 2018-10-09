@@ -16,13 +16,12 @@
 
 package io.datakernel.rpc.protocol;
 
-import io.datakernel.exception.StacklessException;
 import io.datakernel.rpc.server.RpcServerConnection;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
 
-public class RpcRemoteException extends StacklessException implements RpcMandatoryData {
+public class RpcRemoteException extends RpcException implements RpcMandatoryData {
 	private static final long serialVersionUID = 769022174067373741L;
 	private final String causeMessage;
 	private final String causeClassName;
@@ -46,7 +45,7 @@ public class RpcRemoteException extends StacklessException implements RpcMandato
 
 	@SuppressWarnings("unused")
 	public RpcRemoteException(@Deserialize(value = "message") String message, @Deserialize(value = "causeClassName") String causeClassName,
-	                          @Deserialize(value = "causeMessage") String causeMessage) {
+			@Deserialize(value = "causeMessage") String causeMessage) {
 		super(RpcServerConnection.class, message);
 		this.causeClassName = causeClassName;
 		this.causeMessage = causeMessage;

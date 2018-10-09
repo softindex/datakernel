@@ -37,6 +37,8 @@ import static io.datakernel.http.HttpMethod.*;
  * {@link AsyncServlet async servlet}.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
+	public static final ParseException FIRST_LINE_IS_TOO_BIG = new ParseException(HttpServerConnection.class, "First line is too big");
+
 	private static final int HEADERS_SLOTS = 256;
 	private static final int MAX_PROBINGS = 2;
 	private static final HttpMethod[] METHODS = new HttpMethod[HEADERS_SLOTS];
@@ -145,7 +147,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		int readPosition = method.size + 1;
 
 		if (MAX_HEADER_LINE_SIZE_BYTES <= line.length - readPosition) {
-			throw new ParseException(HttpServerConnection.class, "First line is too big");
+			throw FIRST_LINE_IS_TOO_BIG;
 		}
 
 		int i;

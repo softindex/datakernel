@@ -20,6 +20,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
@@ -100,7 +101,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						return Stage.complete();
 					}
 					logger.warn("got an error while handling message (" + e + ") : " + this);
-					String prefix = e.getClass() != RemoteFsException.class ? e.getClass().getSimpleName() + ": " : "";
+					String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
 					return messaging.send(new ServerError(prefix + e.getMessage()))
 							.thenCompose($1 -> messaging.sendEndOfStream())
 							.whenResult($1 -> messaging.close(e));
@@ -126,7 +127,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 			return client.list(fileName)
 					.thenCompose(list -> {
 						if (list.isEmpty()) {
-							return Stage.ofException(new RemoteFsException(RemoteFsServer.class, "File not found: " + fileName));
+							return Stage.ofException(new StacklessException(RemoteFsServer.class, "File not found: " + fileName));
 						}
 						long size = list.get(0).getSize();
 						long length = msg.getLength();
@@ -136,10 +137,10 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						logger.trace("requested file {}: {}", repr, this);
 
 						if (offset > size) {
-							return Stage.ofException(new RemoteFsException(RemoteFsServer.class, "Offset exceeds file size for " + repr));
+							return Stage.ofException(new StacklessException(RemoteFsServer.class, "Offset exceeds file size for " + repr));
 						}
 						if (length != -1 && offset + length > size) {
-							return Stage.ofException(new RemoteFsException(RemoteFsServer.class, "Boundaries exceed file size for " + repr));
+							return Stage.ofException(new StacklessException(RemoteFsServer.class, "Boundaries exceed file size for " + repr));
 						}
 
 						long fixedLength = length == -1 ? size - offset : length;

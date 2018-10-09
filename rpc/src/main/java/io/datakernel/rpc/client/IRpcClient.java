@@ -24,7 +24,7 @@ import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.rpc.protocol.RpcOverloadException;
 
 public interface IRpcClient {
-	AsyncTimeoutException RPC_TIMEOUT_EXCEPTION = new AsyncTimeoutException(IRpcClient.class, "RPC request has timed ");
+	AsyncTimeoutException RPC_TIMEOUT_EXCEPTION = new AsyncTimeoutException(IRpcClient.class, "RPC request has timed out");
 	RpcOverloadException RPC_OVERLOAD_EXCEPTION = new RpcOverloadException(IRpcClient.class, "RPC client is overloaded");
 
 	default <I, O> Stage<O> sendRequest(I request, int timeout) {

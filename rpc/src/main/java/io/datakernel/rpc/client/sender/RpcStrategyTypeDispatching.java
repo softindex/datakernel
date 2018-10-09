@@ -84,9 +84,6 @@ public final class RpcStrategyTypeDispatching implements RpcStrategy {
 	}
 
 	static final class Sender implements RpcSender {
-		@SuppressWarnings("ThrowableInstanceNeverThrown")
-		private static final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION = new RpcNoSenderException(RpcStrategyTypeDispatching.class, "No active senders available");
-
 		private final HashMap<Class<?>, RpcSender> typeToSender;
 		private final RpcSender defaultSender;
 

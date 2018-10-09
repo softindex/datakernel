@@ -38,6 +38,9 @@ import java.util.function.ToIntFunction;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class BinaryDataFormats {
+	public static final ParseException NEGATIVE_SIZE = new ParseException(BinaryDataFormats.class, "Invalid size of bytes to be read, should be greater than 0");
+	public static final ParseException SIZE_EXCEEDS_READ_REMAINING = new ParseException(BinaryDataFormats.class, "Invalid size of bytes to be read, size exceeds buf's read remaining bytes");
+
 	// region creators
 	private BinaryDataFormats() {
 	}
@@ -98,10 +101,8 @@ public final class BinaryDataFormats {
 
 	public static byte[] readBytes(ByteBuf buf) throws ParseException {
 		int size = readVarInt(buf);
-		if (size < 0 || size > buf.readRemaining()) {
-			throw new ParseException(BinaryDataFormats.class, "Failed to read bytes, " +
-					"size either less than 0 or exceeds size of remaining bytes. Parsed size: " + size + " bytes");
-		}
+		if (size < 0) throw NEGATIVE_SIZE;
+		if (size > buf.readRemaining()) throw SIZE_EXCEEDS_READ_REMAINING;
 		byte[] bytes = new byte[size];
 		buf.read(bytes);
 		return bytes;
@@ -368,9 +369,7 @@ public final class BinaryDataFormats {
 
 	private static <T, C extends Collection<T>> C readInto(ByteBuf buf, ParserFunction<ByteBuf, T> parser, C collection) throws ParseException {
 		int size = readVarInt(buf);
-		if (size < 0) {
-			throw new ParseException(BinaryDataFormats.class, "Invalid size of bytes to be read, should be greater than 0");
-		}
+		if (size < 0) throw NEGATIVE_SIZE;
 		for (int i = 0; i < size; i++) {
 			collection.add(parser.parse(buf));
 		}
@@ -401,9 +400,7 @@ public final class BinaryDataFormats {
 
 	public static <K, V> Map<K, V> readMap(ByteBuf buf, ParserFunction<ByteBuf, K> keyParser, ParserFunction<ByteBuf, V> valueParser) throws ParseException {
 		int size = readVarInt(buf);
-		if (size < 0) {
-			throw new ParseException(BinaryDataFormats.class, "Invalid size of bytes to be read, should be greater than 0");
-		}
+		if (size < 0) throw NEGATIVE_SIZE;
 		Map<K, V> map = new HashMap<>();
 		for (int i = 0; i < size; i++) {
 			map.put(keyParser.parse(buf), valueParser.parse(buf));

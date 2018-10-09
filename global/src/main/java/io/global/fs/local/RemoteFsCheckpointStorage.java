@@ -21,13 +21,13 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.CryptoUtils;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
-import io.global.fs.api.GlobalFsException;
 import io.global.ot.util.BinaryDataFormats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +58,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 							.withEndOfStream(eos -> eos
 									.thenComposeEx(($, e2) -> {
 										if (e2 != null) {
-											return Stage.<Void>ofException(new GlobalFsException(RemoteFsCheckpointStorage.class, "Failed to read checkpoint data for {}"));
+											return Stage.<Void>ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Failed to read checkpoint data for " + filename));
 										}
 										return Stage.of(null);
 									}))

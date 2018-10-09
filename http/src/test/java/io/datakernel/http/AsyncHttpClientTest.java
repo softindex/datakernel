@@ -24,12 +24,15 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.exception.AsyncTimeoutException;
-import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.stream.processor.ByteBufRule;
+import org.hamcrest.beans.HasPropertyWithValue;
+import org.hamcrest.core.IsEqual;
+import org.hamcrest.core.IsSame;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -40,7 +43,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
-import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HelloWorldServer.HELLO_WORLD;
 import static io.datakernel.test.TestUtils.assertFailure;
@@ -49,10 +53,12 @@ import static org.junit.Assert.assertEquals;
 
 public class AsyncHttpClientTest {
 	private static final int PORT = 45788;
-	public static final byte[] TIMEOUT_EXCEPTION_BYTES = encodeAscii("ERROR: Must be TimeoutException");
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public ExpectedException expectedException = ExpectedException.none();
 
 	@Rule
 	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
@@ -94,8 +100,8 @@ public class AsyncHttpClientTest {
 		assertEquals(decodeAscii(HELLO_WORLD), future.get());
 	}
 
-	@Test(expected = AsyncTimeoutException.class)
-	public void testClientTimeoutConnect() throws Throwable {
+	@Test
+	public void testClientTimeoutConnect() throws ExecutionException, InterruptedException {
 		Duration TIMEOUT = Duration.ofMillis(1);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
@@ -108,15 +114,13 @@ public class AsyncHttpClientTest {
 
 		eventloop.run();
 
-		try {
+		expectedException.expect(ExecutionException.class);
+		expectedException.expectCause(IsSame.sameInstance(Eventloop.CONNECT_TIMEOUT));
 			System.err.println("Result: " + future.get());
-		} catch (ExecutionException e) {
-			throw e.getCause();
-		}
 	}
 
-	@Test(expected = ParseException.class)
-	public void testBigHttpMessage() throws Throwable {
+	@Test
+	public void testBigHttpMessage() throws IOException, ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		AsyncHttpServer httpServer = helloWorldServer(eventloop, PORT);
@@ -124,7 +128,8 @@ public class AsyncHttpClientTest {
 
 		httpServer.listen();
 
-		CompletableFuture<String> future = httpClient.requestWithResponseBody(12, HttpRequest.get("http://127.0.0.1:" + PORT))
+		int maxBodySize = HELLO_WORLD.length - 1;
+		CompletableFuture<String> future = httpClient.requestWithResponseBody(maxBodySize, HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenApply(response -> response.getBody().asString(UTF_8))
 				.whenComplete(($, e) -> {
 					httpClient.stop();
@@ -134,15 +139,13 @@ public class AsyncHttpClientTest {
 
 		eventloop.run();
 
-		try {
-			System.err.println("Result: " + future.get());
-		} catch (ExecutionException e) {
-			throw e.getCause();
-		}
+		expectedException.expect(ExecutionException.class);
+		expectedException.expectCause(HasPropertyWithValue.hasProperty("message", IsEqual.equalTo("ByteBufQueue exceeds maximum size of " + maxBodySize + " bytes")));
+		System.err.println("Result: " + future.get());
 	}
 
-	@Test(expected = ParseException.class)
-	public void testEmptyLineResponse() throws Throwable {
+	@Test
+	public void testEmptyLineResponse() throws IOException, ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		SimpleServer server = SimpleServer.create(eventloop,
@@ -166,11 +169,9 @@ public class AsyncHttpClientTest {
 
 		eventloop.run();
 
-		try {
-			System.err.println("Result: " + future.get());
-		} catch (ExecutionException e) {
-			throw e.getCause();
-		}
+		expectedException.expect(ExecutionException.class);
+		expectedException.expectCause(IsSame.sameInstance(HttpClientConnection.INVALID_RESPONSE));
+		System.err.println("Result: " + future.get());
 	}
 
 	@Test

@@ -45,9 +45,7 @@ import static java.lang.Math.max;
 public abstract class AbstractHttpConnection {
 	public static final AsyncTimeoutException READ_TIMEOUT_ERROR = new AsyncTimeoutException(AbstractHttpConnection.class, "Read timeout");
 	public static final AsyncTimeoutException WRITE_TIMEOUT_ERROR = new AsyncTimeoutException(AbstractHttpConnection.class, "Write timeout");
-	public static final ParseException CLOSED_CONNECTION = new ParseException(AbstractHttpConnection.class, "Unexpectedly closed");
 	public static final ParseException HEADER_NAME_ABSENT = new ParseException(AbstractHttpConnection.class, "Header name is absent");
-	public static final ParseException TOO_BIG_HTTP_MESSAGE = new ParseException(AbstractHttpConnection.class, "Too big HttpMessage");
 	public static final ParseException TOO_LONG_HEADER = new ParseException(AbstractHttpConnection.class, "Header line exceeds max header size");
 	public static final ParseException TOO_MANY_HEADERS = new ParseException(AbstractHttpConnection.class, "Too many headers");
 	public static final ParseException INCOMPLETE_MESSAGE = new ParseException(AbstractHttpConnection.class, "Incomplete HTTP message");

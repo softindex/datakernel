@@ -17,9 +17,9 @@
 package io.global.fs.transformers;
 
 import io.datakernel.async.Stage;
+import io.datakernel.exception.StacklessException;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.DataFrame;
-import io.global.fs.api.GlobalFsException;
 
 /**
  * Makes frames from given data and {@link CheckpointStorage}.
@@ -61,7 +61,7 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 					if (e != null || signedCheckpoint == null) {
 						// we are loading a checkpoint from a position that was obtained using getCheckpoints,
 						// so somewhere in between the file was corrupted, or CheckpointStorage implementation is broken
-						output.close(new GlobalFsException(FramesFromStorage.class, "No checkpoint at position {} for file {} found! Is checkpoint data corrupted?"));
+						output.close(new StacklessException(FramesFromStorage.class, "No checkpoint at position " + position + " for file " + fileName + " found! Is checkpoint data corrupted?"));
 						return Stage.complete();
 					}
 					return output.accept(DataFrame.of(signedCheckpoint));

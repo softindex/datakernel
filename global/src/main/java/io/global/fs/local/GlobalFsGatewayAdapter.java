@@ -19,6 +19,7 @@ package io.global.fs.local;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialConsumer;
@@ -43,7 +44,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 public class GlobalFsGatewayAdapter implements GlobalFsGateway, Initializable<GlobalFsGatewayAdapter> {
-	private static final GlobalFsException UNKNOWN_KEY = new GlobalFsException(GlobalFsGatewayAdapter.class, "Unknown public key");
+	private static final StacklessException UNKNOWN_KEY = new StacklessException(GlobalFsGatewayAdapter.class, "Unknown public key");
 
 	private final GlobalFsNode node;
 	private final Map<PubKey, PrivKey> keymap;

@@ -19,11 +19,9 @@ package io.datakernel.serial;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.exception.ExpectedException;
 import io.datakernel.exception.ParseException;
 
 public abstract class ByteBufsSupplier implements Cancellable {
-	public static final Exception CLOSED_EXCEPTION = new ExpectedException();
 	public static final Exception UNEXPECTED_DATA_EXCEPTION = new ParseException(ByteBufsSupplier.class, "Unexpected data after end-of-stream");
 	public static final Exception UNEXPECTED_END_OF_STREAM_EXCEPTION = new ParseException(ByteBufsSupplier.class, "Unexpected end-of-stream");
 

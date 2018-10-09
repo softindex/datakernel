@@ -21,6 +21,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -408,7 +409,7 @@ public class TestLocalFsClient {
 	public void testMoveNothingIntoNothing() {
 
 		client.move("i_do_not_exist.txt", "neither_am_i.txt")
-				.whenComplete(assertFailure(RemoteFsException.class, e ->
+				.whenComplete(assertFailure(StacklessException.class, e ->
 						assertTrue(e.getMessage().matches("No file .*?, neither file .*? were found"))));
 
 		eventloop.run();
