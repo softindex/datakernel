@@ -16,11 +16,12 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Stage;
+
+import io.datakernel.exception.UncheckedException;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -96,57 +97,67 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public CompletableFuture<Void> submit(Runnable runnable) {
+	public CompletableFuture<Void> submit(Runnable computation) {
 		CompletableFuture<Void> future = new CompletableFuture<>();
 		post(() -> {
-			Exception exception = null;
 			try {
-				runnable.run();
-			} catch (Exception e) {
-				exception = e;
+				computation.run();
+			} catch (UncheckedException u) {
+				future.completeExceptionally(u.getCause());
+				return;
 			}
-			complete();
-			if (exception == null) {
-				future.complete(null);
-			} else {
-				future.completeExceptionally(exception);
-			}
+			future.complete(null);
 		}, future);
 		return future;
 	}
 
 	@Override
-	public <T> CompletableFuture<T> submit(Callable<T> callable) {
+	public <T> CompletableFuture<T> submit(Callable<T> computation) {
+		CompletableFuture<T> future = new CompletableFuture<>();
+		execute(() -> {
+			T result;
+			try {
+				result = computation.call();
+			} catch (UncheckedException u) {
+				future.completeExceptionally(u.getCause());
+				return;
+			} catch (RuntimeException e) {
+				throw e;
+			} catch (Exception e) {
+				future.completeExceptionally(e);
+				return;
+			}
+			future.complete(result);
+		});
+		return future;
+	}
+
+	@Override
+	public <T> CompletableFuture<T> submit(Supplier<CompletionStage<T>> computation) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		post(() -> {
-			T result = null;
-			Exception exception = null;
+			CompletionStage<T> completionStage;
 			try {
-				result = callable.call();
+				completionStage = computation.get();
+			} catch (UncheckedException u) {
+				future.completeExceptionally(u.getCause());
+				return;
+			} catch (RuntimeException e) {
+				throw e;
 			} catch (Exception e) {
-				exception = e;
+				future.completeExceptionally(e);
+				return;
 			}
-			complete();
-			if (exception == null) {
-				future.complete(result);
-			} else {
-				future.completeExceptionally(exception);
-			}
+			completionStage.whenComplete((result, e) -> {
+				if (e == null) {
+					future.complete(result);
+				} else {
+					future.completeExceptionally(e);
+				}
+			});
 		}, future);
 		return future;
 	}
 
-	@Override
-	public <T> CompletableFuture<T> submit(AsyncSupplier<T> supplier) {
-		CompletableFuture<T> future = new CompletableFuture<>();
-		post(() -> supplier.get().whenComplete((t, throwable) -> complete()).whenComplete((t, throwable) -> {
-			if (throwable == null) {
-				future.complete(t);
-			} else {
-				future.completeExceptionally(throwable);
-			}
-		}), future);
-		return future;
-	}
 
 }

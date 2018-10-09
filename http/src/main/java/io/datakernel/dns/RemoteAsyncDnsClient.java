@@ -38,7 +38,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.async.Stage.TIMEOUT_EXCEPTION;
+import static io.datakernel.async.Stages.TIMEOUT_EXCEPTION;
+import static io.datakernel.async.Stages.timeout;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.TIMED_OUT;
 
 public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.EventHandler, EventloopJmxMBeanEx {
@@ -107,7 +108,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 		}
 		socket.close();
 		socket = null;
-		transactions.values().forEach(s -> s.setException(Stage.TIMEOUT_EXCEPTION));
+		transactions.values().forEach(s -> s.setException(TIMEOUT_EXCEPTION));
 	}
 
 	@Override
@@ -146,7 +147,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 		}
 		socket.send(UdpPacket.of(payload, dnsServerAddress));
 		socket.receive();
-		return stage.timeout(timeout)
+		return timeout(stage, timeout)
 				.thenComposeEx((queryResult, e) -> {
 					if (e == null) {
 						if (inspector != null) {

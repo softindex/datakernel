@@ -50,10 +50,8 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
-import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.util.Preconditions.*;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -312,10 +310,6 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return stage;
 	}
 
-	public Future<Void> startFuture() {
-		return eventloop.submit(this::start);
-	}
-
 	@Override
 	public Stage<Void> stop() {
 		if (!running) return Stage.complete();
@@ -341,10 +335,6 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return stage;
 	}
 
-	public Future<Void> stopFuture() {
-		return eventloop.submit(this::stop);
-	}
-
 	private void connect(InetSocketAddress address) {
 		if (!running) {
 			return;
@@ -352,45 +342,47 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 		logger.info("Connecting {}", address);
 
-		eventloop.connect(address, 0).whenComplete((socketChannel, throwable) -> {
-			if (throwable == null) {
-				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
-						.withInspector(statsSocket);
-				AsyncTcpSocket socket = sslContext != null ? wrapClientSocket(asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-				RpcStream stream = new RpcStream(socket, serializer, defaultPacketSize, maxPacketSize,
-						autoFlushInterval, compression, false); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
-				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this, address, stream);
-				stream.setListener(connection);
+		AsyncTcpSocketImpl.connect(address, 0, socketSettings)
+				.whenResult(asyncTcpSocketImpl -> {
+					asyncTcpSocketImpl
+							.withInspector(statsSocket);
+					AsyncTcpSocket socket = sslContext == null ?
+							asyncTcpSocketImpl :
+							wrapClientSocket(asyncTcpSocketImpl, sslContext, sslExecutor);
+					RpcStream stream = new RpcStream(socket, serializer, defaultPacketSize, maxPacketSize,
+							autoFlushInterval, compression, false); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
+					RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this, address, stream);
+					stream.setListener(connection);
 
-				addConnection(address, connection);
+					addConnection(address, connection);
 
-				// jmx
-				generalConnectsStats.successfulConnects++;
-				connectsStatsPerAddress.get(address).successfulConnects++;
+					// jmx
+					generalConnectsStats.successfulConnects++;
+					connectsStatsPerAddress.get(address).successfulConnects++;
 
-				logger.info("Connection to {} established", address);
-				if (startStage != null && !(requestSender instanceof NoSenderAvailable)) {
-					SettableStage<Void> startStage = this.startStage;
-					this.startStage = null;
-					eventloop.postLater(() -> startStage.set(null));
-				}
-			} else {
-				//jmx
-				generalConnectsStats.failedConnects++;
-				connectsStatsPerAddress.get(address).failedConnects++;
-
-				if (running) {
-					if (logger.isWarnEnabled()) {
-						logger.warn("Connection failed, reconnecting to {}: {}", address, throwable.toString());
+					logger.info("Connection to {} established", address);
+					if (startStage != null && !(requestSender instanceof NoSenderAvailable)) {
+						SettableStage<Void> startStage = this.startStage;
+						this.startStage = null;
+						eventloop.postLater(() -> startStage.set(null));
 					}
-					eventloop.delayBackground(reconnectIntervalMillis, () -> {
-						if (running) {
-							connect(address);
+				})
+				.whenException(e -> {
+					//jmx
+					generalConnectsStats.failedConnects++;
+					connectsStatsPerAddress.get(address).failedConnects++;
+
+					if (running) {
+						if (logger.isWarnEnabled()) {
+							logger.warn("Connection failed, reconnecting to {}: {}", address, e.toString());
 						}
-					});
-				}
-			}
-		});
+						eventloop.delayBackground(reconnectIntervalMillis, () -> {
+							if (running) {
+								connect(address);
+							}
+						});
+					}
+				});
 	}
 
 	private void addConnection(InetSocketAddress address, RpcClientConnection connection) {

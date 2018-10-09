@@ -2,9 +2,11 @@ package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.util.*;
 
 import java.lang.reflect.Array;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.CollectionUtils.transform;
 import static io.datakernel.util.CollectorsEx.toVoid;
@@ -21,8 +24,30 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
 public final class Stages {
+	private Stages() {}
 
-	private Stages() {
+	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException("Stage timeout");
+
+	public static <T> Stage<T> timeout(Stage<T> stage, long delay) {
+		if (stage.isComplete()) return stage;
+		return stage.then(new NextStage<T, T>() {
+			ScheduledRunnable schedule = getCurrentEventloop().delay(delay, () -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
+
+			@Override
+			public void accept(T result, Throwable e) {
+				if (e == null) {
+					schedule.cancel();
+					tryComplete(result);
+				} else {
+					schedule.cancel();
+					tryCompleteExceptionally(e);
+				}
+			}
+		});
+	}
+
+	public static <T> Stage<T> timeout(Stage<T> stage, Duration delay) {
+		return timeout(stage, delay.toMillis());
 	}
 
 	/**

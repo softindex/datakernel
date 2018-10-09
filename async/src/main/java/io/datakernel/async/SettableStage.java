@@ -5,7 +5,6 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 
-import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -374,14 +373,6 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 			return Stage.of(result, exception).either(other);
 		}
 		return super.either(other);
-	}
-
-	@Override
-	public Stage<T> timeout(@Nullable Duration timeout) {
-		if (isComplete()) {
-			return this;
-		}
-		return super.timeout(timeout);
 	}
 
 	@Override

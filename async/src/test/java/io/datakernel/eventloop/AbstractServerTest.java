@@ -59,10 +59,8 @@ public class AbstractServerTest {
 
 		server.listen();
 
-		eventloop.connect(address)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, settings);
-
+		AsyncTcpSocketImpl.connect(address)
+				.whenResult(socket -> {
 					socket.write(ByteBufStrings.wrapAscii("Hello!"))
 							.thenCompose($ ->
 									socket.read()

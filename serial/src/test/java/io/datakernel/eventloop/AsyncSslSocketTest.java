@@ -87,13 +87,11 @@ public class AsyncSslSocketTest {
 
 		server.listen();
 
-		eventloop.connect(ADDRESS)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
-
-					clientSsl.write(wrapAscii(TEST_STRING))
-							.whenComplete(($, e) -> clientSsl.close());
+		AsyncTcpSocketImpl.connect(ADDRESS)
+				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, Runnable::run))
+				.whenResult(sslSocket -> {
+					sslSocket.write(wrapAscii(TEST_STRING))
+							.whenComplete(($, e) -> sslSocket.close());
 				});
 
 		eventloop.run();
@@ -109,18 +107,16 @@ public class AsyncSslSocketTest {
 
 		server.listen();
 
-		eventloop.connect(ADDRESS)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
-
-					ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(clientSsl));
+		AsyncTcpSocketImpl.connect(ADDRESS)
+				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, Runnable::run))
+				.whenResult(sslSocket -> {
+					ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(sslSocket));
 					PARSER.parse(supplier)
 							.whenComplete(assertComplete(result -> {
 								System.out.println(result);
 								assertEquals(TEST_STRING, result);
 							}))
-							.whenComplete(($, e) -> clientSsl.close());
+							.whenComplete(($, e) -> sslSocket.close());
 				});
 
 		eventloop.run();
@@ -141,21 +137,19 @@ public class AsyncSslSocketTest {
 
 		server.listen();
 
-		eventloop.connect(ADDRESS)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
-
-					clientSsl.write(wrapAscii(TEST_STRING))
+		AsyncTcpSocketImpl.connect(ADDRESS)
+				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, Runnable::run))
+				.whenResult(sslSocket -> {
+					sslSocket.write(wrapAscii(TEST_STRING))
 							.thenCompose($ -> {
-								ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(clientSsl));
+								ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(sslSocket));
 								return PARSER.parse(supplier);
 							})
 							.whenComplete(assertComplete(result -> {
 								System.out.println(result);
 								assertEquals(TEST_STRING, result);
 							}))
-							.whenComplete(($, e) -> clientSsl.close());
+							.whenComplete(($, e) -> sslSocket.close());
 
 				});
 
@@ -176,14 +170,12 @@ public class AsyncSslSocketTest {
 
 		server.listen();
 
-		eventloop.connect(ADDRESS)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
-
-					sendData(clientSsl)
+		AsyncTcpSocketImpl.connect(ADDRESS)
+				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, Runnable::run))
+				.whenResult(sslSocket -> {
+					sendData(sslSocket)
 							.whenComplete(assertComplete())
-							.whenComplete(($, e) -> clientSsl.close());
+							.whenComplete(($, e) -> sslSocket.close());
 				});
 
 		eventloop.run();
@@ -200,17 +192,16 @@ public class AsyncSslSocketTest {
 
 		server.listen();
 
-		eventloop.connect(ADDRESS)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
-					ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(clientSsl));
+		AsyncTcpSocketImpl.connect(ADDRESS)
+				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, Runnable::run))
+				.whenResult(sslSocket -> {
+					ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(sslSocket));
 					PARSER_LARGE.parse(supplier)
 							.whenComplete(assertComplete(result -> {
 								assertEquals(LENGTH, result.length());
 								assertEquals(result, sentData.toString());
 							}))
-							.whenComplete(($, e) -> clientSsl.close());
+							.whenComplete(($, e) -> sslSocket.close());
 				});
 
 		eventloop.run();
@@ -231,12 +222,10 @@ public class AsyncSslSocketTest {
 
 		server.listen();
 
-		eventloop.connect(ADDRESS)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl clientTcp = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-					AsyncSslSocket clientSsl = AsyncSslSocket.wrapClientSocket(clientTcp, sslContext, Runnable::run);
-
-					ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(clientSsl));
+		AsyncTcpSocketImpl.connect(ADDRESS)
+				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, Runnable::run))
+				.whenResult(sslSocket -> {
+					ByteBufsSupplier supplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(sslSocket));
 					PARSER.parse(supplier)
 							.whenComplete(assertFailure(e -> {
 								supplier.getBufs().recycle();

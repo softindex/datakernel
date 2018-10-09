@@ -157,9 +157,10 @@ public class RpcBlockingTest {
 
 	private static String blockingRequest(RpcClient rpcClient, String name) throws Exception {
 		try {
-			return rpcClient.getEventloop()
-					.submit(() -> rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT))
-					.toCompletableFuture()
+			return rpcClient.getEventloop().submit(
+					() -> rpcClient
+							.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
+							.toCompletableFuture())
 					.get().message;
 		} catch (ExecutionException e) {
 			throw (Exception) e.getCause();

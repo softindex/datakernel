@@ -5,7 +5,6 @@ import io.datakernel.eventloop.Eventloop;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.function.Supplier;
 
 public class AsyncExecutors {
 	private AsyncExecutors() {}

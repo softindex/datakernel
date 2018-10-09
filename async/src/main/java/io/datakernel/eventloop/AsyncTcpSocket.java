@@ -20,6 +20,11 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.net.SocketSettings;
+
+import java.nio.channels.SocketChannel;
+
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 /**
  * Common interface for connection-oriented transport protocols.
@@ -56,4 +61,14 @@ public interface AsyncTcpSocket extends Cancellable {
 	 * @return stage that represents succesful write operation
 	 */
 	Stage<Void> write(@Nullable ByteBuf buf);
+
+	static AsyncTcpSocket ofSocketChannel(SocketChannel socketChannel) {
+		return AsyncTcpSocketImpl.wrapChannel(getCurrentEventloop(), socketChannel, null);
+	}
+
+	// region builders
+	static AsyncTcpSocket ofSocketChannel(SocketChannel socketChannel, SocketSettings socketSettings) {
+		return AsyncTcpSocketImpl.wrapChannel(getCurrentEventloop(), socketChannel, socketSettings);
+	}
+
 }

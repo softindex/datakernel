@@ -21,6 +21,7 @@
 	</properties>
 
 	<modules>
+		<module>async</module>
 		<module>aggregation</module>
 		<module>boot</module>
 		<module>bytebuf</module>

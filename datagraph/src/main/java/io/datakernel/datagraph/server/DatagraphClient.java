@@ -65,24 +65,23 @@ public final class DatagraphClient {
 	}
 
 	public <T> Stage<StreamSupplier<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
-		return eventloop.connect(address).thenCompose(socketChannel -> {
-			AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
-			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
-			DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
+		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
+				.thenCompose(socket -> {
+					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
+					DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
 
-			return messaging.send(commandDownload)
-					.thenApply($ -> messaging.receiveBinaryStream()
-							.apply(SerialBinaryDeserializer.create(serialization.getSerializer(type)))
-							.withEndOfStream(eos -> eos
-									.whenComplete(($1, e1) -> messaging.close()))
-							.withLateBinding());
-		});
+					return messaging.send(commandDownload)
+							.thenApply($ -> messaging.receiveBinaryStream()
+									.apply(SerialBinaryDeserializer.create(serialization.getSerializer(type)))
+									.withEndOfStream(eos -> eos
+											.whenComplete(($1, e1) -> messaging.close()))
+									.withLateBinding());
+				});
 	}
 
 	public Stage<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
-		return eventloop.connect(address)
-				.thenCompose(socketChannel -> {
-					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
+		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
+				.thenCompose(socket -> {
 					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 
 					DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));

@@ -1,19 +1,14 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 
-import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.util.Preconditions.checkArgument;
 
 abstract class AbstractStage<T> implements Stage<T> {
 
@@ -396,27 +391,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 	@Override
 	public Stage<Void> toVoid() {
 		return thenApply($ -> null);
-	}
-
-	@Override
-	public Stage<T> timeout(@Nullable Duration timeout) {
-		if (timeout == null) {
-			return this;
-		}
-		checkArgument(timeout.toMillis() >= 0, "Timeout cannot be less than zero");
-		ScheduledRunnable schedule = getCurrentEventloop().delay(timeout, () -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
-		return then(new NextStage<T, T>() {
-			@Override
-			public void accept(T result, Throwable e) {
-				if (e == null) {
-					schedule.cancel();
-					tryComplete(result);
-				} else {
-					schedule.cancel();
-					tryCompleteExceptionally(e);
-				}
-			}
-		});
 	}
 
 	@Override

@@ -19,11 +19,9 @@ package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 
-import java.time.Duration;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.*;
@@ -422,17 +420,6 @@ public interface Stage<T> {
 	 * Waits for result and discard it.
 	 */
 	Stage<Void> toVoid();
-
-	AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException("Stage timeout");
-
-	/**
-	 * Returns stage that completes successfully if this stage completes before timeout.
-	 * Otherwise it completes with timeout exception.
-	 * If <code>null</code> is given, no timeout is applied.
-	 *
-	 * @param timeout timeout as Duration
-	 */
-	Stage<T> timeout(@Nullable Duration timeout);
 
 	/**
 	 * Wraps {@code Stage} into {@code CompletableFuture}

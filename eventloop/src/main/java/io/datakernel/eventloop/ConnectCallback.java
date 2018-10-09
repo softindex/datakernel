@@ -16,16 +16,10 @@
 
 package io.datakernel.eventloop;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Executor;
-import java.util.function.Supplier;
+import java.nio.channels.SocketChannel;
 
-public interface EventloopExecutor extends Executor {
-	CompletableFuture<Void> submit(Runnable computation);
+public interface ConnectCallback {
+	void onConnect(SocketChannel socketChannel);
 
-	<T> CompletableFuture<T> submit(Callable<T> computation);
-
-	<T> CompletableFuture<T> submit(Supplier<CompletionStage<T>> computation);
+	void onException(Throwable e);
 }

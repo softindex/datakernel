@@ -17,11 +17,9 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
@@ -46,8 +44,10 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -184,11 +184,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public Eventloop withInspector(@Nullable EventloopInspector inspector) {
-		if (inspector != null){
+		if (inspector != null) {
 			inspector.setEventloop(this);
 		}
 
-		if (this.inspector != null){
+		if (this.inspector != null) {
 			this.inspector = new EventloopStats(inspector);
 		} else {
 			this.inspector = inspector;
@@ -675,22 +675,22 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@SuppressWarnings("unchecked")
 	private void onConnect(SelectionKey key) {
 		assert inEventloopThread();
-		SettableStage<SocketChannel> connectStage = (SettableStage<SocketChannel>) key.attachment();
+		ConnectCallback callback = (ConnectCallback) key.attachment();
 		SocketChannel channel = (SocketChannel) key.channel();
 		boolean connected;
 		try {
 			connected = channel.finishConnect();
 		} catch (IOException e) {
 			closeChannel(channel, key);
-			connectStage.setException(e);
+			callback.onException(e);
 			return;
 		}
 
 		try {
 			if (connected) {
-				connectStage.set(channel);
+				callback.onConnect(channel);
 			} else {
-				connectStage.setException(new StacklessException("Not connected"));
+				callback.onException(new StacklessException("Not connected"));
 			}
 		} catch (Throwable e) {
 			recordFatalError(e, channel);
@@ -794,12 +794,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param address socketChannel's address
 	 */
-	public Stage<SocketChannel> connect(SocketAddress address) {
-		return connect(address, 0);
+	public void connect(SocketAddress address, ConnectCallback cb) {
+		connect(address, 0, cb);
 	}
 
-	public Stage<SocketChannel> connect(SocketAddress address, Duration timeout) {
-		return connect(address, timeout.toMillis());
+	public void connect(SocketAddress address, @Nullable Duration timeout, ConnectCallback cb) {
+		connect(address, timeout == null ? 0L : timeout.toMillis(), cb);
 	}
 
 	/**
@@ -809,36 +809,51 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param address socketChannel's address
 	 * @param timeout the timeout value to be used in milliseconds, 0 as default system connection timeout
 	 */
-	public Stage<SocketChannel> connect(SocketAddress address, long timeout) {
+	public void connect(SocketAddress address, long timeout, ConnectCallback cb) {
 		assert inEventloopThread();
-		SettableStage<SocketChannel> stage = new SettableStage<>();
-		SocketChannel channel = null;
+		SocketChannel channel;
 		try {
 			channel = SocketChannel.open();
+		} catch (IOException e) {
+			try {
+				cb.onException(e);
+			} catch (Throwable e1) {
+				recordFatalError(e1, cb);
+			}
+			return;
+		}
+		try {
 			channel.configureBlocking(false);
 			channel.connect(address);
 
-			SelectionKey key = channel.register(ensureSelector(), SelectionKey.OP_CONNECT, stage);
+			channel.register(ensureSelector(), SelectionKey.OP_CONNECT, timeout == 0 ?
+					cb :
+					new ConnectCallback() {
+						final ScheduledRunnable scheduledTimeout = delay(timeout, () -> {
+							closeChannel(channel, null);
+							cb.onException(CONNECT_TIMEOUT);
+						});
 
-			if (timeout != 0) {
-				ScheduledRunnable scheduledTimeout = delay(timeout, () -> {
-					closeChannel(key.channel(), key);
-					stage.setException(CONNECT_TIMEOUT);
-				});
+						@Override
+						public void onConnect(SocketChannel socketChannel) {
+							scheduledTimeout.cancel();
+							cb.onConnect(socketChannel);
+						}
 
-				stage.whenComplete(($, throwable) -> scheduledTimeout.cancel());
-			}
+						@Override
+						public void onException(Throwable e) {
+							scheduledTimeout.cancel();
+							cb.onException(e);
+						}
+					});
 		} catch (IOException e) {
-			if (channel != null) {
-				closeChannel(channel, null);
-			}
+			closeChannel(channel, null);
 			try {
-				stage.setException(e);
+				cb.onException(e);
 			} catch (Throwable e1) {
-				recordFatalError(e1, stage);
+				recordFatalError(e1, cb);
 			}
 		}
-		return stage;
 	}
 
 	public long tick() {
@@ -958,24 +973,20 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * Submits {@code Runnable} to eventloop for execution
 	 * <p>{@code Runnable} is executed in the eventloop thread</p>
 	 *
-	 * @param runnable to be executed
+	 * @param computation to be executed
 	 * @return {@code CompletableFuture} that completes when runnable completes
 	 */
 	@Override
-	public CompletableFuture<Void> submit(Runnable runnable) {
+	public CompletableFuture<Void> submit(Runnable computation) {
 		CompletableFuture<Void> future = new CompletableFuture<>();
 		execute(() -> {
-			Exception exception = null;
 			try {
-				runnable.run();
-			} catch (Exception e) {
-				exception = e;
+				computation.run();
+			} catch (UncheckedException u) {
+				future.completeExceptionally(u.getCause());
+				return;
 			}
-			if (exception == null) {
-				future.complete(null);
-			} else {
-				future.completeExceptionally(exception);
-			}
+			future.complete(null);
 		});
 		return future;
 	}
@@ -984,38 +995,53 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * Works the same as {@link Eventloop#submit(Runnable)} except for {@code Callable}
 	 */
 	@Override
-	public <T> CompletableFuture<T> submit(Callable<T> callable) {
+	public <T> CompletableFuture<T> submit(Callable<T> computation) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		execute(() -> {
-			T result = null;
-			Exception exception = null;
+			T result;
 			try {
-				result = callable.call();
+				result = computation.call();
+			} catch (UncheckedException u) {
+				future.completeExceptionally(u.getCause());
+				return;
+			} catch (RuntimeException e) {
+				throw e;
 			} catch (Exception e) {
-				exception = e;
+				future.completeExceptionally(e);
+				return;
 			}
-			if (exception == null) {
-				future.complete(result);
-			} else {
-				future.completeExceptionally(exception);
-			}
+			future.complete(result);
 		});
 		return future;
 	}
 
 	/**
-	 * Works the same as {@link Eventloop#submit(Runnable)} except for {@code AsyncCallable}
+	 * Works the same as {@link Eventloop#submit(Runnable)} except for {@code CompletionStage}
 	 */
 	@Override
-	public <T> CompletableFuture<T> submit(AsyncSupplier<T> supplier) {
+	public <T> CompletableFuture<T> submit(Supplier<CompletionStage<T>> computation) {
 		CompletableFuture<T> future = new CompletableFuture<>();
-		execute(() -> supplier.get().whenComplete((t, throwable) -> {
-			if (throwable == null) {
-				future.complete(t);
-			} else {
-				future.completeExceptionally(throwable);
+		execute(() -> {
+			CompletionStage<T> completionStage;
+			try {
+				completionStage = computation.get();
+			} catch (UncheckedException u) {
+				future.completeExceptionally(u.getCause());
+				return;
+			} catch (RuntimeException e) {
+				throw e;
+			} catch (Exception e) {
+				future.completeExceptionally(e);
+				return;
 			}
-		}));
+			completionStage.whenComplete((result, e) -> {
+				if (e == null) {
+					future.complete(result);
+				} else {
+					future.completeExceptionally(e);
+				}
+			});
+		});
 		return future;
 	}
 

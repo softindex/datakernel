@@ -105,9 +105,10 @@ public class RpcHelloWorldTest {
 		@Override
 		public String hello(String name) throws Exception {
 			try {
-				return rpcClient.getEventloop().submit(() -> rpcClient
-						.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT))
-						.toCompletableFuture()
+				return rpcClient.getEventloop().submit(
+						() -> rpcClient
+								.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
+								.toCompletableFuture())
 						.get().message;
 			} catch (ExecutionException e) {
 				throw (Exception) e.getCause();
@@ -176,7 +177,7 @@ public class RpcHelloWorldTest {
 	@Test
 	public void testBlocking2Clients() throws Exception {
 		try (BlockingHelloClient client1 = new BlockingHelloClient(eventloop);
-		     BlockingHelloClient client2 = new BlockingHelloClient(eventloop)) {
+				BlockingHelloClient client2 = new BlockingHelloClient(eventloop)) {
 			assertEquals("Hello, John!", client2.hello("John"));
 			assertEquals("Hello, World!", client1.hello("World"));
 		} finally {
@@ -201,7 +202,7 @@ public class RpcHelloWorldTest {
 		int count = 10; // amount requests
 
 		try (BlockingHelloClient client1 = new BlockingHelloClient(eventloop);
-		     BlockingHelloClient client2 = new BlockingHelloClient(eventloop)) {
+				BlockingHelloClient client2 = new BlockingHelloClient(eventloop)) {
 			CountDownLatch latch1 = new CountDownLatch(count);
 			CountDownLatch latch2 = new CountDownLatch(count);
 

@@ -102,7 +102,7 @@ public final class AsyncFile {
 	 * @param path the path of the file to open or create
 	 */
 	public static Stage<Void> delete(ExecutorService executor, Path path) {
-		return Stage.ofRunnable(executor, () -> {
+		return ofRunnable(executor, () -> {
 			try {
 				Files.delete(path);
 			} catch (IOException e) {
@@ -131,7 +131,7 @@ public final class AsyncFile {
 	 * @param options  options specifying how the move should be done
 	 */
 	public static Stage<Void> move(ExecutorService executor, Path source, Path target, CopyOption... options) {
-		return Stage.ofRunnable(executor, () -> {
+		return ofRunnable(executor, () -> {
 			try {
 				Files.move(source, target, options);
 			} catch (IOException e) {
@@ -149,7 +149,7 @@ public final class AsyncFile {
 	 * @param options  options specifying how the move should be done
 	 */
 	public static Stage<Void> copy(ExecutorService executor, Path source, Path target, CopyOption... options) {
-		return Stage.ofRunnable(executor, () -> {
+		return ofRunnable(executor, () -> {
 			try {
 				Files.copy(source, target, options);
 			} catch (IOException e) {
@@ -166,7 +166,7 @@ public final class AsyncFile {
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
 	public static Stage<Void> createDirectory(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
-		return Stage.ofRunnable(executor, () -> {
+		return ofRunnable(executor, () -> {
 			try {
 				Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
 			} catch (IOException e) {
@@ -183,7 +183,7 @@ public final class AsyncFile {
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
 	public static Stage<Void> createDirectories(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
-		return Stage.ofRunnable(executor, () -> {
+		return ofRunnable(executor, () -> {
 			try {
 				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
 			} catch (IOException e) {

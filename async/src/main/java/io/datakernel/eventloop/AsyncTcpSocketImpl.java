@@ -29,6 +29,7 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -36,6 +37,7 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static io.datakernel.util.Recyclable.deepRecycle;
@@ -189,15 +191,14 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	@Nullable
 	private Inspector inspector;
 
-	// region builders
-	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel,
-			SocketSettings socketSettings) {
+	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel, @Nullable SocketSettings socketSettings) {
+		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
+		if (socketSettings == null) return asyncTcpSocket;
 		try {
 			socketSettings.applySettings(socketChannel);
 		} catch (IOException e) {
 			throw new AssertionError("Failed to apply socketSettings", e);
 		}
-		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
 		if (socketSettings.hasImplReadTimeout())
 			asyncTcpSocket.readTimeout = socketSettings.getImplReadTimeout().toMillis();
 		if (socketSettings.hasImplWriteTimeout())
@@ -209,8 +210,29 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		return asyncTcpSocket;
 	}
 
-	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel) {
-		return new AsyncTcpSocketImpl(eventloop, socketChannel);
+	public static Stage<AsyncTcpSocketImpl> connect(InetSocketAddress address) {
+		return connect(address, null, null);
+	}
+
+	public static Stage<AsyncTcpSocketImpl> connect(InetSocketAddress address, @Nullable Duration duration, @Nullable SocketSettings socketSettings) {
+		return connect(address, duration == null ? 0 : duration.toMillis(), socketSettings);
+	}
+
+	public static Stage<AsyncTcpSocketImpl> connect(InetSocketAddress address, long timeout, @Nullable SocketSettings socketSettings) {
+		SettableStage<AsyncTcpSocketImpl> result = new SettableStage<>();
+		Eventloop eventloop = getCurrentEventloop();
+		eventloop.connect(address, timeout, new ConnectCallback() {
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				result.set(wrapChannel(eventloop, socketChannel, socketSettings));
+			}
+
+			@Override
+			public void onException(Throwable e) {
+				result.setException(e);
+			}
+		});
+		return result;
 	}
 
 	public AsyncTcpSocketImpl withInspector(@Nullable Inspector inspector) {
@@ -218,7 +240,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		return this;
 	}
 
-	private AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
+	public AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(socketChannel);
 	}

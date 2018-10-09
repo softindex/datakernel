@@ -39,7 +39,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
-import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -356,11 +355,11 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return keepAliveConnection.send(request);
 		}
 
-		return eventloop.connect(address, connectTimeoutMillis)
-				.thenComposeEx((socketChannel, e) -> {
+		return AsyncTcpSocketImpl.connect(address, connectTimeoutMillis, socketSettings)
+				.thenComposeEx((asyncTcpSocketImpl, e) -> {
 					if (e == null) {
 						boolean https = request.isHttps();
-						AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
+						asyncTcpSocketImpl
 								.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
 
 						if (https && sslContext == null) {

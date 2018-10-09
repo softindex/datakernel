@@ -1,10 +1,8 @@
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 
-import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -175,11 +173,6 @@ public final class CompleteExceptionallyStage<T> implements MaterializedStage<T>
 	@Override
 	public Stage<Void> toVoid() {
 		return (CompleteExceptionallyStage<Void>) this;
-	}
-
-	@Override
-	public Stage<T> timeout(@Nullable Duration timeout) {
-		return this;
 	}
 
 	@Override

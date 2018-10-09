@@ -32,7 +32,6 @@ import org.junit.Test;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -98,8 +97,8 @@ public class MessagingWithBinaryStreamingTest {
 
 		server.listen();
 
-		eventloop.connect(address)
-				.whenComplete(new BiConsumer<SocketChannel, Throwable>() {
+		AsyncTcpSocketImpl.connect(address)
+				.whenComplete(new BiConsumer<AsyncTcpSocket, Throwable>() {
 					void ping(int n, Messaging<Integer, Integer> messaging) {
 						messaging.send(n);
 
@@ -119,9 +118,8 @@ public class MessagingWithBinaryStreamingTest {
 					}
 
 					@Override
-					public void accept(SocketChannel socketChannel, Throwable throwable) {
+					public void accept(AsyncTcpSocket asyncTcpSocket, Throwable throwable) {
 						if (throwable == null) {
-							AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 							MessagingWithBinaryStreaming<Integer, Integer> messaging =
 									MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 							ping(3, messaging);
@@ -167,9 +165,8 @@ public class MessagingWithBinaryStreamingTest {
 
 		server.listen();
 
-		eventloop.connect(address)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+		AsyncTcpSocketImpl.connect(address)
+				.whenResult(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, serializer);
 
@@ -223,9 +220,8 @@ public class MessagingWithBinaryStreamingTest {
 
 		server.listen();
 
-		eventloop.connect(address)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+		AsyncTcpSocketImpl.connect(address)
+				.whenResult(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, serializer);
 
@@ -283,9 +279,8 @@ public class MessagingWithBinaryStreamingTest {
 
 		server.listen();
 
-		CompletableFuture<String> future2 = eventloop.connect(address)
-				.thenCompose(socketChannel -> {
-					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+		CompletableFuture<String> future2 = AsyncTcpSocketImpl.connect(address)
+				.thenCompose(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, serializer);
 
@@ -340,9 +335,8 @@ public class MessagingWithBinaryStreamingTest {
 
 		server.listen();
 
-		eventloop.connect(address)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+		AsyncTcpSocketImpl.connect(address)
+				.whenResult(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, serializer);
 

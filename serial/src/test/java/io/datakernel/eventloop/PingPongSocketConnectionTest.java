@@ -68,9 +68,8 @@ public class PingPongSocketConnectionTest {
 
 		server.listen();
 
-		eventloop.connect(ADDRESS)
-				.whenResult(socketChannel -> {
-					AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+		AsyncTcpSocketImpl.connect(ADDRESS)
+				.whenResult(socket -> {
 					ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(socket));
 					loop(3, i -> i != 0,
 							i -> socket.write(wrapAscii(REQUEST_MSG))

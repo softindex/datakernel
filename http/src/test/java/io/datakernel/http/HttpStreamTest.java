@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+import static io.datakernel.async.Stage.ofCallback;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.lang.Math.min;
@@ -79,7 +80,8 @@ public class HttpStreamTest {
 		client = AsyncHttpClient.create(eventloop);
 		client.request(HttpRequest.post("http://127.0.0.1:" + PORT)
 				.withBodyStream(SerialSupplier.ofIterable(expectedList)
-						.transformAsync(item -> getCurrentEventloop().delay(1, item))))
+						.transformAsync(item -> ofCallback(cb ->
+								getCurrentEventloop().delay(1, () -> cb.set(item))))))
 				.async()
 				.whenComplete(assertComplete(response -> {
 					assertEquals(200, response.getCode());
@@ -95,7 +97,8 @@ public class HttpStreamTest {
 				request -> Stage.of(
 						HttpResponse.ok200()
 								.withBodyStream(SerialSupplier.ofIterable(expectedList)
-										.transformAsync(item -> getCurrentEventloop().delay(1, item)))))
+										.transformAsync(item -> ofCallback(cb ->
+												getCurrentEventloop().delay(1, () -> cb.set(item)))))))
 				.withListenPort(PORT);
 		server.listen();
 
@@ -134,7 +137,8 @@ public class HttpStreamTest {
 		client.request(
 				HttpRequest.post("http://127.0.0.1:" + PORT)
 						.withBodyStream(SerialSupplier.ofIterable(expectedList)
-								.transformAsync(item -> getCurrentEventloop().delay(1, item))))
+								.transformAsync(item -> ofCallback(cb ->
+										getCurrentEventloop().delay(1, () -> cb.set(item))))))
 				.thenApply(response -> {
 					assertEquals(200, response.getCode());
 					return response.getBodyStream().async();
