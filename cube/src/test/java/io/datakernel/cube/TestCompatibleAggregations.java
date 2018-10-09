@@ -1,8 +1,8 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
@@ -135,7 +135,7 @@ public class TestCompatibleAggregations {
 
 	@Before
 	public void setUp() {
-		cube = Cube.createUninitialized()
+		cube = new Cube(null, null, null, null)
 				.initialize(cube -> {
 					MEASURES.forEach(cube::addMeasure);
 
@@ -146,7 +146,7 @@ public class TestCompatibleAggregations {
 					asList(DAILY_AGGREGATION, ADVERTISERS_AGGREGATION, AFFILIATES_AGGREGATION).forEach(cube::addAggregation);
 				});
 
-		cubeWithDetailedAggregation = Cube.createUninitialized()
+		cubeWithDetailedAggregation = new Cube(null, null, null, null)
 				.initialize(cube -> {
 					MEASURES.forEach(cube::addMeasure);
 					DIMENSIONS_DAILY_AGGREGATION.forEach(cube::addDimension);

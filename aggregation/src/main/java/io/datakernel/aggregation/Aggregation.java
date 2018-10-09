@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,6 +119,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	 */
 	public static Aggregation create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 			AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure) {
+		checkArgument(structure != null, "Cannot create Aggregation with AggregationStructure that is null");
 		return new Aggregation(eventloop, executorService, classLoader, aggregationChunkStorage, structure, new AggregationState(structure));
 	}
 
@@ -606,12 +607,12 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	}
 
 	@Override
-	public String toString() {
-		return "{" + getKeyTypes().keySet() + " " + getMeasureTypes().keySet() + '}';
+	public Eventloop getEventloop() {
+		return eventloop;
 	}
 
 	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
+	public String toString() {
+		return "{" + getKeyTypes().keySet() + " " + getMeasureTypes().keySet() + '}';
 	}
 }

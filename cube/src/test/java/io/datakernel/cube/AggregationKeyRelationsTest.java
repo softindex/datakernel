@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ public class AggregationKeyRelationsTest {
 
 	@Before
 	public void setUp() throws Exception {
-		cube = Cube.createUninitialized()
+		cube = new Cube(null, null, null, null)
 				.withRelation("campaign", "advertiser")
 				.withRelation("offer", "campaign")
 				.withRelation("goal", "offer")

@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.ot;
 
 import io.datakernel.annotation.Nullable;
@@ -18,6 +34,7 @@ import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Collections.singleton;
@@ -53,6 +70,9 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	}
 
 	public static <K, D> OTStateManager<K, D> create(Eventloop eventloop, OTAlgorithms<K, D> otAlgorithms, OTState<D> state) {
+		checkArgument(eventloop != null, "Cannot create OTStateManager with Eventloop that is null");
+		checkArgument(otAlgorithms != null, "Cannot create OTStateManager with OTAlgorithms that is null");
+		checkArgument(state != null, "Cannot create OTStateManager with OTState that is null");
 		return new OTStateManager<>(eventloop, otAlgorithms, state);
 	}
 
@@ -326,9 +346,9 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return "{" +
 				"revision=" + revision +
 				" fetchedRevision=" + fetchedRevision +
-				" fetchedDiffs:" + fetchedDiffs.size() +
-				" workingDiffs:" + workingDiffs.size() +
-				" pendingCommits:" + pendingCommits.size() +
+				" fetchedDiffs:" + (fetchedDiffs != null ? fetchedDiffs.size() : null) +
+				" workingDiffs:" + (workingDiffs != null ? workingDiffs.size() : null) +
+				" pendingCommits:" + (pendingCommits != null ? pendingCommits.size() : null) +
 				'}';
 	}
 }
