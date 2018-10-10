@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.test;
 
 import ch.qos.logback.classic.Level;
@@ -21,6 +37,7 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public class TestUtils {
+	private static int activeStages = 0;
 
 	private static byte[] loadResource(URL file) throws IOException {
 		try (InputStream in = file.openStream()) {
@@ -89,7 +106,9 @@ public class TestUtils {
 	}
 
 	public static <T> BiConsumer<T, Throwable> assertComplete(Consumer<T> consumer) {
+		activeStages++;
 		return (t, error) -> {
+			activeStages--;
 			if (error != null) {
 				if (error.getClass() == AssertionError.class) {
 					throw (AssertionError) error;
@@ -106,7 +125,9 @@ public class TestUtils {
 
 	@SuppressWarnings("unchecked")
 	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, @Nullable String messagePattern, Consumer<E> consumer) {
+		activeStages++;
 		return (t, error) -> {
+			activeStages--;
 			if (error == null && errorClass == Throwable.class) {
 				throw new AssertionError("Expected an error");
 			}
@@ -142,5 +163,13 @@ public class TestUtils {
 
 	public static <T> BiConsumer<T, Throwable> assertFailure() {
 		return assertFailure($ -> {});
+	}
+
+	public static int getActiveStages() {
+		return activeStages;
+	}
+
+	public static void clearActiveStages() {
+		activeStages = 0;
 	}
 }

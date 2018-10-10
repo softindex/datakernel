@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package io.datakernel.file;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -42,6 +43,9 @@ import static org.junit.Assert.assertSame;
 
 public class AsyncFileTest {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();

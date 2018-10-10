@@ -27,6 +27,7 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialSuppliers;
 import io.datakernel.serial.file.SerialFileWriter;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.test.TestUtils;
 import org.junit.After;
@@ -73,6 +74,9 @@ public class FsIntegrationTest {
 
 	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
 
 	private Path storage;
 	private RemoteFsServer server;

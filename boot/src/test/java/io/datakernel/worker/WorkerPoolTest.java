@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.worker;
 
 import com.google.inject.*;
@@ -110,7 +126,7 @@ public class WorkerPoolTest {
 			future.get();
 		} catch (Throwable e) {
 			wasExecuted.set(true);
-			e = e.getCause().getCause();
+			e = e.getCause();
 			assertEquals(IllegalStateException.class, e.getClass());
 			assertEquals("No instance of Key[type=java.lang.String, annotation=[none]] is associated with current thread", e.getMessage());
 		}

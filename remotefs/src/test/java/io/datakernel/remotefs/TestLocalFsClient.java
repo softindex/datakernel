@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import io.datakernel.file.AsyncFile;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.file.SerialFileWriter;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
 import org.junit.After;
@@ -57,6 +58,9 @@ import static org.junit.Assert.*;
 
 public class TestLocalFsClient {
 	private static final MemSize bufferSize = MemSize.of(2);
+
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();

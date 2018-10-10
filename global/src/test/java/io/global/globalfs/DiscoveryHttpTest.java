@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs;
@@ -20,6 +19,7 @@ package io.global.globalfs;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.global.common.KeyPair;
 import io.global.common.RawServerId;
 import io.global.common.api.AnnounceData;
@@ -27,6 +27,7 @@ import io.global.common.api.DiscoveryService;
 import io.global.globalfs.http.DiscoveryServlet;
 import io.global.globalfs.http.HttpDiscoveryService;
 import io.global.globalfs.local.RuntimeDiscoveryService;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -40,6 +41,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class DiscoveryHttpTest {
+
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
 
 	@Test
 	public void test() throws IOException {

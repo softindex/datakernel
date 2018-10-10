@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -52,6 +53,9 @@ public class AsyncHttpClientTest {
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,

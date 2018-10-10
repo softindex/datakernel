@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncConsumer;
@@ -5,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
 import org.junit.After;
@@ -29,6 +46,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
 public class TestCachedFsClient {
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+
 	@Rule
 	public final TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -55,7 +75,7 @@ public class TestCachedFsClient {
 		cacheStorage = Paths.get(tempFolder.newFolder("cacheStorage").toURI());
 		serverStorage = Paths.get(tempFolder.newFolder("serverStorage").toURI());
 
-//		cacheStorage = Paths.get("/tmp/TEST/cache");
+		//		cacheStorage = Paths.get("/tmp/TEST/cache");
 //		serverStorage = Paths.get("/tmp/TEST/server");
 //		Runtime.getRuntime().exec("rm -r /tmp/TEST").waitFor();
 
@@ -230,7 +250,7 @@ public class TestCachedFsClient {
 		Files.write(cacheStorage.resolve("b/test3.txt"), "33".getBytes());
 		Files.write(cacheStorage.resolve("c/d/test4.txt"), "44".getBytes());
 
-//		// Adding 3 NEW files to server, total is 8
+		//		// Adding 3 NEW files to server, total is 8
 		Files.write(serverStorage.resolve("_test1.txt"), "11new".getBytes());
 		Files.write(serverStorage.resolve("a/_test2.txt"), "22new".getBytes());
 		Files.write(serverStorage.resolve("b/_test3.txt"), "33new".getBytes());

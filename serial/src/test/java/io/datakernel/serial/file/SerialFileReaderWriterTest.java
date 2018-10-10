@@ -26,6 +26,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.AbstractSerialConsumer;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
 import org.junit.Rule;
@@ -49,6 +50,9 @@ import static io.datakernel.test.TestUtils.assertFailure;
 import static org.junit.Assert.*;
 
 public class SerialFileReaderWriterTest {
+
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();

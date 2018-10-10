@@ -1,18 +1,41 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.util.*;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.time.Duration;
-import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static io.datakernel.test.TestUtils.assertComplete;
+import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toList;
 import static junit.framework.TestCase.*;
 
 public class StagesTest {
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+
 	private final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError()).withCurrentThread();
 
 	@Test
@@ -78,7 +101,7 @@ public class StagesTest {
 
 	@Test
 	public void listToListTest() {
-		eventloop.post(() -> Stages.toList(Arrays.asList(Stage.of(321), Stage.of(322), Stage.of(323)))
+		eventloop.post(() -> Stages.toList(asList(Stage.of(321), Stage.of(322), Stage.of(323)))
 				.whenComplete(assertComplete(list -> {
 					assertEquals(3, list.size());
 
@@ -94,9 +117,7 @@ public class StagesTest {
 	@Test
 	public void toArrayEmptyTest() {
 		eventloop.post(() -> Stages.toArray(Object.class)
-				.whenComplete(assertComplete(array -> {
-					assertEquals(0, array.length);
-				})));
+				.whenComplete(assertComplete(array -> assertEquals(0, array.length))));
 		eventloop.run();
 	}
 
@@ -147,7 +168,7 @@ public class StagesTest {
 
 	@Test
 	public void listToArrayDoubleTest() {
-		eventloop.post(() -> Stages.toArray(Integer.class, Arrays.asList(Stage.of(321), Stage.of(322), Stage.of(323)))
+		eventloop.post(() -> Stages.toArray(Integer.class, asList(Stage.of(321), Stage.of(322), Stage.of(323)))
 				.whenComplete(assertComplete(array -> {
 					assertEquals(3, array.length);
 					assertEquals(new Integer(321), array[0]);
@@ -228,13 +249,13 @@ public class StagesTest {
 					assertEquals(new Integer(1), value.getValue5());
 				}))
 				.thenCompose($ -> Stages.toTuple(Stage.of(321), Stage.of("322"), Stage.of(323.34), Stage.of(Duration.ofMillis(324)), Stage.of(1)))
-						.whenComplete(assertComplete(value -> {
-							assertEquals(new Integer(321), value.getValue1());
-							assertEquals("322", value.getValue2());
-							assertEquals(323.34, value.getValue3());
-							assertEquals(Duration.ofMillis(324), value.getValue4());
-							assertEquals(new Integer(1), value.getValue5());
-						})));
+				.whenComplete(assertComplete(value -> {
+					assertEquals(new Integer(321), value.getValue1());
+					assertEquals("322", value.getValue2());
+					assertEquals(323.34, value.getValue3());
+					assertEquals(Duration.ofMillis(324), value.getValue4());
+					assertEquals(new Integer(1), value.getValue5());
+				})));
 		eventloop.run();
 	}
 
@@ -258,6 +279,23 @@ public class StagesTest {
 					assertEquals(new Integer(1), value.getValue5());
 					assertNull(value.getValue6());
 				})));
+		eventloop.run();
+	}
+
+	@Test
+	public void testCollectWithListener() {
+		CollectListener<Object, Object[], List<Object>> any = (canceller, accumulator) -> {};
+		eventloop.post(() -> Stages.collect(IndexedCollector.toList(), any, asList(Stage.of(1), Stage.of(2), Stage.of(3)))
+				.whenComplete(assertComplete(list -> assertEquals(3, list.size()))));
+
+		eventloop.run();
+	}
+
+	@Test
+	public void testCollectStream() {
+		eventloop.post(() -> Stages.collect(toList(), Stream.of(Stage.of(1), Stage.of(2), Stage.of(3)))
+				.whenComplete(assertComplete(list -> assertEquals(3, list.size()))));
+
 		eventloop.run();
 	}
 }

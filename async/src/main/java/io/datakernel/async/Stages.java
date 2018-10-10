@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
@@ -19,7 +35,6 @@ import java.util.stream.Stream;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.asIterator;
 import static io.datakernel.util.CollectionUtils.transform;
-import static io.datakernel.util.CollectorsEx.toVoid;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
@@ -121,21 +136,6 @@ public final class Stages {
 		return resultStage.countdown != 0 ? resultStage : Stage.complete();
 	}
 
-	private static final class StageAll<T> extends NextStage<T, Void> {
-		int countdown;
-
-		@Override
-		public void accept(@Nullable T result, Throwable e) {
-			if (e == null) {
-				if (--countdown == 0) {
-					complete(null);
-				}
-			} else {
-				tryCompleteExceptionally(e);
-			}
-		}
-	}
-
 	public static <T> Stage<T> any() {
 		return Stage.ofException(new NoSuchElementException());
 	}
@@ -207,21 +207,6 @@ public final class Stages {
 		return resultStage.errors != 0 ? resultStage : any();
 	}
 
-	private static final class StageAny<T> extends NextStage<T, T> {
-		int errors;
-
-		@Override
-		public void accept(@Nullable T result, Throwable e) {
-			if (e == null) {
-				tryComplete(result);
-			} else {
-				if (--errors == 0) {
-					completeExceptionally(e);
-				}
-			}
-		}
-	}
-
 	/**
 	 * Accumulates results of {@code Stage}s using {@code IndexedCollector}.
 	 *
@@ -240,7 +225,7 @@ public final class Stages {
 		if (size == 2) return stages.get(0).combine(stages.get(1), collector::resultOf);
 
 		A accumulator = collector.accumulator(size);
-		StageCollect<T, A, R> resultStage = new StageCollect<>(collector, accumulator, size);
+		StageIndexedCollect<T, A, R> resultStage = new StageIndexedCollect<>(collector, accumulator);
 
 		for (int i = 0; i < size; i++) {
 			Stage<? extends T> stage = stages.get(i);
@@ -250,6 +235,7 @@ public final class Stages {
 			}
 			if (stage.isException()) return Stage.ofException(stage.getException());
 			int index = i;
+			resultStage.countdown++;
 			stage.whenComplete((result, e) -> {
 				if (e == null) {
 					resultStage.processComplete(result, index);
@@ -258,41 +244,7 @@ public final class Stages {
 				}
 			});
 		}
-		return resultStage.stages != 0 ? resultStage : Stage.of(collector.finish(resultStage.accumulator));
-	}
-
-	private static final class StageCollect<T, A, R> extends NextStage<T, R> {
-		final IndexedCollector<T, A, R> collector;
-		A accumulator;
-		int stages;
-
-		private StageCollect(IndexedCollector<T, A, R> collector, A accumulator, int stages) {
-			this.collector = collector;
-			this.accumulator = accumulator;
-			this.stages = stages;
-		}
-
-		void processComplete(T result, int i) {
-			if (isComplete()) {
-				return;
-			}
-			collector.accumulate(accumulator, i, result);
-			if (--stages == 0) {
-				R reducerResult = collector.finish(accumulator);
-				accumulator = null;
-				complete(reducerResult);
-			}
-		}
-
-		@Override
-		public void accept(@Nullable T result, Throwable e) {
-			if (e == null) {
-				processComplete(result, 0);
-			} else {
-				tryCompleteExceptionally(e);
-			}
-		}
-
+		return resultStage.countdown != 0 ? resultStage : Stage.of(collector.finish(resultStage.accumulator));
 	}
 
 	/**
@@ -310,7 +262,7 @@ public final class Stages {
 		}
 
 		A accumulator = collector.accumulator(size);
-		StageCollectEx<T, A, R> resultStage = new StageCollectEx<>(collector, listener, accumulator, size);
+		StageCollectEx<T, A, R> resultStage = new StageCollectEx<>(collector, listener, accumulator);
 		listener.onStart(resultStage, accumulator);
 
 		for (int i = 0; i < size; i++) {
@@ -321,6 +273,7 @@ public final class Stages {
 			}
 			if (stage.isException()) return Stage.ofException(stage.getException());
 			int index = i;
+			resultStage.countdown++;
 			stage.whenComplete((result, e) -> {
 				if (e == null) {
 					resultStage.processComplete(result, index);
@@ -329,7 +282,7 @@ public final class Stages {
 				}
 			});
 		}
-		if (resultStage.stages == 0) {
+		if (resultStage.countdown == 0) {
 			R result = collector.finish(resultStage.accumulator);
 			listener.onCollectResult(result);
 			return Stage.of(result);
@@ -344,24 +297,19 @@ public final class Stages {
 		if (!stages.hasNext()) {
 			return Stage.of(collector.finisher().apply(accumulatorValue));
 		}
-		int[] counter = new int[1];
-		SettableStage<R> result = new SettableStage<>();
+		StageCollect<T, A, R> resultStage = new StageCollect<>(collector, accumulatorValue);
+
 		while (stages.hasNext()) {
-			stages.next().whenComplete((value, e) -> {
-				if (e == null) {
-					if (!result.isComplete()) {
-						accumulatorConsumer.accept(accumulatorValue, value);
-						if (--counter[0] == 0) {
-							result.trySet(collector.finisher().apply(accumulatorValue));
-						}
-					}
-				} else {
-					result.trySetException(e);
-				}
-			});
-			counter[0]++;
+			Stage<? extends T> stage = stages.next();
+			if (stage.isResult()) {
+				accumulatorConsumer.accept(resultStage.accumulator, stage.getResult());
+				continue;
+			}
+			if (stage.isException()) return Stage.ofException(stage.getException());
+			resultStage.countdown++;
+			stage.then(resultStage);
 		}
-		return result;
+		return resultStage.countdown != 0 ? resultStage : Stage.of(collector.finisher().apply(resultStage.accumulator));
 	}
 
 	public static <T, A, R> Stage<R> collect(Collector<T, A, R> collector, Iterable<? extends Stage<? extends T>> stages) {
@@ -370,103 +318,6 @@ public final class Stages {
 
 	public static <T, A, R> Stage<R> collect(Collector<T, A, R> collector, Stream<? extends Stage<? extends T>> stages) {
 		return collect(collector, stages.iterator());
-	}
-
-	private static final class StageCollectEx<T, A, R> extends NextStage<T, R> implements CollectListener.CollectCanceller {
-		final IndexedCollector<T, A, R> collector;
-		final CollectListener<T, A, R> listener;
-		A accumulator;
-		int stages;
-
-		private StageCollectEx(IndexedCollector<T, A, R> collector, CollectListener<T, A, R> listener, A accumulator, int stages) {
-			this.collector = collector;
-			this.listener = listener;
-			this.accumulator = accumulator;
-			this.stages = stages;
-		}
-
-		@Override
-		public void accept(@Nullable T result, Throwable e) {
-			if (e == null) {
-				processComplete(result, 0);
-			} else {
-				processException(e, 0);
-			}
-		}
-
-		void processComplete(T stageResult, int index) {
-			if (isComplete()) {
-				return;
-			}
-			collector.accumulate(accumulator, index, stageResult);
-			listener.onResult(stageResult, index);
-			if (--stages == 0) {
-				finish();
-			}
-		}
-
-		@Override
-		public void finish() {
-			if (isComplete()) {
-				return;
-			}
-			R finished = collector.finish(accumulator);
-			accumulator = null;
-			listener.onCollectResult(finished);
-			if (isComplete()) {
-				return;
-			}
-			complete(finished);
-		}
-
-		void processException(Throwable e, int index) {
-			if (isComplete()) {
-				return;
-			}
-			listener.onException(e, index);
-			finishExceptionally(e);
-		}
-
-		@Override
-		public void finishExceptionally(Throwable e) {
-			if (isComplete()) {
-				return;
-			}
-			listener.onCollectException(e);
-			if (isComplete()) {
-				return;
-			}
-			completeExceptionally(e);
-		}
-	}
-
-	static final class ReduceTimeouter<T, A, R> implements Runnable, CollectListener<T, A, R> {
-		CollectCanceller canceller;
-		ScheduledRunnable scheduledRunnable;
-
-		@Override
-		public void onStart(CollectCanceller canceller, A accumulator) {
-			this.canceller = canceller;
-		}
-
-		@Override
-		public void onCollectResult(R result) {
-			if (scheduledRunnable != null) {
-				scheduledRunnable.cancel();
-			}
-		}
-
-		@Override
-		public void onCollectException(Throwable e) {
-			if (scheduledRunnable != null) {
-				scheduledRunnable.cancel();
-			}
-		}
-
-		@Override
-		public void run() {
-			canceller.finish();
-		}
 	}
 
 	public static <T> Stage<List<T>> toList() {
@@ -871,74 +722,6 @@ public final class Stages {
 		});
 	}
 
-	@SafeVarargs
-	public static <T> Stage<Void> firstSuccessful(int count, AsyncSupplier<? extends T>... stages) {
-		return collectFirst(count, isResult(), toVoid(), stages);
-	}
-
-	public static <T> Stage<Void> firstSuccessful(int count, Iterable<? extends AsyncSupplier<? extends T>> stages) {
-		return collectFirst(count, isResult(), toVoid(), stages);
-	}
-
-	public static <T> Stage<Void> firstSuccessful(int count, Stream<? extends Stage<? extends T>> stages) {
-		return collectFirst(count, isResult(), toVoid(), stages);
-	}
-
-	public static <T> Stage<Void> firstSuccessful(int count, Iterator<? extends Stage<? extends T>> stages) {
-		return collectFirst(count, isResult(), toVoid(), stages);
-	}
-
-	@SafeVarargs
-	public static <T, A, R> Stage<R> collectFirst(int count, BiPredicate<? super T, ? super Throwable> predicate,
-			Collector<T, A, R> collector,
-			AsyncSupplier<? extends T>... stages) {
-		return collectFirst(count, predicate, collector, asList(stages));
-	}
-
-	public static <T, A, R> Stage<R> collectFirst(int count, BiPredicate<? super T, ? super Throwable> predicate,
-			Collector<T, A, R> collector,
-			Iterable<? extends AsyncSupplier<? extends T>> stages) {
-		return collectFirst(count, predicate, collector, transform(stages.iterator(), AsyncSupplier::get));
-	}
-
-	public static <T, A, R> Stage<R> collectFirst(int count, BiPredicate<? super T, ? super Throwable> predicate,
-			Collector<T, A, R> collector,
-			Stream<? extends Stage<? extends T>> stages) {
-		return collectFirst(count, predicate, collector, stages.iterator());
-	}
-
-	public static <T, A, R> Stage<R> collectFirst(int count, BiPredicate<? super T, ? super Throwable> predicate,
-			Collector<T, A, R> collector,
-			Iterator<? extends Stage<? extends T>> stages) {
-		SettableStage<R> cb = new SettableStage<>();
-		for (int i = 0; i < count; i++) {
-			collectFirstImpl(stages, new int[count], predicate,
-					collector.accumulator(), collector.finisher(), collector.supplier().get(),
-					cb);
-		}
-		return cb;
-	}
-
-	private static <T, A, R> void collectFirstImpl(Iterator<? extends Stage<? extends T>> stages,
-			int[] countdown, BiPredicate<? super T, ? super Throwable> predicate, BiConsumer<A, T> accumulator, Function<A, R> finisher,
-			A accumulatedValue,
-			SettableStage<R> cb) {
-		if (!stages.hasNext()) {
-			cb.setException(new NoSuchElementException());
-			return;
-		}
-		stages.next().whenComplete((result, e) -> {
-			if (predicate.test(result, e)) {
-				accumulator.accept(accumulatedValue, result);
-				if (--countdown[0] == 0) {
-					cb.set(finisher.apply(accumulatedValue));
-					return;
-				}
-			}
-			collectFirstImpl(stages, countdown, predicate, accumulator, finisher, accumulatedValue, cb);
-		});
-	}
-
 	public static <T> BiPredicate<T, Throwable> isResult() {
 		return ($, e) -> e == null;
 	}
@@ -998,5 +781,203 @@ public final class Stages {
 			}
 		}
 	}
+
+	// region helper classes
+	private static final class StageAll<T> extends NextStage<T, Void> {
+		int countdown;
+
+		@Override
+		public void accept(@Nullable T result, Throwable e) {
+			if (e == null) {
+				if (--countdown == 0) {
+					complete(null);
+				}
+			} else {
+				tryCompleteExceptionally(e);
+			}
+		}
+	}
+
+	private static final class StageAny<T> extends NextStage<T, T> {
+		int errors;
+
+		@Override
+		public void accept(@Nullable T result, Throwable e) {
+			if (e == null) {
+				tryComplete(result);
+			} else {
+				if (--errors == 0) {
+					completeExceptionally(e);
+				}
+			}
+		}
+	}
+
+	private static final class StageCollect<T, A, R> extends NextStage<T, R> {
+		final Collector<T, A, R> collector;
+		A accumulator;
+		int countdown;
+
+		private StageCollect(Collector<T, A, R> collector, A accumulator) {
+			this.collector = collector;
+			this.accumulator = accumulator;
+		}
+
+		void processComplete(T result) {
+			if (isComplete()) {
+				return;
+			}
+			collector.accumulator().accept(accumulator, result);
+			if (--countdown == 0) {
+				R reducerResult = collector.finisher().apply(accumulator);
+				accumulator = null;
+				complete(reducerResult);
+			}
+		}
+
+		@Override
+		public void accept(@Nullable T result, Throwable e) {
+			if (e == null) {
+				processComplete(result);
+			} else {
+				tryCompleteExceptionally(e);
+			}
+		}
+	}
+
+	private static final class StageIndexedCollect<T, A, R> extends NextStage<T, R> {
+		final IndexedCollector<T, A, R> collector;
+		A accumulator;
+		int countdown;
+
+		private StageIndexedCollect(IndexedCollector<T, A, R> collector, A accumulator) {
+			this.collector = collector;
+			this.accumulator = accumulator;
+		}
+
+		private StageIndexedCollect(Collector<T, A, R> collector, A accumulator) {
+			this.collector = IndexedCollector.ofCollector(collector);
+			this.accumulator = accumulator;
+		}
+
+		void processComplete(T result, int i) {
+			if (isComplete()) {
+				return;
+			}
+			collector.accumulate(accumulator, i, result);
+			if (--countdown == 0) {
+				R reducerResult = collector.finish(accumulator);
+				accumulator = null;
+				complete(reducerResult);
+			}
+		}
+
+		@Override
+		public void accept(@Nullable T result, Throwable e) {
+			if (e == null) {
+				processComplete(result, 0);
+			} else {
+				tryCompleteExceptionally(e);
+			}
+		}
+
+	}
+
+	private static final class StageCollectEx<T, A, R> extends NextStage<T, R> implements CollectListener.CollectCanceller {
+		final IndexedCollector<T, A, R> collector;
+		final CollectListener<T, A, R> listener;
+		A accumulator;
+		int countdown;
+
+		private StageCollectEx(IndexedCollector<T, A, R> collector, CollectListener<T, A, R> listener, A accumulator) {
+			this.collector = collector;
+			this.listener = listener;
+			this.accumulator = accumulator;
+		}
+
+		@Override
+		public void accept(@Nullable T result, Throwable e) {
+			if (e == null) {
+				processComplete(result, 0);
+			} else {
+				processException(e, 0);
+			}
+		}
+
+		void processComplete(T stageResult, int index) {
+			if (isComplete()) {
+				return;
+			}
+			collector.accumulate(accumulator, index, stageResult);
+			listener.onResult(stageResult, index);
+			if (--countdown == 0) {
+				finish();
+			}
+		}
+
+		@Override
+		public void finish() {
+			if (isComplete()) {
+				return;
+			}
+			R finished = collector.finish(accumulator);
+			accumulator = null;
+			listener.onCollectResult(finished);
+			if (isComplete()) {
+				return;
+			}
+			complete(finished);
+		}
+
+		void processException(Throwable e, int index) {
+			if (isComplete()) {
+				return;
+			}
+			listener.onException(e, index);
+			finishExceptionally(e);
+		}
+
+		@Override
+		public void finishExceptionally(Throwable e) {
+			if (isComplete()) {
+				return;
+			}
+			listener.onCollectException(e);
+			if (isComplete()) {
+				return;
+			}
+			completeExceptionally(e);
+		}
+	}
+
+	static final class ReduceTimeouter<T, A, R> implements Runnable, CollectListener<T, A, R> {
+		CollectCanceller canceller;
+		ScheduledRunnable scheduledRunnable;
+
+		@Override
+		public void onStart(CollectCanceller canceller, A accumulator) {
+			this.canceller = canceller;
+		}
+
+		@Override
+		public void onCollectResult(R result) {
+			if (scheduledRunnable != null) {
+				scheduledRunnable.cancel();
+			}
+		}
+
+		@Override
+		public void onCollectException(Throwable e) {
+			if (scheduledRunnable != null) {
+				scheduledRunnable.cancel();
+			}
+		}
+
+		@Override
+		public void run() {
+			canceller.finish();
+		}
+	}
+	// endregion
 
 }

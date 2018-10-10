@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.remotefs;
 
 import ch.qos.logback.classic.Level;
@@ -5,6 +21,7 @@ import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
@@ -26,6 +43,9 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.enableLogging;
 
 public class TestRepartitionController {
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+
 	public static final int CLIENT_SERVER_PAIRS = 10;
 
 	private final Path[] serverStorages = new Path[CLIENT_SERVER_PAIRS];
@@ -55,7 +75,7 @@ public class TestRepartitionController {
 
 		Map<Object, FsClient> clients = new HashMap<>(CLIENT_SERVER_PAIRS);
 
-//		localStorage = tmpFolder.getRoot().toPath().resolve("local");
+		//		localStorage = tmpFolder.getRoot().toPath().resolve("local");
 		localStorage = Paths.get("/tmp/TESTS/local");
 		Files.createDirectories(localStorage);
 		LocalFsClient localFsClient = LocalFsClient.create(eventloop, executor, localStorage);
@@ -66,7 +86,7 @@ public class TestRepartitionController {
 		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
 			InetSocketAddress address = new InetSocketAddress("localhost", 5560 + i);
 
-//			serverStorages[i] = tmpFolder.getRoot().toPath().resolve("storage_" + i);
+			//			serverStorages[i] = tmpFolder.getRoot().toPath().resolve("storage_" + i);
 			serverStorages[i] = Paths.get("/tmp/TESTS/storage_" + i);
 
 			Files.createDirectories(serverStorages[i]);

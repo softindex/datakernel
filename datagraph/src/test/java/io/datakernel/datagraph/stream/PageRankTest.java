@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +32,9 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.processor.StreamJoin;
-import io.datakernel.stream.processor.StreamMap;
-import io.datakernel.stream.processor.StreamReducers;
-import io.datakernel.stream.processor.StreamSorterStorage;
+import io.datakernel.stream.processor.*;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -52,6 +50,8 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class PageRankTest {
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
 
 	public static final class Page {
 		@Serialize(order = 0)

@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -43,6 +44,8 @@ import static org.junit.Assert.assertEquals;
 
 public class HttpStreamTest {
 	public static final int PORT = 33453;
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 	public Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());

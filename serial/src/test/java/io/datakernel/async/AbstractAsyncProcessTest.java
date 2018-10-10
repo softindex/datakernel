@@ -26,6 +26,7 @@ import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
+import io.datakernel.stream.processor.ActiveStagesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -43,6 +44,9 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class AbstractAsyncProcessTest {
+	@Rule
+	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+
 	@Rule
 	public final ByteBufRule byteBufRule = new ByteBufRule();
 
