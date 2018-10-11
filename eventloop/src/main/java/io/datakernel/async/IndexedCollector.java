@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.async;
 
 import java.lang.reflect.Array;
@@ -102,7 +118,7 @@ public interface IndexedCollector<T, A, R> {
 
 	@SuppressWarnings("unchecked")
 	static <T> IndexedCollector<T, T[], T[]> toArray(Class<T> type) {
-		return (IndexedCollector) new IndexedCollector<Object, Object[], Object[]>() {
+		return new IndexedCollector<T, T[], T[]>() {
 
 			@Override
 			public T[] accumulator(int stages) {
@@ -110,13 +126,13 @@ public interface IndexedCollector<T, A, R> {
 			}
 
 			@Override
-			public void accumulate(Object[] accumulator, int stageIndex, Object stageResult) {
+			public void accumulate(T[] accumulator, int stageIndex, T stageResult) {
 				accumulator[stageIndex] = stageResult;
 			}
 
 			@SuppressWarnings("unchecked")
 			@Override
-			public T[] finish(Object[] accumulator) {
+			public T[] finish(T[] accumulator) {
 				return (T[]) accumulator;
 			}
 
@@ -126,14 +142,14 @@ public interface IndexedCollector<T, A, R> {
 			}
 
 			@Override
-			public T[] resultOf(Object value1) {
+			public T[] resultOf(T value1) {
 				T[] array = (T[]) Array.newInstance(type, 1);
 				array[0] = (T) value1;
 				return array;
 			}
 
 			@Override
-			public T[] resultOf(Object value1, Object value2) {
+			public T[] resultOf(T value1, T value2) {
 				T[] array = (T[]) Array.newInstance(type, 2);
 				array[0] = (T) value1;
 				array[1] = (T) value2;
@@ -141,8 +157,8 @@ public interface IndexedCollector<T, A, R> {
 			}
 
 			@Override
-			public T[] resultOf(List<?> values) {
-				return (T[]) values.toArray();
+			public T[] resultOf(List<? extends T> values) {
+				return values.toArray(accumulator(0));
 			}
 		};
 	}
