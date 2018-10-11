@@ -23,10 +23,10 @@ import io.datakernel.config.SimpleConfigConverter;
 import io.datakernel.exception.ParseException;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
-import io.global.globalfs.api.CheckpointPositionStrategy;
+import io.global.fs.api.CheckpointPositionStrategy;
 
 import static io.datakernel.config.ConfigConverters.ofLong;
-import static io.global.globalfs.api.CheckpointPositionStrategy.*;
+import static io.global.fs.api.CheckpointPositionStrategy.*;
 
 public final class GlobalFsConfigConverters {
 	// region creators

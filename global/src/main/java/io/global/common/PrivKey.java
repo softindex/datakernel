@@ -19,14 +19,14 @@ package io.global.common;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
-import io.global.globalsync.util.BinaryDataFormats;
+import io.global.ot.util.BinaryDataFormats;
 import org.spongycastle.crypto.params.ECPrivateKeyParameters;
 
 import java.math.BigInteger;
 import java.util.Base64;
 
-import static io.global.globalsync.util.BinaryDataFormats.sizeof;
-import static io.global.globalsync.util.BinaryDataFormats.writePrivKey;
+import static io.global.ot.util.BinaryDataFormats.sizeof;
+import static io.global.ot.util.BinaryDataFormats.writePrivKey;
 
 public final class PrivKey {
 	private static final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();

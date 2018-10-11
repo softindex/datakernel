@@ -36,12 +36,12 @@ import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
-import io.global.globalfs.api.GlobalFsNode;
-import io.global.globalfs.api.NodeFactory;
-import io.global.globalfs.http.GlobalFsNodeServlet;
-import io.global.globalfs.http.HttpDiscoveryService;
-import io.global.globalfs.http.HttpGlobalFsNode;
-import io.global.globalfs.local.LocalGlobalFsNode;
+import io.global.fs.api.GlobalFsNode;
+import io.global.fs.api.NodeFactory;
+import io.global.fs.http.GlobalFsNodeServlet;
+import io.global.fs.http.HttpDiscoveryService;
+import io.global.fs.http.HttpGlobalFsNode;
+import io.global.fs.local.LocalGlobalFsNode;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;

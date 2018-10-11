@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.common.api;
@@ -23,11 +22,11 @@ import io.datakernel.exception.ParseException;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.Signable;
-import io.global.globalsync.util.BinaryDataFormats;
+import io.global.ot.util.BinaryDataFormats;
 
 import java.util.*;
 
-import static io.global.globalsync.util.BinaryDataFormats.sizeof;
+import static io.global.ot.util.BinaryDataFormats.sizeof;
 
 public final class AnnounceData implements Signable {
 	private final byte[] bytes;

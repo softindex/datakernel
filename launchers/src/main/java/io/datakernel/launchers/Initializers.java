@@ -28,7 +28,7 @@ import io.datakernel.remotefs.RemoteFsRepartitionController;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.util.Initializer;
-import io.global.globalfs.local.LocalGlobalFsNode;
+import io.global.fs.local.LocalGlobalFsNode;
 
 import java.time.Duration;
 import java.util.HashSet;
@@ -41,7 +41,7 @@ import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_INITIAL_BUFFER_SIZE;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_MAX_MESSAGE_SIZE;
 import static io.datakernel.util.Preconditions.checkState;
-import static io.global.globalfs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
+import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
 import static java.util.Collections.emptyList;
 
 public class Initializers {

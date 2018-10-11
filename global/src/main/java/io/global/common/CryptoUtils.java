@@ -16,7 +16,7 @@
 
 package io.global.common;
 
-import io.global.globalsync.api.EncryptedData;
+import io.global.ot.api.EncryptedData;
 import org.spongycastle.asn1.x9.X9ECParameters;
 import org.spongycastle.crypto.*;
 import org.spongycastle.crypto.agreement.ECDHBasicAgreement;
