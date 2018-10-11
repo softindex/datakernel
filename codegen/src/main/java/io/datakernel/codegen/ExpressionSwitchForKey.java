@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.Utils.newLocal;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
@@ -136,9 +135,7 @@ public final class ExpressionSwitchForKey implements Expression {
 		if (!key.equals(that.key)) return false;
 		if (!Objects.equals(defaultExp, that.defaultExp)) return false;
 		if (!listKey.equals(that.listKey)) return false;
-		if (!listValue.equals(that.listValue)) return false;
-
-		return true;
+		return listValue.equals(that.listValue);
 	}
 
 	@Override

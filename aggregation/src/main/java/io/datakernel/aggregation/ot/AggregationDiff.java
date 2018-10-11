@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.aggregation.ot;
 
 import io.datakernel.aggregation.AggregationChunk;
@@ -7,6 +23,7 @@ import java.util.Set;
 
 import static io.datakernel.util.CollectionUtils.union;
 import static java.util.Collections.emptySet;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AggregationDiff {
 	private final Set<AggregationChunk> addedChunks;
@@ -18,11 +35,13 @@ public final class AggregationDiff {
 	}
 
 	public static AggregationDiff of(Set<AggregationChunk> addedChunks, Set<AggregationChunk> removedChunks) {
+		checkArgument(addedChunks != null, "Cannot create AggregationDiff with addedChunks that is null");
+		checkArgument(removedChunks != null, "Cannot create AggregationDiff with removedChunks that is null");
 		return new AggregationDiff(addedChunks, removedChunks);
 	}
 
 	public static AggregationDiff of(Set<AggregationChunk> addedChunks) {
-		return new AggregationDiff(addedChunks, emptySet());
+		return of(addedChunks, emptySet());
 	}
 
 	public static AggregationDiff empty() {
@@ -62,11 +81,6 @@ public final class AggregationDiff {
 	}
 
 	@Override
-	public String toString() {
-		return "{addedChunks:" + addedChunks.size() + ", removedChunks:" + removedChunks.size() + '}';
-	}
-
-	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
@@ -82,5 +96,10 @@ public final class AggregationDiff {
 		int result = addedChunks != null ? addedChunks.hashCode() : 0;
 		result = 31 * result + (removedChunks != null ? removedChunks.hashCode() : 0);
 		return result;
+	}
+
+	@Override
+	public String toString() {
+		return "{addedChunks:" + addedChunks.size() + ", removedChunks:" + removedChunks.size() + '}';
 	}
 }

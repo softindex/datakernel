@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -110,7 +110,7 @@ public final class SerializerBuilder {
 		});
 		builder.setSerializer(Set.class, (type, generics, fallback) -> {
 			check(generics.length == 1);
-			return new SerializerGenSet(generics[0].serializer, generics[0].rawType);
+			return new SerializerGenSet(generics[0].serializer);
 		});
 		builder.setSerializer(Map.class, (type, generics, fallback) -> {
 			check(generics.length == 2);
@@ -248,53 +248,6 @@ public final class SerializerBuilder {
 	public <T> SerializerBuilder withSubclasses(Class<T> type, Class<? extends T>... subclasses) {
 		setSubclasses(type, subclasses);
 		return this;
-	}
-
-	public SerializerBuilder withHppcSupport() {
-		registerHppcMaps();
-		registerHppcSets();
-		return this;
-	}
-
-	private void registerHppcMaps() {
-		List<Class<?>> types = asList(
-				byte.class, short.class, int.class, long.class, float.class, double.class, char.class, Object.class
-		);
-
-		for (int i = 0; i < types.size(); i++) {
-			Class<?> keyType = types.get(i);
-			String keyTypeName = keyType.getSimpleName();
-			for (Class<?> valueType : types) {
-				String valueTypeName = valueType.getSimpleName();
-				String hppcMapTypeName
-						= "com.carrotsearch.hppc." + capitalize(keyTypeName) + capitalize(valueTypeName) + "Map";
-				Class<?> hppcMapType;
-				try {
-					hppcMapType = Class.forName(hppcMapTypeName, true, definingClassLoader);
-				} catch (ClassNotFoundException e) {
-					throw new IllegalStateException("Cannot load " + e.getClass().getName(), e);
-				}
-				typeMap.put(hppcMapType, SerializerGenHppcMap.serializerGenBuilder(hppcMapType, keyType, valueType));
-			}
-		}
-	}
-
-	private void registerHppcSets() {
-		List<Class<?>> types = asList(
-				byte.class, short.class, int.class, long.class, float.class, double.class, char.class, Object.class
-		);
-
-		for (Class<?> valueType : types) {
-			String valueTypeName = valueType.getSimpleName();
-			String hppcSetTypeName = "com.carrotsearch.hppc." + capitalize(valueTypeName) + "Set";
-			Class<?> hppcSetType;
-			try {
-				hppcSetType = Class.forName(hppcSetTypeName, true, definingClassLoader);
-			} catch (ClassNotFoundException e) {
-				throw new IllegalStateException(e);
-			}
-			typeMap.put(hppcSetType, SerializerGenHppcSet.serializerGenBuilder(hppcSetType, valueType));
-		}
 	}
 
 	private static String capitalize(String str) {
@@ -1025,9 +978,7 @@ public final class SerializerBuilder {
 
 			if (!Arrays.equals(generics, key.generics)) return false;
 			if (!type.equals(key.type)) return false;
-			if (!mods.equals(key.mods)) return false;
-
-			return true;
+			return mods.equals(key.mods);
 		}
 
 		@Override

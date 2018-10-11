@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,60 +23,64 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.Iterator;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.Utils.newLocal;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
-final class ForEachHppcMap implements Expression {
-	private final Class<?> iteratorType;
-	private final Expression collection;
-	private final Expression forKey;
-	private final Expression forValue;
+public abstract class AbstractExpressionMapForEach implements Expression {
+	protected final Expression collection;
+	protected final Expression forKey;
+	protected final Expression forValue;
+	protected final Class<?> entryType;
 
-	ForEachHppcMap(Class<?> iteratorType, Expression collection, Expression forKey, Expression forValue) {
-		this.iteratorType = checkNotNull(iteratorType);
+	protected AbstractExpressionMapForEach(Expression collection, Expression forKey, Expression forValue, Class<?> entryType) {
 		this.collection = checkNotNull(collection);
 		this.forKey = checkNotNull(forKey);
 		this.forValue = checkNotNull(forValue);
+		this.entryType = checkNotNull(entryType);
 	}
 
+	protected abstract Expression getEntries();
+
+	protected abstract Expression getKey(VarLocal entry);
+
+	protected abstract Expression getValue(VarLocal entry);
+
 	@Override
-	public Type type(Context ctx) {
+	public final Type type(Context ctx) {
 		return Type.VOID_TYPE;
 	}
 
 	@Override
-	public Type load(Context ctx) {
+	public final Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		Label labelLoop = new Label();
 		Label labelExit = new Label();
 
+		Expression it = call(getEntries(), "iterator");
+		it.load(ctx);
 		VarLocal iterator = newLocal(ctx, getType(Iterator.class));
-		call(collection, "iterator").load(ctx);
 		iterator.store(ctx);
 
 		g.mark(labelLoop);
 
 		call(iterator, "hasNext").load(ctx);
-		g.push(true);
-		g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.NE, labelExit);
+		g.push(false);
+		g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.EQ, labelExit);
 
-		VarLocal item = newLocal(ctx, getType(iteratorType));
+		Expression varEntry = cast(call(iterator, "next"), entryType);
+		varEntry.load(ctx);
 
-		cast(call(iterator, "next"), iteratorType).load(ctx);
-		item.store(ctx);
+		VarLocal local = newLocal(ctx, varEntry.type(ctx));
+		local.store(ctx);
 
-		ctx.addParameter("key", field(item, "key"));
+		ctx.addParameter("key", getKey(local));
 		forKey.load(ctx);
-
-		ctx.addParameter("value", field(item, "value"));
+		ctx.addParameter("value", getValue(local));
 		forValue.load(ctx);
 
 		g.goTo(labelLoop);
-
 		g.mark(labelExit);
-
 		return Type.VOID_TYPE;
 	}
 
@@ -85,23 +89,20 @@ final class ForEachHppcMap implements Expression {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		ForEachHppcMap that = (ForEachHppcMap) o;
+		AbstractExpressionMapForEach that = (AbstractExpressionMapForEach) o;
 
-		if (!iteratorType.equals(that.iteratorType)) return false;
 		if (!collection.equals(that.collection)) return false;
 		if (!forKey.equals(that.forKey)) return false;
 		if (!forValue.equals(that.forValue)) return false;
-
-		return true;
+		return entryType.equals(that.entryType);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = iteratorType.hashCode();
-		result = 31 * result + collection.hashCode();
+		int result = collection.hashCode();
 		result = 31 * result + forKey.hashCode();
 		result = 31 * result + forValue.hashCode();
+		result = 31 * result + entryType.hashCode();
 		return result;
 	}
-
 }

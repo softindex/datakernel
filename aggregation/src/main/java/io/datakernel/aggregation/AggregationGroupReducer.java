@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
+
 public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -52,21 +54,21 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 	private final HashMap<K, Object> map = new HashMap<>();
 
 	public AggregationGroupReducer(AggregationChunkStorage<C> storage,
-			AggregationStructure aggregation, List<String> measures,
+	                               AggregationStructure aggregation, List<String> measures,
 			Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
 			Function<T, K> keyFunction, Aggregate<T, Object> aggregate,
-			int chunkSize, DefiningClassLoader classLoader) {
-		this.storage = storage;
-		this.measures = measures;
-		this.partitionPredicate = partitionPredicate;
-		this.recordClass = recordClass;
-		this.keyFunction = keyFunction;
-		this.aggregate = aggregate;
+	                               int chunkSize, DefiningClassLoader classLoader) {
+		this.storage = checkNotNull(storage, "Cannot create AggregationGroupReducer with AggregationChunkStorage that is null");
+		this.measures = checkNotNull(measures, "Cannot create AggregationGroupReducer with measures that is null");
+		this.partitionPredicate = checkNotNull(partitionPredicate, "Cannot create AggregationGroupReducer with PartitionPredicate that is null");
+		this.recordClass = (Class<T>) checkNotNull(recordClass, "Cannot create AggregationGroupReducer with recordClass that is null");
+		this.keyFunction = checkNotNull(keyFunction, "Cannot create AggregationGroupReducer with keyFunction that is null");
+		this.aggregate = checkNotNull(aggregate, "Cannot create AggregationGroupReducer with Aggregate that is null");
 		this.chunkSize = chunkSize;
-		this.aggregation = aggregation;
+		this.aggregation = checkNotNull(aggregation, "Cannot create AggregationGroupReducer with AggregationStructure that is null");
 		this.resultsTracker = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
 				.withStage(this.getEndOfStream(), (accumulator, $) -> {});
-		this.classLoader = classLoader;
+		this.classLoader = checkNotNull(classLoader, "Cannot create AggregationGroupReducer with ClassLoader that is null");
 	}
 
 	public MaterializedStage<List<AggregationChunk>> getResult() {

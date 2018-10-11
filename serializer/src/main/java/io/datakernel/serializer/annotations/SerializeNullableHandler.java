@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ public final class SerializeNullableHandler implements AnnotationHandler<Seriali
 				if (fallback instanceof SerializerGenString)
 					return ((SerializerGenString) fallback).nullable(true);
 				if (compatibilityLevel == CompatibilityLevel.LEVEL_3 && fallback instanceof NullableOptimization) {
-					return ((NullableOptimization) fallback).setNullable();
+					return ((NullableOptimization) fallback).asNullable();
 				}
 				return new SerializerGenNullable(fallback);
 			}

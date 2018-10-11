@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.logfs.ot;
 
 import io.datakernel.logfs.LogPosition;
@@ -7,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Collections.singletonList;
 
 public class LogDiff<D> {
@@ -68,15 +85,17 @@ public class LogDiff<D> {
 	}
 
 	public static <D> LogDiff<D> of(Map<String, LogPositionDiff> positions, List<D> diffs) {
+		checkArgument(positions != null, "Cannot create LogDiff with positions that is null");
+		checkArgument(diffs != null, "Cannot create LogDiff with diffs that is null");
 		return new LogDiff<>(positions, diffs);
 	}
 
 	public static <D> LogDiff<D> of(Map<String, LogPositionDiff> positions, D diff) {
-		return new LogDiff<>(positions, singletonList(diff));
+		return of(positions, singletonList(diff));
 	}
 
 	public static <D> LogDiff<D> forCurrentPosition(List<D> diffs) {
-		return new LogDiff<>(Collections.emptyMap(), diffs);
+		return of(Collections.emptyMap(), diffs);
 	}
 
 	public static <D> LogDiff<D> forCurrentPosition(D diff) {
@@ -95,12 +114,6 @@ public class LogDiff<D> {
 		return diffs.stream();
 	}
 
-
-	@Override
-	public String toString() {
-		return "{positions:" + positions.keySet() + ", diffs:" + diffs.size() + '}';
-	}
-
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -117,5 +130,10 @@ public class LogDiff<D> {
 		int result = positions != null ? positions.hashCode() : 0;
 		result = 31 * result + (diffs != null ? diffs.hashCode() : 0);
 		return result;
+	}
+
+	@Override
+	public String toString() {
+		return "{positions:" + positions.keySet() + ", diffs:" + diffs.size() + '}';
 	}
 }

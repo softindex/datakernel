@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ public final class FieldTypes {
 	}
 
 	public static <T> FieldType<Set<T>> ofSet(FieldType<T> fieldType) {
-		SerializerGenSet serializer = new SerializerGenSet(fieldType.getSerializer(), fieldType.getInternalDataType());
+		SerializerGenSet serializer = new SerializerGenSet(fieldType.getSerializer());
 		Type wrappedNestedType = fieldType.getDataType() instanceof Class ?
 				Primitives.wrap((Class<?>) fieldType.getDataType()) :
 				fieldType.getDataType();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package io.datakernel.config;
 
-import com.zaxxer.hikari.HikariConfig;
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.FatalErrorHandler;
@@ -46,8 +45,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import static io.datakernel.config.Config.ifNotDefault;
-import static io.datakernel.config.Config.ifNotNull;
 import static io.datakernel.eventloop.FatalErrorHandlers.*;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_KEYS_PER_SECOND;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_THROTTLING;
@@ -696,46 +693,6 @@ public final class ConfigConverters {
 						.withName(config.get(ofNullableString(), "name", defaultValue.getName()))
 						.withPriority(config.get(ofInteger(), "priority", defaultValue.getPriority()))
 						.withDaemon(config.get(ofBoolean(), "daemon", defaultValue.isDaemon()));
-			}
-		};
-	}
-
-	public static ConfigConverter<HikariConfig> ofHikariConfig() {
-		HikariConfig defaultValue = new HikariConfig();
-		defaultValue.setRegisterMbeans(true);
-		return new ComplexConfigConverter<HikariConfig>(defaultValue) {
-			@Override
-			protected HikariConfig provide(Config c, HikariConfig d) {
-				HikariConfig r = new HikariConfig();
-				c.apply(ofBoolean(), "autoCommit", d.isAutoCommit(), r::setAutoCommit);
-				c.apply(ofString(), "catalog", d.getCatalog(), r::setCatalog);
-				c.apply(ofString(), "connectionInitSql", d.getConnectionInitSql(), r::setConnectionInitSql);
-				c.apply(ofString(), "connectionTestQuery", d.getConnectionTestQuery(), r::setConnectionTestQuery);
-				c.apply(ofDurationAsMillis(), "connectionTimeout", d.getConnectionTimeout(), r::setConnectionTimeout);
-				c.apply(ofDurationAsMillis(), "validationTimeout", defaultValue.getValidationTimeout(), r::setValidationTimeout);
-				c.apply(ofString(), "dataSourceClassName", d.getDataSourceClassName(), r::setDataSourceClassName);
-				c.apply(ofString(), "driverClassName", d.getDriverClassName(), ifNotDefault(r::setDriverClassName));
-				c.apply(ofDurationAsMillis(), "idleTimeout", d.getIdleTimeout(), r::setIdleTimeout);
-				c.apply(ofBoolean(), "initializationFailFast", d.isInitializationFailFast(), r::setInitializationFailFast);
-				c.apply(ofBoolean(), "isolateInternalQueries", d.isIsolateInternalQueries(), r::setIsolateInternalQueries);
-				c.apply(ofString(), "jdbcUrl", d.getJdbcUrl(), r::setJdbcUrl);
-				c.apply(ofDurationAsMillis(), "leakDetectionThreshold", d.getLeakDetectionThreshold(), r::setLeakDetectionThreshold);
-				c.apply(ofInteger(), "maximumPoolSize", d.getMaximumPoolSize(), r::setMaximumPoolSize);
-				c.apply(ofDurationAsMillis(), "maxLifetime", d.getMaxLifetime(), r::setMaxLifetime);
-				c.apply(ofInteger(), "minimumIdle", d.getMinimumIdle(), ifNotDefault(r::setMinimumIdle));
-				c.apply(ofString(), "password", d.getPassword(), r::setPassword);
-				c.apply(ofString(), "poolName", d.getPoolName(), r::setPoolName);
-				c.apply(ofBoolean(), "readOnly", d.isReadOnly(), r::setReadOnly);
-				c.apply(ofBoolean(), "registerMbeans", d.isRegisterMbeans(), r::setRegisterMbeans);
-				c.apply(ofString(), "transactionIsolation", d.getTransactionIsolation(), r::setTransactionIsolation);
-				c.apply(ofString(), "username", d.getUsername(), r::setUsername);
-				c.apply(ofThreadFactory(), "threadFactory", null, ifNotNull(r::setThreadFactory));
-				Config propertiesConfig = c.getChild("extra");
-				for (String property : propertiesConfig.getChildren().keySet()) {
-					String value = propertiesConfig.get(property);
-					r.addDataSourceProperty(property, value);
-				}
-				return r;
 			}
 		};
 	}

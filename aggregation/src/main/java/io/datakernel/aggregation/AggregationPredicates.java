@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1286,7 +1286,7 @@ public class AggregationPredicates {
 		@Override
 		public String toString() {
 			StringJoiner joiner = new StringJoiner(", ");
-			for (Object value : values) joiner.add(value.toString());
+			for (Object value : values) joiner.add(value != null ? value.toString() : null);
 			return "" + key + " IN " + joiner.toString();
 		}
 	}
@@ -1459,7 +1459,7 @@ public class AggregationPredicates {
 		@Override
 		public String toString() {
 			StringJoiner joiner = new StringJoiner(" AND ");
-			for (AggregationPredicate predicate : predicates) joiner.add(predicate.toString());
+			for (AggregationPredicate predicate : predicates) joiner.add(predicate != null ? predicate.toString() : null);
 
 			return "(" + joiner.toString() + ")";
 		}
@@ -1536,7 +1536,7 @@ public class AggregationPredicates {
 		@Override
 		public String toString() {
 			StringJoiner joiner = new StringJoiner(" OR ");
-			for (AggregationPredicate predicate : predicates) joiner.add(predicate.toString());
+			for (AggregationPredicate predicate : predicates) joiner.add(predicate != null ? predicate.toString() : null);
 			return "(" + joiner.toString() + ")";
 		}
 	}

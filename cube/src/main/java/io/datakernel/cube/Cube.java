@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -150,7 +150,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	private long queryErrors;
 	private Throwable queryLastError;
 
-	private Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 			AggregationChunkStorage aggregationChunkStorage) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
@@ -160,12 +160,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	public static Cube create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 			AggregationChunkStorage aggregationChunkStorage) {
+		checkArgument(eventloop != null, "Cannot create Cube with Eventloop that is null");
+		checkArgument(executorService != null, "Cannot create Cube with ExecutorService that is null");
+		checkArgument(classLoader != null, "Cannot create Cube with ClassLoader that is null");
+		checkArgument(aggregationChunkStorage != null, "Cannot create Cube with AggregationChunkStorage that is null");
 		return new Cube(eventloop, executorService, classLoader, aggregationChunkStorage);
-	}
-
-	// VisibleForTesting
-	static Cube createUninitialized() {
-		return new Cube(null, null, null, null);
 	}
 
 	public Cube withAttribute(String attribute, AttributeResolver resolver) {

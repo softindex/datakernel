@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package io.datakernel.cube.http;
 
-import com.zaxxer.hikari.HikariDataSource;
 import io.datakernel.aggregation.*;
 import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
@@ -47,6 +46,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import javax.sql.DataSource;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -87,7 +87,7 @@ public class ReportingTest {
 	private CubeHttpClient cubeHttpClient;
 	private Cube cube;
 	private DefiningClassLoader classLoader;
-	private HikariDataSource dataSource;
+	private DataSource dataSource;
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -400,7 +400,6 @@ public class ReportingTest {
 	public void after() {
 		cubeHttpServer.closeFuture();
 		eventloop.run();
-		dataSource.close();
 	}
 
 	@Test

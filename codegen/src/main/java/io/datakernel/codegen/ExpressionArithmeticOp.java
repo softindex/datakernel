@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.codegen.Expressions.newLocal;
 import static io.datakernel.codegen.Utils.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
@@ -136,9 +137,7 @@ final class ExpressionArithmeticOp implements Expression {
 
 		if (op != that.op) return false;
 		if (!left.equals(that.left)) return false;
-		if (!right.equals(that.right)) return false;
-
-		return true;
+		return right.equals(that.right);
 	}
 
 	@Override
