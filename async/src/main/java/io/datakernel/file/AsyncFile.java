@@ -370,9 +370,7 @@ public final class AsyncFile {
 	 * Closes the channel
 	 */
 	public Stage<Void> close() {
-		if (!isOpen()) {
-			return Stage.ofException(FILE_CLOSED);
-		}
+		if (!isOpen()) return Stage.ofException(FILE_CLOSED);
 		return ofRunnable(executor, () -> {
 			try {
 				channel.close();

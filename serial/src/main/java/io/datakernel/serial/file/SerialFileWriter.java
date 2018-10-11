@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.datakernel.serial.file;
@@ -29,6 +28,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.nio.file.StandardOpenOption.*;
 
 /**
@@ -78,11 +78,14 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 
 	@Override
 	protected Stage<Void> doAccept(ByteBuf buf) {
-		return start()
+		return ensureOffset()
 				.thenComposeEx(($, e) -> {
-					if (isClosed()) return Stage.ofException(getException());
+					if (isClosed()) {
+						tryRecycle(buf);
+						return Stage.ofException(getException());
+					}
 					if (e != null) {
-						buf.recycle();
+						tryRecycle(buf);
 						close(e);
 						return Stage.ofException(e);
 					}
@@ -102,6 +105,9 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 	}
 
 	private Stage<Void> closeFile() {
+		if (!asyncFile.isOpen()) {
+			return Stage.complete();
+		}
 		return (forceOnClose ? asyncFile.forceAndClose(forceMetadata) : asyncFile.close())
 				.whenComplete(($, e) -> {
 					if (e == null) {
@@ -112,7 +118,7 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 				});
 	}
 
-	private Stage<Void> start() {
+	private Stage<Void> ensureOffset() {
 		if (started) {
 			return Stage.complete();
 		}

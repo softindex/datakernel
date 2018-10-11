@@ -44,15 +44,17 @@ import static io.datakernel.util.Preconditions.*;
  * Cache replacement policy is defined by supplying a {@link Comparator} of {@link FullCacheStat}.
  */
 public class CachedFsClient implements FsClient, EventloopService {
+	private static final double LOAD_FACTOR = 0.75;
 	private final Eventloop eventloop;
 	private final FsClient mainClient;
 	private final FsClient cacheClient;
-	private MemSize cacheSizeLimit;
 	private final Map<String, CacheStat> cacheStats = new HashMap<>();
 	private final Comparator<FullCacheStat> comparator;
-	CurrentTimeProvider timeProvider = CurrentTimeProvider.ofSystem();
 	private final AsyncSupplier<Void> ensureSpace = AsyncSuppliers.reuse(this::doEnsureSpace);
+	private MemSize cacheSizeLimit;
 	private long downloadingNowSize;
+	private long totalCacheSize;
+	CurrentTimeProvider timeProvider = CurrentTimeProvider.ofSystem();
 
 	// region creators
 	private CachedFsClient(Eventloop eventloop, FsClient mainClient, FsClient cacheClient, Comparator<FullCacheStat> comparator) {
@@ -99,7 +101,11 @@ public class CachedFsClient implements FsClient, EventloopService {
 	@Override
 	public Stage<Void> start() {
 		checkState(cacheSizeLimit != null, "Cannot start cached client without specifying cache size limit");
-		return ensureSpace();
+		return getTotalCacheSize()
+				.thenCompose(size -> {
+					totalCacheSize = size.toLong();
+					return ensureSpace();
+				});
 	}
 
 	@Override
@@ -132,7 +138,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 									if (mainMetadata == null) {
 										return Stage.ofException(new StacklessException(CachedFsClient.class, "File not found: " + filename));
 									}
-									return downloadToCache(filename, offset, length, 0);
+									return downloadToCache(filename, offset, length, 0, mainMetadata.getSize());
 								});
 					}
 					long sizeInCache = cacheMetadata.getSize();
@@ -165,38 +171,40 @@ public class CachedFsClient implements FsClient, EventloopService {
 									return Stage.ofException(new StacklessException(CachedFsClient.class, "Boundaries exceed file size: " + repr));
 								}
 
-								return downloadToCache(filename, offset, length, sizeInCache);
+								return downloadToCache(filename, offset, length, sizeInCache, sizeInMain);
 							});
 
 				});
 	}
 
-	private Stage<SerialSupplier<ByteBuf>> downloadToCache(String fileName, long offset, long length, long sizeInCache) {
+	private Stage<SerialSupplier<ByteBuf>> downloadToCache(String fileName, long offset, long length, long sizeInCache, long sizeInMain) {
 		long size = length == -1 ? length : length + offset - sizeInCache;
 		return mainClient.download(fileName, sizeInCache, size)
-				.thenApply(supplier -> {
-					if (downloadingNowSize + size > cacheSizeLimit.toLong()) {
-						return supplier;
+				.thenCompose(supplier -> {
+					long toBeCached = sizeInMain - sizeInCache;
+					if (this.downloadingNowSize + toBeCached > cacheSizeLimit.toLong() || toBeCached > cacheSizeLimit.toLong() * (1 - LOAD_FACTOR)) {
+						return Stage.of(supplier);
 					}
+					this.downloadingNowSize += toBeCached;
 
-					SerialSplitter<ByteBuf> splitter = SerialSplitter.create(supplier);
+					return ensureSpace()
+							.thenApply($ -> {
+								SerialSplitter<ByteBuf> splitter = SerialSplitter.create(supplier);
+								long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
+								splitter.addOutput().set(cacheClient.uploadSerial(fileName, cacheOffset));
+								SerialSupplier<ByteBuf> prefix = sizeInCache != 0 ?
+										cacheClient.downloadSerial(fileName, offset, sizeInCache) :
+										SerialSupplier.of();
 
-					long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
-					downloadingNowSize += size;
-
-					splitter.addOutput().set(cacheClient.uploadSerial(fileName, cacheOffset));
-
-					SerialSupplier<ByteBuf> prefix = sizeInCache != 0 ?
-							cacheClient.downloadSerial(fileName, offset, sizeInCache) :
-							SerialSupplier.of();
-
-					return SerialSuppliers.concat(prefix, splitter.addOutput().getSupplier())
-							.withEndOfStream(eos -> eos
-									.both(splitter.getProcessResult())
-									// .thenCompose($ -> cacheClient.list())
-									.thenCompose($ -> updateCacheStats(fileName))
-									.thenCompose($ -> ensureSpace())
-									.whenResult($ -> downloadingNowSize -= size));
+								return SerialSuppliers.concat(prefix, splitter.addOutput().getSupplier())
+										.withEndOfStream(eos -> eos
+												.both(splitter.getProcessResult())
+												.thenCompose($2 -> {
+													this.totalCacheSize += toBeCached;
+													return updateCacheStats(fileName);
+												})
+												.whenResult($2 -> downloadingNowSize -= toBeCached));
+							});
 				});
 	}
 
@@ -240,7 +248,9 @@ public class CachedFsClient implements FsClient, EventloopService {
 		return Stages.all(cacheClient.list(glob)
 						.whenResult(listOfMeta -> listOfMeta.forEach(meta -> cacheStats.remove(meta.getName())))
 						.thenApply(listOfMeta -> listOfMeta.stream().mapToLong(FileMetadata::getSize).sum())
-						.whenResult($ -> cacheClient.delete(glob)),
+						.thenCompose(size -> cacheClient.delete(glob)
+								.thenApply($ -> size))
+						.whenResult(size -> this.totalCacheSize -= size),
 				mainClient.delete(glob));
 	}
 
@@ -265,6 +275,9 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	private Stage<Void> doEnsureSpace() {
+		if (totalCacheSize + downloadingNowSize <= cacheSizeLimit.toLong()) {
+			return Stage.complete();
+		}
 		long[] sizeAccum = {0};
 		return cacheClient.list()
 				.thenApply(list -> list
@@ -278,12 +291,15 @@ public class CachedFsClient implements FsClient, EventloopService {
 						.sorted(comparator.reversed())
 						.filter(fullCacheStat -> {
 							sizeAccum[0] += fullCacheStat.getFileMetadata().getSize();
-							return sizeAccum[0] > cacheSizeLimit.toLong();
+							return sizeAccum[0] > cacheSizeLimit.toLong() * LOAD_FACTOR;
 						}))
 				.thenCompose(filesToDelete -> Stages.all(filesToDelete
 						.map(fullCacheStat -> cacheClient
 								.delete(fullCacheStat.getFileMetadata().getName())
-								.whenResult($ -> cacheStats.remove(fullCacheStat.fileMetadata.getName())))));
+								.whenResult($ -> {
+									this.totalCacheSize -= fullCacheStat.getFileMetadata().getSize();
+									cacheStats.remove(fullCacheStat.getFileMetadata().getName());
+								}))));
 	}
 
 	private final class CacheStat {
