@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,20 +23,11 @@ import io.datakernel.serial.SerialSupplier;
 
 import java.io.File;
 import java.util.*;
-import java.util.regex.Pattern;
 
 /**
  * This interface represents a simple filesystem client with upload, download, move, delete and list operations.
  */
 public interface FsClient {
-
-	/**
-	 * If a glob matches this pattern then it itself can match more than one file.
-	 */
-	Pattern GLOB_META = Pattern.compile("(?<!\\\\)[*?{}\\[\\]]");
-	//                                            ^----------^ match any of chars *?{}[]
-	//                                   ^-------^ negative lookbehind - ensure that next char is not preceeded by \
-
 	/**
 	 * Returns a consumer of bytebufs which are written (or sent) to the file.
 	 * <p>

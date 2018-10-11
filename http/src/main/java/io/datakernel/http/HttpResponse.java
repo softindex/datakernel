@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.datakernel.http;
@@ -39,6 +38,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	private static final byte[] CODE_ERROR_BYTES = encodeAscii(" Error");
 	private static final byte[] CODE_OK_BYTES = encodeAscii(" OK");
 	private static final byte[] CODE_200_BYTES = encodeAscii("HTTP/1.1 200 OK");
+	private static final byte[] CODE_201_BYTES = encodeAscii("HTTP/1.1 201 Created");
 	private static final byte[] CODE_302_BYTES = encodeAscii("HTTP/1.1 302 Found");
 	private static final byte[] CODE_400_BYTES = encodeAscii("HTTP/1.1 400 Bad Request");
 	private static final byte[] CODE_403_BYTES = encodeAscii("HTTP/1.1 403 Forbidden");
@@ -63,6 +63,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	public static HttpResponse ok200() {
 		return new HttpResponse(200);
 	}
+	// endregion
 
 	public static HttpResponse redirect302(String url) {
 		HttpResponse response = HttpResponse.ofCode(302);
@@ -131,7 +132,9 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return this;
 	}
 
-	// endregion
+	public static HttpResponse ok201() {
+		return new HttpResponse(201);
+	}
 
 	public int getCode() {
 		assert !isRecycled();
@@ -153,6 +156,9 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		switch (code) {
 			case 200:
 				result = CODE_200_BYTES;
+				break;
+			case 201:
+				result = CODE_201_BYTES;
 				break;
 			case 302:
 				result = CODE_302_BYTES;

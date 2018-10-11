@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalsync.util;
@@ -23,9 +22,8 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.util.ParserFunction;
 import io.global.common.*;
-import io.global.globalfs.api.GlobalFsMetadata;
-import io.global.globalfs.api.GlobalFsName;
 import io.global.globalfs.api.GlobalFsPath;
+import io.global.globalfs.api.GlobalFsSpace;
 import io.global.globalsync.api.*;
 import org.spongycastle.math.ec.ECPoint;
 
@@ -168,6 +166,24 @@ public final class BinaryDataFormats {
 	}
 	// endregion
 
+	// region PrivKey
+	public static int sizeof(PrivKey privKey) {
+		return sizeof(privKey.getEcPrivateKey().getD());
+	}
+
+	public static void writePrivKey(ByteBuf buf, PrivKey privKey) {
+		writeBigInteger(buf, privKey.getEcPrivateKey().getD());
+	}
+
+	public static PrivKey readPrivKey(ByteBuf buf) throws ParseException {
+		try {
+			return PrivKey.ofD(readBigInteger(buf));
+		} catch (IllegalArgumentException | ArithmeticException e) {
+			throw new ParseException(e);
+		}
+	}
+	// endregion
+
 	// region RepositoryName
 	public static int sizeof(RepositoryName repositoryId) {
 		return sizeof(repositoryId.getPubKey()) + repositoryId.getRepositoryName().length() * 5 + 5;
@@ -299,49 +315,33 @@ public final class BinaryDataFormats {
 	}
 	// endregion
 
-	// region GlobalFsName
-	public static int sizeof(GlobalFsName globalFsName) {
-		return sizeof(globalFsName.getPubKey()) + sizeof(globalFsName.getFsName());
+	// region GlobalFsSpace
+	public static int sizeof(GlobalFsSpace globalFsSpace) {
+		return sizeof(globalFsSpace.getPubKey()) + sizeof(globalFsSpace.getFs());
 	}
 
-	public static void writeGlobalFsName(ByteBuf buf, GlobalFsName globalFsName) {
-		writePubKey(buf, globalFsName.getPubKey());
-		writeString(buf, globalFsName.getFsName());
+	public static void writeGlobalFsSpace(ByteBuf buf, GlobalFsSpace globalFsSpace) {
+		writePubKey(buf, globalFsSpace.getPubKey());
+		writeString(buf, globalFsSpace.getFs());
 	}
 
-	public static GlobalFsName readGlobalFsName(ByteBuf buf) throws ParseException {
-		return GlobalFsName.of(readPubKey(buf), readString(buf));
+	public static GlobalFsSpace readGlobalFsSpace(ByteBuf buf) throws ParseException {
+		return GlobalFsSpace.of(readPubKey(buf), readString(buf));
 	}
 	// endregion
 
 	// region GlobalFsPath
 	public static int sizeof(GlobalFsPath globalFsPath) {
-		return sizeof(globalFsPath.getGlobalFsName()) + sizeof(globalFsPath.getPath());
+		return sizeof(globalFsPath.getSpace()) + sizeof(globalFsPath.getPath());
 	}
 
 	public static void writeGlobalFsPath(ByteBuf buf, GlobalFsPath globalFsPath) {
-		writeGlobalFsName(buf, globalFsPath.getGlobalFsName());
+		writeGlobalFsSpace(buf, globalFsPath.getSpace());
 		writeString(buf, globalFsPath.getPath());
 	}
 
 	public static GlobalFsPath readGlobalFsPath(ByteBuf buf) throws ParseException {
-		return readGlobalFsName(buf).addressOf(readString(buf));
-	}
-	// endregion
-
-	// region GlobalFsMetadata
-	public static int sizeof(GlobalFsMetadata metadata) {
-		return sizeof(metadata.getPath()) + 9 + 8;
-	}
-
-	public static void writeGlobalFsMetadata(ByteBuf buf, GlobalFsMetadata metadata) {
-		writeGlobalFsPath(buf, metadata.getPath());
-		buf.writeVarLong(metadata.getSize());
-		buf.writeLong(metadata.getRevision());
-	}
-
-	public static GlobalFsMetadata readGlobalFsMetadata(ByteBuf buf) throws ParseException {
-		return GlobalFsMetadata.of(readGlobalFsPath(buf), buf.readVarLong(), buf.readLong());
+		return readGlobalFsSpace(buf).pathFor(readString(buf));
 	}
 	// endregion
 

@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.launchers;
 
 import io.datakernel.async.EventloopTaskScheduler;
@@ -12,16 +28,21 @@ import io.datakernel.remotefs.RemoteFsRepartitionController;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.util.Initializer;
+import io.global.globalfs.local.LocalGlobalFsNode;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_INITIAL_BUFFER_SIZE;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_MAX_MESSAGE_SIZE;
 import static io.datakernel.util.Preconditions.checkState;
+import static io.global.globalfs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
+import static java.util.Collections.emptyList;
 
 public class Initializers {
 	private Initializers() {
@@ -99,5 +120,13 @@ public class Initializers {
 						config.get(ofMemSize(), "rpc.streamProtocol.maxPacketSize", DEFAULT_MAX_MESSAGE_SIZE),
 						config.get(ofBoolean(), "rpc.streamProtocol.compression", false))
 				.withAutoFlushInterval(config.get(ofDuration(), "rpc.flushDelay", Duration.ZERO));
+	}
+
+	public static Initializer<LocalGlobalFsNode> ofLocalGlobalFsNode(Config config) {
+		return node -> node
+				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
+				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching"))
+				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching"))
+				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));
 	}
 }

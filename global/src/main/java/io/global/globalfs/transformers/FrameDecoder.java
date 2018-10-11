@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs.transformers;
@@ -39,7 +38,7 @@ public final class FrameDecoder extends AbstractAsyncProcess implements WithSeri
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			if (this.input != null && this.output != null) startProcess();
+			if (this.output != null) startProcess();
 			return getProcessResult();
 		};
 	}
@@ -48,7 +47,7 @@ public final class FrameDecoder extends AbstractAsyncProcess implements WithSeri
 	public SerialOutput<DataFrame> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) startProcess();
+			if (this.input != null) startProcess();
 		};
 	}
 

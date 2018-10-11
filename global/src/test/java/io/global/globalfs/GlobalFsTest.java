@@ -29,14 +29,14 @@ import io.global.common.KeyPair;
 import io.global.common.RawServerId;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
-import io.global.globalfs.api.GlobalFsName;
+import io.global.globalfs.api.CheckpointPositionStrategy;
 import io.global.globalfs.api.GlobalFsNode;
 import io.global.globalfs.api.NodeFactory;
 import io.global.globalfs.http.GlobalFsNodeServlet;
 import io.global.globalfs.http.HttpDiscoveryService;
 import io.global.globalfs.http.HttpGlobalFsNode;
+import io.global.globalfs.local.GlobalFsGatewayAdapter;
 import io.global.globalfs.local.LocalGlobalFsNode;
-import io.global.globalfs.local.RemoteFsAdapter;
 import io.global.globalfs.local.RuntimeDiscoveryService;
 import org.junit.After;
 import org.junit.Before;
@@ -48,11 +48,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
@@ -86,7 +84,7 @@ public class GlobalFsTest {
 
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
-				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverIndex++), () -> Duration.ofMinutes(5));
+				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverIndex++));
 			}
 		};
 	}
@@ -101,7 +99,8 @@ public class GlobalFsTest {
 		KeyPair keys = KeyPair.generate();
 
 		GlobalFsNode client = clientFactory.create(new RawServerId(new InetSocketAddress(12345)));
-		RemoteFsAdapter adapter = new RemoteFsAdapter(client, GlobalFsName.of(keys, "testFs"), keys, pp -> pp + ThreadLocalRandom.current().nextInt(5, 50));
+
+		FsClient adapter = GlobalFsGatewayAdapter.getFsDriver(client, keys, "testFs", CheckpointPositionStrategy.randRange(5, 50));
 
 		SerialSupplier.of(
 				ByteBuf.wrapForReading("hello, this is a test buffer data #01\n".getBytes(UTF_8)),
@@ -160,8 +159,8 @@ public class GlobalFsTest {
 		KeyPair alice = KeyPair.generate();
 		KeyPair bob = KeyPair.generate();
 
-		FsClient adapted = new RemoteFsAdapter(client, GlobalFsName.of(alice, "testFs"), alice, pos -> pos + 3);
-		FsClient other = new RemoteFsAdapter(client, GlobalFsName.of(bob, "testFs"), bob, pos -> pos + 4);
+		FsClient adapted = GlobalFsGatewayAdapter.getFsDriver(client, alice, "testFs", CheckpointPositionStrategy.fixed(3));
+		FsClient other = GlobalFsGatewayAdapter.getFsDriver(client, bob, "testFs", CheckpointPositionStrategy.fixed(4));
 
 		String content = "hello world, i am here!";
 
@@ -186,7 +185,8 @@ public class GlobalFsTest {
 		server.listen();
 
 		GlobalFsNode client = new HttpGlobalFsNode(new RawServerId(new InetSocketAddress(8080)), AsyncHttpClient.create(eventloop));
-		RemoteFsAdapter adapter = new RemoteFsAdapter(client, GlobalFsName.of(keys, "testFs"), keys, x -> x + 5);
+
+		FsClient adapter = GlobalFsGatewayAdapter.getFsDriver(client, keys, "testFs", CheckpointPositionStrategy.fixed(5));
 
 		String first = "Hello world, this is some bytes ";
 		String second = "to be sent through the GlobalFs HTTP interface";
@@ -215,8 +215,8 @@ public class GlobalFsTest {
 		GlobalFsNode first = new HttpGlobalFsNode(firstId, client);
 		GlobalFsNode second = new HttpGlobalFsNode(secondId, client);
 
-		FsClient firstAdapted = new RemoteFsAdapter(first, GlobalFsName.of(keys, "testFs"), keys, x -> x + 8);
-		FsClient secondAdapted = new RemoteFsAdapter(second, GlobalFsName.of(keys, "testFs"), keys, x -> x + 16);
+		FsClient firstAdapted = GlobalFsGatewayAdapter.getFsDriver(first, keys, "testFs", CheckpointPositionStrategy.fixed(8));
+		FsClient secondAdapted = GlobalFsGatewayAdapter.getFsDriver(second, keys, "testFs", CheckpointPositionStrategy.fixed(16));
 
 		String text1 = "Hello world, this is some bytes ";
 		String text2 = "to be sent through the GlobalFs HTTP interface";

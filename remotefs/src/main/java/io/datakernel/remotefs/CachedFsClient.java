@@ -1,10 +1,31 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.remotefs;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.AsyncSuppliers;
+import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.serial.*;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialSuppliers;
 import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
@@ -157,28 +178,24 @@ public class CachedFsClient implements FsClient, EventloopService {
 						return supplier;
 					}
 
-					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create()
-							.withInput(supplier);
-
-					SerialQueue<ByteBuf> queue = new SerialZeroBuffer<>();
-					splitter.addOutput()
-							.set(queue.getConsumer());
+					SerialSplitter<ByteBuf> splitter = SerialSplitter.create(supplier);
 
 					long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
 					downloadingNowSize += size;
 
-					MaterializedStage<Void> cacheAppendProcess = SerialConsumer.getAcknowledgement(cb ->
-							splitter.addOutput()
-									.set(cacheClient.uploadSerial(fileName, cacheOffset)
-											.withAcknowledgement(cb)))
-//							.thenCompose($ -> cacheClient.list())
-							.thenCompose($ -> updateCacheStats(fileName))
-							.thenCompose($ -> ensureSpace())
-							.whenResult($ -> downloadingNowSize -= size)
-							.materialize();
+					splitter.addOutput().set(cacheClient.uploadSerial(fileName, cacheOffset));
 
-					return (sizeInCache == 0 ? queue.getSupplier() : SerialSuppliers.concat(cacheClient.downloadSerial(fileName, offset, sizeInCache), queue.getSupplier()))
-							.withEndOfStream(eos -> eos.thenCompose($ -> cacheAppendProcess));
+					SerialSupplier<ByteBuf> prefix = sizeInCache != 0 ?
+							cacheClient.downloadSerial(fileName, offset, sizeInCache) :
+							SerialSupplier.of();
+
+					return SerialSuppliers.concat(prefix, splitter.addOutput().getSupplier())
+							.withEndOfStream(eos -> eos
+									.both(splitter.getProcessResult())
+									// .thenCompose($ -> cacheClient.list())
+									.thenCompose($ -> updateCacheStats(fileName))
+									.thenCompose($ -> ensureSpace())
+									.whenResult($ -> downloadingNowSize -= size));
 				});
 	}
 
@@ -219,14 +236,11 @@ public class CachedFsClient implements FsClient, EventloopService {
 	 */
 	@Override
 	public Stage<Void> delete(String glob) {
-		return
-				Stages.all(
-						cacheClient.list(glob)
-								.whenResult(listOfMeta -> listOfMeta.forEach(meta -> cacheStats.remove(meta.getName())))
-								.thenApply(listOfMeta -> listOfMeta.stream().mapToLong(FileMetadata::getSize).sum())
-								.whenResult($ -> cacheClient.delete(glob)),
-						mainClient.delete(glob)
-				);
+		return Stages.all(cacheClient.list(glob)
+						.whenResult(listOfMeta -> listOfMeta.forEach(meta -> cacheStats.remove(meta.getName())))
+						.thenApply(listOfMeta -> listOfMeta.stream().mapToLong(FileMetadata::getSize).sum())
+						.whenResult($ -> cacheClient.delete(glob)),
+				mainClient.delete(glob));
 	}
 
 	@Override
@@ -235,15 +249,13 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	private Stage<Void> updateCacheStats(String fileName) {
-		return Stage.
-				of(cacheStats
-						.computeIfPresent(fileName, (s, cacheStat) -> {
-							cacheStat.numberOfHits++;
-							cacheStat.lastHitTimestamp = timeProvider.currentTimeMillis();
-							return cacheStat;
-						}))
-				.whenResult($ -> cacheStats
-						.computeIfAbsent(fileName, s -> new CacheStat(1, timeProvider.currentTimeMillis())))
+		return Stage.of(cacheStats
+				.computeIfPresent(fileName, (s, cacheStat) -> {
+					cacheStat.numberOfHits++;
+					cacheStat.lastHitTimestamp = timeProvider.currentTimeMillis();
+					return cacheStat;
+				}))
+				.whenResult($ -> cacheStats.computeIfAbsent(fileName, s -> new CacheStat(1, timeProvider.currentTimeMillis())))
 				.toVoid();
 	}
 
@@ -270,8 +282,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 				.thenCompose(filesToDelete -> Stages.all(filesToDelete
 						.map(fullCacheStat -> cacheClient
 								.delete(fullCacheStat.getFileMetadata().getName())
-								.whenResult($ -> cacheStats.remove(fullCacheStat.fileMetadata.getName()))))
-				);
+								.whenResult($ -> cacheStats.remove(fullCacheStat.fileMetadata.getName())))));
 	}
 
 	private final class CacheStat {

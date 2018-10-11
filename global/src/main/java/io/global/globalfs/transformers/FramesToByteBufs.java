@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs.transformers;
@@ -25,6 +24,7 @@ import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
+import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.globalfs.api.DataFrame;
@@ -34,9 +34,12 @@ import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 abstract class FramesToByteBufs extends AbstractAsyncProcess
 		implements WithSerialToSerial<FramesToByteBufs, DataFrame, ByteBuf> {
 	private final PubKey pubKey;
+	private final byte[] filenameHash;
 
 	protected SerialSupplier<DataFrame> input;
 	protected SerialConsumer<ByteBuf> output;
@@ -46,8 +49,9 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 	private SHA256Digest digest;
 
 	// region creators
-	FramesToByteBufs(PubKey pubKey) {
+	FramesToByteBufs(String filename, PubKey pubKey) {
 		this.pubKey = pubKey;
+		this.filenameHash = CryptoUtils.sha256(filename.getBytes(UTF_8));
 	}
 	// endregion
 
@@ -55,7 +59,7 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 	public SerialInput<DataFrame> getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			if (this.input != null && this.output != null) startProcess();
+			if (this.output != null) startProcess();
 			return getProcessResult();
 		};
 	}
@@ -64,7 +68,7 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 	public SerialOutput<ByteBuf> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) startProcess();
+			if (this.input != null) startProcess();
 		};
 	}
 
@@ -102,7 +106,7 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 		}
 		if (frame.isCheckpoint()) {
 			SignedData<GlobalFsCheckpoint> checkpoint = frame.getCheckpoint();
-			CheckpointVerificationResult result = GlobalFsCheckpoint.verify(checkpoint, pubKey, position, digest);
+			CheckpointVerificationResult result = GlobalFsCheckpoint.verify(checkpoint, pubKey, position, digest, filenameHash);
 			if (result != CheckpointVerificationResult.SUCCESS) {
 				return Stage.ofException(new IOException("Checkpoint verification failed: " + result.message));
 			}

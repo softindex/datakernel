@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.datakernel.async;
@@ -36,7 +35,6 @@ public interface Stage<T> {
 	/**
 	 * Creates successfully completed {@code Stage}
 	 */
-	@SuppressWarnings("unchecked")
 	static CompleteNullStage<Void> complete() {
 		return (CompleteNullStage<Void>) CompleteNullStage.INSTANCE;
 	}
@@ -92,18 +90,8 @@ public interface Stage<T> {
 		return exception == null ? of(value) : ofException(exception);
 	}
 
-	/**
-	 * Similarly to {@link Try#wrap}, executes given computation and wraps it's result or error in a stage.
-	 * Useful for bridging with non-Stage code.
-	 *
-	 * @param computation a block of code which may throw an exception.
-	 */
-	static <T> Stage<T> compute(Supplier<T> computation) {
-		try {
-			return of(computation.get());
-		} catch (UncheckedException u) {
-			return ofException(u.getCause());
-		}
+	static <T> Stage<T> ofTry(Try<T> t) {
+		return t.isSuccess() ? of(t.getResult()) : ofException(t.getException());
 	}
 
 	/**

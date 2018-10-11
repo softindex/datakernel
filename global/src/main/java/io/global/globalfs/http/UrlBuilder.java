@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs.http;
@@ -24,41 +23,18 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URLEncoder;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class UrlBuilder {
-	public static class Query {
-		private final Map<String, String> query = new LinkedHashMap<>();
 
-		// region creators
-		private Query() {
-		}
-
-		public Query with(String key, Object value) {
-			query.put(key, urlencode(value.toString()));
-			return this;
-		}
-
-		public Query with(String key, Iterable<Object> values) {
-			values.forEach(value -> query.put(key, urlencode(value.toString())));
-			return this;
-		}
-		// endregion
-
-		@Override
-		public String toString() {
-			StringBuilder sb = new StringBuilder();
-			query.forEach((k, v) -> sb.append(k).append('=').append(v).append('&'));
-			sb.setLength(sb.length() - 1); // drop last &
-			return sb.toString();
-		}
-	}
-
+	@Nullable
 	private final String scheme;
-	private final String path;
+
+	private List<String> path = new LinkedList<>();
+	private Map<String, String> query = new LinkedHashMap<>();
+
 	@Nullable
 	private String userInfo;
 	@Nullable
@@ -66,18 +42,38 @@ public class UrlBuilder {
 	@Nullable
 	private String port;
 	@Nullable
-	private String query;
-	@Nullable
 	private String fragment;
 
 	// region creators
-	private UrlBuilder(String scheme, String path) {
+	private UrlBuilder(@Nullable String scheme) {
 		this.scheme = scheme;
-		this.path = urlencode(path);
 	}
 
-	public static UrlBuilder of(String scheme, String path) {
-		return new UrlBuilder(scheme + ':', path);
+	public static UrlBuilder of(String scheme) {
+		return new UrlBuilder(scheme);
+	}
+
+	public UrlBuilder withAuthority(String userInfo, InetSocketAddress address) {
+		String host;
+		if (address.isUnresolved()) {
+			host = address.getHostName();
+		} else {
+			InetAddress inetAddress = address.getAddress();
+			host = inetAddress.getHostAddress();
+			if (inetAddress instanceof Inet6Address) {
+				host = '[' + host.replace("%", "%25") + ']'; // yay, IPv6 syntax?
+			}
+		}
+		return withAuthority(userInfo, host, address.getPort());
+	}
+	// endregion
+
+	public static UrlBuilder http() {
+		return new UrlBuilder("http");
+	}
+
+	public static UrlBuilder https() {
+		return new UrlBuilder("https");
 	}
 
 	public UrlBuilder withAuthority(String host) {
@@ -105,53 +101,40 @@ public class UrlBuilder {
 		return withAuthority(address.isUnresolved() ? address.getHostName() : address.getAddress().getHostAddress(), address.getPort());
 	}
 
-	public UrlBuilder withAuthority(String userInfo, InetSocketAddress address) {
-		String host;
-		if (address.isUnresolved()) {
-			host = address.getHostName();
-		} else {
-			InetAddress inetAddress = address.getAddress();
-			host = inetAddress.getHostAddress();
-			if (inetAddress instanceof Inet6Address) {
-				host = '[' + host + ']';
-			}
-		}
-		return withAuthority(userInfo, host, address.getPort());
+	public static UrlBuilder relative() {
+		return new UrlBuilder(null);
 	}
 
-	public UrlBuilder withQuery(String query) {
-		this.query = query;
+	public static String mapToQuery(Map<String, ?> query) {
+		StringBuilder sb = new StringBuilder();
+		query.forEach((k, v) -> sb.append(urlencode(k)).append('=').append(urlencode(v.toString())).append('&'));
+		sb.setLength(sb.length() - 1); // drop last '&'
+		return sb.toString();
+	}
+
+	public UrlBuilder appendPathPart(String part) {
+		path.add(part);
 		return this;
 	}
 
-	public UrlBuilder withQuery(Query query) {
-		return withQuery(query.toString());
+	public UrlBuilder appendPath(String pathTail) {
+		path.addAll(Arrays.asList(pathTail.split("/")));
+		return this;
+	}
+
+	public UrlBuilder appendQuery(String key, Object value) {
+		query.put(key, value.toString());
+		return this;
+	}
+
+	public UrlBuilder appendQuery(String key, Iterable<?> values) {
+		values.forEach(v -> appendQuery(key, v));
+		return this;
 	}
 
 	public UrlBuilder withFragment(String fragment) {
 		this.fragment = fragment;
 		return this;
-	}
-	// endregion
-
-	public static Query query() {
-		return new Query();
-	}
-
-	public static UrlBuilder http(String path) {
-		return new UrlBuilder("http:", path);
-	}
-
-	public static UrlBuilder https(String path) {
-		return new UrlBuilder("https:", path);
-	}
-
-	public static UrlBuilder relative(String path) {
-		return new UrlBuilder("", path);
-	}
-
-	public static UrlBuilder relative() {
-		return new UrlBuilder("", "");
 	}
 
 	private static String urlencode(String str) {
@@ -166,27 +149,40 @@ public class UrlBuilder {
 		return toString();
 	}
 
+	public UrlBuilder appendQuery(Map<String, ?> query) {
+		query.forEach(this::appendQuery);
+		return this;
+	}
+
 	@Override
 	public String toString() {
-		String s = scheme;
-		if (host != null) {
-			s += "//";
-			if (userInfo != null) {
-				s += userInfo + '@';
-			}
-			s += host;
-			if (port != null) {
-				s += ':' + port;
-			}
-			s += '/';
+		StringBuilder sb = new StringBuilder();
+		if (scheme != null) {
+			sb.append(scheme).append(':');
 		}
-		s += path;
-		if (query != null) {
-			s += '?' + query;
+		if (host != null) {
+			sb.append("//");
+			if (userInfo != null) {
+				sb.append(userInfo).append('@');
+			}
+			sb.append(host);
+			if (port != null) {
+				sb.append(':').append(port);
+			}
+			sb.append('/');
+		}
+		if (!path.isEmpty()) {
+			path.forEach(p -> sb.append(urlencode(p)).append('/'));
+			sb.setLength(sb.length() - 1); // drop last '/'
+		}
+		if (!query.isEmpty()) {
+			sb.append('?');
+			query.forEach((k, v) -> sb.append(urlencode(k)).append('=').append(urlencode(v)).append('&'));
+			sb.setLength(sb.length() - 1); // drop last '&'
 		}
 		if (fragment != null) {
-			s += '#' + fragment;
+			sb.append('#').append(fragment);
 		}
-		return s;
+		return sb.toString();
 	}
 }

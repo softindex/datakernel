@@ -1,6 +1,23 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.serial.processor;
 
 import io.datakernel.async.AbstractAsyncProcess;
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
@@ -30,6 +47,10 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 
 	public static <T> SerialSplitter<T> create() {
 		return new SerialSplitter<>();
+	}
+
+	public static <T> SerialSplitter<T> create(SerialSupplier<T> input) {
+		return new SerialSplitter<T>().withInput(input);
 	}
 
 	@Override
@@ -76,13 +97,14 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 		if (lenient) {
 			outputs.replaceAll(output ->
 					output.withAcknowledgement(ack ->
-							ack.whenException(e -> {
+							ack.thenComposeEx(($, e) -> {
 								if (lenientExceptions.size() < outputs.size()) {
+									outputs.remove(output);
 									lenientExceptions.add(e);
-									return;
+									return Stage.complete();
 								}
 								lenientExceptions.forEach(e::addSuppressed);
-								close(e);
+								return Stage.ofException(e);
 							})));
 		}
 	}
@@ -98,7 +120,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 									.whenComplete(($, e2) -> {
 										if (e2 == null) {
 											doProcess();
-										} else if (!lenient) {
+										} else {
 											close(e2);
 										}
 									});

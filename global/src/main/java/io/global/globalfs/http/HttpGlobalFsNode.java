@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,36 +12,29 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs.http;
 
 import io.datakernel.async.MaterializedStage;
 import io.datakernel.async.Stage;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialZeroBuffer;
+import io.global.common.PubKey;
 import io.global.common.RawServerId;
+import io.global.common.SignedData;
 import io.global.globalfs.api.*;
 import io.global.globalfs.transformers.FrameDecoder;
 import io.global.globalfs.transformers.FrameEncoder;
-import io.global.globalsync.util.BinaryDataFormats;
 
 import java.net.InetSocketAddress;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-import static io.datakernel.http.HttpMethod.DELETE;
 import static io.global.globalfs.http.GlobalFsNodeServlet.*;
-import static io.global.globalfs.http.UrlBuilder.query;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {
 	private final RawServerId id;
@@ -62,124 +55,107 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public Stage<SerialSupplier<DataFrame>> download(GlobalFsPath file, long offset, long limit) {
+	public Stage<SerialSupplier<DataFrame>> download(GlobalFsPath path, long offset, long limit) {
 		return client.request(
 				HttpRequest.get(
-						UrlBuilder.http(DOWNLOAD)
+						UrlBuilder.http()
 								.withAuthority(address)
-								.withQuery(query()
-										.with("key", file.getPubKey().asString())
-										.with("fs", file.getFsName())
-										.with("path", file.getPath())
-										.with("offset", offset)
-										.with("limit", limit))
+								.appendPathPart(DOWNLOAD)
+								.appendPathPart(path.getPubKey().asString())
+								.appendPathPart(path.getFs())
+								.appendPath(path.getPath())
+								.appendQuery("offset", offset)
+								.appendQuery("limit", limit)
 								.build()))
-				.thenCompose(response -> {
-					if (response.getCode() != 200) {
-						return Stage.ofException(new GlobalFsException("response: " + response));
-					}
-					return Stage.of(response);
-				})
 				.thenApply(response -> response.getBodyStream().apply(new FrameDecoder()));
 	}
 
 	@Override
-	public Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath file, long offset) {
+	public SerialConsumer<DataFrame> uploader(GlobalFsPath path, long offset) {
 		SerialZeroBuffer<DataFrame> buffer = new SerialZeroBuffer<>();
-		MaterializedStage<Void> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
-				UrlBuilder.http(UPLOAD)
+		MaterializedStage<HttpResponse> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
+				UrlBuilder.http()
 						.withAuthority(address)
-						.withQuery(query()
-								.with("key", file.getPubKey().asString())
-								.with("fs", file.getFsName())
-								.with("path", file.getPath())
-								.with("offset", offset))
+						.appendPathPart(UPLOAD)
+						.appendPathPart(path.getPubKey().asString())
+						.appendPathPart(path.getFs())
+						.appendPath(path.getPath())
+						.appendQuery("offset", offset)
 						.build())
 				.withBodyStream(buffer.getSupplier().apply(new FrameEncoder())))
-				.thenCompose(response -> {
-					if (response.getCode() != 200) {
-						return Stage.ofException(new GlobalFsException("response: " + response));
-					}
-					return Stage.complete();
-				})
 				.materialize();
-		return Stage.of(buffer.getConsumer().withAcknowledgement(ack -> ack.both(request)));
+		return buffer.getConsumer().withAcknowledgement(ack -> ack.both(request));
 	}
 
 	@Override
-	public Stage<List<GlobalFsMetadata>> list(GlobalFsName name, String glob) {
+	public Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath path, long offset) {
+		return Stage.of(uploader(path, offset));
+	}
+
+	@Override
+	public Stage<List<SignedData<GlobalFsMetadata>>> list(GlobalFsSpace space, String glob) {
+		PubKey pubKey = space.getPubKey();
 		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
-				UrlBuilder.http(LIST)
+				UrlBuilder.http()
 						.withAuthority(address)
-						.withQuery(query()
-								.with("key", name.getPubKey().asString())
-								.with("fs", name.getFsName())
-								.with("glob", glob))
+						.appendPathPart(LIST)
+						.appendPathPart(pubKey.asString())
+						.appendPathPart(space.getFs())
+						.appendQuery("glob", glob)
 						.build()))
-				.thenCompose(response ->
-						Stage.compute(() -> {
-							try {
-								return BinaryDataFormats.readList(response.getBody(), BinaryDataFormats::readGlobalFsMetadata);
-							} catch (ParseException e) {
-								throw new UncheckedException(e);
-							}
-						}));
+				.thenCompose(response -> {
+					throw new UnsupportedOperationException("not implemented."); // TODO anton: implement
+					// try {
+					// 	return Stage.of(GsonAdapters.fromJson(KEYLESS_META_LIST, response.getBody().asString(UTF_8))
+					// 			.stream()
+					// 			.map(kls -> kls.into(pubKey))
+					// 			.collect(toList()));
+					// } catch (ParseException e) {
+					// 	return Stage.ofException(e);
+					// }
+				});
 	}
 
 	@Override
-	public Stage<Void> delete(GlobalFsName name, String glob) {
-		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.of(DELETE,
-				UrlBuilder.http(DEL)
-						.withAuthority(address)
-						.withQuery(query()
-								.with("key", name.getPubKey().asString())
-								.with("fs", name.getFsName())
-								.with("glob", glob))
-						.build()))
-				.toVoid();
+	public Stage<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata) {
+		throw new UnsupportedOperationException("HttpGlobalFsNode#pushMetadata is not implemented yet");
 	}
 
-	@Override
-	public Stage<Set<String>> copy(GlobalFsName name, Map<String, String> changes) {
-		ByteBuf buf = ByteBufPool.allocate(BinaryDataFormats.sizeof(changes, BinaryDataFormats::sizeof, BinaryDataFormats::sizeof));
-		BinaryDataFormats.writeMap(buf, changes, BinaryDataFormats::writeString, BinaryDataFormats::writeString);
-		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
-				UrlBuilder.http(COPY)
-						.withAuthority(address)
-						.withQuery(query()
-								.with("key", name.getPubKey().asString())
-								.with("fs", name.getFsName()))
-						.build())
-				.withBody(buf))
-				.thenCompose(response ->
-						Stage.compute(() -> {
-							try {
-								return BinaryDataFormats.readSet(response.getBody(), BinaryDataFormats::readString);
-							} catch (ParseException e) {
-								throw new UncheckedException(e);
-							}
-						}));
-	}
-
-	@Override
-	public Stage<Set<String>> move(GlobalFsName name, Map<String, String> changes) {
-		ByteBuf buf = ByteBufPool.allocate(BinaryDataFormats.sizeof(changes, BinaryDataFormats::sizeof, BinaryDataFormats::sizeof));
-		BinaryDataFormats.writeMap(buf, changes, BinaryDataFormats::writeString, BinaryDataFormats::writeString);
-		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
-				UrlBuilder.http(MOVE)
-						.withAuthority(address)
-						.withQuery(query()
-								.with("key", name.getPubKey().asString())
-								.with("fs", name.getFsName()))
-						.build())
-				.withBody(buf))
-				.thenCompose(response ->
-						Stage.compute(() -> {
-							try {
-								return BinaryDataFormats.readSet(response.getBody(), BinaryDataFormats::readString);
-							} catch (ParseException e) {
-								throw new UncheckedException(e);
-							}
-						}));
-	}
+	// @Override
+	// public Stage<Set<String>> copy(GlobalFsSpace name, Map<String, String> changes) {
+	// 	return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
+	// 			UrlBuilder.http()
+	// 					.withAuthority(address)
+	// 					.appendPathPart(COPY)
+	// 					.appendPathPart(name.getPubKey().asString())
+	// 					.appendPathPart(name.getFs())
+	// 					.build())
+	// 			.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
+	// 			.thenCompose(response -> {
+	// 				try {
+	// 					return Stage.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
+	// 				} catch (ParseException e) {
+	// 					return Stage.ofException(e);
+	// 				}
+	// 			});
+	// }
+	//
+	// @Override
+	// public Stage<Set<String>> move(GlobalFsSpace name, Map<String, String> changes) {
+	// 	return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
+	// 			UrlBuilder.http()
+	// 					.withAuthority(address)
+	// 					.appendPathPart(MOVE)
+	// 					.appendPathPart(name.getPubKey().asString())
+	// 					.appendPathPart(name.getFs())
+	// 					.build())
+	// 			.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
+	// 			.thenCompose(response -> {
+	// 				try {
+	// 					return Stage.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
+	// 				} catch (ParseException e) {
+	// 					return Stage.ofException(e);
+	// 				}
+	// 			});
+	// }
 }

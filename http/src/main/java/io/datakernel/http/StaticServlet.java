@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import java.nio.charset.StandardCharsets;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 
-@SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
 public final class StaticServlet implements AsyncServlet {
 	public static final Charset DEFAULT_TXT_ENCODING = StandardCharsets.UTF_8;
 	public static final String DEFAULT_INDEX_FILE_NAME = "index.html"; // response for get request asking for root
@@ -74,15 +73,12 @@ public final class StaticServlet implements AsyncServlet {
 	public final Stage<HttpResponse> serve(HttpRequest request) {
 		assert eventloop.inEventloopThread();
 
-		String path = request.getPartialPath();
+		String path = request.getRelativePath();
 
 		if (request.getMethod() != HttpMethod.GET) return Stage.ofException(METHOD_NOT_ALLOWED);
-		if (path.isEmpty() || path.charAt(0) != '/') return Stage.ofException(BAD_PATH_ERROR);
 
-		if (path.equals("/")) {
+		if (path.equals("")) {
 			path = DEFAULT_INDEX_FILE_NAME;
-		} else {
-			path = path.substring(1); // removing initial '/'
 		}
 		String finalPath = path;
 

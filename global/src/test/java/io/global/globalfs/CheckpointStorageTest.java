@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs;
@@ -20,6 +19,7 @@ package io.global.globalfs;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
+import io.global.common.CryptoUtils;
 import io.global.common.KeyPair;
 import io.global.common.SignedData;
 import io.global.globalfs.api.GlobalFsCheckpoint;
@@ -36,6 +36,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -74,10 +75,12 @@ public class CheckpointStorageTest {
 			digest3.update((byte) (i % 128));
 		}
 
+		byte[] filenameHash = CryptoUtils.sha256("test.txt".getBytes(UTF_8));
+
 		Stage.complete()
-				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(567, digest1), keys.getPrivKey())))
-				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(123, digest2), keys.getPrivKey())))
-				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(321, digest3), keys.getPrivKey())))
+				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(567, digest1, filenameHash), keys.getPrivKey())))
+				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(123, digest2, filenameHash), keys.getPrivKey())))
+				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(321, digest3, filenameHash), keys.getPrivKey())))
 				.thenCompose($ -> storage.getCheckpoints("test.txt"))
 				.whenResult(positions -> assertArrayEquals(new long[]{123, 321, 567}, positions))
 				.thenCompose($ -> storage.loadCheckpoint("test.txt", 321))

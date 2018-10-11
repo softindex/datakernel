@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs.local;
@@ -24,6 +23,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialSupplier;
+import io.global.common.CryptoUtils;
 import io.global.common.SignedData;
 import io.global.globalfs.api.CheckpointStorage;
 import io.global.globalfs.api.GlobalFsCheckpoint;
@@ -33,6 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsCheckpointStorage.class);
@@ -72,6 +74,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						return Stage.of(new long[]{0});
 					}
 					long[] array = new long[32];
+					byte[] filenameHash = CryptoUtils.sha256(filename.getBytes(UTF_8));
 					int size = 0;
 					while (buf.canRead()) {
 						try {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs.http;
@@ -31,7 +30,6 @@ import java.net.InetSocketAddress;
 
 import static io.global.globalfs.http.DiscoveryServlet.ANNOUNCE;
 import static io.global.globalfs.http.DiscoveryServlet.FIND;
-import static io.global.globalfs.http.UrlBuilder.query;
 
 public final class HttpDiscoveryService implements DiscoveryService {
 	private final AsyncHttpClient client;
@@ -47,9 +45,10 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	@Override
 	public Stage<SignedData<AnnounceData>> findServers(PubKey pubKey) {
 		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
-				UrlBuilder.http(FIND)
+				UrlBuilder.http()
 						.withAuthority(address)
-						.withQuery(query().with("key", pubKey.asString()))
+						.appendPathPart(FIND)
+						.appendQuery("key", pubKey.asString())
 						.build()))
 				.thenCompose(response -> {
 					if (response.getCode() == 404) {
@@ -66,9 +65,10 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	@Override
 	public Stage<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
 		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.of(HttpMethod.PUT,
-				UrlBuilder.http(ANNOUNCE)
+				UrlBuilder.http()
 						.withAuthority(address)
-						.withQuery(query().with("key", pubKey.asString()))
+						.appendPathPart(ANNOUNCE)
+						.appendQuery("key", pubKey.asString())
 						.build())
 				.withBody(announceData.toBytes()))
 				.toVoid();

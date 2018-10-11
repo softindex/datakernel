@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.datakernel.http;
@@ -33,8 +32,7 @@ import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.http.HttpMethod.POST;
+import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
@@ -79,6 +77,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public static HttpRequest post(String url) {
 		return HttpRequest.of(POST, url);
 	}
+	// endregion
 
 	// common builder methods
 
@@ -154,7 +153,10 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		assert !isRecycled();
 		return remoteAddress;
 	}
-	// endregion
+
+	public static HttpRequest put(String url) {
+		return HttpRequest.of(PUT, url);
+	}
 
 	void setRemoteAddress(InetAddress inetAddress) {
 		this.remoteAddress = inetAddress;
@@ -275,7 +277,13 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public String getPostParameter(String postParameter) throws ParseException {
 		String result = getPostParameters().get(postParameter);
 		if (result != null) return result;
-		throw new ParseException();
+		throw new ParseException("Post parameter '" + postParameter + "' is required");
+	}
+
+	@NotNull
+	public String getPostParameter(String postParameter, String defaultValue) throws ParseException {
+		String result = getPostParameters().get(postParameter);
+		return result != null ? result : defaultValue;
 	}
 
 	@Nullable
@@ -330,9 +338,9 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		url.pos = (short) pos;
 	}
 
-	String getPartialPath() {
+	public String getRelativePath() {
 		assert !isRecycled();
-		return url.getPartialPath();
+		return url.getPartialPath().substring(1); // strip first '/'
 	}
 
 	String pollUrlPart() {

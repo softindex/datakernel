@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,25 +27,25 @@ import java.util.Set;
 import static io.datakernel.util.gson.GsonAdapters.*;
 
 public final class RemoteFsResponses {
-	static final TypeAdapter<FileMetadata> FILE_META_JSON = transform(
-		ofHeterogeneousArray(new TypeAdapter[]{STRING_JSON, LONG_JSON, LONG_JSON}),
-		data -> new FileMetadata((String) data[0], (long) data[1], (long) data[2]),
-		meta -> new Object[]{meta.getName(), meta.getSize(), meta.getTimestamp()}
+	public static final TypeAdapter<FileMetadata> FILE_META_JSON = transform(
+			ofHeterogeneousArray(new TypeAdapter[]{STRING_JSON, LONG_JSON, LONG_JSON}),
+			data -> new FileMetadata((String) data[0], (long) data[1], (long) data[2]),
+			meta -> new Object[]{meta.getName(), meta.getSize(), meta.getTimestamp()}
 	);
 
 	static final TypeAdapter<FsResponse> ADAPTER = TypeAdapterObjectSubtype.<FsResponse>create()
-		.withSubtype(UploadFinished.class, TypeAdapterObject.create(UploadFinished::new))
-		.withSubtype(DownloadSize.class, TypeAdapterObject.create(DownloadSize::new)
-			.with("size", LONG_JSON, DownloadSize::getSize, DownloadSize::setSize))
-		.withSubtype(MoveFinished.class, TypeAdapterObject.create(MoveFinished::new)
-			.with("moved", ofSet(STRING_JSON), MoveFinished::getMoved, MoveFinished::setMoved))
-		.withSubtype(CopyFinished.class, TypeAdapterObject.create(CopyFinished::new)
-			.with("copied", ofSet(STRING_JSON), CopyFinished::getCopied, CopyFinished::setCopied))
-		.withSubtype(ListFinished.class, TypeAdapterObject.create(ListFinished::new)
-			.with("files", ofList(FILE_META_JSON), ListFinished::getFiles, ListFinished::setFiles))
-		.withSubtype(DeleteFinished.class, TypeAdapterObject.create(DeleteFinished::new))
-		.withSubtype(ServerError.class, TypeAdapterObject.create(ServerError::new)
-			.with("message", STRING_JSON, ServerError::getMessage, ServerError::setMessage));
+			.withSubtype(UploadFinished.class, TypeAdapterObject.create(UploadFinished::new))
+			.withSubtype(DownloadSize.class, TypeAdapterObject.create(DownloadSize::new)
+					.with("size", LONG_JSON, DownloadSize::getSize, DownloadSize::setSize))
+			.withSubtype(MoveFinished.class, TypeAdapterObject.create(MoveFinished::new)
+					.with("moved", ofSet(STRING_JSON), MoveFinished::getMoved, MoveFinished::setMoved))
+			.withSubtype(CopyFinished.class, TypeAdapterObject.create(CopyFinished::new)
+					.with("copied", ofSet(STRING_JSON), CopyFinished::getCopied, CopyFinished::setCopied))
+			.withSubtype(ListFinished.class, TypeAdapterObject.create(ListFinished::new)
+					.with("files", ofList(FILE_META_JSON), ListFinished::getFiles, ListFinished::setFiles))
+			.withSubtype(DeleteFinished.class, TypeAdapterObject.create(DeleteFinished::new))
+			.withSubtype(ServerError.class, TypeAdapterObject.create(ServerError::new)
+					.with("message", STRING_JSON, ServerError::getMessage, ServerError::setMessage));
 
 	public static abstract class FsResponse {
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.datakernel.http;
@@ -51,9 +50,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			}
 		} else if (e instanceof ParseException) {
 			response = HttpResponse.ofCode(400);
-			if (e.getMessage() != null) {
-				response.withBody(e.getMessage().getBytes(UTF_8));
-			}
 		} else {
 			response = HttpResponse.ofCode(500);
 		}
@@ -210,7 +206,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	// endregion
 
-	@SuppressWarnings("Duplicates")
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
 		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {

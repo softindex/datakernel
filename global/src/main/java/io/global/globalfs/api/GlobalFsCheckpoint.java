@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.global.globalfs.api;
 
 import io.datakernel.bytebuf.ByteBuf;
@@ -12,37 +28,43 @@ import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.Arrays;
 
+import static io.global.globalsync.util.BinaryDataFormats.sizeof;
+
 public final class GlobalFsCheckpoint implements Signable {
 	private final byte[] bytes;
 
 	private final long position;
 	private final SHA256Digest digest;
+	private final byte[] filenameHash;
 
-	private GlobalFsCheckpoint(byte[] bytes, long position, SHA256Digest digest) {
+	private GlobalFsCheckpoint(byte[] bytes, long position, SHA256Digest digest, byte[] filenameHash) {
 		this.bytes = bytes;
 		this.position = position;
 		this.digest = digest;
+		this.filenameHash = filenameHash;
 	}
 
 	public static GlobalFsCheckpoint ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 		long position = buf.readLong();
 		byte[] digestState = BinaryDataFormats.readBytes(buf);
-		SHA256Digest sha256Digest = CryptoUtils.ofSha256PackedState(digestState, position);
-		return new GlobalFsCheckpoint(bytes, position, sha256Digest);
+		byte[] filenameHash = BinaryDataFormats.readBytes(buf);
+		return new GlobalFsCheckpoint(bytes, position, CryptoUtils.ofSha256PackedState(digestState, position), filenameHash);
 	}
 
-	public static GlobalFsCheckpoint of(long position, SHA256Digest digest) {
+	public static GlobalFsCheckpoint of(long position, SHA256Digest digest, byte[] filenameHash) {
 		byte[] digestState = CryptoUtils.toSha256PackedState(digest);
-		ByteBuf buf = ByteBufPool.allocate(8 + BinaryDataFormats.sizeof(digestState));
+		ByteBuf buf = ByteBufPool.allocate(8 + sizeof(digestState) + sizeof(filenameHash));
 		buf.writeLong(position);
 		BinaryDataFormats.writeBytes(buf, digestState);
-		return new GlobalFsCheckpoint(buf.asArray(), position, digest);
+		BinaryDataFormats.writeBytes(buf, filenameHash);
+		return new GlobalFsCheckpoint(buf.asArray(), position, digest, filenameHash);
 	}
 
 	public enum CheckpointVerificationResult {
-		SIGNATURE_FAIL("can't verify signature"),
+		SIGNATURE_FAIL("can't verify checkpoint signature"),
 		POSITION_FAIL("wrong checkpoint position"),
+		FILENAME_FAIL("wrong checkpoint filename"),
 		CHECKSUM_FAIL("wrong checksum"),
 		SUCCESS("");
 
@@ -53,15 +75,18 @@ public final class GlobalFsCheckpoint implements Signable {
 		}
 	}
 
-	public static CheckpointVerificationResult verify(SignedData<GlobalFsCheckpoint> signedCheckpoint, PubKey pubKey, long position, SHA256Digest digest) {
-		GlobalFsCheckpoint checkpoint = signedCheckpoint.getData();
+	public static CheckpointVerificationResult verify(SignedData<GlobalFsCheckpoint> signedCheckpoint, PubKey pubKey, long position, SHA256Digest digest, byte[] filenameHash) {
 		if (!signedCheckpoint.verify(pubKey)) {
 			return CheckpointVerificationResult.SIGNATURE_FAIL;
 		}
-		if (checkpoint.getPosition() != position) {
+		GlobalFsCheckpoint checkpoint = signedCheckpoint.getData();
+		if (checkpoint.position != position) {
 			return CheckpointVerificationResult.POSITION_FAIL;
 		}
-		if (!CryptoUtils.areEqual(checkpoint.getDigest(), digest)) {
+		if (Arrays.equals(checkpoint.filenameHash, filenameHash)) {
+			return CheckpointVerificationResult.FILENAME_FAIL;
+		}
+		if (!CryptoUtils.areEqual(checkpoint.digest, digest)) {
 			return CheckpointVerificationResult.CHECKSUM_FAIL;
 		}
 		return CheckpointVerificationResult.SUCCESS;

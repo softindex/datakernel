@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs.api;
@@ -21,38 +20,38 @@ import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
 
-public final class GlobalFsName {
+public final class GlobalFsSpace {
 	private final PubKey pubKey;
 	private final String fsName;
 
 	// region creators
-	private GlobalFsName(PubKey pubKey, String fsName) {
+	private GlobalFsSpace(PubKey pubKey, String fsName) {
 		this.pubKey = pubKey;
 		this.fsName = fsName;
 	}
 
-	public static GlobalFsName of(PubKey pubKey, String fsName) {
-		return new GlobalFsName(pubKey, fsName);
+	public static GlobalFsSpace of(PubKey pubKey, String fsName) {
+		return new GlobalFsSpace(pubKey, fsName);
 	}
 
-	public static GlobalFsName of(KeyPair keys, String fsName) {
+	public static GlobalFsSpace of(KeyPair keys, String fsName) {
 		return of(keys.getPubKey(), fsName);
 	}
 
-	public static GlobalFsName of(PrivKey key, String fsName) {
+	public static GlobalFsSpace of(PrivKey key, String fsName) {
 		return of(key.computePubKey(), fsName);
 	}
 	// endregion
 
-	public GlobalFsPath addressOf(String file) {
-		return GlobalFsPath.of(pubKey, fsName, file);
+	public GlobalFsPath pathFor(String file) {
+		return new GlobalFsPath(this, file);
 	}
 
 	public PubKey getPubKey() {
 		return pubKey;
 	}
 
-	public String getFsName() {
+	public String getFs() {
 		return fsName;
 	}
 
@@ -65,12 +64,12 @@ public final class GlobalFsName {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		GlobalFsName name = (GlobalFsName) o;
+		GlobalFsSpace name = (GlobalFsSpace) o;
 		return pubKey.equals(name.pubKey) && fsName.equals(name.fsName);
 	}
 
 	@Override
 	public String toString() {
-		return "GlobalFsName{pubKey=" + pubKey + ", fsName='" + fsName + "'}";
+		return "GlobalFsSpace{pubKey=" + pubKey + ", fsName='" + fsName + "'}";
 	}
 }

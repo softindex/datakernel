@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.file.FileUtils.isWildcard;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -144,7 +145,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 		Path path = storageDir.resolve(filename).normalize();
 		if (!path.startsWith(storageDir)) {
-			return Stage.ofException(new IOException("File " + filename + " goes outside of the storage directory"));
+			return Stage.ofException(new RemoteFsException("File " + filename + " goes outside of the root directory"));
 		}
 
 		return AsyncFile.size(executor, path)
@@ -323,7 +324,6 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					if (Files.isRegularFile(file)) {
 						return getFileMeta(file);
 					}
-					//noinspection ReturnOfNull - cannot add @Nullable to Callable interface
 					return null;
 				});
 	}
@@ -341,6 +341,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	@Override
 	public Stage<Void> stop() {
 		return Stage.complete();
+	}
+
+	@Override
+	public FsClient subfolder(String folder) {
+		return new LocalFsClient(eventloop, executor, storageDir.resolve(folder));
 	}
 
 	@Override
@@ -384,7 +389,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			return;
 		}
 		// optimization for single-file requests
-		if (!GLOB_META.matcher(glob).find()) {
+		if (!isWildcard(glob)) {
 			Path file = storageDir.resolve(glob);
 			if (Files.isRegularFile(file)) {
 				walker.accept(getFileMeta(file), file);

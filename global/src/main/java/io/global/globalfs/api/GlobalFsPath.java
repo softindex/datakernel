@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs.api;
@@ -22,17 +21,17 @@ import io.global.common.PrivKey;
 import io.global.common.PubKey;
 
 public final class GlobalFsPath {
-	private final GlobalFsName name;
+	private final GlobalFsSpace space;
 	private final String path;
 
 	// region creators
-	private GlobalFsPath(GlobalFsName name, String path) {
-		this.name = name;
+	GlobalFsPath(GlobalFsSpace space, String path) {
+		this.space = space;
 		this.path = path;
 	}
 
 	public static GlobalFsPath of(PubKey pubKey, String fsName, String path) {
-		return new GlobalFsPath(GlobalFsName.of(pubKey, fsName), path);
+		return new GlobalFsPath(GlobalFsSpace.of(pubKey, fsName), path);
 	}
 
 	public static GlobalFsPath of(KeyPair keys, String fsName, String path) {
@@ -44,8 +43,8 @@ public final class GlobalFsPath {
 	}
 	// endregion
 
-	public GlobalFsName getGlobalFsName() {
-		return name;
+	public GlobalFsSpace getSpace() {
+		return space;
 	}
 
 	public String getPath() {
@@ -53,16 +52,20 @@ public final class GlobalFsPath {
 	}
 
 	public PubKey getPubKey() {
-		return name.getPubKey();
+		return space.getPubKey();
 	}
 
-	public String getFsName() {
-		return name.getFsName();
+	public String getFs() {
+		return space.getFs();
+	}
+
+	public String getFullPath() {
+		return space.getFs() + "::" + path;
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * name.hashCode() + path.hashCode();
+		return 31 * space.hashCode() + path.hashCode();
 	}
 
 	@Override
@@ -70,11 +73,11 @@ public final class GlobalFsPath {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		GlobalFsPath that = (GlobalFsPath) o;
-		return name.equals(that.name) && path.equals(that.path);
+		return space.equals(that.space) && path.equals(that.path);
 	}
 
 	@Override
 	public String toString() {
-		return "GlobalFsPath{name=" + name + ", path='" + path + "'}";
+		return "GlobalFsPath{space=" + space + ", path='" + path + "'}";
 	}
 }

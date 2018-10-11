@@ -1,9 +1,28 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.functional;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.UncheckedException;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.*;
+import java.util.stream.Collector;
 
 import static io.datakernel.util.Preconditions.checkState;
 
@@ -49,21 +68,54 @@ public final class Try<T> {
 		}
 	}
 
+	public static <T> Collector<Try<T>, ?, Try<T>> reducer(BinaryOperator<T> combiner) {
+		return reducer(null, combiner);
+	}
+
+	public static <T> Collector<Try<T>, ?, Try<T>> reducer(@Nullable T identity, BinaryOperator<T> combiner) {
+		class Accumulator {
+			T result = identity;
+			List<Throwable> throwables = new ArrayList<>();
+		}
+		return Collector.of(Accumulator::new, (acc, t) -> {
+			if (t.isSuccess()) {
+				acc.result = acc.result != null ? combiner.apply(acc.result, t.getResult()) : t.getResult();
+			} else {
+				acc.throwables.add(t.getException());
+			}
+		}, (acc1, acc2) -> {
+			acc1.result = combiner.apply(acc1.result, acc2.result);
+			acc1.throwables.addAll(acc2.throwables);
+			return acc1;
+		}, acc -> {
+			if (acc.throwables.isEmpty()) {
+				return Try.of(acc.result);
+			}
+			Throwable throwable = acc.throwables.get(0);
+			for (Throwable t : acc.throwables) {
+				if (t != throwable) {
+					throwable.addSuppressed(t);
+				}
+			}
+			return Try.ofException(throwable);
+		});
+	}
+
 	public boolean isSuccess() {
 		return throwable == null;
 	}
 
-	@Nullable
 	public T get() throws Exception {
 		if (throwable == null) {
+			//noinspection ConstantConditions - nullability of this method is equal to the nullability of T
 			return result;
 		}
 		throw throwable instanceof Exception ? (Exception) throwable : new RuntimeException(throwable);
 	}
 
-	@Nullable
-	public T getOr(@Nullable T defaultValue) {
+	public T getOr(T defaultValue) {
 		if (throwable == null) {
+			//noinspection ConstantConditions - nullability of this method is equal to the nullability of T
 			return result;
 		}
 		return defaultValue;
@@ -84,15 +136,13 @@ public final class Try<T> {
 
 	public T getResult() {
 		assert isSuccess();
-		return result;
-	}
-
-	public T getResultOrNull() {
+		//noinspection ConstantConditions - nullability of this method is equal to the nullability of T
 		return result;
 	}
 
 	public Throwable getException() {
 		assert !isSuccess();
+		//noinspection ConstantConditions - isSuccess check
 		return throwable;
 	}
 

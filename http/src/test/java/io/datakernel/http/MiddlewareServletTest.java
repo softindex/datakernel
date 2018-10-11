@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@ package io.datakernel.http;
 
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.HttpMethod.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
@@ -92,7 +92,7 @@ public class MiddlewareServletTest {
 		HttpRequest request8 = HttpRequest.get(TEMPLATE + "/b/g");  // ok
 
 		AsyncServlet action = request -> {
-			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
+			ByteBuf msg = wrapUtf8("Executed: " + request.getPath());
 			return Stage.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
@@ -121,8 +121,8 @@ public class MiddlewareServletTest {
 		check(main.serve(request8), "Executed: /b/g", 200);
 		System.out.println();
 
-//		request5.recycleBufs();
-//		request6.recycleBufs();
+		//		request5.recycleBufs();
+		//		request6.recycleBufs();
 	}
 
 	@Test
@@ -137,7 +137,7 @@ public class MiddlewareServletTest {
 		HttpRequest request8 = HttpRequest.get(TEMPLATE + "/b/g");  // ok
 
 		AsyncServlet action = request -> {
-			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
+			ByteBuf msg = wrapUtf8("Executed: " + request.getPath());
 			return Stage.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
@@ -160,8 +160,8 @@ public class MiddlewareServletTest {
 		check(main.serve(request8), "Executed: /b/g", 200);
 		System.out.println();
 
-//		request5.recycleBufs();
-//		request6.recycleBufs();
+		//		request5.recycleBufs();
+		//		request6.recycleBufs();
 	}
 
 	@Test
@@ -185,7 +185,7 @@ public class MiddlewareServletTest {
 		HttpRequest request7 = HttpRequest.get(TEMPLATE + "/a/c/f");    // ok
 
 		AsyncServlet action = request -> {
-			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
+			ByteBuf msg = wrapUtf8("Executed: " + request.getPath());
 			return Stage.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
@@ -215,12 +215,12 @@ public class MiddlewareServletTest {
 		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/c/f");    // fail
 
 		AsyncServlet action = req -> {
-			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + req.getPath());
+			ByteBuf msg = wrapUtf8("Executed: " + req.getPath());
 			return Stage.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		AsyncServlet anotherAction = req -> {
-			ByteBuf msg = ByteBufStrings.wrapUtf8("Shall not be executed: " + req.getPath());
+			ByteBuf msg = wrapUtf8("Shall not be executed: " + req.getPath());
 			return Stage.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
@@ -246,7 +246,7 @@ public class MiddlewareServletTest {
 			String body = request.getPathParameter("id")
 					+ " " + request.getPathParameter("uid")
 					+ " " + request.getPathParameter("eid");
-			ByteBuf bodyByteBuf = ByteBufStrings.wrapUtf8(body);
+			ByteBuf bodyByteBuf = wrapUtf8(body);
 			return Stage.of(HttpResponse.ofCode(200).withBody(bodyByteBuf));
 		};
 
@@ -269,12 +269,12 @@ public class MiddlewareServletTest {
 	@Test
 	public void testMultiParameters() throws ParseException {
 		AsyncServlet serveCar = request -> {
-			ByteBuf body = ByteBufStrings.wrapUtf8("served car: " + request.getPathParameter("cid"));
+			ByteBuf body = wrapUtf8("served car: " + request.getPathParameter("cid"));
 			return Stage.of(HttpResponse.ofCode(200).withBody(body));
 		};
 
 		AsyncServlet serveMan = request -> {
-			ByteBuf body = ByteBufStrings.wrapUtf8("served man: " + request.getPathParameter("mid"));
+			ByteBuf body = wrapUtf8("served man: " + request.getPathParameter("mid"));
 			return Stage.of(HttpResponse.ofCode(200).withBody(body));
 		};
 
@@ -295,13 +295,13 @@ public class MiddlewareServletTest {
 		HttpRequest request3 = HttpRequest.of(CONNECT, TEMPLATE + "/a/b/c/action");
 
 		AsyncServlet post = request -> Stage.of(
-				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("POST")));
+				HttpResponse.ofCode(200).withBody(wrapUtf8("POST")));
 
 		AsyncServlet get = request -> Stage.of(
-				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("GET")));
+				HttpResponse.ofCode(200).withBody(wrapUtf8("GET")));
 
 		AsyncServlet wildcard = request -> Stage.of(
-				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("WILDCARD")));
+				HttpResponse.ofCode(200).withBody(wrapUtf8("WILDCARD")));
 
 		MiddlewareServlet servlet = MiddlewareServlet.create()
 				.with("/a/b/c/action", wildcard)
@@ -318,10 +318,10 @@ public class MiddlewareServletTest {
 	@Test
 	public void testDefault() throws ParseException {
 		AsyncServlet def = request -> Stage.of(
-				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getPartialPath())));
+				HttpResponse.ofCode(200).withBody(wrapUtf8("Stopped at admin: " + request.getRelativePath())));
 
 		AsyncServlet action = request -> Stage.of(
-				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Action executed")));
+				HttpResponse.ofCode(200).withBody(wrapUtf8("Action executed")));
 
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/html/admin/action");
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/html/admin/action/ban");
@@ -332,14 +332,14 @@ public class MiddlewareServletTest {
 
 		System.out.println("Default stop " + DELIM);
 		check(main.serve(request1), "Action executed", 200);
-		check(main.serve(request2), "Stopped at admin: /action/ban", 200);
+		check(main.serve(request2), "Stopped at admin: action/ban", 200);
 		System.out.println();
 	}
 
 	@Test
 	public void test404() throws ParseException {
 		AsyncServlet servlet = request -> Stage.of(
-				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
+				HttpResponse.ofCode(200).withBody(wrapUtf8("All OK")));
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with("/a/:id/b/d", servlet);
 
@@ -352,7 +352,7 @@ public class MiddlewareServletTest {
 	@Test
 	public void test405() throws ParseException {
 		AsyncServlet servlet = request -> Stage.of(
-				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
+				HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute")));
 
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/a/:id/b/d", servlet);
@@ -364,14 +364,25 @@ public class MiddlewareServletTest {
 	@Test
 	public void test405WithFallback() throws ParseException {
 		AsyncServlet servlet = request -> Stage.of(
-				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
+				HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute")));
 
 		AsyncServlet fallback = request -> Stage.of(
-				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Fallback executed")));
+				HttpResponse.ofCode(200).withBody(wrapUtf8("Fallback executed")));
 
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/a/:id/b/d", servlet)
 				.withFallback("/a/:id/b/d", fallback);
 		check(main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d")), "Fallback executed", 200);
+	}
+
+	@Test
+	public void testTail() throws ParseException {
+		AsyncServlet servlet = request -> Stage.of(HttpResponse.ofCode(200).withBody(wrapUtf8("Success: " + request.getRelativePath())));
+
+		MiddlewareServlet main = MiddlewareServlet.create()
+				.with(GET, "/method", MiddlewareServlet.create().withFallback(servlet));
+
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/oneArg")), "Success: oneArg", 200);
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/first/second")), "Success: first/second", 200);
 	}
 }

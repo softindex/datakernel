@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs.transformers;
@@ -27,8 +26,7 @@ import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
 import io.global.globalfs.api.DataFrame;
 
-abstract class ByteBufsToFrames extends AbstractAsyncProcess
-		implements WithSerialToSerial<ByteBufsToFrames, ByteBuf, DataFrame> {
+abstract class ByteBufsToFrames extends AbstractAsyncProcess implements WithSerialToSerial<ByteBufsToFrames, ByteBuf, DataFrame> {
 	protected long position;
 	protected long nextCheckpoint;
 
@@ -45,7 +43,7 @@ abstract class ByteBufsToFrames extends AbstractAsyncProcess
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			if (this.input != null && this.output != null) startProcess();
+			if (this.output != null) startProcess();
 			return getProcessResult();
 		};
 	}
@@ -54,7 +52,7 @@ abstract class ByteBufsToFrames extends AbstractAsyncProcess
 	public SerialOutput<DataFrame> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (this.input != null && this.output != null) startProcess();
+			if (this.input != null) startProcess();
 		};
 	}
 

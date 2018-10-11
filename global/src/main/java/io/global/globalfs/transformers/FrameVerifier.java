@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.globalfs.transformers;
@@ -33,8 +32,8 @@ public final class FrameVerifier extends FramesToByteBufs {
 	private final long endOffset;
 
 	// region creators
-	public FrameVerifier(PubKey pubKey, long offset, long length) {
-		super(pubKey);
+	public FrameVerifier(String fullPath, PubKey pubKey, long offset, long length) {
+		super(fullPath, pubKey);
 		this.offset = offset;
 		this.endOffset = length == -1 ? Long.MAX_VALUE : offset + length;
 	}
