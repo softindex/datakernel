@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,8 @@ import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.*;
+import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.*;
 
@@ -258,7 +260,7 @@ public class CubeMeasureRemovalTest {
 			.toCompletableFuture();
 		eventloop.run();
 		CubeDiff consolidatingCubeDiff = future1.get();
-		assertEquals(false, consolidatingCubeDiff.isEmpty());
+		assertFalse(consolidatingCubeDiff.isEmpty());
 
 		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
 		future = logCubeStateManager.commitAndPush().toCompletableFuture();
@@ -348,7 +350,7 @@ public class CubeMeasureRemovalTest {
 		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql2 = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
 
 		exception.expectCause(instanceOf(ParseException.class));
-		exception.expectMessage("Unknown fields: [clicks, conversions]");
+		exception.expectCause(hasProperty("cause", hasProperty("message", equalTo("Unknown fields: [clicks, conversions]"))));
 
 		CompletableFuture<OTCommit<Long, LogDiff<CubeDiff>>> future = otSourceSql2.getHeads()
 			.thenCompose(newHeads -> {
@@ -425,7 +427,7 @@ public class CubeMeasureRemovalTest {
 		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql2 = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
 
 		exception.expectCause(instanceOf(ParseException.class));
-		exception.expectMessage("Unknown aggregations: [impressionsAggregation, otherAggregation]");
+		exception.expectCause(hasProperty("cause", hasProperty("message", equalTo("Unknown aggregations: [impressionsAggregation, otherAggregation]"))));
 
 		CompletableFuture<OTCommit<Long, LogDiff<CubeDiff>>> future = otSourceSql2.getHeads()
 			.thenCompose(newHeads -> {

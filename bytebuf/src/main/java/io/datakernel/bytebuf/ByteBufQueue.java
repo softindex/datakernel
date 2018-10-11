@@ -17,7 +17,7 @@
 package io.datakernel.bytebuf;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.exception.ParseException;
+import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.Recyclable;
 
@@ -61,7 +61,7 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 					if (queue.hasRemainingBytes(maxSize)) {
 						queue.recycle();
 						buf.recycle();
-						throw new UncheckedException(new ParseException(ByteBufQueue.class,
+						throw new UncheckedException(new InvalidSizeException(ByteBufQueue.class,
 								"ByteBufQueue exceeds maximum size of " + maxSize + " bytes"));
 					}
 					queue.add(buf);

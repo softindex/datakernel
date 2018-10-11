@@ -22,6 +22,7 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
+import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.serial.SerialSupplier;
 
 import java.net.InetAddress;
@@ -141,7 +142,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		HttpMethod method = getHttpMethod(line);
 		if (method == null) {
 			String firstBytes = Arrays.toString(line);
-			throw new ParseException(HttpServerConnection.class, "Unknown HTTP method. First Bytes: " + firstBytes);
+			throw new UnknownFormatException(HttpServerConnection.class, "Unknown HTTP method. First Bytes: " + firstBytes);
 		}
 
 		int readPosition = method.size + 1;

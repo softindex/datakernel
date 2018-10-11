@@ -18,6 +18,7 @@ package io.global.ot.util;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.util.ParserFunction;
@@ -38,8 +39,8 @@ import java.util.function.ToIntFunction;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class BinaryDataFormats {
-	public static final ParseException NEGATIVE_SIZE = new ParseException(BinaryDataFormats.class, "Invalid size of bytes to be read, should be greater than 0");
-	public static final ParseException SIZE_EXCEEDS_READ_REMAINING = new ParseException(BinaryDataFormats.class, "Invalid size of bytes to be read, size exceeds buf's read remaining bytes");
+	public static final ParseException NEGATIVE_SIZE = new InvalidSizeException(BinaryDataFormats.class, "Invalid size of bytes to be read, should be greater than 0");
+	public static final ParseException SIZE_EXCEEDS_READ_REMAINING = new InvalidSizeException(BinaryDataFormats.class, "Invalid size of bytes to be read, size exceeds buf's read remaining bytes");
 
 	// region creators
 	private BinaryDataFormats() {

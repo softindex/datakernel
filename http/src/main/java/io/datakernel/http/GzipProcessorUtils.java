@@ -18,7 +18,9 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.util.ConcurrentStack;
 
 import java.util.zip.CRC32;
@@ -43,13 +45,13 @@ public final class GzipProcessorUtils {
 	private static final double DEFLATE_MAX_BYTES_OVERHEAD_PER_16K_BLOCK = 5;
 
 	public static final ParseException CORRUPTED_GZIP_HEADER = new ParseException(GzipProcessorUtils.class, "Corrupted GZIP header");
-	public static final ParseException DECOMPRESSED_SIZE_EXCEEDS_EXPECTED_MAX_SIZE = new ParseException(GzipProcessorUtils.class, "Decompressed data size exceeds max expected size");
+	public static final ParseException DECOMPRESSED_SIZE_EXCEEDS_EXPECTED_MAX_SIZE = new InvalidSizeException(GzipProcessorUtils.class, "Decompressed data size exceeds max expected size");
 	public static final ParseException COMPRESSED_DATA_WAS_NOT_READ_FULLY = new ParseException(GzipProcessorUtils.class, "Compressed data was not read fully");
 	public static final ParseException DATA_FORMAT_EXCEPTION = new ParseException(GzipProcessorUtils.class, "Data format exception");
-	public static final ParseException ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED = new ParseException(GzipProcessorUtils.class, "Decompressed data size is not equal to input size from GZIP trailer");
+	public static final ParseException ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED = new InvalidSizeException(GzipProcessorUtils.class, "Decompressed data size is not equal to input size from GZIP trailer");
 	public static final ParseException INCORRECT_ID_HEADER_BYTES = new ParseException(GzipProcessorUtils.class, "Incorrect identification bytes. Not in GZIP format");
-	public static final ParseException INCORRECT_UNCOMPRESSED_INPUT_SIZE = new ParseException(GzipProcessorUtils.class, "Incorrect uncompressed input size");
-	public static final ParseException UNSUPPORTED_COMPRESSION_METHOD = new ParseException(GzipProcessorUtils.class, "Unsupported compression method. Deflate compression required");
+	public static final ParseException INCORRECT_UNCOMPRESSED_INPUT_SIZE = new InvalidSizeException(GzipProcessorUtils.class, "Incorrect uncompressed input size");
+	public static final ParseException UNSUPPORTED_COMPRESSION_METHOD = new UnknownFormatException(GzipProcessorUtils.class, "Unsupported compression method. Deflate compression required");
 
 	private static final ConcurrentStack<Inflater> decompressors = new ConcurrentStack<>();
 	private static final ConcurrentStack<Deflater> compressors = new ConcurrentStack<>();

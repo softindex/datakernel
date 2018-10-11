@@ -19,6 +19,7 @@ package io.datakernel.http.stream;
 import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.ByteBufsInput;
 import io.datakernel.serial.ByteBufsSupplier;
@@ -42,9 +43,9 @@ public final class BufsConsumerChunkedDecoder extends AbstractAsyncProcess
 	public static final byte[] CRLF = {13, 10};
 	// region exceptions
 	public static final ParseException MALFORMED_CHUNK = new ParseException(BufsConsumerChunkedDecoder.class, "Malformed chunk");
-	public static final ParseException MALFORMED_CHUNK_LENGTH = new ParseException(BufsConsumerChunkedDecoder.class, "Malformed chunk length");
-	public static final ParseException EXT_TOO_LARGE = new ParseException(BufsConsumerChunkedDecoder.class, "Malformed chunk, chunk-ext is larger than maximum allowed length");
-	public static final ParseException TRAILER_TOO_LARGE = new ParseException(BufsConsumerChunkedDecoder.class, "Malformed chunk, trailer-part is larger than maximum allowed length");
+	public static final ParseException MALFORMED_CHUNK_LENGTH = new InvalidSizeException(BufsConsumerChunkedDecoder.class, "Malformed chunk length");
+	public static final ParseException EXT_TOO_LARGE = new InvalidSizeException(BufsConsumerChunkedDecoder.class, "Malformed chunk, chunk-ext is larger than maximum allowed length");
+	public static final ParseException TRAILER_TOO_LARGE = new InvalidSizeException(BufsConsumerChunkedDecoder.class, "Malformed chunk, trailer-part is larger than maximum allowed length");
 	// endregion
 
 	private int maxExtLength = DEFAULT_MAX_EXT_LENGTH;

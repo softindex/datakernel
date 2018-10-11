@@ -19,7 +19,9 @@ package io.datakernel.http;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UnknownFormatException;
 
 import java.util.*;
 
@@ -116,7 +118,7 @@ public final class UrlParser {
 
 	private void parse(boolean isRelativePathAllowed) throws ParseException {
 		if (raw.length() > Short.MAX_VALUE) {
-			throw new ParseException(UrlParser.class, "HttpUrl length cannot be greater than " + Short.MAX_VALUE);
+			throw new InvalidSizeException(UrlParser.class, "HttpUrl length cannot be greater than " + Short.MAX_VALUE);
 		}
 
 		short index = (short) raw.indexOf("://");
@@ -130,7 +132,7 @@ public final class UrlParser {
 			} else if (index == 4 && raw.startsWith(HTTP)) {
 				https = false;
 			} else {
-				throw new ParseException(UrlParser.class, "Unsupported schema: " + raw.substring(0, index));
+				throw new UnknownFormatException(UrlParser.class, "Unsupported schema: " + raw.substring(0, index));
 			}
 			index += "://".length();
 			host = index;

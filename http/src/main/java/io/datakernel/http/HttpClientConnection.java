@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.serial.SerialSupplier;
 
 import java.net.InetSocketAddress;
@@ -76,7 +77,7 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
  */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
-	public static final ParseException INVALID_RESPONSE = new ParseException(HttpClientConnection.class, "Invalid response");
+	public static final ParseException INVALID_RESPONSE = new UnknownFormatException(HttpClientConnection.class, "Invalid response");
 	private SettableStage<HttpResponse> callback;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
@@ -132,7 +133,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		int statusCode = decodeDecimal(line, sp1, sp2 - sp1);
 		if (!(statusCode >= 100 && statusCode < 600)) {
-			throw new ParseException(HttpClientConnection.class, "Invalid HTTP Status Code " + statusCode);
+			throw new UnknownFormatException(HttpClientConnection.class, "Invalid HTTP Status Code " + statusCode);
 		}
 		response = HttpResponse.ofCode(statusCode);
 		if (isNoBodyMessage(response)) {

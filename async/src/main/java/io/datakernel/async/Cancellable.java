@@ -16,7 +16,7 @@
 
 package io.datakernel.async;
 
-import io.datakernel.exception.StacklessException;
+import io.datakernel.exception.CloseException;
 
 /**
  * This interface describes methods that are used to handle exceptional behaviour or to handle closing.
@@ -30,8 +30,8 @@ import io.datakernel.exception.StacklessException;
  * All operations of this interface are idempotent.
  */
 public interface Cancellable {
-	StacklessException CANCEL_EXCEPTION = new StacklessException(Cancellable.class, "Cancelled");
-	StacklessException CLOSE_EXCEPTION = new StacklessException(Cancellable.class, "Closed");
+	CloseException CANCEL_EXCEPTION = new CloseException(Cancellable.class, "Cancelled");
+	CloseException CLOSE_EXCEPTION = new CloseException(Cancellable.class, "Closed");
 
 	/**
 	 * This method should be called to close some process exceptionally in case of some exception is thrown while

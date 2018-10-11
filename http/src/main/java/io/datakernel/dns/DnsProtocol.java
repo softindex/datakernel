@@ -19,7 +19,9 @@ package io.datakernel.dns;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UnknownFormatException;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -160,7 +162,7 @@ public final class DnsProtocol {
 			RecordType recordType = RecordType.fromCode(recordTypeCode);
 			if (recordType == null) {
 				// malformed response, we are sending query only with existing RecordType's
-				throw new ParseException(DnsProtocol.class, "Received DNS response with unknown query record type (" +
+				throw new UnknownFormatException(DnsProtocol.class, "Received DNS response with unknown query record type (" +
 						Integer.toHexString(recordTypeCode & 0xFFFF) + ")");
 			}
 
@@ -168,7 +170,7 @@ public final class DnsProtocol {
 			short queryClassCode = payload.readShort();
 			QueryClass queryClass = QueryClass.fromCode(queryClassCode);
 			if (queryClass != QueryClass.INTERNET) {
-				throw new ParseException(DnsProtocol.class, "Received DNS response with unknown query class (" +
+				throw new UnknownFormatException(DnsProtocol.class, "Received DNS response with unknown query class (" +
 						Integer.toHexString(queryClassCode & 0xFFFF) + ")");
 			}
 
@@ -204,7 +206,7 @@ public final class DnsProtocol {
 				minTtl = Math.min(payload.readInt(), minTtl);
 				short length = payload.readShort();
 				if (length != recordType.dataLength) {
-					throw new ParseException(DnsProtocol.class, "Bad record length received. " + recordType +
+					throw new InvalidSizeException(DnsProtocol.class, "Bad record length received. " + recordType +
 							"-record length should be " + recordType.dataLength + " bytes, it was " + length);
 				}
 				byte[] bytes = new byte[length];

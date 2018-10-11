@@ -115,7 +115,7 @@ final class HttpDate {
 			timestamp += ((60 * hour + minutes) * 60) + seconds;
 
 			return timestamp;
-		} catch (RuntimeException e) {
+		} catch (RuntimeException ignored) {
 			throw FAILED_TO_PARSE_DATE;
 		}
 	}

@@ -18,6 +18,7 @@ package io.datakernel.serial.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.serial.SerialInput;
@@ -36,7 +37,7 @@ import static java.lang.String.format;
  */
 public final class SerialBinaryDeserializer<T> extends AbstractStreamSupplier<T> implements WithSerialToStream<SerialBinaryDeserializer<T>, ByteBuf, T> {
 	public static final ParseException HEADER_SIZE_EXCEPTION = new ParseException(SerialBinaryDeserializer.class, "Header size is too large");
-	public static final ParseException DESERIALIZED_SIZE_EXCEPTION = new ParseException(SerialBinaryDeserializer.class, "Deserialized size != parsed data size");
+	public static final ParseException DESERIALIZED_SIZE_EXCEPTION = new InvalidSizeException(SerialBinaryDeserializer.class, "Deserialized size != parsed data size");
 
 	private SerialSupplier<ByteBuf> input;
 	private final BufferSerializer<T> valueSerializer;

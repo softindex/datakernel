@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.ParserFunction;
 
@@ -29,8 +30,8 @@ import static io.datakernel.serial.Utils.parseUntilTerminatorByte;
 import static java.lang.Math.min;
 
 public interface ByteBufsParser<T> {
-	ParseException SIZE_EXCEEDS_MAX_SIZE = new ParseException(ByteBufsParser.class, "Size exceeds max size");
-	ParseException NEGATIVE_SIZE = new ParseException(ByteBufsParser.class, "Invalid size of bytes to be read, should be greater than 0");
+	ParseException SIZE_EXCEEDS_MAX_SIZE = new InvalidSizeException(ByteBufsParser.class, "Size exceeds max size");
+	ParseException NEGATIVE_SIZE = new InvalidSizeException(ByteBufsParser.class, "Invalid size of bytes to be read, should be greater than 0");
 
 	@Nullable
 	T tryParse(ByteBufQueue bufs) throws ParseException;
@@ -116,7 +117,7 @@ public interface ByteBufsParser<T> {
 					| (bufs.peekByte(2) & 0xFF) << 8
 					| (bufs.peekByte(3) & 0xFF);
 			if (size < 0 || size > maxSize) {
-				throw new ParseException(ByteBufsParser.class,
+				throw new InvalidSizeException(ByteBufsParser.class,
 						"Size is either less than 0 or greater than maxSize. Parsed size: " + size);
 			}
 			if (!bufs.hasRemainingBytes(4 + size)) return null;

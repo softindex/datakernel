@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UnknownFormatException;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -220,7 +221,7 @@ public final class HttpUtils {
 		try {
 			return URLDecoder.decode(string, enc);
 		} catch (UnsupportedEncodingException e) {
-			throw new ParseException(HttpUtils.class, "Can't encode with supplied encoding: " + enc, e);
+			throw new UnknownFormatException(HttpUtils.class, "Can't encode with supplied encoding: " + enc, e);
 		}
 	}
 
