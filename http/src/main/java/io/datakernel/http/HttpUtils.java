@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -220,7 +220,7 @@ public final class HttpUtils {
 		try {
 			return URLDecoder.decode(string, enc);
 		} catch (UnsupportedEncodingException e) {
-			throw new ParseException("Can't encode with supplied encoding: " + enc, e);
+			throw new ParseException(HttpUtils.class, "Can't encode with supplied encoding: " + enc, e);
 		}
 	}
 

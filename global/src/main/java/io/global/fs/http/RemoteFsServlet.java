@@ -16,7 +16,6 @@
 
 package io.global.fs.http;
 
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.remotefs.FsClient;
 
@@ -29,8 +28,6 @@ import static io.global.fs.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class RemoteFsServlet {
-	public static final ParseException INVALID_RANGE_FORMAT = new ParseException("Invalid range format");
-
 	public static final String UPLOAD = "upload";
 	public static final String DOWNLOAD = "download";
 	public static final String LIST = "list";

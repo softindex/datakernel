@@ -31,8 +31,8 @@ import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_JSON;
 import static io.datakernel.util.gson.GsonAdapters.*;
 
 public final class HttpDataFormats {
-	public static final ParseException INVALID_RANGE_FORMAT = new ParseException("Invalid range format");
-	public static final ParseException RANGE_OUT_OF_BOUNDS = new ParseException("Specified range is out of bounds");
+	public static final ParseException INVALID_RANGE_FORMAT = new ParseException(HttpDataFormats.class, "Invalid range format");
+	public static final ParseException RANGE_OUT_OF_BOUNDS = new ParseException(HttpDataFormats.class, "Specified range is out of bounds");
 
 	public static final TypeAdapter<Set<String>> STRING_SET = ofSet(STRING_JSON);
 
@@ -83,7 +83,7 @@ public final class HttpDataFormats {
 		try {
 			return Long.parseLong(request.getQueryParameter("offset"));
 		} catch (NumberFormatException e) {
-			throw new ParseException(e);
+			throw new ParseException(HttpDataFormats.class, "Failed to parse offset", e);
 		}
 	}
 }

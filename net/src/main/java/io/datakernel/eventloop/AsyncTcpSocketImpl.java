@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public static final MemSize DEFAULT_READ_BUF_SIZE = MemSize.kilobytes(16);
 
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
-	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException("timed out");
+	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(AsyncTcpSocketImpl.class, "timed out");
 	public static final int NO_TIMEOUT = -1;
 
 	private static final MemSize MAX_MERGE_SIZE = MemSize.kilobytes(16);

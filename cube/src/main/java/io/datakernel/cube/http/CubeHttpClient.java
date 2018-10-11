@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -110,14 +110,14 @@ public final class CubeHttpClient implements ICube {
 					String response = httpResponse.getBody().asString(UTF_8);
 
 					if (httpResponse.getCode() != 200) {
-						return Stage.ofException(new ParseException("Cube HTTP query failed. Response code: " + httpResponse.getCode() + " Body: " + response));
+						return Stage.ofException(new ParseException(CubeHttpClient.class, "Cube HTTP query failed. Response code: " + httpResponse.getCode() + " Body: " + response));
 					}
 
 					QueryResult result;
 					try {
 						result = getQueryResultJson().fromJson(response);
 					} catch (IOException e) {
-						return Stage.ofException(new ParseException("Cube HTTP query failed. Invalid data received", e));
+						return Stage.ofException(new ParseException(CubeHttpClient.class, "Cube HTTP query failed. Invalid data received", e));
 					}
 					return Stage.of(result);
 				})

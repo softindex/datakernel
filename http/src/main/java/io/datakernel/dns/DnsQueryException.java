@@ -28,8 +28,8 @@ public final class DnsQueryException extends StacklessException {
 	/**
 	 * Creates a new instance of DnsQueryException
 	 */
-	public DnsQueryException(DnsResponse response) {
-		super(response.getTransaction().getQuery() + " failed with error code: " + response.getErrorCode().name());
+	public DnsQueryException(Class<?> component, DnsResponse response) {
+		super(component, response.getTransaction().getQuery() + " failed with error code: " + response.getErrorCode().name());
 		this.query = response.getTransaction().getQuery();
 		this.result = response;
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,8 +35,8 @@ import static java.lang.String.format;
  * @param <T> original type of data
  */
 public final class SerialBinaryDeserializer<T> extends AbstractStreamSupplier<T> implements WithSerialToStream<SerialBinaryDeserializer<T>, ByteBuf, T> {
-	public static final ParseException HEADER_SIZE_EXCEPTION = new ParseException("Header size is too large");
-	public static final ParseException DESERIALIZED_SIZE_EXCEPTION = new ParseException("Deserialized size != parsed data size");
+	public static final ParseException HEADER_SIZE_EXCEPTION = new ParseException(SerialBinaryDeserializer.class, "Header size is too large");
+	public static final ParseException DESERIALIZED_SIZE_EXCEPTION = new ParseException(SerialBinaryDeserializer.class, "Deserialized size != parsed data size");
 
 	private SerialSupplier<ByteBuf> input;
 	private final BufferSerializer<T> valueSerializer;
@@ -83,7 +83,7 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamSupplier<T>
 				try {
 					item = valueSerializer.deserialize(buf);
 				} catch (Exception e) {
-					throw new ParseException("Deserialization error", e);
+					throw new ParseException(SerialBinaryDeserializer.class, "Deserialization error", e);
 				}
 
 				if (buf.canRead())
@@ -103,7 +103,7 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamSupplier<T>
 								if (queue.isEmpty()) {
 									sendEndOfStream();
 								} else {
-									close(new TruncatedDataException(format("Truncated serialized data stream, %s : %s", this, queue)));
+									close(new TruncatedDataException(SerialBinaryDeserializer.class, format("Truncated serialized data stream, %s : %s", this, queue)));
 								}
 							}
 						})

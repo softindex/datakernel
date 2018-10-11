@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ public final class DatagraphSerialization {
 				try {
 					return new InetSocketAddress(InetAddress.getByName(split[0]), Integer.parseInt(split[1]));
 				} catch (UnknownHostException e) {
-					throw new ParseException(e);
+					throw new ParseException(DatagraphSerialization.class, e);
 				}
 			},
 			(InetSocketAddress addr) ->

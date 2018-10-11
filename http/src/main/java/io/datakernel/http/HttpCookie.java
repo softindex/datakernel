@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -238,7 +238,7 @@ public final class HttpCookie {
 				pos = valueEnd + 1;
 			}
 		} catch (RuntimeException e) {
-			throw new ParseException();
+			throw new ParseException(HttpCookie.class);
 		}
 	}
 
@@ -303,7 +303,7 @@ public final class HttpCookie {
 				pos = valueEnd + 1;
 			}
 		} catch (RuntimeException e) {
-			throw new ParseException();
+			throw new ParseException(HttpCookie.class);
 		}
 	}
 

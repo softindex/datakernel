@@ -144,7 +144,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 						try {
 							engine.closeInbound();
 						} catch (SSLException e) {
-							close(new CloseWithoutNotifyException(e));
+							close(new CloseWithoutNotifyException(AsyncSslSocket.class, "Peer closed without sending close_notify", e));
 						}
 					}
 				});

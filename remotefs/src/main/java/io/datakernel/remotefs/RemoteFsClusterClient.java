@@ -23,6 +23,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.functional.Try;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -225,13 +226,13 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				return Stage.of(res);
 			}
 			markIfDead(partitionId, err);
-			return Stage.ofException(new PartitionException(partitionId, err));
+			return Stage.ofException(new StacklessException(RemoteFsClusterClient.class));
 		};
 	}
 
 	// shortcut for creating single Exception from list of possibly failed tries
 	private static <T, U> Stage<T> ofFailure(String message, List<Try<U>> failed) {
-		RemoteFsException exception = new RemoteFsException(message);
+		RemoteFsException exception = new RemoteFsException(RemoteFsClusterClient.class, message);
 		failed.stream()
 				.map(Try::getExceptionOrNull)
 				.filter(Objects::nonNull)
@@ -369,7 +370,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 							.map(partitionId -> {
 								FsClient client = aliveClients.get(partitionId);
 								if (client == null) { // marked as dead already by somebody
-									return Stage.ofException(new RemoteFsException("Client " + partitionId + " is not alive"));
+									return Stage.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Client " + partitionId + " is not alive"));
 								}
 								logger.trace("downloading file {} from {}", filename, partitionId);
 								return client.download(filename, offset, length)

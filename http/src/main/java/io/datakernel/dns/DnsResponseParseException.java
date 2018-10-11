@@ -23,18 +23,19 @@ import io.datakernel.exception.ParseException;
  */
 public class DnsResponseParseException extends ParseException {
 
-	public DnsResponseParseException() {
+	public DnsResponseParseException(Class<?> component) {
+		super(component);
 	}
 
-	public DnsResponseParseException(String message) {
-		super(message);
+	public DnsResponseParseException(Class<?> component, Throwable cause) {
+		super(component, cause);
 	}
 
-	public DnsResponseParseException(String message, Throwable cause) {
-		super(message, cause);
+	public DnsResponseParseException(Class<?> component, String message) {
+		super(component, message);
 	}
 
-	public DnsResponseParseException(Throwable cause) {
-		super(cause);
+	public DnsResponseParseException(Class<?> component, String message, Throwable cause) {
+		super(component, message, cause);
 	}
 }

@@ -19,16 +19,19 @@ package io.global.fs.api;
 import io.datakernel.exception.StacklessException;
 
 public class GlobalFsException extends StacklessException {
-
-	public GlobalFsException(String message, Throwable cause) {
-		super(message, cause);
+	public GlobalFsException(Class<?> component) {
+		super(component);
 	}
 
-	public GlobalFsException(String s) {
-		super(s);
+	public GlobalFsException(Class<?> component, Throwable cause) {
+		super(component, cause);
 	}
 
-	public GlobalFsException(Throwable cause) {
-		super(cause);
+	public GlobalFsException(Class<?> component, String message) {
+		super(component, message);
+	}
+
+	public GlobalFsException(Class<?> component, String message, Throwable cause) {
+		super(component, message, cause);
 	}
 }

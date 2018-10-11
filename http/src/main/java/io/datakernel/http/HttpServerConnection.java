@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -139,13 +139,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		HttpMethod method = getHttpMethod(line);
 		if (method == null) {
 			String firstBytes = Arrays.toString(line);
-			throw new ParseException("Unknown HTTP method. First Bytes: " + firstBytes);
+			throw new ParseException(HttpServerConnection.class, "Unknown HTTP method. First Bytes: " + firstBytes);
 		}
 
 		int readPosition = method.size + 1;
 
 		if (MAX_HEADER_LINE_SIZE_BYTES <= line.length - readPosition) {
-			throw new ParseException("First line is too big");
+			throw new ParseException(HttpServerConnection.class, "First line is too big");
 		}
 
 		int i;

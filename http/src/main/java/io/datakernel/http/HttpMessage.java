@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,17 +80,17 @@ public abstract class HttpMessage {
 	public ByteBuf getHeaderBuf(HttpHeader header) throws ParseException {
 		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
 		if (headerBuf != null) {
-			if (headerBuf.bufs != null) throw new ParseException();
+			if (headerBuf.bufs != null) throw new ParseException(HttpMessage.class);
 			return headerBuf.buf;
 		}
-		throw new ParseException();
+		throw new ParseException(HttpMessage.class);
 	}
 
 	@Nullable
 	public ByteBuf getHeaderBufOrNull(HttpHeader header) throws ParseException {
 		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
 		if (headerBuf != null) {
-			if (headerBuf.bufs != null) throw new ParseException();
+			if (headerBuf.bufs != null) throw new ParseException(HttpMessage.class);
 			return headerBuf.buf;
 		}
 		return null;
@@ -107,7 +107,7 @@ public abstract class HttpMessage {
 	public final String getHeader(HttpHeader header) throws ParseException {
 		HttpHeaderValue headerValue = headers.get(header);
 		if (headerValue != null) return headerValue.toString();
-		throw new ParseException();
+		throw new ParseException(HttpMessage.class);
 	}
 
 	@Nullable
@@ -165,7 +165,7 @@ public abstract class HttpMessage {
 	public HttpCookie getCookie(String cookie) throws ParseException {
 		HttpCookie httpCookie = getCookies().get(cookie);
 		if (httpCookie != null) return httpCookie;
-		throw new ParseException();
+		throw new ParseException(HttpMessage.class);
 	}
 
 	@Nullable

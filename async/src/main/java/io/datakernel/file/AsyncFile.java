@@ -44,8 +44,7 @@ import static java.util.Arrays.asList;
  * This class represents a file with asynchronous capabilities.
  */
 public final class AsyncFile {
-	public static final StacklessException FILE_CLOSED = new StacklessException("File has been closed");
-
+	public static final StacklessException FILE_CLOSED = new StacklessException(AsyncFile.class, "File has been closed");
 	private final ExecutorService executor;
 	private final FileChannel channel;
 

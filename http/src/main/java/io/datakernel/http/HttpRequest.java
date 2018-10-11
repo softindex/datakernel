@@ -223,7 +223,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		assert !isRecycled();
 		String result = url.getQueryParameter(key);
 		if (result != null) return result;
-		throw new ParseException("Query parameter '" + key + "' is required");
+		throw new ParseException(HttpRequest.class, "Query parameter '" + key + "' is required");
 	}
 
 	public String getQueryParameter(String key, String defaultValue) {
@@ -277,7 +277,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public String getPostParameter(String postParameter) throws ParseException {
 		String result = getPostParameters().get(postParameter);
 		if (result != null) return result;
-		throw new ParseException("Post parameter '" + postParameter + "' is required");
+		throw new ParseException(HttpRequest.class, "Post parameter '" + postParameter + "' is required");
 	}
 
 	@NotNull
@@ -310,7 +310,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		assert !isRecycled();
 		String result = pathParameters != null ? pathParameters.get(key) : null;
 		if (result != null) return result;
-		throw new ParseException();
+		throw new ParseException(HttpRequest.class);
 	}
 
 	@Nullable

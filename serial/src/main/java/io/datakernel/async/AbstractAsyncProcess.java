@@ -23,7 +23,7 @@ import io.datakernel.serial.*;
 import static io.datakernel.util.Recyclable.tryRecycle;
 
 public abstract class AbstractAsyncProcess implements AsyncProcess {
-	public static final StacklessException ASYNC_PROCESS_IS_COMPLETE = new StacklessException("AsyncProcess is complete");
+	public static final StacklessException ASYNC_PROCESS_IS_COMPLETE = new StacklessException(AbstractAsyncProcess.class, "AsyncProcess is complete");
 
 	private boolean processStarted;
 	private boolean processComplete;

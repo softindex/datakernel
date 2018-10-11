@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -294,7 +294,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	private void closeNotify() {
 		for (Integer cookie : new HashSet<>(activeRequests.keySet())) {
-			returnProtocolError(activeRequests.remove(cookie), new RpcException("Connection closed."));
+			returnProtocolError(activeRequests.remove(cookie), new RpcException(RpcClientConnection.class, "Connection closed."));
 		}
 	}
 

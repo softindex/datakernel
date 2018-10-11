@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 					return fromCidr((Inet6Address) inetAddress, cidrPrefix);
 				}
 			} catch (NumberFormatException e) {
-				throw new ParseException("Invalid cidrPrefix");
+				throw new ParseException(InetAddressRange.class, "Invalid cidrPrefix");
 			}
 		}
 
@@ -106,7 +106,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 			} else if (address1 instanceof Inet6Address && address2 instanceof Inet6Address) {
 				return fromRange((Inet6Address) address1, (Inet6Address) address2);
 			} else {
-				throw new ParseException("Invalid inet addresses range. You should specify either ipv4 or ipv6");
+				throw new ParseException(InetAddressRange.class, "Invalid inet addresses range. You should specify either ipv4 or ipv6");
 			}
 		}
 
@@ -128,7 +128,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 
 	private static InetAddressRange fromAddressMask(int[] address, int[] mask) throws ParseException {
 		if (!isValidMask(mask)) {
-			throw new ParseException("Invalid mask: " + forInteger(mask).toString());
+			throw new ParseException(InetAddressRange.class, "Invalid mask: " + forInteger(mask).toString());
 		}
 		int[] network = new int[4];
 		int[] end = new int[4];
@@ -243,7 +243,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 		try {
 			return InetAddress.getByName(s);
 		} catch (UnknownHostException e) {
-			throw new ParseException("Invalid network supplied", e);
+			throw new ParseException(InetAddressRange.class, "Invalid network supplied", e);
 		}
 	}
 
@@ -251,13 +251,13 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 		try {
 			return InetAddress.getByAddress(toByteArray(network));
 		} catch (UnknownHostException e) {
-			throw new ParseException("Invalid network supplied", e);
+			throw new ParseException(InetAddressRange.class, "Invalid network supplied", e);
 		}
 	}
 
 	private static int[] cidrPrefix2mask(int cidrPrefix) throws ParseException {
 		if (cidrPrefix <= 0 || cidrPrefix > 128) {
-			throw new ParseException("Invalid cidrPrefix " + cidrPrefix);
+			throw new ParseException(InetAddressRange.class, "Invalid cidrPrefix " + cidrPrefix);
 		}
 		int pos = 0;
 		int[] mask = new int[4];

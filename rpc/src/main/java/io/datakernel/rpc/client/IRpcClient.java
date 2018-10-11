@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.rpc.protocol.RpcOverloadException;
 
 public interface IRpcClient {
-	AsyncTimeoutException RPC_TIMEOUT_EXCEPTION = new AsyncTimeoutException("RPC");
-	RpcOverloadException RPC_OVERLOAD_EXCEPTION = new RpcOverloadException();
+	AsyncTimeoutException RPC_TIMEOUT_EXCEPTION = new AsyncTimeoutException(IRpcClient.class, "RPC");
+	RpcOverloadException RPC_OVERLOAD_EXCEPTION = new RpcOverloadException(IRpcClient.class);
 
 	default <I, O> Stage<O> sendRequest(I request, int timeout) {
 		SettableStage<O> resultStage = new SettableStage<>();

@@ -41,7 +41,7 @@ import static java.util.Collections.emptyList;
 public final class Stages {
 	private Stages() {}
 
-	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException("Stage timeout");
+	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(Stages.class, "Stage timeout");
 
 	public static <T> Stage<T> timeout(Stage<T> stage, long delay) {
 		if (stage.isComplete()) return stage;

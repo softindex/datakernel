@@ -158,7 +158,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 					}
 					if (e == TIMEOUT_EXCEPTION) {
 						logger.trace("{} timed out", query);
-						e = new DnsQueryException(DnsResponse.ofFailure(transaction, TIMED_OUT));
+						e = new DnsQueryException(RemoteAsyncDnsClient.class, DnsResponse.ofFailure(transaction, TIMED_OUT));
 						transactions.remove(transaction);
 						closeIfDone();
 					}
@@ -182,7 +182,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 			if (queryResult.isSuccessful()) {
 				stage.set(queryResult);
 			} else {
-				stage.setException(new DnsQueryException(queryResult));
+				stage.setException(new DnsQueryException(RemoteAsyncDnsClient.class, queryResult));
 			}
 			closeIfDone();
 		} catch (DnsResponseParseException e) {

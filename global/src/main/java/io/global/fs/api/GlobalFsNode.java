@@ -29,11 +29,11 @@ import java.util.List;
  * This component handles one of the GlobalFS nodes.
  */
 public interface GlobalFsNode {
-	GlobalFsException RECURSIVE_DOWNLOAD_ERROR = new GlobalFsException("Trying to download a file from a server that also tries to download this file.");
-	GlobalFsException RECURSIVE_UPLOAD_ERROR = new GlobalFsException("Trying to upload a file to a server that also tries to upload this file.");
-	GlobalFsException FETCH_DID_NOTHING = new GlobalFsException("Did not fetch anything from given node.");
-	GlobalFsException CANT_VERIFY_METADATA = new GlobalFsException("Failed to verify signature of the metadata.");
-	GlobalFsException FILE_NOT_FOUND = new GlobalFsException("Did not found the requested file on given node.");
+	GlobalFsException RECURSIVE_DOWNLOAD_ERROR = new GlobalFsException(GlobalFsNode.class, "Trying to download a file from a server that also tries to download this file.");
+	GlobalFsException RECURSIVE_UPLOAD_ERROR = new GlobalFsException(GlobalFsNode.class, "Trying to upload a file to a server that also tries to upload this file.");
+	GlobalFsException FETCH_DID_NOTHING = new GlobalFsException(GlobalFsNode.class, "Did not fetch anything from given node.");
+	GlobalFsException CANT_VERIFY_METADATA = new GlobalFsException(GlobalFsNode.class, "Failed to verify signature of the metadata.");
+	GlobalFsException FILE_NOT_FOUND = new GlobalFsException(GlobalFsNode.class, "Did not found the requested file on given node.");
 
 	RawServerId getId();
 

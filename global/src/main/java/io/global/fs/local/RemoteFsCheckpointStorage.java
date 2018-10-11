@@ -58,7 +58,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 							.withEndOfStream(eos -> eos
 									.thenComposeEx(($, e2) -> {
 										if (e2 != null) {
-											return Stage.<Void>ofException(new GlobalFsException("Failed to read checkpoint data for {}"));
+											return Stage.<Void>ofException(new GlobalFsException(RemoteFsCheckpointStorage.class, "Failed to read checkpoint data for {}"));
 										}
 										return Stage.of(null);
 									}))

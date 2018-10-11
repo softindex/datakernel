@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,13 +116,13 @@ public final class UrlParser {
 
 	private void parse(boolean isRelativePathAllowed) throws ParseException {
 		if (raw.length() > Short.MAX_VALUE) {
-			throw new ParseException("HttpUrl length cannot be greater than " + Short.MAX_VALUE);
+			throw new ParseException(UrlParser.class, "HttpUrl length cannot be greater than " + Short.MAX_VALUE);
 		}
 
 		short index = (short) raw.indexOf("://");
 		if (index < 0 || index > 5) {
 			if (!isRelativePathAllowed)
-				throw new ParseException("Partial URI is not allowed: " + raw);
+				throw new ParseException(UrlParser.class, "Partial URI is not allowed: " + raw);
 			index = 0;
 		} else {
 			if (index == 5 && raw.startsWith(HTTPS)) {
@@ -130,7 +130,7 @@ public final class UrlParser {
 			} else if (index == 4 && raw.startsWith(HTTP)) {
 				https = false;
 			} else {
-				throw new ParseException("Unsupported schema: " + raw.substring(0, index));
+				throw new ParseException(UrlParser.class, "Unsupported schema: " + raw.substring(0, index));
 			}
 			index += "://".length();
 			host = index;
@@ -479,22 +479,22 @@ public final class UrlParser {
 
 	private static int toInt(String str, int pos, int end) throws ParseException {
 		if (pos == end) {
-			throw new ParseException("Empty port value");
+			throw new ParseException(UrlParser.class, "Empty port value");
 		}
 		if ((end - pos) > 5) {
-			throw new ParseException("Bad port: " + str.substring(pos, end));
+			throw new ParseException(UrlParser.class, "Bad port: " + str.substring(pos, end));
 		}
 
 		int result = 0;
 		for (int i = pos; i < end; i++) {
 			int c = (str.charAt(i) - '0');
 			if (c < 0 || c > 9)
-				throw new ParseException("Bad port: " + str.substring(pos, end));
+				throw new ParseException(UrlParser.class, "Bad port: " + str.substring(pos, end));
 			result = c + result * 10;
 		}
 
 		if (result > 0xFFFF) {
-			throw new ParseException("Bad port: " + str.substring(pos, end));
+			throw new ParseException(UrlParser.class, "Bad port: " + str.substring(pos, end));
 		}
 
 		return result;
@@ -588,7 +588,7 @@ public final class UrlParser {
 		}
 	}
 
-	private static final ParseException PARSE_EXCEPTION = new ParseException();
+	private static final ParseException PARSE_EXCEPTION = new ParseException(UrlParser.class);
 
 	private static byte parseHex(char c) throws ParseException {
 		if (c >= '0' && c <= '9') return (byte) (c - '0');

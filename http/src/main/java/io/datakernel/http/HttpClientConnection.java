@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import java.net.InetSocketAddress;
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
 /**
  * <p>
@@ -106,7 +107,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onFirstLine(byte[] line, int size) throws ParseException {
 		assert line.length >= 16;
 		if (line[0] != 'H' || line[1] != 'T' || line[2] != 'T' || line[3] != 'P' || line[4] != '/' || line[5] != '1') {
-			throw new ParseException("Invalid response");
+			throw new ParseException(HttpClientConnection.class, "Invalid response");
 		}
 
 		int sp1;
@@ -118,7 +119,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			}
 			sp1 = 9;
 		} else {
-			throw new ParseException("Invalid response: " + new String(line, 0, size));
+			throw new ParseException(HttpClientConnection.class, "Invalid response: " + new String(line, 0, size, ISO_8859_1));
 		}
 
 		int sp2;
@@ -130,7 +131,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		int statusCode = decodeDecimal(line, sp1, sp2 - sp1);
 		if (!(statusCode >= 100 && statusCode < 600)) {
-			throw new ParseException("Invalid HTTP Status Code " + statusCode);
+			throw new ParseException(HttpClientConnection.class, "Invalid HTTP Status Code " + statusCode);
 		}
 		response = HttpResponse.ofCode(statusCode);
 		if (isNoBodyMessage(response)) {

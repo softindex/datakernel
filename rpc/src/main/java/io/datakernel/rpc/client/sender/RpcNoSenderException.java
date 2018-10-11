@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,19 @@ import io.datakernel.rpc.protocol.RpcException;
 
 public class RpcNoSenderException extends RpcException {
 
-	public RpcNoSenderException(String message) {
-		super(message);
+	public RpcNoSenderException(Class<?> component) {
+		super(component);
+	}
+
+	public RpcNoSenderException(Class<?> component, Throwable cause) {
+		super(component, cause);
+	}
+
+	public RpcNoSenderException(Class<?> component, String message) {
+		super(component, message);
+	}
+
+	public RpcNoSenderException(Class<?> component, String message, Throwable cause) {
+		super(component, message, cause);
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package io.datakernel.rpc.protocol;
 
 import io.datakernel.exception.StacklessException;
+import io.datakernel.rpc.server.RpcServerConnection;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
@@ -27,7 +28,7 @@ public class RpcRemoteException extends StacklessException implements RpcMandato
 	private final String causeClassName;
 
 	public RpcRemoteException(String message, Throwable cause) {
-		super(message, cause);
+		super(RpcServerConnection.class, message, cause);
 		this.causeClassName = cause.getClass().getName();
 		this.causeMessage = cause.getMessage();
 	}
@@ -38,7 +39,7 @@ public class RpcRemoteException extends StacklessException implements RpcMandato
 
 	@SuppressWarnings("unused")
 	public RpcRemoteException(String message) {
-		super(message);
+		super(RpcServerConnection.class, message);
 		this.causeClassName = null;
 		this.causeMessage = null;
 	}
@@ -46,7 +47,7 @@ public class RpcRemoteException extends StacklessException implements RpcMandato
 	@SuppressWarnings("unused")
 	public RpcRemoteException(@Deserialize(value = "message") String message, @Deserialize(value = "causeClassName") String causeClassName,
 	                          @Deserialize(value = "causeMessage") String causeMessage) {
-		super(message);
+		super(RpcServerConnection.class, message);
 		this.causeClassName = causeClassName;
 		this.causeMessage = causeMessage;
 	}

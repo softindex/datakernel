@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +22,19 @@ import io.datakernel.exception.StacklessException;
  * An exception wrapper class that represents {@link Exception} that happened while working with remote filesystem.
  */
 public class RemoteFsException extends StacklessException {
-	public RemoteFsException() {
+	public RemoteFsException(Class<?> component) {
+		super(component);
 	}
 
-	public RemoteFsException(String message, Throwable cause) {
-		super(message, cause);
+	public RemoteFsException(Class<?> component, Throwable cause) {
+		super(component, cause);
 	}
 
-	public RemoteFsException(String s) {
-		super(s);
+	public RemoteFsException(Class<?> component, String message) {
+		super(component, message);
 	}
 
-	public RemoteFsException(Throwable cause) {
-		super(cause);
+	public RemoteFsException(Class<?> component, String message, Throwable cause) {
+		super(component, message, cause);
 	}
 }

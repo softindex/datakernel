@@ -1,21 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,14 +42,14 @@ public final class GzipProcessorUtils {
 	// https://stackoverflow.com/a/23578269
 	private static final double DEFLATE_MAX_BYTES_OVERHEAD_PER_16K_BLOCK = 5;
 
-	public static final ParseException CORRUPTED_GZIP_HEADER = new ParseException("Corrupted GZIP header");
-	public static final ParseException DECOMPRESSED_SIZE_EXCEEDS_EXPECTED_MAX_SIZE = new ParseException("Decompressed data size exceeds max expected size");
-	public static final ParseException COMPRESSED_DATA_WAS_NOT_READ_FULLY = new ParseException("Compressed data was not read fully");
-	public static final ParseException DATA_FORMAT_EXCEPTION = new ParseException("Data format exception");
-	public static final ParseException ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED = new ParseException("Decompressed data size is not equal to input size from GZIP trailer");
-	public static final ParseException INCORRECT_ID_HEADER_BYTES = new ParseException("Incorrect identification bytes. Not in GZIP format");
-	public static final ParseException INCORRECT_UNCOMPRESSED_INPUT_SIZE = new ParseException("Incorrect uncompressed input size");
-	public static final ParseException UNSUPPORTED_COMPRESSION_METHOD = new ParseException("Unsupported compression method. Deflate compression required");
+	public static final ParseException CORRUPTED_GZIP_HEADER = new ParseException(GzipProcessorUtils.class, "Corrupted GZIP header");
+	public static final ParseException DECOMPRESSED_SIZE_EXCEEDS_EXPECTED_MAX_SIZE = new ParseException(GzipProcessorUtils.class, "Decompressed data size exceeds max expected size");
+	public static final ParseException COMPRESSED_DATA_WAS_NOT_READ_FULLY = new ParseException(GzipProcessorUtils.class, "Compressed data was not read fully");
+	public static final ParseException DATA_FORMAT_EXCEPTION = new ParseException(GzipProcessorUtils.class, "Data format exception");
+	public static final ParseException ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED = new ParseException(GzipProcessorUtils.class, "Decompressed data size is not equal to input size from GZIP trailer");
+	public static final ParseException INCORRECT_ID_HEADER_BYTES = new ParseException(GzipProcessorUtils.class, "Incorrect identification bytes. Not in GZIP format");
+	public static final ParseException INCORRECT_UNCOMPRESSED_INPUT_SIZE = new ParseException(GzipProcessorUtils.class, "Incorrect uncompressed input size");
+	public static final ParseException UNSUPPORTED_COMPRESSION_METHOD = new ParseException(GzipProcessorUtils.class, "Unsupported compression method. Deflate compression required");
 
 	private static final ConcurrentStack<Inflater> decompressors = new ConcurrentStack<>();
 	private static final ConcurrentStack<Deflater> compressors = new ConcurrentStack<>();

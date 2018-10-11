@@ -79,7 +79,7 @@ public class SerialSplitterTest {
 		expected.add("third");
 
 		SerialSplitter<String> splitter = SerialSplitter.<String>create()
-				.withInput(SerialSuppliers.concat(SerialSupplier.ofIterable(expected), SerialSupplier.ofException(new StacklessException("test exception"))));
+				.withInput(SerialSuppliers.concat(SerialSupplier.ofIterable(expected), SerialSupplier.ofException(new StacklessException(SerialSplitterTest.class, "test exception"))));
 
 		for (int i = 0; i < n; i++) {
 			splitter.addOutput().set(SerialConsumer.of(AsyncConsumer.of((String s) -> { /*noop*/ })).async());
@@ -104,7 +104,7 @@ public class SerialSplitterTest {
 
 		for (int i = 0; i < n; i++) {
 			if (i == n / 2) {
-				splitter.addOutput().set(SerialConsumer.ofException(new StacklessException("test exception")));
+				splitter.addOutput().set(SerialConsumer.ofException(new StacklessException(SerialSplitterTest.class, "test exception")));
 			} else {
 				splitter.addOutput().set(SerialConsumer.of(AsyncConsumer.of((String s) -> { /*noop*/ })).async());
 			}

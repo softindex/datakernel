@@ -37,7 +37,7 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 	@Override
 	public Stage<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
 		if (!announceData.verify(pubKey)) {
-			return Stage.ofException(new GlobalFsException("Cannot verify announce data"));
+			return Stage.ofException(new GlobalFsException(RuntimeDiscoveryService.class, "Cannot verify announce data"));
 		}
 		announced.compute(pubKey, ($, existing) ->
 				existing == null || existing.getData().getTimestamp() <= announceData.getData().getTimestamp() ?

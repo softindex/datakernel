@@ -136,7 +136,7 @@ public final class DnsProtocol {
 
 			if (questionCount != 1) {
 				// malformed response, we are always sending only one question
-				throw new DnsResponseParseException("Received DNS response has question count not equal to one");
+				throw new DnsResponseParseException(DnsProtocol.class, "Received DNS response has question count not equal to one");
 			}
 
 			// read domain name from first query
@@ -157,7 +157,7 @@ public final class DnsProtocol {
 			RecordType recordType = RecordType.fromCode(recordTypeCode);
 			if (recordType == null) {
 				// malformed response, we are sending query only with existing RecordType's
-				throw new DnsResponseParseException("Received DNS response with unknown query record type (" +
+				throw new DnsResponseParseException(DnsProtocol.class, "Received DNS response with unknown query record type (" +
 						Integer.toHexString(recordTypeCode & 0xFFFF) + ")");
 			}
 
@@ -165,7 +165,7 @@ public final class DnsProtocol {
 			short queryClassCode = payload.readShort();
 			QueryClass queryClass = QueryClass.fromCode(queryClassCode);
 			if (queryClass != QueryClass.INTERNET) {
-				throw new DnsResponseParseException("Received DNS response with unknown query class (" +
+				throw new DnsResponseParseException(DnsProtocol.class, "Received DNS response with unknown query class (" +
 						Integer.toHexString(queryClassCode & 0xFFFF) + ")");
 			}
 
@@ -201,7 +201,7 @@ public final class DnsProtocol {
 				minTtl = Math.min(payload.readInt(), minTtl);
 				short length = payload.readShort();
 				if (length != recordType.dataLength) {
-					throw new DnsResponseParseException("Bad record length received. " + recordType +
+					throw new DnsResponseParseException(DnsProtocol.class, "Bad record length received. " + recordType +
 							"-record length should be " + recordType.dataLength + " bytes, it was " + length);
 				}
 				byte[] bytes = new byte[length];
@@ -218,7 +218,7 @@ public final class DnsProtocol {
 			}
 			return DnsResponse.of(transaction, DnsResourceRecord.of(ips.toArray(new InetAddress[0]), minTtl));
 		} catch (IndexOutOfBoundsException e) {
-			throw new DnsResponseParseException("Failed parsing DNS response", e);
+			throw new DnsResponseParseException(DnsProtocol.class, "Failed parsing DNS response", e);
 		}
 	}
 

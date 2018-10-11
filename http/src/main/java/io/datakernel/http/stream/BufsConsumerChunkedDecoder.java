@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.http.stream;
 
 import io.datakernel.async.AbstractAsyncProcess;
@@ -25,10 +41,10 @@ public final class BufsConsumerChunkedDecoder extends AbstractAsyncProcess
 	public static final int MAX_CHUNK_LENGTH_DIGITS = 8;
 	public static final byte[] CRLF = {13, 10};
 	// region exceptions
-	public static final ParseException MALFORMED_CHUNK = new ParseException("Malformed chunk");
-	public static final ParseException MALFORMED_CHUNK_LENGTH = new ParseException("Malformed chunk length");
-	public static final ParseException EXT_TOO_LARGE = new ParseException("Malformed chunk, chunk-ext is larger than maximum allowed length");
-	public static final ParseException TRAILER_TOO_LARGE = new ParseException("Malformed chunk, trailer-part is larger than maximum allowed length");
+	public static final ParseException MALFORMED_CHUNK = new ParseException(BufsConsumerChunkedDecoder.class, "Malformed chunk");
+	public static final ParseException MALFORMED_CHUNK_LENGTH = new ParseException(BufsConsumerChunkedDecoder.class, "Malformed chunk length");
+	public static final ParseException EXT_TOO_LARGE = new ParseException(BufsConsumerChunkedDecoder.class, "Malformed chunk, chunk-ext is larger than maximum allowed length");
+	public static final ParseException TRAILER_TOO_LARGE = new ParseException(BufsConsumerChunkedDecoder.class, "Malformed chunk, trailer-part is larger than maximum allowed length");
 	// endregion
 
 	private int maxExtLength = DEFAULT_MAX_EXT_LENGTH;

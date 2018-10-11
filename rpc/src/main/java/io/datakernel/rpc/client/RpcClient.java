@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -477,14 +477,11 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	}
 
 	private final class NoSenderAvailable implements RpcSender {
-		@SuppressWarnings("ThrowableInstanceNeverThrown")
-		private final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION
-				= new RpcNoSenderException("No senders available");
+		private final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION = new RpcNoSenderException(RpcClient.class, "No senders available");
 
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-			eventloop.post(() ->
-					cb.setException(NO_SENDER_AVAILABLE_EXCEPTION));
+			eventloop.post(() -> cb.setException(NO_SENDER_AVAILABLE_EXCEPTION));
 		}
 	}
 

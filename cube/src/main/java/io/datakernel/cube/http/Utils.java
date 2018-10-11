@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ class Utils {
 		for (String s : tokens) {
 			int i = s.indexOf(':');
 			if (i == -1) {
-				throw new ParseException();
+				throw new ParseException(Utils.class);
 			}
 			String field = s.substring(0, i);
 			String tail = s.substring(i + 1).toLowerCase();
@@ -70,7 +70,7 @@ class Utils {
 			else if ("desc".equals(tail))
 				result.add(CubeQuery.Ordering.desc(field));
 			else
-				throw new ParseException();
+				throw new ParseException(Utils.class);
 		}
 		return result;
 	}

@@ -284,7 +284,7 @@ public final class DnsCache {
 			if (response.getErrorCode() == NO_ERROR) {
 				return Stage.of(response);
 			}
-			return Stage.ofException(new DnsQueryException(response));
+			return Stage.ofException(new DnsQueryException(DnsCache.class, response));
 		}
 
 		public boolean doesNeedRefreshing() {

@@ -111,12 +111,12 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 														return Stage.complete();
 													}
 													if (msg instanceof ServerError) {
-														return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
+														return Stage.ofException(new RemoteFsException(RemoteFsClient.class, ((ServerError) msg).getMessage()));
 													}
 													if (msg != null) {
-														return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
+														return Stage.ofException(new RemoteFsException(RemoteFsClient.class, "Invalid message received: " + msg));
 													}
-													return Stage.ofException(new RemoteFsException());
+													return Stage.ofException(new RemoteFsException(RemoteFsClient.class));
 												})
 												.whenException(e -> {
 													messaging.close(e);
@@ -160,13 +160,13 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 														.whenResult($1 -> messaging.close())));
 									}
 									if (msg instanceof ServerError) {
-										return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
+										return Stage.ofException(new RemoteFsException(RemoteFsClient.class, ((ServerError) msg).getMessage()));
 									}
 									if (msg != null) {
-										return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
+										return Stage.ofException(new RemoteFsException(RemoteFsClient.class, "Invalid message received: " + msg));
 									}
 									logger.warn(this + ": Received unexpected end of stream");
-									return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + filename));
+									return Stage.ofException(new RemoteFsException(RemoteFsClient.class, "Unexpected end of stream for: " + filename));
 								})
 								.whenException(e -> {
 									messaging.close(e);
@@ -220,15 +220,15 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 								.thenCompose(msg -> {
 									messaging.close();
 									if (msg == null) {
-										return Stage.ofException(new RemoteFsException("Unexpected end of stream"));
+										return Stage.ofException(new RemoteFsException(RemoteFsClient.class, "Unexpected end of stream"));
 									}
 									if (msg.getClass() == responseType) {
 										return Stage.of(answerExtractor.apply(responseType.cast(msg)));
 									}
 									if (msg instanceof ServerError) {
-										return Stage.ofException(new RemoteFsException(((ServerError) msg).getMessage()));
+										return Stage.ofException(new RemoteFsException(RemoteFsClient.class, ((ServerError) msg).getMessage()));
 									}
-									return Stage.ofException(new RemoteFsException("Invalid message received: " + msg));
+									return Stage.ofException(new RemoteFsException(RemoteFsClient.class, "Invalid message received: " + msg));
 								})
 								.whenException(e -> {
 									messaging.close(e);

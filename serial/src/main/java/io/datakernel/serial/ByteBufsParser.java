@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.datakernel.serial;
@@ -50,7 +49,7 @@ public interface ByteBufsParser<T> {
 			if (!bufs.hasRemainingBytes(data.length)) return null;
 			for (int i = 0; i < data.length; i++) {
 				if (data[i] != bufs.peekByte(i)) {
-					throw new ParseException();
+					throw new ParseException(ByteBufsParser.class);
 				}
 			}
 			bufs.skip(data.length);
@@ -94,7 +93,7 @@ public interface ByteBufsParser<T> {
 					return buf;
 				}
 			}
-			if (bufs.remainingBytes() >= maxSize) throw new ParseException();
+			if (bufs.remainingBytes() >= maxSize) throw new ParseException(ByteBufsParser.class);
 			return null;
 		};
 	}
@@ -110,7 +109,7 @@ public interface ByteBufsParser<T> {
 					| (bufs.peekByte(1) & 0xFF) << 16
 					| (bufs.peekByte(2) & 0xFF) << 8
 					| (bufs.peekByte(3) & 0xFF);
-			if (size < 0 || size > maxSize) throw new ParseException();
+			if (size < 0 || size > maxSize) throw new ParseException(ByteBufsParser.class);
 			if (!bufs.hasRemainingBytes(4 + size)) return null;
 			bufs.skip(4);
 			return bufs.takeExactSize(size);
@@ -126,7 +125,7 @@ public interface ByteBufsParser<T> {
 			if (!bufs.hasRemainingBytes(2)) return null;
 			int size = (bufs.peekByte(0) & 0xFF) << 8
 					| (bufs.peekByte(1) & 0xFF);
-			if (size < 0 || size > maxSize) throw new ParseException();
+			if (size < 0 || size > maxSize) throw new ParseException(ByteBufsParser.class);
 			if (!bufs.hasRemainingBytes(2 + size)) return null;
 			bufs.skip(2);
 			return bufs.takeExactSize(size);
@@ -141,7 +140,7 @@ public interface ByteBufsParser<T> {
 		return bufs -> {
 			if (!bufs.hasRemaining()) return null;
 			int size = bufs.peekByte(0) & 0xFF;
-			if (size > maxSize) throw new ParseException();
+			if (size > maxSize) throw new ParseException(ByteBufsParser.class);
 			if (!bufs.hasRemainingBytes(1 + size)) return null;
 			bufs.skip(1);
 			return bufs.takeExactSize(size);
@@ -187,12 +186,12 @@ public interface ByteBufsParser<T> {
 								size |= b << 28;
 								prefixSize = 5;
 							} else
-								throw new ParseException();
+								throw new ParseException(ByteBufsParser.class);
 						}
 					}
 				}
 			}
-			if (size < 0 || size > maxSize) throw new ParseException();
+			if (size < 0 || size > maxSize) throw new ParseException(ByteBufsParser.class);
 			if (!bufs.hasRemainingBytes(prefixSize + size)) return null;
 			bufs.skip(prefixSize);
 			return bufs.takeExactSize(size);

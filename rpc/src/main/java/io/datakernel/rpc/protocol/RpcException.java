@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,19 @@ import io.datakernel.exception.StacklessException;
 
 public class RpcException extends StacklessException {
 
-	public RpcException(String message) {
-		super(message);
+	public RpcException(Class<?> component) {
+		super(component);
+	}
+
+	public RpcException(Class<?> component, Throwable cause) {
+		super(component, cause);
+	}
+
+	public RpcException(Class<?> component, String message) {
+		super(component, message);
+	}
+
+	public RpcException(Class<?> component, String message, Throwable cause) {
+		super(component, message, cause);
 	}
 }

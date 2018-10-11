@@ -43,7 +43,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 public class GlobalFsGatewayAdapter implements GlobalFsGateway, Initializable<GlobalFsGatewayAdapter> {
-	private static final GlobalFsException UNKNOWN_KEY = new GlobalFsException("Unknown public key");
+	private static final GlobalFsException UNKNOWN_KEY = new GlobalFsException(GlobalFsGatewayAdapter.class, "Unknown public key");
 
 	private final GlobalFsNode node;
 	private final Map<PubKey, PrivKey> keymap;

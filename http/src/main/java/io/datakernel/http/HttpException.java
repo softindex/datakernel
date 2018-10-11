@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,21 +22,22 @@ public class HttpException extends StacklessException {
 	private final int code;
 
 	protected HttpException(int code) {
+		super(null);
 		this.code = code;
 	}
 
 	protected HttpException(int code, String message) {
-		super(message);
+		super(null, message);
 		this.code = code;
 	}
 
 	protected HttpException(int code, String message, Throwable cause) {
-		super(message, cause);
+		super(null, message, cause);
 		this.code = code;
 	}
 
 	protected HttpException(int code, Throwable cause) {
-		super(cause);
+		super(null, cause);
 		this.code = code;
 	}
 

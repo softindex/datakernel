@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	private Stage<Object> apply(Object request) {
 		RpcRequestHandler requestHandler = handlers.get(request.getClass());
 		if (requestHandler == null) {
-			return Stage.ofException(new ParseException("Failed to process request " + request));
+			return Stage.ofException(new ParseException(RpcServerConnection.class, "Failed to process request " + request));
 		}
 		return requestHandler.run(request);
 	}

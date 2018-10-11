@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import io.datakernel.util.CharsBuffer;
 
 @SuppressWarnings({"ThrowableInstanceNeverThrown", "WeakerAccess", "unused"})
 public final class ByteBufStrings {
-	public static final ParseException READ_PAST_LIMIT = new ParseException("Malformed utf-8 input: Read past end");
-	public static final ParseException READ_PAST_ARRAY_LENGTH = new ParseException("Malformed utf-8 input");
+	public static final ParseException READ_PAST_LIMIT = new ParseException(ByteBufStrings.class, "Malformed utf-8 input: Read past end");
+	public static final ParseException READ_PAST_ARRAY_LENGTH = new ParseException(ByteBufStrings.class, "Malformed utf-8 input");
 
 	public static final byte CR = (byte) '\r';
 	public static final byte LF = (byte) '\n';
@@ -334,11 +334,11 @@ public final class ByteBufStrings {
 		for (int i = pos; i < pos + len; i++) {
 			byte b = (byte) (array[i] - '0');
 			if (b < 0 || b >= 10) {
-				throw new ParseException("Not a decimal value" + new String(array, pos, len));
+				throw new ParseException(ByteBufStrings.class, "Not a decimal value" + new String(array, pos, len));
 			}
 			result = b + result * 10;
 			if (result < 0) {
-				throw new ParseException("Bigger than max int value: " + new String(array, pos, len));
+				throw new ParseException(ByteBufStrings.class, "Bigger than max int value: " + new String(array, pos, len));
 			}
 		}
 		return result;

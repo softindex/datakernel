@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,25 +23,35 @@ package io.datakernel.exception;
  */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public class StacklessException extends Exception {
+	private final Class<?> component;
 
-	public StacklessException() {
-		super();
+	public StacklessException(Class<?> component) {
+		this(component, "");
 	}
 
-	public StacklessException(String message, Throwable cause) {
+	public StacklessException(Class<?> component, Throwable cause) {
+		this(component, "", cause);
+	}
+
+	public StacklessException(Class<?> component, String message) {
+		super(message);
+		this.component = component;
+	}
+
+	public StacklessException(Class<?> component, String message, Throwable cause) {
 		super(message, cause);
-	}
-
-	public StacklessException(String s) {
-		super(s);
-	}
-
-	public StacklessException(Throwable cause) {
-		super(cause);
+		this.component = component;
 	}
 
 	@Override
 	public final Throwable fillInStackTrace() {
 		return this;
+	}
+
+	@Override
+	public String toString() {
+		return getClass().getName() +
+				(component != null ? " (" + component.getSimpleName() + ")" : "") + " : " +
+				getMessage();
 	}
 }

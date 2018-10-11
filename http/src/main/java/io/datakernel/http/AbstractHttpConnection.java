@@ -43,15 +43,15 @@ import static java.lang.Math.max;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public abstract class AbstractHttpConnection {
-	public static final AsyncTimeoutException READ_TIMEOUT_ERROR = new AsyncTimeoutException("HTTP connection read timeout");
-	public static final AsyncTimeoutException WRITE_TIMEOUT_ERROR = new AsyncTimeoutException("HTTP connection write timeout");
-	public static final ParseException CLOSED_CONNECTION = new ParseException("HTTP connection unexpectedly closed");
-	public static final ParseException HEADER_NAME_ABSENT = new ParseException("Header name is absent");
-	public static final ParseException TOO_BIG_HTTP_MESSAGE = new ParseException("Too big HttpMessage");
-	public static final ParseException TOO_LONG_HEADER = new ParseException("Header line exceeds max header size");
-	public static final ParseException TOO_MANY_HEADERS = new ParseException("Too many headers");
-	public static final ParseException INCOMPLETE_MESSAGE = new ParseException("Incomplete HTTP message");
-	public static final ParseException UNEXPECTED_READ = new ParseException("Unexpected read data");
+	public static final AsyncTimeoutException READ_TIMEOUT_ERROR = new AsyncTimeoutException(AbstractHttpConnection.class, "Read timeout");
+	public static final AsyncTimeoutException WRITE_TIMEOUT_ERROR = new AsyncTimeoutException(AbstractHttpConnection.class, "Write timeout");
+	public static final ParseException CLOSED_CONNECTION = new ParseException(AbstractHttpConnection.class, "Unexpectedly closed");
+	public static final ParseException HEADER_NAME_ABSENT = new ParseException(AbstractHttpConnection.class, "Header name is absent");
+	public static final ParseException TOO_BIG_HTTP_MESSAGE = new ParseException(AbstractHttpConnection.class, "Too big HttpMessage");
+	public static final ParseException TOO_LONG_HEADER = new ParseException(AbstractHttpConnection.class, "Header line exceeds max header size");
+	public static final ParseException TOO_MANY_HEADERS = new ParseException(AbstractHttpConnection.class, "Too many headers");
+	public static final ParseException INCOMPLETE_MESSAGE = new ParseException(AbstractHttpConnection.class, "Incomplete HTTP message");
+	public static final ParseException UNEXPECTED_READ = new ParseException(AbstractHttpConnection.class, "Unexpected read data");
 
 	public static final SerialConsumer<ByteBuf> BUF_RECYCLER = SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle));
 

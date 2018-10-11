@@ -52,7 +52,7 @@ public class AbstractAsyncProcessTest {
 
 	private final int size = 10;
 	private final List<ByteBuf> actualData = new ArrayList<>();
-	private final ParseException error = new ParseException("Test Error");
+	private final ParseException error = new ParseException(AbstractAsyncProcessTest.class, "Test Error");
 
 	private Eventloop eventloop;
 

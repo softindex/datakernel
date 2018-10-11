@@ -71,10 +71,10 @@ public final class BinaryDataFormats {
 		try {
 			size = buf.readVarInt();
 		} catch (ArrayIndexOutOfBoundsException | AssertionError e) {
-			throw new ParseException(e);
+			throw new ParseException(BinaryDataFormats.class, e);
 		}
 		if (buf.readPosition() > buf.writePosition()) {
-			throw new ParseException();
+			throw new ParseException(BinaryDataFormats.class);
 		}
 		return size;
 	}
@@ -84,10 +84,10 @@ public final class BinaryDataFormats {
 		try {
 			size = buf.readVarLong();
 		} catch (ArrayIndexOutOfBoundsException | AssertionError e) {
-			throw new ParseException(e);
+			throw new ParseException(BinaryDataFormats.class, e);
 		}
 		if (buf.readPosition() > buf.writePosition()) {
-			throw new ParseException();
+			throw new ParseException(BinaryDataFormats.class);
 		}
 		return size;
 	}
@@ -105,7 +105,7 @@ public final class BinaryDataFormats {
 	public static byte[] readBytes(ByteBuf buf) throws ParseException {
 		int size = readVarInt(buf);
 		if (size < 0 || size > buf.readRemaining()) {
-			throw new ParseException();
+			throw new ParseException(BinaryDataFormats.class);
 		}
 		byte[] bytes = new byte[size];
 		buf.read(bytes);
@@ -143,7 +143,7 @@ public final class BinaryDataFormats {
 			BigInteger y = readBigInteger(buf);
 			return CryptoUtils.CURVE.getCurve().validatePoint(x, y);
 		} catch (IllegalArgumentException | ArithmeticException e) {
-			throw new ParseException(e);
+			throw new ParseException(BinaryDataFormats.class, e);
 		}
 	}
 	// endregion
@@ -161,7 +161,7 @@ public final class BinaryDataFormats {
 		try {
 			return PubKey.ofQ(readECPoint(buf));
 		} catch (IllegalArgumentException | ArithmeticException e) {
-			throw new ParseException(e);
+			throw new ParseException(BinaryDataFormats.class, e);
 		}
 	}
 	// endregion
@@ -179,7 +179,7 @@ public final class BinaryDataFormats {
 		try {
 			return PrivKey.ofD(readBigInteger(buf));
 		} catch (IllegalArgumentException | ArithmeticException e) {
-			throw new ParseException(e);
+			throw new ParseException(BinaryDataFormats.class, "Failed to read private key", e);
 		}
 	}
 	// endregion
@@ -259,7 +259,7 @@ public final class BinaryDataFormats {
 		try {
 			return new BigInteger(readBytes(buf));
 		} catch (IllegalArgumentException | ArithmeticException e) {
-			throw new ParseException(e);
+			throw new ParseException(BinaryDataFormats.class, e);
 		}
 	}
 	// endregion
@@ -296,7 +296,7 @@ public final class BinaryDataFormats {
 		try {
 			return new InetSocketAddress(InetAddress.getByAddress(readBytes(buf)), port);
 		} catch (UnknownHostException e) {
-			throw new ParseException(e);
+			throw new ParseException(BinaryDataFormats.class, e);
 		}
 	}
 	// endregion
@@ -374,7 +374,7 @@ public final class BinaryDataFormats {
 	private static <T, C extends Collection<T>> C readInto(ByteBuf buf, ParserFunction<ByteBuf, T> parser, C collection) throws ParseException {
 		int size = readVarInt(buf);
 		if (size < 0) {
-			throw new ParseException();
+			throw new ParseException(BinaryDataFormats.class);
 		}
 		for (int i = 0; i < size; i++) {
 			collection.add(parser.parse(buf));
@@ -407,7 +407,7 @@ public final class BinaryDataFormats {
 	public static <K, V> Map<K, V> readMap(ByteBuf buf, ParserFunction<ByteBuf, K> keyParser, ParserFunction<ByteBuf, V> valueParser) throws ParseException {
 		int size = readVarInt(buf);
 		if (size < 0) {
-			throw new ParseException();
+			throw new ParseException(BinaryDataFormats.class);
 		}
 		Map<K, V> map = new HashMap<>();
 		for (int i = 0; i < size; i++) {

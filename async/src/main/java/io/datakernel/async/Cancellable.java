@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,11 @@ import io.datakernel.exception.StacklessException;
  * <li>Resources held by an object should be freed</li>
  * <li>All pending asynchronous operations should be completed exceptionally</li>
  * </ul>
- * All operations of this interface are idompotent.
+ * All operations of this interface are idempotent.
  */
 public interface Cancellable {
-	StacklessException CANCEL_EXCEPTION = new StacklessException("Cancelled");
-	StacklessException CLOSE_EXCEPTION = new StacklessException("Closed");
+	StacklessException CANCEL_EXCEPTION = new StacklessException(Cancellable.class, "Cancelled");
+	StacklessException CLOSE_EXCEPTION = new StacklessException(Cancellable.class, "Closed");
 
 	/**
 	 * This method should be called to close some process exceptionally in case of some exception is thrown while

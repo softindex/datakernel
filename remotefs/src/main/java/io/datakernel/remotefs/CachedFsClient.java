@@ -129,7 +129,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 						return mainClient.getMetadata(filename)
 								.thenCompose(mainMetadata -> {
 									if (mainMetadata == null) {
-										return Stage.ofException(new RemoteFsException("File not found: " + filename));
+										return Stage.ofException(new RemoteFsException(CachedFsClient.class, "File not found: " + filename));
 									}
 									return downloadToCache(filename, offset, length, 0);
 								});
@@ -161,7 +161,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 
 								if ((length != -1) && (sizeInMain < (offset + length))) {
 									String repr = filename + "(size=" + sizeInMain + (offset != 0 ? ", offset=" + offset : "") + ", length=" + length;
-									return Stage.ofException(new RemoteFsException("Boundaries exceed file size: " + repr));
+									return Stage.ofException(new RemoteFsException(CachedFsClient.class, "Boundaries exceed file size: " + repr));
 								}
 
 								return downloadToCache(filename, offset, length, sizeInCache);

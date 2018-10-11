@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
 	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
-	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException("Connection timed out");
+	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException(Eventloop.class, "Connection timed out");
 	public static final Duration DEFAULT_IDLE_INTERVAL = Duration.ofSeconds(1);
 
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
@@ -690,7 +690,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			if (connected) {
 				callback.onConnect(channel);
 			} else {
-				callback.onException(new StacklessException("Not connected"));
+				callback.onException(new StacklessException(Eventloop.class, "Not connected"));
 			}
 		} catch (Throwable e) {
 			recordFatalError(e, channel);
