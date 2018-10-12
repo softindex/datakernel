@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ public final class StreamSupplierWithResult<T, X> {
 	}
 
 	public static <T, X> StreamSupplierWithResult<T, X> ofStage(Stage<StreamSupplierWithResult<T, X>> stage) {
-		if (stage.hasResult()) return stage.getResult();
+		if (stage.isResult()) return stage.materialize().getResult();
 		return of(
 				StreamSupplier.ofStage(stage.thenApply(StreamSupplierWithResult::getSupplier)),
 				stage.thenCompose(StreamSupplierWithResult::getResult));

@@ -133,7 +133,7 @@ public interface SerialConsumer<T> extends Cancellable {
 	}
 
 	static <T> SerialConsumer<T> ofStage(Stage<? extends SerialConsumer<T>> stage) {
-		if (stage.hasResult()) return stage.getResult();
+		if (stage.isResult()) return stage.materialize().getResult();
 		MaterializedStage<? extends SerialConsumer<T>> materializedStage = stage.materialize();
 		return new AbstractSerialConsumer<T>() {
 			SerialConsumer<T> consumer;

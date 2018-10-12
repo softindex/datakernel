@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ public class HttpMessageTest {
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	private static void assertHttpMessageEquals(String expected, HttpMessage message) {
-		ByteBuf buf = AbstractHttpConnection.bodySupplier(message).toCollector(ByteBufQueue.collector()).getResult();
+		ByteBuf buf = AbstractHttpConnection.bodySupplier(message).toCollector(ByteBufQueue.collector()).materialize().getResult();
 		assertEquals(expected, ByteBufStrings.asAscii(buf));
 		message.recycle();
 	}

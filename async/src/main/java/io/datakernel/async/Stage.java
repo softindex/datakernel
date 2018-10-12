@@ -35,6 +35,7 @@ public interface Stage<T> {
 	/**
 	 * Creates successfully completed {@code Stage}
 	 */
+	@SuppressWarnings("unchecked")
 	static CompleteNullStage<Void> complete() {
 		return (CompleteNullStage<Void>) CompleteNullStage.INSTANCE;
 	}
@@ -224,58 +225,14 @@ public interface Stage<T> {
 
 	boolean isException();
 
-	default boolean isMaterialized() {
-		return this instanceof MaterializedStage;
-	}
-
-	default boolean hasResult() {
-		return isResult() && isMaterialized();
-	}
-
-	default boolean hasException() {
-		return isException() && isMaterialized();
-	}
-
-	T getResult();
-
-	Throwable getException();
-
 	@Nullable
-	default Try<T> asTry() {
-		if (hasResult()) return Try.of(getResult());
-		else if (hasException()) return Try.ofException(getException());
-		else return null;
-	}
+	Try<T> asTry();
 
-	default boolean setTo(BiConsumer<? super T, Throwable> consumer) {
-		if (hasResult()) {
-			consumer.accept(getResult(), null);
-			return true;
-		} else if (hasException()) {
-			consumer.accept(null, getException());
-			return true;
-		} else {
-			return false;
-		}
-	}
+	boolean setTo(BiConsumer<? super T, Throwable> consumer);
 
-	default boolean setResultTo(Consumer<? super T> consumer) {
-		if (hasResult()) {
-			consumer.accept(getResult());
-			return true;
-		} else {
-			return false;
-		}
-	}
+	boolean setResultTo(Consumer<? super T> consumer);
 
-	default boolean setExceptionTo(Consumer<Throwable> consumer) {
-		if (hasException()) {
-			consumer.accept(getException());
-			return true;
-		} else {
-			return false;
-		}
-	}
+	boolean setExceptionTo(Consumer<Throwable> consumer);
 
 	/**
 	 * Ensures that stage completes asynchronously:
@@ -291,7 +248,7 @@ public interface Stage<T> {
 	}
 
 	default MaterializedStage<T> materialize() {
-		if (isMaterialized()) return (MaterializedStage<T>) this;
+		assert !isComplete() : "Trying to materialize a completed stage";
 		SettableStage<T> cb = new SettableStage<>();
 		whenComplete(cb::set);
 		return cb;

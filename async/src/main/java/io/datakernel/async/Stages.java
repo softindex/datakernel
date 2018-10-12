@@ -129,7 +129,7 @@ public final class Stages {
 		while (stages.hasNext()) {
 			Stage<?> stage = stages.next();
 			if (stage.isResult()) continue;
-			if (stage.isException()) return Stage.ofException(stage.getException());
+			if (stage.isException()) return Stage.ofException(stage.materialize().getException());
 			resultStage.countdown++;
 			stage.then(resultStage);
 		}
@@ -191,7 +191,7 @@ public final class Stages {
 		StageAny<T> resultStage = new StageAny<>();
 		while (stages.hasNext()) {
 			Stage<? extends T> stage = stages.next();
-			if (stage.isResult()) return Stage.of(stage.getResult());
+			if (stage.isResult()) return Stage.of(stage.materialize().getResult());
 			if (stage.isException()) continue;
 			resultStage.errors++;
 			stage.whenComplete((result, e) -> {
@@ -230,10 +230,10 @@ public final class Stages {
 		for (int i = 0; i < size; i++) {
 			Stage<? extends T> stage = stages.get(i);
 			if (stage.isResult()) {
-				collector.accumulate(resultStage.accumulator, i, stage.getResult());
+				collector.accumulate(resultStage.accumulator, i, stage.materialize().getResult());
 				continue;
 			}
-			if (stage.isException()) return Stage.ofException(stage.getException());
+			if (stage.isException()) return Stage.ofException(stage.materialize().getException());
 			int index = i;
 			resultStage.countdown++;
 			stage.whenComplete((result, e) -> {
@@ -268,10 +268,10 @@ public final class Stages {
 		for (int i = 0; i < size; i++) {
 			Stage<? extends T> stage = stages.get(i);
 			if (stage.isResult()) {
-				collector.accumulate(resultStage.accumulator, i, stage.getResult());
+				collector.accumulate(resultStage.accumulator, i, stage.materialize().getResult());
 				continue;
 			}
-			if (stage.isException()) return Stage.ofException(stage.getException());
+			if (stage.isException()) return Stage.ofException(stage.materialize().getException());
 			int index = i;
 			resultStage.countdown++;
 			stage.whenComplete((result, e) -> {
@@ -302,10 +302,10 @@ public final class Stages {
 		while (stages.hasNext()) {
 			Stage<? extends T> stage = stages.next();
 			if (stage.isResult()) {
-				accumulatorConsumer.accept(resultStage.accumulator, stage.getResult());
+				accumulatorConsumer.accept(resultStage.accumulator, stage.materialize().getResult());
 				continue;
 			}
-			if (stage.isException()) return Stage.ofException(stage.getException());
+			if (stage.isException()) return Stage.ofException(stage.materialize().getException());
 			resultStage.countdown++;
 			stage.then(resultStage);
 		}
@@ -739,7 +739,7 @@ public final class Stages {
 	private static void repeatImpl(Supplier<Stage<Void>> supplier, SettableStage<Void> cb) {
 		while (true) {
 			Stage<Void> stage = supplier.get();
-			if (!stage.hasResult()) {
+			if (!stage.isResult()) {
 				stage.whenComplete(($, e) -> {
 					if (e == null) {
 						repeatImpl(supplier, cb);
@@ -762,8 +762,8 @@ public final class Stages {
 	private static <T> void loopImpl(T seed, Predicate<T> test, Function<T, Stage<T>> next, SettableStage<Void> cb) {
 		while (true) {
 			Stage<T> stage = next.apply(seed);
-			if (stage.hasResult()) {
-				seed = stage.getResult();
+			if (stage.isResult()) {
+				seed = stage.materialize().getResult();
 				if (!test.test(seed)) break;
 			} else {
 				stage.whenComplete((newSeed, e) -> {

@@ -108,8 +108,8 @@ public final class SerialSuppliers {
 		Stage<T> stage;
 		while (true) {
 			stage = supplier.get();
-			if (!stage.hasResult()) break;
-			T item = stage.getResult();
+			if (!stage.isResult()) break;
+			T item = stage.materialize().getResult();
 			if (item != null) {
 				try {
 					accumulator.accept(accumulatedValue, item);
@@ -155,8 +155,8 @@ public final class SerialSuppliers {
 		Stage<T> supplierStage;
 		while (true) {
 			supplierStage = supplier.get();
-			if (!supplierStage.hasResult()) break;
-			T item = supplierStage.getResult();
+			if (!supplierStage.isResult()) break;
+			T item = supplierStage.materialize().getResult();
 			if (item == null) break;
 			Stage<Void> consumerStage = consumer.accept(item);
 			if (consumerStage.isResult()) continue;

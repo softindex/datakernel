@@ -128,7 +128,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	}
 
 	static <T> SerialSupplier<T> ofStage(Stage<? extends SerialSupplier<T>> stage) {
-		if (stage.hasResult()) return stage.getResult();
+		if (stage.isResult()) return stage.materialize().getResult();
 		MaterializedStage<? extends SerialSupplier<T>> materializedStage = stage.materialize();
 		return new AbstractSerialSupplier<T>() {
 			SerialSupplier<T> supplier;
@@ -246,8 +246,8 @@ public interface SerialSupplier<T> extends Cancellable {
 			protected Stage<T> doGet() {
 				while (true) {
 					Stage<T> stage = SerialSupplier.this.get();
-					if (stage.hasResult()) {
-						T value = stage.getResult();
+					if (stage.isResult()) {
+						T value = stage.materialize().getResult();
 						if (predicate.test(value)) return stage;
 						tryRecycle(value);
 						continue;

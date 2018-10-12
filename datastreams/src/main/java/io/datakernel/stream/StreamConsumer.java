@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,7 +100,7 @@ public interface StreamConsumer<T> extends Cancellable {
 			"Alternatively, use .withLateBinding() modifier";
 
 	static <T> StreamConsumer<T> ofStage(Stage<? extends StreamConsumer<T>> stage) {
-		if (stage.hasResult()) return stage.getResult();
+		if (stage.isResult()) return stage.materialize().getResult();
 		StreamLateBinder<T> lateBounder = StreamLateBinder.create();
 		stage.whenComplete((consumer, throwable) -> {
 			if (throwable == null) {

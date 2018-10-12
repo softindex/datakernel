@@ -27,8 +27,7 @@ import org.junit.rules.ExpectedException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.HttpMethod.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class MiddlewareServletTest {
 
@@ -42,13 +41,14 @@ public class MiddlewareServletTest {
 	public ExpectedException expectedException = ExpectedException.none();
 
 	void check(Stage<HttpResponse> stage, String expectedBody, int expectedCode) {
+		assertTrue(stage.isComplete());
 		if (stage.isResult()) {
-			HttpResponse result = stage.getResult();
-			assertEquals(expectedBody, result.getBodyStage(Integer.MAX_VALUE).getResult().toString());
+			HttpResponse result = stage.materialize().getResult();
+			assertEquals(expectedBody, result.getBodyStage(Integer.MAX_VALUE).materialize().getResult().toString());
 			assertEquals(expectedCode, result.getCode());
 			result.recycle();
 		} else {
-			assertEquals(expectedCode, ((HttpException) stage.getException()).getCode());
+			assertEquals(expectedCode, ((HttpException) stage.materialize().getException()).getCode());
 		}
 	}
 

@@ -25,9 +25,11 @@ import org.junit.Test;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.assertFailure;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static junit.framework.TestCase.*;
@@ -295,6 +297,24 @@ public class StagesTest {
 	public void testCollectStream() {
 		eventloop.post(() -> Stages.collect(toList(), Stream.of(Stage.of(1), Stage.of(2), Stage.of(3)))
 				.whenComplete(assertComplete(list -> assertEquals(3, list.size()))));
+
+		eventloop.run();
+	}
+
+	@Test
+	public void testRepeat() {
+		AtomicInteger counter = new AtomicInteger(0);
+		eventloop.post(() -> Stages.repeat(() -> Stage.complete()
+				.thenCompose($ -> {
+					if (counter.get() == 5) {
+						return Stage.ofException(new Exception());
+					}
+					counter.incrementAndGet();
+					return Stage.of($);
+				})
+				.whenResult($ -> System.out.println(counter)))
+				.whenComplete(assertFailure(Exception.class))
+				.whenException(e -> assertEquals(5, counter.get())));
 
 		eventloop.run();
 	}

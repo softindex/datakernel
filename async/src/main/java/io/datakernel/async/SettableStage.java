@@ -69,16 +69,6 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 		return exception != null && exception != STAGE_NOT_SET;
 	}
 
-	@Override
-	public boolean hasResult() {
-		return isResult();
-	}
-
-	@Override
-	public boolean hasException() {
-		return isException();
-	}
-
 	/**
 	 * Sets the result of this {@code SettableStage} and completes it.
 	 * <p>AssertionError is thrown when you try to set result for  already completed stage.</p>
