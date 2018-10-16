@@ -35,6 +35,7 @@ import io.datakernel.util.MemSize;
 
 import java.util.function.BiConsumer;
 
+import static io.datakernel.async.AsyncExecutors.ofMaxRecursiveCalls;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaderValue.ofBytes;
 import static io.datakernel.http.HttpHeaderValue.ofDecimal;
@@ -56,6 +57,7 @@ public abstract class AbstractHttpConnection {
 	public static final MemSize MAX_HEADER_LINE_SIZE = MemSize.of(ApplicationSettings.getInt(HttpMessage.class, "maxHeaderLineSize", MemSize.kilobytes(8).toInt())); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = ApplicationSettings.getInt(HttpMessage.class, "maxHeaders", 100); // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
+	public static final int MAX_RECURSIVE_CALLS = ApplicationSettings.getInt(AbstractHttpConnection.class, "maxRecursiveCalls", 64);
 
 	protected static final HttpHeaderValue CONNECTION_KEEP_ALIVE_HEADER = HttpHeaderValue.of("keep-alive");
 	protected static final HttpHeaderValue CONNECTION_CLOSE_HEADER = HttpHeaderValue.of("close");
@@ -404,14 +406,14 @@ public abstract class AbstractHttpConnection {
 			BufsConsumerChunkedDecoder decoder = BufsConsumerChunkedDecoder.create();
 			process = decoder;
 			encodedStream.bindTo(decoder.getInput());
-			bodyStream = decoder.getOutput();
+			bodyStream = decoder.getOutput().apply(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
 		}
 
 		if ((flags & GZIPPED) != 0) {
 			BufsConsumerGzipInflater decoder = BufsConsumerGzipInflater.create();
 			process = decoder;
 			bodyStream.bindTo(decoder.getInput());
-			bodyStream = decoder.getOutput();
+			bodyStream = decoder.getOutput().apply(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
 		}
 
 		onHeadersReceived(null, bodyStream.getSupplier());

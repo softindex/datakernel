@@ -248,7 +248,7 @@ public interface SerialSupplier<T> extends Cancellable {
 					Stage<T> stage = SerialSupplier.this.get();
 					if (stage.isResult()) {
 						T value = stage.materialize().getResult();
-						if (predicate.test(value)) return stage;
+						if (value == null || predicate.test(value)) return stage;
 						tryRecycle(value);
 						continue;
 					}
