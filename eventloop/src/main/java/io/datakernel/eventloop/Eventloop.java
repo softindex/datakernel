@@ -784,6 +784,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 					datagramChannel.close();
 				} catch (Exception nested) {
 					logger.error("Failed closing datagram channel after I/O error", nested);
+					e.addSuppressed(nested);
 				}
 			}
 			throw e;

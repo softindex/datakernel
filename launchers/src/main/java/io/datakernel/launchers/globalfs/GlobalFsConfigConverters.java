@@ -23,17 +23,21 @@ import io.datakernel.config.SimpleConfigConverter;
 import io.datakernel.exception.ParseException;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
+import io.global.common.RawServerId;
 import io.global.fs.api.CheckpointPositionStrategy;
 
-import static io.datakernel.config.ConfigConverters.ofLong;
+import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.ConfigConverters.ofMemSizeAsLong;
 import static io.global.fs.api.CheckpointPositionStrategy.*;
 
 public final class GlobalFsConfigConverters {
-	// region creators
 	private GlobalFsConfigConverters() {
 		throw new AssertionError("nope.");
 	}
-	// endregion
+
+	public static ConfigConverter<RawServerId> ofRawServerId() {
+		return ofInetSocketAddress().transform(RawServerId::new, RawServerId::getInetSocketAddress);
+	}
 
 	public static ConfigConverter<PubKey> ofPubKey() {
 		return new SimpleConfigConverter<PubKey>() {
@@ -80,11 +84,11 @@ public final class GlobalFsConfigConverters {
 			public CheckpointPositionStrategy get(Config config) {
 				switch (config.getValue()) {
 					case "fixed":
-						return fixed(config.get(ofLong(), "offset"));
+						return fixed(config.get(ofMemSizeAsLong(), "offset"));
 					case "randRange":
-						return randRange(config.get(ofLong(), "min"), config.get(ofLong(), "max"));
+						return randRange(config.get(ofMemSizeAsLong(), "min"), config.get(ofMemSizeAsLong(), "max"));
 					case "alterating":
-						return alterating(config.get(ofLong(), "first"), config.get(ofLong(), "second"));
+						return alterating(config.get(ofMemSizeAsLong(), "first"), config.get(ofMemSizeAsLong(), "second"));
 					default:
 						throw new IllegalArgumentException("No checkpoint position strategy named " + config.getValue() + " exists!");
 				}

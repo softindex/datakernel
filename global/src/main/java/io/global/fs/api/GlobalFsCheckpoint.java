@@ -83,7 +83,7 @@ public final class GlobalFsCheckpoint implements Signable {
 		if (checkpoint.position != position) {
 			return CheckpointVerificationResult.POSITION_FAIL;
 		}
-		if (Arrays.equals(checkpoint.filenameHash, filenameHash)) {
+		if (!Arrays.equals(checkpoint.filenameHash, filenameHash)) {
 			return CheckpointVerificationResult.FILENAME_FAIL;
 		}
 		if (!CryptoUtils.areEqual(checkpoint.digest, digest)) {

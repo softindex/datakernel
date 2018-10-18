@@ -81,6 +81,10 @@ public final class GlobalFsMetadata implements Signable {
 		return first.size > second.size ? first : second;
 	}
 
+	public GlobalFsMetadata toRemoved() {
+		return ofRemoved(fs, path, revision);
+	}
+
 	public String getFs() {
 		return fs;
 	}

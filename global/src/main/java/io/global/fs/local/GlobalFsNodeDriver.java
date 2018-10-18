@@ -44,12 +44,13 @@ import java.time.Duration;
 import java.util.*;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.file.FileUtils.escapeGlob;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.stream.Collectors.toList;
 
-public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<LocalGlobalFsNode> {
+public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<GlobalFsNodeDriver> {
 	public static final Duration DEFAULT_LATENCY_MARGIN = Duration.ofMinutes(5);
-	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalFsNode.class);
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNodeDriver.class);
 
 	private final Set<PubKey> managedPubKeys = new HashSet<>();
 	private final Set<GlobalFsPath> searchingForUpload = new HashSet<>();
@@ -68,7 +69,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	private final FsClient checkpointFsClient;
 
 	// region creators
-	private LocalGlobalFsNode(RawServerId id, DiscoveryService discoveryService, NodeFactory nodeFactory,
+	private GlobalFsNodeDriver(RawServerId id, DiscoveryService discoveryService, NodeFactory nodeFactory,
 			FsClient dataFsClient, FsClient metadataFsClient, FsClient checkpointFsClient) {
 		this.id = id;
 		this.discoveryService = discoveryService;
@@ -78,31 +79,31 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		this.checkpointFsClient = checkpointFsClient;
 	}
 
-	public static LocalGlobalFsNode create(RawServerId id, DiscoveryService discoveryService, NodeFactory nodeFactory, FsClient fsClient) {
-		return new LocalGlobalFsNode(id, discoveryService, nodeFactory,
+	public static GlobalFsNodeDriver create(RawServerId id, DiscoveryService discoveryService, NodeFactory nodeFactory, FsClient fsClient) {
+		return new GlobalFsNodeDriver(id, discoveryService, nodeFactory,
 				fsClient.subfolder("data"), fsClient.subfolder("metadata"), fsClient.subfolder("checkpoints"));
 	}
 
-	public LocalGlobalFsNode withManagedPubKeys(Set<PubKey> managedPubKeys) {
+	public GlobalFsNodeDriver withManagedPubKeys(Set<PubKey> managedPubKeys) {
 		this.managedPubKeys.addAll(managedPubKeys);
 		return this;
 	}
 
-	public LocalGlobalFsNode withDownloadCaching(boolean caching) {
+	public GlobalFsNodeDriver withDownloadCaching(boolean caching) {
 		this.doesCaching = caching;
 		return this;
 	}
 
-	public LocalGlobalFsNode withUploadCaching(boolean caching) {
+	public GlobalFsNodeDriver withUploadCaching(boolean caching) {
 		this.doesUploadCaching = caching;
 		return this;
 	}
 
-	public LocalGlobalFsNode withoutCaching() {
+	public GlobalFsNodeDriver withoutCaching() {
 		return withDownloadCaching(false);
 	}
 
-	public LocalGlobalFsNode withLatencyMargin(Duration latencyMargin) {
+	public GlobalFsNodeDriver withLatencyMargin(Duration latencyMargin) {
 		this.latencyMargin = latencyMargin;
 		return this;
 	}
@@ -147,7 +148,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 														.thenApply(supplier -> {
 															SerialSplitter<DataFrame> splitter = SerialSplitter.create(supplier);
 
-															splitter.addOutput().set(SerialConsumer.ofStage(fs.upload(path.getFullPath(), offset)));
+															splitter.addOutput().set(SerialConsumer.ofStage(fs.upload(path, offset)));
 
 															return splitter.addOutput()
 																	.getSupplier()
@@ -163,7 +164,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	@Override
 	public Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath path, long offset) {
 		if (managedPubKeys.contains(path.getPubKey())) {
-			return ensureFilesystem(path.getSpace()).upload(path.getFullPath(), offset);
+			return ensureFilesystem(path.getSpace()).upload(path, offset);
 		}
 		if (!searchingForUpload.add(path)) {
 			return Stage.ofException(RECURSIVE_UPLOAD_ERROR);
@@ -191,7 +192,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 											SerialSplitter<DataFrame> splitter = SerialSplitter.<DataFrame>create()
 													.withInput(buffer.getSupplier());
 
-											splitter.addOutput().getSupplier().streamTo(SerialConsumer.ofStage(local.upload(path.getFullPath(), offset)));
+											splitter.addOutput().getSupplier().streamTo(SerialConsumer.ofStage(local.upload(path, offset)));
 											splitter.addOutput().getSupplier().streamTo(consumer);
 
 											MaterializedStage<Void> process = splitter.startProcess();
@@ -222,6 +223,14 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 	private Namespace.Filesystem ensureFilesystem(GlobalFsSpace space) {
 		return ensureNamespace(space.getPubKey()).ensureFilesystem(space);
+	}
+
+	public Stage<Void> fetch(PubKey pubKey) {
+		return ensureNamespace(pubKey).fetch();
+	}
+
+	public Stage<Void> fetchManaged() {
+		return Stages.runSequence(managedPubKeys.stream().map(this::fetch));
 	}
 
 	class Namespace {
@@ -258,10 +267,11 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 			}
 			return discoveryService.findServers(pubKey)
 					.thenApply(announceData -> {
-						if (announceData.verify(pubKey)) {
+						if (announceData != null && announceData.verify(pubKey)) {
 							Set<RawServerId> newServerIds = announceData.getData().getServerIds();
 							masterNodes.keySet().removeIf(id -> !newServerIds.contains(id));
 							newServerIds.forEach(id -> masterNodes.computeIfAbsent(id, nodeFactory::create));
+							masterNodes.remove(id);
 							nodeDiscoveryTimestamp = now.currentTimeMillis();
 						}
 						return new ArrayList<>(masterNodes.values());
@@ -313,6 +323,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 			}
 
 			public Stage<Boolean> fetch() {
+				logger.info("{} started fetching", space);
 				return ensureMasterNodes()
 						.thenCompose(nodes ->
 								Stages.collect(Try.reducer(false, (a, b) -> a || b), nodes.stream()
@@ -321,8 +332,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 			}
 
 			public Stage<Boolean> fetch(GlobalFsNode node) {
-				checkState(node != LocalGlobalFsNode.this, "Trying to fetch from itself");
+				checkState(node != GlobalFsNodeDriver.this, "Trying to fetch from itself");
 
+				logger.info("{} fetching from ", space, node.getId());
 				return node.list(space, "**")
 						.thenCompose(files ->
 								Stages.collect(Try.reducer(false, (a, b) -> a || b), files.stream()
@@ -338,7 +350,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 														// skip if our file is better
 														// ourFile can be null, but meta - can't,
 														// so if ourFile is null then the condition below is false
-														if (GlobalFsMetadata.getBetter(meta, ourFile) == ourFile) {
+														if (GlobalFsMetadata.getBetter(ourFile, meta) == ourFile) {
 															return Stage.of(false);
 														}
 
@@ -351,6 +363,10 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 														long ourSize = ourFileMeta != null ? ourFileMeta.getSize() : 0;
 														long partSize = meta.getSize() - ourSize;
 
+														System.out.println("ourSize = " + ourSize);
+														System.out.println("partSize = " + partSize);
+														System.out.println("signedMeta = " + signedMeta);
+
 														// meta is newer but our size is bigger - someone truncated his file?
 														// TODO anton: when truncating make sure to remake the last checkpoint
 														if (partSize <= 0) {
@@ -358,9 +374,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 																	.thenApply($ -> true);
 														}
 
-														return node.download(GlobalFsPath.of(pubKey, meta.getFs(), meta.getPath()), ourSize, partSize) // download missing part or the whole file
+														return node.download(GlobalFsPath.of(pubKey, meta.getFs(), fileName), ourSize, partSize) // download missing part or the whole file
 																.thenCompose(supplier ->
-																		upload(meta.getFullPath(), ourSize)
+																		upload(GlobalFsPath.of(pubKey, meta.getFs(), fileName), ourSize)
 																				.thenCompose(supplier::streamTo))
 																.thenCompose($ -> pushMetadata(signedMeta))
 																.thenApply($ -> true);
@@ -371,12 +387,14 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 						.thenCompose(Stage::ofTry);
 			}
 
-			public Stage<SerialConsumer<DataFrame>> upload(String fullPath, long offset) {
-				return folder.upload(fullPath, offset)
-						.thenApply(consumer -> consumer.apply(new FramesIntoStorage(fullPath, space.getPubKey(), checkpointStorage)));
+			public Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath path, long offset) {
+				logger.info("Uploading to local storage {}, offset: {}", path, offset);
+				return folder.upload(path.getPath(), offset)
+						.thenApply(consumer -> consumer.apply(new FramesIntoStorage(path, space.getPubKey(), checkpointStorage)));
 			}
 
 			public Stage<SerialSupplier<DataFrame>> download(String fileName, long offset, long length) {
+				logger.info("Downloading local copy of {} at {}, offset: {}, length: {}", fileName, space, offset, length);
 				return checkpointStorage.getCheckpoints(fileName)
 						.thenCompose(checkpoints -> {
 							assert Arrays.equals(checkpoints, Arrays.stream(checkpoints).sorted().toArray()) : "Checkpoint array must be sorted!";
@@ -406,7 +424,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 			}
 
 			public Stage<Void> pushMetadata(SignedData<GlobalFsMetadata> metadata) {
-				return metadataFolder.upload(metadata.getData().getPath())
+				String path = metadata.getData().getPath();
+				return metadataFolder.delete(escapeGlob(path))
+						.thenCompose($ -> metadataFolder.upload(path, 0)) // offset 0 because atst this same file could be fetched from another node too
 						.thenCompose(SerialSupplier.of(ByteBuf.wrapForReading(metadata.toBytes()))::streamTo);
 			}
 

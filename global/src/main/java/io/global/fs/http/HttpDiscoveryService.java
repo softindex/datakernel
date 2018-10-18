@@ -36,7 +36,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	private final InetSocketAddress address;
 
 	// region creators
-	public HttpDiscoveryService(AsyncHttpClient client, InetSocketAddress address) {
+	public HttpDiscoveryService(InetSocketAddress address, AsyncHttpClient client) {
 		this.client = client;
 		this.address = address;
 	}

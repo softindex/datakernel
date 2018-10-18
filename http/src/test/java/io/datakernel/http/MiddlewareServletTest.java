@@ -376,13 +376,33 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testTail() throws ParseException {
+	public void testFallbackTail() throws ParseException {
 		AsyncServlet servlet = request -> Stage.of(HttpResponse.ofCode(200).withBody(wrapUtf8("Success: " + request.getRelativePath())));
 
 		MiddlewareServlet main = MiddlewareServlet.create()
-				.with(GET, "/method", MiddlewareServlet.create().withFallback(servlet));
+				.with(GET, "/method/:var", MiddlewareServlet.create().withFallback(servlet));
 
-		check(main.serve(HttpRequest.get(TEMPLATE + "/method/oneArg")), "Success: oneArg", 200);
-		check(main.serve(HttpRequest.get(TEMPLATE + "/method/first/second")), "Success: first/second", 200);
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/byhjgngtgh/oneArg")), "Success: oneArg", 200);
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/aedscvv/first/second")), "Success: first/second", 200);
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/muimkik/")), "Success: ", 200);
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/fyju")), "Success: ", 200);
+	}
+
+	@Test(expected = AssertionError.class)
+	public void testTailFail() {
+		MiddlewareServlet.create().with(GET, "/method/:var*/:tail", request -> Stage.of(HttpResponse.ok200()));
+	}
+
+	@Test
+	public void testTail() throws ParseException {
+		AsyncServlet servlet = request -> Stage.of(HttpResponse.ofCode(200).withBody(wrapUtf8("Success: " + request.getPathParameter("tail"))));
+
+		MiddlewareServlet main = MiddlewareServlet.create()
+				.with(GET, "/method/:var/:tail*", servlet);
+
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/dfbdb/oneArg")), "Success: oneArg", 200);
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/srfethj/first/second")), "Success: first/second", 200);
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/dvyhju/")), "Success: ", 200);
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/yumgn")), "Success: ", 200);
 	}
 }

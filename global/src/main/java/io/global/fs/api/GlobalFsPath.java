@@ -30,6 +30,10 @@ public final class GlobalFsPath {
 		this.path = path;
 	}
 
+	public static GlobalFsPath of(GlobalFsSpace space, String path) {
+		return new GlobalFsPath(space, path);
+	}
+
 	public static GlobalFsPath of(PubKey pubKey, String fsName, String path) {
 		return new GlobalFsPath(GlobalFsSpace.of(pubKey, fsName), path);
 	}

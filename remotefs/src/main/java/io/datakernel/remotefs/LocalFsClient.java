@@ -286,19 +286,18 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Stage<Void> delete(String glob) {
-		return Stage.ofRunnable(executor,
-				() -> {
-					synchronized (this) {
-						try {
-							walkFiles(glob, (meta, path) -> {
-								logger.trace("deleting file: {}: {}", meta, this);
-								Files.delete(path);
-							});
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
-				})
+		return Stage.ofRunnable(executor, () -> {
+			synchronized (this) {
+				try {
+					walkFiles(glob, (meta, path) -> {
+						logger.trace("deleting file: {}: {}", meta, this);
+						Files.delete(path);
+					});
+				} catch (IOException e) {
+					throw new UncheckedException(e);
+				}
+			}
+		})
 				.whenComplete(toLogger(logger, TRACE, "delete", glob, this))
 				.whenComplete(deleteStage.recordStats());
 	}

@@ -89,8 +89,4 @@ public final class PrivKey {
 	public String toString() {
 		return "PrivKey@" + Integer.toHexString(hashCode());
 	}
-
-	public static void main(String[] args) {
-		System.out.println(KeyPair.generate().getPrivKey().asString());
-	}
 }

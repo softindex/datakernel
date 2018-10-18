@@ -22,12 +22,17 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public final class RuntimeDiscoveryService implements DiscoveryService {
+	private static final Logger logger = LoggerFactory.getLogger(RuntimeDiscoveryService.class);
+
 	public static final StacklessException CANNOT_VERIFY_ANNOUNCE_DATA = new StacklessException(RuntimeDiscoveryService.class, "Cannot verify announce data");
+
 	private final Map<PubKey, SignedData<AnnounceData>> announced = new HashMap<>();
 
 	@Override
@@ -37,13 +42,18 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 
 	@Override
 	public Stage<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
+		logger.info("Announcement: " + announceData);
 		if (!announceData.verify(pubKey)) {
+			logger.warn("Failed to verify: " + announceData);
 			return Stage.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
 		}
-		announced.compute(pubKey, ($, existing) ->
-				existing == null || existing.getData().getTimestamp() <= announceData.getData().getTimestamp() ?
-						announceData :
-						existing);
+		announced.compute(pubKey, ($, existing) -> {
+			if (existing != null && existing.getData().getTimestamp() > announceData.getData().getTimestamp()) {
+				logger.info("Rejected as outdated: " + announceData);
+				return existing;
+			}
+			return announceData;
+		});
 		return Stage.complete();
 	}
 }

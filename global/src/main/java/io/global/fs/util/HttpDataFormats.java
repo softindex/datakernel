@@ -35,21 +35,18 @@ public final class HttpDataFormats {
 	public static final ParseException RANGE_OUT_OF_BOUNDS = new ParseException(HttpDataFormats.class, "Specified range is out of bounds");
 
 	public static final TypeAdapter<Set<String>> STRING_SET = ofSet(STRING_JSON);
-
 	public static final TypeAdapter<List<FileMetadata>> FILE_META_LIST = ofList(FILE_META_JSON);
 
-	// region creators
 	private HttpDataFormats() {
 		throw new AssertionError("nope.");
 	}
-	// endregion
 
-	public static GlobalFsSpace parseName(HttpRequest request) throws ParseException {
+	public static GlobalFsSpace parseSpace(HttpRequest request) throws ParseException {
 		return GlobalFsSpace.of(PubKey.fromString(request.getPathParameter("key")), request.getPathParameter("fs"));
 	}
 
 	public static GlobalFsPath parsePath(HttpRequest request) throws ParseException {
-		return GlobalFsPath.of(PubKey.fromString(request.getPathParameter("key")), request.getPathParameter("fs"), request.getRelativePath());
+		return GlobalFsPath.of(parseSpace(request), request.getPathParameter("path"));
 	}
 
 	public static long[] parseRange(HttpRequest request) throws ParseException {

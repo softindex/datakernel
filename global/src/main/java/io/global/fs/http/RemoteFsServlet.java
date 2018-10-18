@@ -41,31 +41,29 @@ public final class RemoteFsServlet {
 
 	public static AsyncServlet wrap(FsClient client) {
 		return MiddlewareServlet.create()
-				.with(GET, "/" + DOWNLOAD,
-						MiddlewareServlet.create().withFallback(request -> {
-							String path = request.getRelativePath();
-							long[] range = parseRange(request);
-							String name = path;
-							int lastSlash = path.lastIndexOf('/');
-							if (lastSlash != -1) {
-								name = path.substring(lastSlash + 1);
-							}
-							return client.download(path, range[0], range[1])
-									.thenApply(HttpResponse.ok200()
-											.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
-											.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
-											::withBodyStream);
-						}))
-				.with(PUT, "/" + UPLOAD,
-						MiddlewareServlet.create().withFallback(request -> {
-							String path = request.getRelativePath();
-							long offset = parseOffset(request);
-							return client.getMetadata(path)
-									.thenCompose(meta ->
-											client.upload(path, offset)
-													.thenCompose(request.getBodyStream()::streamTo)
-													.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
-						}))
+				.with(GET, "/" + DOWNLOAD + "/:path*", request -> {
+					String path = request.getRelativePath();
+					long[] range = parseRange(request);
+					String name = path;
+					int lastSlash = path.lastIndexOf('/');
+					if (lastSlash != -1) {
+						name = path.substring(lastSlash + 1);
+					}
+					return client.download(path, range[0], range[1])
+							.thenApply(HttpResponse.ok200()
+									.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+									.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
+									::withBodyStream);
+				})
+				.with(PUT, "/" + UPLOAD + "/:path*", request -> {
+					String path = request.getRelativePath();
+					long offset = parseOffset(request);
+					return client.getMetadata(path)
+							.thenCompose(meta ->
+									client.upload(path, offset)
+											.thenCompose(request.getBodyStream()::streamTo)
+											.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
+				})
 				.with(GET, "/" + LIST, request ->
 						client.list(request.getQueryParameter("glob"))
 								.thenApply(list -> HttpResponse.ok200().withBody(FILE_META_LIST.toJson(list).getBytes(UTF_8))))

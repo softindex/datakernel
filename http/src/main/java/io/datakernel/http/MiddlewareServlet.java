@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,7 +65,12 @@ public class MiddlewareServlet implements AsyncServlet {
 				urlPart = path.substring(1, slash);
 			}
 			MiddlewareServlet container = ensureMServlet(urlPart);
-			container.with(method, remainingPath, servlet);
+			if (urlPart.endsWith("*")) {
+				assert "".equals(remainingPath) : "Tail-parameter can only be the last path part";
+				container.with(method, remainingPath, create().withFallback(servlet));
+			} else {
+				container.with(method, remainingPath, servlet);
+			}
 		}
 		return this;
 	}
@@ -134,12 +139,20 @@ public class MiddlewareServlet implements AsyncServlet {
 		} else {
 			int position = request.getPos();
 			for (Entry<String, MiddlewareServlet> entry : parameters.entrySet()) {
-				request.putPathParameter(entry.getKey(), urlPart);
+				String key = entry.getKey();
+				if (key.endsWith("*")) {
+					request.setPos(introPosition);
+					String tail = request.getRelativePath();
+					request.putPathParameter(key.substring(0, key.length() - 1), tail);
+					request.setPos(introPosition + tail.length());
+				} else {
+					request.putPathParameter(key, urlPart);
+				}
 				result = entry.getValue().tryServeAsync(request);
 				if (result != null) {
 					return result;
 				} else {
-					request.removePathParameter(entry.getKey());
+					request.removePathParameter(key);
 					request.setPos(position);
 				}
 			}
@@ -225,25 +238,9 @@ public class MiddlewareServlet implements AsyncServlet {
 	}
 
 	private MiddlewareServlet ensureMServlet(String urlPart) {
-		MiddlewareServlet servlet;
 		if (urlPart.startsWith(":")) {
-			urlPart = urlPart.substring(1);
-			MiddlewareServlet parameter = parameters.get(urlPart);
-			if (parameter == null) {
-				servlet = create();
-				parameters.put(urlPart, servlet);
-			} else {
-				return parameter;
-			}
-		} else {
-			MiddlewareServlet container = routes.get(urlPart);
-			if (container == null) {
-				servlet = create();
-				routes.put(urlPart, servlet);
-			} else {
-				servlet = container;
-			}
+			return parameters.computeIfAbsent(urlPart.substring(1), $ -> create());
 		}
-		return servlet;
+		return routes.computeIfAbsent(urlPart, $ -> create());
 	}
 }

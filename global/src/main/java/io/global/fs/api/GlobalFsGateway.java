@@ -18,31 +18,105 @@ package io.global.fs.api;
 
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.time.CurrentTimeProvider;
-import io.global.common.PubKey;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static io.datakernel.file.FileUtils.escapeGlob;
+import static java.util.stream.Collectors.toList;
 
 public interface GlobalFsGateway {
-
 	Stage<SerialConsumer<ByteBuf>> upload(GlobalFsPath path, long offset);
+
+	default Stage<SerialConsumer<ByteBuf>> upload(GlobalFsPath path) {
+		return upload(path, -1);
+	}
 
 	default SerialConsumer<ByteBuf> uploader(GlobalFsPath path, long offset) {
 		return SerialConsumer.ofStage(upload(path, offset));
 	}
 
+	default SerialConsumer<ByteBuf> uploader(GlobalFsPath path) {
+		return SerialConsumer.ofStage(upload(path, -1));
+	}
+
 	Stage<SerialSupplier<ByteBuf>> download(GlobalFsPath path, long offset, long limit);
+
+	default Stage<SerialSupplier<ByteBuf>> download(GlobalFsPath path, long offset) {
+		return download(path, offset, -1);
+	}
+
+	default Stage<SerialSupplier<ByteBuf>> download(GlobalFsPath path) {
+		return download(path, 0, -1);
+	}
 
 	default SerialSupplier<ByteBuf> downloader(GlobalFsPath path, long offset, long limit) {
 		return SerialSupplier.ofStage(download(path, offset, limit));
 	}
 
-	Stage<Void> updateMetadata(PubKey pubKey, GlobalFsMetadata signedMeta);
+	default SerialSupplier<ByteBuf> downloader(GlobalFsPath path, long offset) {
+		return SerialSupplier.ofStage(download(path, offset, -1));
+	}
 
-	FsClient getFsDriver(GlobalFsSpace space, CurrentTimeProvider timeProvider);
+	default SerialSupplier<ByteBuf> downloader(GlobalFsPath path) {
+		return SerialSupplier.ofStage(download(path, 0, -1));
+	}
 
-	default FsClient getFsDriver(GlobalFsSpace space) {
-		return getFsDriver(space, CurrentTimeProvider.ofSystem());
+	Stage<List<GlobalFsMetadata>> list(GlobalFsSpace space, String glob);
+
+	default Stage<GlobalFsMetadata> getMetadata(GlobalFsPath path) {
+		return list(path.getSpace(), escapeGlob(path.getPath()))
+				.thenApply(list -> list.isEmpty() ? null : list.get(0));
+	}
+
+	Stage<Void> delete(GlobalFsPath path);
+
+	Stage<Void> delete(GlobalFsSpace space, String glob);
+
+	default FsClient createFsAdapter(GlobalFsSpace space, CurrentTimeProvider timeProvider) {
+		return new FsClient() {
+			@Override
+			public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+				return GlobalFsGateway.this.upload(space.pathFor(filename), offset);
+			}
+
+			@Override
+			public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+				return GlobalFsGateway.this.download(space.pathFor(filename), offset, length);
+			}
+
+			@Override
+			public Stage<Set<String>> move(Map<String, String> changes) {
+				throw new UnsupportedOperationException("No file moving in GlobalFS yet");
+			}
+
+			@Override
+			public Stage<Set<String>> copy(Map<String, String> changes) {
+				throw new UnsupportedOperationException("No file copying in GlobalFS yet");
+			}
+
+			@Override
+			public Stage<List<FileMetadata>> list(String glob) {
+				return GlobalFsGateway.this.list(space, glob)
+						.thenApply(res -> res.stream()
+								.map(meta -> new FileMetadata(meta.getPath(), meta.getSize(), meta.getRevision()))
+								.collect(toList()));
+			}
+
+			@Override
+			public Stage<Void> delete(String glob) {
+				return GlobalFsGateway.this.delete(space, glob);
+			}
+		};
+	}
+
+	default FsClient createFsAdapter(GlobalFsSpace space) {
+		return createFsAdapter(space, CurrentTimeProvider.ofSystem());
 	}
 }

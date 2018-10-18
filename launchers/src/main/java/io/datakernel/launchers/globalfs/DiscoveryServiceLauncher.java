@@ -53,18 +53,9 @@ public class DiscoveryServiceLauncher extends Launcher {
 	@Inject
 	AsyncHttpServer httpServer;
 
-	public static void main(String[] args) throws Exception {
-		new DiscoveryServiceLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
-	}
-
 	@Override
 	protected final Collection<com.google.inject.Module> getModules() {
 		return Collections.singletonList(override(getBaseModules()).with(getOverrideModules()));
-	}
-
-	@Override
-	protected void run() throws Exception {
-		awaitShutdown();
 	}
 
 	private Collection<com.google.inject.Module> getBaseModules() {
@@ -80,8 +71,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 				new AbstractModule() {
 					@Provides
 					@Singleton
-					Eventloop provide(Config config,
-							OptionalDependency<ThrottlingController> maybeThrottlingController) {
+					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
@@ -95,9 +85,8 @@ public class DiscoveryServiceLauncher extends Launcher {
 
 					@Provides
 					@Singleton
-					AsyncHttpServer provide(Eventloop eventloop, DiscoveryService discoveryService, Config config) {
-						return AsyncHttpServer.create(eventloop, DiscoveryServlet.wrap(discoveryService))
-								.initialize(ofHttpServer(config.getChild("http")));
+					AsyncHttpServer provide(Eventloop eventloop, DiscoveryServlet servlet, Config config) {
+						return AsyncHttpServer.create(eventloop, servlet).initialize(ofHttpServer(config.getChild("http")));
 					}
 				}
 		);
@@ -108,5 +97,14 @@ public class DiscoveryServiceLauncher extends Launcher {
 	 */
 	protected Collection<com.google.inject.Module> getOverrideModules() {
 		return emptyList();
+	}
+
+	@Override
+	protected void run() throws Exception {
+		awaitShutdown();
+	}
+
+	public static void main(String[] args) throws Exception {
+		new DiscoveryServiceLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }

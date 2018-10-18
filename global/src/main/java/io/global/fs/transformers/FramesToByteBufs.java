@@ -19,6 +19,7 @@ package io.global.fs.transformers;
 import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
@@ -49,9 +50,9 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 	private SHA256Digest digest;
 
 	// region creators
-	FramesToByteBufs(String filename, PubKey pubKey) {
+	FramesToByteBufs(String fullPath, PubKey pubKey) {
 		this.pubKey = pubKey;
-		this.filenameHash = CryptoUtils.sha256(filename.getBytes(UTF_8));
+		this.filenameHash = CryptoUtils.sha256(fullPath.getBytes(UTF_8));
 	}
 	// endregion
 
@@ -75,15 +76,13 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 	@Override
 	protected void doProcess() {
 		input.get()
-				.whenResult(frame -> {
-					if (frame != null) {
-						handleFrame(frame)
-								.whenResult($ -> doProcess());
-					} else {
-						output.accept(null)
-								.whenResult($ -> completeProcess());
-					}
-				});
+				.thenCompose(frame ->
+						frame != null ?
+								handleFrame(frame)
+										.whenResult($ -> doProcess()) :
+								output.accept(null)
+										.whenResult($ -> completeProcess()))
+				.whenException(this::close);
 	}
 
 	protected Stage<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {
@@ -108,7 +107,7 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 			SignedData<GlobalFsCheckpoint> checkpoint = frame.getCheckpoint();
 			CheckpointVerificationResult result = GlobalFsCheckpoint.verify(checkpoint, pubKey, position, digest, filenameHash);
 			if (result != CheckpointVerificationResult.SUCCESS) {
-				return Stage.ofException(new IOException("Checkpoint verification failed: " + result.message));
+				return Stage.ofException(new StacklessException(FramesToByteBufs.class, "Checkpoint verification failed: " + result.message));
 			}
 			// return output.post(ByteBuf.wrapForReading(new byte[]{124}));
 			return receiveCheckpoint(checkpoint);

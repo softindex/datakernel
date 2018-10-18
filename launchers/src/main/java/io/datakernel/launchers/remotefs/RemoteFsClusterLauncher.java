@@ -31,6 +31,7 @@ import io.datakernel.util.guice.OptionalDependency;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -112,7 +113,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 					RemoteFsClusterClient remoteFsClusterClient(Config config,
 							RemoteFsServer localServer, Eventloop eventloop,
 							OptionalDependency<ServerSelector> maybeServerSelector) {
-						HashMap<Object, FsClient> clients = new HashMap<>();
+						Map<Object, FsClient> clients = new HashMap<>();
 						clients.put(config.get("remotefs.repartition.localPartitionId"), localServer.getClient());
 						return RemoteFsClusterClient.create(eventloop, clients)
 								.withServerSelector(maybeServerSelector.orElse(RENDEZVOUS_HASH_SHARDER))

@@ -86,6 +86,6 @@ public final class SignedData<T extends Signable> {
 
 	@Override
 	public String toString() {
-		return "SignedData{" + data + '}';
+		return data.toString();
 	}
 }

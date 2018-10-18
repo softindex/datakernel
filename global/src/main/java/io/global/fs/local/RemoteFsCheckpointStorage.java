@@ -24,7 +24,6 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialSupplier;
-import io.global.common.CryptoUtils;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -33,8 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsCheckpointStorage.class);
@@ -74,7 +71,6 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						return Stage.of(new long[]{0});
 					}
 					long[] array = new long[32];
-					byte[] filenameHash = CryptoUtils.sha256(filename.getBytes(UTF_8));
 					int size = 0;
 					while (buf.canRead()) {
 						try {

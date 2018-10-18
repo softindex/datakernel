@@ -21,6 +21,7 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
+import io.global.fs.api.GlobalFsPath;
 
 /**
  * Something like a splitter, which outputs the byte buf data, but
@@ -31,19 +32,19 @@ import io.global.fs.api.GlobalFsCheckpoint;
  * It's counterpart is the {@link FramesFromStorage}.
  */
 public final class FramesIntoStorage extends FramesToByteBufs {
-	private final String fileName;
+	private final String path;
 	private final CheckpointStorage checkpointStorage;
 
 	// region creators
-	public FramesIntoStorage(String fileName, PubKey pubKey, CheckpointStorage checkpointStorage) {
-		super(fileName, pubKey);
-		this.fileName = fileName;
+	public FramesIntoStorage(GlobalFsPath path, PubKey pubKey, CheckpointStorage checkpointStorage) {
+		super(path.getFullPath(), pubKey);
+		this.path = path.getPath();
 		this.checkpointStorage = checkpointStorage;
 	}
 	// endregion
 
 	@Override
 	protected Stage<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {
-		return checkpointStorage.saveCheckpoint(fileName, checkpoint);
+		return checkpointStorage.saveCheckpoint(path, checkpoint);
 	}
 }

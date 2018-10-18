@@ -340,7 +340,8 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	public String getRelativePath() {
 		assert !isRecycled();
-		return url.getPartialPath().substring(1); // strip first '/'
+		String partialPath = url.getPartialPath();
+		return partialPath.startsWith("/") ? partialPath.substring(1) : partialPath; // strip first '/'
 	}
 
 	String pollUrlPart() {

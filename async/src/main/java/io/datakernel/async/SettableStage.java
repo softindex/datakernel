@@ -396,7 +396,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Material
 						(exception == null ?
 								"" + result :
 								"exception=" + exception.getClass().getSimpleName()) :
-						"")
+						"<unset>")
 				+ "}";
 	}
 }

@@ -16,27 +16,28 @@
 
 package io.global.fs.http;
 
+import com.google.inject.Inject;
 import io.datakernel.async.Stage;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 
-public final class DiscoveryServlet {
+public final class DiscoveryServlet implements AsyncServlet {
 	public static final String FIND = "find";
 	public static final String ANNOUNCE = "announce";
 
-	private DiscoveryServlet() {
-		throw new AssertionError("nope.");
-	}
+	private final AsyncServlet servlet;
 
-	public static AsyncServlet wrap(DiscoveryService service) {
-		return MiddlewareServlet.create()
+	@Inject
+	public DiscoveryServlet(DiscoveryService discoveryService) {
+		servlet = MiddlewareServlet.create()
 				.with(HttpMethod.GET, "/" + FIND, request -> {
 					PubKey pubKey = PubKey.fromString(request.getQueryParameter("key"));
-					return service.findServers(pubKey)
+					return discoveryService.findServers(pubKey)
 							.thenCompose(data -> {
 								if (data != null) {
 									return Stage.of(HttpResponse.ok200().withBody(data.toBytes()));
@@ -49,7 +50,7 @@ public final class DiscoveryServlet {
 					return request.getBodyStage(Integer.MAX_VALUE)
 							.thenCompose(body -> {
 								try {
-									return service.announce(pubKey, SignedData.ofBytes(body.getArray(), AnnounceData::fromBytes));
+									return discoveryService.announce(pubKey, SignedData.ofBytes(body.getArray(), AnnounceData::fromBytes));
 								} catch (ParseException e) {
 									return Stage.ofException(e);
 								}
@@ -57,5 +58,10 @@ public final class DiscoveryServlet {
 							.thenApply($ -> HttpResponse.ok200());
 
 				});
+	}
+
+	@Override
+	public Stage<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException {
+		return servlet.serve(request);
 	}
 }

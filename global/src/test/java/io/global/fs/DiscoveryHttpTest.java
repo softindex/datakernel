@@ -50,10 +50,10 @@ public class DiscoveryHttpTest {
 		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
 
 		DiscoveryService serverService = new RuntimeDiscoveryService();
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, DiscoveryServlet.wrap(serverService)).withListenPort(8080);
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, new DiscoveryServlet(serverService)).withListenPort(8080);
 		server.listen();
 
-		DiscoveryService clientService = new HttpDiscoveryService(AsyncHttpClient.create(eventloop), new InetSocketAddress(8080));
+		DiscoveryService clientService = new HttpDiscoveryService(new InetSocketAddress(8080), AsyncHttpClient.create(eventloop));
 
 		KeyPair keys1 = KeyPair.generate();
 		KeyPair keys2 = KeyPair.generate();
