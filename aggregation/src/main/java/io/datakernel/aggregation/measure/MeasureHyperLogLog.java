@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package io.datakernel.aggregation.measure;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Context;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.VarField;
+import io.datakernel.codegen.Property;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenArray;
 import io.datakernel.serializer.asm.SerializerGenByte;
@@ -67,12 +67,12 @@ public final class MeasureHyperLogLog extends Measure {
 	}
 
 	@Override
-	public Expression zeroAccumulator(VarField accumulator) {
+	public Expression zeroAccumulator(Property accumulator) {
 		return set(accumulator, constructor(HyperLogLog.class, value(registers)));
 	}
 
 	@Override
-	public Expression initAccumulatorWithAccumulator(VarField accumulator,
+	public Expression initAccumulatorWithAccumulator(Property accumulator,
 	                                                 Expression firstAccumulator) {
 		return sequence(
 				set(accumulator, constructor(HyperLogLog.class, value(registers))),
@@ -80,21 +80,21 @@ public final class MeasureHyperLogLog extends Measure {
 	}
 
 	@Override
-	public Expression reduce(VarField accumulator,
-	                         VarField nextAccumulator) {
+	public Expression reduce(Property accumulator,
+			Property nextAccumulator) {
 		return call(accumulator, "union", nextAccumulator);
 	}
 
 	@Override
-	public Expression initAccumulatorWithValue(VarField accumulator,
-	                                           VarField firstValue) {
+	public Expression initAccumulatorWithValue(Property accumulator,
+			Property firstValue) {
 		return sequence(
 				set(accumulator, constructor(HyperLogLog.class, value(registers))),
 				add(accumulator, firstValue));
 	}
 
 	@Override
-	public Expression accumulate(VarField accumulator, VarField nextValue) {
+	public Expression accumulate(Property accumulator, Property nextValue) {
 		return add(accumulator, nextValue);
 	}
 

@@ -20,7 +20,7 @@ import io.datakernel.codegen.AbstractExpressionIteratorForEach;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.VarLocal;
 
-import static io.datakernel.codegen.Expressions.field;
+import static io.datakernel.codegen.Expressions.property;
 
 public final class ForEachHppcCollection extends AbstractExpressionIteratorForEach {
 	public ForEachHppcCollection(Expression collection, Class<?> type, Expression forEach) {
@@ -29,6 +29,6 @@ public final class ForEachHppcCollection extends AbstractExpressionIteratorForEa
 
 	@Override
 	protected Expression getValue(VarLocal varIt) {
-		return field(varIt, "value");
+		return property(varIt, "value");
 	}
 }

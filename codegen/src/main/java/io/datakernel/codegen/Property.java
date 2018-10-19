@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,26 +34,26 @@ import static org.objectweb.asm.Type.getType;
 import static org.objectweb.asm.commons.Method.getMethod;
 
 /**
- * Defines methods which allow to take field according to the name
+ * Defines methods which allow to take property according to the name
  */
-public final class VarField implements Variable {
+public final class Property implements Variable {
 	private final Expression owner;
-	private final String field;
+	private final String property;
 
-	VarField(Expression owner, String field) {
+	Property(Expression owner, String property) {
 		this.owner = checkNotNull(owner);
-		this.field = checkNotNull(field);
+		this.property = checkNotNull(property);
 	}
 
 	@Override
 	public Type type(Context ctx) {
-		return typeOfFieldOrGetter(ctx, owner.type(ctx), field);
+		return typeOfPropertyOrGetter(ctx, owner.type(ctx), property);
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		Type ownerType = owner.load(ctx);
-		return loadFieldOrGetter(ctx, ownerType, field);
+		return loadPropertyOrGetter(ctx, ownerType, property);
 	}
 
 	@Override
@@ -63,53 +63,53 @@ public final class VarField implements Variable {
 
 	@Override
 	public void store(Context ctx, Object storeContext, Type type) {
-		setField(ctx, (Type) storeContext, field, type);
+		setProperty(ctx, (Type) storeContext, property, type);
 	}
 
-	public static void setField(Context ctx, Type ownerType, String field, Type valueType) {
+	public static void setProperty(Context ctx, Type ownerType, String property, Type valueType) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
 		Class<?> valueClass = getJavaType(ctx.getClassLoader(), valueType);
 
 		if (ctx.getThisType().equals(ownerType)) {
-			Class<?> fieldClass = ctx.getFields().get(field);
-			if (fieldClass == null) {
-				throw new RuntimeException(format("No field \"%s\" in generated class %s. %s",
-						field,
+			Class<?> propertyClass = ctx.getFields().get(property);
+			if (propertyClass == null) {
+				throw new RuntimeException(format("No property \"%s\" in generated class %s. %s",
+						property,
 						ctx.getThisType().getClassName(),
 						exceptionInGeneratedClass(ctx)));
 			}
-			Type fieldType = getType(fieldClass);
-			cast(ctx, valueType, fieldType);
-			g.putField(ownerType, field, fieldType);
+			Type propertyType = getType(propertyClass);
+			cast(ctx, valueType, propertyType);
+			g.putField(ownerType, property, propertyType);
 			return;
 		}
 
 		Class<?> argumentClass = getJavaType(ctx.getClassLoader(), ownerType);
 
 		try {
-			java.lang.reflect.Field javaField = argumentClass.getField(field);
-			if (Modifier.isPublic(javaField.getModifiers())) {
-				Type fieldType = getType(javaField.getType());
-				cast(ctx, valueType, fieldType);
-				g.putField(ownerType, field, fieldType);
+			java.lang.reflect.Field javaProperty = argumentClass.getField(property);
+			if (Modifier.isPublic(javaProperty.getModifiers())) {
+				Type propertyType = getType(javaProperty.getType());
+				cast(ctx, valueType, propertyType);
+				g.putField(ownerType, property, propertyType);
 				return;
 			}
 		} catch (NoSuchFieldException ignored) {
 		}
 
-		java.lang.reflect.Method javaSetter = tryFindSetter(argumentClass, field, valueClass);
+		java.lang.reflect.Method javaSetter = tryFindSetter(argumentClass, property, valueClass);
 
 		if (javaSetter == null && Primitives.isWrapperType(valueClass)) {
-			javaSetter = tryFindSetter(argumentClass, field, Primitives.unwrap(valueClass));
+			javaSetter = tryFindSetter(argumentClass, property, Primitives.unwrap(valueClass));
 		}
 
 		if (javaSetter == null && valueClass.isPrimitive()) {
-			javaSetter = tryFindSetter(argumentClass, field, Primitives.wrap(valueClass));
+			javaSetter = tryFindSetter(argumentClass, property, Primitives.wrap(valueClass));
 		}
 
 		if (javaSetter == null) {
-			javaSetter = tryFindSetter(argumentClass, field);
+			javaSetter = tryFindSetter(argumentClass, property);
 		}
 
 		if (javaSetter != null) {
@@ -125,64 +125,64 @@ public final class VarField implements Variable {
 			return;
 		}
 
-		throw new RuntimeException(format("No public field or setter for class %s for field \"%s\". %s ",
+		throw new RuntimeException(format("No public property or setter for class %s for property \"%s\". %s ",
 				ownerType.getClassName(),
-				field,
+				property,
 				exceptionInGeneratedClass(ctx))
 		);
 	}
 
-	private static Method tryFindSetter(Class<?> argumentClass, String field, Class<?> valueClass) {
+	private static Method tryFindSetter(Class<?> argumentClass, String property, Class<?> valueClass) {
 		Method m = null;
 		try {
-			m = argumentClass.getDeclaredMethod(field, valueClass);
+			m = argumentClass.getDeclaredMethod(property, valueClass);
 		} catch (NoSuchMethodException ignored) {
 		}
 
-		if (m == null && field.length() >= 1) {
+		if (m == null && property.length() >= 1) {
 			try {
-				m = argumentClass.getDeclaredMethod("set" + toUpperCase(field.charAt(0)) + field.substring(1), valueClass);
+				m = argumentClass.getDeclaredMethod("set" + toUpperCase(property.charAt(0)) + property.substring(1), valueClass);
 			} catch (NoSuchMethodException ignored) {
 			}
 		}
 		return m;
 	}
 
-	private static Method tryFindSetter(Class<?> argumentClass, String field) {
-		String setterName = "set" + toUpperCase(field.charAt(0)) + field.substring(1);
+	private static Method tryFindSetter(Class<?> argumentClass, String property) {
+		String setterName = "set" + toUpperCase(property.charAt(0)) + property.substring(1);
 
 		for (Method method : argumentClass.getDeclaredMethods()) {
 			if (method.getParameterTypes().length != 1)
 				continue;
-			if (method.getName().equals(field) || method.getName().equals(setterName))
+			if (method.getName().equals(property) || method.getName().equals(setterName))
 				return method;
 		}
 		return null;
 	}
 
-	public static Type loadFieldOrGetter(Context ctx, Type ownerType, String field) {
-		return loadFieldOrGetter(ctx, ownerType, field, true);
+	public static Type loadPropertyOrGetter(Context ctx, Type ownerType, String property) {
+		return loadPropertyOrGetter(ctx, ownerType, property, true);
 	}
 
-	public static Type typeOfFieldOrGetter(Context ctx, Type ownerType, String field) {
-		return loadFieldOrGetter(ctx, ownerType, field, false);
+	public static Type typeOfPropertyOrGetter(Context ctx, Type ownerType, String property) {
+		return loadPropertyOrGetter(ctx, ownerType, property, false);
 	}
 
-	private static Type loadFieldOrGetter(Context ctx, Type ownerType, String field, boolean load) {
+	private static Type loadPropertyOrGetter(Context ctx, Type ownerType, String property, boolean load) {
 		GeneratorAdapter g = load ? ctx.getGeneratorAdapter() : null;
 
 		if (ownerType.equals(ctx.getThisType())) {
-			Class<?> thisFieldClass = ctx.getFields().get(field);
-			if (thisFieldClass != null) {
-				Type resultType = Type.getType(thisFieldClass);
+			Class<?> thisPropertyClass = ctx.getFields().get(property);
+			if (thisPropertyClass != null) {
+				Type resultType = Type.getType(thisPropertyClass);
 				if (g != null) {
-					g.getField(ownerType, field, resultType);
+					g.getField(ownerType, property, resultType);
 				}
 				return resultType;
 			} else {
-				throw new RuntimeException(format("No public field or getter for class %s for field \"%s\". %s",
+				throw new RuntimeException(format("No public property or getter for class %s for property \"%s\". %s",
 						ownerType.getClassName(),
-						field,
+						property,
 						exceptionInGeneratedClass(ctx)));
 			}
 		}
@@ -190,11 +190,11 @@ public final class VarField implements Variable {
 		Class<?> argumentClass = getJavaType(ctx.getClassLoader(), ownerType);
 
 		try {
-			Field javaField = argumentClass.getField(field);
-			if (isPublic(javaField.getModifiers()) && !isStatic(javaField.getModifiers())) {
-				Type resultType = Type.getType(javaField.getType());
+			Field javaProperty = argumentClass.getField(property);
+			if (isPublic(javaProperty.getModifiers()) && !isStatic(javaProperty.getModifiers())) {
+				Type resultType = Type.getType(javaProperty.getType());
 				if (g != null) {
-					g.getField(ownerType, field, resultType);
+					g.getField(ownerType, property, resultType);
 				}
 				return resultType;
 			}
@@ -203,13 +203,13 @@ public final class VarField implements Variable {
 
 		java.lang.reflect.Method m = null;
 		try {
-			m = argumentClass.getDeclaredMethod(field);
+			m = argumentClass.getDeclaredMethod(property);
 		} catch (NoSuchMethodException ignored) {
 		}
 
-		if (m == null && field.length() >= 1) {
+		if (m == null && property.length() >= 1) {
 			try {
-				m = argumentClass.getDeclaredMethod("get" + toUpperCase(field.charAt(0)) + field.substring(1));
+				m = argumentClass.getDeclaredMethod("get" + toUpperCase(property.charAt(0)) + property.substring(1));
 			} catch (NoSuchMethodException ignored) {
 			}
 		}
@@ -222,9 +222,9 @@ public final class VarField implements Variable {
 			return resultType;
 		}
 
-		throw new RuntimeException(format("No public field or getter for class %s for field \"%s\". %s",
+		throw new RuntimeException(format("No public property or getter for class %s for property \"%s\". %s",
 				ownerType.getClassName(),
-				field,
+				property,
 				exceptionInGeneratedClass(ctx)));
 	}
 
@@ -233,18 +233,16 @@ public final class VarField implements Variable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		VarField that = (VarField) o;
+		Property that = (Property) o;
 
 		if (!owner.equals(that.owner)) return false;
-		if (!field.equals(that.field)) return false;
-
-		return true;
+		return property.equals(that.property);
 	}
 
 	@Override
 	public int hashCode() {
 		int result = owner.hashCode();
-		result = 31 * result + field.hashCode();
+		result = 31 * result + property.hashCode();
 		return result;
 	}
 }

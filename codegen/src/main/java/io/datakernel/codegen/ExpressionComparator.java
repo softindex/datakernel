@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ import java.util.List;
 
 import static io.datakernel.codegen.ExpressionCast.THIS_TYPE;
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.Expressions.cast;
-import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.codegen.Utils.isPrimitiveType;
+import static io.datakernel.codegen.Utils.wrap;
 import static io.datakernel.util.Preconditions.check;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.commons.GeneratorAdapter.NE;
@@ -87,20 +87,20 @@ public final class ExpressionComparator implements Expression {
 		return this;
 	}
 
-	public static Expression thisField(String field) {
-		return field(self(), field);
+	public static Expression thisProperty(String property) {
+		return property(self(), property);
 	}
 
-	public static Expression thatField(String field) {
-		return field(cast(arg(0), THIS_TYPE), field);
+	public static Expression thatProperty(String property) {
+		return property(cast(arg(0), THIS_TYPE), property);
 	}
 
-	public static Expression leftField(Class<?> type, String field) {
-		return field(cast(arg(0), type), field);
+	public static Expression leftProperty(Class<?> type, String property) {
+		return property(cast(arg(0), type), property);
 	}
 
-	public static Expression rightField(Class<?> type, String field) {
-		return field(cast(arg(1), type), field);
+	public static Expression rightProperty(Class<?> type, String property) {
+		return property(cast(arg(1), type), property);
 	}
 
 	@Override
@@ -115,25 +115,25 @@ public final class ExpressionComparator implements Expression {
 		Label labelReturn = new Label();
 
 		for (ComparablePair pair : pairs) {
-			Type leftFieldType = pair.left.load(ctx);
-			Type rightFieldType = pair.right.load(ctx);
+			Type leftPropertyType = pair.left.load(ctx);
+			Type rightPropertyType = pair.right.load(ctx);
 
-			check(leftFieldType.equals(rightFieldType));
-			if (isPrimitiveType(leftFieldType)) {
-				g.invokeStatic(wrap(leftFieldType), new Method("compare", INT_TYPE, new Type[]{leftFieldType, leftFieldType}));
+			check(leftPropertyType.equals(rightPropertyType));
+			if (isPrimitiveType(leftPropertyType)) {
+				g.invokeStatic(wrap(leftPropertyType), new Method("compare", INT_TYPE, new Type[]{leftPropertyType, leftPropertyType}));
 				g.dup();
 				g.ifZCmp(NE, labelReturn);
 				g.pop();
 			} else if (!pair.nullable) {
-				g.invokeVirtual(leftFieldType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
+				g.invokeVirtual(leftPropertyType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
 				g.dup();
 				g.ifZCmp(NE, labelReturn);
 				g.pop();
 			} else {
-				VarLocal varRight = newLocal(ctx, rightFieldType);
+				VarLocal varRight = newLocal(ctx, rightPropertyType);
 				varRight.store(ctx);
 
-				VarLocal varLeft = newLocal(ctx, leftFieldType);
+				VarLocal varLeft = newLocal(ctx, leftPropertyType);
 				varLeft.store(ctx);
 
 				Label continueLabel = new Label();
@@ -160,7 +160,7 @@ public final class ExpressionComparator implements Expression {
 				varLeft.load(ctx);
 				varRight.load(ctx);
 
-				g.invokeVirtual(leftFieldType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
+				g.invokeVirtual(leftPropertyType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
 				g.dup();
 				g.ifZCmp(NE, labelReturn);
 				g.pop();

@@ -59,8 +59,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationUtils.*;
-import static io.datakernel.codegen.ExpressionComparator.leftField;
-import static io.datakernel.codegen.ExpressionComparator.rightField;
+import static io.datakernel.codegen.ExpressionComparator.leftProperty;
+import static io.datakernel.codegen.ExpressionComparator.rightProperty;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Primitives.isWrapperType;
 import static io.datakernel.cube.Utils.createResultClass;
@@ -911,15 +911,15 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				if (dimensionTypes.containsKey(field)) {
 					copyAttributes.add(call(arg(1), "put", value(fieldIndex),
 							cast(dimensionTypes.get(field).toValue(
-									field(cast(arg(0), resultClass), field)), Object.class)));
+									property(cast(arg(0), resultClass), field)), Object.class)));
 				} else if (measures.containsKey(field)) {
-					VarField fieldValue = field(cast(arg(0), resultClass), field);
+					Property fieldValue = property(cast(arg(0), resultClass), field);
 					copyMeasures.add(call(arg(1), "put", value(fieldIndex),
 							cast(measures.get(field).getFieldType().toValue(
 									measures.get(field).valueOfAccumulator(fieldValue)), Object.class)));
 				} else {
 					copyMeasures.add(call(arg(1), "put", value(fieldIndex),
-							cast(field(cast(arg(0), resultClass), field.replace('.', '$')), Object.class)));
+							cast(property(cast(arg(0), resultClass), field.replace('.', '$')), Object.class)));
 				}
 			}
 
@@ -936,7 +936,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			for (String computedMeasure : resultComputedMeasures) {
 				builder = builder.withField(computedMeasure, computedMeasures.get(computedMeasure).getType(measures));
 				Expression record = cast(arg(0), resultClass);
-				computeSequence.add(set(field(record, computedMeasure),
+				computeSequence.add(set(property(record, computedMeasure),
 						computedMeasures.get(computedMeasure).getExpression(record, measures)));
 			}
 			return builder.withMethod("computeMeasures", sequence(computeSequence))
@@ -966,8 +966,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				if (resultMeasures.contains(field) || resultAttributes.contains(field)) {
 					String property = field.replace('.', '$');
 					comparator = comparator.with(
-							ordering.isAsc() ? leftField(resultClass, property) : rightField(resultClass, property),
-							ordering.isAsc() ? rightField(resultClass, property) : leftField(resultClass, property),
+							ordering.isAsc() ? leftProperty(resultClass, property) : rightProperty(resultClass, property),
+							ordering.isAsc() ? rightProperty(resultClass, property) : leftProperty(resultClass, property),
 							true);
 					resultOrderings.add(field);
 				}
@@ -1128,19 +1128,19 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			for (String field : resultStoredMeasures) {
 				Measure measure = measures.get(field);
 				zeroSequence.add(measure.zeroAccumulator(
-						field(cast(arg(0), resultClass), field)));
+						property(cast(arg(0), resultClass), field)));
 				initSequence.add(measure.initAccumulatorWithAccumulator(
-						field(cast(arg(0), resultClass), field),
-						field(cast(arg(1), resultClass), field)));
+						property(cast(arg(0), resultClass), field),
+						property(cast(arg(1), resultClass), field)));
 				accumulateSequence.add(measure.reduce(
-						field(cast(arg(0), resultClass), field),
-						field(cast(arg(1), resultClass), field)));
+						property(cast(arg(0), resultClass), field),
+						property(cast(arg(1), resultClass), field)));
 			}
 
 			ExpressionSequence computeSequence = ExpressionSequence.create();
 			for (String computedMeasure : resultComputedMeasures) {
 				Expression result = cast(arg(0), resultClass);
-				computeSequence.add(set(field(result, computedMeasure),
+				computeSequence.add(set(property(result, computedMeasure),
 						computedMeasures.get(computedMeasure).getExpression(result, measures)));
 			}
 			return ClassBuilder.create(queryClassLoader, TotalsFunction.class)

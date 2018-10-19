@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-import static io.datakernel.codegen.ExpressionComparator.leftField;
-import static io.datakernel.codegen.ExpressionComparator.rightField;
+import static io.datakernel.codegen.ExpressionComparator.leftProperty;
+import static io.datakernel.codegen.ExpressionComparator.rightProperty;
 import static io.datakernel.codegen.Expressions.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -34,24 +34,24 @@ public class ExpressionTest {
 	public TemporaryFolder tempFolder = new TemporaryFolder();
 
 	public static class TestPojo {
-		public int field1;
-		public int field2;
+		public int property1;
+		public int property2;
 
-		public TestPojo(int field1, int field2) {
-			this.field1 = field1;
-			this.field2 = field2;
+		public TestPojo(int property1, int property2) {
+			this.property1 = property1;
+			this.property2 = property2;
 		}
 
-		public TestPojo(int field1) {
-			this.field1 = field1;
+		public TestPojo(int property1) {
+			this.property1 = property1;
 		}
 
-		public void setField1(int field1) {
-			this.field1 = field1;
+		public void setproperty1(int property1) {
+			this.property1 = property1;
 		}
 
-		public int getField1() {
-			return field1;
+		public int getproperty1() {
+			return property1;
 		}
 
 		@Override
@@ -61,39 +61,39 @@ public class ExpressionTest {
 
 			TestPojo testPojo = (TestPojo) o;
 
-			return (field1 == testPojo.field1) && (field2 == testPojo.field2);
+			return (property1 == testPojo.property1) && (property2 == testPojo.property2);
 		}
 
 		@Override
 		public int hashCode() {
-			int result = field1;
-			result = 31 * result + field2;
+			int result = property1;
+			result = 31 * result + property2;
 			return result;
 		}
 
 		@Override
 		public String toString() {
-			return "TestPojo{field1=" + field1 + ", field2=" + field2 + '}';
+			return "TestPojo{property1=" + property1 + ", property2=" + property2 + '}';
 		}
 	}
 
 	public static class TestPojo2 {
-		public String field1;
-		public int field2;
-		public long field3;
-		public float field4;
-		public int field5;
-		public double field6;
-		public String field7;
+		public String property1;
+		public int property2;
+		public long property3;
+		public float property4;
+		public int property5;
+		public double property6;
+		public String property7;
 
-		public TestPojo2(String field1, int field2, long field3, float field4, int field5, double field6, String field7) {
-			this.field1 = field1;
-			this.field2 = field2;
-			this.field3 = field3;
-			this.field4 = field4;
-			this.field5 = field5;
-			this.field6 = field6;
-			this.field7 = field7;
+		public TestPojo2(String property1, int property2, long property3, float property4, int property5, double property6, String property7) {
+			this.property1 = property1;
+			this.property2 = property2;
+			this.property3 = property3;
+			this.property4 = property4;
+			this.property5 = property5;
+			this.property6 = property6;
+			this.property7 = property7;
 		}
 
 		@Override
@@ -103,13 +103,13 @@ public class ExpressionTest {
 
 			TestPojo2 testPojo2 = (TestPojo2) o;
 
-			if (field2 != testPojo2.field2) return false;
-			if (field3 != testPojo2.field3) return false;
-			if (Float.compare(testPojo2.field4, field4) != 0) return false;
-			if (field5 != testPojo2.field5) return false;
-			if (Double.compare(testPojo2.field6, field6) != 0) return false;
-			if (field1 != null ? !field1.equals(testPojo2.field1) : testPojo2.field1 != null) return false;
-			return !(field7 != null ? !field7.equals(testPojo2.field7) : testPojo2.field7 != null);
+			if (property2 != testPojo2.property2) return false;
+			if (property3 != testPojo2.property3) return false;
+			if (Float.compare(testPojo2.property4, property4) != 0) return false;
+			if (property5 != testPojo2.property5) return false;
+			if (Double.compare(testPojo2.property6, property6) != 0) return false;
+			if (property1 != null ? !property1.equals(testPojo2.property1) : testPojo2.property1 != null) return false;
+			return !(property7 != null ? !property7.equals(testPojo2.property7) : testPojo2.property7 != null);
 
 		}
 
@@ -117,14 +117,14 @@ public class ExpressionTest {
 		public int hashCode() {
 			int result;
 			long temp;
-			result = field1 != null ? field1.hashCode() : 0;
-			result = 31 * result + field2;
-			result = 31 * result + (int) (field3 ^ (field3 >>> 32));
-			result = 31 * result + (field4 != +0.0f ? Float.floatToIntBits(field4) : 0);
-			result = 31 * result + field5;
-			temp = Double.doubleToLongBits(field6);
+			result = property1 != null ? property1.hashCode() : 0;
+			result = 31 * result + property2;
+			result = 31 * result + (int) (property3 ^ (property3 >>> 32));
+			result = 31 * result + (property4 != +0.0f ? Float.floatToIntBits(property4) : 0);
+			result = 31 * result + property5;
+			temp = Double.doubleToLongBits(property6);
 			result = 31 * result + (int) (temp ^ (temp >>> 32));
-			result = 31 * result + (field7 != null ? field7.hashCode() : 0);
+			result = 31 * result + (property7 != null ? property7.hashCode() : 0);
 			return result;
 		}
 	}
@@ -138,7 +138,7 @@ public class ExpressionTest {
 
 		int hash(TestPojo pojo);
 
-		int field1(TestPojo pojo);
+		int property1(TestPojo pojo);
 
 		TestPojo setter(TestPojo pojo);
 
@@ -154,9 +154,9 @@ public class ExpressionTest {
 
 		boolean anyEqual(int var, int var1, int var2);
 
-		void setPojoField1(TestPojo testPojo, int value);
+		void setPojoproperty1(TestPojo testPojo, int value);
 
-		int getPojoField1(TestPojo testPojo);
+		int getPojoproperty1(TestPojo testPojo);
 
 		@Override
 		int compare(TestPojo o1, TestPojo o2);
@@ -180,7 +180,7 @@ public class ExpressionTest {
 				.withField("x", int.class)
 				.withField("y", Long.class)
 				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
-						compare(TestPojo.class, "field1", "field2"))
+						compare(TestPojo.class, "property1", "property2"))
 				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
 						compareTo("x"))
 				.withMethod("equals",
@@ -191,40 +191,40 @@ public class ExpressionTest {
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
-				.withMethod("field1",
-						field(arg(0), "field1"))
+						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2")))
+				.withMethod("property1",
+						property(arg(0), "property1"))
 				.withMethod("setter", sequence(
-						set(arg(0), "field1", value(10)),
-						set(arg(0), "field2", value(20)),
+						set(arg(0), "property1", value(10)),
+						set(arg(0), "property2", value(20)),
 						arg(0)))
 				.withMethod("ctor", sequence(
 						local,
-						set(local, "field2", value(2)),
+						set(local, "property2", value(2)),
 						local))
 				.withMethod("getX",
-						field(self(), "x"))
+						property(self(), "x"))
 				.withMethod("getY",
-						field(self(), "y"))
+						property(self(), "y"))
 				.withMethod("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
 				.withMethod("anyEqual",
 						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("setPojoField1",
-						call(arg(0), "setField1", arg(1)))
-				.withMethod("getPojoField1",
-						call(arg(0), "getField1"))
+				.withMethod("setPojoproperty1",
+						call(arg(0), "setproperty1", arg(1)))
+				.withMethod("getPojoproperty1",
+						call(arg(0), "getproperty1"))
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(field(self(), "x"))
-								.withArgument("labelY: ", field(self(), "y")))
+								.withArgument(property(self(), "x"))
+								.withArgument("labelY: ", property(self(), "y")))
 				.build();
 		Test test = testClass.newInstance();
 
 		assertEquals(11, (int) test.test(10));
 		assertEquals(33, test.hash(new TestPojo(1, 2)));
-		assertEquals(1, test.field1(new TestPojo(1, 2)));
+		assertEquals(1, test.property1(new TestPojo(1, 2)));
 		assertEquals(new TestPojo(10, 20), test.setter(new TestPojo(1, 2)));
 		assertEquals(new TestPojo(1, 2), test.ctor());
 		test.setXY(1, (byte) 10);
@@ -258,9 +258,9 @@ public class ExpressionTest {
 		assertTrue(test1.anyEqual(1, 1, 2));
 
 		TestPojo testPojo = new TestPojo(1, 10);
-		assertEquals(1, test1.getPojoField1(testPojo));
-		test1.setPojoField1(testPojo, 2);
-		assertEquals(2, test1.getPojoField1(testPojo));
+		assertEquals(1, test1.getPojoproperty1(testPojo));
+		test1.setPojoproperty1(testPojo, 2);
+		assertEquals(2, test1.getPojoproperty1(testPojo));
 
 		assertEquals("{1, labelY: 10}", test1.toString());
 	}
@@ -269,9 +269,9 @@ public class ExpressionTest {
 	public void test2() throws IllegalAccessException, InstantiationException {
 		Class<Test2> testClass = ClassBuilder.create(DefiningClassLoader.create(), Test2.class)
 				.withMethod("hash",
-						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2"), field(arg(0), "field3"),
-								field(arg(0), "field4"), field(arg(0), "field5"), field(arg(0), "field6"),
-								field(arg(0), "field7"))).build();
+						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2"), property(arg(0), "property3"),
+								property(arg(0), "property4"), property(arg(0), "property5"), property(arg(0), "property6"),
+								property(arg(0), "property7"))).build();
 
 		Test2 test = testClass.newInstance();
 		TestPojo2 testPojo2 = new TestPojo2("randomString", 42, 666666, 43258.42342f, 54359878, 43252353278423.423468, "fhsduighrwqruqsd");
@@ -284,7 +284,7 @@ public class ExpressionTest {
 	public void testComparator() {
 		Comparator<TestPojo> comparator = ClassBuilder.create(DefiningClassLoader.create(), Comparator.class)
 				.withMethod("compare",
-						compare(TestPojo.class, "field1", "field2"))
+						compare(TestPojo.class, "property1", "property2"))
 				.buildClassAndCreateNewInstance();
 		assertTrue(comparator.compare(new TestPojo(1, 10), new TestPojo(1, 10)) == 0);
 	}
@@ -586,13 +586,13 @@ public class ExpressionTest {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Initializable intHolder = ClassBuilder.create(classLoader, Initializable.class)
 				.withField("x", int.class)
-				.withMethod("init", set(field(self(), "x"), value(42)))
+				.withMethod("init", set(property(self(), "x"), value(42)))
 				.buildClassAndCreateNewInstance();
 
 		intHolder.init();
 
 		Getter getter = ClassBuilder.create(classLoader, Getter.class)
-				.withMethod("get", field(cast(arg(0), intHolder.getClass()), "x"))
+				.withMethod("get", property(cast(arg(0), intHolder.getClass()), "x"))
 				.buildClassAndCreateNewInstance();
 
 		assertEquals(42, getter.get(intHolder));
@@ -606,90 +606,90 @@ public class ExpressionTest {
 				.withField("x", int.class)
 				.withField("y", Long.class)
 				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
-						compare(TestPojo.class, "field1", "field2"))
+						compare(TestPojo.class, "property1", "property2"))
 				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
 						compareTo("x"))
 				.withMethod("equals",
 						asEquals("x"))
 				.withMethod("setXY", sequence(
-						set(field(self(), "x"), arg(0)),
-						set(field(self(), "y"), arg(1))))
+						set(property(self(), "x"), arg(0)),
+						set(property(self(), "y"), arg(1))))
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
-				.withMethod("field1",
-						field(arg(0), "field1"))
+						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2")))
+				.withMethod("property1",
+						property(arg(0), "property1"))
 				.withMethod("setter", sequence(
-						set(field(arg(0), "field1"), value(10)),
-						set(field(arg(0), "field2"), value(20)),
+						set(property(arg(0), "property1"), value(10)),
+						set(property(arg(0), "property2"), value(20)),
 						arg(0)))
 				.withMethod("ctor", sequence(
 						local,
-						set(field(local, "field2"), value(2)),
+						set(property(local, "property2"), value(2)),
 						local))
 				.withMethod("getX",
-						field(self(), "x"))
+						property(self(), "x"))
 				.withMethod("getY",
-						field(self(), "y"))
+						property(self(), "y"))
 				.withMethod("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
 				.withMethod("anyEqual",
 						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("setPojoField1",
-						call(arg(0), "setField1", arg(1)))
-				.withMethod("getPojoField1",
-						call(arg(0), "getField1"))
+				.withMethod("setPojoproperty1",
+						call(arg(0), "setproperty1", arg(1)))
+				.withMethod("getPojoproperty1",
+						call(arg(0), "getproperty1"))
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(field(self(), "x"))
-								.withArgument("labelY: ", field(self(), "y")))
+								.withArgument(property(self(), "x"))
+								.withArgument("labelY: ", property(self(), "y")))
 				.build();
 
 		Class<Test> testClass2 = ClassBuilder.create(definingClassLoader, Test.class)
 				.withField("x", int.class)
 				.withField("y", Long.class)
 				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
-						compare(TestPojo.class, "field1", "field2"))
+						compare(TestPojo.class, "property1", "property2"))
 				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
 						compareTo("x"))
 				.withMethod("equals",
 						asEquals("x"))
 				.withMethod("setXY", sequence(
-						set(field(self(), "x"), arg(0)),
-						set(field(self(), "y"), arg(1))))
+						set(property(self(), "x"), arg(0)),
+						set(property(self(), "y"), arg(1))))
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
-				.withMethod("field1",
-						field(arg(0), "field1"))
+						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2")))
+				.withMethod("property1",
+						property(arg(0), "property1"))
 				.withMethod("setter", sequence(
-						set(field(arg(0), "field1"), value(10)),
-						set(field(arg(0), "field2"), value(20)),
+						set(property(arg(0), "property1"), value(10)),
+						set(property(arg(0), "property2"), value(20)),
 						arg(0)))
 				.withMethod("ctor", sequence(
 						local,
-						set(field(local, "field2"), value(2)),
+						set(property(local, "property2"), value(2)),
 						local))
 				.withMethod("getX",
-						field(self(), "x"))
+						property(self(), "x"))
 				.withMethod("getY",
-						field(self(), "y"))
+						property(self(), "y"))
 				.withMethod("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
 				.withMethod("anyEqual",
 						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("setPojoField1",
-						call(arg(0), "setField1", arg(1)))
-				.withMethod("getPojoField1",
-						call(arg(0), "getField1"))
+				.withMethod("setPojoproperty1",
+						call(arg(0), "setproperty1", arg(1)))
+				.withMethod("getPojoproperty1",
+						call(arg(0), "getproperty1"))
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(field(self(), "x"))
-								.withArgument("labelY: ", field(self(), "y")))
+								.withArgument(property(self(), "x"))
+								.withArgument("labelY: ", property(self(), "y")))
 				.build();
 
 		assertEquals(testClass1, testClass2);
@@ -802,8 +802,8 @@ public class ExpressionTest {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Comparator generatedComparator = ClassBuilder.create(classLoader, Comparator.class)
 				.withMethod("compare", ExpressionComparator.create()
-						.with(leftField(StringHolder.class, "string1"), rightField(StringHolder.class, "string1"), true)
-						.with(leftField(StringHolder.class, "string2"), rightField(StringHolder.class, "string2"), true))
+						.with(leftProperty(StringHolder.class, "string1"), rightProperty(StringHolder.class, "string1"), true)
+						.with(leftProperty(StringHolder.class, "string2"), rightProperty(StringHolder.class, "string2"), true))
 				.buildClassAndCreateNewInstance();
 
 		List<StringHolder> strings = Arrays.asList(new StringHolder(null, "b"), new StringHolder(null, "a"),
@@ -994,6 +994,6 @@ public class ExpressionTest {
 		Getter instance = ClassBuilder.create(definingClassLoader, Getter.class)
 				.withMethod("get", value(testObject))
 				.buildClassAndCreateNewInstance();
-		assertTrue(testObject == instance.get(null));
+		assertSame(testObject, instance.get(null));
 	}
 }

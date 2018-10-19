@@ -20,7 +20,7 @@ import io.datakernel.codegen.AbstractExpressionMapForEach;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.VarLocal;
 
-import static io.datakernel.codegen.Expressions.field;
+import static io.datakernel.codegen.Expressions.property;
 
 public final class ForEachHppcMap extends AbstractExpressionMapForEach {
 
@@ -35,11 +35,11 @@ public final class ForEachHppcMap extends AbstractExpressionMapForEach {
 
 	@Override
 	protected Expression getKey(VarLocal entry) {
-		return field(entry, "key");
+		return property(entry, "key");
 	}
 
 	@Override
 	protected Expression getValue(VarLocal entry) {
-		return field(entry, "value");
+		return property(entry, "value");
 	}
 }

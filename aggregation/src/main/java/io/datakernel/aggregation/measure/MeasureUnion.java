@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package io.datakernel.aggregation.measure;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.VarField;
+import io.datakernel.codegen.Property;
 
 import java.util.*;
 
@@ -35,12 +35,12 @@ public final class MeasureUnion extends Measure {
 	}
 
 	@Override
-	public Expression zeroAccumulator(VarField accumulator) {
+	public Expression zeroAccumulator(Property accumulator) {
 		return sequence(getInitializeExpression(accumulator));
 	}
 
 	@Override
-	public Expression initAccumulatorWithAccumulator(VarField accumulator,
+	public Expression initAccumulatorWithAccumulator(Property accumulator,
 	                                                 Expression firstAccumulator) {
 		return sequence(
 				getInitializeExpression(accumulator),
@@ -48,14 +48,14 @@ public final class MeasureUnion extends Measure {
 	}
 
 	@Override
-	public Expression reduce(VarField accumulator,
-	                         VarField nextAccumulator) {
+	public Expression reduce(Property accumulator,
+			Property nextAccumulator) {
 		return call(accumulator, "addAll", cast(nextAccumulator, Collection.class));
 	}
 
 	@Override
-	public Expression initAccumulatorWithValue(VarField accumulator,
-	                                           VarField firstValue) {
+	public Expression initAccumulatorWithValue(Property accumulator,
+			Property firstValue) {
 		List<Expression> expressions = new ArrayList<>();
 		expressions.add(getInitializeExpression(accumulator));
 		expressions.add(call(accumulator, "add", cast(firstValue, Object.class)));
@@ -63,12 +63,12 @@ public final class MeasureUnion extends Measure {
 	}
 
 	@Override
-	public Expression accumulate(VarField accumulator,
-	                             VarField nextValue) {
+	public Expression accumulate(Property accumulator,
+			Property nextValue) {
 		return call(accumulator, "add", cast(nextValue, Object.class));
 	}
 
-	private Expression getInitializeExpression(VarField accumulator) {
+	private Expression getInitializeExpression(Property accumulator) {
 		Class<?> accumulatorClass = fieldType.getInternalDataType();
 		if (accumulatorClass.isAssignableFrom(List.class))
 			return set(accumulator, constructor(ArrayList.class));

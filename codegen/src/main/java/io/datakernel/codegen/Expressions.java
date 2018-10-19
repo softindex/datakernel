@@ -101,26 +101,26 @@ public final class Expressions {
 	}
 
 	/**
-	 * Returns the field from owner
+	 * Returns the property from owner
 	 *
-	 * @param owner owner of the field
-	 * @param field name of the field which will be returned
-	 * @return new instance of the VarField
+	 * @param owner owner of the property
+	 * @param property name of the property which will be returned
+	 * @return new instance of the Property
 	 */
-	public static VarField field(Expression owner, String field) {
-		return new VarField(owner, field);
+	public static Property property(Expression owner, String property) {
+		return new Property(owner, property);
 	}
 
 	/**
-	 * Sets value to the field in owner
+	 * Sets value to the property in owner
 	 *
-	 * @param owner owner of the field
-	 * @param field name of field which will be changed
-	 * @param value new value for the field
+	 * @param owner owner of the property
+	 * @param property name of property which will be changed
+	 * @param value new value for the property
 	 * @return new instance of the ExpressionSet
 	 */
-	public static Expression set(Expression owner, String field, Expression value) {
-		return set(field(owner, field), value);
+	public static Expression set(Expression owner, String property, Expression value) {
+		return set(property(owner, property), value);
 	}
 
 	/**
@@ -242,103 +242,103 @@ public final class Expressions {
 	}
 
 	/**
-	 * Verifies that the fields are equal
+	 * Verifies that the properties are equal
 	 *
-	 * @param fields list of the fields
+	 * @param properties list of the properties
 	 * @return new instance of the Expression
 	 */
-	public static Expression asEquals(List<String> fields) {
+	public static Expression asEquals(List<String> properties) {
 		PredicateDefAnd predicate = PredicateDefAnd.create();
-		for (String field : fields) {
+		for (String property : properties) {
 			predicate.add(cmpEq(
-					field(self(), field),
-					field(cast(arg(0), ExpressionCast.THIS_TYPE), field)));
+					property(self(), property),
+					property(cast(arg(0), ExpressionCast.THIS_TYPE), property)));
 		}
 		return predicate;
 	}
 
 	/**
-	 * Returns the string which was constructed from fields
+	 * Returns the string which was constructed from properties
 	 *
-	 * @param fields list of the fields
+	 * @param properties list of the properties
 	 * @return new instance of the ExpressionToString
 	 */
-	public static Expression asString(List<String> fields) {
+	public static Expression asString(List<String> properties) {
 		ExpressionToString toString = new ExpressionToString();
-		for (String field : fields) {
-			toString.withArgument(field + "=", field(self(), field));
+		for (String property : properties) {
+			toString.withArgument(property + "=", property(self(), property));
 		}
 		return toString;
 	}
 
 	/**
-	 * Returns the string which was constructed from fields
+	 * Returns the string which was constructed from properties
 	 *
-	 * @param fields list of the fields
+	 * @param properties list of the properties
 	 * @return new instance of the ExpressionToString
 	 */
-	public static Expression asString(String... fields) {
-		return asString(asList(fields));
+	public static Expression asString(String... properties) {
+		return asString(asList(properties));
 	}
 
 	/**
-	 * Verifies that the fields are equal
+	 * Verifies that the properties are equal
 	 *
-	 * @param fields list of the fields
+	 * @param properties list of the properties
 	 * @return new instance of the Expression
 	 */
-	public static Expression asEquals(String... fields) {
-		return asEquals(asList(fields));
+	public static Expression asEquals(String... properties) {
+		return asEquals(asList(properties));
 	}
 
 	/**
-	 * Compares the fields
+	 * Compares the properties
 	 *
-	 * @param type   type of the fields
-	 * @param fields fields which will be compared
+	 * @param type type of the properties
+	 * @param properties properties which will be compared
 	 * @return new instance of the ExpressionComparator
 	 */
-	public static ExpressionComparator compare(Class<?> type, List<String> fields) {
+	public static ExpressionComparator compare(Class<?> type, List<String> properties) {
 		ExpressionComparator comparator = ExpressionComparator.create();
-		for (String field : fields) {
-			comparator = comparator.with(leftField(type, field), rightField(type, field), true);
+		for (String property : properties) {
+			comparator = comparator.with(leftProperty(type, property), rightProperty(type, property), true);
 		}
 		return comparator;
 	}
 
 	/**
-	 * Compares the fields
+	 * Compares the properties
 	 *
-	 * @param type   type of the fields
-	 * @param fields fields which will be compared
+	 * @param type   type of the properties
+	 * @param properties properties which will be compared
 	 * @return new instance of the ExpressionComparator
 	 */
-	public static ExpressionComparator compare(Class<?> type, String... fields) {
-		return compare(type, asList(fields));
+	public static ExpressionComparator compare(Class<?> type, String... properties) {
+		return compare(type, asList(properties));
 	}
 
 	/**
-	 * Compares the fields
+	 * Compares the properties
 	 *
-	 * @param fields list of the fields with will be compared
+	 * @param properties list of the properties with will be compared
 	 * @return new instance of the ExpressionComparator
 	 */
-	public static ExpressionComparator compareTo(List<String> fields) {
+	public static ExpressionComparator compareTo(List<String> properties) {
 		ExpressionComparator comparator = ExpressionComparator.create();
-		for (String field : fields) {
-			comparator = comparator.with(thisField(field), thatField(field), true);
+		for (String property : properties) {
+			comparator = comparator.with(thisProperty(property), thatProperty(property), true);
 		}
 		return comparator;
 	}
 
 	/**
-	 * Compares the fields
+	 * Compares the properties
 	 *
-	 * @param fields list of the fields with will be compared
+	 * @param properties list of the properties with will be compared
 	 * @return new instance of the ExpressionComparator
 	 */
-	public static ExpressionComparator compareTo(String... fields) {
-		return compareTo(asList(fields));
+	public static ExpressionComparator compareTo(String... properties) {
+		return compareTo(asList(properties));
 	}
 
 	/**
@@ -352,41 +352,41 @@ public final class Expressions {
 	}
 
 	/**
-	 * Returns hash of the fields
+	 * Returns hash of the properties
 	 *
-	 * @param fields list of the fields which will be hashed
+	 * @param properties list of the properties which will be hashed
 	 * @return new instance of the ExpressionHash
 	 */
-	public static ExpressionHash hashCodeOfThis(List<String> fields) {
+	public static ExpressionHash hashCodeOfThis(List<String> properties) {
 		List<Expression> arguments = new ArrayList<>();
-		for (String field : fields) {
-			arguments.add(field(new VarThis(), field));
+		for (String property : properties) {
+			arguments.add(property(new VarThis(), property));
 		}
 		return new ExpressionHash(arguments);
 	}
 
-	public static ExpressionHash hashCodeOfThis(String... fields) {
-		return hashCodeOfThis(asList(fields));
+	public static ExpressionHash hashCodeOfThis(String... properties) {
+		return hashCodeOfThis(asList(properties));
 	}
 
 	/**
-	 * Returns a hash code which calculated from fields
+	 * Returns a hash code which calculated from properties
 	 *
-	 * @param fields list of the fields which will be hashed
+	 * @param properties list of the properties which will be hashed
 	 * @return new instance of the ExpressionHash
 	 */
-	public static ExpressionHash hashCodeOfArgs(List<Expression> fields) {
-		return new ExpressionHash(fields);
+	public static ExpressionHash hashCodeOfArgs(List<Expression> properties) {
+		return new ExpressionHash(properties);
 	}
 
 	/**
-	 * Returns a hash code which calculated from fields
+	 * Returns a hash code which calculated from properties
 	 *
-	 * @param fields list of the fields which will be hashed
+	 * @param properties list of the properties which will be hashed
 	 * @return new instance of the ExpressionHash
 	 */
-	public static ExpressionHash hashCodeOfArgs(Expression... fields) {
-		return hashCodeOfArgs(asList(fields));
+	public static ExpressionHash hashCodeOfArgs(Expression... properties) {
+		return hashCodeOfArgs(asList(properties));
 	}
 
 	public static Class<?> unifyArithmeticTypes(Class<?>... types) {

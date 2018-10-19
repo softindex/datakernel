@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,7 +78,7 @@ public final class Utils {
 						extractKey.add(setArrayItem(key, value(i),
 								fullySpecifiedDimensions.containsKey(dimension) ?
 										getArrayItem(value(fullySpecifiedDimensionsArray), value(i)) :
-										cast(field(cast(arg(0), recordClass), dimension), Object.class)));
+										cast(property(cast(arg(0), recordClass), dimension), Object.class)));
 					}
 					return extractKey.add(key);
 				})
@@ -92,7 +92,7 @@ public final class Utils {
 						String attributeName = attribute.substring(attribute.indexOf('.') + 1);
 						int resolverAttributeIndex = resolverAttributes.indexOf(attributeName);
 						applyAttributes.add(set(
-								field(cast(arg(0), recordClass), attribute.replace('.', '$')),
+								property(cast(arg(0), recordClass), attribute.replace('.', '$')),
 								getArrayItem(arg(1), value(resolverAttributeIndex))));
 					}
 					return applyAttributes;

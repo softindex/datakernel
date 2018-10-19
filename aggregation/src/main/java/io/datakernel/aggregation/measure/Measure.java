@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package io.datakernel.aggregation.measure;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.VarField;
+import io.datakernel.codegen.Property;
 
 public abstract class Measure {
 	protected final FieldType fieldType;
@@ -33,13 +33,13 @@ public abstract class Measure {
 
 	public abstract Expression valueOfAccumulator(Expression accumulator);
 
-	public abstract Expression zeroAccumulator(VarField accumulator);
+	public abstract Expression zeroAccumulator(Property accumulator);
 
-	public abstract Expression initAccumulatorWithAccumulator(VarField accumulator, Expression firstAccumulator);
+	public abstract Expression initAccumulatorWithAccumulator(Property accumulator, Expression firstAccumulator);
 
-	public abstract Expression initAccumulatorWithValue(VarField accumulator, VarField firstValue);
+	public abstract Expression initAccumulatorWithValue(Property accumulator, Property firstValue);
 
-	public abstract Expression reduce(VarField accumulator, VarField nextAccumulator);
+	public abstract Expression reduce(Property accumulator, Property nextAccumulator);
 
-	public abstract Expression accumulate(VarField accumulator, VarField nextValue);
+	public abstract Expression accumulate(Property accumulator, Property nextValue);
 }

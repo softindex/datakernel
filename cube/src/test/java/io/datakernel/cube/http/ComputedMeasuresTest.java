@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,12 +61,12 @@ public class ComputedMeasuresTest {
 				.withField("b", long.class)
 				.withField("c", double.class)
 				.withField("d", double.class)
-				.withMethod("computeMeasures", set(field(self(), "d"), d.getExpression(self(), MEASURES)))
+				.withMethod("computeMeasures", set(property(self(), "d"), d.getExpression(self(), MEASURES)))
 				.withMethod("init", sequence(
-						set(field(self(), "a"), Expressions.value(1)),
-						set(field(self(), "b"), Expressions.value(100)),
-						set(field(self(), "c"), Expressions.value(5))))
-				.withMethod("getResult", field(self(), "d"))
+						set(property(self(), "a"), Expressions.value(1)),
+						set(property(self(), "b"), Expressions.value(100)),
+						set(property(self(), "c"), Expressions.value(5))))
+				.withMethod("getResult", property(self(), "d"))
 				.buildClassAndCreateNewInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.computeMeasures();
@@ -84,12 +84,12 @@ public class ComputedMeasuresTest {
 				.withField("b", long.class)
 				.withField("c", double.class)
 				.withField("d", double.class)
-				.withMethod("computeMeasures", set(field(self(), "d"), d.getExpression(self(), MEASURES)))
+				.withMethod("computeMeasures", set(property(self(), "d"), d.getExpression(self(), MEASURES)))
 				.withMethod("init", sequence(
-						set(field(self(), "a"), Expressions.value(1)),
-						set(field(self(), "b"), Expressions.value(0)),
-						set(field(self(), "c"), Expressions.value(0))))
-				.withMethod("getResult", field(self(), "d"))
+						set(property(self(), "a"), Expressions.value(1)),
+						set(property(self(), "b"), Expressions.value(0)),
+						set(property(self(), "c"), Expressions.value(0))))
+				.withMethod("getResult", property(self(), "d"))
 				.buildClassAndCreateNewInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.computeMeasures();
@@ -105,11 +105,11 @@ public class ComputedMeasuresTest {
 				.withField("a", double.class)
 				.withField("b", double.class)
 				.withField("c", double.class)
-				.withMethod("computeMeasures", set(field(self(), "c"), c.getExpression(self(), MEASURES)))
+				.withMethod("computeMeasures", set(property(self(), "c"), c.getExpression(self(), MEASURES)))
 				.withMethod("init", sequence(
-						set(field(self(), "a"), Expressions.value(2.0)),
-						set(field(self(), "b"), Expressions.value(7.0))))
-				.withMethod("getResult", field(self(), "c"))
+						set(property(self(), "a"), Expressions.value(2.0)),
+						set(property(self(), "b"), Expressions.value(7.0))))
+				.withMethod("getResult", property(self(), "c"))
 				.buildClassAndCreateNewInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.computeMeasures();
@@ -125,11 +125,11 @@ public class ComputedMeasuresTest {
 				.withField("a", double.class)
 				.withField("b", double.class)
 				.withField("c", double.class)
-				.withMethod("computeMeasures", set(field(self(), "c"), c.getExpression(self(), MEASURES)))
+				.withMethod("computeMeasures", set(property(self(), "c"), c.getExpression(self(), MEASURES)))
 				.withMethod("init", sequence(
-						set(field(self(), "a"), Expressions.value(0.0)),
-						set(field(self(), "b"), Expressions.value(1E-10))))
-				.withMethod("getResult", field(self(), "c"))
+						set(property(self(), "a"), Expressions.value(0.0)),
+						set(property(self(), "b"), Expressions.value(1E-10))))
+				.withMethod("getResult", property(self(), "c"))
 				.buildClassAndCreateNewInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.computeMeasures();

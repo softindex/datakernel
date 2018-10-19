@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,8 +87,8 @@ public class AggregationUtils {
 					ExpressionSequence sequence = ExpressionSequence.create();
 					for (String fieldName : (Iterable<String>) Stream.concat(keys.stream(), fields.stream())::iterator) {
 						sequence.add(set(
-								field(result1, fieldName),
-								field(cast(arg(0), recordClass), fieldName)));
+								property(result1, fieldName),
+								property(cast(arg(0), recordClass), fieldName)));
 					}
 					return sequence.add(result1);
 				})
@@ -104,8 +104,8 @@ public class AggregationUtils {
 					ExpressionSequence sequence = ExpressionSequence.create();
 					for (String keyString : keys) {
 						sequence.add(set(
-								field(key, keyString),
-								field(cast(arg(0), recordClass), keyString)));
+								property(key, keyString),
+								property(cast(arg(0), recordClass), keyString)));
 					}
 					return sequence.add(key);
 				})
@@ -177,19 +177,19 @@ public class AggregationUtils {
 
 		for (String key : keys) {
 			onFirstItem.add(set(
-					field(accumulator, key),
-					field(cast(arg(2), inputClass), key)));
+					property(accumulator, key),
+					property(cast(arg(2), inputClass), key)));
 		}
 
 		for (String field : fields) {
 			Measure aggregateFunction = aggregation.getMeasure(field);
 			onFirstItem.add(aggregateFunction.initAccumulatorWithAccumulator(
-					field(accumulator, field),
-					field(cast(arg(2), inputClass), field)
+					property(accumulator, field),
+					property(cast(arg(2), inputClass), field)
 			));
 			onNextItem.add(aggregateFunction.reduce(
-					field(cast(arg(3), outputClass), field),
-					field(cast(arg(2), inputClass), field)
+					property(cast(arg(3), outputClass), field),
+					property(cast(arg(2), inputClass), field)
 			));
 		}
 
@@ -214,8 +214,8 @@ public class AggregationUtils {
 		for (String key : keyFields.keySet()) {
 			String inputField = keyFields.get(key);
 			createAccumulator.add(set(
-					field(accumulator, key),
-					field(cast(arg(0), inputClass), inputField)));
+					property(accumulator, key),
+					property(cast(arg(0), inputClass), inputField)));
 		}
 
 		for (String measure : measureFields.keySet()) {
@@ -223,11 +223,11 @@ public class AggregationUtils {
 			Measure aggregateFunction = aggregation.getMeasure(measure);
 
 			createAccumulator.add(aggregateFunction.initAccumulatorWithValue(
-					field(accumulator, measure),
-					inputFields == null ? null : field(cast(arg(0), inputClass), inputFields)));
+					property(accumulator, measure),
+					inputFields == null ? null : property(cast(arg(0), inputClass), inputFields)));
 			accumulate.add(aggregateFunction.accumulate(
-					field(cast(arg(0), outputClass), measure),
-					inputFields == null ? null : field(cast(arg(1), inputClass), inputFields)));
+					property(cast(arg(0), outputClass), measure),
+					inputFields == null ? null : property(cast(arg(1), inputClass), inputFields)));
 		}
 
 		createAccumulator.add(accumulator);
@@ -252,8 +252,8 @@ public class AggregationUtils {
 		PredicateDefAnd predicate = PredicateDefAnd.create();
 		for (String keyComponent : partitioningKey) {
 			predicate.add(cmpEq(
-					field(cast(arg(0), recordClass), keyComponent),
-					field(cast(arg(1), recordClass), keyComponent)));
+					property(cast(arg(0), recordClass), keyComponent),
+					property(cast(arg(1), recordClass), keyComponent)));
 		}
 
 		return ClassBuilder.create(classLoader, PartitionPredicate.class)
