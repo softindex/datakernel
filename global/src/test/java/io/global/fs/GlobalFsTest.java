@@ -30,36 +30,42 @@ import io.datakernel.stream.processor.ActiveStagesRule;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.RawServerId;
+import io.global.common.RepoID;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
-import io.global.fs.api.CheckpointPositionStrategy;
-import io.global.fs.api.GlobalFsNode;
-import io.global.fs.api.NodeFactory;
+import io.global.fs.api.*;
 import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsGatewayDriver;
 import io.global.fs.local.GlobalFsNodeDriver;
 import io.global.fs.local.RuntimeDiscoveryService;
+import io.global.fs.transformers.FrameSigner;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
+import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.*;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.fs.api.CheckpointPositionStrategy.randRange;
+import static io.global.fs.api.CheckpointPosStrategy.fixed;
+import static io.global.fs.api.CheckpointPosStrategy.randRange;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class GlobalFsTest {
 	static {
@@ -81,7 +87,7 @@ public class GlobalFsTest {
 	private KeyPair alice, bob;
 
 	@Before
-	public void setUp() throws IOException {
+	public void setUp() {
 		eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
 		executor = Executors.newSingleThreadExecutor();
 		discoveryService = new RuntimeDiscoveryService();
@@ -89,7 +95,7 @@ public class GlobalFsTest {
 		alice = KeyPair.generate();
 		bob = KeyPair.generate();
 
-		FsClient storage = LocalFsClient.create(eventloop, executor, temporaryFolder.newFolder().toPath());
+		FsClient storage = LocalFsClient.create(eventloop, executor, Paths.get("/tmp/TESTS2/")); //temporaryFolder.newFolder().toPath());
 		clientFactory = new NodeFactory() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
@@ -105,7 +111,7 @@ public class GlobalFsTest {
 	}
 
 	@Test
-	public void testCutters() {
+	public void cutters() {
 		GlobalFsNode client = clientFactory.create(new RawServerId(new InetSocketAddress(12345)));
 
 		FsClient adapter = GlobalFsGatewayDriver.createFsAdapter(client, alice, "testFs", randRange(25, 50));
@@ -165,13 +171,11 @@ public class GlobalFsTest {
 	}
 
 	@Test
-	public void testSeparate() {
+	public void separate() {
 		GlobalFsNode client = clientFactory.create(new RawServerId(new InetSocketAddress(12345)));
-		KeyPair alice = KeyPair.generate();
-		KeyPair bob = KeyPair.generate();
 
-		FsClient adapted = GlobalFsGatewayDriver.createFsAdapter(client, alice, "testFs", CheckpointPositionStrategy.fixed(3));
-		FsClient other = GlobalFsGatewayDriver.createFsAdapter(client, bob, "testFs", CheckpointPositionStrategy.fixed(4));
+		FsClient adapted = GlobalFsGatewayDriver.createFsAdapter(client, alice, "testFs", CheckpointPosStrategy.fixed(3));
+		FsClient other = GlobalFsGatewayDriver.createFsAdapter(client, bob, "testFs", CheckpointPosStrategy.fixed(4));
 
 		String content = "hello world, i am here!";
 
@@ -187,6 +191,47 @@ public class GlobalFsTest {
 	}
 
 	@Test
+	public void downloadOnlyCheckpoint() {
+		GlobalFsNode client = clientFactory.create(new RawServerId(new InetSocketAddress(12345)));
+		GlobalPath file = GlobalPath.of(alice, "testFs", "folder/test.txt");
+
+		SerialSupplier.of(wrapUtf8("little test content"))
+				.apply(new FrameSigner(file.toLocalPath(), 0, CheckpointPosStrategy.fixed(4), alice.getPrivKey(), new SHA256Digest()))
+				.streamTo(client.uploader(file, -1))
+				.thenCompose($ -> client.downloader(file, 4, 0).toCollector(toList()))
+				.whenComplete(assertComplete(list -> {
+					System.out.println(list);
+					assertEquals(1, list.size());
+					DataFrame frame = list.get(0);
+					assertTrue(frame.isCheckpoint());
+					assertTrue(frame.getCheckpoint().verify(alice.getPubKey()));
+					assertEquals(4, frame.getCheckpoint().getData().getPosition());
+				}));
+
+		eventloop.run();
+	}
+
+	@Test
+	public void uploadWithOffset() {
+		GlobalFsNode client = clientFactory.create(new RawServerId(new InetSocketAddress(12345)));
+		GlobalPath file = GlobalPath.of(alice, "testFs", "folder/test.txt");
+
+		GlobalFsGateway gateway = GlobalFsGatewayDriver.create(client, alice, fixed(8));
+
+		SerialSupplier.of(wrapUtf8("first line of the content\n"))
+				.streamTo(gateway.uploader(file))
+				.thenCompose($ ->
+						SerialSupplier.of(wrapUtf8("ntent\nsecond line, appended\n"))
+								.streamTo(gateway.uploader(file, 20)))
+				.thenCompose($ -> gateway.downloader(file).toCollector(ByteBufQueue.collector()))
+				.whenResult(buf -> System.out.println(buf.asString(UTF_8)))
+				.thenCompose($ -> gateway.getMetadata(file))
+				.whenComplete(assertComplete(meta -> assertEquals(48, meta.getSize())));
+
+		eventloop.run();
+	}
+
+	@Test
 	public void test() throws IOException {
 		KeyPair keys = KeyPair.generate();
 
@@ -197,7 +242,7 @@ public class GlobalFsTest {
 
 		GlobalFsNode client = new HttpGlobalFsNode(new RawServerId(new InetSocketAddress(8080)), AsyncHttpClient.create(eventloop));
 
-		FsClient adapter = GlobalFsGatewayDriver.createFsAdapter(client, keys, "testFs", CheckpointPositionStrategy.fixed(5));
+		FsClient adapter = GlobalFsGatewayDriver.createFsAdapter(client, keys, "testFs", CheckpointPosStrategy.fixed(5));
 
 		adapter.download("hello/this/is/long/path.txt")
 				.whenComplete(assertComplete());
@@ -218,11 +263,12 @@ public class GlobalFsTest {
 
 	@Test
 	@Ignore // requires launched discovery service and two nodes
-	public void theTest() throws UnknownHostException {
+	public void uploadDownload() throws UnknownHostException {
 		KeyPair keys = KeyPair.generate();
+		RepoID testFs = RepoID.of(keys, "testFs");
 
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
-		DiscoveryService discoveryService = new HttpDiscoveryService(new InetSocketAddress(9001), client);
+		DiscoveryService discoveryService = HttpDiscoveryService.create(new InetSocketAddress(9001), client);
 
 		RawServerId firstId = new RawServerId(new InetSocketAddress(InetAddress.getLocalHost(), 8001));
 		RawServerId secondId = new RawServerId(new InetSocketAddress(InetAddress.getLocalHost(), 8002));
@@ -230,15 +276,15 @@ public class GlobalFsTest {
 		GlobalFsNode first = new HttpGlobalFsNode(firstId, client);
 		GlobalFsNode second = new HttpGlobalFsNode(secondId, client);
 
-		FsClient firstAdapted = GlobalFsGatewayDriver.createFsAdapter(first, keys, "testFs", CheckpointPositionStrategy.fixed(8));
-		FsClient secondAdapted = GlobalFsGatewayDriver.createFsAdapter(second, keys, "testFs", CheckpointPositionStrategy.fixed(16));
+		FsClient firstAdapted = GlobalFsGatewayDriver.createFsAdapter(first, keys, "testFs", CheckpointPosStrategy.fixed(8));
+		FsClient secondAdapted = GlobalFsGatewayDriver.createFsAdapter(second, keys, "testFs", CheckpointPosStrategy.fixed(16));
 
 		String text1 = "Hello world, this is some bytes ";
 		String text2 = "to be sent through the GlobalFs HTTP interface";
 
 		SerialSupplier<ByteBuf> supplier = SerialSupplier.of(ByteBuf.wrapForReading(text1.getBytes(UTF_8)), ByteBuf.wrapForReading(text2.getBytes(UTF_8)));
 
-		discoveryService.append(keys, AnnounceData.of(Instant.now().toEpochMilli(), keys.getPubKey(), set(firstId, secondId)))
+		discoveryService.append(testFs, AnnounceData.of(Instant.now().toEpochMilli(), set(firstId, secondId)), keys.getPrivKey())
 				.whenResult($ -> System.out.println("Servers announced"))
 				.thenCompose($ -> firstAdapted.upload("test.txt"))
 				.thenCompose(supplier::streamTo)
@@ -257,10 +303,12 @@ public class GlobalFsTest {
 	@Ignore
 	public void announceNodes() throws ParseException {
 		KeyPair alice = PrivKey.fromString("IGt2RZdSjXaDLoLZn4DvimyjXRm4QNYSiXSip-uUkjzE").computeKeys();
+		RepoID aliceTestFs = RepoID.of(alice, "testFs");
 		KeyPair bob = PrivKey.fromString("IEioklPt2UgNsAM0UfSFjKMU5JAu0qBm7EMWwoVQG3Wf").computeKeys();
+		RepoID bobTestFs = RepoID.of(bob, "testFs");
 
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
-		DiscoveryService discoveryService = new HttpDiscoveryService(new InetSocketAddress(9001), client);
+		DiscoveryService discoveryService = HttpDiscoveryService.create(new InetSocketAddress(9001), client);
 
 		Set<RawServerId> servers = new HashSet<>();
 
@@ -270,8 +318,8 @@ public class GlobalFsTest {
 
 		eventloop.post(() ->
 				Stages.all(
-						discoveryService.announce(alice, AnnounceData.of(123, alice.getPubKey(), servers)),
-						discoveryService.announce(bob, AnnounceData.of(234, bob.getPubKey(), servers))
+						discoveryService.announce(aliceTestFs, AnnounceData.of(123, servers), alice.getPrivKey()),
+						discoveryService.announce(bobTestFs, AnnounceData.of(234, servers), bob.getPrivKey())
 				)
 						.whenComplete(assertComplete()));
 

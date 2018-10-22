@@ -14,27 +14,14 @@
  * limitations under the License.
  */
 
-package io.global.ot.api;
+package io.global.fs.api;
 
 import io.datakernel.async.Stage;
-import io.global.common.PubKey;
 import io.global.common.SignedData;
 
-import java.util.HashMap;
+public interface MetadataStorage {
 
-public class RawDiscoveryServiceStub implements RawDiscoveryService {
-	private final HashMap<PubKey, SignedData<RawAnnounceData>> map = new HashMap<>();
+	Stage<SignedData<GlobalFsMetadata>> getMetadata(String fileName);
 
-	@Override
-	public Stage<SignedData<RawAnnounceData>> findServers(PubKey pubKey) {
-		return Stage.of(map.get(pubKey));
-	}
-
-	@Override
-	public Stage<Void> announce(SignedData<RawAnnounceData> announceData) {
-		map.compute(announceData.getData().getPubKey(),
-				(pubKey, existing) ->
-						announceData.getData().getTimestamp() > existing.getData().getTimestamp() ? announceData : existing);
-		return Stage.complete();
-	}
+	Stage<Void> pushMetadata(SignedData<GlobalFsMetadata> signedMetadata);
 }

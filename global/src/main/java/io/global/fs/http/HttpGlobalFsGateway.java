@@ -22,20 +22,20 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.file.FileUtils;
-import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpMessage;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialZeroBuffer;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
+import io.global.common.RepoID;
 import io.global.fs.api.GlobalFsGateway;
 import io.global.fs.api.GlobalFsMetadata;
-import io.global.fs.api.GlobalFsPath;
-import io.global.fs.api.GlobalFsSpace;
+import io.global.fs.api.GlobalPath;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -46,42 +46,42 @@ import static java.util.stream.Collectors.toList;
 
 public final class HttpGlobalFsGateway implements GlobalFsGateway {
 	private final InetSocketAddress address;
-	private final AsyncHttpClient client;
+	private final IAsyncHttpClient client;
 
 	// region creators
-	public HttpGlobalFsGateway(RawServerId id, AsyncHttpClient client) {
+	public HttpGlobalFsGateway(RawServerId id, IAsyncHttpClient client) {
 		this.client = client;
 		this.address = id.getInetSocketAddress();
 	}
 	// endregion
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> download(GlobalFsPath path, long offset, long limit) {
+	public Stage<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset, long limit) {
 		return client.request(
 				HttpRequest.get(
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(DOWNLOAD)
-								.appendPathPart(path.getPubKey().asString())
+								.appendPathPart(path.getOwner().asString())
 								.appendPathPart(path.getFs())
 								.appendPath(path.getPath())
-								.appendQuery("offset", offset)
-								.appendQuery("limit", limit)
+								.appendQuery("offset", "" + offset)
+								.appendQuery("limit", "" + limit)
 								.build()))
 				.thenApply(HttpMessage::getBodyStream);
 	}
 
 	@Override
-	public SerialConsumer<ByteBuf> uploader(GlobalFsPath path, long offset) {
+	public SerialConsumer<ByteBuf> uploader(GlobalPath path, long offset) {
 		SerialZeroBuffer<ByteBuf> buffer = new SerialZeroBuffer<>();
 		MaterializedStage<HttpResponse> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(UPLOAD)
-						.appendPathPart(path.getPubKey().asString())
+						.appendPathPart(path.getOwner().asString())
 						.appendPathPart(path.getFs())
 						.appendPath(path.getPath())
-						.appendQuery("offset", offset)
+						.appendQuery("offset", "" + offset)
 						.build())
 				.withBodyStream(buffer.getSupplier()))
 				.materialize();
@@ -89,19 +89,19 @@ public final class HttpGlobalFsGateway implements GlobalFsGateway {
 	}
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> upload(GlobalFsPath path, long offset) {
+	public Stage<SerialConsumer<ByteBuf>> upload(GlobalPath path, long offset) {
 		return Stage.of(uploader(path, offset));
 	}
 
 	@Override
-	public Stage<List<GlobalFsMetadata>> list(GlobalFsSpace space, String glob) {
-		PubKey pubKey = space.getPubKey();
+	public Stage<List<GlobalFsMetadata>> list(RepoID space, String glob) {
+		PubKey pubKey = space.getOwner();
 		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(LIST)
 						.appendPathPart(pubKey.asString())
-						.appendPathPart(space.getFs())
+						.appendPathPart(space.getName())
 						.appendQuery("glob", glob)
 						.build()))
 				.thenCompose(response ->
@@ -117,19 +117,19 @@ public final class HttpGlobalFsGateway implements GlobalFsGateway {
 	}
 
 	@Override
-	public Stage<Void> delete(GlobalFsPath path) {
-		return delete(path.getSpace(), FileUtils.escapeGlob(path.getPath()));
+	public Stage<Void> delete(GlobalPath path) {
+		return delete(path.toRepoID(), FileUtils.escapeGlob(path.getPath()));
 	}
 
 	@Override
-	public Stage<Void> delete(GlobalFsSpace space, String glob) {
-		PubKey pubKey = space.getPubKey();
+	public Stage<Void> delete(RepoID space, String glob) {
+		PubKey pubKey = space.getOwner();
 		return client.request(HttpRequest.get(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(DEL)
 						.appendPathPart(pubKey.asString())
-						.appendPathPart(space.getFs())
+						.appendPathPart(space.getName())
 						.appendQuery("glob", glob)
 						.build()))
 				.toVoid();

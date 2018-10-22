@@ -18,20 +18,20 @@ package io.global.fs.api;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-public interface CheckpointPositionStrategy {
+public interface CheckpointPosStrategy {
 
 	long nextPosition(long position);
 
-	static CheckpointPositionStrategy fixed(long offset) {
+	static CheckpointPosStrategy fixed(long offset) {
 		return pos -> pos + offset;
 	}
 
-	static CheckpointPositionStrategy randRange(long min, long max) {
+	static CheckpointPosStrategy randRange(long min, long max) {
 		return pos -> pos + ThreadLocalRandom.current().nextLong(min, max);
 	}
 
-	static CheckpointPositionStrategy alterating(long first, long second) {
-		return new CheckpointPositionStrategy() {
+	static CheckpointPosStrategy alterating(long first, long second) {
+		return new CheckpointPosStrategy() {
 			boolean state = false;
 
 			@Override

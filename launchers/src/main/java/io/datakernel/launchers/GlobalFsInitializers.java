@@ -18,20 +18,20 @@ package io.datakernel.launchers;
 
 import io.datakernel.config.Config;
 import io.datakernel.util.Initializer;
-import io.global.fs.local.LocalGlobalFsNode;
+import io.global.fs.local.GlobalFsNodeDriver;
 
 import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey;
-import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
+import static io.global.fs.local.GlobalFsNodeDriver.DEFAULT_LATENCY_MARGIN;
 import static java.util.Collections.emptyList;
 
 public class GlobalFsInitializers {
 	private GlobalFsInitializers() {
 	}
 
-	public static Initializer<LocalGlobalFsNode> ofLocalGlobalFsNode(Config config) {
+	public static Initializer<GlobalFsNodeDriver> ofLocalGlobalFsNode(Config config) {
 		return node -> node
 				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
 				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching"))

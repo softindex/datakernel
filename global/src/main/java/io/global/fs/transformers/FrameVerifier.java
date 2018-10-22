@@ -19,6 +19,7 @@ package io.global.fs.transformers;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.global.common.PubKey;
+import io.global.fs.api.LocalPath;
 
 /**
  * Converts stream of frames to a stream of bytebufs of pure data.
@@ -32,8 +33,8 @@ public final class FrameVerifier extends FramesToByteBufs {
 	private final long endOffset;
 
 	// region creators
-	public FrameVerifier(String fullPath, PubKey pubKey, long offset, long length) {
-		super(fullPath, pubKey);
+	public FrameVerifier(LocalPath localPath, PubKey pubKey, long offset, long length) {
+		super(localPath, pubKey);
 		this.offset = offset;
 		this.endOffset = length == -1 ? Long.MAX_VALUE : offset + length;
 	}

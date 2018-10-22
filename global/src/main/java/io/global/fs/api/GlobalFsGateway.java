@@ -23,6 +23,7 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.time.CurrentTimeProvider;
+import io.global.common.RepoID;
 
 import java.util.List;
 import java.util.Map;
@@ -32,63 +33,63 @@ import static io.datakernel.file.FileUtils.escapeGlob;
 import static java.util.stream.Collectors.toList;
 
 public interface GlobalFsGateway {
-	Stage<SerialConsumer<ByteBuf>> upload(GlobalFsPath path, long offset);
+	Stage<SerialConsumer<ByteBuf>> upload(GlobalPath path, long offset);
 
-	default Stage<SerialConsumer<ByteBuf>> upload(GlobalFsPath path) {
+	default Stage<SerialConsumer<ByteBuf>> upload(GlobalPath path) {
 		return upload(path, -1);
 	}
 
-	default SerialConsumer<ByteBuf> uploader(GlobalFsPath path, long offset) {
+	default SerialConsumer<ByteBuf> uploader(GlobalPath path, long offset) {
 		return SerialConsumer.ofStage(upload(path, offset));
 	}
 
-	default SerialConsumer<ByteBuf> uploader(GlobalFsPath path) {
+	default SerialConsumer<ByteBuf> uploader(GlobalPath path) {
 		return SerialConsumer.ofStage(upload(path, -1));
 	}
 
-	Stage<SerialSupplier<ByteBuf>> download(GlobalFsPath path, long offset, long limit);
+	Stage<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset, long limit);
 
-	default Stage<SerialSupplier<ByteBuf>> download(GlobalFsPath path, long offset) {
+	default Stage<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset) {
 		return download(path, offset, -1);
 	}
 
-	default Stage<SerialSupplier<ByteBuf>> download(GlobalFsPath path) {
+	default Stage<SerialSupplier<ByteBuf>> download(GlobalPath path) {
 		return download(path, 0, -1);
 	}
 
-	default SerialSupplier<ByteBuf> downloader(GlobalFsPath path, long offset, long limit) {
+	default SerialSupplier<ByteBuf> downloader(GlobalPath path, long offset, long limit) {
 		return SerialSupplier.ofStage(download(path, offset, limit));
 	}
 
-	default SerialSupplier<ByteBuf> downloader(GlobalFsPath path, long offset) {
+	default SerialSupplier<ByteBuf> downloader(GlobalPath path, long offset) {
 		return SerialSupplier.ofStage(download(path, offset, -1));
 	}
 
-	default SerialSupplier<ByteBuf> downloader(GlobalFsPath path) {
+	default SerialSupplier<ByteBuf> downloader(GlobalPath path) {
 		return SerialSupplier.ofStage(download(path, 0, -1));
 	}
 
-	Stage<List<GlobalFsMetadata>> list(GlobalFsSpace space, String glob);
+	Stage<List<GlobalFsMetadata>> list(RepoID space, String glob);
 
-	default Stage<GlobalFsMetadata> getMetadata(GlobalFsPath path) {
-		return list(path.getSpace(), escapeGlob(path.getPath()))
+	default Stage<GlobalFsMetadata> getMetadata(GlobalPath path) {
+		return list(path.toRepoID(), escapeGlob(path.getPath()))
 				.thenApply(list -> list.isEmpty() ? null : list.get(0));
 	}
 
-	Stage<Void> delete(GlobalFsPath path);
+	Stage<Void> delete(GlobalPath path);
 
-	Stage<Void> delete(GlobalFsSpace space, String glob);
+	Stage<Void> delete(RepoID space, String glob);
 
-	default FsClient createFsAdapter(GlobalFsSpace space, CurrentTimeProvider timeProvider) {
+	default FsClient createFsAdapter(RepoID space, CurrentTimeProvider timeProvider) {
 		return new FsClient() {
 			@Override
 			public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
-				return GlobalFsGateway.this.upload(space.pathFor(filename), offset);
+				return GlobalFsGateway.this.upload(GlobalPath.of(space, filename), offset);
 			}
 
 			@Override
 			public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
-				return GlobalFsGateway.this.download(space.pathFor(filename), offset, length);
+				return GlobalFsGateway.this.download(GlobalPath.of(space, filename), offset, length);
 			}
 
 			@Override
@@ -105,7 +106,7 @@ public interface GlobalFsGateway {
 			public Stage<List<FileMetadata>> list(String glob) {
 				return GlobalFsGateway.this.list(space, glob)
 						.thenApply(res -> res.stream()
-								.map(meta -> new FileMetadata(meta.getPath(), meta.getSize(), meta.getRevision()))
+								.map(meta -> new FileMetadata(meta.getLocalPath().getPath(), meta.getSize(), meta.getRevision()))
 								.collect(toList()));
 			}
 
@@ -116,7 +117,7 @@ public interface GlobalFsGateway {
 		};
 	}
 
-	default FsClient createFsAdapter(GlobalFsSpace space) {
+	default FsClient createFsAdapter(RepoID space) {
 		return createFsAdapter(space, CurrentTimeProvider.ofSystem());
 	}
 }

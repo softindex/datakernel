@@ -21,17 +21,16 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.remotefs.SerialByteBufCutter;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Initializable;
-import io.global.common.KeyPair;
-import io.global.common.PrivKey;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
+import io.global.common.*;
 import io.global.fs.api.*;
 import io.global.fs.transformers.FrameSigner;
 import io.global.fs.transformers.FrameVerifier;
+import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.HashMap;
 import java.util.List;
@@ -48,77 +47,115 @@ public class GlobalFsGatewayDriver implements GlobalFsGateway, Initializable<Glo
 
 	private final GlobalFsNode node;
 	private final Map<PubKey, PrivKey> keymap;
-	private final CheckpointPositionStrategy checkpointPositionStrategy;
+	private final CheckpointPosStrategy checkpointPosStrategy;
 	private final CurrentTimeProvider timeProvider;
 
-	private GlobalFsGatewayDriver(GlobalFsNode node, Map<PubKey, PrivKey> keymap, CheckpointPositionStrategy checkpointPositionStrategy) {
+	private GlobalFsGatewayDriver(GlobalFsNode node, Map<PubKey, PrivKey> keymap, CheckpointPosStrategy checkpointPosStrategy) {
 		this.node = node;
 		this.keymap = keymap;
-		this.checkpointPositionStrategy = checkpointPositionStrategy;
+		this.checkpointPosStrategy = checkpointPosStrategy;
 		timeProvider = CurrentTimeProvider.ofSystem();
 	}
 
-	public static GlobalFsGatewayDriver create(GlobalFsNode node, Map<PubKey, PrivKey> keymap, CheckpointPositionStrategy checkpointPositionStrategy) {
-		return new GlobalFsGatewayDriver(node, keymap, checkpointPositionStrategy);
+	public static GlobalFsGatewayDriver create(GlobalFsNode node, Map<PubKey, PrivKey> keymap, CheckpointPosStrategy checkpointPosStrategy) {
+		return new GlobalFsGatewayDriver(node, keymap, checkpointPosStrategy);
 	}
 
-	public static GlobalFsGatewayDriver create(GlobalFsNode node, Set<PrivKey> keys, CheckpointPositionStrategy checkpointPositionStrategy) {
-		return new GlobalFsGatewayDriver(node, keys.stream().collect(toMap(PrivKey::computePubKey, Function.identity())), checkpointPositionStrategy);
+	public static GlobalFsGatewayDriver create(GlobalFsNode node, Set<PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
+		return new GlobalFsGatewayDriver(node, keys.stream().collect(toMap(PrivKey::computePubKey, Function.identity())), checkpointPosStrategy);
 	}
 
-	public static GlobalFsGatewayDriver createFromPairs(GlobalFsNode node, Set<KeyPair> keys, CheckpointPositionStrategy checkpointPositionStrategy) {
-		return new GlobalFsGatewayDriver(node, keys.stream().collect(toMap(KeyPair::getPubKey, KeyPair::getPrivKey)), checkpointPositionStrategy);
+	public static GlobalFsGatewayDriver createFromPairs(GlobalFsNode node, Set<KeyPair> keys, CheckpointPosStrategy checkpointPosStrategy) {
+		return new GlobalFsGatewayDriver(node, keys.stream().collect(toMap(KeyPair::getPubKey, KeyPair::getPrivKey)), checkpointPosStrategy);
 	}
 
-	public static GlobalFsGatewayDriver create(GlobalFsNode node, PrivKey key, CheckpointPositionStrategy checkpointPositionStrategy) {
+	public static GlobalFsGatewayDriver create(GlobalFsNode node, PrivKey key, CheckpointPosStrategy checkpointPosStrategy) {
 		Map<PubKey, PrivKey> map = new HashMap<>();
 		map.put(key.computePubKey(), key);
-		return new GlobalFsGatewayDriver(node, map, checkpointPositionStrategy);
+		return new GlobalFsGatewayDriver(node, map, checkpointPosStrategy);
 	}
 
-	public static GlobalFsGatewayDriver create(GlobalFsNode node, KeyPair keys, CheckpointPositionStrategy checkpointPositionStrategy) {
+	public static GlobalFsGatewayDriver create(GlobalFsNode node, KeyPair keys, CheckpointPosStrategy checkpointPosStrategy) {
 		Map<PubKey, PrivKey> map = new HashMap<>();
 		map.put(keys.getPubKey(), keys.getPrivKey());
-		return new GlobalFsGatewayDriver(node, map, checkpointPositionStrategy);
+		return new GlobalFsGatewayDriver(node, map, checkpointPosStrategy);
 	}
 
-	public static FsClient createFsAdapter(GlobalFsNode node, KeyPair keys, String fsName, CheckpointPositionStrategy checkpointPositionStrategy) {
-		return create(node, keys, checkpointPositionStrategy).createFsAdapter(GlobalFsSpace.of(keys, fsName));
+	public static FsClient createFsAdapter(GlobalFsNode node, KeyPair keys, String fsName, CheckpointPosStrategy checkpointPosStrategy) {
+		return create(node, keys, checkpointPosStrategy).createFsAdapter(RepoID.of(keys, fsName));
 	}
 
-	public static FsClient createFsAdapter(GlobalFsNode node, PrivKey key, String fsName, CheckpointPositionStrategy checkpointPositionStrategy) {
+	public static FsClient createFsAdapter(GlobalFsNode node, PrivKey key, String fsName, CheckpointPosStrategy checkpointPosStrategy) {
 		KeyPair keys = key.computeKeys();
-		return create(node, keys, checkpointPositionStrategy).createFsAdapter(GlobalFsSpace.of(keys, fsName));
+		return create(node, keys, checkpointPosStrategy).createFsAdapter(RepoID.of(keys, fsName));
 	}
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> upload(GlobalFsPath path, long offset) {
-		PubKey pubKey = path.getPubKey();
+	public Stage<SerialConsumer<ByteBuf>> upload(GlobalPath path, long offset) {
+		PubKey pubKey = path.getOwner();
 		PrivKey privKey = keymap.get(pubKey);
 		if (privKey == null) {
 			return Stage.ofException(UNKNOWN_KEY);
 		}
-		long[] size = {0};
-		return node.upload(path, offset)
-				.thenApply(consumer -> consumer
-						.apply(new FrameSigner(path.getFullPath(), offset == -1 ? 0 : offset, checkpointPositionStrategy, privKey))
-						.peek(buf -> size[0] += buf.readRemaining())
-						.withAcknowledgement(ack -> ack
-								.thenCompose($ -> {
-									GlobalFsMetadata meta = GlobalFsMetadata.of(path.getFs(), path.getPath(), size[0], timeProvider.currentTimeMillis());
-									return node.pushMetadata(pubKey, SignedData.sign(meta, privKey));
-								})));
+		long normalizedOffset = offset == -1 ? 0 : offset;
+		long[] size = {normalizedOffset};
+
+		long[] toSkip = {0};
+		SHA256Digest[] digest = new SHA256Digest[1];
+
+		// all the below cutting logic is also present on the server
+		// but we simply skip the prefix to not (potentially) send it over the network
+		// and also getting the proper digest for checkpoints ofc
+
+		return node.getMetadata(path)
+				.thenCompose(signedMeta -> {
+					if (signedMeta == null) {
+						digest[0] = new SHA256Digest();
+						return Stage.complete();
+					}
+					// TODO anton: check signature here
+					GlobalFsMetadata meta = signedMeta.getData();
+					long metaSize = meta.getSize();
+					if (offset > metaSize) {
+						return Stage.ofException(new StacklessException(GlobalFsGatewayDriver.class, "Trying to upload at offset greater than the file size"));
+					}
+					toSkip[0] = metaSize - offset;
+					return node.download(path, metaSize, 0)
+							.thenCompose(supplier -> supplier.toCollector(toList()))
+							.thenCompose(frames -> {
+								if (frames.size() != 1) {
+									return Stage.ofException(new StacklessException(GlobalFsGatewayDriver.class, "No checkpoint at metadata size position!"));
+								}
+								// TODO anton: check signature here
+								digest[0] = frames.get(0).getCheckpoint().getData().getDigest();
+								return Stage.complete();
+							});
+				})
+				.thenCompose($ ->
+						node.upload(path, offset != -1 ? offset + toSkip[0] : offset)
+								.thenApply(consumer -> {
+									LocalPath localPath = path.toLocalPath();
+									return consumer
+											.apply(new FrameSigner(localPath, normalizedOffset + toSkip[0], checkpointPosStrategy, privKey, digest[0]))
+											.apply(SerialByteBufCutter.create(toSkip[0]))
+											.peek(buf -> size[0] += buf.readRemaining())
+											.withAcknowledgement(ack -> ack
+													.thenCompose($2 -> {
+														GlobalFsMetadata meta = GlobalFsMetadata.of(localPath, size[0], timeProvider.currentTimeMillis());
+														return node.pushMetadata(pubKey, SignedData.sign(meta, privKey));
+													}));
+								}));
 	}
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> download(GlobalFsPath path, long offset, long limit) {
+	public Stage<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset, long limit) {
 		return node.download(path, offset, limit)
-				.thenApply(supplier -> supplier.apply(new FrameVerifier(path.getFullPath(), path.getPubKey(), offset, limit)));
+				.thenApply(supplier -> supplier.apply(new FrameVerifier(path.toLocalPath(), path.getOwner(), offset, limit)));
 	}
 
 	@Override
-	public Stage<List<GlobalFsMetadata>> list(GlobalFsSpace space, String glob) {
-		PubKey pubKey = space.getPubKey();
+	public Stage<List<GlobalFsMetadata>> list(RepoID space, String glob) {
+		PubKey pubKey = space.getOwner();
 		return node.list(space, glob)
 				.thenApply(res -> res.stream()
 						.filter(signedMeta -> signedMeta.verify(pubKey))
@@ -127,24 +164,24 @@ public class GlobalFsGatewayDriver implements GlobalFsGateway, Initializable<Glo
 	}
 
 	@Override
-	public Stage<Void> delete(GlobalFsPath path) {
-		PubKey pubKey = path.getPubKey();
+	public Stage<Void> delete(GlobalPath path) {
+		PubKey pubKey = path.getOwner();
 		PrivKey privKey = keymap.get(pubKey);
 		if (privKey == null) {
 			return Stage.ofException(UNKNOWN_KEY);
 		}
-		return node.pushMetadata(pubKey, SignedData.sign(GlobalFsMetadata.ofRemoved(path.getFs(), path.getPath(), timeProvider.currentTimeMillis()), privKey));
+		return node.pushMetadata(pubKey, SignedData.sign(GlobalFsMetadata.ofRemoved(path.toLocalPath(), timeProvider.currentTimeMillis()), privKey));
 	}
 
 	@Override
-	public Stage<Void> delete(GlobalFsSpace space, String glob) {
-		PubKey pubKey = space.getPubKey();
+	public Stage<Void> delete(RepoID space, String glob) {
+		PubKey pubKey = space.getOwner();
 		PrivKey privKey = keymap.get(pubKey);
 		if (privKey == null) {
 			return Stage.ofException(UNKNOWN_KEY);
 		}
 		if (!isWildcard(glob)) {
-			return delete(space.pathFor(glob));
+			return delete(GlobalPath.of(space, glob));
 		}
 		return node.list(space, glob)
 				.thenCompose(list ->
@@ -155,8 +192,8 @@ public class GlobalFsGatewayDriver implements GlobalFsGateway, Initializable<Glo
 	}
 
 	@Override
-	public FsClient createFsAdapter(GlobalFsSpace space, CurrentTimeProvider timeProvider) {
-		if (!keymap.containsKey(space.getPubKey())) {
+	public FsClient createFsAdapter(RepoID space, CurrentTimeProvider timeProvider) {
+		if (!keymap.containsKey(space.getOwner())) {
 			throw new IllegalArgumentException("Cannot get remotefs adapter for space with unknown public key");
 		}
 		return GlobalFsGateway.super.createFsAdapter(space, timeProvider);

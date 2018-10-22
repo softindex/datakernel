@@ -24,11 +24,11 @@ import io.datakernel.exception.ParseException;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
-import io.global.fs.api.CheckpointPositionStrategy;
+import io.global.fs.api.CheckpointPosStrategy;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofMemSizeAsLong;
-import static io.global.fs.api.CheckpointPositionStrategy.*;
+import static io.global.fs.api.CheckpointPosStrategy.*;
 
 public final class GlobalFsConfigConverters {
 	private GlobalFsConfigConverters() {
@@ -77,11 +77,11 @@ public final class GlobalFsConfigConverters {
 		};
 	}
 
-	public static ConfigConverter<CheckpointPositionStrategy> ofCheckpointPositionStrategy() {
-		return new ConfigConverter<CheckpointPositionStrategy>() {
+	public static ConfigConverter<CheckpointPosStrategy> ofCheckpointPositionStrategy() {
+		return new ConfigConverter<CheckpointPosStrategy>() {
 
 			@Override
-			public CheckpointPositionStrategy get(Config config) {
+			public CheckpointPosStrategy get(Config config) {
 				switch (config.getValue()) {
 					case "fixed":
 						return fixed(config.get(ofMemSizeAsLong(), "offset"));
@@ -96,7 +96,7 @@ public final class GlobalFsConfigConverters {
 
 			@Nullable
 			@Override
-			public CheckpointPositionStrategy get(Config config, @Nullable CheckpointPositionStrategy defaultValue) {
+			public CheckpointPosStrategy get(Config config, @Nullable CheckpointPosStrategy defaultValue) {
 				if (config.isEmpty()) {
 					return defaultValue;
 				}

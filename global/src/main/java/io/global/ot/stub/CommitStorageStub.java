@@ -17,6 +17,7 @@
 package io.global.ot.stub;
 
 import io.datakernel.async.Stage;
+import io.global.common.RepoID;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 import io.global.ot.server.CommitStorage;
@@ -28,20 +29,20 @@ import static java.util.Collections.emptySet;
 
 public class CommitStorageStub implements CommitStorage {
 	private final Map<CommitId, RawCommit> commits = new HashMap<>();
-	private final Map<RepositoryName, Map<CommitId, SignedData<RawSnapshot>>> snapshots = new HashMap<>();
-	private final Map<RepositoryName, Map<CommitId, SignedData<RawCommitHead>>> heads = new HashMap<>();
+	private final Map<RepoID, Map<CommitId, SignedData<RawSnapshot>>> snapshots = new HashMap<>();
+	private final Map<RepoID, Map<CommitId, SignedData<RawCommitHead>>> heads = new HashMap<>();
 	private final Set<CommitId> pendingCompleteCommits = new HashSet<>();
 	private final Map<CommitId, Integer> incompleteParentsCount = new HashMap<>();
 	private final Map<CommitId, Set<CommitId>> parentToChildren = new HashMap<>();
-	private final Map<RepositoryName, Set<SignedData<RawPullRequest>>> pullRequests = new HashMap<>();
+	private final Map<RepoID, Set<SignedData<RawPullRequest>>> pullRequests = new HashMap<>();
 
 	@Override
-	public Stage<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepositoryName repositoryId) {
+	public Stage<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
 		return Stage.of(heads.getOrDefault(repositoryId, emptyMap()));
 	}
 
 	@Override
-	public Stage<Void> applyHeads(RepositoryName repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
+	public Stage<Void> applyHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
 		Map<CommitId, SignedData<RawCommitHead>> map = heads.computeIfAbsent(repositoryId, repositoryId1 -> new HashMap<>());
 		newHeads.forEach(head -> map.put(head.getData().commitId, head));
 		excludedHeads.forEach(map::remove);
@@ -89,7 +90,7 @@ public class CommitStorageStub implements CommitStorage {
 	}
 
 	@Override
-	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepositoryName repositoryId, CommitId commitId) {
+	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
 		return Stage.of(Optional.ofNullable(
 				snapshots.getOrDefault(repositoryId, emptyMap()).get(commitId)));
 	}
@@ -101,7 +102,7 @@ public class CommitStorageStub implements CommitStorage {
 	}
 
 	@Override
-	public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepositoryName repository) {
+	public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repository) {
 		return Stage.of(pullRequests.getOrDefault(repository, emptySet()));
 	}
 

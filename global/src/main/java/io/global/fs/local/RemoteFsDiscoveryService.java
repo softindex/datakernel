@@ -18,13 +18,14 @@ package io.global.fs.local;
 
 import io.datakernel.async.Stage;
 import io.datakernel.remotefs.FsClient;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
+import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 
+import java.util.List;
+import java.util.Optional;
+
 public final class RemoteFsDiscoveryService implements DiscoveryService {
-	// private final Map<PubKey, SignedData<AnnounceData>> announced = new HashMap<>();
 	private final FsClient fsClient;
 
 	public RemoteFsDiscoveryService(FsClient fsClient) {
@@ -32,21 +33,27 @@ public final class RemoteFsDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Stage<SignedData<AnnounceData>> findServers(PubKey pubKey) {
-		throw new UnsupportedOperationException("TODO");
-		// return Stage.of(announced.get(pubKey));
+	public Stage<Void> announce(RepoID repo, SignedData<AnnounceData> announceData) {
+		throw new UnsupportedOperationException("RemoteFsDiscoveryService#announce is not implemented yet");
 	}
 
 	@Override
-	public Stage<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
-		throw new UnsupportedOperationException("TODO");
-		// if (!announceData.verify(pubKey)) {
-		// 	return Stage.ofException(new GlobalFsException("Cannot verify announce data"));
-		// }
-		// announced.compute(pubKey, ($, existing) ->
-		// 		existing == null || existing.getData().getTimestamp() <= announceData.getData().getTimestamp() ?
-		// 				announceData :
-		// 				existing);
-		// return Stage.complete();
+	public Stage<Optional<SignedData<AnnounceData>>> find(RepoID repo) {
+		throw new UnsupportedOperationException("RemoteFsDiscoveryService#find is not implemented yet");
+	}
+
+	@Override
+	public Stage<List<SignedData<AnnounceData>>> find(PubKey owner) {
+		throw new UnsupportedOperationException("RemoteFsDiscoveryService#find is not implemented yet");
+	}
+
+	@Override
+	public Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
+		throw new UnsupportedOperationException("RemoteFsDiscoveryService#shareKey is not implemented yet");
+	}
+
+	@Override
+	public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
+		throw new UnsupportedOperationException("RemoteFsDiscoveryService#getSharedKey is not implemented yet");
 	}
 }

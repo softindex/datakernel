@@ -19,9 +19,9 @@ package io.global.common;
 import io.global.ot.api.EncryptedData;
 import org.junit.Assert;
 import org.junit.Test;
-import org.spongycastle.crypto.CipherParameters;
 import org.spongycastle.crypto.CryptoException;
 import org.spongycastle.crypto.digests.SHA256Digest;
+import org.spongycastle.crypto.params.KeyParameter;
 
 import static io.global.common.CryptoUtils.*;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
@@ -31,7 +31,7 @@ public class CryptoUtilsTest {
 
 	@Test
 	public void testSymmetricEncryption() throws CryptoException {
-		CipherParameters aesKey = generateCipherKey(16);
+		KeyParameter aesKey = generateCipherKey(16);
 
 		String message = "Hello!";
 
@@ -58,7 +58,7 @@ public class CryptoUtilsTest {
 		KeyPair keyPair = KeyPair.generate();
 
 		String message = "Hello!";
-		ECDSASignature signature = sign(message.getBytes(ISO_8859_1), keyPair.getPrivKey().getEcPrivateKey());
+		Signature signature = sign(message.getBytes(ISO_8859_1), keyPair.getPrivKey().getEcPrivateKey());
 
 		assertTrue(verify(message.getBytes(ISO_8859_1), signature, keyPair.getPubKey().getEcPublicKey()));
 		assertFalse(verify((message + "!").getBytes(ISO_8859_1), signature, keyPair.getPubKey().getEcPublicKey()));

@@ -50,7 +50,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	private Duration latencyMargin;
 
 	private final Map<PubKey, PubKeyEntry> pubKeys = new HashMap<>();
-	private final Map<PubKey, SharedKeysDb> sharedKeysDb = new HashMap<>();
+	private final Map<PubKey, Map<PubKey, Map<Hash, SignedData<SharedSimKey>>>> sharedKeysDb = new HashMap<>();
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
@@ -65,20 +65,20 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		return pubKeys.computeIfAbsent(pubKey, PubKeyEntry::new);
 	}
 
-	private RepositoryEntry ensureRepository(RepositoryName repositoryId) {
-		return ensurePubKey(repositoryId.getPubKey()).ensureRepository(repositoryId);
+	private RepositoryEntry ensureRepository(RepoID repositoryId) {
+		return ensurePubKey(repositoryId.getOwner()).ensureRepository(repositoryId);
 	}
 
-	private SharedKeysDb ensureSharedKeysDb(PubKey receiver) {
-		return sharedKeysDb.computeIfAbsent(receiver, SharedKeysDb::new);
+	private Map<PubKey, Map<Hash, SignedData<SharedSimKey>>> ensureSharedKeysDb(PubKey receiver) {
+		return sharedKeysDb.computeIfAbsent(receiver, $ -> new HashMap<>());
 	}
 
 	private Stage<List<RawServer>> ensureServers(PubKey pubKey) {
 		return ensurePubKey(pubKey).ensureServers();
 	}
 
-	private Stage<List<RawServer>> ensureServers(RepositoryName repositoryId) {
-		return ensureServers(repositoryId.getPubKey());
+	private Stage<List<RawServer>> ensureServers(RepoID repositoryId) {
+		return ensureServers(repositoryId.getOwner());
 	}
 
 	@Override
@@ -102,12 +102,12 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				ensurePubKey(pubKey)
 						.repositories.keySet()
 						.stream()
-						.map(RepositoryName::getRepositoryName)
+						.map(RepoID::getName)
 						.collect(toSet())));
 	}
 
 	@Override
-	public Stage<Void> save(RepositoryName repositoryId, Map<CommitId, RawCommit> newCommits, Set<SignedData<RawCommitHead>> newHeads) {
+	public Stage<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> newCommits, Set<SignedData<RawCommitHead>> newHeads) {
 		return commitStorage.getHeads(repositoryId)
 				.thenCompose(thisHeads -> Stages.all(
 						newCommits.entrySet()
@@ -123,13 +123,13 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<RawCommit> loadCommit(RepositoryName repositoryId, CommitId id) {
+	public Stage<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 		return commitStorage.loadCommit(id)
 				.thenCompose(Stage::ofOptional);
 	}
 
 	@Override
-	public Stage<SerialSupplier<CommitEntry>> download(RepositoryName repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+	public Stage<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 		checkArgument(!hasIntersection(bases, heads));
 		Set<CommitId> skipCommits = new HashSet<>(heads);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
@@ -147,7 +147,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 						.thenApply(SerialSupplier::of));
 	}
 
-	public Stage<SerialSupplier<CommitEntry>> getCommitsSupplier(RepositoryName repositoryId, Set<CommitId> thatBases, Set<CommitId> thatHeads) {
+	public Stage<SerialSupplier<CommitEntry>> getCommitsSupplier(RepoID repositoryId, Set<CommitId> thatBases, Set<CommitId> thatHeads) {
 		checkArgument(!hasIntersection(thatBases, thatHeads));
 		Set<CommitId> skipCommits = new HashSet<>(thatHeads);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
@@ -203,7 +203,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<HeadsInfo> getHeadsInfo(RepositoryName repositoryId) {
+	public Stage<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
 		HeadsInfo headsInfo = new HeadsInfo(new HashSet<>(), new HashSet<>());
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
@@ -250,7 +250,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<SerialConsumer<CommitEntry>> upload(RepositoryName repositoryId) {
+	public Stage<SerialConsumer<CommitEntry>> upload(RepoID repositoryId) {
 		return commitStorage.getHeads(repositoryId)
 				.thenApply(Map::keySet)
 				.thenApply(thisHeads -> {
@@ -274,7 +274,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				});
 	}
 
-	public Stage<SerialConsumer<CommitEntry>> getStreamConsumer(RepositoryName repositoryId) {
+	public Stage<SerialConsumer<CommitEntry>> getStreamConsumer(RepoID repositoryId) {
 		return commitStorage.getHeads(repositoryId)
 				.thenApply(Map::keySet)
 				.thenApply(thisHeads -> {
@@ -298,7 +298,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				});
 	}
 
-	private Stage<Void> applyHeads(RepositoryName repositoryId, Heads heads) {
+	private Stage<Void> applyHeads(RepoID repositoryId, Heads heads) {
 		return commitStorage.applyHeads(repositoryId, heads.newHeads, heads.excludedHeads)
 				.whenResult($ -> {
 					if (!heads.newHeads.isEmpty()) ensureRepository(repositoryId).filterHeads();
@@ -306,7 +306,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> saveSnapshot(RepositoryName repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
+	public Stage<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return commitStorage.saveSnapshot(encryptedSnapshot)
 				.thenCompose(saved -> saved ?
 						ensureServers(repositoryId)
@@ -316,7 +316,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepositoryName repositoryId, CommitId commitId) {
+	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
 		return Stages.firstSuccessful(
 				() -> commitStorage.loadSnapshot(repositoryId, commitId)
 						.thenCompose(Stage::ofOptional),
@@ -329,7 +329,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<Heads> getHeads(RepositoryName repositoryId, Set<CommitId> remoteHeads) {
+	public Stage<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
 		return commitStorage.getHeads(repositoryId)
 				.thenCompose(heads -> excludeParents(union(heads.keySet(), remoteHeads))
 						.thenApply(excludedHeads -> new Heads(
@@ -380,19 +380,17 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> shareKey(SignedData<SharedSimKey> simKey) {
+	public Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
 		ensureSharedKeysDb(simKey.getData().getReceiver())
-				.sharedKeysBySender
-				.computeIfAbsent(simKey.getData().getRepositoryOwner(), $ -> new HashMap<>())
-				.put(simKey.getData().getSimKeyHash(), simKey);
+				.computeIfAbsent(owner, $ -> new HashMap<>())
+				.put(simKey.getData().getHash(), simKey);
 		return Stage.complete();
 	}
 
 	@Override
-	public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, SimKeyHash simKeyHash) {
+	public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash simKeyHash) {
 		return Stage.of(Optional.ofNullable(
 				ensureSharedKeysDb(receiver)
-						.sharedKeysBySender
 						.getOrDefault(owner, emptyMap())
 						.get(simKeyHash)));
 	}
@@ -409,24 +407,15 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepositoryName repositoryId) {
+	public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
 		return ensureRepository(repositoryId)
 				.update()
 				.thenCompose($ -> commitStorage.getPullRequests(repositoryId));
 	}
 
-	class SharedKeysDb {
-		public final PubKey receiver;
-		public final Map<PubKey, Map<SimKeyHash, SignedData<SharedSimKey>>> sharedKeysBySender = new HashMap<>();
-
-		SharedKeysDb(PubKey receiver) {
-			this.receiver = receiver;
-		}
-	}
-
 	class PubKeyEntry {
 		private final PubKey pubKey;
-		private final Map<RepositoryName, RepositoryEntry> repositories = new HashMap<>();
+		private final Map<RepoID, RepositoryEntry> repositories = new HashMap<>();
 
 		private final Map<RawServerId, RawServer> servers = new HashMap<>();
 		public long updateServersTimestamp;
@@ -437,7 +426,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 			this.pubKey = pubKey;
 		}
 
-		public RepositoryEntry ensureRepository(RepositoryName repositoryId) {
+		public RepositoryEntry ensureRepository(RepoID repositoryId) {
 			return repositories.computeIfAbsent(repositoryId, RepositoryEntry::new);
 		}
 
@@ -472,7 +461,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		}
 
 		class RepositoryEntry {
-			private final RepositoryName repositoryId;
+			private final RepoID repositoryId;
 
 			private long updateTimestamp;
 
@@ -484,7 +473,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 			private final AsyncSupplier<Void> filterHeads = resubscribe(this::doFilterHeads);
 			private final AsyncSupplier<Void> push = reuse(this::doPush);
 
-			RepositoryEntry(RepositoryName repositoryId) {
+			RepositoryEntry(RepoID repositoryId) {
 				this.repositoryId = repositoryId;
 			}
 

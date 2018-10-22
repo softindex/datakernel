@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package io.global.ot.api;
+package io.global.common;
 
-import io.datakernel.async.Stage;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
-
-public interface RawDiscoveryService {
-	Stage<SignedData<RawAnnounceData>> findServers(PubKey pubKey);
-
-	Stage<Void> announce(SignedData<RawAnnounceData> announceData);
+/**
+ * See the {@link ByteArrayIdentity} for longer message, but:
+ * <p>
+ * Classes implementing this interface must also define a
+ * static factory method which recreates an object from the
+ * string that was returned from {@link StringIdentity#asString() asString()} method.
+ */
+public interface StringIdentity {
+	String asString();
 }

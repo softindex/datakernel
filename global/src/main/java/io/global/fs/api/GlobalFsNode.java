@@ -22,9 +22,12 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
+import io.global.common.RepoID;
 import io.global.common.SignedData;
 
 import java.util.List;
+
+import static io.datakernel.file.FileUtils.escapeGlob;
 
 /**
  * This component handles one of the GlobalFS nodes.
@@ -38,23 +41,23 @@ public interface GlobalFsNode {
 
 	RawServerId getId();
 
-	Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath path, long offset);
+	Stage<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset);
 
-	default SerialConsumer<DataFrame> uploader(GlobalFsPath path, long offset) {
+	default SerialConsumer<DataFrame> uploader(GlobalPath path, long offset) {
 		return SerialConsumer.ofStage(upload(path, offset));
 	}
 
-	Stage<SerialSupplier<DataFrame>> download(GlobalFsPath path, long offset, long limit);
+	Stage<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit);
 
-	default SerialSupplier<DataFrame> downloader(GlobalFsPath path, long offset, long limit) {
+	default SerialSupplier<DataFrame> downloader(GlobalPath path, long offset, long limit) {
 		return SerialSupplier.ofStage(download(path, offset, limit));
 	}
 
-	default Stage<SignedData<GlobalFsMetadata>> getMetadata(GlobalFsPath path) {
-		return list(path.getSpace(), path.getPath()).thenApply(res -> res.size() == 1 ? res.get(0) : null);
+	default Stage<SignedData<GlobalFsMetadata>> getMetadata(GlobalPath path) {
+		return list(path.toRepoID(), escapeGlob(path.getPath())).thenApply(res -> res.size() == 1 ? res.get(0) : null);
 	}
 
-	Stage<List<SignedData<GlobalFsMetadata>>> list(GlobalFsSpace space, String glob);
+	Stage<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob);
 
 	Stage<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata);
 }

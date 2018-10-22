@@ -19,20 +19,21 @@ package io.global.ot.api;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
-import io.global.common.Signable;
+import io.global.common.ByteArrayIdentity;
+import io.global.common.RepoID;
 
 import java.util.Arrays;
 
 import static io.global.ot.util.BinaryDataFormats.*;
 
-public final class RawPullRequest implements Signable {
+public final class RawPullRequest implements ByteArrayIdentity {
 	public final byte[] bytes;
 
-	public final RepositoryName repository;
-	public final RepositoryName forkRepository;
+	public final RepoID repository;
+	public final RepoID forkRepository;
 
 	private RawPullRequest(byte[] bytes,
-			RepositoryName repository, RepositoryName forkRepository) {
+			RepoID repository, RepoID forkRepository) {
 		this.bytes = bytes;
 		this.repository = repository;
 		this.forkRepository = forkRepository;
@@ -41,19 +42,19 @@ public final class RawPullRequest implements Signable {
 	public static RawPullRequest ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 
-		RepositoryName repository = readRepositoryId(buf);
-		RepositoryName forkRepository = readRepositoryId(buf);
+		RepoID repository = readRepoID(buf);
+		RepoID forkRepository = readRepoID(buf);
 
 		return new RawPullRequest(bytes,
 				repository,
 				forkRepository);
 	}
 
-	public static RawPullRequest of(RepositoryName repository, RepositoryName forkRepository) {
+	public static RawPullRequest of(RepoID repository, RepoID forkRepository) {
 		ByteBuf buf = ByteBufPool.allocate(sizeof(repository) + sizeof(forkRepository));
 
-		writeRepositoryId(buf, repository);
-		writeRepositoryId(buf, forkRepository);
+		writeRepoID(buf, repository);
+		writeRepoID(buf, forkRepository);
 
 		return new RawPullRequest(buf.asArray(),
 				repository, forkRepository);

@@ -17,11 +17,9 @@
 package io.global.fs;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.exception.ParseException;
 import io.datakernel.stream.processor.ActiveStagesRule;
-import io.global.common.KeyPair;
-import io.global.common.RawServerId;
+import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.fs.http.DiscoveryServlet;
@@ -29,6 +27,7 @@ import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.local.RuntimeDiscoveryService;
 import org.junit.Rule;
 import org.junit.Test;
+import org.spongycastle.crypto.CryptoException;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -49,34 +48,66 @@ public class DiscoveryHttpTest {
 	public void test() throws IOException {
 		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
 
-		DiscoveryService serverService = new RuntimeDiscoveryService();
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, new DiscoveryServlet(serverService)).withListenPort(8080);
-		server.listen();
+		DiscoveryServlet servlet = new DiscoveryServlet(new RuntimeDiscoveryService());
 
-		DiscoveryService clientService = new HttpDiscoveryService(new InetSocketAddress(8080), AsyncHttpClient.create(eventloop));
+		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), request -> {
+			try {
+				return servlet.serve(request);
+			} catch (ParseException e) {
+				throw new AssertionError(e);
+			}
+		});
 
-		KeyPair keys1 = KeyPair.generate();
-		KeyPair keys2 = KeyPair.generate();
+		KeyPair alice = KeyPair.generate();
+		RepoID aliceTestFs = RepoID.of(alice, "testFs");
+
+		KeyPair bob = KeyPair.generate();
+		SimKey bobSimKey = SimKey.generate();
+		RepoID bobTestFs = RepoID.of(bob, "testFs");
+
+		Hash bobSimKeyHash = Hash.of(bobSimKey);
 
 		InetAddress localhost = InetAddress.getLocalHost();
 
-		clientService.announce(keys1, AnnounceData.of(123, keys1.getPubKey(), set(new RawServerId(new InetSocketAddress(localhost, 123)))))
-				.thenCompose($ -> clientService.announce(keys2, AnnounceData.of(124, keys1.getPubKey(), set(new RawServerId(new InetSocketAddress(localhost, 124))))))
+		AnnounceData testAnnounce = AnnounceData.of(123, set(new RawServerId(new InetSocketAddress(localhost, 123))));
 
-				.thenCompose($ -> clientService.findServers(keys1.getPubKey()))
-				.whenComplete(assertComplete(data -> assertTrue(data.verify(keys1.getPubKey()))))
+		clientService.announce(aliceTestFs, testAnnounce, alice.getPrivKey())
+				.thenCompose($ -> clientService.announce(bobTestFs, testAnnounce, bob.getPrivKey()))
 
-				.thenCompose($ -> clientService.findServers(keys2.getPubKey()))
-				.whenComplete(assertComplete(data -> assertTrue(data.verify(keys2.getPubKey()))))
-
-				.thenCompose($ -> clientService.announce(keys1, AnnounceData.of(90, keys1.getPubKey(), set())))
-				.thenCompose($ -> clientService.findServers(keys1.getPubKey()))
+				.thenCompose($ -> clientService.find(aliceTestFs))
 				.whenComplete(assertComplete(data -> {
-					assertTrue(data.verify(keys1.getPubKey()));
-					assertEquals(123, data.getData().getTimestamp());
+					assertTrue(data.isPresent());
+					assertTrue(data.get().verify(alice.getPubKey()));
 				}))
 
-				.whenComplete(($, e) -> server.close());
+				.thenCompose($ -> clientService.find(bobTestFs))
+				.whenComplete(assertComplete(data -> {
+					assertTrue(data.isPresent());
+					assertTrue(data.get().verify(bob.getPubKey()));
+				}))
+
+				.thenCompose($ -> clientService.announce(aliceTestFs, AnnounceData.of(90, set()), alice.getPrivKey()))
+				.thenCompose($ -> clientService.find(aliceTestFs))
+				.whenComplete(assertComplete(data -> {
+					assertTrue(data.isPresent());
+					assertTrue(data.get().verify(alice.getPubKey()));
+					assertEquals(123, data.get().getData().getTimestamp());
+				}))
+
+				.thenCompose($ -> clientService.shareKey(bob, SharedSimKey.of(alice.getPubKey(), bobSimKey)))
+				.thenCompose($ -> clientService.getSharedKey(bob.getPubKey(), alice.getPubKey(), bobSimKeyHash))
+				.whenComplete(assertComplete(response -> {
+					assertTrue(response.isPresent());
+					SignedData<SharedSimKey> signed = response.get();
+					assertTrue(signed.verify(bob.getPubKey()));
+					SharedSimKey sharedSimKey = signed.getData();
+					try {
+						System.out.println(sharedSimKey);
+						assertEquals(bobSimKey, sharedSimKey.decryptSimKey(alice.getPrivKey()));
+					} catch (CryptoException e) {
+						throw new AssertionError(e);
+					}
+				}));
 
 		eventloop.run();
 	}

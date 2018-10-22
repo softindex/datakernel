@@ -36,7 +36,7 @@ import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.PrivKey;
 import io.global.common.api.DiscoveryService;
-import io.global.fs.api.CheckpointPositionStrategy;
+import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsGateway;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsGatewayServlet;
@@ -57,9 +57,6 @@ import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.launchers.Initializers.ofEventloop;
 import static io.datakernel.launchers.Initializers.ofHttpServer;
 import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofCheckpointPositionStrategy;
-import static io.datakernel.launchers.GlobalFsInitializers.ofLocalGlobalFsNode;
-import static io.datakernel.launchers.Initializers.ofEventloop;
-import static io.datakernel.launchers.Initializers.ofHttpServer;
 import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPrivKey;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
@@ -165,8 +162,8 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 					@Singleton
 					GlobalFsGateway provide(Config config, GlobalFsNode node) {
 						Set<PrivKey> privateKeys = new HashSet<>(config.get(ofList(ofPrivKey()), "globalfs.gateway.privateKeys"));
-						CheckpointPositionStrategy checkpointPositionStrategy = config.get(ofCheckpointPositionStrategy(), "globalfs.gateway.checkpointPositionStrategy");
-						return GlobalFsGatewayDriver.create(node, privateKeys, checkpointPositionStrategy);
+						CheckpointPosStrategy checkpointPosStrategy = config.get(ofCheckpointPositionStrategy(), "globalfs.gateway.checkpointPosStrategy");
+						return GlobalFsGatewayDriver.create(node, privateKeys, checkpointPosStrategy);
 					}
 
 					@Provides

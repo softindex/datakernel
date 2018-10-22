@@ -157,12 +157,12 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					if (size == null) {
 						return Stage.ofException(new StacklessException(LocalFsClient.class, "File not found: " + filename));
 					}
-					String repr = filename + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "");
+					String repr = filename + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "") + ")";
 					if (offset > size) {
 						return Stage.ofException(new StacklessException(LocalFsClient.class, "Offset exceeds file size for " + repr));
 					}
 					if (length != -1 && offset + length > size) {
-						return Stage.ofException(new StacklessException(LocalFsClient.class, "Boundaries exceed file for " + repr));
+						return Stage.ofException(new StacklessException(LocalFsClient.class, "Boundaries size exceed file for " + repr));
 					}
 					return AsyncFile.openAsync(executor, path, SerialFileReader.READ_OPTIONS, this)
 							.thenApply(file -> {

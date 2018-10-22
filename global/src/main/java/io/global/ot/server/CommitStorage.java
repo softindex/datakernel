@@ -17,6 +17,7 @@
 package io.global.ot.server;
 
 import io.datakernel.async.Stage;
+import io.global.common.RepoID;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 
@@ -25,9 +26,9 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface CommitStorage {
-	Stage<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepositoryName repositoryId);
+	Stage<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepoID repositoryId);
 
-	Stage<Void> applyHeads(RepositoryName repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads);
+	Stage<Void> applyHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads);
 
 	Stage<Boolean> hasCommit(CommitId commitId);
 
@@ -39,11 +40,11 @@ public interface CommitStorage {
 
 	Stage<Boolean> saveSnapshot(SignedData<RawSnapshot> encryptedSnapshot);
 
-	Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepositoryName repositoryId, CommitId commitId);
+	Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId);
 
 	Stage<Boolean> savePullRequest(SignedData<RawPullRequest> pullRequest);
 
-	Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepositoryName repository);
+	Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repository);
 
 	Stage<Void> markCompleteCommits();
 

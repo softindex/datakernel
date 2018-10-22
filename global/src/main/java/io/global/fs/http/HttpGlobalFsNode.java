@@ -22,17 +22,21 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
-import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialZeroBuffer;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
+import io.global.common.RepoID;
 import io.global.common.SignedData;
-import io.global.fs.api.*;
+import io.global.fs.api.DataFrame;
+import io.global.fs.api.GlobalFsMetadata;
+import io.global.fs.api.GlobalFsNode;
+import io.global.fs.api.GlobalPath;
 import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
 
@@ -46,10 +50,10 @@ import static java.util.stream.Collectors.toList;
 public final class HttpGlobalFsNode implements GlobalFsNode {
 	private final RawServerId id;
 	private final InetSocketAddress address;
-	private final AsyncHttpClient client;
+	private final IAsyncHttpClient client;
 
 	// region creators
-	public HttpGlobalFsNode(RawServerId id, AsyncHttpClient client) {
+	public HttpGlobalFsNode(RawServerId id, IAsyncHttpClient client) {
 		this.id = id;
 		this.client = client;
 		this.address = id.getInetSocketAddress();
@@ -62,17 +66,17 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public Stage<SerialSupplier<DataFrame>> download(GlobalFsPath path, long offset, long limit) {
+	public Stage<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit) {
 		return client.request(
 				HttpRequest.get(
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(DOWNLOAD)
-								.appendPathPart(path.getPubKey().asString())
+								.appendPathPart(path.getOwner().asString())
 								.appendPathPart(path.getFs())
 								.appendPath(path.getPath())
-								.appendQuery("offset", offset)
-								.appendQuery("limit", limit)
+								.appendQuery("offset", "" + offset)
+								.appendQuery("limit", "" + limit)
 								.build()))
 				.thenApply(response -> {
 					if (response.getCode() != 200) {
@@ -83,16 +87,16 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public SerialConsumer<DataFrame> uploader(GlobalFsPath path, long offset) {
+	public SerialConsumer<DataFrame> uploader(GlobalPath path, long offset) {
 		SerialZeroBuffer<DataFrame> buffer = new SerialZeroBuffer<>();
 		MaterializedStage<HttpResponse> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(UPLOAD)
-						.appendPathPart(path.getPubKey().asString())
+						.appendPathPart(path.getOwner().asString())
 						.appendPathPart(path.getFs())
 						.appendPath(path.getPath())
-						.appendQuery("offset", offset)
+						.appendQuery("offset", "" + offset)
 						.build())
 				.withBodyStream(buffer.getSupplier().apply(new FrameEncoder())))
 				.materialize();
@@ -100,19 +104,19 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public Stage<SerialConsumer<DataFrame>> upload(GlobalFsPath path, long offset) {
+	public Stage<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset) {
 		return Stage.of(uploader(path, offset));
 	}
 
 	@Override
-	public Stage<List<SignedData<GlobalFsMetadata>>> list(GlobalFsSpace space, String glob) {
-		PubKey pubKey = space.getPubKey();
+	public Stage<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob) {
+		PubKey pubKey = space.getOwner();
 		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(LIST)
 						.appendPathPart(pubKey.asString())
-						.appendPathPart(space.getFs())
+						.appendPathPart(space.getName())
 						.appendQuery("glob", glob)
 						.build()))
 				.thenCompose(response ->
@@ -140,13 +144,13 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	// @Override
-	// public Stage<Set<String>> copy(GlobalFsSpace name, Map<String, String> changes) {
+	// public Stage<Set<String>> copy(RepoID name, Map<String, String> changes) {
 	// 	return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 	// 			UrlBuilder.http()
 	// 					.withAuthority(address)
 	// 					.appendPathPart(COPY)
-	// 					.appendPathPart(name.getPubKey().asString())
-	// 					.appendPathPart(name.getFs())
+	// 					.appendPathPart(name.getOwner().asString())
+	// 					.appendPathPart(name.getName())
 	// 					.build())
 	// 			.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
 	// 			.thenCompose(response -> {
@@ -159,13 +163,13 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	// }
 	//
 	// @Override
-	// public Stage<Set<String>> move(GlobalFsSpace name, Map<String, String> changes) {
+	// public Stage<Set<String>> move(RepoID name, Map<String, String> changes) {
 	// 	return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 	// 			UrlBuilder.http()
 	// 					.withAuthority(address)
 	// 					.appendPathPart(MOVE)
-	// 					.appendPathPart(name.getPubKey().asString())
-	// 					.appendPathPart(name.getFs())
+	// 					.appendPathPart(name.getOwner().asString())
+	// 					.appendPathPart(name.getName())
 	// 					.build())
 	// 			.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
 	// 			.thenCompose(response -> {

@@ -32,7 +32,7 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsMetadata;
 import io.global.fs.api.GlobalFsNode;
-import io.global.fs.api.GlobalFsPath;
+import io.global.fs.api.GlobalPath;
 import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
 import io.global.ot.util.BinaryDataFormats;
@@ -63,7 +63,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 				})
 				.with(PUT, "/" + UPLOAD + "/:key/:fs/:path*", request -> {
 					long offset = parseOffset(request);
-					GlobalFsPath globalPath = parsePath(request);
+					GlobalPath globalPath = parsePath(request);
 					SerialSupplier<ByteBuf> body = request.getBodyStream();
 					return node.getMetadata(globalPath)
 							.thenCompose(meta ->
@@ -77,21 +77,20 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 					return node.pushMetadata(pubKey, signedMeta)
 							.thenApply($ -> HttpResponse.ok200());
 				}))
-				.with(GET, "/" + LIST + "/:key/:fs", request ->
-						node.list(parseSpace(request), request.getQueryParameter("glob"))
-								.thenApply(list -> HttpResponse.ok200()
-										.withBodyStream(SerialSupplier.ofStream(list.stream()
-												.map(meta -> {
-													byte[] bytes = meta.toBytes();
-													ByteBuf buf = ByteBufPool.allocate(sizeof(bytes));
-													BinaryDataFormats.writeBytes(buf, bytes);
-													return buf;
-												})))));
+				.with(GET, "/" + LIST + "/:key/:fs", request -> node.list(parseRepoID(request), request.getQueryParameter("glob"))
+						.thenApply(list -> HttpResponse.ok200()
+								.withBodyStream(SerialSupplier.ofStream(list.stream()
+										.map(meta -> {
+											byte[] bytes = meta.toBytes();
+											ByteBuf buf = ByteBufPool.allocate(sizeof(bytes));
+											BinaryDataFormats.writeBytes(buf, bytes);
+											return buf;
+										})))));
 		// .with(POST, "/" + COPY + "/:key/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
-		// 		node.copy(parseSpace(request), request.getPostParameters())
+		// 		node.copy(parseNamespace(request), request.getPostParameters())
 		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))))
 		// .with(POST, "/" + MOVE + "/:key/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
-		// 		node.move(parseSpace(request), request.getPostParameters())
+		// 		node.move(parseNamespace(request), request.getPostParameters())
 		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))));
 	}
 

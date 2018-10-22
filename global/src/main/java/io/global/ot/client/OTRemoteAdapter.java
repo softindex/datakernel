@@ -19,8 +19,8 @@ package io.global.ot.client;
 import io.datakernel.async.Stage;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemote;
+import io.global.common.RepoID;
 import io.global.ot.api.CommitId;
-import io.global.ot.api.RepositoryName;
 
 import java.util.List;
 import java.util.Map;
@@ -33,10 +33,10 @@ import static java.util.Collections.singleton;
 public final class OTRemoteAdapter<D> implements OTRemote<CommitId, D> {
 	private final OTDriver driver;
 	private final MyRepositoryId<D> myRepositoryId;
-	private final Set<RepositoryName> originRepositoryIds;
+	private final Set<RepoID> originRepositoryIds;
 
 	public OTRemoteAdapter(OTDriver driver,
-			MyRepositoryId<D> myRepositoryId, Set<RepositoryName> originRepositoryIds) {
+			MyRepositoryId<D> myRepositoryId, Set<RepoID> originRepositoryIds) {
 		this.driver = driver;
 		this.myRepositoryId = myRepositoryId;
 		this.originRepositoryIds = originRepositoryIds;

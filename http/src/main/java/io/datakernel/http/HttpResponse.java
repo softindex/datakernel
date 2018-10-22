@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialSupplier;
@@ -27,13 +28,13 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.putDecimal;
 import static io.datakernel.http.HttpHeaders.LOCATION;
 import static io.datakernel.http.HttpHeaders.SET_COOKIE;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Represents HTTP response for {@link HttpRequest}. After handling {@code HttpResponse} will be recycled so you cannot
  * usi it afterwards.
  */
 public final class HttpResponse extends HttpMessage implements Initializable<HttpResponse> {
-	// region internal
 	private static final byte[] HTTP11_BYTES = encodeAscii("HTTP/1.1 ");
 	private static final byte[] CODE_ERROR_BYTES = encodeAscii(" Error");
 	private static final byte[] CODE_OK_BYTES = encodeAscii(" OK");
@@ -50,7 +51,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	private final int code;
 
 	// region creators
-	// region builders
 	private HttpResponse(int code) {
 		this.code = code;
 	}
@@ -69,6 +69,13 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		HttpResponse response = HttpResponse.ofCode(302);
 		response.setHeader(LOCATION, url);
 		return response;
+	}
+
+	public Stage<Void> ensureStatusCode(int code) {
+		if (this.code == code) {
+			return Stage.complete();
+		}
+		return Stage.ofException(HttpException.ofCode(this.code, this.body.getString(UTF_8)));
 	}
 
 	// common builder methods

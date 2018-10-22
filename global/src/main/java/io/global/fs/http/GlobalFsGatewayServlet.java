@@ -25,7 +25,7 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
 import io.datakernel.serial.SerialSupplier;
 import io.global.fs.api.GlobalFsGateway;
-import io.global.fs.api.GlobalFsPath;
+import io.global.fs.api.GlobalPath;
 import io.global.ot.util.BinaryDataFormats;
 
 import static io.datakernel.http.HttpHeaders.CONTENT_DISPOSITION;
@@ -48,7 +48,7 @@ public final class GlobalFsGatewayServlet implements AsyncServlet {
 		this.servlet = MiddlewareServlet.create()
 				.with(GET, "/" + DOWNLOAD + "/:key/:fs/:path*", request -> {
 					long[] range = parseRange(request);
-					GlobalFsPath path = parsePath(request);
+					GlobalPath path = parsePath(request);
 					String name = path.getPath();
 					int lastSlash = name.lastIndexOf('/');
 					if (lastSlash != -1) {
@@ -64,19 +64,17 @@ public final class GlobalFsGatewayServlet implements AsyncServlet {
 						gateway.upload(parsePath(request), parseOffset(request))
 								.thenCompose(request.getBodyStream()::streamTo)
 								.thenApply($ -> HttpResponse.ok200()))
-				.with(GET, "/" + LIST + "/:key/:fs", request ->
-						gateway.list(parseSpace(request), request.getQueryParameter("glob"))
-								.thenApply(list -> HttpResponse.ok200()
-										.withBodyStream(SerialSupplier.ofStream(list.stream()
-												.map(meta -> {
-													byte[] bytes = meta.toBytes();
-													ByteBuf buf = ByteBufPool.allocate(sizeof(bytes));
-													BinaryDataFormats.writeBytes(buf, bytes);
-													return buf;
-												})))))
-				.with(DELETE, "/" + DEL + "/:key/:fs", request ->
-						gateway.delete(parseSpace(request), request.getQueryParameter("glob"))
-								.thenApply($ -> HttpResponse.ok200()));
+				.with(GET, "/" + LIST + "/:key/:fs", request -> gateway.list(parseRepoID(request), request.getQueryParameter("glob"))
+						.thenApply(list -> HttpResponse.ok200()
+								.withBodyStream(SerialSupplier.ofStream(list.stream()
+										.map(meta -> {
+											byte[] bytes = meta.toBytes();
+											ByteBuf buf = ByteBufPool.allocate(sizeof(bytes));
+											BinaryDataFormats.writeBytes(buf, bytes);
+											return buf;
+										})))))
+				.with(DELETE, "/" + DEL + "/:key/:fs", request -> gateway.delete(parseRepoID(request), request.getQueryParameter("glob"))
+						.thenApply($ -> HttpResponse.ok200()));
 	}
 
 	@Override

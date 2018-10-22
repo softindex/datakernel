@@ -85,6 +85,6 @@ public class HttpException extends Exception {
 
 	@Override
 	public String toString() {
-		return code + ": " + getMessage();
+		return "HTTP code " + code + ": " + getLocalizedMessage();
 	}
 }

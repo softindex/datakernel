@@ -43,10 +43,10 @@ public final class OTDriver {
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	private Map<SimKeyHash, SimKey> simKeys = new HashMap<>();
+	private Map<Hash, SimKey> simKeys = new HashMap<>();
 	private SimKey currentSimKey;
 
-	public OTDriver(RawServer server, List<RepositoryName> originRepositoryIds, RepositoryName myRepositoryId) {
+	public OTDriver(RawServer server, List<RepoID> originRepositoryIds, RepoID myRepositoryId) {
 		this.server = server;
 	}
 
@@ -68,7 +68,7 @@ public final class OTDriver {
 		RawCommit rawCommitData = RawCommit.of(
 				parents,
 				encryptedDiffs,
-				new SimKeyHash(sha1(currentSimKey.getAesKey().getKey())),
+				Hash.ofBytes(sha1(currentSimKey.getAesKey().getKey())),
 				level,
 				System.currentTimeMillis());
 		CommitId commitId = CommitId.ofBytes(sha256(rawCommitData.toBytes()));
@@ -78,23 +78,25 @@ public final class OTDriver {
 	}
 
 	public Stage<Optional<SimKey>> getSharedKey(MyRepositoryId<?> myRepositoryId,
-			PubKey senderPubKey, SimKeyHash simKeyHash) {
-		return server.getSharedKey(senderPubKey, myRepositoryId.getRepositoryId().getPubKey(), simKeyHash)
+			PubKey senderPubKey, Hash simKeyHash) {
+		return server.getSharedKey(senderPubKey, myRepositoryId.getRepositoryId().getOwner(), simKeyHash)
 				.thenApply(maybeSignedSimKey -> {
 					if (!maybeSignedSimKey.isPresent()) {
 						return Optional.empty();
 					}
 
 					SignedData<SharedSimKey> signedSimKey = maybeSignedSimKey.get();
-					if (!verify(signedSimKey.toBytes(), signedSimKey.getSignature(),
-							myRepositoryId.getRepositoryId().getPubKey().getEcPublicKey())) {
+
+					if (!signedSimKey.verify(myRepositoryId.getRepositoryId().getOwner())) {
 						return Optional.empty();
 					}
 
-					SharedSimKey sharedSimKey = signedSimKey.getData();
-
-					SimKey simKey = SimKey.ofEncryptedSimKey(sharedSimKey.getEncryptedSimKey(),
-							myRepositoryId.getPrivKey());
+					SimKey simKey;
+					try {
+						simKey = signedSimKey.getData().decryptSimKey(myRepositoryId.getPrivKey());
+					} catch (CryptoException ignored) {
+						return Optional.empty();
+					}
 
 					if (!Arrays.equals(sha1(simKey.toBytes()), simKeyHash.toBytes())) {
 						return Optional.empty();
@@ -106,11 +108,11 @@ public final class OTDriver {
 	}
 
 	public Stage<SimKey> ensureSimKey(MyRepositoryId<?> myRepositoryId,
-			Set<RepositoryName> originRepositoryIds, SimKeyHash simKeyHash) {
+			Set<RepoID> originRepositoryIds, Hash simKeyHash) {
 		return simKeys.containsKey(simKeyHash) ?
 				Stage.of(simKeys.get(simKeyHash)) :
 				Stages.any(union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds).stream()
-						.map(RepositoryName::getPubKey)
+						.map(RepoID::getOwner)
 						.collect(toSet())
 						.stream()
 						.map(originPubKey -> getSharedKey(myRepositoryId, originPubKey, simKeyHash)
@@ -131,27 +133,27 @@ public final class OTDriver {
 		);
 	}
 
-	public Stage<Set<CommitId>> getHeads(RepositoryName repositoryId) {
+	public Stage<Set<CommitId>> getHeads(RepoID repositoryId) {
 		return server.getHeads(repositoryId)
 				.thenApply(signedCommitHeads -> signedCommitHeads.stream()
 						.filter(signedCommitHead ->
 								verify(
 										signedCommitHead.toBytes(),
 										signedCommitHead.getSignature(),
-										repositoryId.getPubKey().getEcPublicKey()))
+										repositoryId.getOwner().getEcPublicKey()))
 						.map(SignedData::getData)
 						.map(RawCommitHead::getCommitId)
 						.collect(toSet()));
 	}
 
-	public Stage<Set<CommitId>> getHeads(Set<RepositoryName> repositoryIds) {
+	public Stage<Set<CommitId>> getHeads(Set<RepoID> repositoryIds) {
 		return Stages.toList(repositoryIds.stream().map(this::getHeads))
 				.thenApply(commitIds -> commitIds.stream().flatMap(Collection::stream).collect(toSet()))
 				.thenException(heads -> !heads.isEmpty() ? null : new IOException());
 	}
 
 	public <D> Stage<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,
-			Set<RepositoryName> originRepositoryIds, CommitId revisionId) {
+			Set<RepoID> originRepositoryIds, CommitId revisionId) {
 		return Stages.firstSuccessful(
 				() -> server.loadCommit(myRepositoryId.getRepositoryId(), revisionId),
 				() -> Stages.any(originRepositoryIds.stream()
@@ -181,7 +183,7 @@ public final class OTDriver {
 	}
 
 	public <D> Stage<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
-			Set<RepositoryName> originRepositoryIds, CommitId revisionId) {
+			Set<RepoID> originRepositoryIds, CommitId revisionId) {
 		return Stages.any(
 				union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds).stream()
 						.map(repositoryId -> loadSnapshot(myRepositoryId, repositoryId, revisionId)
@@ -190,7 +192,7 @@ public final class OTDriver {
 	}
 
 	public <D> Stage<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
-			RepositoryName repositoryId, CommitId revisionId) {
+			RepoID repositoryId, CommitId revisionId) {
 		return server.loadSnapshot(repositoryId, revisionId)
 				.thenCompose(optionalRawSnapshot -> {
 					if (!optionalRawSnapshot.isPresent()) {
@@ -199,7 +201,7 @@ public final class OTDriver {
 
 					SignedData<RawSnapshot> signedSnapshot = optionalRawSnapshot.get();
 					if (!verify(signedSnapshot.toBytes(), signedSnapshot.getSignature(),
-							repositoryId.getPubKey().getEcPublicKey())) {
+							repositoryId.getOwner().getEcPublicKey())) {
 						return Stage.of(Optional.empty());
 					}
 
@@ -231,7 +233,7 @@ public final class OTDriver {
 								myRepositoryId.getRepositoryId(),
 								revisionId,
 								encryptAES(myRepositoryId.getDiffsSerializer().apply(diffs), currentSimKey.getAesKey()),
-								new SimKeyHash(sha1(currentSimKey.toBytes()))),
+								Hash.ofBytes(sha1(currentSimKey.toBytes()))),
 						myRepositoryId.getPrivKey()));
 	}
 

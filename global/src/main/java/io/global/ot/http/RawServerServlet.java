@@ -27,11 +27,12 @@ import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.processor.SerialByteChunker;
 import io.datakernel.util.MemSize;
+import io.global.common.PubKey;
+import io.global.common.RepoID;
 import io.global.common.SignedData;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RawServer;
 import io.global.ot.api.RawSnapshot;
-import io.global.ot.api.RepositoryName;
 import io.global.ot.util.BinaryDataFormats;
 import io.global.ot.util.HttpDataFormats;
 
@@ -123,12 +124,12 @@ public final class RawServerServlet implements AsyncServlet {
 								.thenApply(heads ->
 										HttpResponse.ok200()
 												.withBody(toJson(HEADS_DELTA_GSON, heads).getBytes(UTF_8))))
-				.with(POST, "/" + SHARE_KEY, ensureRequestBody(Integer.MAX_VALUE, req ->
-						rawServer.shareKey(fromJson(SHARED_SIM_KEY_JSON, req.getBody().asString(UTF_8)))
+				.with(POST, "/" + SHARE_KEY + "/:owner", ensureRequestBody(Integer.MAX_VALUE, req ->
+						rawServer.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SHARED_SIM_KEY_JSON, req.getBody().asString(UTF_8)))
 								.thenApply($1 ->
 										HttpResponse.ok200())))
 				.with(GET, "/" + DOWNLOAD, req -> {
-					RepositoryName repositoryName = urlDecodeRepositoryId(req);
+					RepoID repoID = urlDecodeRepositoryId(req);
 					Set<CommitId> heads = req.parseQueryParameter("heads", HEADS_SPLITTER::splitAsStream)
 							.map(str -> {
 								try {
@@ -147,7 +148,7 @@ public final class RawServerServlet implements AsyncServlet {
 								}
 							})
 							.collect(toSet());
-					return rawServer.download(repositoryName, bases, heads)
+					return rawServer.download(repoID, bases, heads)
 							.thenApply(downloader ->
 									HttpResponse.ok200()
 											.withBodyStream(downloader
@@ -155,11 +156,11 @@ public final class RawServerServlet implements AsyncServlet {
 													.apply(SerialByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))));
 				})
 				.with(POST, "/" + UPLOAD, req -> {
-					RepositoryName repositoryName = urlDecodeRepositoryId(req);
+					RepoID repoID = urlDecodeRepositoryId(req);
 					return ByteBufsSupplier.of(req.getBodyStream())
 							.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
 									.andThen(BinaryDataFormats::toCommitEntry))
-							.streamTo(rawServer.uploader(repositoryName))
+							.streamTo(rawServer.uploader(repoID))
 							.thenApply($ -> HttpResponse.ok200());
 				});
 	}

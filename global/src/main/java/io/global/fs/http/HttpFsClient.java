@@ -65,7 +65,7 @@ public class HttpFsClient implements FsClient {
 								.withAuthority(address)
 								.appendPathPart(DOWNLOAD)
 								.appendPath(filename)
-								.appendQuery("offset", offset)
+								.appendQuery("offset", "" + offset)
 								.build())
 						.withBodyStream(buffer.getSupplier()))
 				.materialize();

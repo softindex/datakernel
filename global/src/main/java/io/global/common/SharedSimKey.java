@@ -19,50 +19,48 @@ package io.global.common;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
+import org.spongycastle.crypto.CryptoException;
 
 import java.util.Arrays;
 
 import static io.global.ot.util.BinaryDataFormats.*;
 
-public final class SharedSimKey implements Signable {
+public final class SharedSimKey implements ByteArrayIdentity {
 	private final byte[] bytes;
 
-	private final PubKey repositoryOwner;
 	private final PubKey receiver;
-	private final EncryptedSimKey encryptedSimKey;
-	private final SimKeyHash simKeyHash;
+	private final Hash hash;
+	private final byte[] encryptedSimKey;
 
-	private SharedSimKey(byte[] bytes,
-			PubKey repositoryOwner,
-			PubKey receiver, EncryptedSimKey encryptedSimKey, SimKeyHash simKeyHash) {
+	private SharedSimKey(byte[] bytes, PubKey receiver, Hash hash, byte[] encryptedSimKey) {
 		this.bytes = bytes;
-		this.repositoryOwner = repositoryOwner;
 		this.receiver = receiver;
+		this.hash = hash;
 		this.encryptedSimKey = encryptedSimKey;
-		this.simKeyHash = simKeyHash;
 	}
 
 	public static SharedSimKey ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 
-		PubKey repositoryOwner = readPubKey(buf);
 		PubKey receiver = readPubKey(buf);
-		EncryptedSimKey encryptedSimKey = EncryptedSimKey.ofBytes(readBytes(buf));
-		SimKeyHash simKeyHash = readSimKeyHash(buf);
+		Hash hash = Hash.ofBytes(readBytes(buf));
+		byte[] encryptedSimKey = readBytes(buf);
 
-		return new SharedSimKey(bytes, repositoryOwner, receiver, encryptedSimKey, simKeyHash);
+		return new SharedSimKey(bytes, receiver, hash, encryptedSimKey);
 	}
 
-	public static SharedSimKey of(PubKey repositoryOwner, PubKey receiver, EncryptedSimKey encryptedSimKey, SimKeyHash simKeyHash) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(repositoryOwner) + sizeof(receiver) + sizeof(encryptedSimKey.toBytes()) + sizeof(simKeyHash));
+	public static SharedSimKey of(PubKey receiver, Hash hash, byte[] encryptedSimKey) {
+		ByteBuf buf = ByteBufPool.allocate(sizeof(receiver) + sizeof(hash.toBytes()) + sizeof(encryptedSimKey));
 
-		writePubKey(buf, repositoryOwner);
 		writePubKey(buf, receiver);
-		writeBytes(buf, encryptedSimKey.toBytes());
-		writeSimKeyHash(buf, simKeyHash);
+		write(buf, hash);
+		writeBytes(buf, encryptedSimKey);
 
-		return new SharedSimKey(buf.asArray(),
-				repositoryOwner, receiver, encryptedSimKey, simKeyHash);
+		return new SharedSimKey(buf.asArray(), receiver, hash, encryptedSimKey);
+	}
+
+	public static SharedSimKey of(PubKey receiver, SimKey simKey) {
+		return of(receiver, Hash.of(simKey), receiver.encrypt(simKey));
 	}
 
 	@Override
@@ -74,16 +72,21 @@ public final class SharedSimKey implements Signable {
 		return receiver;
 	}
 
-	public EncryptedSimKey getEncryptedSimKey() {
+	public Hash getHash() {
+		return hash;
+	}
+
+	public byte[] getEncryptedSimKey() {
 		return encryptedSimKey;
 	}
 
-	public SimKeyHash getSimKeyHash() {
-		return simKeyHash;
+	public SimKey decryptSimKey(PrivKey privKey) throws CryptoException {
+		return SimKey.ofBytes(privKey.decrypt(encryptedSimKey));
 	}
 
-	public PubKey getRepositoryOwner() {
-		return repositoryOwner;
+	@Override
+	public int hashCode() {
+		return 31 * (31 * receiver.hashCode() + hash.hashCode()) + Arrays.hashCode(encryptedSimKey);
 	}
 
 	@Override
@@ -93,11 +96,11 @@ public final class SharedSimKey implements Signable {
 
 		SharedSimKey that = (SharedSimKey) o;
 
-		return Arrays.equals(bytes, that.bytes);
+		return receiver.equals(that.receiver) && hash.equals(that.hash) && Arrays.equals(encryptedSimKey, that.encryptedSimKey);
 	}
 
 	@Override
-	public int hashCode() {
-		return Arrays.hashCode(bytes);
+	public String toString() {
+		return "SharedSimKey{receiver=" + receiver + ", hash=" + hash + ", encryptedSimKey=@" + Integer.toHexString(Arrays.hashCode(encryptedSimKey)) + '}';
 	}
 }

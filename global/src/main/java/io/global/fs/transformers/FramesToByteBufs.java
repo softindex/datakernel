@@ -25,22 +25,20 @@ import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
-import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsCheckpoint.CheckpointVerificationResult;
+import io.global.fs.api.LocalPath;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 abstract class FramesToByteBufs extends AbstractAsyncProcess
 		implements WithSerialToSerial<FramesToByteBufs, DataFrame, ByteBuf> {
 	private final PubKey pubKey;
-	private final byte[] filenameHash;
+	private final byte[] localPathHash;
 
 	protected SerialSupplier<DataFrame> input;
 	protected SerialConsumer<ByteBuf> output;
@@ -50,9 +48,9 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 	private SHA256Digest digest;
 
 	// region creators
-	FramesToByteBufs(String fullPath, PubKey pubKey) {
+	FramesToByteBufs(LocalPath localPath, PubKey pubKey) {
 		this.pubKey = pubKey;
-		this.filenameHash = CryptoUtils.sha256(fullPath.getBytes(UTF_8));
+		this.localPathHash = localPath.hash();
 	}
 	// endregion
 
@@ -105,7 +103,7 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 		}
 		if (frame.isCheckpoint()) {
 			SignedData<GlobalFsCheckpoint> checkpoint = frame.getCheckpoint();
-			CheckpointVerificationResult result = GlobalFsCheckpoint.verify(checkpoint, pubKey, position, digest, filenameHash);
+			CheckpointVerificationResult result = GlobalFsCheckpoint.verify(checkpoint, pubKey, position, digest, localPathHash);
 			if (result != CheckpointVerificationResult.SUCCESS) {
 				return Stage.ofException(new StacklessException(FramesToByteBufs.class, "Checkpoint verification failed: " + result.message));
 			}

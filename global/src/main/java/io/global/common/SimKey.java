@@ -1,49 +1,82 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.global.common;
 
-import org.spongycastle.crypto.CryptoException;
 import org.spongycastle.crypto.params.KeyParameter;
 
-import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Base64;
 
-import static io.global.common.CryptoUtils.decryptECIES;
-
-public final class SimKey {
-	public static final SecureRandom SECURE_RANDOM = new SecureRandom();
-
+public final class SimKey implements Base64Identity {
+	private final byte[] key;
 	private final KeyParameter keyParameter;
 
 	private SimKey(KeyParameter keyParameter) {
 		this.keyParameter = keyParameter;
+		this.key = keyParameter.getKey();
 	}
 
-	public static SimKey random() {
-		byte[] aesKeyBytes = new byte[16];
-		SECURE_RANDOM.nextBytes(aesKeyBytes);
-		KeyParameter aesKey = new KeyParameter(aesKeyBytes);
-		return ofAesKey(aesKey);
+	private SimKey(byte[] key) {
+		this.key = key;
+		this.keyParameter = new KeyParameter(key);
 	}
 
-	public static SimKey ofAesKey(KeyParameter keyParameter) {
+	public static SimKey generate() {
+		return new SimKey(CryptoUtils.generateCipherKey(16));
+	}
+
+	public static SimKey of(KeyParameter keyParameter) {
 		return new SimKey(keyParameter);
 	}
 
 	public static SimKey ofBytes(byte[] bytes) {
-		return new SimKey(new KeyParameter(bytes));
+		return new SimKey(bytes);
 	}
 
-	public static SimKey ofEncryptedSimKey(EncryptedSimKey encryptedSimKey, PrivKey privKey) {
-		try {
-			return SimKey.ofBytes(decryptECIES(encryptedSimKey.toBytes(), privKey.getEcPrivateKey()));
-		} catch (CryptoException e) {
-			throw new RuntimeException(e);
-		}
+	public static SimKey fromString(String string) {
+		return new SimKey(Base64.getUrlDecoder().decode(string));
 	}
 
+	@Override
 	public byte[] toBytes() {
-		return keyParameter.getKey();
+		return key;
 	}
 
 	public KeyParameter getAesKey() {
 		return keyParameter;
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(key);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		SimKey simKey = (SimKey) o;
+
+		return Arrays.equals(key, simKey.key);
+	}
+
+	@Override
+	public String toString() {
+		return "SimKey@" + Integer.toHexString(Arrays.hashCode(key));
 	}
 }

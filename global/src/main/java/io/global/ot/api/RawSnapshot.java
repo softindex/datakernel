@@ -19,24 +19,25 @@ package io.global.ot.api;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
-import io.global.common.Signable;
-import io.global.common.SimKeyHash;
+import io.global.common.ByteArrayIdentity;
+import io.global.common.Hash;
+import io.global.common.RepoID;
 
 import java.util.Arrays;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.global.ot.util.BinaryDataFormats.*;
 
-public final class RawSnapshot implements Signable {
+public final class RawSnapshot implements ByteArrayIdentity {
 	public final byte[] bytes;
 
-	public final RepositoryName repositoryId;
+	public final RepoID repositoryId;
 	public final CommitId commitId;
 	public final EncryptedData encryptedDiffs;
-	public final SimKeyHash simKeyHash;
+	public final Hash simKeyHash;
 
 	private RawSnapshot(byte[] bytes,
-			RepositoryName repositoryId, CommitId commitId, EncryptedData encryptedDiffs, SimKeyHash simKeyHash) {
+			RepoID repositoryId, CommitId commitId, EncryptedData encryptedDiffs, Hash simKeyHash) {
 		this.bytes = bytes;
 		this.repositoryId = repositoryId;
 		this.commitId = commitId;
@@ -46,22 +47,22 @@ public final class RawSnapshot implements Signable {
 
 	public static RawSnapshot ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		RepositoryName repositoryId = readRepositoryId(buf);
+		RepoID repositoryId = readRepoID(buf);
 		CommitId commitId = readCommitId(buf);
 		EncryptedData encryptedData = readEncryptedData(buf);
-		SimKeyHash simKeyHash = readSimKeyHash(buf);
+		Hash simKeyHash = Hash.ofBytes(readBytes(buf));
 		return new RawSnapshot(bytes, repositoryId, commitId, encryptedData, simKeyHash);
 	}
 
-	public static RawSnapshot of(RepositoryName repositoryId,
+	public static RawSnapshot of(RepoID repositoryId,
 			CommitId commitId,
 			EncryptedData encryptedDiffs,
-			SimKeyHash simKeyHash) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(repositoryId) + sizeof(commitId) + sizeof(encryptedDiffs) + sizeof(simKeyHash));
-		writeRepositoryId(buf, repositoryId);
+			Hash simKeyHash) {
+		ByteBuf buf = ByteBufPool.allocate(sizeof(repositoryId) + sizeof(commitId) + sizeof(encryptedDiffs) + sizeof(simKeyHash.toBytes()));
+		writeRepoID(buf, repositoryId);
 		writeCommitId(buf, commitId);
 		writeEncryptedData(buf, encryptedDiffs);
-		writeSimKeyHash(buf, simKeyHash);
+		write(buf, simKeyHash);
 		return new RawSnapshot(buf.asArray(),
 				repositoryId, commitId, encryptedDiffs, simKeyHash);
 	}
@@ -79,7 +80,7 @@ public final class RawSnapshot implements Signable {
 		return checkNotNull(encryptedDiffs);
 	}
 
-	public SimKeyHash getSimKeyHash() {
+	public Hash getSimKeyHash() {
 		return checkNotNull(simKeyHash);
 	}
 

@@ -14,14 +14,20 @@
  * limitations under the License.
  */
 
-package io.global.ot.api;
+package io.global.common;
 
-import io.datakernel.async.Stage;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
-
-public interface RawDiscoveryService {
-	Stage<SignedData<RawAnnounceData>> findServers(PubKey pubKey);
-
-	Stage<Void> announce(SignedData<RawAnnounceData> announceData);
+/**
+ * CONTRACT:
+ * <p>
+ * Since there is no way in Java as of now to specify static members
+ * of classes which implement thre interface, I am saying it here in
+ * the doc:
+ * <p>
+ * Classes which implement this interface must also define a static
+ * factory method <code>ofBytes</code> which creates a new object
+ * from single byte array, that was aquired using the
+ * {@link ByteArrayIdentity#toBytes toBytes()} method.
+ */
+public interface ByteArrayIdentity {
+	byte[] toBytes();
 }

@@ -21,10 +21,10 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
-import io.global.fs.api.GlobalFsPath;
+import io.global.fs.api.LocalPath;
 
 /**
- * Something like a splitter, which outputs the byte buf data, but
+ * Something like a splitter, which outputs the bytebuf data, but
  * also stores the checkpoints in given {@link CheckpointStorage}.
  * Unlike {@link FrameVerifier}, it does not cut the output stream,
  * although it does verify received checkpoints and data.
@@ -36,9 +36,9 @@ public final class FramesIntoStorage extends FramesToByteBufs {
 	private final CheckpointStorage checkpointStorage;
 
 	// region creators
-	public FramesIntoStorage(GlobalFsPath path, PubKey pubKey, CheckpointStorage checkpointStorage) {
-		super(path.getFullPath(), pubKey);
-		this.path = path.getPath();
+	public FramesIntoStorage(LocalPath localPath, PubKey pubKey, CheckpointStorage checkpointStorage) {
+		super(localPath, pubKey);
+		this.path = localPath.getPath();
 		this.checkpointStorage = checkpointStorage;
 	}
 	// endregion

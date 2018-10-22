@@ -20,8 +20,6 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
 import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -54,12 +52,14 @@ public class RawServerHttpClientTest {
 		KeyPair keys = KeyPair.generate();
 		PrivKey privKey = keys.getPrivKey();
 		PubKey pubKey = keys.getPubKey();
-		RepositoryName repository = new RepositoryName(pubKey, "test");
 
-		SimKey simKey = SimKey.random();
+		SimKey simKey = SimKey.generate();
+
+		RepoID repository = RepoID.of(pubKey, "test");
+
 		RawCommit rootCommit = RawCommit.of(emptyList(),
 				EncryptedData.encrypt(new byte[0], simKey),
-				SimKeyHash.ofSimKey(simKey),
+				Hash.of(simKey),
 				0, 0L);
 		CommitId rootCommitId = CommitId.ofCommit(rootCommit);
 
@@ -67,6 +67,7 @@ public class RawServerHttpClientTest {
 		SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(rawCommitHead, privKey);
 
 		LinkedList<Object> parameters = new LinkedList<>();
+
 		RawServerServlet servlet = RawServerServlet.create(new RawServer() {
 			<T> Stage<T> resultOf(@Nullable T result, Object... args) {
 				parameters.add(result);
@@ -80,63 +81,60 @@ public class RawServerHttpClientTest {
 			}
 
 			@Override
-			public Stage<Void> save(RepositoryName repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
+			public Stage<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
 				return resultOf(null, repositoryId, commits, heads);
 			}
 
 			@Override
-			public Stage<RawCommit> loadCommit(RepositoryName repositoryId, CommitId id) {
+			public Stage<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 				return resultOf(rootCommit, repository, id);
 			}
 
 			@Override
-			public Stage<HeadsInfo> getHeadsInfo(RepositoryName repositoryId) {
+			public Stage<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
 				return resultOf(new HeadsInfo(set(rootCommitId), set(rootCommitId)), repositoryId);
 			}
 
 			@Override
-			public Stage<SerialSupplier<CommitEntry>> download(RepositoryName repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+			public Stage<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 				throw new UnsupportedOperationException();
 			}
 
 			@Override
-			public Stage<SerialConsumer<CommitEntry>> upload(RepositoryName repositoryId) {
+			public Stage<SerialConsumer<CommitEntry>> upload(RepoID repositoryId) {
 				throw new UnsupportedOperationException();
 			}
 
 			@Override
-			public Stage<Void> saveSnapshot(RepositoryName repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
+			public Stage<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 				return resultOf(null, repositoryId, encryptedSnapshot);
 			}
 
 			@Override
-			public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepositoryName repositoryId, CommitId commitId) {
+			public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
 				return resultOf(Optional.of(
 						SignedData.sign(
 								RawSnapshot.of(repositoryId, rootCommitId,
-										EncryptedData.encrypt(new byte[100], simKey), SimKeyHash.ofSimKey(simKey)),
+										EncryptedData.encrypt(new byte[100], simKey), Hash.of(simKey)),
 								privKey)),
 						repositoryId, commitId);
 			}
 
 			@Override
-			public Stage<Heads> getHeads(RepositoryName repositoryId, Set<CommitId> remoteHeads) {
+			public Stage<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
 				return resultOf(new Heads(set(signedRawCommitHead), set(rootCommitId)),
 						repositoryId, remoteHeads);
 			}
 
 			@Override
-			public Stage<Void> shareKey(SignedData<SharedSimKey> simKey) {
-				return resultOf(null, simKey);
+			public Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> signedSimKey) {
+				return resultOf(null, signedSimKey);
 			}
 
 			@Override
-			public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey repositoryOwner, PubKey receiver, SimKeyHash simKeyHash) {
-				return resultOf(Optional.of(
-						SignedData.sign(
-								SharedSimKey.of(repositoryOwner, receiver, EncryptedSimKey.ofSimKey(simKey, pubKey), simKeyHash),
-								privKey)),
-						repositoryOwner, receiver, simKeyHash);
+			public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash simKeyHash) {
+				SharedSimKey sharedSimKey = SharedSimKey.of(receiver, simKey);
+				return resultOf(Optional.of(SignedData.sign(sharedSimKey, privKey)), owner, receiver, simKeyHash);
 			}
 
 			@Override
@@ -146,21 +144,18 @@ public class RawServerHttpClientTest {
 			}
 
 			@Override
-			public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepositoryName repositoryId) {
+			public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
 				return resultOf(set(SignedData.sign(
-						RawPullRequest.of(repositoryId, new RepositoryName(pubKey, "fork")), privKey)),
+						RawPullRequest.of(repositoryId, RepoID.of(pubKey, "fork")), privKey)),
 						repositoryId);
 			}
 		});
 
-		IAsyncHttpClient httpClient = new IAsyncHttpClient() {
-			@Override
-			public Stage<HttpResponse> request(HttpRequest request) {
-				try {
-					return servlet.serve(request);
-				} catch (ParseException e) {
-					return Stage.ofException(e);
-				}
+		IAsyncHttpClient httpClient = request -> {
+			try {
+				return servlet.serve(request);
+			} catch (ParseException e) {
+				return Stage.ofException(e);
 			}
 		};
 
@@ -201,7 +196,7 @@ public class RawServerHttpClientTest {
 
 		SignedData<RawSnapshot> signedSnapshot = SignedData.sign(
 				RawSnapshot.of(repository, rootCommitId,
-						EncryptedData.encrypt(new byte[100], simKey), SimKeyHash.ofSimKey(simKey)),
+						EncryptedData.encrypt(new byte[100], simKey), Hash.of(simKey)),
 				privKey);
 		CompletableFuture<Void> saveSnapshotFuture = client.saveSnapshot(
 				repository,
@@ -233,15 +228,12 @@ public class RawServerHttpClientTest {
 		assertEquals(set(rootCommitId), parameters.remove());
 		assertTrue(parameters.isEmpty());
 
-		SignedData<SharedSimKey> signedSharedSimKey = SignedData.sign(
-				SharedSimKey.of(
-						pubKey,
-						pubKey,
-						EncryptedSimKey.ofSimKey(simKey, pubKey),
-						SimKeyHash.ofSimKey(simKey)),
-				privKey);
-		CompletableFuture<Void> shareKeyFuture = client.shareKey(signedSharedSimKey)
+		SharedSimKey sharedSimKey = SharedSimKey.of(pubKey, simKey);
+		SignedData<SharedSimKey> signedSharedSimKey = SignedData.sign(sharedSimKey, privKey);
+
+		CompletableFuture<Void> shareKeyFuture = client.shareKey(pubKey, signedSharedSimKey)
 				.toCompletableFuture();
+
 		eventloop.run();
 		assertEquals(parameters.remove(), shareKeyFuture.get());
 		assertEquals(signedSharedSimKey, parameters.remove());

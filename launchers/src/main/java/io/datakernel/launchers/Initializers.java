@@ -23,17 +23,10 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.util.Initializer;
-import io.global.fs.local.GlobalFsNodeDriver;
 
 import java.time.Duration;
 
 import static io.datakernel.config.ConfigConverters.*;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey;
-import static io.datakernel.rpc.server.RpcServer.DEFAULT_INITIAL_BUFFER_SIZE;
-import static io.datakernel.rpc.server.RpcServer.DEFAULT_MAX_MESSAGE_SIZE;
-import static io.datakernel.util.Preconditions.checkState;
-import static io.global.fs.local.GlobalFsNodeDriver.DEFAULT_LATENCY_MARGIN;
-import static java.util.Collections.emptyList;
 
 public class Initializers {
 	private Initializers() {

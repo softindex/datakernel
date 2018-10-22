@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,39 +12,47 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package io.global.common.api;
 
 import io.datakernel.async.Stage;
-import io.global.common.KeyPair;
-import io.global.common.PubKey;
-import io.global.common.RawServerId;
-import io.global.common.SignedData;
+import io.global.common.*;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public interface DiscoveryService {
-	Stage<SignedData<AnnounceData>> findServers(PubKey pubKey);
+	Stage<Void> announce(RepoID repo, SignedData<AnnounceData> announceData);
 
-	Stage<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData);
+	Stage<Optional<SignedData<AnnounceData>>> find(RepoID repo);
 
-	default Stage<Void> announce(KeyPair keys, AnnounceData announceData) {
-		return announce(keys.getPubKey(), SignedData.sign(announceData, keys.getPrivKey()));
+	Stage<List<SignedData<AnnounceData>>> find(PubKey owner);
+
+	default Stage<Void> announce(RepoID repo, AnnounceData announceData, PrivKey privKey) {
+		return announce(repo, SignedData.sign(announceData, privKey));
 	}
 
-	default Stage<Void> append(KeyPair keys, AnnounceData announceData) {
-		return findServers(keys.getPubKey())
+	default Stage<Void> append(RepoID repo, AnnounceData announceData, PrivKey privKey) {
+		return find(repo)
 				.thenCompose(data -> {
-					if (data == null) {
-						return announce(keys, announceData);
+					if (!data.isPresent()) {
+						return announce(repo, announceData, privKey);
 					}
-					Set<RawServerId> serverIds = new HashSet<>(data.getData().getServerIds());
+					Set<RawServerId> serverIds = new HashSet<>(data.get().getData().getServerIds());
 					serverIds.addAll(announceData.getServerIds());
-					long timestamp = Math.max(announceData.getTimestamp(), data.getData().getTimestamp());
-					return announce(keys, AnnounceData.of(timestamp, keys.getPubKey(), serverIds));
+					long timestamp = Math.max(announceData.getTimestamp(), data.get().getData().getTimestamp());
+					return announce(repo, AnnounceData.of(timestamp, serverIds), privKey);
 				});
 	}
+
+	Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey);
+
+	default Stage<Void> shareKey(KeyPair keys, SharedSimKey simKey) {
+		return shareKey(keys.getPubKey(), SignedData.sign(simKey, keys.getPrivKey()));
+	}
+
+	Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash);
 }

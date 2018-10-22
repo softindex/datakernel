@@ -193,20 +193,20 @@ public final class CryptoUtils {
 		return i2.processBlock(encryptedMessage, 0, encryptedMessage.length);
 	}
 
-	public static boolean verify(byte[] data, ECDSASignature signature, ECPublicKeyParameters ecPublicKeyParameters) {
+	public static boolean verify(byte[] data, Signature signature, ECPublicKeyParameters ecPublicKeyParameters) {
 		ECDSASigner signer = new ECDSASigner();
 		signer.init(false, ecPublicKeyParameters);
-		return signer.verifySignature(data, signature.r, signature.s);
+		return signer.verifySignature(data, signature.getR(), signature.getS());
 	}
 
-	public static ECDSASignature sign(byte[] input, ECPrivateKeyParameters ecPrivateKeyParameters) {
+	public static Signature sign(byte[] input, ECPrivateKeyParameters ecPrivateKeyParameters) {
 		ECDSASigner signer = new ECDSASigner(new HMacDSAKCalculator(new SHA256Digest()));
 		signer.init(true, ecPrivateKeyParameters);
 		BigInteger[] components = signer.generateSignature(input);
-		return new ECDSASignature(components[0], components[1]).toCanonicalised();
+		return Signature.of(components[0], components[1]).toCanonicalised();
 	}
 
-	public static CipherParameters generateCipherKey(int size) {
+	public static KeyParameter generateCipherKey(int size) {
 		byte[] aesKeyBytes = new byte[size];
 		SECURE_RANDOM.nextBytes(aesKeyBytes);
 		return new KeyParameter(aesKeyBytes);

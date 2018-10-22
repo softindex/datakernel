@@ -32,7 +32,6 @@ import java.net.InetAddress;
 import java.time.Duration;
 
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
-import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -44,19 +43,20 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		if (e instanceof HttpException) {
 			HttpException httpException = (HttpException) e;
 			response = HttpResponse.ofCode(httpException.getCode());
-			String msg = e.getLocalizedMessage();
-			if (msg != null) {
-				response.withBody(msg.getBytes(UTF_8));
-			}
 		} else if (e instanceof ParseException) {
 			response = HttpResponse.ofCode(400);
 		} else {
 			response = HttpResponse.ofCode(500);
 		}
-		return response
-				.withHeader(CACHE_CONTROL, "no-store")
-				.withHeader(PRAGMA, "no-cache")
-				.withHeader(AGE, "0");
+		String msg = e.getLocalizedMessage();
+		if (msg != null) {
+			response.withBody(msg.getBytes(UTF_8));
+		}
+		throw new RuntimeException(e);
+		// return response
+		// 		.withHeader(CACHE_CONTROL, "no-store")
+		// 		.withHeader(PRAGMA, "no-cache")
+		// 		.withHeader(AGE, "0");
 	};
 
 	private final AsyncServlet servlet;

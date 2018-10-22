@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 
-package io.global.ot.api;
+package io.global.common;
 
-import io.datakernel.async.Stage;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
+import java.util.Base64;
 
-public interface RawDiscoveryService {
-	Stage<SignedData<RawAnnounceData>> findServers(PubKey pubKey);
+// TODO anton: find a better name for this, or just remove/replace this
+public interface Base64Identity extends ByteArrayIdentity, StringIdentity {
+	Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
 
-	Stage<Void> announce(SignedData<RawAnnounceData> announceData);
+	@Override
+	default String asString() {
+		return encoder.encodeToString(toBytes());
+	}
 }

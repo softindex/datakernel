@@ -18,15 +18,13 @@ package io.global.fs.transformers;
 
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.global.common.CryptoUtils;
 import io.global.common.PrivKey;
 import io.global.common.SignedData;
-import io.global.fs.api.CheckpointPositionStrategy;
+import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
+import io.global.fs.api.LocalPath;
 import org.spongycastle.crypto.digests.SHA256Digest;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Converts a stream of data into a stream of frames.
@@ -35,33 +33,35 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * It's counterpart is the {@link FrameVerifier}.
  */
 public final class FrameSigner extends ByteBufsToFrames {
-	private final SHA256Digest digest = new SHA256Digest();
-	private final byte[] filenameHash;
-	private final CheckpointPositionStrategy checkpointPositionStrategy;
+	private final byte[] localPathHash;
+	private final CheckpointPosStrategy checkpointPosStrategy;
 	private final PrivKey privateKey;
+	private final SHA256Digest digest;
 
 	private boolean lastPostedCheckpoint = false;
 
 	// region creators
-	public FrameSigner(String fullPath, long offset, CheckpointPositionStrategy checkpointPositionStrategy, PrivKey privateKey) {
+	public FrameSigner(LocalPath localPath, long offset, CheckpointPosStrategy checkpointPosStrategy, PrivKey privateKey, SHA256Digest digest) {
 		super(offset);
-		this.filenameHash = CryptoUtils.sha256(fullPath.getBytes(UTF_8));
-		this.checkpointPositionStrategy = checkpointPositionStrategy;
+		this.localPathHash = localPath.hash();
+		this.checkpointPosStrategy = checkpointPosStrategy;
 		this.privateKey = privateKey;
+		this.digest = digest;
 	}
 	// endregion
 
 	@Override
 	protected Stage<Void> postByteBuf(ByteBuf buf) {
-		digest.update(buf.array(), buf.readPosition(), buf.readRemaining());
+		int size = buf.readRemaining();
+		digest.update(buf.array(), buf.readPosition(), size);
 		lastPostedCheckpoint = false;
 		return super.postByteBuf(buf);
 	}
 
 	@Override
 	protected Stage<Void> postNextCheckpoint() {
-		nextCheckpoint = checkpointPositionStrategy.nextPosition(nextCheckpoint);
-		GlobalFsCheckpoint checkpoint = GlobalFsCheckpoint.of(position, new SHA256Digest(digest), filenameHash);
+		nextCheckpoint = checkpointPosStrategy.nextPosition(nextCheckpoint);
+		GlobalFsCheckpoint checkpoint = GlobalFsCheckpoint.of(position, new SHA256Digest(digest), localPathHash);
 		lastPostedCheckpoint = true;
 		return output.accept(DataFrame.of(SignedData.sign(checkpoint, privateKey)));
 	}

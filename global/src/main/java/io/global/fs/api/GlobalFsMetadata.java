@@ -16,52 +16,54 @@
 
 package io.global.fs.api;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
-import io.global.common.Signable;
+import io.global.common.ByteArrayIdentity;
+import io.global.common.Hash;
 
-import java.util.Arrays;
+import java.util.Objects;
 
 import static io.global.ot.util.BinaryDataFormats.*;
 
-public final class GlobalFsMetadata implements Signable {
+public final class GlobalFsMetadata implements ByteArrayIdentity {
 	private byte[] bytes;
 
-	private final String fs;
-	private final String path;
+	private final LocalPath localPath;
 	private final long size;
 	private final long revision;
 
+	@Nullable
+	private final Hash simKeyHash;
+
 	// region creators
-	private GlobalFsMetadata(byte[] bytes, String fs, String path, long size, long revision) {
+	private GlobalFsMetadata(byte[] bytes, LocalPath localPath, long size, long revision, @Nullable Hash simKeyHash) {
 		this.bytes = bytes;
-		this.fs = fs;
-		this.path = path;
+		this.localPath = localPath;
 		this.size = size;
 		this.revision = revision;
+		this.simKeyHash = simKeyHash;
 	}
 
-	public static GlobalFsMetadata of(String fs, String path, long size, long revision) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(fs) + sizeof(path) + 9 + 8);
-		writeString(buf, fs);
-		writeString(buf, path);
+	public static GlobalFsMetadata of(LocalPath localPath, long size, long revision) {
+		ByteBuf buf = ByteBufPool.allocate(sizeof(localPath) + 9 + 8);
+		writeLocalPath(buf, localPath);
 		buf.writeVarLong(size);
 		buf.writeLong(revision);
-		return new GlobalFsMetadata(buf.asArray(), fs, path, size, revision);
+		return new GlobalFsMetadata(buf.asArray(), localPath, size, revision, null);
 	}
 
-	public static GlobalFsMetadata ofRemoved(String fs, String path, long revision) {
-		return of(fs, path, -1, revision);
+	public static GlobalFsMetadata ofRemoved(LocalPath localPath, long revision) {
+		return of(localPath, -1, revision);
 	}
 
 	public static GlobalFsMetadata fromBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		String fs = readString(buf);
-		String path = readString(buf);
+		LocalPath localPath = readLocalPath(buf);
 		long size = buf.readVarLong();
 		long revision = buf.readLong();
-		return new GlobalFsMetadata(bytes, fs, path, size, revision);
+		return new GlobalFsMetadata(bytes, localPath, size, revision, null);
 	}
 	// endregion
 
@@ -72,33 +74,22 @@ public final class GlobalFsMetadata implements Signable {
 		if (second == null) {
 			return first;
 		}
+		assert Objects.equals(first.simKeyHash, second.simKeyHash);
 		if (first.revision > second.revision) {
 			return first;
 		}
 		if (second.revision > first.revision) {
 			return second;
 		}
-		return first.size > second.size ? first : second;
+		return first.size < second.size ? second : first;
 	}
 
 	public GlobalFsMetadata toRemoved() {
-		return ofRemoved(fs, path, revision);
+		return ofRemoved(localPath, revision);
 	}
 
-	public String getFs() {
-		return fs;
-	}
-
-	public String getPath() {
-		return path;
-	}
-
-	public String getFullPath() {
-		return fs + "::" + path;
-	}
-
-	public boolean isRemoved() {
-		return size == -1;
+	public LocalPath getLocalPath() {
+		return localPath;
 	}
 
 	public long getSize() {
@@ -109,9 +100,23 @@ public final class GlobalFsMetadata implements Signable {
 		return revision;
 	}
 
+	@Nullable
+	public Hash getSimKeyHash() {
+		return simKeyHash;
+	}
+
+	public boolean isRemoved() {
+		return size == -1;
+	}
+
 	@Override
 	public byte[] toBytes() {
 		return bytes;
+	}
+
+	@Override
+	public int hashCode() {
+		return 31 * (31 * (31 * localPath.hashCode() + (int) (size ^ (size >>> 32))) + (int) (revision ^ (revision >>> 32))) + (simKeyHash != null ? simKeyHash.hashCode() : 0);
 	}
 
 	@Override
@@ -119,18 +124,17 @@ public final class GlobalFsMetadata implements Signable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		GlobalFsMetadata that = (GlobalFsMetadata) o;
+		GlobalFsMetadata metadata = (GlobalFsMetadata) o;
 
-		return size == that.size && revision == that.revision && Arrays.equals(bytes, that.bytes) && fs.equals(that.fs) && path.equals(that.path);
-	}
-
-	@Override
-	public int hashCode() {
-		return 31 * (31 * (31 * (31 * Arrays.hashCode(bytes) + fs.hashCode()) + path.hashCode()) + (int) (size ^ (size >>> 32))) + (int) (revision ^ (revision >>> 32));
+		//noinspection ConstantConditions
+		return size == metadata.size &&
+				revision == metadata.revision &&
+				localPath.equals(metadata.localPath) &&
+				(simKeyHash != null ? simKeyHash.equals(metadata.simKeyHash) : metadata.simKeyHash == null);
 	}
 
 	@Override
 	public String toString() {
-		return "GlobalFsMetadata{fs='" + fs + "', path='" + path + "', size=" + size + ", revision=" + revision + '}';
+		return "GlobalFsMetadata{localPath=" + localPath + ", size=" + size + ", revision=" + revision + ", simKeyHash=" + simKeyHash + '}';
 	}
 }

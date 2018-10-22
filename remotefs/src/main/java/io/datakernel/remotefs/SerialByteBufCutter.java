@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AbstractAsyncProcess;
@@ -31,9 +47,8 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 	@Override
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
-			checkState(this.input == null, "Input already set");
-			this.input = input;
-			if (this.input != null && this.output != null) startProcess();
+			this.input = sanitize(input);
+			if (this.output != null) startProcess();
 			return getProcessResult();
 		};
 	}
@@ -41,9 +56,8 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 	@Override
 	public SerialOutput<ByteBuf> getOutput() {
 		return output -> {
-			checkState(this.output == null, "Output already set");
-			this.output = output;
-			if (this.input != null && this.output != null) startProcess();
+			this.output = sanitize(output);
+			if (this.input != null) startProcess();
 		};
 	}
 
@@ -56,34 +70,23 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 	@Override
 	protected void doProcess() {
 		input.get()
-				.async()
-				.whenComplete((item, e) -> {
-					if (e == null) {
-						if (item != null) {
-							int size = item.readRemaining();
-							position += size;
-							if (position <= offset) {
-								item.recycle();
-								doProcess();
-								return;
-							}
-							if (position - size < offset) {
-								item.moveReadPosition(size - (int) (position - offset));
-							}
-							output.accept(item)
-									.whenComplete(($, e2) -> {
-										if (e2 == null) {
-											doProcess();
-										} else {
-											close(e2);
-										}
-									});
-						} else {
-							output.accept(null)
-									.whenComplete(($, e2) -> completeProcess(e2));
+				.whenResult(item -> {
+					if (item != null) {
+						int size = item.readRemaining();
+						position += size;
+						if (position <= offset) {
+							item.recycle();
+							doProcess();
+							return;
 						}
+						if (position - size < offset) {
+							item.moveReadPosition(size - (int) (position - offset));
+						}
+						output.accept(item)
+								.whenResult(($) -> doProcess());
 					} else {
-						close(e);
+						output.accept(null)
+								.whenComplete(($, e2) -> completeProcess(e2));
 					}
 				});
 	}

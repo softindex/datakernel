@@ -23,8 +23,8 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.util.ParserFunction;
 import io.global.common.*;
-import io.global.fs.api.GlobalFsPath;
-import io.global.fs.api.GlobalFsSpace;
+import io.global.fs.api.GlobalPath;
+import io.global.fs.api.LocalPath;
 import io.global.ot.api.*;
 import org.spongycastle.math.ec.ECPoint;
 
@@ -70,6 +70,7 @@ public final class BinaryDataFormats {
 	}
 	// endregion
 
+	// region readVarInts
 	public static int readVarInt(ByteBuf buf) throws ParseException {
 		int size;
 		try {
@@ -89,6 +90,7 @@ public final class BinaryDataFormats {
 		}
 		return size;
 	}
+	// endregionw
 
 	// region byte[]
 	public static int sizeof(byte[] bytes) {
@@ -107,6 +109,20 @@ public final class BinaryDataFormats {
 		byte[] bytes = new byte[size];
 		buf.read(bytes);
 		return bytes;
+	}
+	// endregion
+
+	// region ByteArrayIdentity
+	public static int sizeof(ByteArrayIdentity byteArrayIdentity) {
+		return sizeof(byteArrayIdentity.toBytes());
+	}
+
+	public static void write(ByteBuf buf, ByteArrayIdentity byteArrayIdentity) {
+		writeBytes(buf, byteArrayIdentity.toBytes());
+	}
+
+	public static <T> T read(ByteBuf buf, ParserFunction<byte[], T> parser) throws ParseException {
+		return parser.parse(readBytes(buf));
 	}
 	// endregion
 
@@ -156,7 +172,7 @@ public final class BinaryDataFormats {
 
 	public static PubKey readPubKey(ByteBuf buf) throws ParseException {
 		try {
-			return PubKey.ofQ(readECPoint(buf));
+			return PubKey.of(readECPoint(buf));
 		} catch (IllegalArgumentException | ArithmeticException e) {
 			throw new ParseException(BinaryDataFormats.class, "Failed to read public key", e);
 		}
@@ -174,27 +190,10 @@ public final class BinaryDataFormats {
 
 	public static PrivKey readPrivKey(ByteBuf buf) throws ParseException {
 		try {
-			return PrivKey.ofD(readBigInteger(buf));
+			return PrivKey.of(readBigInteger(buf));
 		} catch (IllegalArgumentException | ArithmeticException e) {
 			throw new ParseException(BinaryDataFormats.class, "Failed to read private key", e);
 		}
-	}
-	// endregion
-
-	// region RepositoryName
-	public static int sizeof(RepositoryName repositoryId) {
-		return sizeof(repositoryId.getPubKey()) + repositoryId.getRepositoryName().length() * 5 + 5;
-	}
-
-	public static void writeRepositoryId(ByteBuf buf, RepositoryName repositoryId) {
-		writePubKey(buf, repositoryId.getPubKey());
-		buf.writeJavaUTF8(repositoryId.getRepositoryName());
-	}
-
-	public static RepositoryName readRepositoryId(ByteBuf buf) throws ParseException {
-		PubKey pubKey = readPubKey(buf);
-		String str = buf.readJavaUTF8();
-		return new RepositoryName(pubKey, str);
 	}
 	// endregion
 
@@ -209,20 +208,6 @@ public final class BinaryDataFormats {
 
 	public static CommitId readCommitId(ByteBuf buf) throws ParseException {
 		return CommitId.ofBytes(readBytes(buf));
-	}
-	// endregion
-
-	// region SimKeyHash
-	public static int sizeof(SimKeyHash simKeyHash) {
-		return sizeof(simKeyHash.toBytes());
-	}
-
-	public static void writeSimKeyHash(ByteBuf buf, SimKeyHash simKeyHash) {
-		writeBytes(buf, simKeyHash.toBytes());
-	}
-
-	public static SimKeyHash readSimKeyHash(ByteBuf buf) throws ParseException {
-		return new SimKeyHash(readBytes(buf));
 	}
 	// endregion
 
@@ -262,19 +247,19 @@ public final class BinaryDataFormats {
 	// endregion
 
 	// region Signature
-	public static int sizeof(ECDSASignature signature) {
-		return sizeof(signature.r) + sizeof(signature.s);
+	public static int sizeof(Signature signature) {
+		return sizeof(signature.getR()) + sizeof(signature.getS());
 	}
 
-	public static void writeEcdsaSignature(ByteBuf buf, ECDSASignature signature) {
-		writeBigInteger(buf, signature.r);
-		writeBigInteger(buf, signature.s);
+	public static void writeEcdsaSignature(ByteBuf buf, Signature signature) {
+		writeBigInteger(buf, signature.getR());
+		writeBigInteger(buf, signature.getS());
 	}
 
-	public static ECDSASignature readEcdsaSignature(ByteBuf buf) throws ParseException {
+	public static Signature readEcdsaSignature(ByteBuf buf) throws ParseException {
 		BigInteger r = readBigInteger(buf);
 		BigInteger s = readBigInteger(buf);
-		return new ECDSASignature(r, s);
+		return Signature.of(r, s);
 	}
 	// endregion
 
@@ -312,33 +297,49 @@ public final class BinaryDataFormats {
 	}
 	// endregion
 
-	// region GlobalFsSpace
-	public static int sizeof(GlobalFsSpace globalFsSpace) {
-		return sizeof(globalFsSpace.getPubKey()) + sizeof(globalFsSpace.getFs());
+	// region GlobalPath
+	public static int sizeof(GlobalPath globalPath) {
+		return sizeof(globalPath.getOwner()) + sizeof(globalPath.getFs()) + sizeof(globalPath.getPath());
 	}
 
-	public static void writeGlobalFsSpace(ByteBuf buf, GlobalFsSpace globalFsSpace) {
-		writePubKey(buf, globalFsSpace.getPubKey());
-		writeString(buf, globalFsSpace.getFs());
+	public static void writeGlobalPath(ByteBuf buf, GlobalPath globalPath) {
+		writePubKey(buf, globalPath.getOwner());
+		writeString(buf, globalPath.getFs());
+		writeString(buf, globalPath.getPath());
 	}
 
-	public static GlobalFsSpace readGlobalFsSpace(ByteBuf buf) throws ParseException {
-		return GlobalFsSpace.of(readPubKey(buf), readString(buf));
+	public static GlobalPath readGlobalPath(ByteBuf buf) throws ParseException {
+		return GlobalPath.of(readRepoID(buf), readString(buf));
 	}
 	// endregion
 
-	// region GlobalFsPath
-	public static int sizeof(GlobalFsPath globalFsPath) {
-		return sizeof(globalFsPath.getSpace()) + sizeof(globalFsPath.getPath());
+	// region RepoID
+	public static int sizeof(RepoID repoID) {
+		return sizeof(repoID.getOwner()) + sizeof(repoID.getName());
 	}
 
-	public static void writeGlobalFsPath(ByteBuf buf, GlobalFsPath globalFsPath) {
-		writeGlobalFsSpace(buf, globalFsPath.getSpace());
-		writeString(buf, globalFsPath.getPath());
+	public static void writeRepoID(ByteBuf buf, RepoID repoID) {
+		writePubKey(buf, repoID.getOwner());
+		writeString(buf, repoID.getName());
 	}
 
-	public static GlobalFsPath readGlobalFsPath(ByteBuf buf) throws ParseException {
-		return readGlobalFsSpace(buf).pathFor(readString(buf));
+	public static RepoID readRepoID(ByteBuf buf) throws ParseException {
+		return RepoID.of(readPubKey(buf), readString(buf));
+	}
+	// endregion
+
+	// region LocalPath
+	public static int sizeof(LocalPath localPath) {
+		return sizeof(localPath.getFs()) + sizeof(localPath.getPath());
+	}
+
+	public static void writeLocalPath(ByteBuf buf, LocalPath localPath) {
+		writeString(buf, localPath.getFs());
+		writeString(buf, localPath.getPath());
+	}
+
+	public static LocalPath readLocalPath(ByteBuf buf) throws ParseException {
+		return LocalPath.of(readString(buf), readString(buf));
 	}
 	// endregion
 

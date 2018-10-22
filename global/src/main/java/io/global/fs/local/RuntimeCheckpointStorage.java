@@ -17,6 +17,7 @@
 package io.global.fs.local;
 
 import io.datakernel.async.Stage;
+import io.datakernel.exception.StacklessException;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -47,7 +48,14 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 
 	@Override
 	public Stage<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
-		storage.computeIfAbsent(filename, $ -> new HashMap<>()).put(checkpoint.getData().getPosition(), checkpoint);
+		Map<Long, SignedData<GlobalFsCheckpoint>> fileCheckpoints = storage.computeIfAbsent(filename, $ -> new HashMap<>());
+		long pos = checkpoint.getData().getPosition();
+		SignedData<GlobalFsCheckpoint> existing = fileCheckpoints.get(pos);
+		if (existing == null) {
+			fileCheckpoints.put(pos, checkpoint);
+		} else if (!existing.equals(checkpoint)) {
+			return Stage.ofException(new StacklessException(RuntimeCheckpointStorage.class, "Trying to override existing checkpoint"));
+		}
 		return Stage.of(null);
 	}
 }

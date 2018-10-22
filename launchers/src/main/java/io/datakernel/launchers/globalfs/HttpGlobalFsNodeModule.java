@@ -51,7 +51,7 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 	@Provides
 	@Singleton
 	DiscoveryService provide(Config config, AsyncHttpClient client) {
-		return new HttpDiscoveryService(config.get(ofInetSocketAddress(), "globalfs.discoveryService"), client);
+		return HttpDiscoveryService.create(config.get(ofInetSocketAddress(), "globalfs.discoveryService"), client);
 	}
 
 	@Provides

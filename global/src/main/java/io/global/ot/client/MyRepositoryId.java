@@ -18,18 +18,18 @@ package io.global.ot.client;
 
 import io.datakernel.util.ParserFunction;
 import io.global.common.PrivKey;
-import io.global.ot.api.RepositoryName;
+import io.global.common.RepoID;
 
 import java.util.List;
 import java.util.function.Function;
 
 public class MyRepositoryId<D> {
-	private final RepositoryName repositoryId;
+	private final RepoID repositoryId;
 	private final PrivKey privKey;
 	private final Function<List<D>, byte[]> diffsSerializer;
 	private final ParserFunction<byte[], List<D>> diffsDeserializer;
 
-	public MyRepositoryId(RepositoryName repositoryId, PrivKey privKey,
+	public MyRepositoryId(RepoID repositoryId, PrivKey privKey,
 			Function<List<D>, byte[]> diffsSerializer, ParserFunction<byte[], List<D>> diffsDeserializer) {
 		this.repositoryId = repositoryId;
 		this.privKey = privKey;
@@ -37,7 +37,7 @@ public class MyRepositoryId<D> {
 		this.diffsDeserializer = diffsDeserializer;
 	}
 
-	public RepositoryName getRepositoryId() {
+	public RepoID getRepositoryId() {
 		return repositoryId;
 	}
 

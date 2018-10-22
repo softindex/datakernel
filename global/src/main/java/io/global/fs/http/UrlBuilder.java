@@ -17,6 +17,7 @@
 package io.global.fs.http;
 
 import io.datakernel.annotation.Nullable;
+import io.global.common.StringIdentity;
 
 import java.io.UnsupportedEncodingException;
 import java.net.Inet6Address;
@@ -122,13 +123,13 @@ public class UrlBuilder {
 		return this;
 	}
 
-	public UrlBuilder appendQuery(String key, Object value) {
-		query.put(key, value.toString());
+	public UrlBuilder appendQuery(String key, StringIdentity value) {
+		query.put(key, value.asString());
 		return this;
 	}
 
-	public UrlBuilder appendQuery(String key, Iterable<?> values) {
-		values.forEach(v -> appendQuery(key, v));
+	public UrlBuilder appendQuery(String key, String value) {
+		query.put(key, value);
 		return this;
 	}
 
@@ -147,11 +148,6 @@ public class UrlBuilder {
 
 	public String build() {
 		return toString();
-	}
-
-	public UrlBuilder appendQuery(Map<String, ?> query) {
-		query.forEach(this::appendQuery);
-		return this;
 	}
 
 	@Override

@@ -16,8 +16,10 @@
 
 package io.global.ot.api;
 
+import io.global.common.ByteArrayIdentity;
 import io.global.common.CryptoUtils;
 import io.global.common.SimKey;
+import org.spongycastle.crypto.CryptoException;
 
 import java.util.Arrays;
 
@@ -30,8 +32,16 @@ public final class EncryptedData {
 		this.encryptedBytes = encryptedBytes;
 	}
 
-	public static EncryptedData encrypt(byte[] plainBytes, SimKey simKey) {
-		return CryptoUtils.encryptAES(plainBytes, simKey.getAesKey());
+	public static EncryptedData encrypt(ByteArrayIdentity item, SimKey simKey) {
+		return CryptoUtils.encryptAES(item.toBytes(), simKey.getAesKey());
+	}
+
+	public static EncryptedData encrypt(byte[] bytes, SimKey simKey) {
+		return CryptoUtils.encryptAES(bytes, simKey.getAesKey());
+	}
+
+	public byte[] decrypt(SimKey simKey) throws CryptoException {
+		return CryptoUtils.decryptAES(this, simKey.getAesKey());
 	}
 
 	@Override
@@ -39,14 +49,12 @@ public final class EncryptedData {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		EncryptedData that = (EncryptedData) o;
-		if (!Arrays.equals(initializationVector, that.initializationVector)) return false;
-		return Arrays.equals(encryptedBytes, that.encryptedBytes);
+		return Arrays.equals(initializationVector, that.initializationVector) &&
+				Arrays.equals(encryptedBytes, that.encryptedBytes);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = Arrays.hashCode(initializationVector);
-		result = 31 * result + Arrays.hashCode(encryptedBytes);
-		return result;
+		return 31 * Arrays.hashCode(initializationVector) + Arrays.hashCode(encryptedBytes);
 	}
 }

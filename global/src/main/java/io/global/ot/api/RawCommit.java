@@ -19,7 +19,7 @@ package io.global.ot.api;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
-import io.global.common.SimKeyHash;
+import io.global.common.Hash;
 import io.global.ot.util.BinaryDataFormats;
 
 import java.util.Arrays;
@@ -34,13 +34,13 @@ public final class RawCommit {
 
 	private final List<CommitId> parents;
 	private final EncryptedData encryptedDiffs;
-	private final SimKeyHash simKeyHash;
+	private final Hash simKeyHash;
 	private final long level;
 	private final long timestamp;
 
 	// region creators
 	private RawCommit(byte[] bytes,
-			List<CommitId> parents, EncryptedData encryptedDiffs, SimKeyHash simKeyHash,
+			List<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
 			long level, long timestamp) {
 		this.bytes = bytes;
 		this.parents = parents;
@@ -56,18 +56,18 @@ public final class RawCommit {
 		EncryptedData encryptedData = readEncryptedData(buf);
 		long level = buf.readLong();
 		long timestamp = buf.readLong();
-		SimKeyHash simKeyHash = readSimKeyHash(buf);
+		Hash simKeyHash = Hash.ofBytes(readBytes(buf));
 		return new RawCommit(bytes,
 				parents, encryptedData, simKeyHash, level, timestamp);
 	}
 
-	public static RawCommit of(List<CommitId> parents, EncryptedData encryptedDiffs, SimKeyHash simKeyHash, long level, long timestamp) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(parents, BinaryDataFormats::sizeof) + sizeof(encryptedDiffs) + sizeof(simKeyHash) + 8 + 8);
+	public static RawCommit of(List<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash, long level, long timestamp) {
+		ByteBuf buf = ByteBufPool.allocate(sizeof(parents, BinaryDataFormats::sizeof) + sizeof(encryptedDiffs) + sizeof(simKeyHash.toBytes()) + 8 + 8);
 		writeCollection(buf, parents, BinaryDataFormats::writeCommitId);
 		writeEncryptedData(buf, encryptedDiffs);
 		buf.writeLong(level);
 		buf.writeLong(timestamp);
-		writeSimKeyHash(buf, simKeyHash);
+		write(buf, simKeyHash);
 		return new RawCommit(buf.asArray(),
 				parents, encryptedDiffs, simKeyHash, level, timestamp);
 	}
@@ -85,7 +85,7 @@ public final class RawCommit {
 		return encryptedDiffs;
 	}
 
-	public SimKeyHash getSimKeyHash() {
+	public Hash getSimKeyHash() {
 		return simKeyHash;
 	}
 

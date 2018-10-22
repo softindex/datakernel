@@ -16,22 +16,13 @@
 
 package io.global.common;
 
-import io.datakernel.annotation.Nullable;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
-import io.global.ot.util.BinaryDataFormats;
 import org.spongycastle.crypto.params.ECPublicKeyParameters;
 import org.spongycastle.math.ec.ECPoint;
 
-import java.util.Base64;
+import java.math.BigInteger;
 
-import static io.global.ot.util.BinaryDataFormats.sizeof;
-import static io.global.ot.util.BinaryDataFormats.writePubKey;
-
-public final class PubKey {
-	private static final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
-	private static final Base64.Decoder decoder = Base64.getUrlDecoder();
-
+public final class PubKey implements StringIdentity {
 	private final ECPublicKeyParameters ecPublicKey;
 
 	// region creators
@@ -39,16 +30,26 @@ public final class PubKey {
 		this.ecPublicKey = ecPublicKey;
 	}
 
-	public static PubKey ofQ(ECPoint q) {
+	public static PubKey of(ECPoint q) {
 		return new PubKey(new ECPublicKeyParameters(q, CryptoUtils.CURVE));
 	}
 
-	@Nullable
-	public static PubKey fromString(@Nullable String repr) throws ParseException {
-		if (repr == null) {
-			return null;
+	public static PubKey fromString(String string) throws ParseException {
+		String[] parts = string.split(":");
+		if (parts.length != 2) {
+			throw new ParseException(PubKey.class, "No ':' delimiter in public key string");
 		}
-		return BinaryDataFormats.readPubKey(ByteBuf.wrapForReading(decoder.decode(repr)));
+		try {
+			BigInteger x = new BigInteger(parts[0], 16);
+			BigInteger y = new BigInteger(parts[1], 16);
+			try {
+				return PubKey.of(CryptoUtils.CURVE.getCurve().validatePoint(x, y));
+			} catch (IllegalArgumentException | ArithmeticException e) {
+				throw new ParseException(PubKey.class, "Failed to read a point on elliptic curve", e);
+			}
+		} catch (NumberFormatException e) {
+			throw new ParseException(PubKey.class, "Failed to parse big integer", e);
+		}
 	}
 	// endregion
 
@@ -56,10 +57,18 @@ public final class PubKey {
 		return ecPublicKey;
 	}
 
+	public byte[] encrypt(ByteArrayIdentity item) {
+		return CryptoUtils.encryptECIES(item.toBytes(), ecPublicKey);
+	}
+
+	public byte[] encrypt(byte[] data) {
+		return CryptoUtils.encryptECIES(data, ecPublicKey);
+	}
+
+	@Override
 	public String asString() {
-		byte[] bytes = new byte[sizeof(this)];
-		writePubKey(ByteBuf.wrapForWriting(bytes), this);
-		return encoder.encodeToString(bytes);
+		ECPoint q = ecPublicKey.getQ();
+		return q.getXCoord() + ":" + q.getYCoord();
 	}
 
 	@Override

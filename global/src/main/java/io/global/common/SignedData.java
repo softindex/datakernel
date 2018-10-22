@@ -26,40 +26,45 @@ import java.math.BigInteger;
 
 import static io.global.ot.util.BinaryDataFormats.*;
 
-public final class SignedData<T extends Signable> {
+public final class SignedData<T extends ByteArrayIdentity> implements ByteArrayIdentity {
 	private final T data;
-	private final ECDSASignature signature;
+	private final Signature signature;
 
-	private SignedData(T data, ECDSASignature signature) {
+	private SignedData(T data, Signature signature) {
 		this.data = data;
 		this.signature = signature;
 	}
 
-	public static <T extends Signable> SignedData<T> ofBytes(byte[] bytes, ParserFunction<byte[], T> dataParser) throws ParseException {
+	public static <T extends ByteArrayIdentity> SignedData<T> of(T data, Signature signature) {
+		return new SignedData<>(data, signature);
+	}
+
+	public static <T extends ByteArrayIdentity> SignedData<T> ofBytes(byte[] bytes, ParserFunction<byte[], T> dataParser) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 		byte[] dataBytes = BinaryDataFormats.readBytes(buf);
 		T data = dataParser.parse(dataBytes);
 		BigInteger r = readBigInteger(buf);
 		BigInteger s = readBigInteger(buf);
-		return new SignedData<>(data, new ECDSASignature(r, s));
+		return of(data, Signature.of(r, s));
 	}
 
-	public static <T extends Signable> SignedData<T> sign(T data, PrivKey privKey) {
+	public static <T extends ByteArrayIdentity> SignedData<T> sign(T data, PrivKey privKey) {
 		byte[] dataBytes = data.toBytes();
-		ECDSASignature signature = CryptoUtils.sign(dataBytes, privKey.getEcPrivateKey());
-		return new SignedData<>(data, signature);
+		Signature signature = CryptoUtils.sign(dataBytes, privKey.getEcPrivateKey());
+		return of(data, signature);
 	}
 
 	public boolean verify(PubKey pubKey) {
 		return CryptoUtils.verify(data.toBytes(), signature, pubKey.getEcPublicKey());
 	}
 
+	@Override
 	public byte[] toBytes() {
 		byte[] dataBytes = data.toBytes();
-		ByteBuf buf = ByteBufPool.allocate(sizeof(dataBytes) + sizeof(signature.r) + sizeof(signature.s));
+		ByteBuf buf = ByteBufPool.allocate(sizeof(dataBytes) + sizeof(signature.getR()) + sizeof(signature.getS()));
 		writeBytes(buf, dataBytes);
-		writeBigInteger(buf, signature.r);
-		writeBigInteger(buf, signature.s);
+		writeBigInteger(buf, signature.getR());
+		writeBigInteger(buf, signature.getS());
 		return buf.asArray();
 	}
 
@@ -67,7 +72,7 @@ public final class SignedData<T extends Signable> {
 		return data;
 	}
 
-	public ECDSASignature getSignature() {
+	public Signature getSignature() {
 		return signature;
 	}
 

@@ -14,49 +14,51 @@
  * limitations under the License.
  */
 
-package io.global.common.api;
+package io.global.ot.api;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
 import io.global.common.ByteArrayIdentity;
+import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.ot.util.BinaryDataFormats;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static io.global.ot.util.BinaryDataFormats.sizeof;
 
-public final class AnnounceData implements ByteArrayIdentity {
+public final class RawAnnounceData implements ByteArrayIdentity {
 	private final byte[] bytes;
 
 	private final long timestamp;
+	private final PubKey pubKey;
 	private final Set<RawServerId> serverIds;
 
 	// region creators
-	public AnnounceData(byte[] bytes, long timestamp, Set<RawServerId> serverIds) {
+	public RawAnnounceData(byte[] bytes, long timestamp, PubKey pubKey, Set<RawServerId> serverIds) {
 		this.bytes = bytes;
 		this.timestamp = timestamp;
+		this.pubKey = pubKey;
 		this.serverIds = serverIds;
 	}
 
-	public static AnnounceData of(long timestamp, Set<RawServerId> serverIds) {
+	public static RawAnnounceData of(long timestamp, PubKey pubKey, Set<RawServerId> serverIds) {
 		List<RawServerId> ids = new ArrayList<>(serverIds);
-		ByteBuf buf = ByteBufPool.allocate(8 + sizeof(ids, BinaryDataFormats::sizeof));
+		ByteBuf buf = ByteBufPool.allocate(8 + sizeof(pubKey) + sizeof(ids, BinaryDataFormats::sizeof));
 		buf.writeLong(timestamp);
+		BinaryDataFormats.writePubKey(buf, pubKey);
 		BinaryDataFormats.writeCollection(buf, ids, BinaryDataFormats::writeRawServerId);
-		return new AnnounceData(buf.asArray(), timestamp, serverIds);
+		return new RawAnnounceData(buf.asArray(), timestamp, pubKey, serverIds);
 	}
 	// endregion
 
-	public static AnnounceData fromBytes(byte[] bytes) throws ParseException {
+	public static RawAnnounceData fromBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 		long timestamp = buf.readLong();
+		PubKey pubKey = BinaryDataFormats.readPubKey(buf);
 		List<RawServerId> rawServerIds = BinaryDataFormats.readList(buf, BinaryDataFormats::readRawServerId);
-		return new AnnounceData(bytes, timestamp, new HashSet<>(rawServerIds));
+		return new RawAnnounceData(bytes, timestamp, pubKey, new HashSet<>(rawServerIds));
 	}
 
 	@Override
@@ -68,6 +70,10 @@ public final class AnnounceData implements ByteArrayIdentity {
 		return timestamp;
 	}
 
+	public PubKey getPubKey() {
+		return pubKey;
+	}
+
 	public Set<RawServerId> getServerIds() {
 		return serverIds;
 	}
@@ -76,19 +82,17 @@ public final class AnnounceData implements ByteArrayIdentity {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
-		AnnounceData that = (AnnounceData) o;
-
-		return timestamp == that.timestamp && serverIds.equals(that.serverIds);
+		RawAnnounceData that = (RawAnnounceData) o;
+		return Arrays.equals(bytes, that.bytes);
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * (int) (timestamp ^ (timestamp >>> 32)) + serverIds.hashCode();
+		return Arrays.hashCode(bytes);
 	}
 
 	@Override
 	public String toString() {
-		return "AnnounceData{timestamp=" + timestamp + ", serverIds=" + serverIds + '}';
+		return "RawAnnounceData{timestamp=" + timestamp + ", pubKey=" + pubKey + ", serverIds=" + serverIds + '}';
 	}
 }

@@ -17,7 +17,7 @@
 package io.datakernel.launchers.globalfs;
 
 import com.google.inject.*;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
@@ -29,13 +29,14 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
+import io.datakernel.serial.SerialSupplier;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.api.DiscoveryService;
 import io.global.fs.api.GlobalFsGateway;
-import io.global.fs.api.GlobalFsPath;
+import io.global.fs.api.GlobalPath;
 import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.http.HttpGlobalFsGateway;
 
@@ -123,26 +124,26 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 					@Provides
 					@Singleton
 					DiscoveryService provideDiscovery(Config config, AsyncHttpClient httpClient) {
-						return new HttpDiscoveryService(config.get(ofInetSocketAddress(), "app.discoveryService"), httpClient);
+						return HttpDiscoveryService.create(config.get(ofInetSocketAddress(), "app.discoveryService"), httpClient);
 					}
 				});
 	}
 
 	@Override
 	protected void run() throws Exception {
-		GlobalFsPath testFile = GlobalFsPath.of(alice, "firstFs", "folder/test.txt");
+		GlobalPath testFile = GlobalPath.of(alice, "firstFs", "folder/test.txt");
 		eventloop.post(() ->
 				gateway.getMetadata(testFile)
 						.thenCompose(meta ->
-								gateway.uploader(testFile, meta.getSize())
-										.accept(ByteBuf.wrapForReading(new byte[]{10}), null))
+								SerialSupplier.of(ByteBufStrings.wrapAscii("a surprising addition to the file!\n"))
+										.streamTo(gateway.uploader(testFile, meta.getSize())))
 						.whenComplete(($, e) -> {
 							System.out.println("whenComplete: " + $ + ", " + e);
 							shutdown();
 						}));
 		// eventloop.post(() ->
-		// 		storage.downloadSerial("test.txt").streamTo(gateway.uploader(GlobalFsPath.of(alice, "firstFs", "folder/test.txt")))
-		// 				.thenCompose($ -> gateway.downloader(GlobalFsPath.of(alice, "firstFs", "folder/test.txt")).streamTo(storage.uploadSerial("test2.txt")))
+		// 		storage.downloadSerial("test.txt").streamTo(gateway.uploader(testFile, 0))
+		// 				.thenCompose($ -> gateway.downloader(testFile).streamTo(storage.uploadSerial("test2.txt", 0)))
 		// 				.thenCompose($ -> storage.downloadSerial("test.txt").toCollector(ByteBufQueue.collector()))
 		// 				.thenCompose(original -> storage.downloadSerial("test2.txt").toCollector(ByteBufQueue.collector())
 		// 						.whenResult(transfered -> {

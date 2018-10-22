@@ -19,21 +19,22 @@ package io.global.ot.api;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
-import io.global.common.Signable;
+import io.global.common.ByteArrayIdentity;
+import io.global.common.RepoID;
 
 import java.util.Arrays;
 
 import static io.global.ot.util.BinaryDataFormats.*;
 
-public final class RawCommitHead implements Signable {
+public final class RawCommitHead implements ByteArrayIdentity {
 	public final byte[] bytes;
 
-	public final RepositoryName repositoryId;
+	public final RepoID repositoryId;
 	public final CommitId commitId;
 	public final long timestamp;
 
 	private RawCommitHead(byte[] bytes,
-			RepositoryName repositoryId, CommitId commitId, long timestamp) {
+			RepoID repositoryId, CommitId commitId, long timestamp) {
 		this.bytes = bytes;
 		this.repositoryId = repositoryId;
 		this.commitId = commitId;
@@ -42,15 +43,15 @@ public final class RawCommitHead implements Signable {
 
 	public static RawCommitHead ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		RepositoryName repositoryId = readRepositoryId(buf);
+		RepoID repositoryId = readRepoID(buf);
 		CommitId commitId = readCommitId(buf);
 		long timestamp = buf.readLong();
 		return new RawCommitHead(bytes, repositoryId, commitId, timestamp);
 	}
 
-	public static RawCommitHead of(RepositoryName repositoryId, CommitId commitId, long timestamp) {
+	public static RawCommitHead of(RepoID repositoryId, CommitId commitId, long timestamp) {
 		ByteBuf buf = ByteBufPool.allocate(sizeof(repositoryId) + sizeof(commitId) + 8);
-		writeRepositoryId(buf, repositoryId);
+		writeRepoID(buf, repositoryId);
 		writeCommitId(buf, commitId);
 		buf.writeLong(timestamp);
 		return new RawCommitHead(buf.asArray(),
@@ -62,7 +63,7 @@ public final class RawCommitHead implements Signable {
 		return bytes;
 	}
 
-	public RepositoryName getRepositoryId() {
+	public RepoID getRepositoryId() {
 		return repositoryId;
 	}
 

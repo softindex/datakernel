@@ -17,70 +17,75 @@
 package io.global.common;
 
 import io.datakernel.exception.ParseException;
-import org.spongycastle.crypto.CryptoException;
-import org.spongycastle.crypto.params.ECPrivateKeyParameters;
 
 import java.math.BigInteger;
 
-public final class PrivKey implements StringIdentity {
-	private final ECPrivateKeyParameters ecPrivateKey;
+public final class Signature {
+	private final BigInteger r;
+	private final BigInteger s;
 
 	// region creators
-	public PrivKey(ECPrivateKeyParameters ecPrivateKey) {
-		this.ecPrivateKey = ecPrivateKey;
+	private Signature(BigInteger r, BigInteger s) {
+		this.r = r;
+		this.s = s;
 	}
 
-	public static PrivKey of(BigInteger d) {
-		return new PrivKey(new ECPrivateKeyParameters(d, CryptoUtils.CURVE));
+	public static Signature of(BigInteger r, BigInteger s) {
+		return new Signature(r, s);
 	}
 
-	public static PrivKey fromString(String repr) throws ParseException {
+	public static Signature fromString(String string) throws ParseException {
+		String[] parts = string.split(":");
+		if (parts.length != 2) {
+			throw new ParseException(PubKey.class, "No ':' delimiter in public key string");
+		}
 		try {
-			return of(new BigInteger(repr, 16));
+			return new Signature(new BigInteger(parts[0], 16), new BigInteger(parts[1], 16));
 		} catch (NumberFormatException e) {
 			throw new ParseException(PubKey.class, "Failed to parse big integer", e);
 		}
 	}
 	// endregion
 
-	public ECPrivateKeyParameters getEcPrivateKey() {
-		return ecPrivateKey;
+	public boolean isCanonical() {
+		return s.compareTo(CryptoUtils.HALF_CURVE_ORDER) <= 0;
 	}
 
-	public PubKey computePubKey() {
-		return new PubKey(CryptoUtils.computePubKey(ecPrivateKey));
+	public Signature toCanonicalised() {
+		if (!isCanonical()) {
+			return new Signature(r, CryptoUtils.CURVE.getN().subtract(s));
+		} else {
+			return this;
+		}
 	}
 
-	public KeyPair computeKeys() {
-		return new KeyPair(this, computePubKey());
+	public BigInteger getR() {
+		return r;
 	}
 
-	public byte[] decrypt(byte[] encrypted) throws CryptoException {
-		return CryptoUtils.decryptECIES(encrypted, ecPrivateKey);
+	public BigInteger getS() {
+		return s;
 	}
 
-	@Override
 	public String asString() {
-		return ecPrivateKey.getD().toString(16);
+		return r.toString(16) + ":" + s.toString(16);
 	}
 
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
-		PrivKey privKey = (PrivKey) o;
-
-		return ecPrivateKey.getD().equals(privKey.ecPrivateKey.getD());
+		Signature that = (Signature) o;
+		return r.equals(that.r) && s.equals(that.s);
 	}
 
 	@Override
 	public int hashCode() {
-		return ecPrivateKey.getD().hashCode();
+		return 31 * r.hashCode() + s.hashCode();
 	}
 
 	@Override
 	public String toString() {
-		return "PrivKey@" + Integer.toHexString(hashCode());
+		return "Signature{r=" + r + ", s=" + s + '}';
 	}
 }

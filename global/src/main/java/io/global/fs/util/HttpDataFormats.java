@@ -21,8 +21,8 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.remotefs.FileMetadata;
 import io.global.common.PubKey;
-import io.global.fs.api.GlobalFsPath;
-import io.global.fs.api.GlobalFsSpace;
+import io.global.common.RepoID;
+import io.global.fs.api.GlobalPath;
 
 import java.util.List;
 import java.util.Set;
@@ -41,18 +41,18 @@ public final class HttpDataFormats {
 		throw new AssertionError("nope.");
 	}
 
-	public static GlobalFsSpace parseSpace(HttpRequest request) throws ParseException {
-		return GlobalFsSpace.of(PubKey.fromString(request.getPathParameter("key")), request.getPathParameter("fs"));
+	public static GlobalPath parsePath(HttpRequest request) throws ParseException {
+		return GlobalPath.of(PubKey.fromString(request.getPathParameter("owner")), request.getPathParameter("fs"), request.getPathParameter("path"));
 	}
 
-	public static GlobalFsPath parsePath(HttpRequest request) throws ParseException {
-		return GlobalFsPath.of(parseSpace(request), request.getPathParameter("path"));
+	public static RepoID parseRepoID(HttpRequest request) throws ParseException {
+		return RepoID.of(PubKey.fromString(request.getQueryParameter("owner")), request.getQueryParameter("name"));
 	}
 
 	public static long[] parseRange(HttpRequest request) throws ParseException {
-		String param = request.getQueryParameter("range", "");
+		String param = request.getQueryParameterOrNull("range");
 		long[] range = {0, -1};
-		if (param.equals("")) {
+		if (param == null) {
 			return range;
 		}
 		try {

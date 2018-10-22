@@ -195,7 +195,11 @@ public abstract class HttpMessage {
 
 	public Stage<ByteBuf> getBodyStage(int maxBodySize) {
 		checkState(body != null ^ bodySupplier != null);
-		if (body != null) return Stage.of(body);
+		if (body != null) {
+			ByteBuf body = this.body;
+			this.body = null;
+			return Stage.of(body);
+		}
 		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		this.bodySupplier = null;
 		return bodySupplier.toCollector(ByteBufQueue.collector(maxBodySize));
@@ -225,7 +229,11 @@ public abstract class HttpMessage {
 
 	public SerialSupplier<ByteBuf> getBodyStream() {
 		checkState(body != null || bodySupplier != null);
-		if (body != null) return SerialSupplier.of(body);
+		if (body != null) {
+			ByteBuf body = this.body;
+			this.body = null;
+			return SerialSupplier.of(body);
+		}
 		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		this.bodySupplier = null;
 		return bodySupplier;

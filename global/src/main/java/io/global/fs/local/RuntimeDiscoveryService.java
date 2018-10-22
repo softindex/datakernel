@@ -18,42 +18,96 @@ package io.global.fs.local;
 
 import io.datakernel.async.Stage;
 import io.datakernel.exception.StacklessException;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
+import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public final class RuntimeDiscoveryService implements DiscoveryService {
 	private static final Logger logger = LoggerFactory.getLogger(RuntimeDiscoveryService.class);
 
 	public static final StacklessException CANNOT_VERIFY_ANNOUNCE_DATA = new StacklessException(RuntimeDiscoveryService.class, "Cannot verify announce data");
+	public static final StacklessException CANNOT_VERIFY_SHARED_KEY = new StacklessException(RuntimeDiscoveryService.class, "Cannot verify shared key");
 
-	private final Map<PubKey, SignedData<AnnounceData>> announced = new HashMap<>();
+	private final Map<PubKey, Map<String, SignedData<AnnounceData>>> announced = new HashMap<>();
+	private final Map<SimKeyKey, SignedData<SharedSimKey>> sharedKeys = new HashMap<>();
 
 	@Override
-	public Stage<SignedData<AnnounceData>> findServers(PubKey pubKey) {
-		return Stage.of(announced.get(pubKey));
+	public Stage<Void> announce(RepoID repo, SignedData<AnnounceData> announceData) {
+		logger.info("received {} for {}", announceData, repo);
+		if (!announceData.verify(repo.getOwner())) {
+			logger.warn("failed to verify " + announceData);
+			return Stage.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
+		}
+		announced
+				.computeIfAbsent(repo.getOwner(), $ -> new HashMap<>())
+				.compute(repo.getName(), ($, existing) -> {
+					if (existing != null && existing.getData().getTimestamp() > announceData.getData().getTimestamp()) {
+						logger.info("rejected as outdated " + announceData);
+						return existing;
+					}
+					return announceData;
+				});
+		return Stage.complete();
 	}
 
 	@Override
-	public Stage<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
-		logger.info("Announcement: " + announceData);
-		if (!announceData.verify(pubKey)) {
-			logger.warn("Failed to verify: " + announceData);
-			return Stage.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
+	public Stage<Optional<SignedData<AnnounceData>>> find(RepoID repo) {
+		Map<String, SignedData<AnnounceData>> repos = announced.get(repo.getOwner());
+		return repos != null ?
+				Stage.of(Optional.ofNullable(repos.get(repo.getName()))) :
+				Stage.of(Optional.empty());
+	}
+
+	@Override
+	public Stage<List<SignedData<AnnounceData>>> find(PubKey owner) {
+		return Stage.of(new ArrayList<>(announced.computeIfAbsent(owner, $ -> new HashMap<>()).values()));
+	}
+
+	@Override
+	public Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
+		logger.info("received {}", simKey);
+		if (!simKey.verify(owner)) {
+			logger.warn("failed to verify " + simKey);
+			return Stage.ofException(CANNOT_VERIFY_SHARED_KEY);
 		}
-		announced.compute(pubKey, ($, existing) -> {
-			if (existing != null && existing.getData().getTimestamp() > announceData.getData().getTimestamp()) {
-				logger.info("Rejected as outdated: " + announceData);
-				return existing;
-			}
-			return announceData;
-		});
+		SharedSimKey data = simKey.getData();
+		sharedKeys.put(new SimKeyKey(owner, data.getReceiver(), data.getHash()), simKey);
 		return Stage.complete();
+	}
+
+	@Override
+	public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
+		return Stage.of(Optional.ofNullable(sharedKeys.get(new SimKeyKey(owner, receiver, hash))));
+	}
+
+	private static class SimKeyKey {
+		final PubKey owner;
+		final PubKey receiver;
+		final Hash hash;
+
+		public SimKeyKey(PubKey owner, PubKey receiver, Hash hash) {
+			this.owner = owner;
+			this.receiver = receiver;
+			this.hash = hash;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			SimKeyKey simKeyKey = (SimKeyKey) o;
+
+			return owner.equals(simKeyKey.owner) && receiver.equals(simKeyKey.receiver) && hash.equals(simKeyKey.hash);
+		}
+
+		@Override
+		public int hashCode() {
+			return 31 * (31 * owner.hashCode() + receiver.hashCode()) + hash.hashCode();
+		}
 	}
 }
