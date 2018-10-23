@@ -996,4 +996,28 @@ public class ExpressionTest {
 				.buildClassAndCreateNewInstance();
 		assertSame(testObject, instance.get(null));
 	}
+
+	@org.junit.Test
+	public void testStaticFields() throws IllegalAccessException, InstantiationException {
+		Class<StaticPojo> build = ClassBuilder.create(DefiningClassLoader.create(), StaticPojo.class)
+				.withMethod("getField", staticField(StaticFieldHolder.class, "field"))
+				.withMethod("setField", set(staticField(StaticFieldHolder.class, "field"), arg(0)))
+				.build();
+		StaticPojo staticPojo = build.newInstance();
+		assertEquals(0, staticPojo.getField());
+		staticPojo.setField(100);
+		assertEquals(100, staticPojo.getField());
+		staticPojo.setField(-100);
+		assertEquals(-100, staticPojo.getField());
+	}
+
+	public interface StaticPojo {
+		int getField();
+
+		void setField(int value);
+	}
+
+	public static class StaticFieldHolder {
+		public static int field;
+	}
 }

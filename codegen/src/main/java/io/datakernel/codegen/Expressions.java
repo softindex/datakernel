@@ -112,6 +112,17 @@ public final class Expressions {
 	}
 
 	/**
+	 * Returns the static field from class
+	 *
+	 * @param owner owner of the field
+	 * @param field name of the static field which will be returned
+	 * @return new instance of the ExpressionStaticField
+	 */
+	public static ExpressionStaticField staticField(Class<?> owner, String field) {
+		return new ExpressionStaticField(owner, field);
+	}
+
+	/**
 	 * Sets value to the property in owner
 	 *
 	 * @param owner owner of the property

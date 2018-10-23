@@ -22,27 +22,11 @@ import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.remotefs.RemoteFsClient;
-import io.datakernel.remotefs.RemoteFsClusterClient;
-import io.datakernel.remotefs.RemoteFsRepartitionController;
-import io.datakernel.remotefs.RemoteFsServer;
-import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.util.Initializer;
-import io.global.fs.local.LocalGlobalFsNode;
 
 import java.time.Duration;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Map.Entry;
 
-import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.ConfigConverters.*;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey;
-import static io.datakernel.rpc.server.RpcServer.DEFAULT_INITIAL_BUFFER_SIZE;
-import static io.datakernel.rpc.server.RpcServer.DEFAULT_MAX_MESSAGE_SIZE;
-import static io.datakernel.util.Preconditions.checkState;
-import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
-import static java.util.Collections.emptyList;
 
 public class Initializers {
 	private Initializers() {
@@ -88,45 +72,5 @@ public class Initializers {
 		return server -> server
 				.withKeepAliveTimeout(config.get(ofDuration(), "keepAliveTimeout", server.getKeepAliveTimeout()))
 				.withReadWriteTimeout(config.get(ofDuration(), "readWriteTimeout", server.getReadWriteTimeout()));
-	}
-
-	public static Initializer<RemoteFsServer> ofRemoteFsServer(Config config) {
-		return server -> server
-				.initialize(ofAbstractServer(config));
-	}
-
-	public static Initializer<RemoteFsRepartitionController> ofRepartitionController(Config config) {
-		return controller -> controller
-				.withGlob(config.get("glob", "**"))
-				.withNegativeGlob(config.get("negativeGlob", ""));
-	}
-
-	public static Initializer<RemoteFsClusterClient> ofRemoteFsCluster(Eventloop eventloop, Config config) {
-		return cluster -> {
-			Map<String, Config> partitions = config.getChild("partitions").getChildren();
-			checkState(!partitions.isEmpty(), "Cluster could not operate without partitions, config had none");
-			for (Entry<String, Config> connection : partitions.entrySet()) {
-				cluster.withPartition(connection.getKey(), RemoteFsClient.create(eventloop, connection.getValue().get(ofInetSocketAddress(), THIS)));
-			}
-			cluster.withReplicationCount(config.get(ofInteger(), "replicationCount", 1));
-		};
-	}
-
-	public static Initializer<RpcServer> ofRpcServer(Config config) {
-		return server -> server
-				.initialize(ofAbstractServer(config.getChild("rpc.server")))
-				.withStreamProtocol(
-						config.get(ofMemSize(), "rpc.streamProtocol.defaultPacketSize", DEFAULT_INITIAL_BUFFER_SIZE),
-						config.get(ofMemSize(), "rpc.streamProtocol.maxPacketSize", DEFAULT_MAX_MESSAGE_SIZE),
-						config.get(ofBoolean(), "rpc.streamProtocol.compression", false))
-				.withAutoFlushInterval(config.get(ofDuration(), "rpc.flushDelay", Duration.ZERO));
-	}
-
-	public static Initializer<LocalGlobalFsNode> ofLocalGlobalFsNode(Config config) {
-		return node -> node
-				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
-				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching"))
-				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching"))
-				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));
 	}
 }

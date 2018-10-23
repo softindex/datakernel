@@ -56,6 +56,10 @@ public interface SerialSupplier<T> extends Cancellable {
 		return queue.getSupplier();
 	}
 
+	static <T> SerialSupplier<T> ofSupplier(Supplier<? extends Stage<T>> supplier) {
+		return of(AsyncSupplier.of(supplier));
+	}
+
 	static <T> SerialSupplier<T> of(AsyncSupplier<T> supplier) {
 		return of(supplier, null);
 	}

@@ -21,6 +21,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
 
+import java.util.Iterator;
+
 public abstract class ByteBufsSupplier implements Cancellable {
 	public static final Exception UNEXPECTED_DATA_EXCEPTION = new ParseException(ByteBufsSupplier.class, "Unexpected data after end-of-stream");
 	public static final Exception UNEXPECTED_END_OF_STREAM_EXCEPTION = new ParseException(ByteBufsSupplier.class, "Unexpected end-of-stream");
@@ -42,6 +44,14 @@ public abstract class ByteBufsSupplier implements Cancellable {
 	public abstract Stage<Void> needMoreData();
 
 	public abstract Stage<Void> endOfStream();
+
+	public static ByteBufsSupplier ofIterable(Iterable<ByteBuf> iterable) {
+		return of(SerialSupplier.ofIterator(iterable.iterator()));
+	}
+
+	public static ByteBufsSupplier ofIterator(Iterator<ByteBuf> iterator) {
+		return of(SerialSupplier.ofIterator(iterator));
+	}
 
 	public static ByteBufsSupplier of(SerialSupplier<ByteBuf> input) {
 		return new ByteBufsSupplier() {

@@ -92,6 +92,10 @@ public interface SerialConsumer<T> extends Cancellable {
 		return acceptAll(iterable.iterator());
 	}
 
+	static <T> SerialConsumer<T> ofConsumer(Consumer<T> consumer) {
+		return of(AsyncConsumer.of(consumer));
+	}
+
 	static <T> SerialConsumer<T> of(AsyncConsumer<T> consumer) {
 		return of(consumer, e -> {});
 	}
