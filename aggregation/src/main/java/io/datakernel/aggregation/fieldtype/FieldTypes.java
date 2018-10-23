@@ -19,17 +19,17 @@ package io.datakernel.aggregation.fieldtype;
 import com.google.gson.TypeAdapter;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Primitives;
+import io.datakernel.json.GsonAdapters;
 import io.datakernel.serializer.StringFormat;
 import io.datakernel.serializer.asm.*;
 import io.datakernel.util.SimpleType;
-import io.datakernel.util.gson.GsonAdapters;
 
 import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.gson.GsonAdapters.*;
+import static io.datakernel.json.GsonAdapters.*;
 import static java.time.temporal.ChronoUnit.DAYS;
 
 public final class FieldTypes {

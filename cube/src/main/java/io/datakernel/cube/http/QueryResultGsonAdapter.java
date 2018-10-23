@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ import io.datakernel.cube.QueryResult;
 import io.datakernel.cube.Record;
 import io.datakernel.cube.RecordScheme;
 import io.datakernel.cube.ReportType;
+import io.datakernel.json.GsonAdapters.TypeAdapterMapping;
 import io.datakernel.util.SimpleType;
-import io.datakernel.util.gson.GsonAdapters.TypeAdapterMapping;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -34,9 +34,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.json.GsonAdapters.STRING_JSON;
+import static io.datakernel.json.GsonAdapters.ofList;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.gson.GsonAdapters.STRING_JSON;
-import static io.datakernel.util.gson.GsonAdapters.ofList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 

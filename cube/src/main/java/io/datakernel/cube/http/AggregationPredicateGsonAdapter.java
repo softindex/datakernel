@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.aggregation.AggregationPredicate;
-import io.datakernel.util.gson.GsonAdapters.TypeAdapterMapping;
+import io.datakernel.json.GsonAdapters.TypeAdapterMapping;
 
 import java.io.IOException;
 import java.lang.reflect.Type;

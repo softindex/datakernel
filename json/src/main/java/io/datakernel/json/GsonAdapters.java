@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.util.gson;
+package io.datakernel.json;
 
 import com.google.gson.TypeAdapter;
 import com.google.gson.internal.Streams;

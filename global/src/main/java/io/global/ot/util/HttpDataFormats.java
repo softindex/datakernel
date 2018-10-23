@@ -21,7 +21,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
-import io.datakernel.util.gson.GsonAdapters;
+import io.datakernel.json.GsonAdapters;
 import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -40,8 +40,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.http.HttpUtils.urlEncode;
-import static io.datakernel.util.gson.GsonAdapters.BYTES_JSON;
-import static io.datakernel.util.gson.GsonAdapters.STRING_JSON;
+import static io.datakernel.json.GsonAdapters.BYTES_JSON;
+import static io.datakernel.json.GsonAdapters.STRING_JSON;
 import static java.util.stream.Collectors.toMap;
 
 public class HttpDataFormats {

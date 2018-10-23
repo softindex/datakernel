@@ -16,12 +16,4 @@
 	<description>
 		Module containing various general utilities for DataKernel project.
 	</description>
-
-	<dependencies>
-		<dependency>
-			<groupId>com.google.code.gson</groupId>
-			<artifactId>gson</artifactId>
-			<optional>true</optional>
-		</dependency>
-	</dependencies>
 </project>

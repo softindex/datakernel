@@ -20,11 +20,11 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Context;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Property;
+import io.datakernel.json.GsonAdapters;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenArray;
 import io.datakernel.serializer.asm.SerializerGenByte;
 import io.datakernel.serializer.asm.SerializerGenClass;
-import io.datakernel.util.gson.GsonAdapters;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.*;

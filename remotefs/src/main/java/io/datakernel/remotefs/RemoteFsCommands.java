@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
 package io.datakernel.remotefs;
 
 import com.google.gson.TypeAdapter;
-import io.datakernel.util.gson.TypeAdapterObject;
-import io.datakernel.util.gson.TypeAdapterObjectSubtype;
+import io.datakernel.json.TypeAdapterObject;
+import io.datakernel.json.TypeAdapterObjectSubtype;
 
 import java.util.Map;
 
-import static io.datakernel.util.gson.GsonAdapters.*;
+import static io.datakernel.json.GsonAdapters.*;
 
 @SuppressWarnings("WeakerAccess")
 public final class RemoteFsCommands {

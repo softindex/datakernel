@@ -40,10 +40,10 @@ import java.util.function.Consumer;
 import java.util.stream.LongStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.json.GsonAdapters.INTEGER_JSON;
+import static io.datakernel.json.GsonAdapters.STRING_JSON;
 import static io.datakernel.serial.net.ByteBufSerializers.ofJson;
 import static io.datakernel.serializer.asm.BufferSerializers.LONG_SERIALIZER;
-import static io.datakernel.util.gson.GsonAdapters.INTEGER_JSON;
-import static io.datakernel.util.gson.GsonAdapters.STRING_JSON;
 import static java.util.stream.Collectors.toList;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;

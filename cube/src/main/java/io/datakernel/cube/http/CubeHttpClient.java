@@ -28,7 +28,7 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.http.IAsyncHttpClient;
-import io.datakernel.util.gson.GsonAdapters.TypeAdapterMapping;
+import io.datakernel.json.GsonAdapters.TypeAdapterMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

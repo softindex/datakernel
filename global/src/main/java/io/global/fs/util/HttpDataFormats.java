@@ -27,8 +27,8 @@ import io.global.fs.api.GlobalFsSpace;
 import java.util.List;
 import java.util.Set;
 
+import static io.datakernel.json.GsonAdapters.*;
 import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_JSON;
-import static io.datakernel.util.gson.GsonAdapters.*;
 
 public final class HttpDataFormats {
 	public static final ParseException INVALID_RANGE_FORMAT = new ParseException(HttpDataFormats.class, "Invalid range format");

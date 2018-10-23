@@ -1,4 +1,20 @@
-package io.datakernel.util.gson;
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.datakernel.json;
 
 import com.google.gson.TypeAdapter;
 import io.datakernel.exception.ParseException;
@@ -10,7 +26,7 @@ import org.junit.rules.ExpectedException;
 import java.time.LocalDate;
 import java.util.*;
 
-import static io.datakernel.util.gson.GsonAdapters.*;
+import static io.datakernel.json.GsonAdapters.*;
 import static org.junit.Assert.assertEquals;
 
 public class GsonAdaptersTest {
@@ -132,7 +148,7 @@ public class GsonAdaptersTest {
 
 		String classJson = mapping.toJson(PersonPOJO.class);
 
-		assertEquals(classJson, "\"io.datakernel.util.gson.GsonAdaptersTest$PersonPOJO\"");
+		assertEquals(classJson, "\"io.datakernel.json.GsonAdaptersTest$PersonPOJO\"");
 		assertEquals(PersonPOJO.class, fromJson(mapping.getAdapter(Class.class), classJson));
 	}
 

@@ -23,6 +23,8 @@ import io.datakernel.datagraph.node.*;
 import io.datakernel.datagraph.node.NodeReduce.Input;
 import io.datakernel.datagraph.server.command.*;
 import io.datakernel.exception.ParseException;
+import io.datakernel.json.TypeAdapterObject;
+import io.datakernel.json.TypeAdapterObjectSubtype;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.Sharder;
@@ -37,8 +39,6 @@ import io.datakernel.stream.processor.StreamReducers.ReducerToResult.Accumulator
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.AccumulatorToOutput;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.InputToAccumulator;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.InputToOutput;
-import io.datakernel.util.gson.TypeAdapterObject;
-import io.datakernel.util.gson.TypeAdapterObjectSubtype;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,8 +51,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static io.datakernel.json.GsonAdapters.*;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.gson.GsonAdapters.*;
 
 /**
  * Responsible for setting up serialization operations for datagraph.

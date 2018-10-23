@@ -12,7 +12,7 @@
 
 	<artifactId>datakernel-launchers</artifactId>
 
-	<name>DataKernel: Lauchers</name>
+	<name>DataKernel: Launchers</name>
 
 	<dependencies>
 		<dependency>

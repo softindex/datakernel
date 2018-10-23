@@ -23,12 +23,12 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpMessage;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.json.GsonAdapters;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialZeroBuffer;
-import io.datakernel.util.gson.GsonAdapters;
 
 import java.net.InetSocketAddress;
 import java.util.List;

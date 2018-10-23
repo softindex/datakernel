@@ -24,12 +24,12 @@ import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.codegen.*;
+import io.datakernel.json.GsonAdapters;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
 import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
-import io.datakernel.util.gson.GsonAdapters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

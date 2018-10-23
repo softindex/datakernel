@@ -20,12 +20,12 @@
 			<artifactId>datakernel-net</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
-			<groupId>com.google.code.gson</groupId>
-			<artifactId>gson</artifactId>
-			<optional>true</optional>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-json</artifactId>
+			<version>${project.version}</version>
 		</dependency>
+
 		<dependency>
 			<groupId>net.jpountz.lz4</groupId>
 			<artifactId>lz4</artifactId>

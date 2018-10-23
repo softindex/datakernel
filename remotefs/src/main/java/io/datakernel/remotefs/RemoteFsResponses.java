@@ -17,14 +17,14 @@
 package io.datakernel.remotefs;
 
 import com.google.gson.TypeAdapter;
-import io.datakernel.util.gson.TypeAdapterObject;
-import io.datakernel.util.gson.TypeAdapterObjectSubtype;
+import io.datakernel.json.TypeAdapterObject;
+import io.datakernel.json.TypeAdapterObjectSubtype;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.util.gson.GsonAdapters.*;
+import static io.datakernel.json.GsonAdapters.*;
 
 public final class RemoteFsResponses {
 	public static final TypeAdapter<FileMetadata> FILE_META_JSON = transform(

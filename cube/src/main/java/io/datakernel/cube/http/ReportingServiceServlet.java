@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ import io.datakernel.async.Stage;
 import io.datakernel.cube.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
+import io.datakernel.json.GsonAdapters.TypeAdapterMapping;
 import io.datakernel.util.Stopwatch;
-import io.datakernel.util.gson.GsonAdapters.TypeAdapterMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

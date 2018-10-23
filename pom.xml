@@ -31,6 +31,7 @@
 		<module>datastreams</module>
 		<module>eventloop</module>
 		<module>http</module>
+		<module>json</module>
 		<module>remotefs</module>
 		<module>rpc</module>
 		<module>serializer</module>

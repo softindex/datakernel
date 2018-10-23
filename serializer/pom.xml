@@ -33,13 +33,14 @@
 			<artifactId>datakernel-test</artifactId>
 			<version>${project.version}</version>
 			<scope>test</scope>
-		</dependency><dependency>
+		</dependency>
+		<dependency>
 			<groupId>com.carrotsearch</groupId>
 			<artifactId>hppc</artifactId>
 			<version>0.7.0</version>
 			<classifier>esoteric</classifier>
 			<optional>true</optional>
-		<scope>test</scope>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>com.carrotsearch</groupId>

@@ -26,8 +26,8 @@ import io.datakernel.util.ByteBufPoolAppendable;
 
 import java.io.IOException;
 
-import static io.datakernel.util.gson.GsonAdapters.fromJson;
-import static io.datakernel.util.gson.GsonAdapters.toJson;
+import static io.datakernel.json.GsonAdapters.fromJson;
+import static io.datakernel.json.GsonAdapters.toJson;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
