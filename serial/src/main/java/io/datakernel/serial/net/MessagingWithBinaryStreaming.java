@@ -21,8 +21,10 @@ import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.serial.*;
+import io.datakernel.serial.ByteBufsSupplier;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.SerialSuppliers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,11 +37,9 @@ import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_END_OF_STREAM_EXC
 public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O> {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
-	private final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final AsyncTcpSocket socket;
 
-	private final MessagingSerializer<I, O> serializer;
-	private final ByteBufsParser<I> parser;
+	private final ByteBufSerializer<I, O> serializer;
 
 	private final ByteBufQueue bufs = new ByteBufQueue();
 	private final ByteBufsSupplier bufsSupplier;
@@ -50,7 +50,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	private boolean writeDone;
 
 	// region creators
-	private MessagingWithBinaryStreaming(AsyncTcpSocket socket, MessagingSerializer<I, O> serializer) {
+	private MessagingWithBinaryStreaming(AsyncTcpSocket socket, ByteBufSerializer<I, O> serializer) {
 		this.socket = socket;
 		this.serializer = serializer;
 		this.bufsSupplier = ByteBufsSupplier.ofProvidedQueue(bufs,
@@ -66,20 +66,10 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 						.whenException(this::close),
 				Stage::complete,
 				this);
-		this.parser = bufs -> {
-			ByteBuf buf = bufs.takeRemaining();
-			I maybeResult = this.serializer.tryDeserialize(buf);
-			if (buf.canRead()) {
-				bufs.add(buf);
-			} else {
-				buf.recycle();
-			}
-			return maybeResult;
-		};
 	}
 
 	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket socket,
-			@Nullable MessagingSerializer<I, O> serializer) {
+			@Nullable ByteBufSerializer<I, O> serializer) {
 		MessagingWithBinaryStreaming<I, O> messaging = new MessagingWithBinaryStreaming<>(socket, serializer);
 		messaging.prefetch();
 		return messaging;
@@ -103,7 +93,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	@Override
 	public Stage<I> receive() {
-		return bufsSupplier.parse(parser)
+		return bufsSupplier.parse(serializer)
 				.whenResult($ -> prefetch())
 				.whenException(this::close);
 	}

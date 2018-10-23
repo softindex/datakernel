@@ -30,7 +30,7 @@ import io.datakernel.remotefs.RemoteFsCommands.Upload;
 import io.datakernel.remotefs.RemoteFsResponses.*;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.net.MessagingSerializer;
+import io.datakernel.serial.net.ByteBufSerializer;
 import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.serial.net.MessagingSerializers.ofJson;
+import static io.datakernel.serial.net.ByteBufSerializers.ofJson;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -54,7 +54,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClient.class);
 
 	public static final RemoteFsException UNEXPECTED_END_OF_STREAM = new RemoteFsException(RemoteFsClient.class, "Unexpected end of stream");
-	private static final MessagingSerializer<FsResponse, FsCommand> SERIALIZER =
+	private static final ByteBufSerializer<FsResponse, FsCommand> SERIALIZER =
 			ofJson(RemoteFsResponses.ADAPTER, RemoteFsCommands.ADAPTER);
 
 	private final Eventloop eventloop;

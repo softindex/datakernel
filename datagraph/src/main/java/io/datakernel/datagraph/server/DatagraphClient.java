@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +24,8 @@ import io.datakernel.datagraph.server.command.DatagraphCommandDownload;
 import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.serial.net.MessagingSerializer;
+import io.datakernel.serial.net.ByteBufSerializer;
 import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.stream.StreamSupplier;
@@ -37,7 +36,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import static io.datakernel.serial.net.MessagingSerializers.ofJson;
+import static io.datakernel.serial.net.ByteBufSerializers.ofJson;
 
 /**
  * Client for datagraph server.
@@ -46,20 +45,17 @@ import static io.datakernel.serial.net.MessagingSerializers.ofJson;
 public final class DatagraphClient {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private final Eventloop eventloop;
 	private final DatagraphSerialization serialization;
-	private final MessagingSerializer<DatagraphResponse, DatagraphCommand> serializer;
+	private final ByteBufSerializer<DatagraphResponse, DatagraphCommand> serializer;
 
 	private final SocketSettings socketSettings = SocketSettings.create();
 
 	/**
 	 * Constructs a datagraph client that runs in a given event loop and uses the specified DatagraphSerialization object for various serialization purposes.
 	 *
-	 * @param eventloop     event loop, in which client is to run
 	 * @param serialization DatagraphSerialization object used for serialization
 	 */
-	public DatagraphClient(Eventloop eventloop, DatagraphSerialization serialization) {
-		this.eventloop = eventloop;
+	public DatagraphClient(DatagraphSerialization serialization) {
 		this.serialization = serialization;
 		this.serializer = ofJson(serialization.responseAdapter, serialization.commandAdapter);
 	}

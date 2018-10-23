@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ import java.util.function.Consumer;
 import java.util.stream.LongStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.serial.net.MessagingSerializers.ofJson;
+import static io.datakernel.serial.net.ByteBufSerializers.ofJson;
 import static io.datakernel.serializer.asm.BufferSerializers.LONG_SERIALIZER;
 import static io.datakernel.util.gson.GsonAdapters.INTEGER_JSON;
 import static io.datakernel.util.gson.GsonAdapters.STRING_JSON;
@@ -67,7 +67,7 @@ public class MessagingWithBinaryStreamingTest {
 	public void testPing() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		MessagingSerializer<Integer, Integer> serializer =
+		ByteBufSerializer<Integer, Integer> serializer =
 				ofJson(INTEGER_JSON);
 
 		SimpleServer server = SimpleServer.create(eventloop,
@@ -141,7 +141,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
-		MessagingSerializer<String, String> serializer =
+		ByteBufSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
 		SimpleServer server = SimpleServer.create(eventloop,
@@ -194,7 +194,7 @@ public class MessagingWithBinaryStreamingTest {
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 		CompletableFuture<List<Long>> future = consumerToList.getResult().toCompletableFuture();
 
-		MessagingSerializer<String, String> serializer =
+		ByteBufSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
 		SimpleServer server = SimpleServer.create(eventloop,
@@ -252,7 +252,7 @@ public class MessagingWithBinaryStreamingTest {
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 		CompletableFuture<List<Long>> future = consumerToList.getResult().toCompletableFuture();
 
-		MessagingSerializer<String, String> serializer =
+		ByteBufSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
 		SimpleServer server = SimpleServer.create(eventloop,
@@ -309,7 +309,7 @@ public class MessagingWithBinaryStreamingTest {
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 		CompletableFuture<List<Long>> future = consumerToList.getResult().toCompletableFuture();
 
-		MessagingSerializer<String, String> serializer =
+		ByteBufSerializer<String, String> serializer =
 				ofJson(STRING_JSON, STRING_JSON);
 
 		SimpleServer server = SimpleServer.create(eventloop,

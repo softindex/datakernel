@@ -119,7 +119,7 @@ public class DatagraphServerTest {
 		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
 				.withListenAddress(address2);
 
-		DatagraphClient client = new DatagraphClient(eventloop, serialization);
+		DatagraphClient client = new DatagraphClient(serialization);
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
 		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
@@ -160,7 +160,7 @@ public class DatagraphServerTest {
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
-		DatagraphClient client = new DatagraphClient(eventloop, serialization);
+		DatagraphClient client = new DatagraphClient(serialization);
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
@@ -228,7 +228,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		DatagraphClient client = new DatagraphClient(eventloop, serialization);
+		DatagraphClient client = new DatagraphClient(serialization);
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
@@ -311,7 +311,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		DatagraphClient client = new DatagraphClient(eventloop, serialization);
+		DatagraphClient client = new DatagraphClient(serialization);
 		StreamConsumerToList<TestItem> resultConsumer = StreamConsumerToList.create();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()

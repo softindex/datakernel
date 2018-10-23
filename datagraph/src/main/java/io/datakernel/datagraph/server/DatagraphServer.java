@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialQueue;
 import io.datakernel.serial.SerialZeroBuffer;
-import io.datakernel.serial.net.MessagingSerializer;
+import io.datakernel.serial.net.ByteBufSerializer;
 import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serializer.BufferSerializer;
@@ -42,7 +42,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.serial.net.MessagingSerializers.ofJson;
+import static io.datakernel.serial.net.ByteBufSerializers.ofJson;
 
 /**
  * Server for processing JSON commands.
@@ -50,7 +50,7 @@ import static io.datakernel.serial.net.MessagingSerializers.ofJson;
 public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	private final DatagraphEnvironment environment;
 	private final Map<StreamId, SerialQueue<ByteBuf>> pendingStreams = new HashMap<>();
-	private final MessagingSerializer<DatagraphCommand, DatagraphResponse> serializer;
+	private final ByteBufSerializer<DatagraphCommand, DatagraphResponse> serializer;
 	private final Map<Class, CommandHandler> handlers = new HashMap<>();
 
 	{

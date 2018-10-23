@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,19 @@
  * limitations under the License.
  */
 
-package io.datakernel.serial.net;
+package io.datakernel.util;
 
-import io.datakernel.annotation.Nullable;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.ParseException;
+public final class ThreadLocalCharArray {
+	private ThreadLocalCharArray() {
+	}
 
-public interface MessagingSerializer<I, O> {
-	@Nullable
-	I tryDeserialize(ByteBuf buf) throws ParseException;
+	private static final ThreadLocal<char[]> THREAD_LOCAL = ThreadLocal.withInitial(() -> new char[0]);
 
-	ByteBuf serialize(O item);
+	public static char[] ensure(int size) {
+		char[] chars = THREAD_LOCAL.get();
+		if (chars.length >= size) return chars;
+		chars = new char[size + (size >>> 2)];
+		THREAD_LOCAL.set(chars);
+		return chars;
+	}
 }

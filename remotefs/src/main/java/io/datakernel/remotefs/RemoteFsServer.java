@@ -25,9 +25,9 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
+import io.datakernel.serial.net.ByteBufSerializer;
+import io.datakernel.serial.net.ByteBufSerializers;
 import io.datakernel.serial.net.Messaging;
-import io.datakernel.serial.net.MessagingSerializer;
-import io.datakernel.serial.net.MessagingSerializers;
 import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 
 import java.net.InetAddress;
@@ -44,8 +44,8 @@ import java.util.function.Function;
  * It exposes some given {@link FsClient} to the Internet in pair with {@link RemoteFsClient}
  */
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
-	private static final MessagingSerializer<FsCommand, FsResponse> SERIALIZER =
-			MessagingSerializers.ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
+	private static final ByteBufSerializer<FsCommand, FsResponse> SERIALIZER =
+			ByteBufSerializers.ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
 
 	private final Map<Class, MessagingHandler<FsCommand>> handlers = new HashMap<>();
 	private final FsClient client;

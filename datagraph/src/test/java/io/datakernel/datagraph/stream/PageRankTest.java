@@ -208,7 +208,7 @@ public class PageRankTest {
 		StreamConsumerToList<Rank> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<Rank> result2 = StreamConsumerToList.create();
 
-		DatagraphClient client = new DatagraphClient(eventloop, serialization);
+		DatagraphClient client = new DatagraphClient(serialization);
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 			.setInstance(DatagraphSerialization.class, serialization)
 			.setInstance(DatagraphClient.class, client)

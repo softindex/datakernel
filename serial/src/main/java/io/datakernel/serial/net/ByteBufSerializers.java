@@ -17,43 +17,37 @@
 package io.datakernel.serial.net;
 
 import com.google.gson.TypeAdapter;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
+import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.util.ByteBufPoolAppendable;
 
 import java.io.IOException;
 
 import static io.datakernel.util.gson.GsonAdapters.fromJson;
 import static io.datakernel.util.gson.GsonAdapters.toJson;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
-public final class MessagingSerializers {
-	public static final ParseException DESERIALIZE_ERR = new ParseException(MessagingSerializers.class, "Can't deserialize message");
-
-	private MessagingSerializers() {
+public final class ByteBufSerializers {
+	private ByteBufSerializers() {
 	}
 
-	public static <IO> MessagingSerializer<IO, IO> ofJson(TypeAdapter<IO> io) {
+	public static <IO> ByteBufSerializer<IO, IO> ofJson(TypeAdapter<IO> io) {
 		return ofJson(io, io);
 	}
 
-	public static <I, O> MessagingSerializer<I, O> ofJson(TypeAdapter<I> in, TypeAdapter<O> out) {
-		return new MessagingSerializer<I, O>() {
+	public static <I, O> ByteBufSerializer<I, O> ofJson(TypeAdapter<I> in, TypeAdapter<O> out) {
+		return new ByteBufSerializer<I, O>() {
+			private final ByteBufsParser<I> parser = ByteBufsParser.ofNullTerminatedBytes()
+					.andThen(buf -> fromJson(in, buf.asString(UTF_8)));
+
+			@Nullable
 			@Override
-			public I tryDeserialize(ByteBuf buf) throws ParseException {
-				for (int len = 0; len < buf.readRemaining(); len++) {
-					if (buf.peek(len) == '\0') {
-						try {
-							I item = fromJson(in, ByteBufStrings.decodeUtf8(buf.array(), buf.readPosition(), len));
-							buf.moveReadPosition(len + 1); // skipping msg + delimiter
-							return item;
-						} catch (ParseException ignored) {
-							throw DESERIALIZE_ERR;
-						}
-					}
-				}
-				return null;
+			public I tryParse(ByteBufQueue bufs) throws ParseException {
+				return parser.tryParse(bufs);
 			}
 
 			@Override

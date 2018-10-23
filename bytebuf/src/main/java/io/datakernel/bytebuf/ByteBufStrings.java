@@ -17,7 +17,7 @@
 package io.datakernel.bytebuf;
 
 import io.datakernel.exception.ParseException;
-import io.datakernel.util.CharsBuffer;
+import io.datakernel.util.ThreadLocalCharArray;
 
 @SuppressWarnings({"ThrowableInstanceNeverThrown", "WeakerAccess", "unused"})
 public final class ByteBufStrings {
@@ -72,17 +72,17 @@ public final class ByteBufStrings {
 	}
 
 	public static String decodeAscii(byte[] array, int pos, int len) {
-		return decodeAscii(array, pos, len, CharsBuffer.ensure(len));
+		return decodeAscii(array, pos, len, ThreadLocalCharArray.ensure(len));
 	}
 
 	public static String asAscii(ByteBuf buf) {
-		String str = decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining(), CharsBuffer.ensure(buf.readRemaining()));
+		String str = decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining(), ThreadLocalCharArray.ensure(buf.readRemaining()));
 		buf.recycle();
 		return str;
 	}
 
 	public static String decodeAscii(byte[] array) {
-		return decodeAscii(array, 0, array.length, CharsBuffer.ensure(array.length));
+		return decodeAscii(array, 0, array.length, ThreadLocalCharArray.ensure(array.length));
 	}
 
 	public static void toLowerCaseAscii(byte[] bytes, int pos, int len) {
@@ -284,15 +284,15 @@ public final class ByteBufStrings {
 	}
 
 	public static String decodeUtf8(byte[] array, int pos, int len) throws ParseException {
-		return decodeUtf8(array, pos, len, CharsBuffer.ensure(len));
+		return decodeUtf8(array, pos, len, ThreadLocalCharArray.ensure(len));
 	}
 
 	public static String decodeUtf8(byte[] array) throws ParseException {
-		return decodeUtf8(array, 0, array.length, CharsBuffer.ensure(array.length));
+		return decodeUtf8(array, 0, array.length, ThreadLocalCharArray.ensure(array.length));
 	}
 
 	public static String asUtf8(ByteBuf buf) throws ParseException {
-		String str = decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), CharsBuffer.ensure(buf.readRemaining()));
+		String str = decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), ThreadLocalCharArray.ensure(buf.readRemaining()));
 		buf.recycle();
 		return str;
 	}
