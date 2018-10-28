@@ -5,7 +5,7 @@ import io.datakernel.async.Promises;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.exceptions.OTTransformException;
-import io.datakernel.ot.utils.OTRemoteStub;
+import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import org.junit.Before;
@@ -39,17 +39,17 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testCommitBeforePushFinished() throws ExecutionException, InterruptedException {
-		OTRemote<Integer, TestOp> remoteStub = OTRemoteStub.create(asList(2, 3));
-		OTRemote<Integer, TestOp> remote = new OTRemoteDecorator<Integer, TestOp>(remoteStub) {
+		OTRepository<Integer, TestOp> repositoryStub = OTRepositoryStub.create(asList(2, 3));
+		OTRepository<Integer, TestOp> repository = new OTRepositoryDecorator<Integer, TestOp>(repositoryStub) {
 			@Override
 			public Promise<Void> push(Collection<OTCommit<Integer, TestOp>> otCommits) {
 				return super.push(otCommits).thenCompose($ -> scheduledResult(eventloop, 100, null));
 			}
 		};
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, new TestOpState());
 
-		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -65,7 +65,7 @@ public class OTStateManagerTest {
 		stateManager.push();
 		eventloop.run();
 
-		CompletableFuture<Set<Integer>> headsFuture = remote.getHeads().toCompletableFuture();
+		CompletableFuture<Set<Integer>> headsFuture = repository.getHeads().toCompletableFuture();
 		eventloop.run();
 
 		Set<Integer> heads = headsFuture.get();
@@ -75,17 +75,17 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testPullFullHistory() {
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
 		for (int i = 1; i <= 5; i++) {
-			remote.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 		}
 
 		assertEquals(0, testOpState.getValue());
@@ -97,17 +97,17 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testPullAfterFetch() {
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
 		for (int i = 1; i <= 10; i++) {
-			remote.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 			if (i == 3 || i == 5 || i == 7) {
 				stateManager.fetch();
 				eventloop.run();
@@ -123,17 +123,17 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testApplyDiffBeforePull() {
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
 		for (int i = 1; i <= 10; i++) {
-			remote.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 		}
 
 		assertEquals(0, testOpState.getValue());
@@ -148,17 +148,17 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testTwoFetchAndTwoPullOneAfterAnother() {
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
 		for (int i = 1; i <= 20; i++) {
-			remote.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
+			repository.doPush(ofCommit(i, i - 1, asList(add(1)), i + 1L));
 			if (i == 5 || i == 15) {
 				stateManager.fetch();
 				eventloop.run();
@@ -174,19 +174,19 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving() throws OTTransformException {
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
 
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
 		assertEquals(0, testOpState.getValue());
 
-		remote.addGraph(g -> {
+		repository.addGraph(g -> {
 			g.add(0, 1, asList(set(0, 10)));
 		});
 
@@ -205,16 +205,16 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving2() throws OTTransformException {
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
-		remote.addGraph(g -> {
+		repository.addGraph(g -> {
 			g.add(0, 1, set(0, 15));
 		});
 		stateManager.fetch();
@@ -232,18 +232,18 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving3() throws OTTransformException {
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
 		assertEquals(0, testOpState.getValue());
 
-		remote.addGraph(g -> {
+		repository.addGraph(g -> {
 			g.add(0, 1, set(0, 10));
 		});
 		stateManager.fetch();
@@ -261,18 +261,18 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving4() throws OTTransformException {
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
 		assertEquals(0, testOpState.getValue());
 
-		remote.addGraph(g -> {
+		repository.addGraph(g -> {
 			g.add(0, 1, add(5));
 		});
 		stateManager.fetch();
@@ -290,18 +290,18 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving5() throws OTTransformException {
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(repository.push(ofRoot(0)), repository.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
 		assertEquals(0, testOpState.getValue());
 
-		remote.addGraph(g -> {
+		repository.addGraph(g -> {
 			g.add(0, 1, add(10));
 		});
 		stateManager.fetch();
@@ -317,46 +317,46 @@ public class OTStateManagerTest {
 		assertEquals(asList(add(5)), stateManager.getWorkingDiffs());
 	}
 
-	private class OTRemoteDecorator<K, D> implements OTRemote<K, D> {
-		private final OTRemote<K, D> remote;
+	private class OTRepositoryDecorator<K, D> implements OTRepository<K, D> {
+		private final OTRepository<K, D> repository;
 
-		private OTRemoteDecorator(OTRemote<K, D> remote) {
-			this.remote = remote;
+		private OTRepositoryDecorator(OTRepository<K, D> repository) {
+			this.repository = repository;
 		}
 
 		@Override
 		public Promise<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
-			return remote.createCommit(parentDiffs, level);
+			return repository.createCommit(parentDiffs, level);
 		}
 
 		@Override
 		public Promise<Void> push(Collection<OTCommit<K, D>> otCommits) {
-			return remote.push(otCommits);
+			return repository.push(otCommits);
 		}
 
 		@Override
 		public Promise<Set<K>> getHeads() {
-			return remote.getHeads();
+			return repository.getHeads();
 		}
 
 		@Override
 		public Promise<Optional<List<D>>> loadSnapshot(K revisionId) {
-			return remote.loadSnapshot(revisionId);
+			return repository.loadSnapshot(revisionId);
 		}
 
 		@Override
 		public Promise<OTCommit<K, D>> loadCommit(K revisionId) {
-			return remote.loadCommit(revisionId);
+			return repository.loadCommit(revisionId);
 		}
 
 		@Override
 		public Promise<Void> saveSnapshot(K revisionId, List<D> diffs) {
-			return remote.saveSnapshot(revisionId, diffs);
+			return repository.saveSnapshot(revisionId, diffs);
 		}
 
 		@Override
 		public String toString() {
-			return remote.toString();
+			return repository.toString();
 		}
 	}
 

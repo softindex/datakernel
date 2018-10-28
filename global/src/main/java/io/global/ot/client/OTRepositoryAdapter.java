@@ -18,7 +18,7 @@ package io.global.ot.client;
 
 import io.datakernel.async.Promise;
 import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTRemote;
+import io.datakernel.ot.OTRepository;
 import io.global.common.RepoID;
 import io.global.ot.api.CommitId;
 
@@ -30,12 +30,12 @@ import java.util.Set;
 import static io.datakernel.util.CollectionUtils.union;
 import static java.util.Collections.singleton;
 
-public final class OTRemoteAdapter<D> implements OTRemote<CommitId, D> {
+public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 	private final OTDriver driver;
 	private final MyRepositoryId<D> myRepositoryId;
 	private final Set<RepoID> originRepositoryIds;
 
-	public OTRemoteAdapter(OTDriver driver,
+	public OTRepositoryAdapter(OTDriver driver,
 			MyRepositoryId<D> myRepositoryId, Set<RepoID> originRepositoryIds) {
 		this.driver = driver;
 		this.myRepositoryId = myRepositoryId;

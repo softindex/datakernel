@@ -13,7 +13,7 @@ import io.datakernel.jmx.PromiseStats;
 import io.datakernel.ot.DiffsReducer;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTRemoteEx;
+import io.datakernel.ot.OTRepositoryEx;
 import io.datakernel.util.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +45,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	private final Eventloop eventloop;
 
 	private final OTAlgorithms<K, D> algorithms;
-	private final OTRemoteEx<K, D> remote;
+	private final OTRepositoryEx<K, D> repository;
 	private final RemoteFsChunkStorage<C> chunksStorage;
 
 	private final CubeDiffScheme<D> cubeDiffScheme;
@@ -57,18 +57,18 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 
 	private final PromiseStats promiseCleanup = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseCleanupCollectRequiredChunks = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final PromiseStats promiseCleanupRemote = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseCleanupRepository = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseCleanupChunks = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	CubeCleanerController(Eventloop eventloop,
 			CubeDiffScheme<D> cubeDiffScheme,
 			OTAlgorithms<K, D> algorithms,
-			OTRemoteEx<K, D> remote,
+			OTRepositoryEx<K, D> repository,
 			RemoteFsChunkStorage<C> chunksStorage) {
 		this.eventloop = eventloop;
 		this.cubeDiffScheme = cubeDiffScheme;
 		this.algorithms = algorithms;
-		this.remote = remote;
+		this.repository = repository;
 		this.chunksStorage = chunksStorage;
 	}
 
@@ -76,7 +76,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 			CubeDiffScheme<D> cubeDiffScheme,
 			OTAlgorithms<K, D> algorithms,
 			RemoteFsChunkStorage<C> storage) {
-		return new CubeCleanerController<>(eventloop, cubeDiffScheme, algorithms, (OTRemoteEx<K, D>) algorithms.getRemote(), storage);
+		return new CubeCleanerController<>(eventloop, cubeDiffScheme, algorithms, (OTRepositoryEx<K, D>) algorithms.getRepository(), storage);
 	}
 
 	public CubeCleanerController withChunksCleanupDelay(Duration chunksCleanupDelay) {
@@ -105,7 +105,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	}
 
 	Promise<Void> doCleanup() {
-		return remote.getHeads()
+		return repository.getHeads()
 				.thenCompose(algorithms::excludeParents)
 				.thenCompose(heads -> findFrozenCut(heads, eventloop.currentInstant().minus(freezeTimeout)))
 				.thenCompose(this::cleanupFrozenCut)
@@ -140,13 +140,13 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	Promise<Void> trySaveSnapshotAndCleanupChunks(K checkpointNode) {
 		return Promise.of(checkpointNode)
 				.thenCompose(algorithms::checkout)
-				.thenCompose(checkpointDiffs -> remote.saveSnapshot(checkpointNode, checkpointDiffs)
+				.thenCompose(checkpointDiffs -> repository.saveSnapshot(checkpointNode, checkpointDiffs)
 						.thenCompose($ -> findSnapshot(singleton(checkpointNode), extraSnapshotsCount))
 						.thenCompose(lastSnapshot -> {
 							if (lastSnapshot.isPresent())
 								return Promises.toTuple(Tuple::new,
 										collectRequiredChunks(checkpointNode),
-										remote.loadCommit(lastSnapshot.get()))
+										repository.loadCommit(lastSnapshot.get()))
 										.thenCompose(tuple ->
 												cleanup(lastSnapshot.get(),
 														union(chunksInDiffs(cubeDiffScheme, checkpointDiffs), tuple.collectedChunks),
@@ -165,7 +165,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 						Promise.of(false) :
 						commit.getSnapshotHint() == Boolean.TRUE ?
 								Promise.of(true) :
-								remote.hasSnapshot(commit.getId()))
+								repository.hasSnapshot(commit.getId()))
 				.async()
 				.thenCompose(findResult -> {
 					if (!findResult.isFound()) return Promise.of(Optional.empty());
@@ -175,7 +175,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	}
 
 	private Promise<Set<C>> collectRequiredChunks(K checkpointNode) {
-		return remote.getHeads()
+		return repository.getHeads()
 				.thenCompose(heads ->
 						algorithms.reduceEdges(heads, checkpointNode,
 								DiffsReducer.of(
@@ -191,8 +191,8 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 
 	private Promise<Void> cleanup(K checkpointNode, Set<C> requiredChunks, Instant chunksCleanupTimestamp) {
 		return chunksStorage.checkRequiredChunks(requiredChunks)
-				.thenCompose($ -> remote.cleanup(checkpointNode)
-						.whenComplete(promiseCleanupRemote.recordStats()))
+				.thenCompose($ -> repository.cleanup(checkpointNode)
+						.whenComplete(promiseCleanupRepository.recordStats()))
 				.thenCompose($ -> chunksStorage.cleanup(requiredChunks, chunksCleanupTimestamp)
 						.whenComplete(promiseCleanupChunks.recordStats()))
 				.whenComplete(logger.isTraceEnabled() ?
@@ -241,8 +241,8 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	}
 
 	@JmxAttribute
-	public PromiseStats getPromiseCleanupRemote() {
-		return promiseCleanupRemote;
+	public PromiseStats getPromiseCleanupRepository() {
+		return promiseCleanupRepository;
 	}
 
 	@JmxAttribute

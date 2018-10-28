@@ -18,7 +18,7 @@ import static java.util.Comparator.comparingLong;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
+public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	default Promise<Void> push(Collection<OTCommit<K, D>> commits) {
 		return runSequence(commits.stream()
 				.sorted(comparingLong(OTCommit::getLevel))
@@ -41,12 +41,12 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 
 	Promise<Void> saveSnapshot(K revisionId, List<D> diffs);
 
-	static <R, K, D> OTRemote<K, D> compound(OTCommitFactory<K, D> commitFactory,
-			Map<R, OTRemote<K, D>> remotes,
+	static <R, K, D> OTRepository<K, D> compound(OTCommitFactory<K, D> commitFactory,
+			Map<R, OTRepository<K, D>> repositories,
 			Function<K, List<R>> readList,
 			Function<K, List<R>> writeList,
 			int writeRedundancy) {
-		return new OTRemote<K, D>() {
+		return new OTRepository<K, D>() {
 
 			private Promise<Void> doCall(Stream<? extends AsyncSupplier<?>> callables,
 					int minSuccesses) {
@@ -80,15 +80,15 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 			public Promise<Void> push(OTCommit<K, D> commit) {
 				return doCall(
 						writeList.apply(commit.getId()).stream()
-								.map(remotes::get)
-								.map(remote -> AsyncSupplier.of(() -> remote.push(commit))),
+								.map(repositories::get)
+								.map(repository -> AsyncSupplier.of(() -> repository.push(commit))),
 						writeRedundancy);
 			}
 
 			@Override
 			public Promise<Set<K>> getHeads() {
-				return Promises.toList(remotes.values().stream()
-						.map(OTRemote::getHeads)
+				return Promises.toList(repositories.values().stream()
+						.map(OTRepository::getHeads)
 						.map(Promise::toTry))
 						.thenApply(list -> list.stream().flatMap(t -> t.getOr(emptySet()).stream()).collect(toSet()))
 						.thenCompose(result -> !result.isEmpty() ?
@@ -100,24 +100,24 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 			public Promise<OTCommit<K, D>> loadCommit(K revisionId) {
 				return Promises.firstSuccessful(
 						readList.apply(revisionId).stream()
-								.map(remotes::get)
-								.map(remote -> remote.loadCommit(revisionId)));
+								.map(repositories::get)
+								.map(repository -> repository.loadCommit(revisionId)));
 			}
 
 			@Override
 			public Promise<Optional<List<D>>> loadSnapshot(K revisionId) {
 				return Promises.firstSuccessful(
 						readList.apply(revisionId).stream()
-								.map(remotes::get)
-								.map(remote -> remote.loadSnapshot(revisionId)));
+								.map(repositories::get)
+								.map(repository -> repository.loadSnapshot(revisionId)));
 			}
 
 			@Override
 			public Promise<Void> saveSnapshot(K revisionId, List<D> diffs) {
 				return doCall(
 						writeList.apply(revisionId).stream()
-								.map(remotes::get)
-								.map(remote -> AsyncSupplier.of(() -> remote.saveSnapshot(revisionId, diffs))),
+								.map(repositories::get)
+								.map(repository -> AsyncSupplier.of(() -> repository.saveSnapshot(revisionId, diffs))),
 						writeRedundancy);
 			}
 

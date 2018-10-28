@@ -45,7 +45,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.stream.Collectors.*;
 
-public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx {
+public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	public static final Duration DEFAULT_DELETE_MARGIN = Duration.ofHours(1);
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
@@ -76,7 +76,7 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 	private final PromiseStats promiseLoadSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseSaveSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private OTRemoteSql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, TypeAdapter<List<D>> diffsAdapter,
+	private OTRepositorySql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, TypeAdapter<List<D>> diffsAdapter,
 			DataSource dataSource) {
 		this.eventloop = eventloop;
 		this.executor = executor;
@@ -85,22 +85,22 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 		this.diffsAdapter = diffsAdapter;
 	}
 
-	public static <D> OTRemoteSql<D> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, TypeAdapter<D> diffAdapter) {
+	public static <D> OTRepositorySql<D> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, TypeAdapter<D> diffAdapter) {
 		TypeAdapter<List<D>> listAdapter = indent(ofList(diffAdapter), "\t");
-		return new OTRemoteSql<>(eventloop, executor, otSystem, listAdapter, dataSource);
+		return new OTRepositorySql<>(eventloop, executor, otSystem, listAdapter, dataSource);
 	}
 
-	public OTRemoteSql<D> withDeleteMargin(Duration deleteMargin) {
+	public OTRepositorySql<D> withDeleteMargin(Duration deleteMargin) {
 		this.deleteMargin = deleteMargin;
 		return this;
 	}
 
-	public OTRemoteSql<D> withCreatedBy(String createdBy) {
+	public OTRepositorySql<D> withCreatedBy(String createdBy) {
 		this.createdBy = createdBy;
 		return this;
 	}
 
-	public OTRemoteSql<D> withCustomTableNames(String tableRevision, String tableDiffs, @Nullable String tableBackup) {
+	public OTRepositorySql<D> withCustomTableNames(String tableRevision, String tableDiffs, @Nullable String tableBackup) {
 		this.tableRevision = tableRevision;
 		this.tableDiffs = tableDiffs;
 		this.tableBackup = tableBackup;

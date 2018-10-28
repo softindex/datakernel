@@ -17,7 +17,7 @@
 package io.datakernel.ot;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.utils.OTRemoteStub;
+import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
@@ -77,8 +77,8 @@ public class OTSystemTest {
 	@Test
 	public void testOtSource2() throws Exception {
 		OTSystem<TestOp> system = createTestOp();
-		OTRemoteStub<String, TestOp> remote = OTRemoteStub.create(asList("m", "x", "y", "m2"));
-		remote.setGraph(g -> {
+		OTRepositoryStub<String, TestOp> repository = OTRepositoryStub.create(asList("m", "x", "y", "m2"));
+		repository.setGraph(g -> {
 			g.add("*", "a1", add(1));
 			g.add("a1", "a2", add(2));
 			g.add("a2", "a3", add(4));
@@ -88,7 +88,7 @@ public class OTSystemTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, state);
 
 		stateManager.start().thenCompose($ -> stateManager.pull()).whenComplete(assertComplete());
@@ -97,7 +97,7 @@ public class OTSystemTest {
 		System.out.println();
 
 		//		ResultCallbackFuture<Map<String, List<TestOp>>> future = ResultCallbackFuture.create();
-//		OTUtils.doMerge(eventloop, system, remote, comparator,
+//		OTUtils.doMerge(eventloop, system, repository, comparator,
 //				new HashSet<>(asList("*", "a1", "a2", "a3")),
 //				new HashSet<>(Arrays.<String>asList()), "*",
 //				future);
@@ -109,7 +109,7 @@ public class OTSystemTest {
 		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
-		System.out.println(remote.loadCommit("m"));
+		System.out.println(repository.loadCommit("m"));
 		System.out.println(stateManager);
 		System.out.println();
 
@@ -136,17 +136,17 @@ public class OTSystemTest {
 		System.out.println(stateManager);
 		System.out.println();
 
-		System.out.println(remote);
+		System.out.println(repository);
 		System.out.println(stateManager);
 		future = stateManager.push().toCompletableFuture();
 		eventloop.run();
 		future.get();
-		System.out.println(remote.loadCommit("x"));
-		System.out.println(remote.loadCommit("y"));
+		System.out.println(repository.loadCommit("x"));
+		System.out.println(repository.loadCommit("y"));
 		System.out.println(stateManager);
 		System.out.println();
 
-		System.out.println(remote);
+		System.out.println(repository);
 		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
@@ -159,7 +159,7 @@ public class OTSystemTest {
 	public void testOtSource3() throws Exception {
 		OTSystem<TestOp> system = createTestOp();
 
-		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(asList("m"));
+		OTRepositoryStub<String, TestOp> otSource = OTRepositoryStub.create(asList("m"));
 		otSource.setGraph(g -> {
 			g.add("*", "a1", add(1));
 			g.add("a1", "a2", add(2));
@@ -189,7 +189,7 @@ public class OTSystemTest {
 	@Test
 	public void testOtSource4() throws Exception {
 		OTSystem<TestOp> system = createTestOp();
-		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(asList("m"));
+		OTRepositoryStub<String, TestOp> otSource = OTRepositoryStub.create(asList("m"));
 		otSource.setGraph(g -> {
 			g.add("*", "a1", add(1));
 			g.add("*", "b1", add(10));

@@ -2,7 +2,7 @@ package io.datakernel.ot.utils;
 
 import io.datakernel.async.Promise;
 import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTRemote;
+import io.datakernel.ot.OTRepository;
 
 import java.io.IOException;
 import java.util.*;
@@ -15,30 +15,30 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
 
-public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
+public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 	final Supplier<K> revisionIdSupplier;
 
 	public final Map<K, OTCommit<K, D>> commits = new LinkedHashMap<>();
 	public final Map<K, List<D>> snapshots = new LinkedHashMap<>();
 
-	private OTRemoteStub(Supplier<K> revisionIdSupplier) {
+	private OTRepositoryStub(Supplier<K> revisionIdSupplier) {
 		this.revisionIdSupplier = revisionIdSupplier;
 	}
 
-	public static <K, D> OTRemoteStub<K, D> create() {
-		return new OTRemoteStub<>(null);
+	public static <K, D> OTRepositoryStub<K, D> create() {
+		return new OTRepositoryStub<>(null);
 	}
 
-	public static <K, D> OTRemoteStub<K, D> create(Stream<K> newIds) {
+	public static <K, D> OTRepositoryStub<K, D> create(Stream<K> newIds) {
 		return create(newIds.iterator());
 	}
 
-	public static <K, D> OTRemoteStub<K, D> create(Iterable<K> newIds) {
+	public static <K, D> OTRepositoryStub<K, D> create(Iterable<K> newIds) {
 		return create(newIds.iterator());
 	}
 
-	public static <K, D> OTRemoteStub<K, D> create(Iterator<K> newIds) {
-		return new OTRemoteStub<>(newIds::next);
+	public static <K, D> OTRepositoryStub<K, D> create(Iterator<K> newIds) {
+		return new OTRepositoryStub<>(newIds::next);
 	}
 
 	public void setGraph(Consumer<OTGraphBuilder<K, D>> builder) {

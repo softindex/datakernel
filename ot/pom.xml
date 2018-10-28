@@ -62,7 +62,7 @@
 						<version>2.21.0</version>
 						<configuration>
 							<excludes>
-								<exclude>**/OTRemoteSqlTest.java</exclude>
+								<exclude>**/OTRepositorySqlTest.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>

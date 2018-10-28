@@ -307,13 +307,13 @@ public class ReportingTest {
 
 		dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRemoteSql<LogDiff<CubeDiff>> remote = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
-		remote.truncateTables();
-		remote.createCommitId().thenCompose(id -> remote.push(OTCommit.ofRoot(id)).thenCompose($ -> remote.saveSnapshot(id, emptyList())));
+		OTRepositorySql<LogDiff<CubeDiff>> repository = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
+		repository.truncateTables();
+		repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 		eventloop.run();
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, remote);
+		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,

@@ -12,7 +12,7 @@ import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTRemoteEx;
+import io.datakernel.ot.OTRepositoryEx;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +35,7 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 
 	private final Eventloop eventloop;
 	private final OTAlgorithms<K, D> algorithms;
-	private final OTRemoteEx<K, D> remote;
+	private final OTRepositoryEx<K, D> repository;
 	private final RemoteFsChunkStorage<C> storage;
 
 	private final CubeDiffScheme<D> cubeDiffScheme;
@@ -47,11 +47,11 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	CubeBackupController(Eventloop eventloop,
 			CubeDiffScheme<D> cubeDiffScheme,
 			OTAlgorithms<K, D> algorithms,
-			OTRemoteEx<K, D> remote, RemoteFsChunkStorage<C> storage) {
+			OTRepositoryEx<K, D> repository, RemoteFsChunkStorage<C> storage) {
 		this.eventloop = eventloop;
 		this.cubeDiffScheme = cubeDiffScheme;
 		this.algorithms = algorithms;
-		this.remote = remote;
+		this.repository = repository;
 		this.storage = storage;
 	}
 
@@ -59,7 +59,7 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 			CubeDiffScheme<D> cubeDiffScheme,
 			OTAlgorithms<K, D> algorithms,
 			RemoteFsChunkStorage<C> storage) {
-		return new CubeBackupController<>(eventloop, cubeDiffScheme, algorithms, (OTRemoteEx<K, D>) algorithms.getRemote(), storage);
+		return new CubeBackupController<>(eventloop, cubeDiffScheme, algorithms, (OTRepositoryEx<K, D>) algorithms.getRepository(), storage);
 	}
 
 	private final AsyncSupplier<Void> backup = reuse(this::backupHead);
@@ -69,7 +69,7 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	}
 
 	public Promise<Void> backupHead() {
-		return remote.getHeads()
+		return repository.getHeads()
 				.thenCompose(heads -> {
 					if (heads.isEmpty()) {
 						return Promise.ofException(new IllegalArgumentException("heads is empty"));
@@ -81,7 +81,7 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	}
 
 	public Promise<Void> backup(K commitId) {
-		return Promises.toTuple(remote.loadCommit(commitId), algorithms.checkout(commitId))
+		return Promises.toTuple(repository.loadCommit(commitId), algorithms.checkout(commitId))
 				.thenCompose(tuple -> Promises.runSequence(
 						AsyncSupplier.of(() -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2()))),
 						AsyncSupplier.of(() -> backupDb(tuple.getValue1(), tuple.getValue2()))))
@@ -97,7 +97,7 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	}
 
 	private Promise<Void> backupDb(OTCommit<K, D> commit, List<D> snapshot) {
-		return remote.backup(commit, snapshot)
+		return repository.backup(commit, snapshot)
 				.whenComplete(promiseBackupDb.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), commit, snapshot));
 	}

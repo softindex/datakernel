@@ -131,9 +131,9 @@ public class CubeMeasureRemovalTest {
 
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRemoteSql<LogDiff<CubeDiff>> remote = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
-		remote.truncateTables();
-		remote.createCommitId().thenCompose(id -> remote.push(OTCommit.ofRoot(id)).thenCompose($ -> remote.saveSnapshot(id, emptyList())));
+		OTRepositorySql<LogDiff<CubeDiff>> repository = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
+		repository.truncateTables();
+		repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 		eventloop.run();
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
@@ -141,7 +141,7 @@ public class CubeMeasureRemovalTest {
 			SerializerBuilder.create(classLoader).build(LogItem.class));
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, remote);
+		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop, logManager,
@@ -305,13 +305,13 @@ public class CubeMeasureRemovalTest {
 
 			LogDiffJson<CubeDiff> diffAdapter1 = LogDiffJson.create(CubeDiffJson.create(cube1));
 			OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-			OTRemoteSql<LogDiff<CubeDiff>> remote = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, diffAdapter1);
-			remote.truncateTables();
-			remote.createCommitId().thenCompose(id -> remote.push(OTCommit.ofRoot(id)).thenCompose($ -> remote.saveSnapshot(id, emptyList())));
+			OTRepositorySql<LogDiff<CubeDiff>> repository = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, diffAdapter1);
+			repository.truncateTables();
+			repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 			eventloop.run();
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
-			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, remote);
+			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 			OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager1 = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 			LogManager<LogItem> logManager = LogManagerImpl.create(eventloop, fileSystem, serializer);
@@ -347,7 +347,7 @@ public class CubeMeasureRemovalTest {
 
 		LogDiffJson<CubeDiff> diffAdapter2 = LogDiffJson.create(CubeDiffJson.create(cube2));
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql2 = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
+		OTRepositorySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
 
 		exception.expectCause(instanceOf(ParseException.class));
 		exception.expectCause(hasProperty("cause", hasProperty("message", equalTo("Unknown fields: [clicks, conversions]"))));
@@ -381,13 +381,13 @@ public class CubeMeasureRemovalTest {
 
 			LogDiffJson<CubeDiff> diffAdapter1 = LogDiffJson.create(CubeDiffJson.create(cube1));
 			OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-			OTRemoteSql<LogDiff<CubeDiff>> remote = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, diffAdapter1);
-			remote.truncateTables();
-			remote.createCommitId().thenCompose(id -> remote.push(OTCommit.ofRoot(id)).thenCompose($ -> remote.saveSnapshot(id, emptyList())));
+			OTRepositorySql<LogDiff<CubeDiff>> repository = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, diffAdapter1);
+			repository.truncateTables();
+			repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 			eventloop.run();
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
-			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, remote);
+			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 			OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager1 = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 			LogManager<LogItem> logManager = LogManagerImpl.create(eventloop, fileSystem, serializer);
@@ -424,7 +424,7 @@ public class CubeMeasureRemovalTest {
 
 		LogDiffJson<CubeDiff> diffAdapter2 = LogDiffJson.create(CubeDiffJson.create(cube2));
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql2 = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
+		OTRepositorySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
 
 		exception.expectCause(instanceOf(ParseException.class));
 		exception.expectCause(hasProperty("cause", hasProperty("message", equalTo("Unknown aggregations: [impressionsAggregation, otherAggregation]"))));

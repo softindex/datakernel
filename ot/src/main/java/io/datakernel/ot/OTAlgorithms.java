@@ -31,7 +31,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
-	private final OTRemote<K, D> remote;
+	private final OTRepository<K, D> repository;
 	private final OTSystem<D> otSystem;
 
 	private final PromiseStats findParent = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -39,14 +39,14 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	private final PromiseStats findCut = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats findCutLoadCommit = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	OTAlgorithms(Eventloop eventloop, OTSystem<D> otSystem, OTRemote<K, D> source) {
+	OTAlgorithms(Eventloop eventloop, OTSystem<D> otSystem, OTRepository<K, D> source) {
 		this.eventloop = eventloop;
 		this.otSystem = otSystem;
-		this.remote = source;
+		this.repository = source;
 	}
 
 	public static <K, D> OTAlgorithms<K, D> create(Eventloop eventloop,
-			OTSystem<D> otSystem, OTRemote<K, D> source) {
+			OTSystem<D> otSystem, OTRepository<K, D> source) {
 		return new OTAlgorithms<>(eventloop, otSystem, source);
 	}
 
@@ -55,8 +55,8 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		return eventloop;
 	}
 
-	public OTRemote<K, D> getRemote() {
-		return remote;
+	public OTRepository<K, D> getRepository() {
+		return repository;
 	}
 
 	public OTSystem<D> getOtSystem() {
@@ -87,7 +87,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public <R> Promise<R> walkGraph(Set<K> heads, GraphWalker<K, D, R> walker) {
-		return toList(heads.stream().map(remote::loadCommit))
+		return toList(heads.stream().map(repository::loadCommit))
 				.thenCompose(headCommits -> {
 					walker.onStart(headCommits);
 					PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(OTCommit::compareTo));
@@ -108,7 +108,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		return walker.onCommit(commit)
 				.thenCompose(maybeResult -> maybeResult.isPresent() ?
 						Promise.of(maybeResult.get()) :
-						toList(commit.getParents().keySet().stream().filter(visited::add).map(remote::loadCommit))
+						toList(commit.getParents().keySet().stream().filter(visited::add).map(repository::loadCommit))
 								.async()
 								.thenCompose(parentCommits -> {
 									queue.addAll(parentCommits);
@@ -267,20 +267,20 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	@SuppressWarnings("ConstantConditions")
 	public Promise<K> mergeHeadsAndPush() {
-		return remote.getHeads()
+		return repository.getHeads()
 				.thenCompose(heads -> {
 					if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge
 
 					return Promises.toTuple(Tuple::new,
 							loadAndMerge(heads),
 							toList(heads.stream()
-									.map(remote::loadCommit))
+									.map(repository::loadCommit))
 									.thenApply(headCommits -> headCommits.stream()
 											.mapToLong(OTCommit::getLevel)
 											.max()
 											.getAsLong()))
-							.thenCompose(tuple -> remote.createCommit(tuple.mergeDiffs, tuple.parentsMaxLevel + 1L))
-							.thenCompose(mergeCommit -> remote.push(mergeCommit)
+							.thenCompose(tuple -> repository.createCommit(tuple.mergeDiffs, tuple.parentsMaxLevel + 1L))
+							.thenCompose(mergeCommit -> repository.push(mergeCommit)
 									.thenApply($ -> mergeCommit.getId()));
 				})
 				.whenComplete(toLogger(logger, thisMethod()));
@@ -288,7 +288,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	public Promise<Set<K>> findCut(Set<K> startNodes,
 			Predicate<Set<OTCommit<K, D>>> matchPredicate) {
-		return toList(startNodes.stream().map(remote::loadCommit))
+		return toList(startNodes.stream().map(repository::loadCommit))
 				.thenCompose(commits -> {
 					PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(OTCommit::compareTo));
 					queue.addAll(commits);
@@ -310,7 +310,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 		OTCommit<K, D> commit = queue.poll();
 		assert commit != null;
-		return toList(commit.getParents().keySet().stream().filter(visited::add).map(remote::loadCommit))
+		return toList(commit.getParents().keySet().stream().filter(visited::add).map(repository::loadCommit))
 				.async()
 				.thenCompose(parentCommits -> {
 					queue.addAll(parentCommits);
@@ -479,7 +479,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		return findParent(singleton(commitId), DiffsReducer.toList(),
 				commit -> commit.getSnapshotHint() == Boolean.FALSE ?
 						Promise.of(false) :
-						remote.loadSnapshot(commit.getId())
+						repository.loadSnapshot(commit.getId())
 								.thenApply(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null))
 				.thenCompose(findResult -> {
 					if (!findResult.isFound())
@@ -493,7 +493,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	public Promise<Void> saveSnapshot(K revisionId) {
 		return checkout(revisionId)
-				.thenCompose(diffs -> remote.saveSnapshot(revisionId, diffs));
+				.thenCompose(diffs -> repository.saveSnapshot(revisionId, diffs));
 	}
 
 	private Promise<Map<K, List<D>>> loadAndMerge(Set<K> heads) {

@@ -45,7 +45,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	private final OTAlgorithms<K, D> algorithms;
 	private final OTSystem<D> otSystem;
-	private final OTRemote<K, D> remote;
+	private final OTRepository<K, D> repository;
 	private Supplier<Promise<Void>> checkoutValidator;
 
 	private OTState<D> state;
@@ -66,7 +66,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		this.eventloop = eventloop;
 		this.algorithms = algorithms;
 		this.otSystem = algorithms.getOtSystem();
-		this.remote = algorithms.getRemote();
+		this.repository = algorithms.getRepository();
 		this.state = state;
 	}
 
@@ -103,14 +103,14 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	}
 
 	public Promise<K> checkout() {
-		return remote.getHeads()
+		return repository.getHeads()
 				.thenCompose(heads -> checkout(first(heads)))
 				.thenCompose($ -> pull())
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	public Promise<K> checkout(K commitId) {
-		return remote.loadCommit(commitId)
+		return repository.loadCommit(commitId)
 				.thenCompose(commit -> algorithms.checkout(commitId)
 						.thenApply(diffs -> {
 							state.init();
@@ -152,7 +152,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	private Promise<K> doFetch() {
 		if (!pendingCommits.isEmpty()) return Promise.of(null);
-		return remote.getHeads()
+		return repository.getHeads()
 				.thenCompose(this::doFetch);
 	}
 
@@ -250,7 +250,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		}
 		K revisionCopy = revision;
 		List<D> workingDiffsCopy = new ArrayList<>(workingDiffs);
-		return remote.createCommit(revision, otSystem.squash(workingDiffs), revisionLevel + 1L)
+		return repository.createCommit(revision, otSystem.squash(workingDiffs), revisionLevel + 1L)
 				.thenApply(newCommit -> {
 					if (revisionCopy != revision || !isShallowEquals(workingDiffs, workingDiffsCopy)) {
 						return null;
@@ -278,7 +278,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	Promise<Void> doPush() {
 		List<OTCommit<K, D>> list = new ArrayList<>(pendingCommits.values());
-		return remote.push(list)
+		return repository.push(list)
 				.whenResult($ -> list.stream().map(OTCommit::getId).forEach(pendingCommits::remove))
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}

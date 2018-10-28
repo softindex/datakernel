@@ -27,10 +27,10 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
-public class OTRemoteSqlTest {
+public class OTRepositorySqlTest {
 
 	private Eventloop eventloop;
-	private OTRemoteSql<TestOp> remote;
+	private OTRepositorySql<TestOp> repository;
 	private OTSystem<TestOp> otSystem;
 
 	static {
@@ -42,9 +42,9 @@ public class OTRemoteSqlTest {
 	public void before() throws IOException, SQLException {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		otSystem = Utils.createTestOp();
-		remote = OTRemoteSql.create(eventloop, Executors.newFixedThreadPool(4), dataSource("test.properties"), otSystem, Utils.OP_ADAPTER);
+		repository = OTRepositorySql.create(eventloop, Executors.newFixedThreadPool(4), dataSource("test.properties"), otSystem, Utils.OP_ADAPTER);
 
-		remote.truncateTables();
+		repository.truncateTables();
 	}
 
 	static <T> Set<T> set(T... values) {
@@ -77,9 +77,9 @@ public class OTRemoteSqlTest {
 
 	@Test
 	public void testRootHeads() throws ExecutionException, InterruptedException {
-		CompletableFuture<Set<Long>> headsFuture = remote.createCommitId()
-				.thenCompose(id -> remote.push(ofRoot(id)))
-				.thenCompose($ -> remote.getHeads())
+		CompletableFuture<Set<Long>> headsFuture = repository.createCommitId()
+				.thenCompose(id -> repository.push(ofRoot(id)))
+				.thenCompose($ -> repository.getHeads())
 				.toCompletableFuture();
 		eventloop.run();
 
@@ -90,11 +90,11 @@ public class OTRemoteSqlTest {
 
 	@Test
 	public void testReplaceHead() throws ExecutionException, InterruptedException {
-		CompletableFuture<Set<Long>> headsFuture = remote.createCommitId()
-				.thenCompose(rootId -> remote.push(ofRoot(rootId))
-						.thenCompose($ -> remote.createCommitId())
-						.thenCompose(id -> remote.push(ofCommit(id, rootId, singletonList(new TestSet(0, 5)), id))))
-				.thenCompose($ -> remote.getHeads())
+		CompletableFuture<Set<Long>> headsFuture = repository.createCommitId()
+				.thenCompose(rootId -> repository.push(ofRoot(rootId))
+						.thenCompose($ -> repository.createCommitId())
+						.thenCompose(id -> repository.push(ofCommit(id, rootId, singletonList(new TestSet(0, 5)), id))))
+				.thenCompose($ -> repository.getHeads())
 				.toCompletableFuture();
 		eventloop.run();
 
@@ -114,7 +114,7 @@ public class OTRemoteSqlTest {
 
 		 */
 
-		CompletableFuture<?> graphFuture = remote
+		CompletableFuture<?> graphFuture = repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(1, 3, add(1));
@@ -125,19 +125,19 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		graphFuture.get();
 
-		CompletableFuture<Set<Long>> headFuture = remote.getHeads().toCompletableFuture();
+		CompletableFuture<Set<Long>> headFuture = repository.getHeads().toCompletableFuture();
 		eventloop.run();
 		Set<Long> heads = headFuture.get();
 		assertEquals(3, heads.size());
 		assertEquals(set(2L, 3L, 4L), heads);
 
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, remote);
+		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
 		CompletableFuture<Long> mergeFuture = algorithms.mergeHeadsAndPush().toCompletableFuture();
 
 		eventloop.run();
 		Long mergeId = mergeFuture.get();
 
-		CompletableFuture<Set<Long>> headAfterMergeFuture = remote.getHeads().toCompletableFuture();
+		CompletableFuture<Set<Long>> headAfterMergeFuture = repository.getHeads().toCompletableFuture();
 		eventloop.run();
 		Set<Long> headsAfterMerge = headAfterMergeFuture.get();
 		assertEquals(1, headsAfterMerge.size());
@@ -146,7 +146,7 @@ public class OTRemoteSqlTest {
 
 //	@Test
 //	public void testMergeSnapshotOnMergeNodes() throws ExecutionException, InterruptedException {
-//		final GraphBuilder<Long, TestOp> graphBuilder = new GraphBuilder<>(remote);
+//		final GraphBuilder<Long, TestOp> graphBuilder = new GraphBuilder<>(repository);
 //		final CompletableFuture<Void> graphFuture = graphBuilder.buildGraph(asList(
 //				edge(1, 2, add(1)),
 //				edge(1, 3, add(1)),
@@ -164,12 +164,12 @@ public class OTRemoteSqlTest {
 //		graphFuture.get();
 //
 //		final CompletableFuture<Long> beforeVirtualЩFutureNode4 = OTAlgorithms
-//				.loadAllChanges(remote, keyComparator, otSystem, 6)
+//				.loadAllChanges(repository, keyComparator, otSystem, 6)
 //				.thenApply(OTRemoteSqlTest::apply)
 //				.toCompletableFuture();
 //
 //		final CompletableFuture<Long> beforeVirtualFutureNode5 = OTAlgorithms
-//				.loadAllChanges(remote, keyComparator, otSystem, 8)
+//				.loadAllChanges(repository, keyComparator, otSystem, 8)
 //				.thenApply(OTRemoteSqlTest::apply)
 //				.toCompletableFuture();
 //
@@ -181,18 +181,18 @@ public class OTRemoteSqlTest {
 //		assertEquals(3, node5Before.intValue());
 //
 //		final CompletableFuture<?> virtualFuture = OTAlgorithms
-//				.saveCheckpoint(remote, keyComparator, otSystem, newHashSet(6, 7))
+//				.saveCheckpoint(repository, keyComparator, otSystem, newHashSet(6, 7))
 //				.toCompletableFuture();
 //		eventloop.run();
 //		virtualFuture.get();
 //
 //		final CompletableFuture<Long> afterVirtualFutureNode4 = OTAlgorithms
-//				.loadAllChanges(remote, keyComparator, otSystem, 6)
+//				.loadAllChanges(repository, keyComparator, otSystem, 6)
 //				.thenApply(OTRemoteSqlTest::apply)
 //				.toCompletableFuture();
 //
 //		final CompletableFuture<Long> afterVirtualFutureNode5 = OTAlgorithms
-//				.loadAllChanges(remote, keyComparator, otSystem, 8)
+//				.loadAllChanges(repository, keyComparator, otSystem, 8)
 //				.thenApply(OTRemoteSqlTest::apply)
 //				.toCompletableFuture();
 //
@@ -203,14 +203,14 @@ public class OTRemoteSqlTest {
 //		assertEquals(node5Before, node5After);
 //		assertEquals(node4Before, node4After);
 //
-//		OTAlgorithms.mergeHeadsAndPush(otSystem, remote, Long::compareTo);
+//		OTAlgorithms.mergeHeadsAndPush(otSystem, repository, Long::compareTo);
 //		// logs
 //		eventloop.run();
 //	}
 
 	@Test
 	public void testForkMerge() throws ExecutionException, InterruptedException {
-		CompletableFuture<?> graphFuture = remote
+		CompletableFuture<?> graphFuture = repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(2, 3, add(1));
@@ -225,7 +225,7 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		graphFuture.get();
 
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, remote);
+		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
 		CompletableFuture<Long> merge = algorithms.mergeHeadsAndPush()
 				.toCompletableFuture();
 
@@ -237,7 +237,7 @@ public class OTRemoteSqlTest {
 
 	@Test
 	public void testFindRootNodes() throws ExecutionException, InterruptedException {
-		CompletableFuture<?> graphFuture = remote
+		CompletableFuture<?> graphFuture = repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(1, 3, add(1));
@@ -253,7 +253,7 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		graphFuture.get();
 
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, remote);
+		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
 		CompletableFuture<Set<Long>> rootNodes1Future = algorithms.findAllCommonParents(set(6L, 7L))
 				.toCompletableFuture();
 
@@ -268,7 +268,7 @@ public class OTRemoteSqlTest {
 
 	@Test
 	public void testFindRootNodes2() throws ExecutionException, InterruptedException {
-		CompletableFuture<?> graphFuture = remote
+		CompletableFuture<?> graphFuture = repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(2, 3, add(1));
@@ -281,7 +281,7 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		graphFuture.get();
 
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, remote);
+		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
 		CompletableFuture<Set<Long>> rootNodesFuture = algorithms.findAllCommonParents(set(4L, 5L, 6L))
 				.toCompletableFuture();
 
@@ -292,7 +292,7 @@ public class OTRemoteSqlTest {
 
 	@Test
 	public void testFindParentCandidatesSurface() throws ExecutionException, InterruptedException {
-		CompletableFuture<?> graphFuture = remote
+		CompletableFuture<?> graphFuture = repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(1, 3, add(1));
@@ -309,7 +309,7 @@ public class OTRemoteSqlTest {
 		graphFuture.get();
 
 		Set<Long> searchSurface = set(2L, 3L);
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, remote);
+		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
 		CompletableFuture<Set<Long>> rootNodesFuture = algorithms.findCut(set(6L, 7L),
 				commits -> searchSurface.equals(commits.stream().map(OTCommit::getId).collect(toSet())))
 				.toCompletableFuture();
@@ -321,7 +321,7 @@ public class OTRemoteSqlTest {
 
 	@Test
 	public void testSingleCacheCheckpointNode() throws ExecutionException, InterruptedException {
-		CompletableFuture<?> graphFuture = remote
+		CompletableFuture<?> graphFuture = repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(2, 3, add(1));
@@ -330,23 +330,23 @@ public class OTRemoteSqlTest {
 					g.add(5, 6, add(1));
 					g.add(5, 7, add(1));
 				})))
-				.thenCompose($ -> remote.saveSnapshot(1L, emptyList()))
+				.thenCompose($ -> repository.saveSnapshot(1L, emptyList()))
 				.toCompletableFuture();
 
 		eventloop.run();
 		graphFuture.get();
 
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, remote);
+		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
 		CompletableFuture<?> mergeSnapshotFuture = algorithms.checkout(5L)
-				.thenCompose(ds -> remote.saveSnapshot(5L, ds))
-				.thenCompose($ -> remote.cleanup(5L))
+				.thenCompose(ds -> repository.saveSnapshot(5L, ds))
+				.thenCompose($ -> repository.cleanup(5L))
 				.toCompletableFuture();
 
 		eventloop.run();
 		mergeSnapshotFuture.get();
 
 		CompletableFuture<Integer> snapshotFuture = algorithms.checkout(7L)
-				.thenApply(OTRemoteSqlTest::apply)
+				.thenApply(OTRepositorySqlTest::apply)
 				.toCompletableFuture();
 		eventloop.run();
 

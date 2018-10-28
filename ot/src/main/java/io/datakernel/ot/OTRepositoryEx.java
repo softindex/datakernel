@@ -4,7 +4,7 @@ import io.datakernel.async.Promise;
 
 import java.util.List;
 
-public interface OTRemoteEx<K, D> extends OTRemote<K, D> {
+public interface OTRepositoryEx<K, D> extends OTRepository<K, D> {
 	Promise<Void> cleanup(K revisionId);
 
 	Promise<Void> backup(OTCommit<K, D> commit, List<D> snapshot);

@@ -1,7 +1,7 @@
 package io.datakernel.ot;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.utils.OTRemoteStub;
+import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import io.datakernel.ot.utils.Utils;
@@ -27,20 +27,20 @@ public class OTAlgorithmsTest {
 	public void testLoadAllChangesFromRootWithSnapshot() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState opState = new TestOpState();
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
-		remote.setGraph(g -> {
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
+		repository.setGraph(g -> {
 			g.add(0, 1, add(1));
 			g.add(1, 2, add(1));
 			g.add(2, 3, add(1));
 			g.add(3, 4, add(1));
 			g.add(4, 5, add(1));
 		});
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, repository);
 
-		remote.saveSnapshot(0, asList(add(10)));
+		repository.saveSnapshot(0, asList(add(10)));
 		eventloop.run();
 
-		CompletableFuture<List<TestOp>> changes = remote.getHeads().thenCompose(heads ->
+		CompletableFuture<List<TestOp>> changes = repository.getHeads().thenCompose(heads ->
 				algorithms.checkout(getLast(heads)))
 				.toCompletableFuture();
 		eventloop.run();
@@ -52,8 +52,8 @@ public class OTAlgorithmsTest {
 	@Test
 	public void testReduceEdges() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
-		remote.setGraph(g -> {
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
+		repository.setGraph(g -> {
 			g.add(0, 1, add(1));
 			g.add(1, 2, add(1));
 			g.add(2, 3, add(1));
@@ -62,7 +62,7 @@ public class OTAlgorithmsTest {
 			g.add(3, 6, add(1));
 			g.add(6, 7, add(1));
 		});
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, repository);
 		CompletableFuture<Map<Integer, List<TestOp>>> future = algorithms.reduceEdges(
 				set(5, 7),
 				0,
@@ -79,8 +79,8 @@ public class OTAlgorithmsTest {
 	@Test
 	public void testReduceEdges2() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		OTRemoteStub<Integer, TestOp> remote = OTRemoteStub.create();
-		remote.setGraph(g -> {
+		OTRepositoryStub<Integer, TestOp> repository = OTRepositoryStub.create();
+		repository.setGraph(g -> {
 			g.add(0, 1, add(1));
 			g.add(0, 2, add(-1));
 			g.add(1, 3, add(1));
@@ -88,7 +88,7 @@ public class OTAlgorithmsTest {
 			g.add(2, 4, add(1));
 			g.add(2, 5, add(-1));
 		});
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, remote);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, repository);
 
 		CompletableFuture<Map<Integer, List<TestOp>>> future = algorithms.reduceEdges(
 				set(3, 4, 5),

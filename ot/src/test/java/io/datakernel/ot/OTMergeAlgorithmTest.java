@@ -2,7 +2,7 @@ package io.datakernel.ot;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.utils.OTGraphBuilder;
-import io.datakernel.ot.utils.OTRemoteStub;
+import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.Utils;
 import org.junit.Before;
@@ -68,9 +68,9 @@ public class OTMergeAlgorithmTest {
 	}
 
 	private void doTestLoadAndMerge(Set<String> heads, Consumer<OTGraphBuilder<String, TestOp>> graphBuilder, TestAcceptor testAcceptor) throws Exception {
-		OTRemoteStub<String, TestOp> remote = OTRemoteStub.create();
-		remote.setGraph(graphBuilder);
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
+		OTRepositoryStub<String, TestOp> repository = OTRepositoryStub.create();
+		repository.setGraph(graphBuilder);
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
 		CompletableFuture<OTLoadedGraph<String, TestOp>> future =
 				algorithms.loadGraph(heads).toCompletableFuture();
 		eventloop.run();
