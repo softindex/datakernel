@@ -17,7 +17,7 @@
 package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.InvalidSizeException;
@@ -36,7 +36,7 @@ public interface ByteBufsParser<T> {
 	@Nullable
 	T tryParse(ByteBufQueue bufs) throws ParseException;
 
-	default Stage<T> parse(ByteBufsSupplier supplier) {
+	default Promise<T> parse(ByteBufsSupplier supplier) {
 		return supplier.parse(this);
 	}
 

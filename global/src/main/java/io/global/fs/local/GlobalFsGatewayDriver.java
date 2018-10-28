@@ -16,8 +16,8 @@
 
 package io.global.fs.local;
 
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
@@ -91,11 +91,11 @@ public class GlobalFsGatewayDriver implements GlobalFsGateway, Initializable<Glo
 	}
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> upload(GlobalPath path, long offset) {
+	public Promise<SerialConsumer<ByteBuf>> upload(GlobalPath path, long offset) {
 		PubKey pubKey = path.getOwner();
 		PrivKey privKey = keymap.get(pubKey);
 		if (privKey == null) {
-			return Stage.ofException(UNKNOWN_KEY);
+			return Promise.ofException(UNKNOWN_KEY);
 		}
 		long normalizedOffset = offset == -1 ? 0 : offset;
 		long[] size = {normalizedOffset};
@@ -111,24 +111,24 @@ public class GlobalFsGatewayDriver implements GlobalFsGateway, Initializable<Glo
 				.thenCompose(signedMeta -> {
 					if (signedMeta == null) {
 						digest[0] = new SHA256Digest();
-						return Stage.complete();
+						return Promise.complete();
 					}
 					// TODO anton: check signature here
 					GlobalFsMetadata meta = signedMeta.getData();
 					long metaSize = meta.getSize();
 					if (offset > metaSize) {
-						return Stage.ofException(new StacklessException(GlobalFsGatewayDriver.class, "Trying to upload at offset greater than the file size"));
+						return Promise.ofException(new StacklessException(GlobalFsGatewayDriver.class, "Trying to upload at offset greater than the file size"));
 					}
 					toSkip[0] = metaSize - offset;
 					return node.download(path, metaSize, 0)
 							.thenCompose(supplier -> supplier.toCollector(toList()))
 							.thenCompose(frames -> {
 								if (frames.size() != 1) {
-									return Stage.ofException(new StacklessException(GlobalFsGatewayDriver.class, "No checkpoint at metadata size position!"));
+									return Promise.ofException(new StacklessException(GlobalFsGatewayDriver.class, "No checkpoint at metadata size position!"));
 								}
 								// TODO anton: check signature here
 								digest[0] = frames.get(0).getCheckpoint().getData().getDigest();
-								return Stage.complete();
+								return Promise.complete();
 							});
 				})
 				.thenCompose($ ->
@@ -148,13 +148,13 @@ public class GlobalFsGatewayDriver implements GlobalFsGateway, Initializable<Glo
 	}
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset, long limit) {
+	public Promise<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset, long limit) {
 		return node.download(path, offset, limit)
 				.thenApply(supplier -> supplier.apply(new FrameVerifier(path.toLocalPath(), path.getOwner(), offset, limit)));
 	}
 
 	@Override
-	public Stage<List<GlobalFsMetadata>> list(RepoID space, String glob) {
+	public Promise<List<GlobalFsMetadata>> list(RepoID space, String glob) {
 		PubKey pubKey = space.getOwner();
 		return node.list(space, glob)
 				.thenApply(res -> res.stream()
@@ -164,28 +164,28 @@ public class GlobalFsGatewayDriver implements GlobalFsGateway, Initializable<Glo
 	}
 
 	@Override
-	public Stage<Void> delete(GlobalPath path) {
+	public Promise<Void> delete(GlobalPath path) {
 		PubKey pubKey = path.getOwner();
 		PrivKey privKey = keymap.get(pubKey);
 		if (privKey == null) {
-			return Stage.ofException(UNKNOWN_KEY);
+			return Promise.ofException(UNKNOWN_KEY);
 		}
 		return node.pushMetadata(pubKey, SignedData.sign(GlobalFsMetadata.ofRemoved(path.toLocalPath(), timeProvider.currentTimeMillis()), privKey));
 	}
 
 	@Override
-	public Stage<Void> delete(RepoID space, String glob) {
+	public Promise<Void> delete(RepoID space, String glob) {
 		PubKey pubKey = space.getOwner();
 		PrivKey privKey = keymap.get(pubKey);
 		if (privKey == null) {
-			return Stage.ofException(UNKNOWN_KEY);
+			return Promise.ofException(UNKNOWN_KEY);
 		}
 		if (!isWildcard(glob)) {
 			return delete(GlobalPath.of(space, glob));
 		}
 		return node.list(space, glob)
 				.thenCompose(list ->
-						Stages.all(list.stream()
+						Promises.all(list.stream()
 								.filter(signedMeta -> signedMeta.verify(pubKey))
 								.map(signedMeta ->
 										node.pushMetadata(pubKey, SignedData.sign(signedMeta.getData().toRemoved(), privKey)))));

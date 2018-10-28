@@ -17,13 +17,13 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
 import org.junit.After;
@@ -49,10 +49,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
 public class TestCachedFsClient {
-	public static final Function<SerialSupplier<ByteBuf>, Stage<Void>> RECYCLING_FUNCTION = supplier -> supplier.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
-	public static final Function<SerialSupplier<ByteBuf>, Stage<String>> TO_STRING = supplier -> supplier.toCollector(ByteBufQueue.collector()).thenApply(buf -> buf.asString(UTF_8));
+	public static final Function<SerialSupplier<ByteBuf>, Promise<Void>> RECYCLING_FUNCTION = supplier -> supplier.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
+	public static final Function<SerialSupplier<ByteBuf>, Promise<String>> TO_STRING = supplier -> supplier.toCollector(ByteBufQueue.collector()).thenApply(buf -> buf.asString(UTF_8));
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	@Rule
 	public final TemporaryFolder tempFolder = new TemporaryFolder();

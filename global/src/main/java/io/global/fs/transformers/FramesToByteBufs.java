@@ -17,7 +17,7 @@
 package io.global.fs.transformers;
 
 import io.datakernel.async.AbstractAsyncProcess;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.serial.SerialConsumer;
@@ -83,19 +83,19 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 				.whenException(this::close);
 	}
 
-	protected Stage<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {
-		return Stage.of(null);
+	protected Promise<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {
+		return Promise.of(null);
 	}
 
-	protected Stage<Void> receiveByteBuffer(ByteBuf byteBuf) {
+	protected Promise<Void> receiveByteBuffer(ByteBuf byteBuf) {
 		return output.accept(byteBuf);
 	}
 
-	private Stage<Void> handleFrame(DataFrame frame) {
+	private Promise<Void> handleFrame(DataFrame frame) {
 		if (first) {
 			first = false;
 			if (!frame.isCheckpoint()) {
-				return Stage.ofException(new IOException("First dataframe is not a checkpoint!"));
+				return Promise.ofException(new IOException("First dataframe is not a checkpoint!"));
 			}
 			GlobalFsCheckpoint data = frame.getCheckpoint().getData();
 			position = data.getPosition();
@@ -105,7 +105,7 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 			SignedData<GlobalFsCheckpoint> checkpoint = frame.getCheckpoint();
 			CheckpointVerificationResult result = GlobalFsCheckpoint.verify(checkpoint, pubKey, position, digest, localPathHash);
 			if (result != CheckpointVerificationResult.SUCCESS) {
-				return Stage.ofException(new StacklessException(FramesToByteBufs.class, "Checkpoint verification failed: " + result.message));
+				return Promise.ofException(new StacklessException(FramesToByteBufs.class, "Checkpoint verification failed: " + result.message));
 			}
 			// return output.post(ByteBuf.wrapForReading(new byte[]{124}));
 			return receiveCheckpoint(checkpoint);

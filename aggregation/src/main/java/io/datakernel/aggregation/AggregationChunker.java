@@ -18,9 +18,9 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.StagesAccumulator;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.PromisesAccumulator;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.*;
 
@@ -29,14 +29,14 @@ import java.util.List;
 
 public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> implements StreamConsumer<T> {
 	private final StreamConsumerSwitcher<T> switcher;
-	private final SettableStage<List<AggregationChunk>> result = new SettableStage<>();
+	private final SettablePromise<List<AggregationChunk>> result = new SettablePromise<>();
 
 	private final AggregationStructure aggregation;
 	private final List<String> fields;
 	private final Class<T> recordClass;
 	private final PartitionPredicate<T> partitionPredicate;
 	private final AggregationChunkStorage<C> storage;
-	private final StagesAccumulator<List<AggregationChunk>> chunksAccumulator;
+	private final PromisesAccumulator<List<AggregationChunk>> chunksAccumulator;
 	private final DefiningClassLoader classLoader;
 
 	private final int chunkSize;
@@ -55,8 +55,8 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		this.partitionPredicate = partitionPredicate;
 		this.storage = storage;
 		this.classLoader = classLoader;
-		this.chunksAccumulator = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(switcher.getAcknowledgement(), (accumulator, $) -> {});
+		this.chunksAccumulator = PromisesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
+				.withPromise(switcher.getAcknowledgement(), (accumulator, $) -> {});
 		this.chunkSize = chunkSize;
 		chunksAccumulator.get().whenComplete(result::trySet);
 		getAcknowledgement().whenException(result::trySetException);
@@ -74,12 +74,12 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		return chunker;
 	}
 
-	public MaterializedStage<List<AggregationChunk>> getResult() {
+	public MaterializedPromise<List<AggregationChunk>> getResult() {
 		return result;
 	}
 
 	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
-		private final SettableStage<AggregationChunk> result = new SettableStage<>();
+		private final SettablePromise<AggregationChunk> result = new SettablePromise<>();
 		private final C chunkId;
 		private final int chunkSize;
 		private final PartitionPredicate<T> partitionPredicate;
@@ -135,19 +135,19 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 			}
 		}
 
-		public MaterializedStage<AggregationChunk> getResult() {
+		public MaterializedPromise<AggregationChunk> getResult() {
 			return result;
 		}
 	}
 
 	private void startNewChunk() {
-		StreamConsumer<T> consumer = StreamConsumer.ofStage(
+		StreamConsumer<T> consumer = StreamConsumer.ofPromise(
 				storage.createId()
 						.thenCompose(chunkId -> storage.write(aggregation, fields, recordClass, chunkId, classLoader)
 								.thenApply(streamConsumer -> {
 									ChunkWriter chunkWriter = new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate);
 
-									chunksAccumulator.addStage(
+									chunksAccumulator.addPromise(
 											chunkWriter.getResult(),
 											(accumulator, newChunk) -> {
 												if (newChunk != null && newChunk.getCount() != 0) {

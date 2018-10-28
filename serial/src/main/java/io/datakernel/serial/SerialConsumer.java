@@ -36,7 +36,7 @@ import static io.datakernel.util.Recyclable.tryRecycle;
  * This interface represents consumer of data items that should be used serially (each consecutive {@link #accept(Object)}
  * operation should be called only after previous {@link #accept(Object)} operation finishes.
  * <p>
- * After consumer is closed, all subsequent calls to {@link #accept(Object)} will return stage, completed exceptionally.
+ * After consumer is closed, all subsequent calls to {@link #accept(Object)} will return promise, completed exceptionally.
  * <p>
  * If any exception is caught while consuming data items, {@link #close(Throwable)} method should
  * be called. All resources should be freed and the caught exception should be propagated to all related processes.
@@ -47,22 +47,22 @@ import static io.datakernel.util.Recyclable.tryRecycle;
  */
 
 public interface SerialConsumer<T> extends Cancellable {
-	Stage<Void> accept(@Nullable T value);
+	Promise<Void> accept(@Nullable T value);
 
-	default Stage<Void> accept(T item1, T item2) {
+	default Promise<Void> accept(T item1, T item2) {
 		return accept(item1)
 				.thenComposeEx(($, e) -> {
 					if (e == null) {
 						return accept(item2);
 					} else {
 						tryRecycle(item2);
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 	}
 
 	@SuppressWarnings("unchecked")
-	default Stage<Void> accept(T item1, T item2, T... items) {
+	default Promise<Void> accept(T item1, T item2, T... items) {
 		return accept(item1)
 				.thenComposeEx(($, e) -> {
 					if (e == null) {
@@ -70,7 +70,7 @@ public interface SerialConsumer<T> extends Cancellable {
 					} else {
 						tryRecycle(item2);
 						deepRecycle(items);
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				})
 				.thenComposeEx(($, e) -> {
@@ -78,17 +78,17 @@ public interface SerialConsumer<T> extends Cancellable {
 						return accept(item2);
 					} else {
 						deepRecycle(items);
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				})
 				.thenCompose($ -> acceptAll(asIterator(items)));
 	}
 
-	default Stage<Void> acceptAll(Iterator<? extends T> it) {
+	default Promise<Void> acceptAll(Iterator<? extends T> it) {
 		return SerialConsumers.acceptAll(this, it);
 	}
 
-	default Stage<Void> acceptAll(Iterable<T> iterable) {
+	default Promise<Void> acceptAll(Iterable<T> iterable) {
 		return acceptAll(iterable.iterator());
 	}
 
@@ -105,11 +105,11 @@ public interface SerialConsumer<T> extends Cancellable {
 			final AsyncConsumer<T> thisConsumer = consumer;
 
 			@Override
-			protected Stage<Void> doAccept(T value) {
+			protected Promise<Void> doAccept(T value) {
 				if (value != null) {
 					return thisConsumer.accept(value);
 				}
-				return Stage.complete();
+				return Promise.complete();
 			}
 		};
 	}
@@ -117,42 +117,42 @@ public interface SerialConsumer<T> extends Cancellable {
 	static <T> SerialConsumer<T> ofException(Throwable e) {
 		return new AbstractSerialConsumer<T>() {
 			@Override
-			protected Stage<Void> doAccept(T value) {
+			protected Promise<Void> doAccept(T value) {
 				tryRecycle(value);
-				return Stage.ofException(e);
+				return Promise.ofException(e);
 			}
 		};
 	}
 
-	static <T> SerialConsumer<T> ofSupplier(Function<SerialSupplier<T>, MaterializedStage<Void>> supplier) {
+	static <T> SerialConsumer<T> ofSupplier(Function<SerialSupplier<T>, MaterializedPromise<Void>> supplier) {
 		return ofSupplier(supplier, new SerialZeroBuffer<>());
 	}
 
-	static <T> SerialConsumer<T> ofSupplier(Function<SerialSupplier<T>, MaterializedStage<Void>> supplier, SerialQueue<T> queue) {
-		MaterializedStage<Void> extraAcknowledge = supplier.apply(queue.getSupplier());
+	static <T> SerialConsumer<T> ofSupplier(Function<SerialSupplier<T>, MaterializedPromise<Void>> supplier, SerialQueue<T> queue) {
+		MaterializedPromise<Void> extraAcknowledge = supplier.apply(queue.getSupplier());
 		SerialConsumer<T> result = queue.getConsumer();
-		if (extraAcknowledge == Stage.complete()) return result;
+		if (extraAcknowledge == Promise.complete()) return result;
 		return result
 				.withAcknowledgement(ack -> ack.both(extraAcknowledge));
 	}
 
-	static <T> SerialConsumer<T> ofStage(Stage<? extends SerialConsumer<T>> stage) {
-		if (stage.isResult()) return stage.materialize().getResult();
-		MaterializedStage<? extends SerialConsumer<T>> materializedStage = stage.materialize();
+	static <T> SerialConsumer<T> ofPromise(Promise<? extends SerialConsumer<T>> promise) {
+		if (promise.isResult()) return promise.materialize().getResult();
+		MaterializedPromise<? extends SerialConsumer<T>> materializedPromise = promise.materialize();
 		return new AbstractSerialConsumer<T>() {
 			SerialConsumer<T> consumer;
 			Throwable exception;
 
 			@Override
-			protected Stage<Void> doAccept(T value) {
+			protected Promise<Void> doAccept(T value) {
 				if (consumer != null) return consumer.accept(value);
-				return materializedStage.thenComposeEx((consumer, e) -> {
+				return materializedPromise.thenComposeEx((consumer, e) -> {
 					if (e == null) {
 						this.consumer = consumer;
 						return consumer.accept(value);
 					} else {
 						tryRecycle(value);
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 			}
@@ -160,7 +160,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			@Override
 			protected void onClosed(Throwable e) {
 				exception = e;
-				materializedStage.whenResult(supplier -> supplier.close(e));
+				materializedPromise.whenResult(supplier -> supplier.close(e));
 			}
 		};
 	}
@@ -170,7 +170,7 @@ public interface SerialConsumer<T> extends Cancellable {
 			private SerialConsumer<T> consumer;
 
 			@Override
-			protected Stage<Void> doAccept(@Nullable T value) {
+			protected Promise<Void> doAccept(@Nullable T value) {
 				if (consumer == null) consumer = provider.get();
 				return consumer.accept(value);
 			}
@@ -203,7 +203,7 @@ public interface SerialConsumer<T> extends Cancellable {
 	default SerialConsumer<T> async() {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
-			protected Stage<Void> doAccept(T value) {
+			protected Promise<Void> doAccept(T value) {
 				return SerialConsumer.this.accept(value).async();
 			}
 		};
@@ -212,7 +212,7 @@ public interface SerialConsumer<T> extends Cancellable {
 	default SerialConsumer<T> withExecutor(AsyncExecutor asyncExecutor) {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
-			protected Stage<Void> doAccept(T value) {
+			protected Promise<Void> doAccept(T value) {
 				return asyncExecutor.execute(() -> SerialConsumer.this.accept(value));
 			}
 		};
@@ -221,7 +221,7 @@ public interface SerialConsumer<T> extends Cancellable {
 	default SerialConsumer<T> peek(Consumer<? super T> fn) {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
-			protected Stage<Void> doAccept(T value) {
+			protected Promise<Void> doAccept(T value) {
 				if (value != null) fn.accept(value);
 				return SerialConsumer.this.accept(value);
 			}
@@ -231,14 +231,14 @@ public interface SerialConsumer<T> extends Cancellable {
 	default <V> SerialConsumer<V> transform(Function<? super V, ? extends T> fn) {
 		return new AbstractSerialConsumer<V>(this) {
 			@Override
-			protected Stage<Void> doAccept(V value) {
+			protected Promise<Void> doAccept(V value) {
 				if (value != null) {
 					T newValue;
 					try {
 						newValue = fn.apply(value);
 					} catch (UncheckedException u) {
 						SerialConsumer.this.close(u.getCause());
-						return Stage.ofException(u.getCause());
+						return Promise.ofException(u.getCause());
 					}
 					return SerialConsumer.this.accept(newValue);
 				} else {
@@ -248,10 +248,10 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
-	default <V> SerialConsumer<V> transformAsync(Function<? super V, ? extends Stage<T>> fn) {
+	default <V> SerialConsumer<V> transformAsync(Function<? super V, ? extends Promise<T>> fn) {
 		return new AbstractSerialConsumer<V>(this) {
 			@Override
-			protected Stage<Void> doAccept(V value) {
+			protected Promise<Void> doAccept(V value) {
 				return value != null ?
 						fn.apply(value)
 								.thenCompose(SerialConsumer.this::accept) :
@@ -263,28 +263,28 @@ public interface SerialConsumer<T> extends Cancellable {
 	default SerialConsumer<T> filter(Predicate<? super T> predicate) {
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
-			protected Stage<Void> doAccept(T value) {
+			protected Promise<Void> doAccept(T value) {
 				if (value != null && predicate.test(value)) {
 					return SerialConsumer.this.accept(value);
 				} else {
 					tryRecycle(value);
-					return Stage.complete();
+					return Promise.complete();
 				}
 			}
 		};
 	}
 
-	default SerialConsumer<T> withAcknowledgement(Function<Stage<Void>, Stage<Void>> fn) {
-		SettableStage<Void> acknowledgement = new SettableStage<>();
-		MaterializedStage<Void> newAcknowledgement = fn.apply(acknowledgement).materialize();
+	default SerialConsumer<T> withAcknowledgement(Function<Promise<Void>, Promise<Void>> fn) {
+		SettablePromise<Void> acknowledgement = new SettablePromise<>();
+		MaterializedPromise<Void> newAcknowledgement = fn.apply(acknowledgement).materialize();
 		return new AbstractSerialConsumer<T>() {
 			@Override
-			protected Stage<Void> doAccept(@Nullable T value) {
+			protected Promise<Void> doAccept(@Nullable T value) {
 				if (value != null) {
 					return SerialConsumer.this.accept(value)
 							.thenComposeEx(($, e) -> {
 								if (e == null) {
-									return Stage.complete();
+									return Promise.complete();
 								}
 								acknowledgement.trySetException(e);
 								return newAcknowledgement;
@@ -302,8 +302,8 @@ public interface SerialConsumer<T> extends Cancellable {
 		};
 	}
 
-	static MaterializedStage<Void> getAcknowledgement(Consumer<Function<Stage<Void>, Stage<Void>>> cb) {
-		SettableStage<Void> result = new SettableStage<>();
+	static MaterializedPromise<Void> getAcknowledgement(Consumer<Function<Promise<Void>, Promise<Void>>> cb) {
+		SettablePromise<Void> result = new SettablePromise<>();
 		cb.accept(ack -> ack.whenComplete(result::set));
 		return result;
 	}

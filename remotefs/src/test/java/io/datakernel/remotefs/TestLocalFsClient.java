@@ -17,8 +17,8 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
@@ -26,7 +26,7 @@ import io.datakernel.file.AsyncFile;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.file.SerialFileWriter;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
 import org.junit.After;
@@ -61,7 +61,7 @@ public class TestLocalFsClient {
 	private static final MemSize bufferSize = MemSize.of(2);
 
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
@@ -149,7 +149,7 @@ public class TestLocalFsClient {
 	public void testConcurrentUpload() throws IOException {
 		Files.write(storagePath.resolve("concurrent.txt"), "Concurrent data - 1\nConcurr".getBytes());
 
-		Stages.all(
+		Promises.all(
 				delayed(Arrays.asList(
 						ByteBuf.wrapForReading("oncurrent data - 1\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data - 2\n".getBytes()),
@@ -258,10 +258,10 @@ public class TestLocalFsClient {
 		Iterator<ByteBuf> iterator = list.iterator();
 		return SerialSupplier.of(() ->
 				iterator.hasNext() ?
-						Stage.ofCallback(stage ->
+						Promise.ofCallback(promise ->
 								eventloop.delay(random.nextInt(20) + 10, () ->
-										stage.set(iterator.next()))) :
-						Stage.of(null));
+										promise.set(iterator.next()))) :
+						Promise.of(null));
 	}
 
 	@Test

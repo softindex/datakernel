@@ -24,18 +24,18 @@ import org.junit.runners.model.Statement;
 import static org.junit.Assert.assertEquals;
 
 /**
- * {@link TestRule} that fails if not all active stages has been completed either succesfully or exceptionally.
- * Stages to be monitored should call either {@link TestUtils#assertFailure()} or {@link TestUtils#assertComplete()}
+ * {@link TestRule} that fails if not all active promises has been completed either succesfully or exceptionally.
+ * Promises to be monitored should call either {@link TestUtils#assertFailure()} or {@link TestUtils#assertComplete()}
  */
-public class ActiveStagesRule implements TestRule {
+public class ActivePromisesRule implements TestRule {
 	@Override
 	public Statement apply(Statement base, Description description) {
 		return new Statement() {
 			@Override
 			public void evaluate() throws Throwable {
-				TestUtils.clearActiveStages();
+				TestUtils.clearActivePromises();
 				base.evaluate();
-				assertEquals("Some stages has not been completed", 0, TestUtils.getActiveStages());
+				assertEquals("Some promises has not been completed", 0, TestUtils.getActivePromises());
 			}
 		};
 	}

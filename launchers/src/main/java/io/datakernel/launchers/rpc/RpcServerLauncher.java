@@ -20,7 +20,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
@@ -111,7 +111,7 @@ public abstract class RpcServerLauncher extends Launcher {
 						return server -> server
 								.withMessageTypes(String.class)
 								.withHandler(String.class, String.class,
-										req -> Stage.of("Request: " + req));
+										req -> Promise.of("Request: " + req));
 					}
 				};
 

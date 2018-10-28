@@ -1,21 +1,21 @@
 package io.datakernel.serial;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 public interface SerialInput<T> {
-	MaterializedStage<Void> set(SerialSupplier<T> input);
+	MaterializedPromise<Void> set(SerialSupplier<T> input);
 
 	default SerialConsumer<T> getConsumer() {
 		return getConsumer(new SerialZeroBuffer<>());
 	}
 
 	default SerialConsumer<T> getConsumer(SerialQueue<T> queue) {
-		MaterializedStage<Void> extraAcknowledge = set(queue.getSupplier());
+		MaterializedPromise<Void> extraAcknowledge = set(queue.getSupplier());
 		return queue.getConsumer(extraAcknowledge);
 	}
 
@@ -27,7 +27,7 @@ public interface SerialInput<T> {
 		return input -> SerialInput.this.set(input.transform(fn));
 	}
 
-	default <R> SerialInput<R> transformAsync(Function<? super R, ? extends Stage<T>> fn) {
+	default <R> SerialInput<R> transformAsync(Function<? super R, ? extends Promise<T>> fn) {
 		return input -> SerialInput.this.set(input.transformAsync(fn));
 	}
 

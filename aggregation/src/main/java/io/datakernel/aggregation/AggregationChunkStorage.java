@@ -17,7 +17,7 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
@@ -37,12 +37,12 @@ public interface AggregationChunkStorage<C> extends IdGenerator<C> {
 	 * @param chunkId     id of chunk
 	 * @return StreamSupplier, which will stream read records to its wired consumer.
 	 */
-	<T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields,
+	<T> Promise<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader);
 
 	default <T> StreamSupplier<T> readStream(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
-		return StreamSupplier.ofStage(read(aggregation, fields, recordClass, chunkId, classLoader));
+		return StreamSupplier.ofPromise(read(aggregation, fields, recordClass, chunkId, classLoader));
 	}
 
 	/**
@@ -53,15 +53,15 @@ public interface AggregationChunkStorage<C> extends IdGenerator<C> {
 	 * @param recordClass class of chunk record
 	 * @param chunkId     id of chunk
 	 */
-	<T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields,
+	<T> Promise<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader);
 
 	default <T> StreamConsumer<T> writeStream(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId, DefiningClassLoader classLoader) {
-		return StreamConsumer.ofStage(write(aggregation, fields, recordClass, chunkId, classLoader));
+		return StreamConsumer.ofPromise(write(aggregation, fields, recordClass, chunkId, classLoader));
 	}
 
-	Stage<Void> finish(Set<C> chunkIds);
+	Promise<Void> finish(Set<C> chunkIds);
 
 }
 

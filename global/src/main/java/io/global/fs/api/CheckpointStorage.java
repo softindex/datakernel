@@ -16,20 +16,20 @@
 
 package io.global.fs.api;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.global.common.SignedData;
 
 import java.util.Arrays;
 
 public interface CheckpointStorage {
-	Stage<long[]> getCheckpoints(String filename);
+	Promise<long[]> getCheckpoints(String filename);
 
-	default Stage<Long> getLastCheckpoint(String filename) {
+	default Promise<Long> getLastCheckpoint(String filename) {
 		return getCheckpoints(filename)
 				.thenApply(positions -> Arrays.stream(positions).max().orElse(0L));
 	}
 
-	Stage<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position);
+	Promise<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position);
 
-	Stage<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint);
+	Promise<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint);
 }

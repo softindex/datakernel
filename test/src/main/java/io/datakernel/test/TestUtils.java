@@ -36,7 +36,7 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public class TestUtils {
-	private static int activeStages = 0;
+	private static int activePromises = 0;
 
 	private static byte[] loadResource(URL file) throws IOException {
 		try (InputStream in = file.openStream()) {
@@ -109,9 +109,9 @@ public class TestUtils {
 	}
 
 	public static <T> BiConsumer<T, Throwable> assertComplete(Consumer<T> consumer) {
-		activeStages++;
+		activePromises++;
 		return (t, error) -> {
-			activeStages--;
+			activePromises--;
 			if (error != null) {
 				if (error.getClass() == AssertionError.class) {
 					throw (AssertionError) error;
@@ -128,9 +128,9 @@ public class TestUtils {
 
 	@SuppressWarnings("unchecked")
 	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, @Nullable String messagePattern, Consumer<E> consumer) {
-		activeStages++;
+		activePromises++;
 		return (t, error) -> {
-			activeStages--;
+			activePromises--;
 			if (error == null && errorClass == Throwable.class) {
 				throw new AssertionError("Expected an error");
 			}
@@ -168,11 +168,11 @@ public class TestUtils {
 		return assertFailure($ -> {});
 	}
 
-	public static int getActiveStages() {
-		return activeStages;
+	public static int getActivePromises() {
+		return activePromises;
 	}
 
-	public static void clearActiveStages() {
-		activeStages = 0;
+	public static void clearActivePromises() {
+		activePromises = 0;
 	}
 }

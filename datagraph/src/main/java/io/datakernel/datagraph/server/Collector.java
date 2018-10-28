@@ -48,7 +48,7 @@ public final class Collector<T> {
 			NodeUpload<T> nodeUpload = new NodeUpload<>(type, streamId);
 			Partition partition = dataGraph.getPartition(streamId);
 			dataGraph.addNode(partition, nodeUpload);
-			StreamSupplier<T> supplier = StreamSupplier.ofStage(client.download(partition.getAddress(), streamId, type));
+			StreamSupplier<T> supplier = StreamSupplier.ofPromise(client.download(partition.getAddress(), streamId, type));
 			suppliers.add(supplier);
 		}
 

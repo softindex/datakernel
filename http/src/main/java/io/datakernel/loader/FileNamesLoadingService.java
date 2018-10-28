@@ -1,6 +1,6 @@
 package io.datakernel.loader;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 
@@ -35,8 +35,8 @@ public class FileNamesLoadingService implements EventloopService {
 	}
 
 	@Override
-	public Stage<Void> start() {
-		return Stage.ofCallable(executorService,
+	public Promise<Void> start() {
+		return Promise.ofCallable(executorService,
 				() -> {
 					Set<String> names = new HashSet<>();
 					try (Stream<Path> pathStream = Files.walk(path)) {
@@ -54,8 +54,8 @@ public class FileNamesLoadingService implements EventloopService {
 	}
 
 	@Override
-	public Stage<Void> stop() {
-		return Stage.complete();
+	public Promise<Void> stop() {
+		return Promise.complete();
 	}
 
 	public Set<String> getFileNames() {

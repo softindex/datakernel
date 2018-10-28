@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 
 /**
  * Implementations of this interface specifies the behavior according to
@@ -29,5 +29,5 @@ import io.datakernel.async.Stage;
  * @param <O>	class of response
  */
 public interface RpcRequestHandler<I, O> {
-	Stage<O> run(I request);
+	Promise<O> run(I request);
 }

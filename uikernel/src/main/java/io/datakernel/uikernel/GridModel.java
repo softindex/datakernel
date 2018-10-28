@@ -16,20 +16,20 @@
 
 package io.datakernel.uikernel;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 
 import java.util.List;
 
 public interface GridModel<K, R extends AbstractRecord<K>> {
-	Stage<CreateResponse<K>> create(R record);
+	Promise<CreateResponse<K>> create(R record);
 
-	Stage<R> read(K id, ReadSettings<K> settings);
+	Promise<R> read(K id, ReadSettings<K> settings);
 
-	Stage<ReadResponse<K, R>> read(ReadSettings<K> settings);
+	Promise<ReadResponse<K, R>> read(ReadSettings<K> settings);
 
-	Stage<UpdateResponse<K, R>> update(List<R> changes);
+	Promise<UpdateResponse<K, R>> update(List<R> changes);
 
-	Stage<DeleteResponse> delete(K id);
+	Promise<DeleteResponse> delete(K id);
 
 	Class<K> getIdType();
 

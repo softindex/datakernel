@@ -1,6 +1,6 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.serial.SerialBuffer;
 
 public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
@@ -25,7 +25,7 @@ public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 		buffer.add(item);
 	}
 
-	public Stage<Void> put(T item) {
+	public Promise<Void> put(T item) {
 		postProduce();
 		return buffer.put(item);
 	}

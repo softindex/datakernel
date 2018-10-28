@@ -17,16 +17,16 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.functional.Try;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.SerialSplitter;
@@ -63,15 +63,15 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	private ServerSelector serverSelector = RENDEZVOUS_HASH_SHARDER;
 
 	// region JMX
-	private final StageStats connectStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats uploadStartStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats uploadFinishStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats downloadStartStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats downloadFinishStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats moveStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats copyStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats listStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats deleteStage = StageStats.create(Duration.ofMinutes(5));
+	private final PromiseStats connectPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats uploadStartPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats uploadFinishPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats downloadStartPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats downloadFinishPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats movePromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats copyPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats listPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats deletePromise = PromiseStats.create(Duration.ofMinutes(5));
 	// endregion
 
 	// region creators
@@ -144,10 +144,10 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	/**
 	 * Starts a check process, which pings all partitions and marks them as dead or alive accordingly
 	 *
-	 * @return stage of the check
+	 * @return promise of the check
 	 */
-	public Stage<Void> checkAllPartitions() {
-		return Stages.all(clients.entrySet().stream()
+	public Promise<Void> checkAllPartitions() {
+		return Promises.all(clients.entrySet().stream()
 				.map(entry -> {
 					Object id = entry.getKey();
 					return entry.getValue()
@@ -169,10 +169,10 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	 * This is the preferred method as it does nothing when no clients are marked as dead,
 	 * and RemoteFS operations themselves do mark nodes as dead on connection failures.
 	 *
-	 * @return stage of the check
+	 * @return promise of the check
 	 */
-	public Stage<Void> checkDeadPartitions() {
-		return Stages.all(deadClients.entrySet().stream()
+	public Promise<Void> checkDeadPartitions() {
+		return Promises.all(deadClients.entrySet().stream()
 				.map(e -> e.getValue()
 						.ping()
 						.thenApplyEx(($, exc) -> {
@@ -219,28 +219,28 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 		}
 	}
 
-	private <T> BiFunction<T, Throwable, Stage<T>> wrapDeath(Object partitionId) {
+	private <T> BiFunction<T, Throwable, Promise<T>> wrapDeath(Object partitionId) {
 		return (res, err) -> {
 			if (err == null) {
-				return Stage.of(res);
+				return Promise.of(res);
 			}
 			markIfDead(partitionId, err);
-			return Stage.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Node failed with exception", err));
+			return Promise.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Node failed with exception", err));
 		};
 	}
 
 	// shortcut for creating single Exception from list of possibly failed tries
-	private static <T, U> Stage<T> ofFailure(String message, List<Try<U>> failed) {
+	private static <T, U> Promise<T> ofFailure(String message, List<Try<U>> failed) {
 		RemoteFsException exception = new RemoteFsException(RemoteFsClusterClient.class, message);
 		failed.stream()
 				.map(Try::getExceptionOrNull)
 				.filter(Objects::nonNull)
 				.forEach(exception::addSuppressed);
-		return Stage.ofException(exception);
+		return Promise.ofException(exception);
 	}
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		checkNotNull(filename, "fileName");
 
 		List<Object> selected = serverSelector.selectFrom(filename, aliveClients.keySet(), replicationCount);
@@ -258,7 +258,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 			}
 		}
 
-		return Stages.toList(selected.stream()
+		return Promises.toList(selected.stream()
 				.map(id -> aliveClients.get(id)
 						.upload(filename, offset)
 						.thenComposeEx(wrapDeath(id))
@@ -278,7 +278,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create().lenient();
 
-					MaterializedStage<List<Try<Void>>> uploadResults = Stages.collect(toList(), successes.stream()
+					MaterializedPromise<List<Try<Void>>> uploadResults = Promises.collect(toList(), successes.stream()
 							.map(s -> getAcknowledgement(cb ->
 									splitter.addOutput()
 											.set(s.consumer.withAcknowledgement(cb)))
@@ -294,7 +294,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					//noinspection RedundantTypeArguments - that <Void> 3 lines below is needed badly for Java, uughh
 					// check number of uploads only here, so even if there were less connections
 					// than replicationCount, they will still upload
-					return Stage.of(consumer.withAcknowledgement(ack -> ack
+					return Promise.of(consumer.withAcknowledgement(ack -> ack
 							.thenCompose($ -> uploadResults)
 							.thenCompose(ackTries -> {
 								long successCount = ackTries.stream().filter(Try::isSuccess).count();
@@ -308,15 +308,15 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 									return ofFailure("Couldn't finish uploadind file " +
 											filename + ", only " + successCount + " acknowlegdes received", ackTries);
 								}
-								return Stage.complete();
+								return Promise.complete();
 							})
-							.whenComplete(uploadFinishStage.recordStats())));
+							.whenComplete(uploadFinishPromise.recordStats())));
 				})
-				.whenComplete(uploadStartStage.recordStats());
+				.whenComplete(uploadStartPromise.recordStats());
 	}
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		checkNotNull(filename, "fileName");
 
 		class PartitionIdWithFileSize {
@@ -334,7 +334,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", emptyList());
 		}
 
-		return Stages.toList(
+		return Promises.toList(
 				aliveClients.entrySet().stream()
 						.map(e -> {
 							Object partitionId = e.getKey();
@@ -365,11 +365,11 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						return ofFailure("File not found: " + filename, tries);
 					}
 
-					return Stages.firstSuccessful(found.stream() // try to download successively
+					return Promises.firstSuccessful(found.stream() // try to download successively
 							.map(partitionId -> {
 								FsClient client = aliveClients.get(partitionId);
 								if (client == null) { // marked as dead already by somebody
-									return Stage.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Client " + partitionId + " is not alive"));
+									return Promise.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Client " + partitionId + " is not alive"));
 								}
 								logger.trace("downloading file {} from {}", filename, partitionId);
 								return client.download(filename, offset, length)
@@ -378,14 +378,14 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 										.thenApply(supplier -> supplier
 												.withEndOfStream(eos -> eos
 														.whenException(e -> markIfDead(partitionId, e))
-														.whenComplete(downloadFinishStage.recordStats())));
+														.whenComplete(downloadFinishPromise.recordStats())));
 							}));
 				})
-				.whenComplete(downloadStartStage.recordStats());
+				.whenComplete(downloadStartPromise.recordStats());
 	}
 
-	private Stage<Set<String>> bulkMethod(Map<String, String> mapping, BiFunction<FsClient, Map<String, String>, Stage<Set<String>>> fn, String fnName) {
-		return Stages.toList(aliveClients.entrySet().stream()
+	private Promise<Set<String>> bulkMethod(Map<String, String> mapping, BiFunction<FsClient, Map<String, String>, Promise<Set<String>>> fn, String fnName) {
+		return Promises.toList(aliveClients.entrySet().stream()
 				.map(e -> fn.apply(e.getValue(), mapping)
 						.thenComposeEx(wrapDeath(e.getKey()))
 						.toTry()))
@@ -394,7 +394,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						return ofFailure("Couldn't " + fnName + " on any partition", tries);
 					}
 
-					return Stage.of(tries.stream()
+					return Promise.of(tries.stream()
 							.filter(Try::isSuccess) // extract successes
 							.map(Try::getOrNull)
 							.flatMap(Set::stream)  // collapse list of sets into one stream
@@ -408,40 +408,40 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Stage<Set<String>> move(Map<String, String> changes) {
+	public Promise<Set<String>> move(Map<String, String> changes) {
 		checkNotNull(changes, "changes");
 
 		return bulkMethod(changes, FsClient::move, "move")
-				.whenComplete(moveStage.recordStats());
+				.whenComplete(movePromise.recordStats());
 	}
 
 	@Override
-	public Stage<Set<String>> copy(Map<String, String> changes) {
+	public Promise<Set<String>> copy(Map<String, String> changes) {
 		checkNotNull(changes, "changes");
 
 		return bulkMethod(changes, FsClient::copy, "copy")
-				.whenComplete(moveStage.recordStats());
+				.whenComplete(movePromise.recordStats());
 	}
 
 	@Override
-	public Stage<Void> delete(String glob) {
+	public Promise<Void> delete(String glob) {
 		checkNotNull(glob, "glob");
 
-		return Stages.toList(aliveClients.entrySet().stream()
+		return Promises.toList(aliveClients.entrySet().stream()
 				.map(e -> e.getValue().delete(glob)
 						.thenComposeEx(wrapDeath(e.getKey()))
 						.toTry()))
 				.thenCompose(tries -> {
 					if (tries.stream().anyMatch(Try::isSuccess)) { // connected at least to somebody
-						return Stage.complete();
+						return Promise.complete();
 					}
 					return ofFailure("Couldn't delete on any partition", tries);
 				})
-				.whenComplete(deleteStage.recordStats());
+				.whenComplete(deletePromise.recordStats());
 	}
 
 	@Override
-	public Stage<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(String glob) {
 		checkNotNull(glob, "glob");
 
 		if (deadClients.size() >= replicationCount) {
@@ -450,7 +450,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 		}
 
 		// this all is the same as delete, but with list of lists of results, flattened and unified
-		return Stages.toList(aliveClients.entrySet().stream()
+		return Promises.toList(aliveClients.entrySet().stream()
 				.map(e -> e.getValue().list(glob)
 						.thenComposeEx(wrapDeath(e.getKey()))
 						.toTry()))
@@ -460,28 +460,28 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						return ofFailure("There are more dead partitions than replication count(" +
 								deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", tries);
 					}
-					return Stage.of(new ArrayList<>(tries.stream()
+					return Promise.of(new ArrayList<>(tries.stream()
 							.filter(Try::isSuccess)
 							.map(Try::getOrNull)
 							.flatMap(List::stream)
 							.collect(toSet())));
 				})
-				.whenComplete(listStage.recordStats());
+				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override
-	public Stage<Void> ping() {
+	public Promise<Void> ping() {
 		return checkAllPartitions();
 	}
 
 	@Override
-	public Stage<Void> start() {
-		return Stage.complete();
+	public Promise<Void> start() {
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Void> stop() {
-		return Stage.complete();
+	public Promise<Void> stop() {
+		return Promise.complete();
 	}
 
 	@Override
@@ -525,48 +525,48 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@JmxAttribute
-	public StageStats getConnectStage() {
-		return connectStage;
+	public PromiseStats getConnectPromise() {
+		return connectPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getUploadStartStage() {
-		return uploadStartStage;
+	public PromiseStats getUploadStartPromise() {
+		return uploadStartPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getUploadFinishStage() {
-		return uploadFinishStage;
+	public PromiseStats getUploadFinishPromise() {
+		return uploadFinishPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getDownloadStartStage() {
-		return downloadStartStage;
+	public PromiseStats getDownloadStartPromise() {
+		return downloadStartPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getDownloadFinishStage() {
-		return downloadFinishStage;
+	public PromiseStats getDownloadFinishPromise() {
+		return downloadFinishPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getMoveStage() {
-		return moveStage;
+	public PromiseStats getMovePromise() {
+		return movePromise;
 	}
 
 	@JmxAttribute
-	public StageStats getCopyStage() {
-		return copyStage;
+	public PromiseStats getCopyPromise() {
+		return copyPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getListStage() {
-		return listStage;
+	public PromiseStats getListPromise() {
+		return listPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getDeleteStage() {
-		return deleteStage;
+	public PromiseStats getDeletePromise() {
+		return deletePromise;
 	}
 	// endregion
 }

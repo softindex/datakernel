@@ -16,8 +16,8 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.serial.SerialSupplier;
 
 import java.util.EnumSet;
@@ -39,7 +39,7 @@ public final class StreamSuppliers {
 	 * @param <T>
 	 */
 	static class ClosingWithErrorImpl<T> implements StreamSupplier<T> {
-		private final SettableStage<Void> endOfStream = new SettableStage<>();
+		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		private final Throwable exception;
 
@@ -63,7 +63,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public MaterializedStage<Void> getEndOfStream() {
+		public MaterializedPromise<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
@@ -84,7 +84,7 @@ public final class StreamSuppliers {
 	 * @param <T>
 	 */
 	static class ClosingImpl<T> implements StreamSupplier<T> {
-		private final SettableStage<Void> endOfStream = new SettableStage<>();
+		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
@@ -102,7 +102,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public MaterializedStage<Void> getEndOfStream() {
+		public MaterializedPromise<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
@@ -118,7 +118,7 @@ public final class StreamSuppliers {
 	}
 
 	static final class IdleImpl<T> implements StreamSupplier<T> {
-		private final SettableStage<Void> endOfStream = new SettableStage<>();
+		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
@@ -135,7 +135,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public MaterializedStage<Void> getEndOfStream() {
+		public MaterializedPromise<Void> getEndOfStream() {
 			return endOfStream;
 		}
 

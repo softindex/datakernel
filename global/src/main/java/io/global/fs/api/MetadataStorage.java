@@ -16,12 +16,12 @@
 
 package io.global.fs.api;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.global.common.SignedData;
 
 public interface MetadataStorage {
 
-	Stage<SignedData<GlobalFsMetadata>> getMetadata(String fileName);
+	Promise<SignedData<GlobalFsMetadata>> getMetadata(String fileName);
 
-	Stage<Void> pushMetadata(SignedData<GlobalFsMetadata> signedMetadata);
+	Promise<Void> pushMetadata(SignedData<GlobalFsMetadata> signedMetadata);
 }

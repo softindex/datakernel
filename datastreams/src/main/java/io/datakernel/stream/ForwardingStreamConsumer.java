@@ -16,7 +16,7 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedStage;
+import io.datakernel.async.MaterializedPromise;
 
 import java.util.Set;
 
@@ -33,7 +33,7 @@ public abstract class ForwardingStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public MaterializedStage<Void> getAcknowledgement() {
+	public MaterializedPromise<Void> getAcknowledgement() {
 		return consumer.getAcknowledgement();
 	}
 

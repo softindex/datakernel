@@ -16,7 +16,7 @@
 
 package io.datakernel.cube.attributes;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 
 import java.util.List;
 import java.util.Map;
@@ -26,7 +26,7 @@ public interface AttributeResolver {
 
 	Map<String, Class<?>> getAttributeTypes();
 
-	Stage<Void> resolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction);
+	Promise<Void> resolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction);
 
 	interface KeyFunction {
 		Object[] extractKey(Object result);

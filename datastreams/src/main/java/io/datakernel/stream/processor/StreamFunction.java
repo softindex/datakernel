@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
 
 import java.util.function.Function;
@@ -57,7 +57,7 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 
 	protected final class Input extends AbstractStreamConsumer<I> {
 		@Override
-		protected Stage<Void> onEndOfStream() {
+		protected Promise<Void> onEndOfStream() {
 			return output.sendEndOfStream();
 		}
 

@@ -16,16 +16,16 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.hamcrest.beans.HasPropertyWithValue;
 import org.hamcrest.core.IsEqual;
@@ -61,12 +61,12 @@ public class AsyncHttpClientTest {
 	public ExpectedException expectedException = ExpectedException.none();
 
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
 				request ->
-						Stage.of(HttpResponse.ok200()
+						Promise.of(HttpResponse.ok200()
 								.withBodyStream(SerialSupplier.ofStream(
 										IntStream.range(0, HELLO_WORLD.length)
 												.mapToObj(idx -> {
@@ -178,9 +178,9 @@ public class AsyncHttpClientTest {
 	public void testActiveRequestsCounter() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		List<SettableStage<HttpResponse>> responses = new ArrayList<>();
+		List<SettablePromise<HttpResponse>> responses = new ArrayList<>();
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				request -> Stage.ofCallback(responses::add))
+				request -> Promise.ofCallback(responses::add))
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
 		server.listen();
@@ -192,7 +192,7 @@ public class AsyncHttpClientTest {
 				.withReadWriteTimeout(Duration.ofMillis(20))
 				.withInspector(inspector);
 
-		Stages.all(
+		Promises.all(
 				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),

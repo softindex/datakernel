@@ -1,7 +1,7 @@
 package io.datakernel.aggregation;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 
 public interface IdGenerator<K> {
-	Stage<K> createId();
+	Promise<K> createId();
 }

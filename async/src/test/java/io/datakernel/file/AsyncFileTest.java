@@ -17,7 +17,7 @@
 package io.datakernel.file;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,7 +45,7 @@ public class AsyncFileTest {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();

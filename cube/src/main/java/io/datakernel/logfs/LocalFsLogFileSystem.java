@@ -16,13 +16,13 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.file.SerialFileReader;
@@ -62,9 +62,9 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 
 	private MemSize readBlockSize = DEFAULT_READ_BLOCK_SIZE;
 
-	private final StageStats stageList = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageRead = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageWrite = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseList = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseRead = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseWrite = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private final StreamRegistry<String> streamReads = StreamRegistry.create();
 	private final StreamRegistry<String> streamWrites = StreamRegistry.create();
@@ -104,9 +104,9 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@Override
-	public Stage<List<LogFile>> list(String logPartition) {
+	public Promise<List<LogFile>> list(String logPartition) {
 		Eventloop eventloop = getCurrentEventloop();
-		return Stage.ofCallable(executorService,
+		return Promise.ofCallable(executorService,
 				() -> {
 					List<LogFile> entries = new ArrayList<>();
 
@@ -144,22 +144,22 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 					});
 					return entries;
 				})
-				.whenComplete(stageList.recordStats());
+				.whenComplete(promiseList.recordStats());
 	}
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
+	public Promise<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
-				.whenComplete(stageRead.recordStats())
+				.whenComplete(promiseRead.recordStats())
 				.thenApply(file -> SerialFileReader.readFile(file).withBufferSize(readBlockSize).withOffset(startPosition)
 						.apply(streamReads.register(logPartition + ":" + logFile + "@" + startPosition))
 						.apply(streamReadStats));
 	}
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
+	public Promise<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), CREATE_OPTIONS)
-				.whenComplete(stageWrite.recordStats())
+				.whenComplete(promiseWrite.recordStats())
 				.thenApply(file -> SerialFileWriter.create(file).withForceOnClose(true)
 						.apply(streamWrites.register(logPartition + ":" + logFile))
 						.apply(streamWriteStats));
@@ -186,18 +186,18 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@JmxAttribute
-	public StageStats getStageList() {
-		return stageList;
+	public PromiseStats getPromiseList() {
+		return promiseList;
 	}
 
 	@JmxAttribute
-	public StageStats getStageRead() {
-		return stageRead;
+	public PromiseStats getPromiseRead() {
+		return promiseRead;
 	}
 
 	@JmxAttribute
-	public StageStats getStageWrite() {
-		return stageWrite;
+	public PromiseStats getPromiseWrite() {
+		return promiseWrite;
 	}
 
 	@JmxAttribute

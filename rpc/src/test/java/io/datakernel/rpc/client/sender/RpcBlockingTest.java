@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.hash.ShardingFunction;
@@ -222,14 +222,14 @@ public class RpcBlockingTest {
 	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(HelloService helloService) {
 		return new RpcRequestHandler<HelloRequest, HelloResponse>() {
 			@Override
-			public Stage<HelloResponse> run(HelloRequest request) {
+			public Promise<HelloResponse> run(HelloRequest request) {
 				String result;
 				try {
 					result = helloService.hello(request.name);
 				} catch (Exception e) {
-					return Stage.ofException(e);
+					return Promise.ofException(e);
 				}
-				return Stage.of(new HelloResponse(result));
+				return Promise.of(new HelloResponse(result));
 			}
 		};
 	}

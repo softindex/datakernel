@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 
 import java.util.HashMap;
@@ -107,15 +107,15 @@ public class MiddlewareServlet implements AsyncServlet {
 	}
 
 	@Override
-	public Stage<HttpResponse> serve(HttpRequest request) throws ParseException {
-		Stage<HttpResponse> processed = tryServeAsync(request);
+	public Promise<HttpResponse> serve(HttpRequest request) throws ParseException {
+		Promise<HttpResponse> processed = tryServeAsync(request);
 		if (processed == null) {
-			return Stage.ofException(HttpException.notFound404());
+			return Promise.ofException(HttpException.notFound404());
 		}
 		return processed;
 	}
 
-	protected Stage<HttpResponse> tryServeAsync(HttpRequest request) throws ParseException {
+	protected Promise<HttpResponse> tryServeAsync(HttpRequest request) throws ParseException {
 		int introPosition = request.getPos();
 		String urlPart = request.pollUrlPart();
 		HttpMethod method = request.getMethod();
@@ -131,7 +131,7 @@ public class MiddlewareServlet implements AsyncServlet {
 			}
 		}
 
-		Stage<HttpResponse> result = null;
+		Promise<HttpResponse> result = null;
 
 		MiddlewareServlet transit = routes.get(urlPart);
 		if (transit != null) {

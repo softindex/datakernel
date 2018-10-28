@@ -19,7 +19,7 @@ package io.datakernel.serial;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AbstractCancellable;
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 
 public abstract class AbstractSerialSupplier<T> extends AbstractCancellable implements SerialSupplier<T> {
 	// region creators
@@ -32,11 +32,11 @@ public abstract class AbstractSerialSupplier<T> extends AbstractCancellable impl
 	}
 	// endregion
 
-	protected abstract Stage<T> doGet();
+	protected abstract Promise<T> doGet();
 
 	@Override
-	public final Stage<T> get() {
-		if (isClosed()) return Stage.ofException(getException());
+	public final Promise<T> get() {
+		if (isClosed()) return Promise.ofException(getException());
 		return doGet();
 	}
 

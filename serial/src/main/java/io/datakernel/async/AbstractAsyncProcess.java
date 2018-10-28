@@ -27,7 +27,7 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 
 	private boolean processStarted;
 	private boolean processComplete;
-	private SettableStage<Void> processResult = new SettableStage<>();
+	private SettablePromise<Void> processResult = new SettablePromise<>();
 
 	protected void beforeProcess() {
 	}
@@ -59,12 +59,12 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	}
 
 	@Override
-	public MaterializedStage<Void> getProcessResult() {
+	public MaterializedPromise<Void> getProcessResult() {
 		return processResult;
 	}
 
 	@Override
-	public final MaterializedStage<Void> startProcess() {
+	public final MaterializedPromise<Void> startProcess() {
 		if (!processStarted) {
 			processStarted = true;
 			beforeProcess();
@@ -94,7 +94,7 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	protected final <T> SerialSupplier<T> sanitize(SerialSupplier<T> supplier) {
 		return new AbstractSerialSupplier<T>() {
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				return sanitize(supplier.get());
 			}
 
@@ -109,7 +109,7 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	protected final <T> SerialConsumer<T> sanitize(SerialConsumer<T> consumer) {
 		return new AbstractSerialConsumer<T>() {
 			@Override
-			protected Stage<Void> doAccept(@Nullable T item) {
+			protected Promise<Void> doAccept(@Nullable T item) {
 				return sanitize(consumer.accept(item));
 			}
 
@@ -124,12 +124,12 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	protected final ByteBufsSupplier sanitize(ByteBufsSupplier supplier) {
 		return new ByteBufsSupplier(supplier.getBufs()) {
 			@Override
-			public Stage<Void> needMoreData() {
+			public Promise<Void> needMoreData() {
 				return sanitize(supplier.needMoreData());
 			}
 
 			@Override
-			public Stage<Void> endOfStream() {
+			public Promise<Void> endOfStream() {
 				return sanitize(supplier.endOfStream());
 			}
 
@@ -141,19 +141,19 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 		};
 	}
 
-	protected final <T> Stage<T> sanitize(Stage<T> stage) {
+	protected final <T> Promise<T> sanitize(Promise<T> promise) {
 		assert !isProcessComplete();
-		return stage
+		return promise
 				.thenComposeEx((value, e) -> {
 					if (isProcessComplete()) {
 						tryRecycle(value);
-						return Stage.ofException(ASYNC_PROCESS_IS_COMPLETE);
+						return Promise.ofException(ASYNC_PROCESS_IS_COMPLETE);
 					}
 					if (e == null) {
-						return Stage.of(value);
+						return Promise.of(value);
 					} else {
 						close(e);
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 	}

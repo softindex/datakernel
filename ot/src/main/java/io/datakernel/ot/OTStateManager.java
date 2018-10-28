@@ -18,7 +18,7 @@ package io.datakernel.ot;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -46,7 +46,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	private final OTAlgorithms<K, D> algorithms;
 	private final OTSystem<D> otSystem;
 	private final OTRemote<K, D> remote;
-	private Supplier<Stage<Void>> checkoutValidator;
+	private Supplier<Promise<Void>> checkoutValidator;
 
 	private OTState<D> state;
 
@@ -81,7 +81,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return concat(a, b);
 	}
 
-	public OTStateManager<K, D> withCheckoutValidator(Supplier<Stage<Void>> stateValidator) {
+	public OTStateManager<K, D> withCheckoutValidator(Supplier<Promise<Void>> stateValidator) {
 		this.checkoutValidator = stateValidator;
 		return this;
 	}
@@ -92,24 +92,24 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	}
 
 	@Override
-	public Stage<Void> start() {
+	public Promise<Void> start() {
 		return checkout().toVoid();
 	}
 
 	@Override
-	public Stage<Void> stop() {
+	public Promise<Void> stop() {
 		invalidateInternalState();
-		return Stage.complete();
+		return Promise.complete();
 	}
 
-	public Stage<K> checkout() {
+	public Promise<K> checkout() {
 		return remote.getHeads()
 				.thenCompose(heads -> checkout(first(heads)))
 				.thenCompose($ -> pull())
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	public Stage<K> checkout(K commitId) {
+	public Promise<K> checkout(K commitId) {
 		return remote.loadCommit(commitId)
 				.thenCompose(commit -> algorithms.checkout(commitId)
 						.thenApply(diffs -> {
@@ -129,7 +129,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 							return revision;
 						}))
 				.thenCompose(k -> {
-					if (checkoutValidator == null) return Stage.of(k);
+					if (checkoutValidator == null) return Promise.of(k);
 					return checkoutValidator.get()
 							.whenException(e -> invalidateInternalState())
 							.thenApply($ -> k);
@@ -139,38 +139,38 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	private final AsyncSupplier<K> fetch = reuse(this::doFetch);
 
-	public Stage<K> fetch() {
+	public Promise<K> fetch() {
 		return fetch.get();
 	}
 
-	public Stage<K> fetch(K head) {
+	public Promise<K> fetch(K head) {
 		fetchedRevision = null;
 		fetchedRevisionLevel = null;
 		fetchedDiffs = null;
 		return doFetch(singleton(head));
 	}
 
-	private Stage<K> doFetch() {
-		if (!pendingCommits.isEmpty()) return Stage.of(null);
+	private Promise<K> doFetch() {
+		if (!pendingCommits.isEmpty()) return Promise.of(null);
 		return remote.getHeads()
 				.thenCompose(this::doFetch);
 	}
 
-	private Stage<K> doFetch(Set<K> heads) {
-		if (!pendingCommits.isEmpty()) return Stage.of(null);
+	private Promise<K> doFetch(Set<K> heads) {
+		if (!pendingCommits.isEmpty()) return Promise.of(null);
 		K fetchedRevisionCopy = coalesce(fetchedRevision, revision);
 		return algorithms.findParent(heads,
 				DiffsReducer.toList(),
-				commit -> Stage.of(commit.getId().equals(fetchedRevisionCopy)))
+				commit -> Promise.of(commit.getId().equals(fetchedRevisionCopy)))
 				.thenCompose(findResult -> {
 					if (!findResult.isFound()) {
 						logger.warn("Commit not found: {} in {}", heads, this);
-						return Stage.of(null);
+						return Promise.of(null);
 					}
 
 					if (fetchedRevisionCopy != coalesce(fetchedRevision, revision)) {
 						logger.info("Concurrent revision modification: {} in {}", fetchedRevisionCopy, this);
-						return Stage.of(null);
+						return Promise.of(null);
 					}
 
 					fetchedRevision = findResult.getChild();
@@ -179,30 +179,30 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 							coalesce(fetchedDiffs, emptyList()),
 							findResult.getAccumulatedDiffs()));
 
-					return Stage.of(fetchedRevision);
+					return Promise.of(fetchedRevision);
 				})
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	public Stage<K> pull() {
+	public Promise<K> pull() {
 		return fetch()
 				.thenCompose(this::doPull)
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	public Stage<K> pull(K pullRevision) {
+	public Promise<K> pull(K pullRevision) {
 		return fetch(pullRevision)
 				.thenCompose(this::doPull)
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
-	private Stage<K> doPull(K fetchedRevision) {
-		if (fetchedRevision == null) return Stage.of(null);
+	private Promise<K> doPull(K fetchedRevision) {
+		if (fetchedRevision == null) return Promise.of(null);
 		try {
-			return Stage.of(rebase());
+			return Promise.of(rebase());
 		} catch (OTTransformException e) {
 			invalidateInternalState();
-			return Stage.ofException(e);
+			return Promise.ofException(e);
 		}
 	}
 
@@ -232,7 +232,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		workingDiffs = new ArrayList<>();
 	}
 
-	public Stage<K> commitAndPush() {
+	public Promise<K> commitAndPush() {
 		return commit()
 				.thenCompose(id -> push().thenApply($ -> id))
 				.whenComplete(toLogger(logger, thisMethod(), this));
@@ -240,13 +240,13 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	private final AsyncSupplier<K> commit = reuse(this::doCommit);
 
-	public Stage<K> commit() {
+	public Promise<K> commit() {
 		return commit.get();
 	}
 
-	Stage<K> doCommit() {
+	Promise<K> doCommit() {
 		if (workingDiffs.isEmpty()) {
-			return Stage.of(null);
+			return Promise.of(null);
 		}
 		K revisionCopy = revision;
 		List<D> workingDiffsCopy = new ArrayList<>(workingDiffs);
@@ -272,11 +272,11 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	private final AsyncSupplier<Void> push = reuse(this::doPush);
 
-	public Stage<Void> push() {
+	public Promise<Void> push() {
 		return push.get();
 	}
 
-	Stage<Void> doPush() {
+	Promise<Void> doPush() {
 		List<OTCommit<K, D>> list = new ArrayList<>(pendingCommits.values());
 		return remote.push(list)
 				.whenResult($ -> list.stream().map(OTCommit::getId).forEach(pendingCommits::remove))

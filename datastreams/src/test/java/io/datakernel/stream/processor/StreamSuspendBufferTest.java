@@ -1,6 +1,6 @@
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.ForwardingStreamSupplier;
 import io.datakernel.stream.StreamConsumerToList;
@@ -28,7 +28,7 @@ public class StreamSuspendBufferTest {
 
 		List<String> items = IntStream.range(0, 100).mapToObj(i -> "test_" + i).collect(toList());
 
-		SettableStage<List<String>> result = new SettableStage<>();
+		SettablePromise<List<String>> result = new SettablePromise<>();
 
 		boolean[] suspended = {false};
 		StreamSupplier.ofIterable(items)

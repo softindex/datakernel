@@ -1,6 +1,6 @@
 package io.datakernel.loader;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.HttpException;
 import io.datakernel.loader.cache.Cache;
@@ -17,7 +17,7 @@ class CachedStaticLoader implements StaticLoader {
 	}
 
 	@Override
-	public Stage<ByteBuf> getResource(String name) {
+	public Promise<ByteBuf> getResource(String name) {
 		byte[] bytes = cache.get(name);
 
 		if (bytes == null) {
@@ -25,9 +25,9 @@ class CachedStaticLoader implements StaticLoader {
 					.whenComplete((buf, e) ->
 							cache.put(name, e == null ? buf.getArray() : BYTES_ERROR));
 		} else if (bytes == BYTES_ERROR) {
-			return Stage.ofException(HttpException.notFound404());
+			return Promise.ofException(HttpException.notFound404());
 		} else {
-			return Stage.of(ByteBuf.wrapForReading(bytes));
+			return Promise.of(ByteBuf.wrapForReading(bytes));
 		}
 	}
 }

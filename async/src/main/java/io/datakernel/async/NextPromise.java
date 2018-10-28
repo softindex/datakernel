@@ -21,7 +21,7 @@ import io.datakernel.functional.Try;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-public abstract class NextStage<T, R> extends AbstractStage<R> implements BiConsumer<T, Throwable> {
+public abstract class NextPromise<T, R> extends AbstractPromise<R> implements BiConsumer<T, Throwable> {
 	@Override
 	public Try<R> asTry() {
 		return null;
@@ -43,7 +43,7 @@ public abstract class NextStage<T, R> extends AbstractStage<R> implements BiCons
 	}
 
 	@Override
-	public Stage<R> async() {
+	public Promise<R> async() {
 		return this;
 	}
 

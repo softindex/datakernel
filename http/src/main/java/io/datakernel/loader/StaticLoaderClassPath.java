@@ -1,7 +1,7 @@
 package io.datakernel.loader;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.HttpException;
 
@@ -24,16 +24,16 @@ class StaticLoaderClassPath implements StaticLoader {
 	}
 
 	@Override
-	public Stage<ByteBuf> getResource(String name) {
+	public Promise<ByteBuf> getResource(String name) {
 		URL file = classLoader.getResource(name);
 
 		if (file == null) {
-			return Stage.ofException(HttpException.notFound404());
+			return Promise.ofException(HttpException.notFound404());
 		}
 
-	    return Stage.ofCallable(executorService, () -> ByteBuf.wrapForReading(loadResource(file)))
+	    return Promise.ofCallable(executorService, () -> ByteBuf.wrapForReading(loadResource(file)))
                 .thenComposeEx((buf, e) ->
-		                Stage.of(buf, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
+		                Promise.of(buf, e instanceof NoSuchFileException ? HttpException.notFound404() : e));
     }
 
 	private byte[] loadResource(URL file) throws IOException {

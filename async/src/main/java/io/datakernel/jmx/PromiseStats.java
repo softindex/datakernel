@@ -2,7 +2,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 
 import java.time.Duration;
@@ -12,29 +12,29 @@ import java.util.function.BiConsumer;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
 
-public class StageStats {
+public class PromiseStats {
 	private Eventloop eventloop;
 
-	private int activeStages = 0;
+	private int activePromises = 0;
 	private long lastStartTimestamp = 0;
 	private long lastCompleteTimestamp = 0;
 	private final ValueStats duration;
 	private final ExceptionStats exceptions = ExceptionStats.create();
 
-	protected StageStats(Eventloop eventloop, ValueStats duration) {
+	protected PromiseStats(Eventloop eventloop, ValueStats duration) {
 		this.eventloop = eventloop;
 		this.duration = duration;
 	}
 
-	public static StageStats createMBean(Eventloop eventloop, Duration smoothingWindow) {
-		return new StageStats(eventloop, ValueStats.create(smoothingWindow));
+	public static PromiseStats createMBean(Eventloop eventloop, Duration smoothingWindow) {
+		return new PromiseStats(eventloop, ValueStats.create(smoothingWindow));
 	}
 
-	public static StageStats create(Duration smoothingWindow) {
-		return new StageStats(null, ValueStats.create(smoothingWindow));
+	public static PromiseStats create(Duration smoothingWindow) {
+		return new PromiseStats(null, ValueStats.create(smoothingWindow));
 	}
 
-	public StageStats withHistogram(int[] levels) {
+	public PromiseStats withHistogram(int[] levels) {
 		setHistogramLevels(levels);
 		return this;
 	}
@@ -54,16 +54,16 @@ public class StageStats {
 		return () -> monitor(callable.get());
 	}
 
-	public <T> Stage<T> monitor(Stage<T> stage) {
-		return stage.whenComplete(recordStats());
+	public <T> Promise<T> monitor(Promise<T> promise) {
+		return promise.whenComplete(recordStats());
 	}
 
 	public <T> BiConsumer<T, Throwable> recordStats() {
-		this.activeStages++;
+		this.activePromises++;
 		long before = currentTimeMillis();
 		this.lastStartTimestamp = before;
 		return (value, throwable) -> {
-			this.activeStages--;
+			this.activePromises--;
 			long now = currentTimeMillis();
 			long durationMillis = now - before;
 			this.lastCompleteTimestamp = now;
@@ -76,8 +76,8 @@ public class StageStats {
 	}
 
 	@JmxAttribute(reducer = JmxReducerSum.class)
-	public long getActiveStages() {
-		return activeStages;
+	public long getActivePromises() {
+		return activePromises;
 	}
 
 	@JmxAttribute
@@ -95,7 +95,7 @@ public class StageStats {
 	@JmxAttribute
 	@Nullable
 	public Duration getCurrentDuration() {
-		return activeStages != 0 ? Duration.ofMillis(currentTimeMillis() - lastStartTimestamp) : null;
+		return activePromises != 0 ? Duration.ofMillis(currentTimeMillis() - lastStartTimestamp) : null;
 	}
 
 	@JmxAttribute
@@ -110,8 +110,8 @@ public class StageStats {
 
 	@Override
 	public String toString() {
-		return "StageStats{" +
-				"activeStages=" + activeStages +
+		return "PromiseStats{" +
+				"activePromises=" + activePromises +
 				", lastStartTimestamp=" + MBeanFormat.formatTimestamp(lastStartTimestamp) +
 				", lastCompleteTimestamp=" + MBeanFormat.formatTimestamp(lastCompleteTimestamp) +
 				", duration=" + duration +

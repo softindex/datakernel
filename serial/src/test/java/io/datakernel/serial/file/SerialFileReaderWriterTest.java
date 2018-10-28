@@ -18,15 +18,15 @@ package io.datakernel.serial.file;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.AbstractSerialConsumer;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.MemSize;
 import org.junit.Rule;
@@ -52,7 +52,7 @@ import static org.junit.Assert.*;
 public class SerialFileReaderWriterTest {
 
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
@@ -97,16 +97,16 @@ public class SerialFileReaderWriterTest {
 
 		class MockConsumer extends AbstractSerialConsumer<ByteBuf> {
 			@Override
-			protected Stage<Void> doAccept(@Nullable ByteBuf value) {
+			protected Promise<Void> doAccept(@Nullable ByteBuf value) {
 				if (value == null) {
-					return Stage.complete();
+					return Promise.complete();
 				}
-				SettableStage<Void> stage = new SettableStage<>();
+				SettablePromise<Void> promise = new SettablePromise<>();
 				eventloop.delay(10, () -> {
 					list.add(value);
-					stage.set(null);
+					promise.set(null);
 				});
-				return stage;
+				return promise;
 			}
 		}
 
@@ -181,7 +181,7 @@ public class SerialFileReaderWriterTest {
 		AsyncConsumer<ByteBuf> asyncConsumer = buf -> {
 			assertTrue("Received byte buffer is empty", buf.canRead());
 			buf.recycle();
-			return Stage.complete();
+			return Promise.complete();
 		};
 
 		SerialFileReader.readFile(executor, file)

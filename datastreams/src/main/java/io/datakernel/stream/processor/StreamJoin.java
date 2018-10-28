@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
 
 import java.util.ArrayDeque;
@@ -199,7 +199,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		}
 
 		@Override
-		protected Stage<Void> onEndOfStream() {
+		protected Promise<Void> onEndOfStream() {
 			output.tryProduce();
 			return output.getEndOfStream();
 		}

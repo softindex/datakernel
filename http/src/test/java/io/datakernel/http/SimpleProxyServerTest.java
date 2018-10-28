@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.CachedAsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
@@ -61,7 +61,7 @@ public class SimpleProxyServerTest {
 
 	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
 		AsyncServlet servlet = request ->
-				Stage.of(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
+				Promise.of(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", ECHO_SERVER_PORT));
 	}

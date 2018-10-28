@@ -16,7 +16,7 @@
 
 package io.global.fs.local;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -44,31 +44,31 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	}
 	// endregion
 
-	private Stage<ByteBuf> download(String filename) {
+	private Promise<ByteBuf> download(String filename) {
 		return fsClient.download(filename)
 				.thenComposeEx((supplier, e) -> {
 					if (e != null) {
 						logger.warn("Failed to read checkpoint data for {}", filename, e);
-						return Stage.of(null);
+						return Promise.of(null);
 					}
 					return supplier
 							.withEndOfStream(eos -> eos
 									.thenComposeEx(($, e2) -> {
 										if (e2 != null) {
-											return Stage.<Void>ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Failed to read checkpoint data for " + filename));
+											return Promise.<Void>ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Failed to read checkpoint data for " + filename));
 										}
-										return Stage.of(null);
+										return Promise.of(null);
 									}))
 							.toCollector(ByteBufQueue.collector());
 				});
 	}
 
 	@Override
-	public Stage<long[]> getCheckpoints(String filename) {
+	public Promise<long[]> getCheckpoints(String filename) {
 		return download(filename)
 				.thenCompose(buf -> {
 					if (buf == null) {
-						return Stage.of(new long[]{0});
+						return Promise.of(new long[]{0});
 					}
 					long[] array = new long[32];
 					int size = 0;
@@ -81,37 +81,37 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 							}
 							array[size++] = checkpoint.getData().getPosition();
 						} catch (ParseException e) {
-							return Stage.ofException(e);
+							return Promise.ofException(e);
 						}
 					}
-					return Stage.of(Arrays.stream(array).limit(size).sorted().toArray());
+					return Promise.of(Arrays.stream(array).limit(size).sorted().toArray());
 				});
 	}
 
 	@Override
-	public Stage<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position) {
+	public Promise<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position) {
 		return download(filename)
 				.thenCompose(buf -> {
 					if (buf == null) {
-						return Stage.of(null);
+						return Promise.of(null);
 					}
 					while (buf.canRead()) {
 						try {
 							byte[] bytes = BinaryDataFormats.readBytes(buf);
 							SignedData<GlobalFsCheckpoint> checkpoint = SignedData.ofBytes(bytes, GlobalFsCheckpoint::ofBytes);
 							if (checkpoint.getData().getPosition() == position) {
-								return Stage.of(checkpoint);
+								return Promise.of(checkpoint);
 							}
 						} catch (ParseException e) {
-							return Stage.ofException(e);
+							return Promise.ofException(e);
 						}
 					}
-					return Stage.of(null);
+					return Promise.of(null);
 				});
 	}
 
 	@Override
-	public Stage<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
+	public Promise<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
 		return fsClient.getMetadata(filename)
 				.thenCompose(m -> fsClient.upload(filename, m != null ? m.getSize() : 0))
 				.thenCompose(consumer -> {

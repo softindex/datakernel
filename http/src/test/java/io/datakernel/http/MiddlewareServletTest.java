@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.stream.processor.ByteBufRule;
@@ -40,22 +40,22 @@ public class MiddlewareServletTest {
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
 
-	void check(Stage<HttpResponse> stage, String expectedBody, int expectedCode) {
-		assertTrue(stage.isComplete());
-		if (stage.isResult()) {
-			HttpResponse result = stage.materialize().getResult();
-			assertEquals(expectedBody, result.getBodyStage(Integer.MAX_VALUE).materialize().getResult().toString());
+	void check(Promise<HttpResponse> promise, String expectedBody, int expectedCode) {
+		assertTrue(promise.isComplete());
+		if (promise.isResult()) {
+			HttpResponse result = promise.materialize().getResult();
+			assertEquals(expectedBody, result.getBodyPromise(Integer.MAX_VALUE).materialize().getResult().toString());
 			assertEquals(expectedCode, result.getCode());
 			result.recycle();
 		} else {
-			assertEquals(expectedCode, ((HttpException) stage.materialize().getException()).getCode());
+			assertEquals(expectedCode, ((HttpException) promise.materialize().getException()).getCode());
 		}
 	}
 
 	@Test
 	public void testBase() throws ParseException {
 		MiddlewareServlet servlet1 = MiddlewareServlet.create();
-		servlet1.with(HttpMethod.GET, "/a/b/c", request -> Stage.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
+		servlet1.with(HttpMethod.GET, "/a/b/c", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
 		check(servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c")), "", 200);
 		check(servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c")), "", 200);
@@ -63,7 +63,7 @@ public class MiddlewareServletTest {
 		check(servlet1.serve(HttpRequest.post("http://some-test.com/a/b/c")), "", 404);
 
 		MiddlewareServlet servlet2 = MiddlewareServlet.create();
-		servlet2.with(HttpMethod.HEAD, "/a/b/c", request -> Stage.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
+		servlet2.with(HttpMethod.HEAD, "/a/b/c", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
 		check(servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c")), "", 404);
 		check(servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c/d")), "", 404);
@@ -73,7 +73,7 @@ public class MiddlewareServletTest {
 	@Test
 	public void testProcessWildCardRequest() throws ParseException {
 		MiddlewareServlet servlet = MiddlewareServlet.create();
-		servlet.with("/a/b/c/d", request -> Stage.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
+		servlet.with("/a/b/c/d", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
 		check(servlet.serve(HttpRequest.get("http://some-test.com/a/b/c/d")), "", 200);
 		check(servlet.serve(HttpRequest.post("http://some-test.com/a/b/c/d")), "", 200);
@@ -93,7 +93,7 @@ public class MiddlewareServletTest {
 
 		AsyncServlet action = request -> {
 			ByteBuf msg = wrapUtf8("Executed: " + request.getPath());
-			return Stage.of(HttpResponse.ofCode(200).withBody(msg));
+			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		MiddlewareServlet a = MiddlewareServlet.create()
@@ -138,7 +138,7 @@ public class MiddlewareServletTest {
 
 		AsyncServlet action = request -> {
 			ByteBuf msg = wrapUtf8("Executed: " + request.getPath());
-			return Stage.of(HttpResponse.ofCode(200).withBody(msg));
+			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -186,7 +186,7 @@ public class MiddlewareServletTest {
 
 		AsyncServlet action = request -> {
 			ByteBuf msg = wrapUtf8("Executed: " + request.getPath());
-			return Stage.of(HttpResponse.ofCode(200).withBody(msg));
+			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -216,12 +216,12 @@ public class MiddlewareServletTest {
 
 		AsyncServlet action = req -> {
 			ByteBuf msg = wrapUtf8("Executed: " + req.getPath());
-			return Stage.of(HttpResponse.ofCode(200).withBody(msg));
+			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		AsyncServlet anotherAction = req -> {
 			ByteBuf msg = wrapUtf8("Shall not be executed: " + req.getPath());
-			return Stage.of(HttpResponse.ofCode(200).withBody(msg));
+			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		MiddlewareServlet main;
@@ -247,7 +247,7 @@ public class MiddlewareServletTest {
 					+ " " + request.getPathParameter("uid")
 					+ " " + request.getPathParameter("eid");
 			ByteBuf bodyByteBuf = wrapUtf8(body);
-			return Stage.of(HttpResponse.ofCode(200).withBody(bodyByteBuf));
+			return Promise.of(HttpResponse.ofCode(200).withBody(bodyByteBuf));
 		};
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -270,12 +270,12 @@ public class MiddlewareServletTest {
 	public void testMultiParameters() throws ParseException {
 		AsyncServlet serveCar = request -> {
 			ByteBuf body = wrapUtf8("served car: " + request.getPathParameter("cid"));
-			return Stage.of(HttpResponse.ofCode(200).withBody(body));
+			return Promise.of(HttpResponse.ofCode(200).withBody(body));
 		};
 
 		AsyncServlet serveMan = request -> {
 			ByteBuf body = wrapUtf8("served man: " + request.getPathParameter("mid"));
-			return Stage.of(HttpResponse.ofCode(200).withBody(body));
+			return Promise.of(HttpResponse.ofCode(200).withBody(body));
 		};
 
 		MiddlewareServlet ms = MiddlewareServlet.create()
@@ -294,13 +294,13 @@ public class MiddlewareServletTest {
 		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
 		HttpRequest request3 = HttpRequest.of(CONNECT, TEMPLATE + "/a/b/c/action");
 
-		AsyncServlet post = request -> Stage.of(
+		AsyncServlet post = request -> Promise.of(
 				HttpResponse.ofCode(200).withBody(wrapUtf8("POST")));
 
-		AsyncServlet get = request -> Stage.of(
+		AsyncServlet get = request -> Promise.of(
 				HttpResponse.ofCode(200).withBody(wrapUtf8("GET")));
 
-		AsyncServlet wildcard = request -> Stage.of(
+		AsyncServlet wildcard = request -> Promise.of(
 				HttpResponse.ofCode(200).withBody(wrapUtf8("WILDCARD")));
 
 		MiddlewareServlet servlet = MiddlewareServlet.create()
@@ -317,10 +317,10 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void testDefault() throws ParseException {
-		AsyncServlet def = request -> Stage.of(
+		AsyncServlet def = request -> Promise.of(
 				HttpResponse.ofCode(200).withBody(wrapUtf8("Stopped at admin: " + request.getRelativePath())));
 
-		AsyncServlet action = request -> Stage.of(
+		AsyncServlet action = request -> Promise.of(
 				HttpResponse.ofCode(200).withBody(wrapUtf8("Action executed")));
 
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/html/admin/action");
@@ -338,7 +338,7 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void test404() throws ParseException {
-		AsyncServlet servlet = request -> Stage.of(
+		AsyncServlet servlet = request -> Promise.of(
 				HttpResponse.ofCode(200).withBody(wrapUtf8("All OK")));
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with("/a/:id/b/d", servlet);
@@ -351,7 +351,7 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void test405() throws ParseException {
-		AsyncServlet servlet = request -> Stage.of(
+		AsyncServlet servlet = request -> Promise.of(
 				HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute")));
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -363,10 +363,10 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void test405WithFallback() throws ParseException {
-		AsyncServlet servlet = request -> Stage.of(
+		AsyncServlet servlet = request -> Promise.of(
 				HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute")));
 
-		AsyncServlet fallback = request -> Stage.of(
+		AsyncServlet fallback = request -> Promise.of(
 				HttpResponse.ofCode(200).withBody(wrapUtf8("Fallback executed")));
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -377,7 +377,7 @@ public class MiddlewareServletTest {
 
 	@Test
 	public void testFallbackTail() throws ParseException {
-		AsyncServlet servlet = request -> Stage.of(HttpResponse.ofCode(200).withBody(wrapUtf8("Success: " + request.getRelativePath())));
+		AsyncServlet servlet = request -> Promise.of(HttpResponse.ofCode(200).withBody(wrapUtf8("Success: " + request.getRelativePath())));
 
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/method/:var", MiddlewareServlet.create().withFallback(servlet));
@@ -390,12 +390,12 @@ public class MiddlewareServletTest {
 
 	@Test(expected = AssertionError.class)
 	public void testTailFail() {
-		MiddlewareServlet.create().with(GET, "/method/:var*/:tail", request -> Stage.of(HttpResponse.ok200()));
+		MiddlewareServlet.create().with(GET, "/method/:var*/:tail", request -> Promise.of(HttpResponse.ok200()));
 	}
 
 	@Test
 	public void testTail() throws ParseException {
-		AsyncServlet servlet = request -> Stage.of(HttpResponse.ofCode(200).withBody(wrapUtf8("Success: " + request.getPathParameter("tail"))));
+		AsyncServlet servlet = request -> Promise.of(HttpResponse.ofCode(200).withBody(wrapUtf8("Success: " + request.getPathParameter("tail"))));
 
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/method/:var/:tail*", servlet);

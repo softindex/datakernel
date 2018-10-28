@@ -3,8 +3,8 @@ package io.datakernel.launchers.http;
 import com.google.inject.*;
 import com.google.inject.name.Names;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
@@ -195,11 +195,11 @@ public class JmxHttpModule extends AbstractModule {
 		return object.toString();
 	}
 
-	private static Stage<Class<?>> getClass(String className) {
+	private static Promise<Class<?>> getClass(String className) {
 		try {
-			return Stage.of(Class.forName(className));
+			return Promise.of(Class.forName(className));
 		} catch (ClassNotFoundException e) {
-			return Stage.ofException(HttpException.ofCode(404, "Class " + className + " not found"));
+			return Promise.ofException(HttpException.ofCode(404, "Class " + className + " not found"));
 		}
 	}
 
@@ -309,16 +309,16 @@ public class JmxHttpModule extends AbstractModule {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public Stage<HttpResponse> serve(HttpRequest request) throws ParseException {
+		public Promise<HttpResponse> serve(HttpRequest request) throws ParseException {
 			String keyParam = request.getQueryParameterOrNull("key");
 
 			if ("/favicon.ico".equals(request.getPath())) { // if somehow it got to this servlet
-				return Stage.ofException(HttpException.notFound404());
+				return Promise.ofException(HttpException.notFound404());
 			}
 
 			if (keyParam == null) {
 				if (cachedIndex != null) {
-					return Stage.of(HttpResponse.ok200().withBody(cachedIndex));
+					return Promise.of(HttpResponse.ok200().withBody(cachedIndex));
 				}
 
 				Node<String, String> tree = new Node<>(null, null, null);
@@ -362,29 +362,29 @@ public class JmxHttpModule extends AbstractModule {
 
 			Matcher matcher = KEY_PARAM_PATTERN.matcher(keyParam);
 			if (!matcher.find()) {
-				return Stage.ofException(HttpException.ofCode(400, "Wrong key format"));
+				return Promise.ofException(HttpException.ofCode(400, "Wrong key format"));
 			}
 			String clsName = matcher.group(1);
 			String generics = matcher.group(2);
 			String annotation = matcher.group(3);
 			String workerId = matcher.group(4);
 
-			return Stages.toTuple(
+			return Promises.toTuple(
 					JmxHttpModule.getClass(clsName),
 					generics != null ?
-							Stages.toList(Arrays.stream(generics.split(", ")).map(JmxHttpModule::getClass)) :
-							Stage.of(Collections.<Class<?>>emptyList()))
+							Promises.toList(Arrays.stream(generics.split(", ")).map(JmxHttpModule::getClass)) :
+							Promise.of(Collections.<Class<?>>emptyList()))
 					.thenCompose(tuple -> {
 						@SuppressWarnings("SuspiciousToArrayCall") // what.?
 								Type type = SimpleType.ofClass(tuple.getValue1(), tuple.getValue2().toArray(new Class[0])).getType();
 						if (annotation == null) {
-							return Stage.of(Key.get(type));
+							return Promise.of(Key.get(type));
 						}
 						if (annotation.startsWith("com.google.inject.name.Named(value=")) {
-							return Stage.of(Key.get(type, Names.named(annotation.substring(35, annotation.length() - 1))));
+							return Promise.of(Key.get(type, Names.named(annotation.substring(35, annotation.length() - 1))));
 						}
 						if (!annotation.endsWith("()")) {
-							return Stage.ofException(HttpException.ofCode(501, "Instance annotations except @Named are not supported"));
+							return Promise.ofException(HttpException.ofCode(501, "Instance annotations except @Named are not supported"));
 						}
 						return JmxHttpModule.getClass(annotation.substring(0, annotation.length() - 2))
 								.thenApply(annCls -> Key.get(type, (Class<Annotation>) annCls));
@@ -394,12 +394,12 @@ public class JmxHttpModule extends AbstractModule {
 						if (workerId != null) {
 							Binding<WorkerPools> wpBinding = injector.getExistingBinding(Key.get(WorkerPools.class));
 							if (wpBinding == null) {
-								return Stage.ofException(HttpException.ofCode(404, "No worker pool exists"));
+								return Promise.ofException(HttpException.ofCode(404, "No worker pool exists"));
 							}
 							List<?> instances = wpBinding.getProvider().get().getAllObjects(key); // TODO: this will fail with multiple worker pools, fix it
 							int id = Integer.parseInt(workerId);
 							if (id >= instances.size()) {
-								return Stage.ofException(HttpException.ofCode(404, "Worker " + key + " with id " + id + " not found"));
+								return Promise.ofException(HttpException.ofCode(404, "Worker " + key + " with id " + id + " not found"));
 							}
 							instance = instances.get(id);
 						} else {
@@ -409,7 +409,7 @@ public class JmxHttpModule extends AbstractModule {
 							}
 						}
 						if (instance == null) {
-							return Stage.ofException(HttpException.ofCode(404, "Key " + key + " not found."));
+							return Promise.ofException(HttpException.ofCode(404, "Key " + key + " not found."));
 						}
 						Object finalInstance = instance;
 						return loader.getResource("table_template.html")

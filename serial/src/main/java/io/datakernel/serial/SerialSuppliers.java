@@ -17,9 +17,9 @@
 package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.CollectionUtils;
 
@@ -41,10 +41,10 @@ public final class SerialSuppliers {
 			T thisItem = item;
 
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				T item = this.thisItem;
 				this.thisItem = null;
-				return Stage.of(item);
+				return Promise.of(item);
 			}
 		};
 	}
@@ -63,25 +63,25 @@ public final class SerialSuppliers {
 			SerialSupplier<? extends T> current = SerialSupplier.of();
 
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				return current.get()
 						.thenComposeEx((value, e) -> {
 							if (e == null) {
 								if (value != null) {
-									return Stage.of(value);
+									return Promise.of(value);
 								} else {
 									if (iterator.hasNext()) {
 										current = iterator.next();
 										return get();
 									} else {
-										return Stage.of(null);
+										return Promise.of(null);
 									}
 								}
 							} else {
 								while (iterator.hasNext()) {
 									iterator.next().close(e);
 								}
-								return Stage.ofException(e);
+								return Promise.ofException(e);
 							}
 						});
 			}
@@ -96,20 +96,20 @@ public final class SerialSuppliers {
 		};
 	}
 
-	protected static <T, A, R> Stage<R> toCollector(SerialSupplier<T> supplier, Collector<T, A, R> collector) {
-		SettableStage<R> cb = new SettableStage<>();
+	protected static <T, A, R> Promise<R> toCollector(SerialSupplier<T> supplier, Collector<T, A, R> collector) {
+		SettablePromise<R> cb = new SettablePromise<>();
 		toCollectorImpl(supplier, collector.supplier().get(), collector.accumulator(), collector.finisher(), cb);
 		return cb;
 	}
 
 	private static <T, A, R> void toCollectorImpl(SerialSupplier<T> supplier,
 			A accumulatedValue, BiConsumer<A, T> accumulator, Function<A, R> finisher,
-			SettableStage<R> cb) {
-		Stage<T> stage;
+			SettablePromise<R> cb) {
+		Promise<T> promise;
 		while (true) {
-			stage = supplier.get();
-			if (!stage.isResult()) break;
-			T item = stage.materialize().getResult();
+			promise = supplier.get();
+			if (!promise.isResult()) break;
+			T item = promise.materialize().getResult();
 			if (item != null) {
 				try {
 					accumulator.accept(accumulatedValue, item);
@@ -123,7 +123,7 @@ public final class SerialSuppliers {
 			}
 			break;
 		}
-		stage.whenComplete((value, e) -> {
+		promise.whenComplete((value, e) -> {
 			if (e == null) {
 				if (value != null) {
 					try {
@@ -145,22 +145,22 @@ public final class SerialSuppliers {
 		});
 	}
 
-	public static <T> MaterializedStage<Void> stream(SerialSupplier<T> supplier, SerialConsumer<T> consumer) {
-		SettableStage<Void> cb = new SettableStage<>();
+	public static <T> MaterializedPromise<Void> stream(SerialSupplier<T> supplier, SerialConsumer<T> consumer) {
+		SettablePromise<Void> cb = new SettablePromise<>();
 		streamImpl(supplier, consumer, cb);
 		return cb;
 	}
 
-	private static <T> void streamImpl(SerialSupplier<T> supplier, SerialConsumer<T> consumer, SettableStage<Void> result) {
-		Stage<T> supplierStage;
+	private static <T> void streamImpl(SerialSupplier<T> supplier, SerialConsumer<T> consumer, SettablePromise<Void> result) {
+		Promise<T> supplierPromise;
 		while (true) {
-			supplierStage = supplier.get();
-			if (!supplierStage.isResult()) break;
-			T item = supplierStage.materialize().getResult();
+			supplierPromise = supplier.get();
+			if (!supplierPromise.isResult()) break;
+			T item = supplierPromise.materialize().getResult();
 			if (item == null) break;
-			Stage<Void> consumerStage = consumer.accept(item);
-			if (consumerStage.isResult()) continue;
-			consumerStage.whenComplete(($, e) -> {
+			Promise<Void> consumerPromise = consumer.accept(item);
+			if (consumerPromise.isResult()) continue;
+			consumerPromise.whenComplete(($, e) -> {
 				if (e == null) {
 					streamImpl(supplier, consumer, result);
 				} else {
@@ -170,7 +170,7 @@ public final class SerialSuppliers {
 			});
 			return;
 		}
-		supplierStage
+		supplierPromise
 				.whenComplete((item, e1) -> {
 					if (e1 == null) {
 						consumer.accept(item)
@@ -202,7 +202,7 @@ public final class SerialSuppliers {
 					private boolean endOfStream;
 					private boolean prefetching;
 					@Nullable
-					private SettableStage<T> pending;
+					private SettablePromise<T> pending;
 
 					{
 						tryPrefetch();
@@ -218,7 +218,7 @@ public final class SerialSuppliers {
 									if (e == null) {
 										assert pending == null || (deque.isEmpty() && !endOfStream);
 										if (pending != null) {
-											SettableStage<T> pending = this.pending;
+											SettablePromise<T> pending = this.pending;
 											this.pending = null;
 											if (item != null) {
 												tryPrefetch();
@@ -242,14 +242,14 @@ public final class SerialSuppliers {
 
 					@SuppressWarnings("unchecked")
 					@Override
-					protected Stage<T> doGet() {
+					protected Promise<T> doGet() {
 						assert pending == null;
 						if (!deque.isEmpty() || endOfStream) {
 							T result = deque.poll();
 							tryPrefetch();
-							return Stage.of(result);
+							return Promise.of(result);
 						}
-						SettableStage<T> pending = new SettableStage<>();
+						SettablePromise<T> pending = new SettablePromise<>();
 						this.pending = pending;
 						tryPrefetch();
 						return pending;
@@ -274,7 +274,7 @@ public final class SerialSuppliers {
 			private boolean endOfStream;
 			private boolean prefetching;
 			@Nullable
-			private SettableStage<T> pending;
+			private SettablePromise<T> pending;
 
 			{
 				tryPrefetch();
@@ -291,7 +291,7 @@ public final class SerialSuppliers {
 							if (e == null) {
 								assert pending == null || (prefetched == null && !endOfStream);
 								if (pending != null) {
-									SettableStage<T> pending = this.pending;
+									SettablePromise<T> pending = this.pending;
 									this.pending = null;
 									if (item != null) {
 										// do nothing
@@ -314,15 +314,15 @@ public final class SerialSuppliers {
 
 			@SuppressWarnings("unchecked")
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				assert pending == null;
 				if (prefetched != null || endOfStream) {
 					T result = this.prefetched;
 					this.prefetched = null;
 					tryPrefetch();
-					return Stage.of(result);
+					return Promise.of(result);
 				}
-				SettableStage<T> pending = new SettableStage<>();
+				SettablePromise<T> pending = new SettablePromise<>();
 				this.pending = pending;
 				tryPrefetch();
 				return pending;
@@ -347,14 +347,14 @@ public final class SerialSuppliers {
 			boolean endOfStream;
 
 			@Override
-			protected Stage<V> doGet() {
-				if (iterator.hasNext()) return Stage.of(iterator.next());
-				SettableStage<V> cb = new SettableStage<>();
+			protected Promise<V> doGet() {
+				if (iterator.hasNext()) return Promise.of(iterator.next());
+				SettablePromise<V> cb = new SettablePromise<>();
 				next(cb);
 				return cb;
 			}
 
-			private void next(SettableStage<V> cb) {
+			private void next(SettablePromise<V> cb) {
 				if (!endOfStream) {
 					supplier.get()
 							.whenComplete((item, e) -> {

@@ -19,25 +19,25 @@ package io.datakernel.async;
 import java.util.function.*;
 
 /**
- * This interface represents asynchronous supplier that returns {@link Stage} of some data.
+ * This interface represents asynchronous supplier that returns {@link Promise} of some data.
  *
  */
 @FunctionalInterface
 public interface AsyncSupplier<T> {
 	/**
-	 * Asynchronous operation that is used to get {@link Stage} of data item.
+	 * Asynchronous operation that is used to get {@link Promise} of data item.
 	 *
-	 * @return {@link Stage} of data item
+	 * @return {@link Promise} of data item
 	 */
-	Stage<T> get();
+	Promise<T> get();
 
 	/**
 	 * Wrapper around standard Java's {@link Supplier} interface.
 	 *
-	 * @param supplier - Java's {@link Supplier} of Stages
+	 * @param supplier - Java's {@link Supplier} of Promises
 	 * @return {@link AsyncSupplier} that works on top of standard Java's {@link Supplier} interface
 	 */
-	static <T> AsyncSupplier<T> of(Supplier<? extends Stage<T>> supplier) {
+	static <T> AsyncSupplier<T> of(Supplier<? extends Promise<T>> supplier) {
 		return supplier::get;
 	}
 
@@ -46,10 +46,10 @@ public interface AsyncSupplier<T> {
 	}
 
 	/**
-	 * Method to ensure that supplied stage will complete asynchronously.
+	 * Method to ensure that supplied promise will complete asynchronously.
 	 *
-	 * @see Stage#async()
-	 * @return {@link AsyncSupplier} of stages that will be completed asynchronously
+	 * @see Promise#async()
+	 * @return {@link AsyncSupplier} of promises that will be completed asynchronously
 	 */
 	default AsyncSupplier<T> async() {
 		return () -> get().async();
@@ -60,24 +60,24 @@ public interface AsyncSupplier<T> {
 	}
 
 	/**
-	 * Applies function before supplying a stage.
+	 * Applies function before supplying a promise.
 	 *
-	 * @param fn function to be applied to result of stage
-	 * @return {@link AsyncSupplier} of stages after transformation
+	 * @param fn function to be applied to result of promise
+	 * @return {@link AsyncSupplier} of promises after transformation
 	 */
 	default <V> AsyncSupplier<V> transform(Function<? super T, ? extends V> fn) {
 		return () -> get().thenApply(fn);
 	}
 
 	/**
-	 * Applies function to the result of supplied stage.
+	 * Applies function to the result of supplied promise.
 	 *
-	 * @param fn - function to be applied to result of stage
+	 * @param fn - function to be applied to result of promise
 	 * @param <V>
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	default <V> AsyncSupplier<V> transformAsync(Function<? super T, ? extends Stage<V>> fn) {
+	default <V> AsyncSupplier<V> transformAsync(Function<? super T, ? extends Promise<V>> fn) {
 		return () -> get().thenCompose(fn::apply);
 	}
 

@@ -30,8 +30,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.async.Stages.loop;
-import static io.datakernel.async.Stages.repeat;
+import static io.datakernel.async.Promises.loop;
+import static io.datakernel.async.Promises.repeat;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 

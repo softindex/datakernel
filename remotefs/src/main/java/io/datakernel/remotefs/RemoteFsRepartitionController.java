@@ -17,8 +17,8 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -26,7 +26,7 @@ import io.datakernel.functional.Try;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
@@ -65,10 +65,10 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 	private int failedFiles = 0;
 
 	@Nullable
-	private Stage<Void> repartitionStage;
+	private Promise<Void> repartitionPromise;
 
-	private final StageStats repartitionStageStats = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats singleFileRepartitionStageStats = StageStats.create(Duration.ofMinutes(5));
+	private final PromiseStats repartitionPromiseStats = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats singleFileRepartitionPromiseStats = PromiseStats.create(Duration.ofMinutes(5));
 
 	private RemoteFsRepartitionController(Eventloop eventloop, Object localPartitionId, RemoteFsClusterClient cluster,
 			FsClient localStorage, ServerSelector serverSelector, Map<Object, FsClient> clients,
@@ -114,39 +114,39 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 		return localStorage;
 	}
 
-	public Stage<Void> repartition() {
+	public Promise<Void> repartition() {
 		checkState(eventloop.inEventloopThread(), "Should be called from eventloop thread");
 
-		repartitionStage = localStorage.list(glob)
+		repartitionPromise = localStorage.list(glob)
 				.thenCompose(list -> {
 					allFiles = list.size();
-					return Stages.runSequence( // just handling all local files sequentially
+					return Promises.runSequence( // just handling all local files sequentially
 							filterNot(list.stream(), negativeGlob)
 									.map(meta -> repartitionFile(meta)
-											.whenComplete(singleFileRepartitionStageStats.recordStats())
+											.whenComplete(singleFileRepartitionPromiseStats.recordStats())
 											.thenCompose(success -> {
 												if (success) {
 													ensuredFiles++;
 												} else {
 													failedFiles++;
 												}
-												if (repartitionStage == null) {
-													return Stage.ofException(new Exception("forced stop"));
+												if (repartitionPromise == null) {
+													return Promise.ofException(new Exception("forced stop"));
 												}
-												return Stage.complete();
+												return Promise.complete();
 											})));
 				})
-				.whenComplete(repartitionStageStats.recordStats())
+				.whenComplete(repartitionPromiseStats.recordStats())
 				.thenComposeEx(($, err) -> {
 					if (err != null) {
 						logger.warn("forced repartition finish, {} files ensured, {} errored, {} untouched", ensuredFiles, failedFiles, allFiles - ensuredFiles - failedFiles);
 					} else {
 						logger.info("repartition finished, {} files ensured, {} errored", ensuredFiles, failedFiles);
 					}
-					repartitionStage = null;
-					return Stage.complete();
+					repartitionPromise = null;
+					return Promise.complete();
 				});
-		return repartitionStage;
+		return repartitionPromise;
 	}
 
 	private Stream<FileMetadata> filterNot(Stream<FileMetadata> stream, String glob) {
@@ -160,7 +160,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 		return stream.filter(file -> !negativeMatcher.matches(Paths.get(file.getName())));
 	}
 
-	private Stage<Boolean> repartitionFile(FileMetadata meta) {
+	private Promise<Boolean> repartitionFile(FileMetadata meta) {
 		Set<Object> partitionIds = new HashSet<>(clients.keySet());
 		partitionIds.add(localPartitionId); // ensure local partition could also be selected
 		List<Object> selected = serverSelector.selectFrom(meta.getName(), partitionIds, replicationCount);
@@ -168,7 +168,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 		return getPartitionsWithoutFile(meta, selected)
 				.thenCompose(uploadTargets -> {
 					if (uploadTargets == null) { // null return means failure
-						return Stage.of(false);
+						return Promise.of(false);
 					}
 					String name = meta.getName();
 					if (uploadTargets.isEmpty()) { // everybody had the file
@@ -181,7 +181,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					}
 					if (uploadTargets.size() == 1 && uploadTargets.get(0) == localStorage) { // everybody had the file AND
 						logger.info("handled file {} (ensured on {})", meta, selected);      // we dont delete the local copy
-						return Stage.of(true);
+						return Promise.of(true);
 					}
 
 					// else we need to upload to at least one nonlocal partition
@@ -192,10 +192,10 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 							.withInput(localStorage.downloadSerial(name));
 
 					// recycle original non-slice buffer
-					return Stages.toList(uploadTargets.stream() // upload file to target partitions
+					return Promises.toList(uploadTargets.stream() // upload file to target partitions
 							.map(partitionId -> {
 								if (partitionId == localPartitionId) {
-									return Stage.of(Try.of(null)); // just skip it here
+									return Promise.of(Try.of(null)); // just skip it here
 								}
 								// upload file to this partition
 								return getAcknowledgement(cb ->
@@ -213,12 +213,12 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 							.thenCompose(tries -> {
 								if (!tries.stream().allMatch(Try::isSuccess)) { // if anybody failed uploading then we skip this file
 									logger.warn("failed uploading file {}, skipping", meta);
-									return Stage.of(false);
+									return Promise.of(false);
 								}
 
 								if (uploadTargets.contains(localPartitionId)) { // dont delete local if it was marked
 									logger.info("handled file {} (ensured on {}, uploaded to {})", meta, selected, uploadTargets);
-									return Stage.of(true);
+									return Promise.of(true);
 								}
 
 								logger.trace("deleting file {} on {}", meta, localPartitionId);
@@ -232,13 +232,13 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 				.whenComplete(toLogger(logger, TRACE, "repartitionFile", meta));
 	}
 
-	private Stage<List<Object>> getPartitionsWithoutFile(FileMetadata fileToUpload, List<Object> selected) {
+	private Promise<List<Object>> getPartitionsWithoutFile(FileMetadata fileToUpload, List<Object> selected) {
 		List<Object> uploadTargets = new ArrayList<>();
-		return Stages.toList(selected.stream()
+		return Promises.toList(selected.stream()
 				.map(partitionId -> {
 					if (partitionId == localPartitionId) {
 						uploadTargets.add(partitionId); // add it to targets so in repartitionFile we know not to delete local file
-						return Stage.of(Try.of(null));  // and skip other logic
+						return Promise.of(Try.of(null));  // and skip other logic
 					}
 					return clients.get(partitionId)
 							.list(fileToUpload.getName()) // checking file existense and size on particular partition
@@ -258,25 +258,25 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 				.thenCompose(tries -> {
 					if (!tries.stream().allMatch(Try::isSuccess)) { // any of list calls failed
 						logger.warn("failed figuring out partitions for file " + fileToUpload + ", skipping");
-						return Stage.of(null); // using null to mark failure without exceptions
+						return Promise.of(null); // using null to mark failure without exceptions
 					}
-					return Stage.of(uploadTargets);
+					return Promise.of(uploadTargets);
 				});
 	}
 
 	@Override
-	public Stage<Void> start() {
-		return Stage.complete();
+	public Promise<Void> start() {
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Void> stop() {
-		Stage<Void> repartitionStage = this.repartitionStage;
-		if (repartitionStage != null) {
-			this.repartitionStage = null;
-			return repartitionStage;
+	public Promise<Void> stop() {
+		Promise<Void> repartitionPromise = this.repartitionPromise;
+		if (repartitionPromise != null) {
+			this.repartitionPromise = null;
+			return repartitionPromise;
 		}
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	// region JMX
@@ -287,22 +287,22 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 	@JmxOperation(description = "stop repartitioning")
 	public void stopRepartition() {
-		repartitionStage = null;
+		repartitionPromise = null;
 	}
 
 	@JmxAttribute
 	public boolean isRepartitioning() {
-		return repartitionStage != null;
+		return repartitionPromise != null;
 	}
 
 	@JmxAttribute
-	public StageStats getRepartitionStageStats() {
-		return repartitionStageStats;
+	public PromiseStats getRepartitionPromiseStats() {
+		return repartitionPromiseStats;
 	}
 
 	@JmxAttribute
-	public StageStats getSingleFileRepartitionStageStats() {
-		return singleFileRepartitionStageStats;
+	public PromiseStats getSingleFileRepartitionPromiseStats() {
+		return singleFileRepartitionPromiseStats;
 	}
 
 	@JmxAttribute

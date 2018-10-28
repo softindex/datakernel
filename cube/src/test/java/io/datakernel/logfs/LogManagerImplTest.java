@@ -1,8 +1,8 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
@@ -70,28 +70,28 @@ public class LogManagerImplTest {
 		}
 
 		@Override
-		public Stage<LogFile> makeUniqueLogFile(String logPartition, String logName) {
+		public Promise<LogFile> makeUniqueLogFile(String logPartition, String logName) {
 			Map<LogFile, List<ByteBuf>> partition = partitions.computeIfAbsent(logPartition, s -> new HashMap<>());
-			SettableStage<LogFile> stage = new SettableStage<>();
+			SettablePromise<LogFile> promise = new SettablePromise<>();
 
 			eventloop.delay(100, () -> {
 				LogFile value = new LogFile(logName, partition.size());
 				partition.put(value, new ArrayList<>());
-				stage.set(value);
+				promise.set(value);
 			});
 
-			return stage;
+			return promise;
 		}
 
 		@Override
-		public Stage<List<LogFile>> list(String logPartition) {
-			return Stage.of(new ArrayList<>(partitions.get(logPartition).keySet()));
+		public Promise<List<LogFile>> list(String logPartition) {
+			return Promise.of(new ArrayList<>(partitions.get(logPartition).keySet()));
 		}
 
 		@Override
-		public Stage<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
+		public Promise<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
 			List<ByteBuf> byteBufs = getOffset(partitions.get(logPartition).get(logFile), startPosition);
-			return Stage.of(SerialSupplier.ofIterable(byteBufs));
+			return Promise.of(SerialSupplier.ofIterable(byteBufs));
 		}
 
 		private static List<ByteBuf> getOffset(List<ByteBuf> byteBufs, long startPosition) {
@@ -106,9 +106,9 @@ public class LogManagerImplTest {
 		}
 
 		@Override
-		public Stage<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
+		public Promise<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
 			List<ByteBuf> bufs = partitions.get(logPartition).get(logFile);
-			return Stage.of(SerialConsumer.of(AsyncConsumer.of(bufs::add)));
+			return Promise.of(SerialConsumer.of(AsyncConsumer.of(bufs::add)));
 		}
 	}
 

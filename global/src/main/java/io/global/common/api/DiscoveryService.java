@@ -16,7 +16,7 @@
 
 package io.global.common.api;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.global.common.*;
 
 import java.util.HashSet;
@@ -25,17 +25,17 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface DiscoveryService {
-	Stage<Void> announce(RepoID repo, SignedData<AnnounceData> announceData);
+	Promise<Void> announce(RepoID repo, SignedData<AnnounceData> announceData);
 
-	Stage<Optional<SignedData<AnnounceData>>> find(RepoID repo);
+	Promise<Optional<SignedData<AnnounceData>>> find(RepoID repo);
 
-	Stage<List<SignedData<AnnounceData>>> find(PubKey owner);
+	Promise<List<SignedData<AnnounceData>>> find(PubKey owner);
 
-	default Stage<Void> announce(RepoID repo, AnnounceData announceData, PrivKey privKey) {
+	default Promise<Void> announce(RepoID repo, AnnounceData announceData, PrivKey privKey) {
 		return announce(repo, SignedData.sign(announceData, privKey));
 	}
 
-	default Stage<Void> append(RepoID repo, AnnounceData announceData, PrivKey privKey) {
+	default Promise<Void> append(RepoID repo, AnnounceData announceData, PrivKey privKey) {
 		return find(repo)
 				.thenCompose(data -> {
 					if (!data.isPresent()) {
@@ -48,11 +48,11 @@ public interface DiscoveryService {
 				});
 	}
 
-	Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey);
+	Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey);
 
-	default Stage<Void> shareKey(KeyPair keys, SharedSimKey simKey) {
+	default Promise<Void> shareKey(KeyPair keys, SharedSimKey simKey) {
 		return shareKey(keys.getPubKey(), SignedData.sign(simKey, keys.getPrivKey()));
 	}
 
-	Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash);
+	Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash);
 }

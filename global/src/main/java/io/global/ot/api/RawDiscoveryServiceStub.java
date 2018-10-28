@@ -16,7 +16,7 @@
 
 package io.global.ot.api;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 
@@ -26,15 +26,15 @@ public class RawDiscoveryServiceStub implements RawDiscoveryService {
 	private final HashMap<PubKey, SignedData<RawAnnounceData>> map = new HashMap<>();
 
 	@Override
-	public Stage<SignedData<RawAnnounceData>> findServers(PubKey pubKey) {
-		return Stage.of(map.get(pubKey));
+	public Promise<SignedData<RawAnnounceData>> findServers(PubKey pubKey) {
+		return Promise.of(map.get(pubKey));
 	}
 
 	@Override
-	public Stage<Void> announce(SignedData<RawAnnounceData> announceData) {
+	public Promise<Void> announce(SignedData<RawAnnounceData> announceData) {
 		map.compute(announceData.getData().getPubKey(),
 				(pubKey, existing) ->
 						announceData.getData().getTimestamp() > existing.getData().getTimestamp() ? announceData : existing);
-		return Stage.complete();
+		return Promise.complete();
 	}
 }

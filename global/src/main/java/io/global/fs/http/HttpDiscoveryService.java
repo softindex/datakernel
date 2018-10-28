@@ -16,7 +16,7 @@
 
 package io.global.fs.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.HttpMethod;
 import io.datakernel.http.HttpRequest;
@@ -47,7 +47,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Stage<Void> announce(RepoID repo, SignedData<AnnounceData> announceData) {
+	public Promise<Void> announce(RepoID repo, SignedData<AnnounceData> announceData) {
 		return client.request(
 				HttpRequest.of(HttpMethod.PUT,
 						UrlBuilder.http()
@@ -61,7 +61,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Stage<Optional<SignedData<AnnounceData>>> find(RepoID repo) {
+	public Promise<Optional<SignedData<AnnounceData>>> find(RepoID repo) {
 		return client.requestWithResponseBody(Integer.MAX_VALUE,
 				HttpRequest.get(
 						UrlBuilder.http()
@@ -74,20 +74,20 @@ public final class HttpDiscoveryService implements DiscoveryService {
 					switch (response.getCode()) {
 						case 200:
 							try {
-								return Stage.of(Optional.of(SIGNED_ANNOUNCE.fromJson(response.getBody().asString(UTF_8))));
+								return Promise.of(Optional.of(SIGNED_ANNOUNCE.fromJson(response.getBody().asString(UTF_8))));
 							} catch (IOException e) {
-								return Stage.ofException(e);
+								return Promise.ofException(e);
 							}
 						case 404:
-							return Stage.of(Optional.empty());
+							return Promise.of(Optional.empty());
 						default:
-							return Stage.ofException(HttpException.ofCode(response.getCode(), response.getBody().getString(UTF_8)));
+							return Promise.ofException(HttpException.ofCode(response.getCode(), response.getBody().getString(UTF_8)));
 					}
 				});
 	}
 
 	@Override
-	public Stage<List<SignedData<AnnounceData>>> find(PubKey owner) {
+	public Promise<List<SignedData<AnnounceData>>> find(PubKey owner) {
 		return client.requestWithResponseBody(Integer.MAX_VALUE,
 				HttpRequest.get(
 						UrlBuilder.http()
@@ -98,15 +98,15 @@ public final class HttpDiscoveryService implements DiscoveryService {
 				.thenCompose(response -> response.ensureStatusCode(200)
 						.thenCompose($ -> {
 							try {
-								return Stage.of(LIST_OF_SIGNED_ANNOUNCES.fromJson(response.getBody().asString(UTF_8)));
+								return Promise.of(LIST_OF_SIGNED_ANNOUNCES.fromJson(response.getBody().asString(UTF_8)));
 							} catch (IOException e) {
-								return Stage.ofException(e);
+								return Promise.ofException(e);
 							}
 						}));
 	}
 
 	@Override
-	public Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
+	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
 		return client.request(
 				HttpRequest.post(
 						UrlBuilder.http()
@@ -119,7 +119,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
+	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
 		return client.requestWithResponseBody(Integer.MAX_VALUE,
 				HttpRequest.get(
 						UrlBuilder.http()
@@ -133,14 +133,14 @@ public final class HttpDiscoveryService implements DiscoveryService {
 					switch (response.getCode()) {
 						case 200:
 							try {
-								return Stage.of(Optional.of(SIGNED_SHARED_SIM_KEY.fromJson(response.getBody().asString(UTF_8))));
+								return Promise.of(Optional.of(SIGNED_SHARED_SIM_KEY.fromJson(response.getBody().asString(UTF_8))));
 							} catch (IOException e) {
-								return Stage.ofException(e);
+								return Promise.ofException(e);
 							}
 						case 404:
-							return Stage.of(Optional.empty());
+							return Promise.of(Optional.empty());
 						default:
-							return Stage.ofException(HttpException.ofCode(response.getCode(), response.getBody().getString(UTF_8)));
+							return Promise.ofException(HttpException.ofCode(response.getCode(), response.getBody().getString(UTF_8)));
 					}
 				});
 	}

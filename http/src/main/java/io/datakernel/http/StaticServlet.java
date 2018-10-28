@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.StaticLoader;
@@ -70,12 +70,12 @@ public final class StaticServlet implements AsyncServlet {
 	}
 
 	@Override
-	public final Stage<HttpResponse> serve(HttpRequest request) {
+	public final Promise<HttpResponse> serve(HttpRequest request) {
 		assert eventloop.inEventloopThread();
 
 		String path = request.getRelativePath();
 
-		if (request.getMethod() != HttpMethod.GET) return Stage.ofException(METHOD_NOT_ALLOWED);
+		if (request.getMethod() != HttpMethod.GET) return Promise.ofException(METHOD_NOT_ALLOWED);
 
 		if (path.equals("")) {
 			path = DEFAULT_INDEX_FILE_NAME;

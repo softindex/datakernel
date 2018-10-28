@@ -16,7 +16,7 @@
 
 package io.datakernel.datagraph.helper;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
@@ -38,31 +38,31 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 	}
 
 	@Override
-	public Stage<Integer> newPartitionId() {
+	public Promise<Integer> newPartitionId() {
 		int newPartition = partition++;
-		return Stage.of(newPartition);
+		return Promise.of(newPartition);
 	}
 
 	@Override
-	public Stage<StreamConsumer<T>> write(int partition) {
+	public Promise<StreamConsumer<T>> write(int partition) {
 		List<T> list = new ArrayList<>();
 		storage.put(partition, list);
 		StreamConsumerToList<T> consumer = StreamConsumerToList.create(list);
-		return Stage.of(consumer.withLateBinding());
+		return Promise.of(consumer.withLateBinding());
 	}
 
 	@Override
-	public Stage<StreamSupplier<T>> read(int partition) {
+	public Promise<StreamSupplier<T>> read(int partition) {
 		List<T> iterable = storage.get(partition);
 		StreamSupplier<T> supplier = StreamSupplier.ofIterable(iterable);
-		return Stage.of(supplier.withLateBinding());
+		return Promise.of(supplier.withLateBinding());
 	}
 
 	@Override
-	public Stage<Void> cleanup(List<Integer> partitionsToDelete) {
+	public Promise<Void> cleanup(List<Integer> partitionsToDelete) {
 		for (Integer partition : partitionsToDelete) {
 			storage.remove(partition);
 		}
-		return Stage.complete();
+		return Promise.complete();
 	}
 }

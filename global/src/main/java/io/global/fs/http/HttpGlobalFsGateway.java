@@ -16,8 +16,8 @@
 
 package io.global.fs.http;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
@@ -56,7 +56,7 @@ public final class HttpGlobalFsGateway implements GlobalFsGateway {
 	// endregion
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset, long limit) {
+	public Promise<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset, long limit) {
 		return client.request(
 				HttpRequest.get(
 						UrlBuilder.http()
@@ -74,7 +74,7 @@ public final class HttpGlobalFsGateway implements GlobalFsGateway {
 	@Override
 	public SerialConsumer<ByteBuf> uploader(GlobalPath path, long offset) {
 		SerialZeroBuffer<ByteBuf> buffer = new SerialZeroBuffer<>();
-		MaterializedStage<HttpResponse> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
+		MaterializedPromise<HttpResponse> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(UPLOAD)
@@ -89,12 +89,12 @@ public final class HttpGlobalFsGateway implements GlobalFsGateway {
 	}
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> upload(GlobalPath path, long offset) {
-		return Stage.of(uploader(path, offset));
+	public Promise<SerialConsumer<ByteBuf>> upload(GlobalPath path, long offset) {
+		return Promise.of(uploader(path, offset));
 	}
 
 	@Override
-	public Stage<List<GlobalFsMetadata>> list(RepoID space, String glob) {
+	public Promise<List<GlobalFsMetadata>> list(RepoID space, String glob) {
 		PubKey pubKey = space.getOwner();
 		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
 				UrlBuilder.http()
@@ -117,12 +117,12 @@ public final class HttpGlobalFsGateway implements GlobalFsGateway {
 	}
 
 	@Override
-	public Stage<Void> delete(GlobalPath path) {
+	public Promise<Void> delete(GlobalPath path) {
 		return delete(path.toRepoID(), FileUtils.escapeGlob(path.getPath()));
 	}
 
 	@Override
-	public Stage<Void> delete(RepoID space, String glob) {
+	public Promise<Void> delete(RepoID space, String glob) {
 		PubKey pubKey = space.getOwner();
 		return client.request(HttpRequest.get(
 				UrlBuilder.http()

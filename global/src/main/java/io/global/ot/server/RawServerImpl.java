@@ -17,9 +17,9 @@
 package io.global.ot.server;
 
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.serial.SerialConsumer;
@@ -73,11 +73,11 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		return sharedKeysDb.computeIfAbsent(receiver, $ -> new HashMap<>());
 	}
 
-	private Stage<List<RawServer>> ensureServers(PubKey pubKey) {
+	private Promise<List<RawServer>> ensureServers(PubKey pubKey) {
 		return ensurePubKey(pubKey).ensureServers();
 	}
 
-	private Stage<List<RawServer>> ensureServers(RepoID repositoryId) {
+	private Promise<List<RawServer>> ensureServers(RepoID repositoryId) {
 		return ensureServers(repositoryId.getOwner());
 	}
 
@@ -87,18 +87,18 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> start() {
+	public Promise<Void> start() {
 		return null;
 	}
 
 	@Override
-	public Stage<Void> stop() {
-		return Stage.complete();
+	public Promise<Void> stop() {
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Set<String>> list(PubKey pubKey) {
-		return Stage.of(new HashSet<>(
+	public Promise<Set<String>> list(PubKey pubKey) {
+		return Promise.of(new HashSet<>(
 				ensurePubKey(pubKey)
 						.repositories.keySet()
 						.stream()
@@ -107,9 +107,9 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> newCommits, Set<SignedData<RawCommitHead>> newHeads) {
+	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> newCommits, Set<SignedData<RawCommitHead>> newHeads) {
 		return commitStorage.getHeads(repositoryId)
-				.thenCompose(thisHeads -> Stages.all(
+				.thenCompose(thisHeads -> Promises.all(
 						newCommits.entrySet()
 								.stream()
 								.map(entry -> commitStorage.saveCommit(entry.getKey(), entry.getValue())))
@@ -123,18 +123,18 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
+	public Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 		return commitStorage.loadCommit(id)
-				.thenCompose(Stage::ofOptional);
+				.thenCompose(Promise::ofOptional);
 	}
 
 	@Override
-	public Stage<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+	public Promise<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 		checkArgument(!hasIntersection(bases, heads));
 		Set<CommitId> skipCommits = new HashSet<>(heads);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
-				.thenCompose(thisHeads -> Stages.all(
+				.thenCompose(thisHeads -> Promises.all(
 						union(thisHeads.keySet(), bases, heads)
 								.stream()
 								.map(commitId -> commitStorage.loadCommit(commitId)
@@ -147,12 +147,12 @@ public final class RawServerImpl implements RawServer, EventloopService {
 						.thenApply(SerialSupplier::of));
 	}
 
-	public Stage<SerialSupplier<CommitEntry>> getCommitsSupplier(RepoID repositoryId, Set<CommitId> thatBases, Set<CommitId> thatHeads) {
+	public Promise<SerialSupplier<CommitEntry>> getCommitsSupplier(RepoID repositoryId, Set<CommitId> thatBases, Set<CommitId> thatHeads) {
 		checkArgument(!hasIntersection(thatBases, thatHeads));
 		Set<CommitId> skipCommits = new HashSet<>(thatHeads);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
-				.thenCompose(thisHeads -> Stages.all(
+				.thenCompose(thisHeads -> Promises.all(
 						union(thisHeads.keySet(), thatBases, thatHeads)
 								.stream()
 								.map(commitId -> commitStorage.loadCommit(commitId)
@@ -165,14 +165,14 @@ public final class RawServerImpl implements RawServer, EventloopService {
 						.thenApply(SerialSupplier::of));
 	}
 
-	private Stage<RawCommitEntry> getNextStreamEntry(PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
+	private Promise<RawCommitEntry> getNextStreamEntry(PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
 			Set<CommitId> thatBases, Set<CommitId> thatHeads) {
-		return Stage.ofCallback(cb -> getNextStreamEntry(queue, skipCommits, thatBases, thatHeads, cb));
+		return Promise.ofCallback(cb -> getNextStreamEntry(queue, skipCommits, thatBases, thatHeads, cb));
 	}
 
 	private void getNextStreamEntry(PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
 			Set<CommitId> thatBases, Set<CommitId> thatHeads,
-			SettableStage<RawCommitEntry> cb) {
+			SettablePromise<RawCommitEntry> cb) {
 		if (queue.isEmpty() || queue.stream().map(RawCommitEntry::getCommitId).allMatch(skipCommits::contains)) {
 			cb.set(null);
 			return;
@@ -180,7 +180,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		RawCommitEntry entry = queue.poll();
 		boolean skipped = skipCommits.remove(entry.commitId);
 		Set<CommitId> nextCommitIds = entry.getRawCommit().getParents();
-		Stages.all(
+		Promises.all(
 				nextCommitIds
 						.stream()
 						.filter(nextCommitId -> !thatHeads.contains(nextCommitId))
@@ -203,12 +203,12 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
+	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
 		HeadsInfo headsInfo = new HeadsInfo(new HashSet<>(), new HashSet<>());
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
 				.thenApply(Map::keySet)
-				.thenCompose(thisHeads -> Stages.all(
+				.thenCompose(thisHeads -> Promises.all(
 						thisHeads
 								.stream()
 								.map(head -> commitStorage.loadCommit(head)
@@ -224,19 +224,19 @@ public final class RawServerImpl implements RawServer, EventloopService {
 						.thenApply($ -> headsInfo));
 	}
 
-	private void extractHeadInfoImpl(PriorityQueue<RawCommitEntry> queue, Set<CommitId> bases, SettableStage<Set<CommitId>> cb) {
+	private void extractHeadInfoImpl(PriorityQueue<RawCommitEntry> queue, Set<CommitId> bases, SettablePromise<Set<CommitId>> cb) {
 		RawCommitEntry entry = queue.poll();
 		if (entry == null) {
 			cb.set(bases);
 			return;
 		}
-		Stages.all(
+		Promises.all(
 				entry.rawCommit.getParents()
 						.stream()
 						.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
 						.map(parentId -> commitStorage.isCompleteCommit(parentId)
 								.thenCompose(isCompleteCommit -> isCompleteCommit ?
-										Stage.of(null) :
+										Promise.of(null) :
 										commitStorage.loadCommit(parentId)
 												.whenResult(optional -> {
 													if (optional.isPresent()) {
@@ -250,7 +250,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<SerialConsumer<CommitEntry>> upload(RepoID repositoryId) {
+	public Promise<SerialConsumer<CommitEntry>> upload(RepoID repositoryId) {
 		return commitStorage.getHeads(repositoryId)
 				.thenApply(Map::keySet)
 				.thenApply(thisHeads -> {
@@ -274,7 +274,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				});
 	}
 
-	public Stage<SerialConsumer<CommitEntry>> getStreamConsumer(RepoID repositoryId) {
+	public Promise<SerialConsumer<CommitEntry>> getStreamConsumer(RepoID repositoryId) {
 		return commitStorage.getHeads(repositoryId)
 				.thenApply(Map::keySet)
 				.thenApply(thisHeads -> {
@@ -298,7 +298,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				});
 	}
 
-	private Stage<Void> applyHeads(RepoID repositoryId, Heads heads) {
+	private Promise<Void> applyHeads(RepoID repositoryId, Heads heads) {
 		return commitStorage.applyHeads(repositoryId, heads.newHeads, heads.excludedHeads)
 				.whenResult($ -> {
 					if (!heads.newHeads.isEmpty()) ensureRepository(repositoryId).filterHeads();
@@ -306,30 +306,30 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
+	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return commitStorage.saveSnapshot(encryptedSnapshot)
 				.thenCompose(saved -> saved ?
 						ensureServers(repositoryId)
-								.thenCompose(servers -> Stages.any(servers.stream()
+								.thenCompose(servers -> Promises.any(servers.stream()
 										.map(server -> server.saveSnapshot(repositoryId, encryptedSnapshot)))) :
-						Stage.complete());
+						Promise.complete());
 	}
 
 	@Override
-	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
-		return Stages.firstSuccessful(
+	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
+		return Promises.firstSuccessful(
 				() -> commitStorage.loadSnapshot(repositoryId, commitId)
-						.thenCompose(Stage::ofOptional),
+						.thenCompose(Promise::ofOptional),
 				() -> ensureServers(repositoryId)
-						.thenCompose(servers -> Stages.firstSuccessful(
+						.thenCompose(servers -> Promises.firstSuccessful(
 								servers.stream()
 										.map(server -> server.loadSnapshot(repositoryId, commitId)
-												.thenCompose(Stage::ofOptional)))))
+												.thenCompose(Promise::ofOptional)))))
 				.thenApplyEx((maybeResult, e) -> e == null ? Optional.of(maybeResult) : Optional.empty());
 	}
 
 	@Override
-	public Stage<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
+	public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
 		return commitStorage.getHeads(repositoryId)
 				.thenCompose(heads -> excludeParents(union(heads.keySet(), remoteHeads))
 						.thenApply(excludedHeads -> new Heads(
@@ -339,9 +339,9 @@ public final class RawServerImpl implements RawServer, EventloopService {
 								excludedHeads)));
 	}
 
-	public Stage<Set<CommitId>> excludeParents(Set<CommitId> heads) {
+	public Promise<Set<CommitId>> excludeParents(Set<CommitId> heads) {
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
-		return Stages.all(heads.stream()
+		return Promises.all(heads.stream()
 				.map(head -> commitStorage.loadCommit(head)
 						.whenResult(optional -> optional.ifPresent(rawCommit ->
 								queue.add(new RawCommitEntry(head, rawCommit))))))
@@ -356,14 +356,14 @@ public final class RawServerImpl implements RawServer, EventloopService {
 
 	private void doExcludeParents(PriorityQueue<RawCommitEntry> queue, long minLevel,
 			Set<CommitId> resultHeads,
-			SettableStage<Set<CommitId>> cb) {
+			SettablePromise<Set<CommitId>> cb) {
 		RawCommitEntry entry = queue.poll();
 		if (entry == null || entry.rawCommit.getLevel() < minLevel) {
 			cb.set(resultHeads);
 			return;
 		}
 		resultHeads.removeAll(entry.rawCommit.getParents());
-		Stages.all(
+		Promises.all(
 				entry.rawCommit.getParents()
 						.stream()
 						.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
@@ -380,34 +380,34 @@ public final class RawServerImpl implements RawServer, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
+	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
 		ensureSharedKeysDb(simKey.getData().getReceiver())
 				.computeIfAbsent(owner, $ -> new HashMap<>())
 				.put(simKey.getData().getHash(), simKey);
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash simKeyHash) {
-		return Stage.of(Optional.ofNullable(
+	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash simKeyHash) {
+		return Promise.of(Optional.ofNullable(
 				ensureSharedKeysDb(receiver)
 						.getOrDefault(owner, emptyMap())
 						.get(simKeyHash)));
 	}
 
 	@Override
-	public Stage<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
+	public Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
 		return commitStorage.savePullRequest(pullRequest)
 				.thenCompose(saveStatus -> saveStatus ?
 						ensureServers(pullRequest.getData().repository)
-								.thenCompose(servers -> Stages.any(
+								.thenCompose(servers -> Promises.any(
 										servers.stream().map(server -> server.sendPullRequest(pullRequest))
 								)) :
-						Stage.complete());
+						Promise.complete());
 	}
 
 	@Override
-	public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
+	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
 		return ensureRepository(repositoryId)
 				.update()
 				.thenCompose($ -> commitStorage.getPullRequests(repositoryId));
@@ -430,13 +430,13 @@ public final class RawServerImpl implements RawServer, EventloopService {
 			return repositories.computeIfAbsent(repositoryId, RepositoryEntry::new);
 		}
 
-		public Stage<List<RawServer>> ensureServers() {
+		public Promise<List<RawServer>> ensureServers() {
 			return ensureServers.get();
 		}
 
-		private Stage<List<RawServer>> doEnsureServers() {
+		private Promise<List<RawServer>> doEnsureServers() {
 			if (updateServersTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
-				return Stage.of(getServers());
+				return Promise.of(getServers());
 			}
 			return discoveryService.findServers(pubKey)
 					.whenResult(announceData -> {
@@ -452,8 +452,8 @@ public final class RawServerImpl implements RawServer, EventloopService {
 					.thenApply($ -> getServers());
 		}
 
-		public Stage<Void> forEach(Function<RepositoryEntry, Stage<Void>> fn) {
-			return Stages.all(repositories.values().stream().map(fn));
+		public Promise<Void> forEach(Function<RepositoryEntry, Promise<Void>> fn) {
+			return Promises.all(repositories.values().stream().map(fn));
 		}
 
 		public List<RawServer> getServers() {
@@ -477,76 +477,76 @@ public final class RawServerImpl implements RawServer, EventloopService {
 				this.repositoryId = repositoryId;
 			}
 
-			public Stage<Void> update() {
+			public Promise<Void> update() {
 				return update.get();
 			}
 
-			public Stage<Void> updateHeads() {
+			public Promise<Void> updateHeads() {
 				return updateHeads.get();
 			}
 
-			public Stage<Void> updatePullRequests() {
+			public Promise<Void> updatePullRequests() {
 				return updatePullRequests.get();
 			}
 
-			public Stage<Void> fetch() {
+			public Promise<Void> fetch() {
 				return fetch.get();
 			}
 
-			public Stage<Void> catchUp() {
+			public Promise<Void> catchUp() {
 				return catchUp.get();
 			}
 
-			public Stage<Void> filterHeads() {
+			public Promise<Void> filterHeads() {
 				return filterHeads.get();
 			}
 
-			public Stage<Void> push() {
+			public Promise<Void> push() {
 				return push.get();
 			}
 
-			private Stage<Void> doUpdate() {
+			private Promise<Void> doUpdate() {
 				if (updateTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
-					return Stage.complete();
+					return Promise.complete();
 				}
-				return Stages.all(updateHeads(), updatePullRequests())
+				return Promises.all(updateHeads(), updatePullRequests())
 						.whenResult($ -> this.updateTimestamp = now.currentTimeMillis());
 			}
 
-			private Stage<Void> doUpdateHeads() {
+			private Promise<Void> doUpdateHeads() {
 				return ensureServers()
 						.thenCompose(servers -> commitStorage.getHeads(repositoryId)
-								.thenCompose(heads -> Stages.firstSuccessful(
+								.thenCompose(heads -> Promises.firstSuccessful(
 										servers.stream().map(server -> server.getHeads(repositoryId, heads.keySet()))))
 								.thenCompose(headsDelta ->
 										commitStorage.applyHeads(repositoryId, headsDelta.newHeads, headsDelta.excludedHeads)));
 			}
 
-			private Stage<Void> doUpdatePullRequests() {
+			private Promise<Void> doUpdatePullRequests() {
 				return ensureServers()
-						.thenCompose(servers -> Stages.firstSuccessful(
+						.thenCompose(servers -> Promises.firstSuccessful(
 								servers.stream().map(server -> server.getPullRequests(repositoryId))))
-						.thenCompose(pullRequests -> Stages.all(
+						.thenCompose(pullRequests -> Promises.all(
 								pullRequests.stream().map(commitStorage::savePullRequest)))
 						.toVoid();
 			}
 
-			private Stage<Void> doFetch() {
+			private Promise<Void> doFetch() {
 				return ensureServers()
-						.thenCompose(servers -> Stages.firstSuccessful(servers.stream().map(this::doFetch)));
+						.thenCompose(servers -> Promises.firstSuccessful(servers.stream().map(this::doFetch)));
 			}
 
-			private Stage<Void> doFetch(RawServer server) {
+			private Promise<Void> doFetch(RawServer server) {
 				return getHeadsInfo(repositoryId)
 						.thenCompose(headsInfo -> server.downloader(repositoryId, headsInfo.bases, headsInfo.heads)
-								.streamTo(SerialConsumer.ofStage(getStreamConsumer(repositoryId))));
+								.streamTo(SerialConsumer.ofPromise(getStreamConsumer(repositoryId))));
 			}
 
-			private Stage<Void> doCatchUp() {
-				return Stage.ofCallback(this::doCatchUp);
+			private Promise<Void> doCatchUp() {
+				return Promise.ofCallback(this::doCatchUp);
 			}
 
-			private void doCatchUp(SettableStage<Void> cb) {
+			private void doCatchUp(SettablePromise<Void> cb) {
 				long timestampBegin = now.currentTimeMillis();
 				fetch()
 						.thenCompose($ -> commitStorage.markCompleteCommits())
@@ -561,21 +561,21 @@ public final class RawServerImpl implements RawServer, EventloopService {
 						.whenException(cb::setException);
 			}
 
-			private Stage<Void> doFilterHeads() {
+			private Promise<Void> doFilterHeads() {
 				return commitStorage.getHeads(repositoryId)
 						.thenCompose(heads -> excludeParents(heads.keySet())
 								.thenCompose(excludedHeadIds -> commitStorage.applyHeads(repositoryId, emptySet(), excludedHeadIds)))
 						.toVoid();
 			}
 
-			private Stage<Void> doPush() {
+			private Promise<Void> doPush() {
 				return ensureServers()
-						.thenCompose(servers -> Stages.all(servers.stream().map(this::doPush).map(Stage::toTry)));
+						.thenCompose(servers -> Promises.all(servers.stream().map(this::doPush).map(Promise::toTry)));
 			}
 
-			private Stage<Void> doPush(RawServer server) {
+			private Promise<Void> doPush(RawServer server) {
 				return server.getHeadsInfo(repositoryId)
-						.thenCompose(headsInfo -> SerialSupplier.ofStage(
+						.thenCompose(headsInfo -> SerialSupplier.ofPromise(
 								getCommitsSupplier(repositoryId, headsInfo.bases, headsInfo.heads))
 								.streamTo(server.uploader(repositoryId)));
 			}

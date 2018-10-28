@@ -2,14 +2,14 @@ package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.RemoteFsChunkStorage;
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemoteEx;
@@ -40,9 +40,9 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 
 	private final CubeDiffScheme<D> cubeDiffScheme;
 
-	private final StageStats stageBackup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageBackupDb = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageBackupChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseBackup = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseBackupDb = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseBackupChunks = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	CubeBackupController(Eventloop eventloop,
 			CubeDiffScheme<D> cubeDiffScheme,
@@ -64,41 +64,41 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 
 	private final AsyncSupplier<Void> backup = reuse(this::backupHead);
 
-	public Stage<Void> backup() {
+	public Promise<Void> backup() {
 		return backup.get();
 	}
 
-	public Stage<Void> backupHead() {
+	public Promise<Void> backupHead() {
 		return remote.getHeads()
 				.thenCompose(heads -> {
 					if (heads.isEmpty()) {
-						return Stage.ofException(new IllegalArgumentException("heads is empty"));
+						return Promise.ofException(new IllegalArgumentException("heads is empty"));
 					}
 					return backup(first(heads));
 				})
-				.whenComplete(stageBackup.recordStats())
+				.whenComplete(promiseBackup.recordStats())
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
-	public Stage<Void> backup(K commitId) {
-		return Stages.toTuple(remote.loadCommit(commitId), algorithms.checkout(commitId))
-				.thenCompose(tuple -> Stages.runSequence(
+	public Promise<Void> backup(K commitId) {
+		return Promises.toTuple(remote.loadCommit(commitId), algorithms.checkout(commitId))
+				.thenCompose(tuple -> Promises.runSequence(
 						AsyncSupplier.of(() -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2()))),
 						AsyncSupplier.of(() -> backupDb(tuple.getValue1(), tuple.getValue2()))))
 				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 
-	private Stage<Void> backupChunks(K commitId, Set<C> chunkIds) {
+	private Promise<Void> backupChunks(K commitId, Set<C> chunkIds) {
 		return storage.backup(String.valueOf(commitId), chunkIds)
-				.whenComplete(stageBackupChunks.recordStats())
+				.whenComplete(promiseBackupChunks.recordStats())
 				.whenComplete(logger.isTraceEnabled() ?
 						toLogger(logger, TRACE, thisMethod(), chunkIds) :
 						toLogger(logger, thisMethod(), toLimitedString(chunkIds, 6)));
 	}
 
-	private Stage<Void> backupDb(OTCommit<K, D> commit, List<D> snapshot) {
+	private Promise<Void> backupDb(OTCommit<K, D> commit, List<D> snapshot) {
 		return remote.backup(commit, snapshot)
-				.whenComplete(stageBackupDb.recordStats())
+				.whenComplete(promiseBackupDb.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), commit, snapshot));
 	}
 
@@ -113,18 +113,18 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	}
 
 	@JmxAttribute
-	public StageStats getStageBackup() {
-		return stageBackup;
+	public PromiseStats getPromiseBackup() {
+		return promiseBackup;
 	}
 
 	@JmxAttribute
-	public StageStats getStageBackupDb() {
-		return stageBackupDb;
+	public PromiseStats getPromiseBackupDb() {
+		return promiseBackupDb;
 	}
 
 	@JmxAttribute
-	public StageStats getStageBackupChunks() {
-		return stageBackupChunks;
+	public PromiseStats getPromiseBackupChunks() {
+		return promiseBackupChunks;
 	}
 
 }

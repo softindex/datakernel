@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcRemoteException;
@@ -71,9 +71,9 @@ public class RpcHelloWorldTest {
 			try {
 				result = helloService.hello(request.name);
 			} catch (Exception e) {
-				return Stage.ofException((Throwable) e);
+				return Promise.ofException((Throwable) e);
 			}
-			return Stage.of(new HelloResponse(result));
+			return Promise.of(new HelloResponse(result));
 		};
 	}
 

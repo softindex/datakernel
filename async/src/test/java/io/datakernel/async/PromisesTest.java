@@ -18,7 +18,7 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.util.*;
 import org.junit.Rule;
 import org.junit.Test;
@@ -34,15 +34,15 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static junit.framework.TestCase.*;
 
-public class StagesTest {
+public class PromisesTest {
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError()).withCurrentThread();
 
 	@Test
 	public void toListEmptyTest() {
-		eventloop.post(() -> Stages.toList()
+		eventloop.post(() -> Promises.toList()
 				.whenComplete(assertComplete(list -> {
 					assertEquals(0, list.size());
 					// asserting immutability
@@ -58,7 +58,7 @@ public class StagesTest {
 
 	@Test
 	public void toListSingleTest() {
-		eventloop.post(() -> Stages.toList(Stage.of(321))
+		eventloop.post(() -> Promises.toList(Promise.of(321))
 				.whenComplete(assertComplete(list -> {
 					assertEquals(1, list.size());
 
@@ -73,7 +73,7 @@ public class StagesTest {
 
 	@Test
 	public void varargsToListTest() {
-		eventloop.post(() -> Stages.toList(Stage.of(321), Stage.of(322), Stage.of(323))
+		eventloop.post(() -> Promises.toList(Promise.of(321), Promise.of(322), Promise.of(323))
 				.whenComplete(assertComplete(list -> {
 					assertEquals(3, list.size());
 
@@ -88,7 +88,7 @@ public class StagesTest {
 
 	@Test
 	public void streamToListTest() {
-		eventloop.post(() -> Stages.toList(Stream.of(Stage.of(321), Stage.of(322), Stage.of(323)))
+		eventloop.post(() -> Promises.toList(Stream.of(Promise.of(321), Promise.of(322), Promise.of(323)))
 				.whenComplete(assertComplete(list -> {
 					assertEquals(3, list.size());
 
@@ -103,7 +103,7 @@ public class StagesTest {
 
 	@Test
 	public void listToListTest() {
-		eventloop.post(() -> Stages.toList(asList(Stage.of(321), Stage.of(322), Stage.of(323)))
+		eventloop.post(() -> Promises.toList(asList(Promise.of(321), Promise.of(322), Promise.of(323)))
 				.whenComplete(assertComplete(list -> {
 					assertEquals(3, list.size());
 
@@ -118,14 +118,14 @@ public class StagesTest {
 
 	@Test
 	public void toArrayEmptyTest() {
-		eventloop.post(() -> Stages.toArray(Object.class)
+		eventloop.post(() -> Promises.toArray(Object.class)
 				.whenComplete(assertComplete(array -> assertEquals(0, array.length))));
 		eventloop.run();
 	}
 
 	@Test
 	public void toArraySingleTest() {
-		eventloop.post(() -> Stages.toArray(Integer.class, Stage.of(321))
+		eventloop.post(() -> Promises.toArray(Integer.class, Promise.of(321))
 				.whenComplete(assertComplete(array -> {
 					assertEquals(1, array.length);
 					assertEquals(new Integer(321), array[0]);
@@ -135,7 +135,7 @@ public class StagesTest {
 
 	@Test
 	public void arraytoArrayDoubleTest() {
-		eventloop.post(() -> Stages.toArray(Integer.class, Stage.of(321), Stage.of(322))
+		eventloop.post(() -> Promises.toArray(Integer.class, Promise.of(321), Promise.of(322))
 				.whenComplete(assertComplete(array -> {
 					assertEquals(2, array.length);
 					assertEquals(new Integer(321), array[0]);
@@ -146,7 +146,7 @@ public class StagesTest {
 
 	@Test
 	public void varargsToArrayDoubleTest() {
-		eventloop.post(() -> Stages.toArray(Integer.class, Stage.of(321), Stage.of(322), Stage.of(323))
+		eventloop.post(() -> Promises.toArray(Integer.class, Promise.of(321), Promise.of(322), Promise.of(323))
 				.whenComplete(assertComplete(array -> {
 					assertEquals(3, array.length);
 					assertEquals(new Integer(321), array[0]);
@@ -158,7 +158,7 @@ public class StagesTest {
 
 	@Test
 	public void streamToArrayDoubleTest() {
-		eventloop.post(() -> Stages.toArray(Integer.class, Stream.of(Stage.of(321), Stage.of(322), Stage.of(323)))
+		eventloop.post(() -> Promises.toArray(Integer.class, Stream.of(Promise.of(321), Promise.of(322), Promise.of(323)))
 				.whenComplete(assertComplete(array -> {
 					assertEquals(3, array.length);
 					assertEquals(new Integer(321), array[0]);
@@ -170,7 +170,7 @@ public class StagesTest {
 
 	@Test
 	public void listToArrayDoubleTest() {
-		eventloop.post(() -> Stages.toArray(Integer.class, asList(Stage.of(321), Stage.of(322), Stage.of(323)))
+		eventloop.post(() -> Promises.toArray(Integer.class, asList(Promise.of(321), Promise.of(322), Promise.of(323)))
 				.whenComplete(assertComplete(array -> {
 					assertEquals(3, array.length);
 					assertEquals(new Integer(321), array[0]);
@@ -182,21 +182,21 @@ public class StagesTest {
 
 	@Test
 	public void toTuple1Test() {
-		eventloop.post(() -> Stages.toTuple(Tuple1::new, Stage.of(321))
+		eventloop.post(() -> Promises.toTuple(Tuple1::new, Promise.of(321))
 				.whenComplete(assertComplete(value -> assertEquals(new Integer(321), value.getValue1())))
-				.thenCompose($ -> Stages.toTuple(Stage.of(321))
+				.thenCompose($ -> Promises.toTuple(Promise.of(321))
 						.whenComplete(assertComplete(value -> assertEquals(new Integer(321), value.getValue1())))));
 		eventloop.run();
 	}
 
 	@Test
 	public void toTuple2Test() {
-		eventloop.post(() -> Stages.toTuple(Tuple2::new, Stage.of(321), Stage.of("322"))
+		eventloop.post(() -> Promises.toTuple(Tuple2::new, Promise.of(321), Promise.of("322"))
 				.whenComplete(assertComplete(value -> {
 					assertEquals(new Integer(321), value.getValue1());
 					assertEquals("322", value.getValue2());
 				}))
-				.thenCompose($ -> Stages.toTuple(Stage.of(321), Stage.of("322"))
+				.thenCompose($ -> Promises.toTuple(Promise.of(321), Promise.of("322"))
 						.whenComplete(assertComplete(value -> {
 							assertEquals(new Integer(321), value.getValue1());
 							assertEquals("322", value.getValue2());
@@ -206,13 +206,13 @@ public class StagesTest {
 
 	@Test
 	public void toTuple3Test() {
-		eventloop.post(() -> Stages.toTuple(Tuple3::new, Stage.of(321), Stage.of("322"), Stage.of(323.34))
+		eventloop.post(() -> Promises.toTuple(Tuple3::new, Promise.of(321), Promise.of("322"), Promise.of(323.34))
 				.whenComplete(assertComplete(value -> {
 					assertEquals(new Integer(321), value.getValue1());
 					assertEquals("322", value.getValue2());
 					assertEquals(323.34, value.getValue3());
 				}))
-				.thenCompose($ -> Stages.toTuple(Stage.of(321), Stage.of("322"), Stage.of(323.34))
+				.thenCompose($ -> Promises.toTuple(Promise.of(321), Promise.of("322"), Promise.of(323.34))
 						.whenComplete(assertComplete(value -> {
 							assertEquals(new Integer(321), value.getValue1());
 							assertEquals("322", value.getValue2());
@@ -223,14 +223,14 @@ public class StagesTest {
 
 	@Test
 	public void toTuple4Test() {
-		eventloop.post(() -> Stages.toTuple(Tuple4::new, Stage.of(321), Stage.of("322"), Stage.of(323.34), Stage.of(Duration.ofMillis(324)))
+		eventloop.post(() -> Promises.toTuple(Tuple4::new, Promise.of(321), Promise.of("322"), Promise.of(323.34), Promise.of(Duration.ofMillis(324)))
 				.whenComplete(assertComplete(value -> {
 					assertEquals(new Integer(321), value.getValue1());
 					assertEquals("322", value.getValue2());
 					assertEquals(323.34, value.getValue3());
 					assertEquals(Duration.ofMillis(324), value.getValue4());
 				}))
-				.thenCompose($ -> Stages.toTuple(Stage.of(321), Stage.of("322"), Stage.of(323.34), Stage.of(Duration.ofMillis(324)))
+				.thenCompose($ -> Promises.toTuple(Promise.of(321), Promise.of("322"), Promise.of(323.34), Promise.of(Duration.ofMillis(324)))
 						.whenComplete(assertComplete(value -> {
 							assertEquals(new Integer(321), value.getValue1());
 							assertEquals("322", value.getValue2());
@@ -242,7 +242,7 @@ public class StagesTest {
 
 	@Test
 	public void toTuple5Test() {
-		eventloop.post(() -> Stages.toTuple(Tuple5::new, Stage.of(321), Stage.of("322"), Stage.of(323.34), Stage.of(Duration.ofMillis(324)), Stage.of(1))
+		eventloop.post(() -> Promises.toTuple(Tuple5::new, Promise.of(321), Promise.of("322"), Promise.of(323.34), Promise.of(Duration.ofMillis(324)), Promise.of(1))
 				.whenComplete(assertComplete(value -> {
 					assertEquals(new Integer(321), value.getValue1());
 					assertEquals("322", value.getValue2());
@@ -250,7 +250,7 @@ public class StagesTest {
 					assertEquals(Duration.ofMillis(324), value.getValue4());
 					assertEquals(new Integer(1), value.getValue5());
 				}))
-				.thenCompose($ -> Stages.toTuple(Stage.of(321), Stage.of("322"), Stage.of(323.34), Stage.of(Duration.ofMillis(324)), Stage.of(1)))
+				.thenCompose($ -> Promises.toTuple(Promise.of(321), Promise.of("322"), Promise.of(323.34), Promise.of(Duration.ofMillis(324)), Promise.of(1)))
 				.whenComplete(assertComplete(value -> {
 					assertEquals(new Integer(321), value.getValue1());
 					assertEquals("322", value.getValue2());
@@ -263,7 +263,7 @@ public class StagesTest {
 
 	@Test
 	public void toTuple6Test() {
-		eventloop.post(() -> Stages.toTuple(Tuple6::new, Stage.of(321), Stage.of("322"), Stage.of(323.34), Stage.of(Duration.ofMillis(324)), Stage.of(1), Stage.of(null))
+		eventloop.post(() -> Promises.toTuple(Tuple6::new, Promise.of(321), Promise.of("322"), Promise.of(323.34), Promise.of(Duration.ofMillis(324)), Promise.of(1), Promise.of(null))
 				.whenComplete(assertComplete(value -> {
 					assertEquals(new Integer(321), value.getValue1());
 					assertEquals("322", value.getValue2());
@@ -272,7 +272,7 @@ public class StagesTest {
 					assertEquals(new Integer(1), value.getValue5());
 					assertNull(value.getValue6());
 				}))
-				.thenCompose($ -> Stages.toTuple(Stage.of(321), Stage.of("322"), Stage.of(323.34), Stage.of(Duration.ofMillis(324)), Stage.of(1), Stage.of(null)))
+				.thenCompose($ -> Promises.toTuple(Promise.of(321), Promise.of("322"), Promise.of(323.34), Promise.of(Duration.ofMillis(324)), Promise.of(1), Promise.of(null)))
 				.whenComplete(assertComplete(value -> {
 					assertEquals(new Integer(321), value.getValue1());
 					assertEquals("322", value.getValue2());
@@ -287,7 +287,7 @@ public class StagesTest {
 	@Test
 	public void testCollectWithListener() {
 		CollectListener<Object, Object[], List<Object>> any = (canceller, accumulator) -> {};
-		eventloop.post(() -> Stages.collect(IndexedCollector.toList(), any, asList(Stage.of(1), Stage.of(2), Stage.of(3)))
+		eventloop.post(() -> Promises.collect(IndexedCollector.toList(), any, asList(Promise.of(1), Promise.of(2), Promise.of(3)))
 				.whenComplete(assertComplete(list -> assertEquals(3, list.size()))));
 
 		eventloop.run();
@@ -295,7 +295,7 @@ public class StagesTest {
 
 	@Test
 	public void testCollectStream() {
-		eventloop.post(() -> Stages.collect(toList(), Stream.of(Stage.of(1), Stage.of(2), Stage.of(3)))
+		eventloop.post(() -> Promises.collect(toList(), Stream.of(Promise.of(1), Promise.of(2), Promise.of(3)))
 				.whenComplete(assertComplete(list -> assertEquals(3, list.size()))));
 
 		eventloop.run();
@@ -304,13 +304,13 @@ public class StagesTest {
 	@Test
 	public void testRepeat() {
 		AtomicInteger counter = new AtomicInteger(0);
-		eventloop.post(() -> Stages.repeat(() -> Stage.complete()
+		eventloop.post(() -> Promises.repeat(() -> Promise.complete()
 				.thenCompose($ -> {
 					if (counter.get() == 5) {
-						return Stage.ofException(new Exception());
+						return Promise.ofException(new Exception());
 					}
 					counter.incrementAndGet();
-					return Stage.of($);
+					return Promise.of($);
 				})
 				.whenResult($ -> System.out.println(counter)))
 				.whenComplete(assertFailure(Exception.class))

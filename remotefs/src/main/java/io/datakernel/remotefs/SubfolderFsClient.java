@@ -1,6 +1,6 @@
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -24,17 +24,17 @@ class SubfolderFsClient implements FsClient {
 	}
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		return parent.upload(folder + filename, offset);
 	}
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		return parent.download(folder + filename, offset, length);
 	}
 
 	@Override
-	public Stage<Set<String>> move(Map<String, String> changes) {
+	public Promise<Set<String>> move(Map<String, String> changes) {
 		return parent.move(changes)
 				.thenApply(set ->
 						set.stream()
@@ -43,7 +43,7 @@ class SubfolderFsClient implements FsClient {
 	}
 
 	@Override
-	public Stage<Set<String>> copy(Map<String, String> changes) {
+	public Promise<Set<String>> copy(Map<String, String> changes) {
 		return parent.copy(changes)
 				.thenApply(set ->
 						set.stream()
@@ -52,7 +52,7 @@ class SubfolderFsClient implements FsClient {
 	}
 
 	@Override
-	public Stage<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(String glob) {
 		return parent.list(folder + glob)
 				.thenApply(list ->
 						list.stream()
@@ -64,12 +64,12 @@ class SubfolderFsClient implements FsClient {
 	}
 
 	@Override
-	public Stage<Void> ping() {
+	public Promise<Void> ping() {
 		return parent.ping();
 	}
 
 	@Override
-	public Stage<Void> delete(String glob) {
+	public Promise<Void> delete(String glob) {
 		return parent.delete(folder + glob);
 	}
 

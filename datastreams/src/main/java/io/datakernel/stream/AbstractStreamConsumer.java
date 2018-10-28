@@ -17,9 +17,9 @@
 package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
@@ -46,8 +46,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	private StreamSupplier<T> supplier;
 
-	private final SettableStage<Void> endOfStream = new SettableStage<>();
-	private final SettableStage<Void> acknowledgement = new SettableStage<>();
+	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
+	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 	/**
 	 * Sets wired supplier. It will sent data to this consumer
@@ -94,7 +94,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		eventloop.post(this::cleanup);
 	}
 
-	protected abstract Stage<Void> onEndOfStream();
+	protected abstract Promise<Void> onEndOfStream();
 
 	@Override
 	public final void close(Throwable e) {
@@ -114,12 +114,12 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected void cleanup() {
 	}
 
-	public MaterializedStage<Void> getEndOfStream() {
+	public MaterializedPromise<Void> getEndOfStream() {
 		return endOfStream;
 	}
 
 	@Override
-	public final MaterializedStage<Void> getAcknowledgement() {
+	public final MaterializedPromise<Void> getAcknowledgement() {
 		return acknowledgement;
 	}
 

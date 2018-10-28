@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.*;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -58,10 +58,10 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	}
 
 	@SuppressWarnings("unchecked")
-	private Stage<Object> apply(Object request) {
+	private Promise<Object> apply(Object request) {
 		RpcRequestHandler requestHandler = handlers.get(request.getClass());
 		if (requestHandler == null) {
-			return Stage.ofException(new ParseException(RpcServerConnection.class, "Failed to process request " + request));
+			return Promise.ofException(new ParseException(RpcServerConnection.class, "Failed to process request " + request));
 		}
 		return requestHandler.run(request);
 	}

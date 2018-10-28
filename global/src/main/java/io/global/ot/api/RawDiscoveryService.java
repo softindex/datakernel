@@ -16,12 +16,12 @@
 
 package io.global.ot.api;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 
 public interface RawDiscoveryService {
-	Stage<SignedData<RawAnnounceData>> findServers(PubKey pubKey);
+	Promise<SignedData<RawAnnounceData>> findServers(PubKey pubKey);
 
-	Stage<Void> announce(SignedData<RawAnnounceData> announceData);
+	Promise<Void> announce(SignedData<RawAnnounceData> announceData);
 }

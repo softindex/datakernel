@@ -16,7 +16,7 @@
 
 package io.datakernel.datagraph.server;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.command.DatagraphCommand;
@@ -60,7 +60,7 @@ public final class DatagraphClient {
 		this.serializer = ofJson(serialization.responseAdapter, serialization.commandAdapter);
 	}
 
-	public <T> Stage<StreamSupplier<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
+	public <T> Promise<StreamSupplier<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
 		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
 				.thenCompose(socket -> {
 					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
@@ -75,7 +75,7 @@ public final class DatagraphClient {
 				});
 	}
 
-	public Stage<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
+	public Promise<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
 		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
 				.thenCompose(socket -> {
 					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);

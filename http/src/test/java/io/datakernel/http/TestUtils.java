@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.serial.AbstractSerialConsumer;
@@ -97,7 +97,7 @@ public class TestUtils {
 		}
 
 		@Override
-		protected Stage<Void> doAccept(@Nullable ByteBuf value) {
+		protected Promise<Void> doAccept(@Nullable ByteBuf value) {
 			if (value != null) {
 				queue.add(value);
 			} else {
@@ -121,7 +121,7 @@ public class TestUtils {
 				}
 				executed = true;
 			}
-			return Stage.complete();
+			return Promise.complete();
 		}
 
 		@Override

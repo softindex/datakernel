@@ -17,8 +17,8 @@
 package io.global.ot.server;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.exception.ToDoException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -30,8 +30,8 @@ import java.util.Map;
 
 final class RawCommitCache implements AsyncConsumer<RawCommitEntry> {
 	private final Map<CommitId, RawCommit> preloadedCommits = new HashMap<>();
-	private final Map<CommitId, SettableStage<RawCommit>> pendingStages = new HashMap<>();
-	private SettableStage<Void> acceptStage;
+	private final Map<CommitId, SettablePromise<RawCommit>> pendingPromises = new HashMap<>();
+	private SettablePromise<Void> acceptPromise;
 
 	public RawCommitCache() {
 	}
@@ -45,44 +45,44 @@ final class RawCommitCache implements AsyncConsumer<RawCommitEntry> {
 	}
 
 	public void onEndOfStream() {
-		closePendingStages(new ToDoException());
+		closePendingPromises(new ToDoException());
 	}
 
 	public void onError(Throwable throwable) {
-		closePendingStages(throwable);
+		closePendingPromises(throwable);
 		preloadedCommits.clear();
 	}
 
-	private void closePendingStages(Throwable throwable) {
-		pendingStages.values().forEach(pendingStage -> pendingStage.setException(throwable));
-		pendingStages.clear();
+	private void closePendingPromises(Throwable throwable) {
+		pendingPromises.values().forEach(pendingPromise -> pendingPromise.setException(throwable));
+		pendingPromises.clear();
 	}
 
 	@Override
-	public Stage<Void> accept(RawCommitEntry entry) {
-		SettableStage<RawCommit> pendingStage = pendingStages.remove(entry.commitId);
-		if (pendingStage != null) {
-			pendingStage.set(entry.rawCommit);
-			return Stage.complete();
+	public Promise<Void> accept(RawCommitEntry entry) {
+		SettablePromise<RawCommit> pendingPromise = pendingPromises.remove(entry.commitId);
+		if (pendingPromise != null) {
+			pendingPromise.set(entry.rawCommit);
+			return Promise.complete();
 		}
 		preloadedCommits.put(entry.commitId, entry.rawCommit);
-		if (acceptStage != null) {
-			acceptStage = new SettableStage<>();
+		if (acceptPromise != null) {
+			acceptPromise = new SettablePromise<>();
 		}
-		return acceptStage;
+		return acceptPromise;
 	}
 
-	public Stage<RawCommit> loadCommit(CommitId commitId) {
+	public Promise<RawCommit> loadCommit(CommitId commitId) {
 		RawCommit rawCommit = preloadedCommits.remove(commitId);
 		if (rawCommit != null) {
-			return Stage.of(rawCommit);
+			return Promise.of(rawCommit);
 		}
-		if (acceptStage != null) {
-			acceptStage.post(null);
-			acceptStage = null;
+		if (acceptPromise != null) {
+			acceptPromise.post(null);
+			acceptPromise = null;
 		}
-		SettableStage<RawCommit> pendingStage = new SettableStage<>();
-		pendingStages.put(commitId, pendingStage);
-		return pendingStage;
+		SettablePromise<RawCommit> pendingPromise = new SettablePromise<>();
+		pendingPromises.put(commitId, pendingPromise);
+		return pendingPromise;
 	}
 }

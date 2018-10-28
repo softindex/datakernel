@@ -17,7 +17,7 @@
 package io.datakernel.serial.net;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -58,13 +58,13 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 						.thenCompose(buf -> {
 							if (buf != null) {
 								bufs.add(buf);
-								return Stage.complete();
+								return Promise.complete();
 							} else {
-								return Stage.ofException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
+								return Promise.ofException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
 							}
 						})
 						.whenException(this::close),
-				Stage::complete,
+				Promise::complete,
 				this);
 	}
 
@@ -92,19 +92,19 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	}
 
 	@Override
-	public Stage<I> receive() {
+	public Promise<I> receive() {
 		return bufsSupplier.parse(serializer)
 				.whenResult($ -> prefetch())
 				.whenException(this::close);
 	}
 
 	@Override
-	public Stage<Void> send(O msg) {
+	public Promise<Void> send(O msg) {
 		return socket.write(serializer.serialize(msg));
 	}
 
 	@Override
-	public Stage<Void> sendEndOfStream() {
+	public Promise<Void> sendEndOfStream() {
 		return socket.write(null)
 				.whenResult($ -> {
 					writeDone = true;

@@ -18,8 +18,8 @@ package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.lang.Integer.numberOfLeadingZeros;
@@ -36,9 +36,9 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	private final int bufferMaxSize;
 
 	@Nullable
-	private SettableStage<Void> put;
+	private SettablePromise<Void> put;
 	@Nullable
-	private SettableStage<T> take;
+	private SettablePromise<T> take;
 
 	public SerialBuffer(int bufferSize) {
 		this(0, bufferSize);
@@ -87,7 +87,7 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 		if (exception == null) {
 			if (take != null) {
 				assert isEmpty();
-				SettableStage<T> take = this.take;
+				SettablePromise<T> take = this.take;
 				this.take = null;
 				take.set(item);
 				if (exception != null) throw exception;
@@ -127,7 +127,7 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 
 		if (put != null && willBeExhausted()) {
 			T item = doPoll();
-			SettableStage<Void> put = this.put;
+			SettablePromise<Void> put = this.put;
 			this.put = null;
 			put.set(null);
 			return item;
@@ -147,53 +147,53 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Stage<Void> put(@Nullable T value) {
+	public Promise<Void> put(@Nullable T value) {
 		assert put == null;
 		if (exception == null) {
 			if (take != null) {
 				assert isEmpty();
-				SettableStage<T> take = this.take;
+				SettablePromise<T> take = this.take;
 				this.take = null;
 				take.set(value);
-				return Stage.complete();
+				return Promise.complete();
 			}
 
 			doAdd(value);
 
 			if (isSaturated()) {
-				put = new SettableStage<>();
+				put = new SettablePromise<>();
 				return put;
 			} else {
-				return Stage.complete();
+				return Promise.complete();
 			}
 		} else {
 			tryRecycle(value);
-			return Stage.ofException(exception);
+			return Promise.ofException(exception);
 		}
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Stage<T> take() {
+	public Promise<T> take() {
 		assert take == null;
 		if (exception == null) {
 			if (put != null && willBeExhausted()) {
 				assert !isEmpty();
 				T item = doPoll();
-				SettableStage<Void> put = this.put;
+				SettablePromise<Void> put = this.put;
 				this.put = null;
 				put.set(null);
-				return Stage.of(item);
+				return Promise.of(item);
 			}
 
 			if (!isEmpty()) {
-				return Stage.of(doPoll());
+				return Promise.of(doPoll());
 			}
 
-			take = new SettableStage<>();
+			take = new SettablePromise<>();
 			return take;
 		} else {
-			return Stage.ofException(exception);
+			return Promise.ofException(exception);
 		}
 	}
 

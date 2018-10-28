@@ -19,7 +19,7 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -217,7 +217,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	 * @return consumer for streaming data to aggregation
 	 */
 	@SuppressWarnings("unchecked")
-	public <T, C, K extends Comparable> Stage<AggregationDiff> consume(StreamSupplier<T> supplier,
+	public <T, C, K extends Comparable> Promise<AggregationDiff> consume(StreamSupplier<T> supplier,
 			Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields) {
 		checkArgument(new HashSet<>(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
 		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(), getMeasureTypes().keySet()));
@@ -249,7 +249,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 				.thenApply(chunks -> AggregationDiff.of(new HashSet<>(chunks)));
 	}
 
-	public <T> Stage<AggregationDiff> consume(StreamSupplier<T> supplier, Class<T> inputClass) {
+	public <T> Promise<AggregationDiff> consume(StreamSupplier<T> supplier, Class<T> inputClass) {
 		return consume(supplier, inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass));
 	}
 
@@ -300,7 +300,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 						Function.identity(), keyComparator, false, sorterItemsInMemory));
 	}
 
-	private Stage<List<AggregationChunk>> doConsolidation(List<AggregationChunk> chunksToConsolidate) {
+	private Promise<List<AggregationChunk>> doConsolidation(List<AggregationChunk> chunksToConsolidate) {
 		Set<String> aggregationFields = new HashSet<>(getMeasures());
 		Set<String> chunkFields = new HashSet<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
@@ -488,22 +488,22 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return state.findOverlappingChunks().size();
 	}
 
-	public Stage<AggregationDiff> consolidateMinKey() {
+	public Promise<AggregationDiff> consolidateMinKey() {
 		return doConsolidate(false);
 	}
 
-	public Stage<AggregationDiff> consolidateHotSegment() {
+	public Promise<AggregationDiff> consolidateHotSegment() {
 		return doConsolidate(true);
 	}
 
-	private Stage<AggregationDiff> doConsolidate(boolean hotSegment) {
+	private Promise<AggregationDiff> doConsolidate(boolean hotSegment) {
 		List<AggregationChunk> chunks = hotSegment ?
 				state.findChunksForConsolidationHotSegment(maxChunksToConsolidate) :
 				state.findChunksForConsolidationMinKey(maxChunksToConsolidate, chunkSize);
 
 		if (chunks.isEmpty()) {
 			logger.info("Nothing to consolidate in aggregation '{}", this);
-			return Stage.of(AggregationDiff.empty());
+			return Promise.of(AggregationDiff.empty());
 		}
 
 		logger.info("Starting consolidation of aggregation '{}'", this);

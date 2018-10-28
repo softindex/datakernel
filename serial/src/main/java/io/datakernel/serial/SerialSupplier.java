@@ -37,26 +37,26 @@ import static io.datakernel.util.Recyclable.deepRecycle;
 import static io.datakernel.util.Recyclable.tryRecycle;
 
 /**
- * This interface represents supplier of {@link Stage} of data that should be used serially (each consecutive {@link #get()})
+ * This interface represents supplier of {@link Promise} of data that should be used serially (each consecutive {@link #get()})
  * operation should be called only after previous {@link #get()} operation finishes.
  * <p>
- * After supplier is closed, all subsequent calls to {@link #get()} will return stage, completed exceptionally.
+ * After supplier is closed, all subsequent calls to {@link #get()} will return promise, completed exceptionally.
  * <p>
  * If any exception is caught while supplying data items, {@link #close(Throwable)} method should
  * be called. All resources should be freed and the caught exception should be propagated to all related processes.
  * <p>
- * If {@link #get()} returns {@link Stage} of {@code null}, it represents end-of-stream and means that no additional
+ * If {@link #get()} returns {@link Promise} of {@code null}, it represents end-of-stream and means that no additional
  * data should be querried.
  */
 public interface SerialSupplier<T> extends Cancellable {
-	Stage<T> get();
+	Promise<T> get();
 
 	static <T> SerialSupplier<T> ofConsumer(Consumer<SerialConsumer<T>> consumer, SerialQueue<T> queue) {
 		consumer.accept(queue.getConsumer());
 		return queue.getSupplier();
 	}
 
-	static <T> SerialSupplier<T> ofSupplier(Supplier<? extends Stage<T>> supplier) {
+	static <T> SerialSupplier<T> ofSupplier(Supplier<? extends Promise<T>> supplier) {
 		return of(AsyncSupplier.of(supplier));
 	}
 
@@ -67,7 +67,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	static <T> SerialSupplier<T> of(AsyncSupplier<T> supplier, @Nullable Cancellable cancellable) {
 		return new AbstractSerialSupplier<T>(cancellable) {
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				return supplier.get();
 			}
 		};
@@ -76,8 +76,8 @@ public interface SerialSupplier<T> extends Cancellable {
 	static <T> SerialSupplier<T> of() {
 		return new AbstractSerialSupplier<T>() {
 			@Override
-			protected Stage<T> doGet() {
-				return Stage.of(null);
+			protected Promise<T> doGet() {
+				return Promise.of(null);
 			}
 		};
 	}
@@ -94,8 +94,8 @@ public interface SerialSupplier<T> extends Cancellable {
 	static <T> SerialSupplier<T> ofException(Throwable e) {
 		return new AbstractSerialSupplier<T>() {
 			@Override
-			protected Stage<T> doGet() {
-				return Stage.ofException(e);
+			protected Promise<T> doGet() {
+				return Promise.ofException(e);
 			}
 		};
 	}
@@ -111,8 +111,8 @@ public interface SerialSupplier<T> extends Cancellable {
 	static <T> SerialSupplier<T> ofIterator(Iterator<? extends T> iterator) {
 		return new AbstractSerialSupplier<T>() {
 			@Override
-			protected Stage<T> doGet() {
-				return Stage.of(iterator.hasNext() ? iterator.next() : null);
+			protected Promise<T> doGet() {
+				return Promise.of(iterator.hasNext() ? iterator.next() : null);
 			}
 
 			@Override
@@ -131,22 +131,22 @@ public interface SerialSupplier<T> extends Cancellable {
 		return SerialSuppliers.prefetch(SerialSupplier.of(socket::read, socket));
 	}
 
-	static <T> SerialSupplier<T> ofStage(Stage<? extends SerialSupplier<T>> stage) {
-		if (stage.isResult()) return stage.materialize().getResult();
-		MaterializedStage<? extends SerialSupplier<T>> materializedStage = stage.materialize();
+	static <T> SerialSupplier<T> ofPromise(Promise<? extends SerialSupplier<T>> promise) {
+		if (promise.isResult()) return promise.materialize().getResult();
+		MaterializedPromise<? extends SerialSupplier<T>> materializedPromise = promise.materialize();
 		return new AbstractSerialSupplier<T>() {
 			SerialSupplier<T> supplier;
 			Throwable exception;
 
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				if (supplier != null) return supplier.get();
-				return materializedStage.thenComposeEx((supplier, e) -> {
+				return materializedPromise.thenComposeEx((supplier, e) -> {
 					if (e == null) {
 						this.supplier = supplier;
 						return supplier.get();
 					} else {
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 			}
@@ -154,7 +154,7 @@ public interface SerialSupplier<T> extends Cancellable {
 			@Override
 			protected void onClosed(Throwable e) {
 				exception = e;
-				materializedStage.whenResult(supplier -> supplier.close(e));
+				materializedPromise.whenResult(supplier -> supplier.close(e));
 			}
 		};
 	}
@@ -164,7 +164,7 @@ public interface SerialSupplier<T> extends Cancellable {
 			private SerialSupplier<T> supplier;
 
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				if (supplier == null) supplier = provider.get();
 				return supplier.get();
 			}
@@ -184,7 +184,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	default SerialSupplier<T> async() {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				return SerialSupplier.this.get().async();
 			}
 		};
@@ -194,7 +194,7 @@ public interface SerialSupplier<T> extends Cancellable {
 		AsyncSupplier<T> supplier = this::get;
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				return asyncExecutor.execute(supplier);
 			}
 		};
@@ -203,7 +203,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	default SerialSupplier<T> peek(Consumer<? super T> fn) {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				return SerialSupplier.this.get()
 						.whenResult(value -> { if (value != null) fn.accept(value);});
 			}
@@ -213,7 +213,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	default <V> SerialSupplier<V> transform(Function<? super T, ? extends V> fn) {
 		return new AbstractSerialSupplier<V>(this) {
 			@Override
-			protected Stage<V> doGet() {
+			protected Promise<V> doGet() {
 				return SerialSupplier.this.get()
 						.thenApply(value -> {
 							if (value != null) {
@@ -232,14 +232,14 @@ public interface SerialSupplier<T> extends Cancellable {
 	}
 
 	@SuppressWarnings("unchecked")
-	default <V> SerialSupplier<V> transformAsync(Function<? super T, ? extends Stage<V>> fn) {
+	default <V> SerialSupplier<V> transformAsync(Function<? super T, ? extends Promise<V>> fn) {
 		return new AbstractSerialSupplier<V>(this) {
 			@Override
-			protected Stage<V> doGet() {
+			protected Promise<V> doGet() {
 				return SerialSupplier.this.get()
 						.thenCompose(value -> value != null ?
 								fn.apply(value) :
-								Stage.of(null));
+								Promise.of(null));
 			}
 		};
 	}
@@ -247,18 +247,18 @@ public interface SerialSupplier<T> extends Cancellable {
 	default SerialSupplier<T> filter(Predicate<? super T> predicate) {
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				while (true) {
-					Stage<T> stage = SerialSupplier.this.get();
-					if (stage.isResult()) {
-						T value = stage.materialize().getResult();
-						if (value == null || predicate.test(value)) return stage;
+					Promise<T> promise = SerialSupplier.this.get();
+					if (promise.isResult()) {
+						T value = promise.materialize().getResult();
+						if (value == null || predicate.test(value)) return promise;
 						tryRecycle(value);
 						continue;
 					}
-					return stage.thenCompose(value -> {
+					return promise.thenCompose(value -> {
 						if (value == null || predicate.test(value)) {
-							return Stage.of(value);
+							return Promise.of(value);
 						} else {
 							tryRecycle(value);
 							return get();
@@ -269,38 +269,38 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
-	default MaterializedStage<Void> streamTo(SerialConsumer<T> consumer) {
+	default MaterializedPromise<Void> streamTo(SerialConsumer<T> consumer) {
 		return SerialSuppliers.stream(this, consumer);
 	}
 
-	default MaterializedStage<Void> bindTo(SerialInput<T> to) {
+	default MaterializedPromise<Void> bindTo(SerialInput<T> to) {
 		return to.set(this);
 	}
 
-	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {
+	default <A, R> Promise<R> toCollector(Collector<T, A, R> collector) {
 		return SerialSuppliers.toCollector(this, collector);
 	}
 
-	default Stage<List<T>> toList() {
+	default Promise<List<T>> toList() {
 		return toCollector(Collectors.toList());
 	}
 
-	default SerialSupplier<T> withEndOfStream(Function<Stage<Void>, Stage<Void>> fn) {
-		SettableStage<Void> endOfStream = new SettableStage<>();
-		MaterializedStage<Void> newEndOfStream = fn.apply(endOfStream).materialize();
+	default SerialSupplier<T> withEndOfStream(Function<Promise<Void>, Promise<Void>> fn) {
+		SettablePromise<Void> endOfStream = new SettablePromise<>();
+		MaterializedPromise<Void> newEndOfStream = fn.apply(endOfStream).materialize();
 		return new AbstractSerialSupplier<T>() {
 			@SuppressWarnings("unchecked")
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				return SerialSupplier.this.get()
 						.thenComposeEx((item, e) -> {
 							if (e == null) {
-								if (item != null) return Stage.of(item);
+								if (item != null) return Promise.of(item);
 								endOfStream.trySet(null);
-								return (Stage<T>) newEndOfStream;
+								return (Promise<T>) newEndOfStream;
 							} else {
 								endOfStream.trySetException(e);
-								return (Stage<T>) newEndOfStream;
+								return (Promise<T>) newEndOfStream;
 							}
 						});
 			}
@@ -312,8 +312,8 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
-	static MaterializedStage<Void> getEndOfStream(Consumer<Function<Stage<Void>, Stage<Void>>> cb) {
-		SettableStage<Void> result = new SettableStage<>();
+	static MaterializedPromise<Void> getEndOfStream(Consumer<Function<Promise<Void>, Promise<Void>>> cb) {
+		SettablePromise<Void> result = new SettablePromise<>();
 		cb.accept(endOfStream -> endOfStream.whenComplete(result::set));
 		return result;
 	}

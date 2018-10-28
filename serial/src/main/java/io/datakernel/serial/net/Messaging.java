@@ -17,17 +17,17 @@
 package io.datakernel.serial.net;
 
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 
 public interface Messaging<I, O> extends Cancellable {
-	Stage<I> receive();
+	Promise<I> receive();
 
-	Stage<Void> send(O msg);
+	Promise<Void> send(O msg);
 
-	Stage<Void> sendEndOfStream();
+	Promise<Void> sendEndOfStream();
 
 	SerialSupplier<ByteBuf> receiveBinaryStream();
 

@@ -17,7 +17,7 @@
 package io.datakernel.serial.processor;
 
 import io.datakernel.async.AbstractAsyncProcess;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.serial.SerialConsumer;
@@ -87,8 +87,8 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 						output.accept(out)
 								.whenResult($ -> doProcess());
 					} else {
-						Stage.complete()
-								.thenCompose($ -> bufs.hasRemaining() ? output.accept(bufs.takeRemaining()) : Stage.complete())
+						Promise.complete()
+								.thenCompose($ -> bufs.hasRemaining() ? output.accept(bufs.takeRemaining()) : Promise.complete())
 								.thenCompose($ -> output.accept(null))
 								.whenResult($ -> completeProcess());
 					}

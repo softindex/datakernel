@@ -17,7 +17,7 @@
 package io.datakernel.file;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.CloseException;
@@ -34,7 +34,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.Stage.ofRunnable;
+import static io.datakernel.async.Promise.ofRunnable;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.nio.file.StandardOpenOption.*;
@@ -82,13 +82,13 @@ public final class AsyncFile {
 	 * @param path        the path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
 	 */
-	public static Stage<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions) {
-		return Stage.ofCallable(executor, () -> doOpenChannel(path, openOptions))
+	public static Promise<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions) {
+		return Promise.ofCallable(executor, () -> doOpenChannel(path, openOptions))
 				.thenApply(channel -> new AsyncFile(executor, channel, path, null));
 	}
 
-	public static Stage<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions, Object mutexLock) {
-		return Stage.ofCallable(executor, () -> doOpenChannel(path, openOptions))
+	public static Promise<AsyncFile> openAsync(ExecutorService executor, Path path, OpenOption[] openOptions, Object mutexLock) {
+		return Promise.ofCallable(executor, () -> doOpenChannel(path, openOptions))
 				.thenApply(channel -> new AsyncFile(executor, channel, path, mutexLock));
 	}
 
@@ -101,7 +101,7 @@ public final class AsyncFile {
 	 *
 	 * @param path the path of the file to open or create
 	 */
-	public static Stage<Void> delete(ExecutorService executor, Path path) {
+	public static Promise<Void> delete(ExecutorService executor, Path path) {
 		return ofRunnable(executor, () -> {
 			try {
 				Files.delete(path);
@@ -118,8 +118,8 @@ public final class AsyncFile {
 	 * @param path     the path of the file to check
 	 * @return file size if given path is a regular file and <code>null</code> if it is a directory or it does not exist
 	 */
-	public static Stage<Long> size(ExecutorService executor, Path path) {
-		return Stage.ofCallable(executor, () -> Files.isRegularFile(path) ? Files.size(path) : null);
+	public static Promise<Long> size(ExecutorService executor, Path path) {
+		return Promise.ofCallable(executor, () -> Files.isRegularFile(path) ? Files.size(path) : null);
 	}
 
 	/**
@@ -130,7 +130,7 @@ public final class AsyncFile {
 	 * @param target   the path to the target file (may be associated with a different provider to the source path)
 	 * @param options  options specifying how the move should be done
 	 */
-	public static Stage<Void> move(ExecutorService executor, Path source, Path target, CopyOption... options) {
+	public static Promise<Void> move(ExecutorService executor, Path source, Path target, CopyOption... options) {
 		return ofRunnable(executor, () -> {
 			try {
 				Files.move(source, target, options);
@@ -148,7 +148,7 @@ public final class AsyncFile {
 	 * @param target   the path to the target file (may be associated with a different provider to the source path)
 	 * @param options  options specifying how the move should be done
 	 */
-	public static Stage<Void> copy(ExecutorService executor, Path source, Path target, CopyOption... options) {
+	public static Promise<Void> copy(ExecutorService executor, Path source, Path target, CopyOption... options) {
 		return ofRunnable(executor, () -> {
 			try {
 				Files.copy(source, target, options);
@@ -165,7 +165,7 @@ public final class AsyncFile {
 	 * @param dir      the directory to create
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
-	public static Stage<Void> createDirectory(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
+	public static Promise<Void> createDirectory(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
 		return ofRunnable(executor, () -> {
 			try {
 				Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
@@ -182,7 +182,7 @@ public final class AsyncFile {
 	 * @param dir      the directory to create
 	 * @param attrs    an optional list of file attributes to set atomically when creating the directory
 	 */
-	public static Stage<Void> createDirectories(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
+	public static Promise<Void> createDirectories(ExecutorService executor, Path dir, @Nullable FileAttribute<?>[] attrs) {
 		return ofRunnable(executor, () -> {
 			try {
 				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
@@ -197,7 +197,7 @@ public final class AsyncFile {
 	 *
 	 * @param path the path of the file to read
 	 */
-	public static Stage<ByteBuf> readFile(ExecutorService executor, Path path) {
+	public static Promise<ByteBuf> readFile(ExecutorService executor, Path path) {
 		return openAsync(executor, path, new OpenOption[]{READ})
 				.thenCompose(file -> file.read()
 						.thenCompose(buf -> file.close()
@@ -208,12 +208,12 @@ public final class AsyncFile {
 	/**
 	 * Creates new file and writes a sequence of bytes to this file from the given buffer, starting at the given file
 	 * position.
-	 * If file exists then stage fails with exception.
+	 * If file exists then promise fails with exception.
 	 *
 	 * @param path the path of the file to create and write
 	 * @param buf  the buffer from which bytes are to be transferred byteBuffer
 	 */
-	public static Stage<Void> writeNewFile(ExecutorService executor, Path path, ByteBuf buf) {
+	public static Promise<Void> writeNewFile(ExecutorService executor, Path path, ByteBuf buf) {
 		return openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW})
 				.thenCompose(file -> file.write(buf)
 						.thenCompose($ -> file.close()
@@ -228,11 +228,11 @@ public final class AsyncFile {
 		return channel;
 	}
 
-	public Stage<Long> size() {
+	public Promise<Long> size() {
 		return sanitize(AsyncFile.size(executor, path));
 	}
 
-	public Stage<Void> seek(long position) {
+	public Promise<Void> seek(long position) {
 		return sanitize(ofRunnable(executor, () -> {
 			try {
 				channel.position(position);
@@ -242,8 +242,8 @@ public final class AsyncFile {
 		}));
 	}
 
-	public Stage<Long> tell() {
-		return sanitize(Stage.ofCallable(executor, channel::position));
+	public Promise<Long> tell() {
+		return sanitize(Promise.ofCallable(executor, channel::position));
 	}
 
 	/**
@@ -251,7 +251,7 @@ public final class AsyncFile {
 	 *
 	 * @param buf byte buffer to be written
 	 */
-	public Stage<Void> write(ByteBuf buf) {
+	public Promise<Void> write(ByteBuf buf) {
 		return sanitize(ofRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				try {
@@ -276,7 +276,7 @@ public final class AsyncFile {
 	 * @param position offset from which bytes will be written to the file
 	 * @param buf      byte buffer to be written
 	 */
-	public Stage<Void> write(ByteBuf buf, long position) {
+	public Promise<Void> write(ByteBuf buf, long position) {
 		return sanitize(ofRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				int writtenBytes = 0;
@@ -299,7 +299,7 @@ public final class AsyncFile {
 	/**
 	 * Asynchronously reads all bytes from this file into a buffer.
 	 */
-	public Stage<ByteBuf> read() {
+	public Promise<ByteBuf> read() {
 		return read(0);
 	}
 
@@ -308,13 +308,13 @@ public final class AsyncFile {
 	 *
 	 * @param position offset from which bytes of the file will be read
 	 */
-	public Stage<ByteBuf> read(long position) {
+	public Promise<ByteBuf> read(long position) {
 		long size;
 
 		try {
 			size = channel.size();
 		} catch (IOException e) {
-			return Stage.ofException(e);
+			return Promise.ofException(e);
 		}
 
 		ByteBuf buf = ByteBufPool.allocate((int) (size - position));
@@ -331,7 +331,7 @@ public final class AsyncFile {
 	 * @param buf      the buffer into which bytes are to be transferred
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 */
-	public Stage<Void> read(ByteBuf buf, long position) {
+	public Promise<Void> read(ByteBuf buf, long position) {
 		return sanitize(ofRunnable(executor, () -> {
 			synchronized (mutexLock) {
 				int readBytes = 0;
@@ -354,8 +354,8 @@ public final class AsyncFile {
 	 *
 	 * @param forceMetadata whether or not to force metadata writes too
 	 */
-	public Stage<Void> forceAndClose(boolean forceMetadata) {
-		if (!isOpen()) return Stage.ofException(FILE_CLOSED);
+	public Promise<Void> forceAndClose(boolean forceMetadata) {
+		if (!isOpen()) return Promise.ofException(FILE_CLOSED);
 		return ofRunnable(executor, () -> {
 			try {
 				channel.force(forceMetadata);
@@ -369,8 +369,8 @@ public final class AsyncFile {
 	/**
 	 * Closes the channel
 	 */
-	public Stage<Void> close() {
-		if (!isOpen()) return Stage.ofException(FILE_CLOSED);
+	public Promise<Void> close() {
+		if (!isOpen()) return Promise.ofException(FILE_CLOSED);
 		return ofRunnable(executor, () -> {
 			try {
 				channel.close();
@@ -385,7 +385,7 @@ public final class AsyncFile {
 	 *
 	 * @param size the new size, a non-negative byte count
 	 */
-	public Stage<Void> truncate(long size) {
+	public Promise<Void> truncate(long size) {
 		return sanitize(ofRunnable(executor, () -> {
 			try {
 				channel.truncate(size);
@@ -402,7 +402,7 @@ public final class AsyncFile {
 	 *                 file content and metadata to be written to storage;
 	 *                 otherwise, it need only force content changes to be written
 	 */
-	public Stage<Void> force(boolean metaData) {
+	public Promise<Void> force(boolean metaData) {
 		return sanitize(ofRunnable(executor, () -> {
 			try {
 				channel.force(metaData);
@@ -416,14 +416,14 @@ public final class AsyncFile {
 		return channel.isOpen();
 	}
 
-	private <T> Stage<T> sanitize(Stage<T> stage) {
-		return stage
+	private <T> Promise<T> sanitize(Promise<T> promise) {
+		return promise
 				.thenComposeEx((result, e) -> {
 					if (!isOpen()) {
 						tryRecycle(result);
-						return Stage.ofException(FILE_CLOSED);
+						return Promise.ofException(FILE_CLOSED);
 					}
-					return Stage.of(result, e);
+					return Promise.of(result, e);
 				});
 	}
 

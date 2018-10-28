@@ -17,7 +17,7 @@
 package io.global.ot.api;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.*;
@@ -29,15 +29,15 @@ import java.util.Set;
 import static java.util.Collections.*;
 
 public interface RawServer {
-	Stage<Set<String>> list(PubKey pubKey);
+	Promise<Set<String>> list(PubKey pubKey);
 
-	Stage<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads);
+	Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads);
 
-	default Stage<Void> save(RepoID repositoryId, RawCommit rawCommit, SignedData<RawCommitHead> rawHead) {
+	default Promise<Void> save(RepoID repositoryId, RawCommit rawCommit, SignedData<RawCommitHead> rawHead) {
 		return save(repositoryId, singletonMap(rawHead.getData().commitId, rawCommit), singleton(rawHead));
 	}
 
-	Stage<RawCommit> loadCommit(RepoID repositoryId, CommitId id);
+	Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id);
 
 	final class HeadsInfo {
 		public final Set<CommitId> bases;
@@ -73,11 +73,11 @@ public interface RawServer {
 		}
 	}
 
-	Stage<HeadsInfo> getHeadsInfo(RepoID repositoryId);
+	Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId);
 
-	Stage<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot);
+	Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot);
 
-	Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId id);
+	Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId id);
 
 	class Heads {
 		public final Set<SignedData<RawCommitHead>> newHeads;
@@ -113,20 +113,20 @@ public interface RawServer {
 		}
 	}
 
-	Stage<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads);
+	Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads);
 
-	default Stage<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
+	default Promise<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
 		return getHeads(repositoryId, emptySet())
 				.thenApply(headsDelta -> headsDelta.newHeads);
 	}
 
-	Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey);
+	Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey);
 
-	Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey repositoryOwner, PubKey receiver, Hash simKeyHash);
+	Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey repositoryOwner, PubKey receiver, Hash simKeyHash);
 
-	Stage<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest);
+	Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest);
 
-	Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId);
+	Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId);
 
 	final class CommitEntry {
 		public final CommitId commitId;
@@ -158,18 +158,18 @@ public interface RawServer {
 		}
 	}
 
-	Stage<SerialSupplier<CommitEntry>> download(RepoID repositoryId,
+	Promise<SerialSupplier<CommitEntry>> download(RepoID repositoryId,
 			Set<CommitId> bases, Set<CommitId> heads);
 
 	default SerialSupplier<CommitEntry> downloader(RepoID repositoryId,
 			Set<CommitId> bases, Set<CommitId> heads) {
-		return SerialSupplier.ofStage(download(repositoryId, bases, heads));
+		return SerialSupplier.ofPromise(download(repositoryId, bases, heads));
 	}
 
-	Stage<SerialConsumer<CommitEntry>> upload(RepoID repositoryId);
+	Promise<SerialConsumer<CommitEntry>> upload(RepoID repositoryId);
 
 	default SerialConsumer<CommitEntry> uploader(RepoID repositoryId) {
-		return SerialConsumer.ofStage(upload(repositoryId));
+		return SerialConsumer.ofPromise(upload(repositoryId));
 	}
 
 }

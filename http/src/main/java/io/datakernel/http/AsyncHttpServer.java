@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -228,23 +228,23 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	@Nullable
-	private SettableStage<Void> closeStage;
+	private SettablePromise<Void> closePromise;
 
 	void onConnectionClosed() {
-		if (getConnectionsCount() == 0 && closeStage != null) {
-			closeStage.set(null);
-			closeStage = null;
+		if (getConnectionsCount() == 0 && closePromise != null) {
+			closePromise.set(null);
+			closePromise = null;
 		}
 	}
 
 	@Override
-	protected void onClose(SettableStage<Void> stage) {
+	protected void onClose(SettablePromise<Void> promise) {
 		poolKeepAlive.closeAllConnections();
 		keepAliveTimeoutMillis = 0;
 		if (getConnectionsCount() == 0) {
-			stage.set(null);
+			promise.set(null);
 		} else {
-			this.closeStage = stage;
+			this.closePromise = promise;
 		}
 	}
 

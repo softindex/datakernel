@@ -16,9 +16,9 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
@@ -49,7 +49,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	protected Stage<Void> onEndOfStream() {
+	protected Promise<Void> onEndOfStream() {
 		if (currentInternalSupplier != null) {
 			currentInternalSupplier.sendEndOfStream();
 		}
@@ -91,7 +91,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	private class InternalSupplier implements StreamSupplier<T> {
 		private final Eventloop eventloop;
 		private final StreamConsumer<T> consumer;
-		private final SettableStage<Void> endOfStream = new SettableStage<>();
+		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 		private StreamDataAcceptor<T> lastDataAcceptor;
 		private boolean suspended;
 		private ArrayList<T> pendingItems;
@@ -168,7 +168,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public MaterializedStage<Void> getEndOfStream() {
+		public MaterializedPromise<Void> getEndOfStream() {
 			return endOfStream;
 		}
 

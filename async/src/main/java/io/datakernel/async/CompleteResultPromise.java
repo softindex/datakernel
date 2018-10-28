@@ -1,9 +1,9 @@
 package io.datakernel.async;
 
-public final class CompleteResultStage<T> extends CompleteStage<T> {
+public final class CompleteResultPromise<T> extends CompletePromise<T> {
 	private final T result;
 
-	public CompleteResultStage(T result) {
+	public CompleteResultPromise(T result) {
 		this.result = result;
 	}
 

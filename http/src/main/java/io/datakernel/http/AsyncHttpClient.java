@@ -17,8 +17,8 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.DnsQueryException;
 import io.datakernel.dns.DnsResponse;
@@ -322,7 +322,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	 * @param request request for server
 	 */
 	@Override
-	public Stage<HttpResponse> request(HttpRequest request) {
+	public Promise<HttpResponse> request(HttpRequest request) {
 		assert eventloop.inEventloopThread();
 		if (inspector != null) inspector.onRequest(request);
 		String host = request.getUrl().getHost();
@@ -336,17 +336,17 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 						if (dnsResponse.isSuccessful()) {
 							return doSend(request, dnsResponse.getRecord().getIps());
 						} else {
-							return Stage.ofException(new DnsQueryException(AsyncHttpClient.class, dnsResponse));
+							return Promise.ofException(new DnsQueryException(AsyncHttpClient.class, dnsResponse));
 						}
 					} else {
 						if (inspector != null) inspector.onResolveError(request, e);
 						request.recycle();
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 	}
 
-	private Stage<HttpResponse> doSend(HttpRequest request, InetAddress[] inetAddresses) {
+	private Promise<HttpResponse> doSend(HttpRequest request, InetAddress[] inetAddresses) {
 		InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
 		InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
@@ -387,7 +387,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 					} else {
 						if (inspector != null) inspector.onConnectError(request, address, e);
 						request.recycle();
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 	}
@@ -398,36 +398,36 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	@Override
-	public Stage<Void> start() {
+	public Promise<Void> start() {
 		checkState(eventloop.inEventloopThread());
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	@Nullable
-	private SettableStage<Void> closeStage;
+	private SettablePromise<Void> closePromise;
 
 	public void onConnectionClosed() {
-		if (getConnectionsCount() == 0 && closeStage != null) {
-			closeStage.set(null);
-			closeStage = null;
+		if (getConnectionsCount() == 0 && closePromise != null) {
+			closePromise.set(null);
+			closePromise = null;
 		}
 	}
 
 	@Override
-	public Stage<Void> stop() {
+	public Promise<Void> stop() {
 		checkState(eventloop.inEventloopThread());
-		SettableStage<Void> stage = new SettableStage<>();
+		SettablePromise<Void> promise = new SettablePromise<>();
 
 		poolKeepAlive.closeAllConnections();
 		assert addresses.isEmpty();
 		keepAliveTimeoutMillis = 0;
 		if (getConnectionsCount() == 0) {
 			assert poolReadWrite.isEmpty();
-			stage.set(null);
+			promise.set(null);
 		} else {
-			this.closeStage = stage;
+			this.closePromise = promise;
 		}
-		return stage;
+		return promise;
 	}
 
 	// region jmx

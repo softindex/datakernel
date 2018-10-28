@@ -16,7 +16,7 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.global.common.PubKey;
 import io.global.fs.api.LocalPath;
@@ -41,10 +41,10 @@ public final class FrameVerifier extends FramesToByteBufs {
 	// endregion
 
 	@Override
-	protected Stage<Void> receiveByteBuffer(ByteBuf byteBuf) {
+	protected Promise<Void> receiveByteBuffer(ByteBuf byteBuf) {
 		int size = byteBuf.readRemaining();
 		if (position <= offset || position - size > endOffset) {
-			return Stage.of(null);
+			return Promise.of(null);
 		}
 		if (position - size < offset) {
 			byteBuf.moveReadPosition((int) (offset - position + size));

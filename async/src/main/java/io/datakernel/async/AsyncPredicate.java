@@ -3,7 +3,7 @@ package io.datakernel.async;
 import java.util.function.Predicate;
 
 public interface AsyncPredicate<T> {
-	Stage<Boolean> test(T t);
+	Promise<Boolean> test(T t);
 
 	default AsyncPredicate<T> negate() {
 		return t -> this.test(t).thenApply(b -> !b);
@@ -18,15 +18,15 @@ public interface AsyncPredicate<T> {
 	}
 
 	static <T> AsyncPredicate<T> of(Predicate<T> predicate) {
-		return t -> Stage.of(predicate.test(t));
+		return t -> Promise.of(predicate.test(t));
 	}
 
 	static <T> AsyncPredicate<T> alwaysTrue() {
-		return t -> Stage.of(Boolean.TRUE);
+		return t -> Promise.of(Boolean.TRUE);
 	}
 
 	static <T> AsyncPredicate<T> alwaysFalse() {
-		return t -> Stage.of(Boolean.FALSE);
+		return t -> Promise.of(Boolean.FALSE);
 	}
 
 }

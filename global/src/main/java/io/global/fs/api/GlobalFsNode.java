@@ -16,7 +16,7 @@
 
 package io.global.fs.api;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -41,23 +41,23 @@ public interface GlobalFsNode {
 
 	RawServerId getId();
 
-	Stage<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset);
+	Promise<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset);
 
 	default SerialConsumer<DataFrame> uploader(GlobalPath path, long offset) {
-		return SerialConsumer.ofStage(upload(path, offset));
+		return SerialConsumer.ofPromise(upload(path, offset));
 	}
 
-	Stage<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit);
+	Promise<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit);
 
 	default SerialSupplier<DataFrame> downloader(GlobalPath path, long offset, long limit) {
-		return SerialSupplier.ofStage(download(path, offset, limit));
+		return SerialSupplier.ofPromise(download(path, offset, limit));
 	}
 
-	default Stage<SignedData<GlobalFsMetadata>> getMetadata(GlobalPath path) {
+	default Promise<SignedData<GlobalFsMetadata>> getMetadata(GlobalPath path) {
 		return list(path.toRepoID(), escapeGlob(path.getPath())).thenApply(res -> res.size() == 1 ? res.get(0) : null);
 	}
 
-	Stage<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob);
+	Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob);
 
-	Stage<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata);
+	Promise<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata);
 }

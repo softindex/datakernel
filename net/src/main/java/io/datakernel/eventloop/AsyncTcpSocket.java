@@ -18,7 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.net.SocketSettings;
 
@@ -41,26 +41,26 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
  */
 public interface AsyncTcpSocket extends Cancellable {
 	/**
-	 * Operation to read some data from network. Returns a stage of a bytebuf that represents some data recieved
+	 * Operation to read some data from network. Returns a promise of a bytebuf that represents some data recieved
 	 * from network.
 	 * <p>
 	 * It is allowed to call {@link #read()} before previous {@link #read()} was completed.
 	 * However, each consecutive call will cancel all of the previous calls (they will not be completed).
 	 *
-	 * @return stage of ByteBuf that represents data recieved from network
+	 * @return promise of ByteBuf that represents data recieved from network
 	 */
-	Stage<ByteBuf> read();
+	Promise<ByteBuf> read();
 
 	/**
-	 * Operation to write some data to network. Returns a stage of void that represents succesfull write.
+	 * Operation to write some data to network. Returns a promise of void that represents succesfull write.
 	 * <p>
 	 * Many {@link #write(ByteBuf)} operations may be called. However, when write is succesful,
-	 * all of the previous stages that wait on write will be completed.
+	 * all of the previous promises that wait on write will be completed.
 	 *
 	 * @param buf data to be sent to network
-	 * @return stage that represents succesful write operation
+	 * @return promise that represents succesful write operation
 	 */
-	Stage<Void> write(@Nullable ByteBuf buf);
+	Promise<Void> write(@Nullable ByteBuf buf);
 
 	static AsyncTcpSocket ofSocketChannel(SocketChannel socketChannel) {
 		return AsyncTcpSocketImpl.wrapChannel(getCurrentEventloop(), socketChannel, null);

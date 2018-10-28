@@ -30,21 +30,21 @@ public interface AsyncConsumer<T> {
 	 * Asynchronous operation to consume some data
 	 *
 	 * @param value value to be consumed
-	 * @return {@link Stage} of {@link Void} that represents succesful consumption of data
+	 * @return {@link Promise} of {@link Void} that represents succesful consumption of data
 	 */
-	Stage<Void> accept(T value);
+	Promise<Void> accept(T value);
 
 	/**
 	 * Wrapper around standard Java's {@link Consumer} interface.
 	 *
-	 * @param consumer - Java's {@link Consumer} of Stages
+	 * @param consumer - Java's {@link Consumer} of Promises
 	 * @return {@link AsyncSupplier} that works on top of standard Java's {@link Supplier} interface
 	 */
 
 	static <T> AsyncConsumer<T> of(Consumer<? super T> consumer) {
 		return value -> {
 			consumer.accept(value);
-			return Stage.complete();
+			return Promise.complete();
 		};
 	}
 
@@ -64,7 +64,7 @@ public interface AsyncConsumer<T> {
 		return value -> accept(fn.apply(value));
 	}
 
-	default <V> AsyncConsumer<V> transformAsync(Function<? super V, ? extends Stage<T>> fn) {
+	default <V> AsyncConsumer<V> transformAsync(Function<? super V, ? extends Promise<T>> fn) {
 		return value -> fn.apply(value).thenCompose(this::accept);
 	}
 

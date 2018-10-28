@@ -22,7 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.http.TestUtils.AssertingConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -39,7 +39,7 @@ public class BufsConsumerChunkedEncoderTest {
 	@Rule
 	public final ByteBufRule byteBufRule = new ByteBufRule();
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 	private final Random RANDOM = new Random();
 	private final List<ByteBuf> list = new ArrayList<>();
 	private final Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());

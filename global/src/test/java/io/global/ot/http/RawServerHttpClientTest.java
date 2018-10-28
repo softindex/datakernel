@@ -17,7 +17,7 @@
 package io.global.ot.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.IAsyncHttpClient;
@@ -69,49 +69,49 @@ public class RawServerHttpClientTest {
 		LinkedList<Object> parameters = new LinkedList<>();
 
 		RawServerServlet servlet = RawServerServlet.create(new RawServer() {
-			<T> Stage<T> resultOf(@Nullable T result, Object... args) {
+			<T> Promise<T> resultOf(@Nullable T result, Object... args) {
 				parameters.add(result);
 				parameters.addAll(asList(args));
-				return Stage.of(result);
+				return Promise.of(result);
 			}
 
 			@Override
-			public Stage<Set<String>> list(PubKey pubKey) {
+			public Promise<Set<String>> list(PubKey pubKey) {
 				return resultOf(set("a", "b", "c"), pubKey);
 			}
 
 			@Override
-			public Stage<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
+			public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
 				return resultOf(null, repositoryId, commits, heads);
 			}
 
 			@Override
-			public Stage<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
+			public Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 				return resultOf(rootCommit, repository, id);
 			}
 
 			@Override
-			public Stage<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
+			public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
 				return resultOf(new HeadsInfo(set(rootCommitId), set(rootCommitId)), repositoryId);
 			}
 
 			@Override
-			public Stage<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+			public Promise<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 				throw new UnsupportedOperationException();
 			}
 
 			@Override
-			public Stage<SerialConsumer<CommitEntry>> upload(RepoID repositoryId) {
+			public Promise<SerialConsumer<CommitEntry>> upload(RepoID repositoryId) {
 				throw new UnsupportedOperationException();
 			}
 
 			@Override
-			public Stage<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
+			public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 				return resultOf(null, repositoryId, encryptedSnapshot);
 			}
 
 			@Override
-			public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
+			public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
 				return resultOf(Optional.of(
 						SignedData.sign(
 								RawSnapshot.of(repositoryId, rootCommitId,
@@ -121,30 +121,30 @@ public class RawServerHttpClientTest {
 			}
 
 			@Override
-			public Stage<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
+			public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
 				return resultOf(new Heads(set(signedRawCommitHead), set(rootCommitId)),
 						repositoryId, remoteHeads);
 			}
 
 			@Override
-			public Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> signedSimKey) {
+			public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> signedSimKey) {
 				return resultOf(null, signedSimKey);
 			}
 
 			@Override
-			public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash simKeyHash) {
+			public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash simKeyHash) {
 				SharedSimKey sharedSimKey = SharedSimKey.of(receiver, simKey);
 				return resultOf(Optional.of(SignedData.sign(sharedSimKey, privKey)), owner, receiver, simKeyHash);
 			}
 
 			@Override
-			public Stage<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
+			public Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
 				return resultOf(null,
 						pullRequest);
 			}
 
 			@Override
-			public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
+			public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
 				return resultOf(set(SignedData.sign(
 						RawPullRequest.of(repositoryId, RepoID.of(pubKey, "fork")), privKey)),
 						repositoryId);
@@ -155,7 +155,7 @@ public class RawServerHttpClientTest {
 			try {
 				return servlet.serve(request);
 			} catch (ParseException e) {
-				return Stage.ofException(e);
+				return Promise.ofException(e);
 			}
 		};
 

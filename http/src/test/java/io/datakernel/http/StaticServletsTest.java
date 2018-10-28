@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.FileNamesLoadingService;
@@ -83,7 +83,7 @@ public class StaticServletsTest {
 
 		HttpRequest request = get("http://test.com:8080/index.html");
 		CompletableFuture<String> future = servlet.serve(request)
-				.thenCompose(httpResponse -> httpResponse.getBodyStage(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
+				.thenCompose(httpResponse -> httpResponse.getBodyPromise(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -120,7 +120,7 @@ public class StaticServletsTest {
 
 		HttpRequest request = get("http://test.com:8080/index.html");
 		CompletableFuture<String> future = servlet.serve(request)
-				.thenCompose(httpResponse -> httpResponse.getBodyStage(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
+				.thenCompose(httpResponse -> httpResponse.getBodyPromise(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -157,7 +157,7 @@ public class StaticServletsTest {
 
 		HttpRequest request = get("http://test.com:8080/testFile.txt");
 		CompletableFuture<String> future = servlet.serve(request)
-				.thenCompose(httpResponse -> httpResponse.getBodyStage(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
+				.thenCompose(httpResponse -> httpResponse.getBodyPromise(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -194,7 +194,7 @@ public class StaticServletsTest {
 
 		HttpRequest request = get("http://test.com:8080/testFile.txt");
 		CompletableFuture<String> future = servlet.serve(request)
-				.thenCompose(httpResponse -> httpResponse.getBodyStage(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
+				.thenCompose(httpResponse -> httpResponse.getBodyPromise(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -233,16 +233,16 @@ public class StaticServletsTest {
 
 		eventloop.run();
 
-		StaticLoader testLoader = name -> name.equals("dir2/testFile.txt")
-				? Stage.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
-				: Stage.ofException(new NoSuchFileException(name));
+		StaticLoader testLoader = name -> name.equals("dir2/testFile.txt") ?
+				Promise.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT)) :
+				Promise.ofException(new NoSuchFileException(name));
 
 		StaticLoader resourceLoader = testLoader.filter(preDownloadResources::contains);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/dir2/testFile.txt");
 		CompletableFuture<String> future = servlet.serve(request)
-				.thenCompose(httpResponse -> httpResponse.getBodyStage(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
+				.thenCompose(httpResponse -> httpResponse.getBodyPromise(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -259,15 +259,15 @@ public class StaticServletsTest {
 		fileService.start();
 		eventloop.run();
 
-		StaticLoader testLoader = name -> name.equals("index.html")
-				? Stage.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
-				: Stage.ofException(new NoSuchFileException(name));
+		StaticLoader testLoader = name -> name.equals("index.html") ?
+				Promise.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT)) :
+				Promise.ofException(new NoSuchFileException(name));
 
 		StaticLoader resourceLoader = testLoader.filter(fileService::contains);
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		CompletableFuture<String> future = servlet.serve(get("http://test.com:8080/index.html"))
-				.thenCompose(httpResponse -> httpResponse.getBodyStage(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
+				.thenCompose(httpResponse -> httpResponse.getBodyPromise(Integer.MAX_VALUE).thenApply(ByteBufStrings::asAscii))
 				.toCompletableFuture();
 
 		eventloop.run();

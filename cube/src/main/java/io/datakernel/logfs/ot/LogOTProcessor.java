@@ -17,15 +17,15 @@
 package io.datakernel.logfs.ot;
 
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
-import io.datakernel.async.StagesAccumulator;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.logfs.LogFile;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogPosition;
@@ -68,9 +68,9 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	private boolean detailed;
 	private final StreamStatsBasic<T> streamStatsBasic = StreamStats.basic();
 	private final StreamStatsDetailed<T> streamStatsDetailed = StreamStats.detailed();
-	private final StageStats stageProcessLog = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats stageSupplier = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats stageConsumer = StageStats.create(Duration.ofMinutes(5));
+	private final PromiseStats promiseProcessLog = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats promiseSupplier = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats promiseConsumer = PromiseStats.create(Duration.ofMinutes(5));
 
 	private LogOTProcessor(Eventloop eventloop, LogManager<T> logManager, LogDataConsumer<T, D> logStreamConsumer,
 			String log, List<String> partitions, LogOTState<D> state) {
@@ -94,39 +94,39 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	}
 
 	@Override
-	public Stage<Void> start() {
-		return Stage.complete();
+	public Promise<Void> start() {
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Void> stop() {
-		return Stage.complete();
+	public Promise<Void> stop() {
+		return Promise.complete();
 	}
 
 	private final AsyncSupplier<LogDiff<D>> processLog = reuse(this::doProcessLog);
 
-	public Stage<LogDiff<D>> processLog() {
+	public Promise<LogDiff<D>> processLog() {
 		return processLog.get();
 	}
 
-	private Stage<LogDiff<D>> doProcessLog() {
-		if (!enabled) return Stage.of(LogDiff.of(emptyMap(), emptyList()));
+	private Promise<LogDiff<D>> doProcessLog() {
+		if (!enabled) return Promise.of(LogDiff.of(emptyMap(), emptyList()));
 		logger.trace("processLog_gotPositions called. Positions: {}", state.getPositions());
 
 		StreamSupplierWithResult<T, Map<String, LogPositionDiff>> supplier = getSupplier();
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
 		return supplier.getSupplier().streamTo(consumer.getConsumer())
-				.thenCompose($ -> Stages.toTuple(
-						supplier.getResult().whenComplete(stageSupplier.recordStats()),
-						consumer.getResult().whenComplete(stageConsumer.recordStats())))
-				.whenComplete(stageProcessLog.recordStats())
+				.thenCompose($ -> Promises.toTuple(
+						supplier.getResult().whenComplete(promiseSupplier.recordStats()),
+						consumer.getResult().whenComplete(promiseConsumer.recordStats())))
+				.whenComplete(promiseProcessLog.recordStats())
 				.thenApply(result -> LogDiff.of(result.getValue1(), result.getValue2()))
 				.whenResult(logDiff ->
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.getPositions()));
 	}
 
 	private StreamSupplierWithResult<T, Map<String, LogPositionDiff>> getSupplier() {
-		StagesAccumulator<Map<String, LogPositionDiff>> result = StagesAccumulator.create(new HashMap<>());
+		PromisesAccumulator<Map<String, LogPositionDiff>> result = PromisesAccumulator.create(new HashMap<>());
 		StreamUnion<T> streamUnion = StreamUnion.create();
 		for (String partition : this.partitions) {
 			String logName = logName(partition);
@@ -139,7 +139,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 			LogPosition logPositionFrom = logPosition;
 			StreamSupplierWithResult<T, LogPosition> supplier = logManager.supplierStream(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
 			supplier.getSupplier().streamTo(streamUnion.newInput());
-			result.addStage(supplier.getResult(), (accumulator, logPositionTo) -> {
+			result.addPromise(supplier.getResult(), (accumulator, logPositionTo) -> {
 				if (!logPositionTo.equals(logPositionFrom)) {
 					accumulator.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));
 				}
@@ -166,18 +166,18 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	}
 
 	@JmxAttribute
-	public StageStats getStageProcessLog() {
-		return stageProcessLog;
+	public PromiseStats getPromiseProcessLog() {
+		return promiseProcessLog;
 	}
 
 	@JmxAttribute
-	public StageStats getStageSupplier() {
-		return stageSupplier;
+	public PromiseStats getPromiseSupplier() {
+		return promiseSupplier;
 	}
 
 	@JmxAttribute
-	public StageStats getStageConsumer() {
-		return stageConsumer;
+	public PromiseStats getPromiseConsumer() {
+		return promiseConsumer;
 	}
 
 	@JmxAttribute

@@ -5,7 +5,7 @@ import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.cube.ot.CubeDiff;
@@ -26,11 +26,11 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeConsolidationController<K, D, C> implements EventloopJmxMBeanEx {
-	public static final Supplier<Function<Aggregation, Stage<AggregationDiff>>> DEFAULT_STRATEGY = new Supplier<Function<Aggregation, Stage<AggregationDiff>>>() {
+	public static final Supplier<Function<Aggregation, Promise<AggregationDiff>>> DEFAULT_STRATEGY = new Supplier<Function<Aggregation, Promise<AggregationDiff>>>() {
 		private boolean hotSegment = false;
 
 		@Override
-		public Function<Aggregation, Stage<AggregationDiff>> get() {
+		public Function<Aggregation, Promise<AggregationDiff>> get() {
 			return (hotSegment = !hotSegment) ?
 					Aggregation::consolidateHotSegment :
 					Aggregation::consolidateMinKey;
@@ -45,10 +45,10 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 	private final OTStateManager<K, D> stateManager;
 	private final AggregationChunkStorage<C> aggregationChunkStorage;
 
-	private final Supplier<Function<Aggregation, Stage<AggregationDiff>>> strategy;
+	private final Supplier<Function<Aggregation, Promise<AggregationDiff>>> strategy;
 
-	private final StageStats stageConsolidate = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageConsolidateImpl = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseConsolidate = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseConsolidateImpl = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private final ValueStats removedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final ValueStats removedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withRate();
@@ -59,7 +59,7 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 			CubeDiffScheme<D> cubeDiffScheme, Cube cube,
 			OTStateManager<K, D> stateManager,
 			AggregationChunkStorage<C> aggregationChunkStorage,
-			Supplier<Function<Aggregation, Stage<AggregationDiff>>> strategy) {
+			Supplier<Function<Aggregation, Promise<AggregationDiff>>> strategy) {
 		this.eventloop = eventloop;
 		this.cubeDiffScheme = cubeDiffScheme;
 		this.cube = cube;
@@ -76,26 +76,26 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 		return new CubeConsolidationController<>(eventloop, cubeDiffScheme, cube, stateManager, aggregationChunkStorage, DEFAULT_STRATEGY);
 	}
 
-	public CubeConsolidationController<K, D, C> withStrategy(Supplier<Function<Aggregation, Stage<AggregationDiff>>> strategy) {
+	public CubeConsolidationController<K, D, C> withStrategy(Supplier<Function<Aggregation, Promise<AggregationDiff>>> strategy) {
 		return new CubeConsolidationController<>(eventloop, cubeDiffScheme, cube, stateManager, aggregationChunkStorage, strategy);
 	}
 
 	private final AsyncSupplier<Void> consolidate = reuse(this::doConsolidate);
 
-	public Stage<Void> consolidate() {
+	public Promise<Void> consolidate() {
 		return consolidate.get();
 	}
 
-	Stage<Void> doConsolidate() {
+	Promise<Void> doConsolidate() {
 		return stateManager.pull()
 				.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
 				.thenCompose(stateManager::pull)
 				.thenCompose($ -> stateManager.pull())
-				.thenCompose($ -> cube.consolidate(strategy.get()).whenComplete(stageConsolidateImpl.recordStats()))
+				.thenCompose($ -> cube.consolidate(strategy.get()).whenComplete(promiseConsolidateImpl.recordStats()))
 				.whenResult(this::cubeDiffJmx)
 				.whenComplete(this::logCubeDiff)
 				.thenCompose(this::tryPushConsolidation)
-				.whenComplete(stageConsolidate.recordStats())
+				.whenComplete(promiseConsolidate.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), stateManager));
 	}
 
@@ -124,8 +124,8 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 		removedChunksRecords.recordValue(curRemovedChunksRecords);
 	}
 
-	private Stage<Void> tryPushConsolidation(CubeDiff cubeDiff) {
-		if (cubeDiff.isEmpty()) return Stage.complete();
+	private Promise<Void> tryPushConsolidation(CubeDiff cubeDiff) {
+		if (cubeDiff.isEmpty()) return Promise.complete();
 
 		stateManager.add(cubeDiffScheme.wrap(cubeDiff));
 		return stateManager.pull()
@@ -170,13 +170,13 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 	}
 
 	@JmxAttribute
-	public StageStats getStageConsolidate() {
-		return stageConsolidate;
+	public PromiseStats getPromiseConsolidate() {
+		return promiseConsolidate;
 	}
 
 	@JmxAttribute
-	public StageStats getStageConsolidateImpl() {
-		return stageConsolidateImpl;
+	public PromiseStats getPromiseConsolidateImpl() {
+		return promiseConsolidateImpl;
 	}
 
 	@JmxOperation

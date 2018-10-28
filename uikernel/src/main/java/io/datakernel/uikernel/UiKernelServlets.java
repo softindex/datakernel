@@ -17,7 +17,7 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -49,13 +49,13 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncServlet read(GridModel<K, R> model, Gson gson) {
 		return new AsyncServlet() {
 			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
+			public Promise<HttpResponse> serve(HttpRequest request) {
 				try {
 					ReadSettings<K> settings = ReadSettings.from(gson, request);
 					return model.read(settings).thenApply(response ->
 							createResponse(response.toJson(gson, model.getRecordType(), model.getIdType())));
 				} catch (ParseException e) {
-					return Stage.ofException((Throwable) e);
+					return Promise.ofException((Throwable) e);
 
 				}
 			}
@@ -65,14 +65,14 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncServlet get(GridModel<K, R> model, Gson gson) {
 		return new AsyncServlet() {
 			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
+			public Promise<HttpResponse> serve(HttpRequest request) {
 				try {
 					ReadSettings<K> settings = ReadSettings.from(gson, request);
 					K id = fromJson(gson, request.getPathParameter(ID_PARAMETER_NAME), model.getIdType());
 					return model.read(id, settings).thenApply(obj ->
 							createResponse(gson.toJson(obj, model.getRecordType())));
 				} catch (ParseException e) {
-					return Stage.ofException((Throwable) e);
+					return Promise.ofException((Throwable) e);
 				}
 			}
 		};
@@ -81,14 +81,14 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncServlet create(GridModel<K, R> model, Gson gson) {
 		return new AsyncServlet() {
 			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
+			public Promise<HttpResponse> serve(HttpRequest request) {
 				try {
 					String json = ByteBufStrings.decodeUtf8(request.getBody());
 					R obj = fromJson(gson, json, model.getRecordType());
 					return model.create(obj).thenApply(response ->
 							createResponse(response.toJson(gson, model.getIdType())));
 				} catch (ParseException e) {
-					return Stage.ofException((Throwable) e);
+					return Promise.ofException((Throwable) e);
 				}
 			}
 		};
@@ -97,14 +97,14 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncServlet update(GridModel<K, R> model, Gson gson) {
 		return new AsyncServlet() {
 			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
+			public Promise<HttpResponse> serve(HttpRequest request) {
 				try {
 					String json = ByteBufStrings.decodeUtf8(request.getBody());
 					List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
 					return model.update(list).thenApply(result ->
 							createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
 				} catch (ParseException e) {
-					return Stage.ofException((Throwable) e);
+					return Promise.ofException((Throwable) e);
 				}
 			}
 		};
@@ -113,7 +113,7 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(GridModel<K, R> model, Gson gson) {
 		return new AsyncServlet() {
 			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
+			public Promise<HttpResponse> serve(HttpRequest request) {
 				try {
 					K id = fromJson(gson, request.getPathParameter("id"), model.getIdType());
 					return model.delete(id).thenApply(response -> {
@@ -126,7 +126,7 @@ public class UiKernelServlets {
 						return res;
 					});
 				} catch (ParseException e) {
-					return Stage.ofException((Throwable) e);
+					return Promise.ofException((Throwable) e);
 				}
 			}
 		};

@@ -16,7 +16,7 @@
 
 package io.global.ot.server;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.global.common.RepoID;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
@@ -26,27 +26,27 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface CommitStorage {
-	Stage<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepoID repositoryId);
+	Promise<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepoID repositoryId);
 
-	Stage<Void> applyHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads);
+	Promise<Void> applyHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads);
 
-	Stage<Boolean> hasCommit(CommitId commitId);
+	Promise<Boolean> hasCommit(CommitId commitId);
 
-	Stage<Optional<RawCommit>> loadCommit(CommitId commitId);
+	Promise<Optional<RawCommit>> loadCommit(CommitId commitId);
 
-	Stage<Set<CommitId>> getChildren(CommitId commitId);
+	Promise<Set<CommitId>> getChildren(CommitId commitId);
 
-	Stage<Boolean> saveCommit(CommitId commitId, RawCommit rawCommit);
+	Promise<Boolean> saveCommit(CommitId commitId, RawCommit rawCommit);
 
-	Stage<Boolean> saveSnapshot(SignedData<RawSnapshot> encryptedSnapshot);
+	Promise<Boolean> saveSnapshot(SignedData<RawSnapshot> encryptedSnapshot);
 
-	Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId);
+	Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId);
 
-	Stage<Boolean> savePullRequest(SignedData<RawPullRequest> pullRequest);
+	Promise<Boolean> savePullRequest(SignedData<RawPullRequest> pullRequest);
 
-	Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repository);
+	Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repository);
 
-	Stage<Void> markCompleteCommits();
+	Promise<Void> markCompleteCommits();
 
-	Stage<Boolean> isCompleteCommit(CommitId commitId);
+	Promise<Boolean> isCompleteCommit(CommitId commitId);
 }

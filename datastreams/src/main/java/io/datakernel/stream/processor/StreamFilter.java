@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
 
 import java.util.function.Predicate;
@@ -64,7 +64,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 
 	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
-		protected Stage<Void> onEndOfStream() {
+		protected Promise<Void> onEndOfStream() {
 			return output.sendEndOfStream();
 		}
 

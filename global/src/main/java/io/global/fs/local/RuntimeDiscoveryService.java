@@ -16,7 +16,7 @@
 
 package io.global.fs.local;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
@@ -36,11 +36,11 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 	private final Map<SimKeyKey, SignedData<SharedSimKey>> sharedKeys = new HashMap<>();
 
 	@Override
-	public Stage<Void> announce(RepoID repo, SignedData<AnnounceData> announceData) {
+	public Promise<Void> announce(RepoID repo, SignedData<AnnounceData> announceData) {
 		logger.info("received {} for {}", announceData, repo);
 		if (!announceData.verify(repo.getOwner())) {
 			logger.warn("failed to verify " + announceData);
-			return Stage.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
+			return Promise.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
 		}
 		announced
 				.computeIfAbsent(repo.getOwner(), $ -> new HashMap<>())
@@ -51,37 +51,37 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 					}
 					return announceData;
 				});
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Optional<SignedData<AnnounceData>>> find(RepoID repo) {
+	public Promise<Optional<SignedData<AnnounceData>>> find(RepoID repo) {
 		Map<String, SignedData<AnnounceData>> repos = announced.get(repo.getOwner());
 		return repos != null ?
-				Stage.of(Optional.ofNullable(repos.get(repo.getName()))) :
-				Stage.of(Optional.empty());
+				Promise.of(Optional.ofNullable(repos.get(repo.getName()))) :
+				Promise.of(Optional.empty());
 	}
 
 	@Override
-	public Stage<List<SignedData<AnnounceData>>> find(PubKey owner) {
-		return Stage.of(new ArrayList<>(announced.computeIfAbsent(owner, $ -> new HashMap<>()).values()));
+	public Promise<List<SignedData<AnnounceData>>> find(PubKey owner) {
+		return Promise.of(new ArrayList<>(announced.computeIfAbsent(owner, $ -> new HashMap<>()).values()));
 	}
 
 	@Override
-	public Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
+	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
 		logger.info("received {}", simKey);
 		if (!simKey.verify(owner)) {
 			logger.warn("failed to verify " + simKey);
-			return Stage.ofException(CANNOT_VERIFY_SHARED_KEY);
+			return Promise.ofException(CANNOT_VERIFY_SHARED_KEY);
 		}
 		SharedSimKey data = simKey.getData();
 		sharedKeys.put(new SimKeyKey(owner, data.getReceiver(), data.getHash()), simKey);
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
-		return Stage.of(Optional.ofNullable(sharedKeys.get(new SimKeyKey(owner, receiver, hash))));
+	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
+		return Promise.of(Optional.ofNullable(sharedKeys.get(new SimKeyKey(owner, receiver, hash))));
 	}
 
 	private static class SimKeyKey {

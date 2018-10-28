@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 
@@ -30,17 +30,17 @@ import java.util.List;
  * @param <T> type of storing data
  */
 public interface StreamSorterStorage<T> {
-	Stage<Integer> newPartitionId();
+	Promise<Integer> newPartitionId();
 
 	/**
 	 * Method for writing to storage partition of elements
 	 *
 	 * @return partition number
 	 */
-	Stage<StreamConsumer<T>> write(int partition);
+	Promise<StreamConsumer<T>> write(int partition);
 
 	default StreamConsumer<T> writeStream(int partition) {
-		return StreamConsumer.ofStage(write(partition));
+		return StreamConsumer.ofPromise(write(partition));
 	}
 
 	/**
@@ -49,14 +49,14 @@ public interface StreamSorterStorage<T> {
 	 * @param partition index of partition
 	 * @return supplier for streaming to storage
 	 */
-	Stage<StreamSupplier<T>> read(int partition);
+	Promise<StreamSupplier<T>> read(int partition);
 
 	default StreamSupplier<T> readStream(int partition) {
-		return StreamSupplier.ofStage(read(partition));
+		return StreamSupplier.ofPromise(read(partition));
 	}
 
 	/**
 	 * Method for removing all stored created objects
 	 */
-	Stage<Void> cleanup(List<Integer> partitionsToDelete);
+	Promise<Void> cleanup(List<Integer> partitionsToDelete);
 }

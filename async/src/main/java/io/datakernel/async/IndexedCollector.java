@@ -24,9 +24,9 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collector;
 
 public interface IndexedCollector<T, A, R> {
-	A accumulator(int stages);
+	A accumulator(int promises);
 
-	void accumulate(A accumulator, int stageIndex, T stageResult);
+	void accumulate(A accumulator, int promiseIndex, T promiseResult);
 
 	R finish(A accumulator);
 
@@ -56,13 +56,13 @@ public interface IndexedCollector<T, A, R> {
 			final BiConsumer<A, T> accumulator = collector.accumulator();
 
 			@Override
-			public A accumulator(int stages) {
+			public A accumulator(int promises) {
 				return collector.supplier().get();
 			}
 
 			@Override
-			public void accumulate(A accumulator, int stageIndex, T stageResult) {
-				this.accumulator.accept(accumulator, stageResult);
+			public void accumulate(A accumulator, int promiseIndex, T promiseResult) {
+				this.accumulator.accept(accumulator, promiseResult);
 			}
 
 			@Override
@@ -74,13 +74,13 @@ public interface IndexedCollector<T, A, R> {
 
 	IndexedCollector<Object, Object[], List<Object>> TO_LIST = new IndexedCollector<Object, Object[], List<Object>>() {
 		@Override
-		public Object[] accumulator(int stages) {
-			return new Object[stages];
+		public Object[] accumulator(int promises) {
+			return new Object[promises];
 		}
 
 		@Override
-		public void accumulate(Object[] accumulator, int stageIndex, Object stageResult) {
-			accumulator[stageIndex] = stageResult;
+		public void accumulate(Object[] accumulator, int promiseIndex, Object promiseResult) {
+			accumulator[promiseIndex] = promiseResult;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -121,13 +121,13 @@ public interface IndexedCollector<T, A, R> {
 		return new IndexedCollector<T, T[], T[]>() {
 
 			@Override
-			public T[] accumulator(int stages) {
-				return (T[]) Array.newInstance(type, stages);
+			public T[] accumulator(int promises) {
+				return (T[]) Array.newInstance(type, promises);
 			}
 
 			@Override
-			public void accumulate(T[] accumulator, int stageIndex, T stageResult) {
-				accumulator[stageIndex] = stageResult;
+			public void accumulate(T[] accumulator, int promiseIndex, T promiseResult) {
+				accumulator[promiseIndex] = promiseResult;
 			}
 
 			@SuppressWarnings("unchecked")

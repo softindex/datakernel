@@ -17,13 +17,13 @@
 package io.datakernel.http.stream;
 
 import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.http.TestUtils.AssertingConsumer;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -40,7 +40,7 @@ public class BufsConsumerIntegrationTest {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 	public final AssertingConsumer consumer = new AssertingConsumer();
 	public final ArrayList<ByteBuf> list = new ArrayList<>();
 	public final Random random = new Random();
@@ -118,7 +118,7 @@ public class BufsConsumerIntegrationTest {
 	}
 
 	private void doTest(AsyncProcess process1, AsyncProcess process2) {
-		Stages.all(process1.getProcessResult(), process2.getProcessResult())
+		Promises.all(process1.getProcessResult(), process2.getProcessResult())
 				.whenComplete(assertComplete())
 				.whenComplete(($, e) -> assertTrue(consumer.executed));
 

@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 
-import static io.datakernel.async.Stages.repeat;
+import static io.datakernel.async.Promises.repeat;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 public class AbstractServerTest {

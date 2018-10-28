@@ -17,7 +17,7 @@
 package io.datakernel.serial.processor;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serial.SerialConsumer;
@@ -125,7 +125,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	protected Stage<Void> onEndOfStream() {
+	protected Promise<Void> onEndOfStream() {
 		input.flush();
 		return getAcknowledgement();
 	}

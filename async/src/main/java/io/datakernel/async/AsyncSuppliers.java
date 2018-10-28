@@ -12,43 +12,43 @@ public final class AsyncSuppliers {
 	public static <T> AsyncSupplier<T> reuse(AsyncSupplier<? extends T> actual) {
 		return new AsyncSupplier<T>() {
 			@Nullable
-			Stage<T> runningStage;
+			Promise<T> runningPromise;
 
 			@SuppressWarnings("unchecked")
 			@Override
-			public Stage<T> get() {
-				if (runningStage != null) return runningStage;
-				runningStage = (Stage<T>) actual.get();
-				Stage<T> runningStage = this.runningStage;
-				runningStage.whenComplete((result, throwable) -> this.runningStage = null);
-				return runningStage;
+			public Promise<T> get() {
+				if (runningPromise != null) return runningPromise;
+				runningPromise = (Promise<T>) actual.get();
+				Promise<T> runningPromise = this.runningPromise;
+				runningPromise.whenComplete((result, throwable) -> this.runningPromise = null);
+				return runningPromise;
 			}
 		};
 	}
 
 	public static <T> AsyncSupplier<T> resubscribe(AsyncSupplier<? extends T> actual) {
 		return new AsyncSupplier<T>() {
-			SettableStage<T> runningStage;
+			SettablePromise<T> runningPromise;
 			@Nullable
-			SettableStage<T> subscribeStage;
+			SettablePromise<T> subscribePromise;
 
 			@Override
-			public Stage<T> get() {
-				if (runningStage == null) {
-					assert subscribeStage == null;
-					runningStage = new SettableStage<>();
-					runningStage.whenComplete((result, throwable) -> {
-						runningStage = subscribeStage;
-						subscribeStage = null;
-						actual.get().async().whenComplete(runningStage::set);
+			public Promise<T> get() {
+				if (runningPromise == null) {
+					assert subscribePromise == null;
+					runningPromise = new SettablePromise<>();
+					runningPromise.whenComplete((result, throwable) -> {
+						runningPromise = subscribePromise;
+						subscribePromise = null;
+						actual.get().async().whenComplete(runningPromise::set);
 					});
-					actual.get().async().whenComplete(runningStage::set);
-					return runningStage;
+					actual.get().async().whenComplete(runningPromise::set);
+					return runningPromise;
 				}
-				if (subscribeStage == null) {
-					subscribeStage = new SettableStage<>();
+				if (subscribePromise == null) {
+					subscribePromise = new SettablePromise<>();
 				}
-				return subscribeStage;
+				return subscribePromise;
 			}
 		};
 	}
@@ -60,35 +60,35 @@ public final class AsyncSuppliers {
 	public static <T> AsyncSupplier<T> buffered(int maxParallelCalls, int maxBufferedCalls, AsyncSupplier<? extends T> actual) {
 		return new AsyncSupplier<T>() {
 			private int pendingCalls;
-			private final ArrayDeque<SettableStage<T>> deque = new ArrayDeque<>();
+			private final ArrayDeque<SettablePromise<T>> deque = new ArrayDeque<>();
 
 			@SuppressWarnings("ConstantConditions")
 			private void processQueue() {
 				while (pendingCalls < maxParallelCalls && !deque.isEmpty()) {
-					SettableStage<T> resultStage = deque.pollFirst();
+					SettablePromise<T> resultPromise = deque.pollFirst();
 					pendingCalls++;
 					actual.get().async().whenComplete((value, throwable) -> {
 						pendingCalls--;
 						processQueue();
-						resultStage.set(value, throwable);
+						resultPromise.set(value, throwable);
 					});
 				}
 			}
 
 			@SuppressWarnings("unchecked")
 			@Override
-			public Stage<T> get() {
+			public Promise<T> get() {
 				if (pendingCalls <= maxParallelCalls) {
 					pendingCalls++;
-					return (Stage<T>) actual.get().async().whenComplete((value, throwable) -> {
+					return (Promise<T>) actual.get().async().whenComplete((value, throwable) -> {
 						pendingCalls--;
 						processQueue();
 					});
 				}
 				if (deque.size() > maxBufferedCalls) {
-					return Stage.ofException(new RejectedExecutionException());
+					return Promise.ofException(new RejectedExecutionException());
 				}
-				SettableStage<T> result = new SettableStage<>();
+				SettablePromise<T> result = new SettablePromise<>();
 				deque.addLast(result);
 				return result;
 			}
@@ -122,10 +122,10 @@ public final class AsyncSuppliers {
 
 					@SuppressWarnings("unchecked")
 					@Override
-					public Stage<T> get() {
-						Stage<? extends T> result = deque.isEmpty() ? actual.get() : Stage.of(deque.pollFirst());
+					public Promise<T> get() {
+						Promise<? extends T> result = deque.isEmpty() ? actual.get() : Promise.of(deque.pollFirst());
 						tryPrefetch();
-						return (Stage<T>) result;
+						return (Promise<T>) result;
 					}
 				};
 	}

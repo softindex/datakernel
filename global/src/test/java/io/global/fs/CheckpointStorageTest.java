@@ -16,7 +16,7 @@
 
 package io.global.fs;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.global.common.CryptoUtils;
@@ -77,7 +77,7 @@ public class CheckpointStorageTest {
 
 		byte[] filenameHash = CryptoUtils.sha256("test.txt".getBytes(UTF_8));
 
-		Stage.complete()
+		Promise.complete()
 				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(567, digest1, filenameHash), keys.getPrivKey())))
 				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(123, digest2, filenameHash), keys.getPrivKey())))
 				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(321, digest3, filenameHash), keys.getPrivKey())))

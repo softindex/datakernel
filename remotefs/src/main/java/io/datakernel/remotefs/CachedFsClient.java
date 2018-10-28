@@ -18,8 +18,8 @@ package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.AsyncSuppliers;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -79,7 +79,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 	// endregion
 
-	public Stage<Void> setCacheSizeLimit(MemSize cacheSizeLimit) {
+	public Promise<Void> setCacheSizeLimit(MemSize cacheSizeLimit) {
 		this.cacheSizeLimit = checkNotNull(cacheSizeLimit);
 		return ensureSpace();
 	}
@@ -88,9 +88,9 @@ public class CachedFsClient implements FsClient, EventloopService {
 		return this.cacheSizeLimit;
 	}
 
-	public Stage<MemSize> getTotalCacheSize() {
+	public Promise<MemSize> getTotalCacheSize() {
 		return cacheClient.list()
-				.thenCompose(list -> Stage.of(MemSize.of(list.stream().mapToLong(FileMetadata::getSize).sum())));
+				.thenCompose(list -> Promise.of(MemSize.of(list.stream().mapToLong(FileMetadata::getSize).sum())));
 	}
 
 	@Override
@@ -99,7 +99,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> start() {
+	public Promise<Void> start() {
 		checkState(cacheSizeLimit != null, "Cannot start cached client without specifying cache size limit");
 		return getTotalCacheSize()
 				.thenCompose(size -> {
@@ -109,7 +109,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		return mainClient.upload(filename, offset);
 	}
 
@@ -119,10 +119,10 @@ public class CachedFsClient implements FsClient, EventloopService {
 	 * @param filename name of the file to be downloaded
 	 * @param offset   from which byte to download the file
 	 * @param length   how much bytes of the file do download
-	 * @return stage for stream supplier of byte buffers
+	 * @return promise for stream supplier of byte buffers
 	 */
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		checkNotNull(filename, "fileName");
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
@@ -136,7 +136,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 						return mainClient.getMetadata(filename)
 								.thenCompose(mainMetadata -> {
 									if (mainMetadata == null) {
-										return Stage.ofException(new StacklessException(CachedFsClient.class, "File not found: " + filename));
+										return Promise.ofException(new StacklessException(CachedFsClient.class, "File not found: " + filename));
 									}
 									return downloadToCache(filename, offset, length, 0, mainMetadata.getSize());
 								});
@@ -168,7 +168,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 
 								if ((length != -1) && (sizeInMain < (offset + length))) {
 									String repr = filename + "(size=" + sizeInMain + (offset != 0 ? ", offset=" + offset : "") + ", length=" + length;
-									return Stage.ofException(new StacklessException(CachedFsClient.class, "Boundaries exceed file size: " + repr));
+									return Promise.ofException(new StacklessException(CachedFsClient.class, "Boundaries exceed file size: " + repr));
 								}
 
 								return downloadToCache(filename, offset, length, sizeInCache, sizeInMain);
@@ -177,13 +177,13 @@ public class CachedFsClient implements FsClient, EventloopService {
 				});
 	}
 
-	private Stage<SerialSupplier<ByteBuf>> downloadToCache(String fileName, long offset, long length, long sizeInCache, long sizeInMain) {
+	private Promise<SerialSupplier<ByteBuf>> downloadToCache(String fileName, long offset, long length, long sizeInCache, long sizeInMain) {
 		long size = length == -1 ? length : length + offset - sizeInCache;
 		return mainClient.download(fileName, sizeInCache, size)
 				.thenCompose(supplier -> {
 					long toBeCached = sizeInMain - sizeInCache;
 					if (this.downloadingNowSize + toBeCached > cacheSizeLimit.toLong() || toBeCached > cacheSizeLimit.toLong() * (1 - LOAD_FACTOR)) {
-						return Stage.of(supplier);
+						return Promise.of(supplier);
 					}
 					this.downloadingNowSize += toBeCached;
 
@@ -209,12 +209,12 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<Set<String>> move(Map<String, String> changes) {
+	public Promise<Set<String>> move(Map<String, String> changes) {
 		return mainClient.move(changes);
 	}
 
 	@Override
-	public Stage<Set<String>> copy(Map<String, String> changes) {
+	public Promise<Set<String>> copy(Map<String, String> changes) {
 		return mainClient.copy(changes);
 	}
 
@@ -222,11 +222,11 @@ public class CachedFsClient implements FsClient, EventloopService {
 	 * Lists files that are matched by glob. List is combined from cache folder files and files that are on server.
 	 *
 	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
-	 * @return stage that is a union of the most actual files from cache folder and server
+	 * @return promise that is a union of the most actual files from cache folder and server
 	 */
 	@Override
-	public Stage<List<FileMetadata>> list(String glob) {
-		return Stages.toList(cacheClient.list(glob), mainClient.list(glob))
+	public Promise<List<FileMetadata>> list(String glob) {
+		return Promises.toList(cacheClient.list(glob), mainClient.list(glob))
 				.thenApply(lists -> lists.stream().flatMap(List::stream))
 				.thenApply(list -> {
 					Map<String, FileMetadata> mapOfMeta = new HashMap<>();
@@ -241,11 +241,11 @@ public class CachedFsClient implements FsClient, EventloopService {
 	 * Deletes file both on server and in cache folder
 	 *
 	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
-	 * @return stage of {@link Void} that represents succesfull deletion
+	 * @return promise of {@link Void} that represents succesfull deletion
 	 */
 	@Override
-	public Stage<Void> delete(String glob) {
-		return Stages.all(cacheClient.list(glob)
+	public Promise<Void> delete(String glob) {
+		return Promises.all(cacheClient.list(glob)
 						.whenResult(listOfMeta -> listOfMeta.forEach(meta -> cacheStats.remove(meta.getName())))
 						.thenApply(listOfMeta -> listOfMeta.stream().mapToLong(FileMetadata::getSize).sum())
 						.thenCompose(size -> cacheClient.delete(glob)
@@ -255,12 +255,12 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> stop() {
+	public Promise<Void> stop() {
 		return ensureSpace();
 	}
 
-	private Stage<Void> updateCacheStats(String fileName) {
-		return Stage.of(cacheStats
+	private Promise<Void> updateCacheStats(String fileName) {
+		return Promise.of(cacheStats
 				.computeIfPresent(fileName, (s, cacheStat) -> {
 					cacheStat.numberOfHits++;
 					cacheStat.lastHitTimestamp = timeProvider.currentTimeMillis();
@@ -270,13 +270,13 @@ public class CachedFsClient implements FsClient, EventloopService {
 				.toVoid();
 	}
 
-	private Stage<Void> ensureSpace() {
+	private Promise<Void> ensureSpace() {
 		return ensureSpace.get();
 	}
 
-	private Stage<Void> doEnsureSpace() {
+	private Promise<Void> doEnsureSpace() {
 		if (totalCacheSize + downloadingNowSize <= cacheSizeLimit.toLong()) {
-			return Stage.complete();
+			return Promise.complete();
 		}
 		long[] sizeAccum = {0};
 		return cacheClient.list()
@@ -293,7 +293,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 							sizeAccum[0] += fullCacheStat.getFileMetadata().getSize();
 							return sizeAccum[0] > cacheSizeLimit.toLong() * LOAD_FACTOR;
 						}))
-				.thenCompose(filesToDelete -> Stages.all(filesToDelete
+				.thenCompose(filesToDelete -> Promises.all(filesToDelete
 						.map(fullCacheStat -> cacheClient
 								.delete(fullCacheStat.getFileMetadata().getName())
 								.whenResult($ -> {

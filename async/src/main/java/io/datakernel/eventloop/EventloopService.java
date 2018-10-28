@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -27,7 +27,7 @@ public interface EventloopService {
 	 * Starts this component asynchronously.
 	 * Callback completes immediately if the component is already running.
 	 */
-	Stage<Void> start();
+	Promise<Void> start();
 
 	default CompletableFuture<Void> startFuture() {
 		return getEventloop().submit(() -> start().toCompletableFuture());
@@ -37,7 +37,7 @@ public interface EventloopService {
 	 * Stops this component asynchronously.
 	 * Callback completes immediately if the component is not running / already stopped.
 	 */
-	Stage<Void> stop();
+	Promise<Void> stop();
 
 	default CompletableFuture<Void> stopFuture() {
 		return getEventloop().submit(() -> stop().toCompletableFuture());

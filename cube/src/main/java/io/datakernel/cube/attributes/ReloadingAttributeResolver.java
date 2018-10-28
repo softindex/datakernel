@@ -17,7 +17,7 @@
 package io.datakernel.cube.attributes;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
@@ -57,13 +57,13 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		return result;
 	}
 
-	protected abstract Stage<Map<K, A>> reload(@Nullable long lastTimestamp);
+	protected abstract Promise<Map<K, A>> reload(@Nullable long lastTimestamp);
 
 	private void doReload() {
 		reloads++;
 		scheduledRunnable.cancel();
 		long reloadTimestamp = getEventloop().currentTimeMillis();
-		Stage<Map<K, A>> reload = reload(timestamp).whenComplete((result, throwable) -> {
+		Promise<Map<K, A>> reload = reload(timestamp).whenComplete((result, throwable) -> {
 			if (throwable == null) {
 				reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
 				cache.putAll(result);
@@ -87,8 +87,8 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	}
 
 	@Override
-	public Stage<Void> start() {
-		if (reloadPeriod == 0) return Stage.complete();
+	public Promise<Void> start() {
+		if (reloadPeriod == 0) return Promise.complete();
 		long reloadTimestamp = getEventloop().currentTimeMillis();
 		return reload(timestamp)
 				.whenResult(result -> {
@@ -101,9 +101,9 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	}
 
 	@Override
-	public Stage<Void> stop() {
+	public Promise<Void> stop() {
 		if (scheduledRunnable != null) scheduledRunnable.cancel();
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	@JmxOperation

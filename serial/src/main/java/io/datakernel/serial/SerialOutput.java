@@ -16,8 +16,8 @@
 
 package io.datakernel.serial;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -43,7 +43,7 @@ public interface SerialOutput<T> {
 		return output -> SerialOutput.this.set(output.transform(fn));
 	}
 
-	default <R> SerialOutput<R> transformAsync(Function<? super T, ? extends Stage<R>> fn) {
+	default <R> SerialOutput<R> transformAsync(Function<? super T, ? extends Promise<R>> fn) {
 		return output -> SerialOutput.this.set(output.transformAsync(fn));
 	}
 
@@ -55,12 +55,12 @@ public interface SerialOutput<T> {
 		return output -> SerialOutput.this.set(output.peek(peek));
 	}
 
-	default MaterializedStage<Void> bindTo(SerialInput<T> to) {
+	default MaterializedPromise<Void> bindTo(SerialInput<T> to) {
 		return bindTo(to, new SerialZeroBuffer<>());
 	}
 
-	default MaterializedStage<Void> bindTo(SerialInput<T> to, SerialQueue<T> queue) {
-		MaterializedStage<Void> extraAcknowledgement = to.set(queue.getSupplier());
+	default MaterializedPromise<Void> bindTo(SerialInput<T> to, SerialQueue<T> queue) {
+		MaterializedPromise<Void> extraAcknowledgement = to.set(queue.getSupplier());
 		this.set(queue.getConsumer(extraAcknowledgement));
 		return extraAcknowledgement;
 	}

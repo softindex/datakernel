@@ -32,8 +32,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.json.GsonAdapters.*;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.gson.GsonAdapters.*;
 import static java.lang.Integer.parseInt;
 
 public final class GlobalJsonAdapters {

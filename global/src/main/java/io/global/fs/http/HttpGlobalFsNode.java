@@ -16,8 +16,8 @@
 
 package io.global.fs.http;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
@@ -66,7 +66,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public Stage<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit) {
+	public Promise<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit) {
 		return client.request(
 				HttpRequest.get(
 						UrlBuilder.http()
@@ -89,7 +89,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	@Override
 	public SerialConsumer<DataFrame> uploader(GlobalPath path, long offset) {
 		SerialZeroBuffer<DataFrame> buffer = new SerialZeroBuffer<>();
-		MaterializedStage<HttpResponse> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
+		MaterializedPromise<HttpResponse> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(UPLOAD)
@@ -104,12 +104,12 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public Stage<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset) {
-		return Stage.of(uploader(path, offset));
+	public Promise<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset) {
+		return Promise.of(uploader(path, offset));
 	}
 
 	@Override
-	public Stage<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob) {
+	public Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob) {
 		PubKey pubKey = space.getOwner();
 		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
 				UrlBuilder.http()
@@ -132,7 +132,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public Stage<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata) {
+	public Promise<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata) {
 		return client.request(HttpRequest.post(
 				UrlBuilder.http()
 						.withAuthority(address)
@@ -144,7 +144,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	// @Override
-	// public Stage<Set<String>> copy(RepoID name, Map<String, String> changes) {
+	// public Promise<Set<String>> copy(RepoID name, Map<String, String> changes) {
 	// 	return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 	// 			UrlBuilder.http()
 	// 					.withAuthority(address)
@@ -155,15 +155,15 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	// 			.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
 	// 			.thenCompose(response -> {
 	// 				try {
-	// 					return Stage.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
+	// 					return Promise.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
 	// 				} catch (ParseException e) {
-	// 					return Stage.ofException(e);
+	// 					return Promise.ofException(e);
 	// 				}
 	// 			});
 	// }
 	//
 	// @Override
-	// public Stage<Set<String>> move(RepoID name, Map<String, String> changes) {
+	// public Promise<Set<String>> move(RepoID name, Map<String, String> changes) {
 	// 	return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 	// 			UrlBuilder.http()
 	// 					.withAuthority(address)
@@ -174,9 +174,9 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	// 			.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
 	// 			.thenCompose(response -> {
 	// 				try {
-	// 					return Stage.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
+	// 					return Promise.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
 	// 				} catch (ParseException e) {
-	// 					return Stage.ofException(e);
+	// 					return Promise.ofException(e);
 	// 				}
 	// 			});
 	// }

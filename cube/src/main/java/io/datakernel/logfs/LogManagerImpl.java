@@ -17,8 +17,8 @@
 package io.datakernel.logfs;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
@@ -97,10 +97,10 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	@Override
-	public Stage<StreamConsumer<T>> consumer(String logPartition) {
+	public Promise<StreamConsumer<T>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
 
-		return Stage.of(StreamConsumer.<T>ofSupplier(
+		return Promise.of(StreamConsumer.<T>ofSupplier(
 				supplier -> supplier
 						.apply(SerialBinarySerializer.create(serializer)
 								.withAutoFlushInterval(autoFlushInterval)
@@ -112,13 +112,13 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	@Override
-	public Stage<StreamSupplierWithResult<T, LogPosition>> supplier(String logPartition,
+	public Promise<StreamSupplierWithResult<T, LogPosition>> supplier(String logPartition,
 			LogFile startLogFile, long startOffset,
 			LogFile endLogFile) {
 		validateLogPartition(logPartition);
 		LogPosition startPosition = LogPosition.create(startLogFile, startOffset);
-		SettableStage<LogPosition> positionStage = new SettableStage<>();
-		SettableStage<StreamSupplierWithResult<T, LogPosition>> resultStage = new SettableStage<>();
+		SettablePromise<LogPosition> positionPromise = new SettablePromise<>();
+		SettablePromise<StreamSupplierWithResult<T, LogPosition>> resultPromise = new SettablePromise<>();
 		fileSystem.list(logPartition)
 				.whenResult(logFiles -> {
 					List<LogFile> logFilesToRead = logFiles.stream()
@@ -139,7 +139,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 						@Override
 						public boolean hasNext() {
 							if (it.hasNext()) return true;
-							positionStage.set(getLogPosition());
+							positionPromise.set(getLogPosition());
 							return false;
 						}
 
@@ -161,7 +161,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 							if (logger.isTraceEnabled())
 								logger.trace("Read log file `{}` from: {}", currentLogFile, position);
 
-							return StreamSupplier.ofStage(fileSystem.read(logPartition, currentLogFile, position)
+							return StreamSupplier.ofPromise(fileSystem.read(logPartition, currentLogFile, position)
 									.thenApply(fileStream -> {
 										inputStreamPosition = 0L;
 										sw.reset().start();
@@ -176,8 +176,8 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 												.apply(supplier ->
 														supplier.withEndOfStream(eos ->
 																eos.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
-																		Stage.complete() :
-																		Stage.ofException(e))))
+																		Promise.complete() :
+																		Promise.ofException(e))))
 												.apply(SerialBinaryDeserializer.create(serializer))
 												.withEndOfStream(eos ->
 														eos.whenComplete(($, e) -> log(e)))
@@ -197,10 +197,10 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 					};
 
 					StreamSupplier<T> supplier = StreamSupplier.concat(suppliers).withLateBinding();
-					resultStage.set(StreamSupplierWithResult.of(supplier, positionStage));
+					resultPromise.set(StreamSupplierWithResult.of(supplier, positionPromise));
 				})
-				.whenException(resultStage::setException);
-		return resultStage;
+				.whenException(resultPromise::setException);
+		return resultPromise;
 	}
 
 	private static void validateLogPartition(String logPartition) {

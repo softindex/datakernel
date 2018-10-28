@@ -1,6 +1,6 @@
 package io.datakernel.loader;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.http.HttpException;
@@ -19,19 +19,19 @@ class SimpleStaticLoaderAsync implements StaticLoader {
 	}
 
 	@Override
-	public Stage<ByteBuf> getResource(String name) {
+	public Promise<ByteBuf> getResource(String name) {
 		Path file = root.resolve(name).normalize();
 
 		if (!file.startsWith(root)) {
-			return Stage.ofException(HttpException.notFound404());
+			return Promise.ofException(HttpException.notFound404());
 		}
 
 		return AsyncFile.readFile(executorService, file)
 				.thenComposeEx((buf, e) -> {
 					if (e instanceof NoSuchFileException) {
-						return Stage.ofException(HttpException.notFound404());
+						return Promise.ofException(HttpException.notFound404());
 					}
-					return Stage.of(buf, e);
+					return Promise.of(buf, e);
 				});
 	}
 }

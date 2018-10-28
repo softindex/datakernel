@@ -1,6 +1,6 @@
 package io.datakernel.stream.stats;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialConsumerFunction;
@@ -99,10 +99,10 @@ public final class StreamRegistry<V> implements Iterable<V> {
 		return supplier.withEndOfStream(subscribe(value));
 	}
 
-	private Function<Stage<Void>, Stage<Void>> subscribe(V value) {
+	private Function<Promise<Void>, Promise<Void>> subscribe(V value) {
 		Entry<V> entry = new Entry<>(value);
 		IntrusiveLinkedList.Node<Entry<V>> node = list.addFirstValue(entry);
-		return stage -> stage
+		return promise -> promise
 				.whenComplete(($, e) -> list.removeNode(node));
 	}
 

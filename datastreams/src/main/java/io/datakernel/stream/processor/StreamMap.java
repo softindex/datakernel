@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
 
 /**
@@ -130,7 +130,7 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 
 	protected final class Input extends AbstractStreamConsumer<I> {
 		@Override
-		protected Stage<Void> onEndOfStream() {
+		protected Promise<Void> onEndOfStream() {
 			return output.sendEndOfStream();
 		}
 

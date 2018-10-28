@@ -17,8 +17,8 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -221,29 +221,29 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@Override
-	public final Stage<Void> close() {
+	public final Promise<Void> close() {
 		check(eventloop.inEventloopThread(), "Cannot close server from different thread");
-		if (!running) return Stage.complete();
+		if (!running) return Promise.complete();
 		running = false;
 		closeServerSocketChannels();
-		SettableStage<Void> stage = new SettableStage<>();
-		onClose(stage);
-		stage.whenComplete(($, e) -> {
+		SettablePromise<Void> promise = new SettablePromise<>();
+		onClose(promise);
+		promise.whenComplete(($, e) -> {
 			if (e == null) {
 				logger.info("Server closed: {}", this);
 			} else {
 				logger.error("Server closed exceptionally: " + this, e);
 			}
 		});
-		return stage;
+		return promise;
 	}
 
 	public final Future<?> closeFuture() {
 		return eventloop.submit(this::close);
 	}
 
-	protected void onClose(SettableStage<Void> stage) {
-		stage.set(null);
+	protected void onClose(SettablePromise<Void> promise) {
+		promise.set(null);
 	}
 
 	public boolean isRunning() {

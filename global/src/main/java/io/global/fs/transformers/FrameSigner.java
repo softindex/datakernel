@@ -16,7 +16,7 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.global.common.PrivKey;
 import io.global.common.SignedData;
@@ -51,7 +51,7 @@ public final class FrameSigner extends ByteBufsToFrames {
 	// endregion
 
 	@Override
-	protected Stage<Void> postByteBuf(ByteBuf buf) {
+	protected Promise<Void> postByteBuf(ByteBuf buf) {
 		int size = buf.readRemaining();
 		digest.update(buf.array(), buf.readPosition(), size);
 		lastPostedCheckpoint = false;
@@ -59,7 +59,7 @@ public final class FrameSigner extends ByteBufsToFrames {
 	}
 
 	@Override
-	protected Stage<Void> postNextCheckpoint() {
+	protected Promise<Void> postNextCheckpoint() {
 		nextCheckpoint = checkpointPosStrategy.nextPosition(nextCheckpoint);
 		GlobalFsCheckpoint checkpoint = GlobalFsCheckpoint.of(position, new SHA256Digest(digest), localPathHash);
 		lastPostedCheckpoint = true;

@@ -18,7 +18,7 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
@@ -66,25 +66,25 @@ public class AggregationGroupReducerTest {
 			long chunkId;
 
 			@Override
-			public <T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamSupplier.ofIterable(items));
+			public <T> Promise<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Promise.of(StreamSupplier.ofIterable(items));
 			}
 
 			@Override
-			public <T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+			public <T> Promise<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
-				return Stage.of(consumer);
+				return Promise.of(consumer);
 			}
 
 			@Override
-			public Stage<Long> createId() {
-				return Stage.of(++chunkId);
+			public Promise<Long> createId() {
+				return Promise.of(++chunkId);
 			}
 
 			@Override
-			public Stage<Void> finish(Set<Long> chunkIds) {
-				return Stage.complete();
+			public Promise<Void> finish(Set<Long> chunkIds) {
+				return Promise.complete();
 			}
 		};
 

@@ -1,7 +1,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.stream.processor.StreamTransformer;
@@ -101,7 +101,7 @@ public class StreamConsumersTest {
 
 		protected final class Input extends AbstractStreamConsumer<T> {
 			@Override
-			protected Stage<Void> onEndOfStream() {
+			protected Promise<Void> onEndOfStream() {
 				isEndOfStream = true;
 				return output.sendEndOfStream();
 			}

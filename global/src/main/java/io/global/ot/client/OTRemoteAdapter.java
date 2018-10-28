@@ -16,7 +16,7 @@
 
 package io.global.ot.client;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemote;
 import io.global.common.RepoID;
@@ -43,32 +43,32 @@ public final class OTRemoteAdapter<D> implements OTRemote<CommitId, D> {
 	}
 
 	@Override
-	public Stage<OTCommit<CommitId, D>> createCommit(Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
-		return Stage.of(driver.createCommit(myRepositoryId, parentDiffs, level));
+	public Promise<OTCommit<CommitId, D>> createCommit(Map<CommitId, ? extends List<? extends D>> parentDiffs, long level) {
+		return Promise.of(driver.createCommit(myRepositoryId, parentDiffs, level));
 	}
 
 	@Override
-	public Stage<Void> push(OTCommit<CommitId, D> commit) {
+	public Promise<Void> push(OTCommit<CommitId, D> commit) {
 		return driver.push(myRepositoryId, commit);
 	}
 
 	@Override
-	public Stage<Set<CommitId>> getHeads() {
+	public Promise<Set<CommitId>> getHeads() {
 		return driver.getHeads(union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds));
 	}
 
 	@Override
-	public Stage<OTCommit<CommitId, D>> loadCommit(CommitId revisionId) {
+	public Promise<OTCommit<CommitId, D>> loadCommit(CommitId revisionId) {
 		return driver.loadCommit(myRepositoryId, originRepositoryIds, revisionId);
 	}
 
 	@Override
-	public Stage<Optional<List<D>>> loadSnapshot(CommitId revisionId) {
+	public Promise<Optional<List<D>>> loadSnapshot(CommitId revisionId) {
 		return driver.loadSnapshot(myRepositoryId, originRepositoryIds, revisionId);
 	}
 
 	@Override
-	public Stage<Void> saveSnapshot(CommitId revisionId, List<D> diffs) {
+	public Promise<Void> saveSnapshot(CommitId revisionId, List<D> diffs) {
 		return driver.saveSnapshot(myRepositoryId, revisionId, diffs);
 	}
 }

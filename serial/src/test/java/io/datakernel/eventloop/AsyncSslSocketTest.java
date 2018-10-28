@@ -16,14 +16,14 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -55,7 +55,7 @@ import static org.junit.Assert.assertSame;
 public class AsyncSslSocketTest {
 	// region fields
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 	private static final String KEYSTORE_PATH = "./src/test/resources/keystore.jks";
@@ -300,13 +300,13 @@ public class AsyncSslSocketTest {
 		return builder.toString();
 	}
 
-	private Stage<Void> sendData(AsyncTcpSocket socket) {
+	private Promise<Void> sendData(AsyncTcpSocket socket) {
 		String largeData = generateLargeString(10_000);
 		ByteBuf largeBuf = wrapAscii(largeData);
 		sentData.append(largeData);
 
 		return socket.write(largeBuf)
-				.thenCompose($ -> Stages.loop(1000, i -> i != 0,
+				.thenCompose($ -> Promises.loop(1000, i -> i != 0,
 						i -> {
 							sentData.append(TEST_STRING);
 							return socket.write(wrapAscii(TEST_STRING))

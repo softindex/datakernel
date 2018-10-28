@@ -1,6 +1,6 @@
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
 
 import java.util.ArrayDeque;
@@ -44,7 +44,7 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected Stage<Void> onEndOfStream() {
+		protected Promise<Void> onEndOfStream() {
 			output.tryProduce();
 			return output.getConsumer().getAcknowledgement();
 		}

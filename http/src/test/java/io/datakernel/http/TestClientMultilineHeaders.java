@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
@@ -47,10 +47,10 @@ public class TestClientMultilineHeaders {
 
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
+			public Promise<HttpResponse> serve(HttpRequest request) {
 				HttpResponse response = HttpResponse.ok200();
 				response.setHeader(ALLOW, "GET,\r\n HEAD");
-				return Stage.of(response);
+				return Promise.of(response);
 			}
 		};
 

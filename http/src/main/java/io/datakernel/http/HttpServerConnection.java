@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -219,13 +219,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		switchPool(server.poolServing);
 
 		HttpRequest request = this.request;
-		Stage<HttpResponse> servletResult;
+		Promise<HttpResponse> servletResult;
 		try {
 			servletResult = servlet.serve(request);
 		} catch (UncheckedException u) {
-			servletResult = Stage.ofException(u.getCause());
+			servletResult = Promise.ofException(u.getCause());
 		} catch (ParseException e) {
-			servletResult = Stage.ofException(e);
+			servletResult = Promise.ofException(e);
 		}
 		servletResult.whenComplete((response, e) -> {
 			if (isClosed()) {

@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.protocol;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -106,9 +106,9 @@ public final class RpcStream {
 			}
 
 			@Override
-			protected Stage<Void> onEndOfStream() {
+			protected Promise<Void> onEndOfStream() {
 				RpcStream.this.listener.onReadEndOfStream();
-				return Stage.complete();
+				return Promise.complete();
 			}
 
 			@Override

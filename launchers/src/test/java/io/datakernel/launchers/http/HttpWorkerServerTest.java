@@ -20,7 +20,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Provides;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -62,7 +62,7 @@ public class HttpWorkerServerTest {
 					@Provides
 					@Worker
 					AsyncServlet provideServlet(@WorkerId int worker) {
-						return req -> Stage.of(
+						return req -> Promise.of(
 								HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
 					}
 				});

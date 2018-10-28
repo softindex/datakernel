@@ -18,7 +18,7 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
@@ -67,25 +67,25 @@ public class AggregationChunkerTest {
 			long chunkId;
 
 			@Override
-			public <T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamSupplier.ofIterable(items));
+			public <T> Promise<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Promise.of(StreamSupplier.ofIterable(items));
 			}
 
 			@Override
-			public <T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+			public <T> Promise<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
-				return Stage.of(consumer);
+				return Promise.of(consumer);
 			}
 
 			@Override
-			public Stage<Long> createId() {
-				return Stage.of(++chunkId);
+			public Promise<Long> createId() {
+				return Promise.of(++chunkId);
 			}
 
 			@Override
-			public Stage<Void> finish(Set<Long> chunkIds) {
-				return Stage.complete();
+			public Promise<Void> finish(Set<Long> chunkIds) {
+				return Promise.complete();
 			}
 		};
 
@@ -146,25 +146,25 @@ public class AggregationChunkerTest {
 			final List items = new ArrayList();
 
 			@Override
-			public <T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamSupplier.ofIterable(items));
+			public <T> Promise<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Promise.of(StreamSupplier.ofIterable(items));
 			}
 
 			@Override
-			public <T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+			public <T> Promise<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
-				return Stage.of(consumer);
+				return Promise.of(consumer);
 			}
 
 			@Override
-			public Stage<Long> createId() {
-				return Stage.of(++chunkId);
+			public Promise<Long> createId() {
+				return Promise.of(++chunkId);
 			}
 
 			@Override
-			public Stage<Void> finish(Set<Long> chunkIds) {
-				return Stage.complete();
+			public Promise<Void> finish(Set<Long> chunkIds) {
+				return Promise.complete();
 			}
 		};
 
@@ -238,31 +238,31 @@ public class AggregationChunkerTest {
 			final List items = new ArrayList();
 
 			@Override
-			public <T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
-				return Stage.of(StreamSupplier.ofIterable(items));
+			public <T> Promise<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+				return Promise.of(StreamSupplier.ofIterable(items));
 			}
 
 			@Override
-			public <T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
+			public <T> Promise<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, Long chunkId, DefiningClassLoader classLoader) {
 				if (chunkId == 1) {
 					StreamConsumerToList<T> toList = StreamConsumerToList.create(items);
 					listConsumers.add(toList);
-					return Stage.of(toList);
+					return Promise.of(toList);
 				} else {
 					StreamConsumer<T> consumer = StreamConsumer.closingWithError(new Exception("Test Exception"));
 					listConsumers.add(consumer);
-					return Stage.of(consumer);
+					return Promise.of(consumer);
 				}
 			}
 
 			@Override
-			public Stage<Long> createId() {
-				return Stage.of(++chunkId);
+			public Promise<Long> createId() {
+				return Promise.of(++chunkId);
 			}
 
 			@Override
-			public Stage<Void> finish(Set<Long> chunkIds) {
-				return Stage.complete();
+			public Promise<Void> finish(Set<Long> chunkIds) {
+				return Promise.complete();
 			}
 		};
 

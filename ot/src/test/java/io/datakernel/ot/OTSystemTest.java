@@ -21,7 +21,7 @@ import io.datakernel.ot.utils.OTRemoteStub;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -36,7 +36,7 @@ import static java.util.Arrays.asList;
 @SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "WeakerAccess"})
 public class OTSystemTest {
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	@Test
 	public void testTransform1() throws Exception {

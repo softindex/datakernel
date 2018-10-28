@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialSupplier;
@@ -71,11 +71,11 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return response;
 	}
 
-	public Stage<Void> ensureStatusCode(int code) {
+	public Promise<Void> ensureStatusCode(int code) {
 		if (this.code == code) {
-			return Stage.complete();
+			return Promise.complete();
 		}
-		return Stage.ofException(HttpException.ofCode(this.code, this.body.getString(UTF_8)));
+		return Promise.ofException(HttpException.ofCode(this.code, this.body.getString(UTF_8)));
 	}
 
 	// common builder methods

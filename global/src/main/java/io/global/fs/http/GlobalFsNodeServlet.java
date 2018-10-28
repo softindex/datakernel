@@ -17,7 +17,7 @@
 package io.global.fs.http;
 
 import com.google.inject.Inject;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
@@ -95,7 +95,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 	}
 
 	@Override
-	public Stage<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException {
+	public Promise<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException {
 		return servlet.serve(request);
 	}
 }

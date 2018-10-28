@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -48,7 +48,7 @@ public class AsyncHttpServerTest {
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
-				request -> Stage.of(
+				request -> Promise.of(
 						HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 	}
@@ -56,7 +56,7 @@ public class AsyncHttpServerTest {
 	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
 				request ->
-						Stage.ofCallback(cb -> cb.post(
+						Promise.ofCallback(cb -> cb.post(
 								HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())))))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 	}
@@ -65,7 +65,7 @@ public class AsyncHttpServerTest {
 
 	public static AsyncHttpServer delayedHttpServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
-				request -> Stage.ofCallback(
+				request -> Promise.ofCallback(
 						cb -> primaryEventloop.delay(RANDOM.nextInt(3),
 								() -> cb.set(
 										HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))))))
@@ -329,7 +329,7 @@ public class AsyncHttpServerTest {
 		buf.put(request.body);
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				req -> Stage.of(
+				req -> Promise.of(
 						HttpResponse.ok200().withBody(encodeAscii(req.getUrl().getPathAndQuery()))))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 		server.listen();
@@ -355,7 +355,7 @@ public class AsyncHttpServerTest {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
 				ensureRequestBody(Integer.MAX_VALUE, request ->
-						Stage.of(HttpResponse.ok200().withBody(request.getBody()))))
+						Promise.of(HttpResponse.ok200().withBody(request.getBody()))))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 
 		server.listen();

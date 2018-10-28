@@ -16,13 +16,13 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
 import io.datakernel.serial.net.ByteBufSerializer;
@@ -51,13 +51,13 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private final FsClient client;
 
 	// region JMX
-	private final StageStats handleRequestStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats uploadStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats downloadStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats moveStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats copyStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats listStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats deleteStage = StageStats.create(Duration.ofMinutes(5));
+	private final PromiseStats handleRequestPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats uploadPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats downloadPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats movePromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats copyPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats listPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats deletePromise = PromiseStats.create(Duration.ofMinutes(5));
 	// endregion
 
 	private RemoteFsServer(Eventloop eventloop, FsClient client) {
@@ -87,18 +87,18 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					if (msg == null) {
 						logger.warn("unexpected end of stream: {}", this);
 						messaging.close();
-						return Stage.complete();
+						return Promise.complete();
 					}
 					MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
 					if (handler == null) {
-						return Stage.ofException(new Exception("no handler for " + msg + " " + this));
+						return Promise.ofException(new Exception("no handler for " + msg + " " + this));
 					}
 					return handler.onMessage(messaging, msg);
 				})
-				.whenComplete(handleRequestStage.recordStats())
+				.whenComplete(handleRequestPromise.recordStats())
 				.thenComposeEx(($, e) -> {
 					if (e == null) {
-						return Stage.complete();
+						return Promise.complete();
 					}
 					logger.warn("got an error while handling message (" + e + ") : " + this);
 					String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
@@ -117,7 +117,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					.thenCompose($ -> messaging.send(new UploadFinished()))
 					.thenCompose($ -> messaging.sendEndOfStream())
 					.whenResult($ -> messaging.close())
-					.whenComplete(uploadStage.recordStats())
+					.whenComplete(uploadPromise.recordStats())
 					.whenResult($ -> logger.trace("finished receiving data for {}: {}", file, this))
 					.toVoid();
 		});
@@ -127,7 +127,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 			return client.list(fileName)
 					.thenCompose(list -> {
 						if (list.isEmpty()) {
-							return Stage.ofException(new StacklessException(RemoteFsServer.class, "File not found: " + fileName));
+							return Promise.ofException(new StacklessException(RemoteFsServer.class, "File not found: " + fileName));
 						}
 						long size = list.get(0).getSize();
 						long length = msg.getLength();
@@ -137,10 +137,10 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						logger.trace("requested file {}: {}", repr, this);
 
 						if (offset > size) {
-							return Stage.ofException(new StacklessException(RemoteFsServer.class, "Offset exceeds file size for " + repr));
+							return Promise.ofException(new StacklessException(RemoteFsServer.class, "Offset exceeds file size for " + repr));
 						}
 						if (length != -1 && offset + length > size) {
-							return Stage.ofException(new StacklessException(RemoteFsServer.class, "Boundaries exceed file size for " + repr));
+							return Promise.ofException(new StacklessException(RemoteFsServer.class, "Boundaries exceed file size for " + repr));
 						}
 
 						long fixedLength = length == -1 ? size - offset : length;
@@ -153,17 +153,17 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 											.whenResult($1 -> logger.trace("finished sending data for {}: {}", repr, this));
 								});
 					})
-					.whenComplete(downloadStage.recordStats());
+					.whenComplete(downloadPromise.recordStats());
 		});
-		simpleHandler(Move.class, Move::getChanges, FsClient::move, MoveFinished::new, moveStage);
-		simpleHandler(Copy.class, Copy::getChanges, FsClient::copy, CopyFinished::new, copyStage);
-		simpleHandler(List.class, List::getGlob, FsClient::list, ListFinished::new, listStage);
-		simpleHandler(Delete.class, Delete::getGlob, FsClient::delete, DeleteFinished::new, deleteStage);
+		simpleHandler(Move.class, Move::getChanges, FsClient::move, MoveFinished::new, movePromise);
+		simpleHandler(Copy.class, Copy::getChanges, FsClient::copy, CopyFinished::new, copyPromise);
+		simpleHandler(List.class, List::getGlob, FsClient::list, ListFinished::new, listPromise);
+		simpleHandler(Delete.class, Delete::getGlob, FsClient::delete, DeleteFinished::new, deletePromise);
 	}
 
 	private <T extends FsCommand, E, R> void simpleHandler(Class<T> cls,
-			Function<T, E> extractor, BiFunction<FsClient, E, Stage<R>> action,
-			Function<R, FsResponse> res, StageStats stats) {
+			Function<T, E> extractor, BiFunction<FsClient, E, Promise<R>> action,
+			Function<R, FsResponse> res, PromiseStats stats) {
 		onMessage(cls, (messaging, msg) -> action.apply(client, extractor.apply(msg))
 				.thenCompose(item -> messaging.send(res.apply(item)))
 				.thenCompose($ -> messaging.sendEndOfStream())
@@ -172,7 +172,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 
 	@FunctionalInterface
 	private interface MessagingHandler<T extends FsCommand> {
-		Stage<Void> onMessage(Messaging<FsCommand, FsResponse> messaging, T item);
+		Promise<Void> onMessage(Messaging<FsCommand, FsResponse> messaging, T item);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -187,33 +187,33 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 
 	// region JMX
 	@JmxAttribute
-	public StageStats getUploadStage() {
-		return uploadStage;
+	public PromiseStats getUploadPromise() {
+		return uploadPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getDownloadStage() {
-		return downloadStage;
+	public PromiseStats getDownloadPromise() {
+		return downloadPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getMoveStage() {
-		return moveStage;
+	public PromiseStats getMovePromise() {
+		return movePromise;
 	}
 
 	@JmxAttribute
-	public StageStats getListStage() {
-		return listStage;
+	public PromiseStats getListPromise() {
+		return listPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getDeleteStage() {
-		return deleteStage;
+	public PromiseStats getDeletePromise() {
+		return deletePromise;
 	}
 
 	@JmxAttribute
-	public StageStats getHandleRequestStage() {
-		return handleRequestStage;
+	public PromiseStats getHandleRequestPromise() {
+		return handleRequestPromise;
 	}
 	// endregion
 }

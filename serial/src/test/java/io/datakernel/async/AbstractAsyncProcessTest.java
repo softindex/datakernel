@@ -26,7 +26,7 @@ import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -45,7 +45,7 @@ import static org.junit.Assert.assertTrue;
 
 public class AbstractAsyncProcessTest {
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	@Rule
 	public final ByteBufRule byteBufRule = new ByteBufRule();
@@ -57,7 +57,7 @@ public class AbstractAsyncProcessTest {
 	private Eventloop eventloop;
 
 	private PassThroughProcess[] processes = new PassThroughProcess[size];
-	private MaterializedStage<Void> acknowledgement;
+	private MaterializedPromise<Void> acknowledgement;
 	private List<ByteBuf> expectedData = new ArrayList<>();
 	private boolean consumedAll = false;
 
@@ -92,7 +92,7 @@ public class AbstractAsyncProcessTest {
 				deepRecycle(actualData);
 				consumedAll = true;
 			}
-			return Stage.complete();
+			return Promise.complete();
 		}));
 
 		acknowledgement.whenComplete(assertComplete($ -> assertTrue(consumedAll)));
@@ -104,7 +104,7 @@ public class AbstractAsyncProcessTest {
 	public void testAckPropagationWithFailure() {
 		processes[size - 1].getOutput().set(SerialConsumer.of(value -> {
 			tryRecycle(value);
-			return Stage.ofException(error);
+			return Promise.ofException(error);
 		}));
 
 		acknowledgement.whenComplete(assertFailure(e -> assertSame(error, e)));

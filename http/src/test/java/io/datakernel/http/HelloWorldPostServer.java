@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 
 import java.net.InetSocketAddress;
@@ -32,7 +32,7 @@ public final class HelloWorldPostServer {
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
-				ensureRequestBody(Integer.MAX_VALUE, request -> Stage.of(
+				ensureRequestBody(Integer.MAX_VALUE, request -> Promise.of(
 						HttpResponse.ok200()
 								.withBody(encodeAscii(HELLO_WORLD + request.getBody().asString(UTF_8))))))
 				.withListenAddress(new InetSocketAddress("localhost", port));

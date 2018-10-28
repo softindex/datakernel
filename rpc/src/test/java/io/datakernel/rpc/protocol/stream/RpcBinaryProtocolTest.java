@@ -16,8 +16,8 @@
 
 package io.datakernel.rpc.protocol.stream;
 
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -74,7 +74,7 @@ public class RpcBinaryProtocolTest {
 
 		RpcServer server = RpcServer.create(eventloop)
 				.withMessageTypes(String.class)
-				.withHandler(String.class, String.class, request -> Stage.of("Hello, " + request + "!"))
+				.withHandler(String.class, String.class, request -> Promise.of("Hello, " + request + "!"))
 				.withListenAddress(address);
 		server.listen();
 
@@ -82,10 +82,10 @@ public class RpcBinaryProtocolTest {
 		List<String> results = new ArrayList<>();
 
 		client.start()
-				.thenCompose($ -> Stages.all(IntStream.range(0, countRequests).mapToObj(i ->
+				.thenCompose($ -> Promises.all(IntStream.range(0, countRequests).mapToObj(i ->
 						client.<String, String>sendRequest(testMessage, 1000)
 								.whenResult(results::add))))
-				.whenComplete(($1, e1) -> Stages.all(client.stop(), server.close()));
+				.whenComplete(($1, e1) -> Promises.all(client.stop(), server.close()));
 
 		eventloop.run();
 

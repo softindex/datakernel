@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
 
 import java.util.*;
@@ -144,7 +144,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		}
 
 		@Override
-		protected Stage<Void> onEndOfStream() {
+		protected Promise<Void> onEndOfStream() {
 			streamsOpen--;
 			if (headItem == null) {
 				streamsAwaiting--;

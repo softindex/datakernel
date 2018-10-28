@@ -16,7 +16,7 @@
 
 package io.datakernel.serial.file;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serial.AbstractSerialConsumer;
@@ -77,17 +77,17 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 	}
 
 	@Override
-	protected Stage<Void> doAccept(ByteBuf buf) {
+	protected Promise<Void> doAccept(ByteBuf buf) {
 		return ensureOffset()
 				.thenComposeEx(($, e) -> {
 					if (isClosed()) {
 						tryRecycle(buf);
-						return Stage.ofException(getException());
+						return Promise.ofException(getException());
 					}
 					if (e != null) {
 						tryRecycle(buf);
 						close(e);
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 					if (buf == null) {
 						return closeFile()
@@ -95,18 +95,18 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 					}
 					return asyncFile.write(buf)
 							.thenComposeEx(($2, e2) -> {
-								if (isClosed()) return Stage.ofException(getException());
+								if (isClosed()) return Promise.ofException(getException());
 								if (e2 != null) {
 									close(e2);
 								}
-								return Stage.of($2, e2);
+								return Promise.of($2, e2);
 							});
 				});
 	}
 
-	private Stage<Void> closeFile() {
+	private Promise<Void> closeFile() {
 		if (!asyncFile.isOpen()) {
-			return Stage.complete();
+			return Promise.complete();
 		}
 		return (forceOnClose ? asyncFile.forceAndClose(forceMetadata) : asyncFile.close())
 				.whenComplete(($, e) -> {
@@ -118,12 +118,12 @@ public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 				});
 	}
 
-	private Stage<Void> ensureOffset() {
+	private Promise<Void> ensureOffset() {
 		if (started) {
-			return Stage.complete();
+			return Promise.complete();
 		}
 		started = true;
-		return startingOffset != -1 ? asyncFile.seek(startingOffset) : Stage.complete();
+		return startingOffset != -1 ? asyncFile.seek(startingOffset) : Promise.complete();
 	}
 
 	@Override

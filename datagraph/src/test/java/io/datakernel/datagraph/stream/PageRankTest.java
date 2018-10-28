@@ -16,7 +16,7 @@
 
 package io.datakernel.datagraph.stream;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promises;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
@@ -51,7 +51,7 @@ import static org.junit.Assert.assertEquals;
 
 public class PageRankTest {
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	public static final class Page {
 		@Serialize(order = 0)
@@ -243,7 +243,7 @@ public class PageRankTest {
 		server1.listen();
 		server2.listen();
 
-		Stages.all(result1.getResult(), result2.getResult())
+		Promises.all(result1.getResult(), result2.getResult())
 			.whenComplete(($, err) -> {
 				server1.close();
 				server2.close();

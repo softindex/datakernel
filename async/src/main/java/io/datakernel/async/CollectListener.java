@@ -11,7 +11,7 @@ public interface CollectListener<T, A, R> {
 
 	void onStart(CollectCanceller canceller, A accumulator);
 
-	default void onResult(T stageResult, int index) {
+	default void onResult(T promiseResult, int index) {
 	}
 
 	default void onException(Throwable e, int index) {
@@ -24,7 +24,7 @@ public interface CollectListener<T, A, R> {
 	}
 
 	static <T, A, R> CollectListener<T, A, R> timeout(long timeout) {
-		Stages.ReduceTimeouter<T, A, R> timeouter = new Stages.ReduceTimeouter<>();
+		Promises.ReduceTimeouter<T, A, R> timeouter = new Promises.ReduceTimeouter<>();
 		timeouter.scheduledRunnable = Eventloop.getCurrentEventloop().delay(timeout, timeouter);
 		return timeouter;
 	}
@@ -40,7 +40,7 @@ public interface CollectListener<T, A, R> {
 			}
 
 			@Override
-			public void onResult(T stageResult, int index) {
+			public void onResult(T promiseResult, int index) {
 				if (--counter == 0) {
 					canceller.finish();
 				}

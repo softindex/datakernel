@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.ByteBufRule;
@@ -46,7 +46,7 @@ public class HttpTolerantApplicationTest {
 
 		return AsyncHttpServer.create(primaryEventloop,
 				request ->
-						Stage.ofCallback(cb ->
+						Promise.ofCallback(cb ->
 								primaryEventloop.post(() -> cb.set(
 										HttpResponse.ok200()
 												.withBody(encodeAscii(request.getUrl().getPathAndQuery()))))))

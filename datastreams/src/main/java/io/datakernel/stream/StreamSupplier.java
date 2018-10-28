@@ -17,9 +17,9 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.serial.AbstractSerialSupplier;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.StreamLateBinder;
@@ -66,16 +66,16 @@ public interface StreamSupplier<T> extends Cancellable {
 	 */
 	void suspend();
 
-	MaterializedStage<Void> getEndOfStream();
+	MaterializedPromise<Void> getEndOfStream();
 
 	Set<StreamCapability> getCapabilities();
 
 	@SuppressWarnings("unchecked")
-	default Stage<Void> streamTo(StreamConsumer<T> consumer) {
+	default Promise<Void> streamTo(StreamConsumer<T> consumer) {
 		StreamSupplier<T> supplier = this;
 		supplier.setConsumer(consumer);
 		consumer.setSupplier(supplier);
-		return Stages.all(supplier.getEndOfStream(), consumer.getAcknowledgement());
+		return Promises.all(supplier.getEndOfStream(), consumer.getAcknowledgement());
 	}
 
 	static <T, R> StreamSupplier<T> ofConsumer(Consumer<StreamConsumer<T>> consumer) {
@@ -180,7 +180,7 @@ public interface StreamSupplier<T> extends Cancellable {
 		this.streamTo(endpoint);
 		return new AbstractSerialSupplier<T>(this) {
 			@Override
-			protected Stage<T> doGet() {
+			protected Promise<T> doGet() {
 				return endpoint.take();
 			}
 		};
@@ -191,10 +191,10 @@ public interface StreamSupplier<T> extends Cancellable {
 			"it must be bound in the same tick when it is created. " +
 			"Alternatively, use .withLateBinding() modifier";
 
-	static <T> StreamSupplier<T> ofStage(Stage<? extends StreamSupplier<T>> stage) {
-		if (stage.isResult()) return stage.materialize().getResult();
+	static <T> StreamSupplier<T> ofPromise(Promise<? extends StreamSupplier<T>> promise) {
+		if (promise.isResult()) return promise.materialize().getResult();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
-		stage.whenComplete((supplier, e) -> {
+		promise.whenComplete((supplier, e) -> {
 			if (e == null) {
 				checkArgument(supplier.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, supplier);
@@ -231,24 +231,24 @@ public interface StreamSupplier<T> extends Cancellable {
 		return concat(asList(suppliers));
 	}
 
-	default Stage<List<T>> toList() {
+	default Promise<List<T>> toList() {
 		return toCollector(Collectors.toList());
 	}
 
-	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {
+	default <A, R> Promise<R> toCollector(Collector<T, A, R> collector) {
 		StreamConsumerToCollector<T, A, R> consumerToCollector = new StreamConsumerToCollector<>(collector);
 		this.streamTo(consumerToCollector);
 		return consumerToCollector.getResult();
 	}
 
-	default StreamSupplier<T> withEndOfStream(Function<Stage<Void>, Stage<Void>> fn) {
-		Stage<Void> endOfStream = getEndOfStream();
-		Stage<Void> suppliedEndOfStream = fn.apply(endOfStream);
+	default StreamSupplier<T> withEndOfStream(Function<Promise<Void>, Promise<Void>> fn) {
+		Promise<Void> endOfStream = getEndOfStream();
+		Promise<Void> suppliedEndOfStream = fn.apply(endOfStream);
 		if (endOfStream == suppliedEndOfStream) return this;
-		MaterializedStage<Void> newEndOfStream = suppliedEndOfStream.materialize();
+		MaterializedPromise<Void> newEndOfStream = suppliedEndOfStream.materialize();
 		return new ForwardingStreamSupplier<T>(this) {
 			@Override
-			public MaterializedStage<Void> getEndOfStream() {
+			public MaterializedPromise<Void> getEndOfStream() {
 				return newEndOfStream;
 			}
 		};

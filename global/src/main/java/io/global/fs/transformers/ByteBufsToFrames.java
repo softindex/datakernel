@@ -17,7 +17,7 @@
 package io.global.fs.transformers;
 
 import io.datakernel.async.AbstractAsyncProcess;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
@@ -68,16 +68,16 @@ abstract class ByteBufsToFrames extends AbstractAsyncProcess implements WithSeri
 		output.close(e);
 	}
 
-	protected abstract Stage<Void> postNextCheckpoint();
+	protected abstract Promise<Void> postNextCheckpoint();
 
 	protected abstract void iteration();
 
-	protected Stage<Void> postByteBuf(ByteBuf buf) {
+	protected Promise<Void> postByteBuf(ByteBuf buf) {
 		position += buf.readRemaining();
 		return output.accept(DataFrame.of(buf));
 	}
 
-	protected Stage<Void> handleBuffer(ByteBuf buf) {
+	protected Promise<Void> handleBuffer(ByteBuf buf) {
 		int size = buf.readRemaining();
 
 		if (position + size < nextCheckpoint) {

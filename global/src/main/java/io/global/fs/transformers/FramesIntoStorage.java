@@ -16,7 +16,7 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
@@ -44,7 +44,7 @@ public final class FramesIntoStorage extends FramesToByteBufs {
 	// endregion
 
 	@Override
-	protected Stage<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {
+	protected Promise<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {
 		return checkpointStorage.saveCheckpoint(path, checkpoint);
 	}
 }

@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -115,7 +115,7 @@ public class TestGzipProcessorUtils {
 					assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
 					assertEquals("gzip", request.getHeader(HttpHeaders.ACCEPT_ENCODING));
 					assertEquals(text, receivedData);
-					return Stage.of(HttpResponse.ok200()
+					return Promise.of(HttpResponse.ok200()
 							.withBodyGzipCompression()
 							.withBody(ByteBufStrings.wrapAscii(receivedData)));
 				}))

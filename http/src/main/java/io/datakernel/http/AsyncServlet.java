@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.MemSize;
@@ -28,7 +28,7 @@ import io.datakernel.util.MemSize;
  */
 @FunctionalInterface
 public interface AsyncServlet {
-	Stage<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException;
+	Promise<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException;
 
 	static AsyncServlet ensureRequestBody(MemSize maxBodySize, AsyncServlet delegate) {
 		return ensureRequestBody(maxBodySize.toInt(), delegate);
@@ -40,9 +40,9 @@ public interface AsyncServlet {
 					try {
 						return delegate.serve(request);
 					} catch (UncheckedException u) {
-						return Stage.ofException(u.getCause());
+						return Promise.ofException(u.getCause());
 					} catch (ParseException e) {
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 	}

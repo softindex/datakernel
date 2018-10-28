@@ -20,7 +20,7 @@ import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.cube.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -74,8 +74,8 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 						consolidationDebugServlet :
 						new AsyncServlet() {
 							@Override
-							public Stage<HttpResponse> serve(HttpRequest request) {
-								return Stage.of(HttpResponse.ofCode(404));
+							public Promise<HttpResponse> serve(HttpRequest request) {
+								return Promise.of(HttpResponse.ofCode(404));
 							}
 						});
 	}
@@ -95,7 +95,7 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 	}
 
 	@Override
-	public Stage<HttpResponse> doServe(HttpRequest httpRequest) {
+	public Promise<HttpResponse> doServe(HttpRequest httpRequest) {
 		logger.info("Received request: {}", httpRequest);
 		try {
 			Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
@@ -110,10 +110,10 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 			});
 		} catch (QueryException e) {
 			logger.error("Query exception: " + httpRequest, e);
-			return Stage.of(createErrorResponse(e.getMessage()));
+			return Promise.of(createErrorResponse(e.getMessage()));
 		} catch (Exception e) {
 			logger.error("Parse exception: " + httpRequest, e);
-			return Stage.of(createErrorResponse(e.getMessage()));
+			return Promise.of(createErrorResponse(e.getMessage()));
 		}
 	}
 

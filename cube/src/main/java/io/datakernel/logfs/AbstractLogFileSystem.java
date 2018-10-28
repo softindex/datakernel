@@ -16,7 +16,7 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 
 public abstract class AbstractLogFileSystem implements LogFileSystem {
 	protected static final class PartitionAndFile {
@@ -63,7 +63,7 @@ public abstract class AbstractLogFileSystem implements LogFileSystem {
 	}
 
 	@Override
-	public Stage<LogFile> makeUniqueLogFile(String logPartition, String logName) {
+	public Promise<LogFile> makeUniqueLogFile(String logPartition, String logName) {
 		return list(logPartition).thenApply(logFiles -> {
 			int chunkN = 0;
 			for (LogFile logFile : logFiles) {

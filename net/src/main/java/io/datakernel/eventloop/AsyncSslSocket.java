@@ -17,8 +17,8 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.net.CloseWithoutNotifyException;
@@ -47,9 +47,9 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	private ByteBuf app2engine = ByteBuf.empty();
 
 	@Nullable
-	private SettableStage<ByteBuf> read;
+	private SettablePromise<ByteBuf> read;
 	@Nullable
-	private SettableStage<Void> write;
+	private SettablePromise<Void> write;
 
 	// region builders
 	public static AsyncSslSocket wrapClientSocket(AsyncTcpSocket asyncTcpSocket,
@@ -87,46 +87,46 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	}
 	// endregion
 
-	private <T> Stage<T> sanitize(Stage<T> stage) {
-		return stage.thenComposeEx((value, e) -> {
+	private <T> Promise<T> sanitize(Promise<T> promise) {
+		return promise.thenComposeEx((value, e) -> {
 			if (e == null) {
-				return Stage.of(value);
+				return Promise.of(value);
 			} else {
 				close(e);
-				return Stage.ofException(e);
+				return Promise.ofException(e);
 			}
 		});
 	}
 
 	@Override
-	public Stage<ByteBuf> read() {
-		if (!isOpen()) return Stage.ofException(CLOSE_EXCEPTION);
+	public Promise<ByteBuf> read() {
+		if (!isOpen()) return Promise.ofException(CLOSE_EXCEPTION);
 		this.read = null;
 		if (engine2app.canRead()) {
 			ByteBuf readBuf = engine2app;
 			engine2app = ByteBuf.empty();
-			return Stage.of(readBuf);
+			return Promise.of(readBuf);
 		}
-		SettableStage<ByteBuf> read = new SettableStage<>();
+		SettablePromise<ByteBuf> read = new SettablePromise<>();
 		this.read = read;
 		sync();
 		return read;
 	}
 
 	@Override
-	public Stage<Void> write(@Nullable ByteBuf buf) {
+	public Promise<Void> write(@Nullable ByteBuf buf) {
 		if (!isOpen()) {
 			if (buf != null) {
 				buf.recycle();
 			}
-			return Stage.ofException(CLOSE_EXCEPTION);
+			return Promise.ofException(CLOSE_EXCEPTION);
 		}
 		if (buf == null) {
 			throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");
 		}
 		app2engine = ByteBufPool.append(app2engine, buf);
 		if (this.write != null) return write;
-		SettableStage<Void> write = new SettableStage<>();
+		SettablePromise<Void> write = new SettablePromise<>();
 		this.write = write;
 		sync();
 		return write;
@@ -159,7 +159,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 						return;
 					}
 					if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write != null) {
-						SettableStage<Void> write = this.write;
+						SettablePromise<Void> write = this.write;
 						this.write = null;
 						write.set(null);
 					}
@@ -259,7 +259,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		while (true) {
 			Runnable task = engine.getDelegatedTask();
 			if (task == null) break;
-			Stage.ofRunnable(executor, task)
+			Promise.ofRunnable(executor, task)
 					.whenResult($ -> {
 						if (!isOpen()) return;
 						try {
@@ -308,7 +308,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			} while (net2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
 
 			if (read != null && engine2app.canRead()) {
-				SettableStage<ByteBuf> read = this.read;
+				SettablePromise<ByteBuf> read = this.read;
 				this.read = null;
 				ByteBuf readBuf = engine2app;
 				engine2app = ByteBuf.empty();

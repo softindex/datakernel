@@ -17,9 +17,9 @@
 package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.util.Recyclable;
@@ -47,8 +47,8 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	private StreamConsumer<T> consumer;
 
-	private final SettableStage<Void> endOfStream = new SettableStage<>();
-	private final SettableStage<Void> acknowledgement = new SettableStage<>();
+	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
+	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 	@Nullable
 	private StreamDataAcceptor<T> currentDataAcceptor;
@@ -199,7 +199,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		onSuspended();
 	}
 
-	public Stage<Void> sendEndOfStream() {
+	public Promise<Void> sendEndOfStream() {
 		if (endOfStream.isComplete()) return endOfStream;
 		currentDataAcceptor = null;
 		lastDataAcceptor = Recyclable::tryRecycle;
@@ -229,11 +229,11 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public final MaterializedStage<Void> getEndOfStream() {
+	public final MaterializedPromise<Void> getEndOfStream() {
 		return endOfStream;
 	}
 
-	public MaterializedStage<Void> getAcknowledgement() {
+	public MaterializedPromise<Void> getAcknowledgement() {
 		return acknowledgement;
 	}
 

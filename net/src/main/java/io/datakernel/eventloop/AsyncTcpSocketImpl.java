@@ -17,8 +17,8 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.AsyncTimeoutException;
@@ -60,8 +60,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
 	private boolean writeEndOfStream;
 
-	private SettableStage<Void> write;
-	private SettableStage<ByteBuf> read;
+	private SettablePromise<Void> write;
+	private SettablePromise<ByteBuf> read;
 
 	@Nullable
 	private SelectionKey key;
@@ -210,16 +210,16 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		return asyncTcpSocket;
 	}
 
-	public static Stage<AsyncTcpSocketImpl> connect(InetSocketAddress address) {
+	public static Promise<AsyncTcpSocketImpl> connect(InetSocketAddress address) {
 		return connect(address, null, null);
 	}
 
-	public static Stage<AsyncTcpSocketImpl> connect(InetSocketAddress address, @Nullable Duration duration, @Nullable SocketSettings socketSettings) {
+	public static Promise<AsyncTcpSocketImpl> connect(InetSocketAddress address, @Nullable Duration duration, @Nullable SocketSettings socketSettings) {
 		return connect(address, duration == null ? 0 : duration.toMillis(), socketSettings);
 	}
 
-	public static Stage<AsyncTcpSocketImpl> connect(InetSocketAddress address, long timeout, @Nullable SocketSettings socketSettings) {
-		SettableStage<AsyncTcpSocketImpl> result = new SettableStage<>();
+	public static Promise<AsyncTcpSocketImpl> connect(InetSocketAddress address, long timeout, @Nullable SocketSettings socketSettings) {
+		SettablePromise<AsyncTcpSocketImpl> result = new SettablePromise<>();
 		Eventloop eventloop = getCurrentEventloop();
 		eventloop.connect(address, timeout, new ConnectCallback() {
 			@Override
@@ -299,11 +299,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	@Override
-	public Stage<ByteBuf> read() {
-		if (!isOpen()) return Stage.ofException(CLOSE_EXCEPTION);
+	public Promise<ByteBuf> read() {
+		if (!isOpen()) return Promise.ofException(CLOSE_EXCEPTION);
 		read = null;
-		if (!readQueue.isEmpty() || readEndOfStream) return Stage.of(readQueue.poll());
-		read = new SettableStage<>();
+		if (!readQueue.isEmpty() || readEndOfStream) return Promise.of(readQueue.poll());
+		read = new SettablePromise<>();
 		if (readTimeout != NO_TIMEOUT) {
 			scheduleReadTimeout();
 		}
@@ -315,7 +315,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public void onReadReady() {
 		reentrantCall = true;
 		doRead();
-		SettableStage<ByteBuf> read = this.read;
+		SettablePromise<ByteBuf> read = this.read;
 		if (read != null && (!readQueue.isEmpty() || readEndOfStream)) {
 			this.read = null;
 			read.set(readQueue.poll());
@@ -372,12 +372,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	// write cycle
 	@Override
-	public Stage<Void> write(@Nullable ByteBuf buf) {
+	public Promise<Void> write(@Nullable ByteBuf buf) {
 		assert eventloop.inEventloopThread();
 		checkState(!writeEndOfStream);
 		if (!isOpen()) {
 			if (buf != null) buf.recycle();
-			return Stage.ofException(CLOSE_EXCEPTION);
+			return Promise.ofException(CLOSE_EXCEPTION);
 		}
 		if (buf != null) {
 			writeQueue.add(buf);
@@ -387,13 +387,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (write != null) return write;
 		try {
 			if (doWrite()) {
-				return Stage.complete();
+				return Promise.complete();
 			}
 		} catch (IOException e) {
 			close(e);
-			return Stage.ofException(e);
+			return Promise.ofException(e);
 		}
-		write = new SettableStage<>();
+		write = new SettablePromise<>();
 		if (writeTimeout != NO_TIMEOUT) {
 			scheduleWriteTimeout();
 		}
@@ -407,7 +407,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		reentrantCall = true;
 		try {
 			if (doWrite()) {
-				SettableStage<Void> write = this.write;
+				SettablePromise<Void> write = this.write;
 				this.write = null;
 				write.set(null);
 			}

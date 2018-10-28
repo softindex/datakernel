@@ -1,16 +1,16 @@
 package io.datakernel.ot;
 
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.Stages.runSequence;
+import static io.datakernel.async.Promises.runSequence;
 import static java.lang.Math.min;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
@@ -19,27 +19,27 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
-	default Stage<Void> push(Collection<OTCommit<K, D>> commits) {
+	default Promise<Void> push(Collection<OTCommit<K, D>> commits) {
 		return runSequence(commits.stream()
 				.sorted(comparingLong(OTCommit::getLevel))
 				.map(this::push));
 	}
 
-	default Stage<Void> push(OTCommit<K, D> commit) {
+	default Promise<Void> push(OTCommit<K, D> commit) {
 		return push(singletonList(commit));
 	}
 
-	Stage<Set<K>> getHeads();
+	Promise<Set<K>> getHeads();
 
-	Stage<OTCommit<K, D>> loadCommit(K revisionId);
+	Promise<OTCommit<K, D>> loadCommit(K revisionId);
 
-	default Stage<Boolean> hasSnapshot(K revisionId) {
+	default Promise<Boolean> hasSnapshot(K revisionId) {
 		return loadSnapshot(revisionId).thenApply(Optional::isPresent);
 	}
 
-	Stage<Optional<List<D>>> loadSnapshot(K revisionId);
+	Promise<Optional<List<D>>> loadSnapshot(K revisionId);
 
-	Stage<Void> saveSnapshot(K revisionId, List<D> diffs);
+	Promise<Void> saveSnapshot(K revisionId, List<D> diffs);
 
 	static <R, K, D> OTRemote<K, D> compound(OTCommitFactory<K, D> commitFactory,
 			Map<R, OTRemote<K, D>> remotes,
@@ -48,15 +48,15 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 			int writeRedundancy) {
 		return new OTRemote<K, D>() {
 
-			private Stage<Void> doCall(Stream<? extends AsyncSupplier<?>> callables,
+			private Promise<Void> doCall(Stream<? extends AsyncSupplier<?>> callables,
 					int minSuccesses) {
 				List<? extends AsyncSupplier<?>> list = callables.collect(toList());
 				int minSuccessesFinal = min(minSuccesses, list.size());
 				if (minSuccessesFinal == 0) {
 					list.forEach(AsyncSupplier::get);
-					return Stage.complete();
+					return Promise.complete();
 				}
-				SettableStage<Void> result = new SettableStage<>();
+				SettablePromise<Void> result = new SettablePromise<>();
 				int[] successes = new int[]{0};
 				int[] completed = new int[]{0};
 				for (AsyncSupplier<?> callable : list) {
@@ -77,7 +77,7 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 			}
 
 			@Override
-			public Stage<Void> push(OTCommit<K, D> commit) {
+			public Promise<Void> push(OTCommit<K, D> commit) {
 				return doCall(
 						writeList.apply(commit.getId()).stream()
 								.map(remotes::get)
@@ -86,34 +86,34 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 			}
 
 			@Override
-			public Stage<Set<K>> getHeads() {
-				return Stages.toList(remotes.values().stream()
+			public Promise<Set<K>> getHeads() {
+				return Promises.toList(remotes.values().stream()
 						.map(OTRemote::getHeads)
-						.map(Stage::toTry))
+						.map(Promise::toTry))
 						.thenApply(list -> list.stream().flatMap(t -> t.getOr(emptySet()).stream()).collect(toSet()))
 						.thenCompose(result -> !result.isEmpty() ?
-								Stage.of(result) :
-								Stage.ofException(new IOException()));
+								Promise.of(result) :
+								Promise.ofException(new IOException()));
 			}
 
 			@Override
-			public Stage<OTCommit<K, D>> loadCommit(K revisionId) {
-				return Stages.firstSuccessful(
+			public Promise<OTCommit<K, D>> loadCommit(K revisionId) {
+				return Promises.firstSuccessful(
 						readList.apply(revisionId).stream()
 								.map(remotes::get)
 								.map(remote -> remote.loadCommit(revisionId)));
 			}
 
 			@Override
-			public Stage<Optional<List<D>>> loadSnapshot(K revisionId) {
-				return Stages.firstSuccessful(
+			public Promise<Optional<List<D>>> loadSnapshot(K revisionId) {
+				return Promises.firstSuccessful(
 						readList.apply(revisionId).stream()
 								.map(remotes::get)
 								.map(remote -> remote.loadSnapshot(revisionId)));
 			}
 
 			@Override
-			public Stage<Void> saveSnapshot(K revisionId, List<D> diffs) {
+			public Promise<Void> saveSnapshot(K revisionId, List<D> diffs) {
 				return doCall(
 						writeList.apply(revisionId).stream()
 								.map(remotes::get)
@@ -122,7 +122,7 @@ public interface OTRemote<K, D> extends OTCommitFactory<K, D> {
 			}
 
 			@Override
-			public Stage<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
+			public Promise<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
 				return commitFactory.createCommit(parentDiffs, level);
 			}
 		};

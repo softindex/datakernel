@@ -16,9 +16,9 @@
 
 package io.datakernel.logfs.ot;
 
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
-import io.datakernel.async.StagesAccumulator;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
@@ -38,11 +38,11 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			createSplitter(); // recording scheme
 			checkState(!logDataConsumers.isEmpty(), "addOutput() should be called at least once");
 		}
-		StagesAccumulator<List<D>> resultsReducer = StagesAccumulator.create(new ArrayList<>());
+		PromisesAccumulator<List<D>> resultsReducer = PromisesAccumulator.create(new ArrayList<>());
 		Splitter splitter = new Splitter();
 		for (LogDataConsumer<?, D> logDataConsumer : logDataConsumers) {
 			StreamConsumerWithResult<?, List<D>> consumer = logDataConsumer.consume();
-			resultsReducer.addStage(consumer.getResult(), List::addAll);
+			resultsReducer.addPromise(consumer.getResult(), List::addAll);
 			Splitter.Output<?> output = splitter.new Output<>();
 			splitter.outputs.add(output);
 			output.streamTo((StreamConsumer) consumer.getConsumer());
@@ -86,8 +86,8 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 
 		final class Input extends AbstractStreamConsumer<T> {
 			@Override
-			protected Stage<Void> onEndOfStream() {
-				return Stages.all(outputs.stream().map(Output::sendEndOfStream));
+			protected Promise<Void> onEndOfStream() {
+				return Promises.all(outputs.stream().map(Output::sendEndOfStream));
 			}
 
 			@Override

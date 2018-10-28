@@ -1,8 +1,8 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -13,7 +13,7 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
 public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private final Collector<T, A, R> collector;
-	private final SettableStage<R> resultStage = new SettableStage<>();
+	private final SettablePromise<R> resultPromise = new SettablePromise<>();
 	private A accumulator;
 
 	public StreamConsumerToCollector(Collector<T, A, R> collector) {
@@ -28,20 +28,20 @@ public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamCons
 	}
 
 	@Override
-	protected Stage<Void> onEndOfStream() {
+	protected Promise<Void> onEndOfStream() {
 		R result = collector.finisher().apply(accumulator);
 		accumulator = null;
-		resultStage.set(result);
-		return Stage.complete();
+		resultPromise.set(result);
+		return Promise.complete();
 	}
 
 	@Override
 	protected void onError(Throwable t) {
-		resultStage.setException(t);
+		resultPromise.setException(t);
 	}
 
-	public MaterializedStage<R> getResult() {
-		return resultStage;
+	public MaterializedPromise<R> getResult() {
+		return resultPromise;
 	}
 
 	public A getAccumulator() {

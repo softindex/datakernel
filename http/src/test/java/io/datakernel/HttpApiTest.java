@@ -16,7 +16,7 @@
 
 package io.datakernel;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -79,13 +79,13 @@ public class HttpApiTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
+			public Promise<HttpResponse> serve(HttpRequest request) {
 				try {
 					testRequest(request);
 					HttpResponse response = createResponse();
-					return Stage.of(response);
+					return Promise.of(response);
 				} catch (ParseException e) {
-					return Stage.ofException((Throwable) e);
+					return Promise.ofException((Throwable) e);
 				}
 			}
 		};

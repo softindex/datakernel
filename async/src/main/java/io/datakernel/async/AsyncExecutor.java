@@ -4,16 +4,16 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.RejectedExecutionException;
 
 public interface AsyncExecutor {
-	<T> Stage<T> execute(AsyncSupplier<T> supplier) throws RejectedExecutionException;
+	<T> Promise<T> execute(AsyncSupplier<T> supplier) throws RejectedExecutionException;
 
-	default Stage<Void> run(Runnable runnable) throws RejectedExecutionException {
+	default Promise<Void> run(Runnable runnable) throws RejectedExecutionException {
 		return execute(() -> {
 			runnable.run();
-			return Stage.complete();
+			return Promise.complete();
 		});
 	}
 
-	default <T> Stage<T> call(Callable<T> callable) throws RejectedExecutionException {
+	default <T> Promise<T> call(Callable<T> callable) throws RejectedExecutionException {
 		return execute(() -> {
 			T result;
 			try {
@@ -21,9 +21,9 @@ public interface AsyncExecutor {
 			} catch (RuntimeException e) {
 				throw e;
 			} catch (Exception e) {
-				return Stage.ofException(e);
+				return Promise.ofException(e);
 			}
-			return Stage.of(result);
+			return Promise.of(result);
 		});
 	}
 }

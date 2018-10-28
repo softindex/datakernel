@@ -2,12 +2,12 @@ package io.datakernel.ot;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.ot.exceptions.OTException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.Predicate;
 
-import static io.datakernel.async.Stages.toList;
+import static io.datakernel.async.Promises.toList;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -34,10 +34,10 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	private final OTRemote<K, D> remote;
 	private final OTSystem<D> otSystem;
 
-	private final StageStats findParent = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats findParentLoadCommit = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats findCut = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats findCutLoadCommit = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats findParent = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats findParentLoadCommit = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats findCut = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats findCutLoadCommit = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	OTAlgorithms(Eventloop eventloop, OTSystem<D> otSystem, OTRemote<K, D> source) {
 		this.eventloop = eventloop;
@@ -66,7 +66,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	public interface GraphWalker<K, D, R> {
 		void onStart(List<OTCommit<K, D>> commits);
 
-		Stage<Optional<R>> onCommit(OTCommit<K, D> commit);
+		Promise<Optional<R>> onCommit(OTCommit<K, D> commit);
 	}
 
 	public static abstract class SimpleGraphWalker<K, D, R> implements GraphWalker<K, D, R> {
@@ -74,19 +74,19 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		protected abstract R handleCommit(OTCommit<K, D> commit) throws Exception;
 
 		@Override
-		public final Stage<Optional<R>> onCommit(OTCommit<K, D> commit) {
+		public final Promise<Optional<R>> onCommit(OTCommit<K, D> commit) {
 			try {
 				R result = handleCommit(commit);
-				return result != null ? Stage.of(Optional.of(result)) : Stage.of(Optional.empty());
+				return result != null ? Promise.of(Optional.of(result)) : Promise.of(Optional.empty());
 			} catch (RuntimeException e) {
 				throw e;
 			} catch (Exception e) {
-				return Stage.ofException(e);
+				return Promise.ofException(e);
 			}
 		}
 	}
 
-	public <R> Stage<R> walkGraph(Set<K> heads, GraphWalker<K, D, R> walker) {
+	public <R> Promise<R> walkGraph(Set<K> heads, GraphWalker<K, D, R> walker) {
 		return toList(heads.stream().map(remote::loadCommit))
 				.thenCompose(headCommits -> {
 					walker.onStart(headCommits);
@@ -96,10 +96,10 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				});
 	}
 
-	private <R> Stage<R> walkGraphImpl(GraphWalker<K, D, R> walker, PriorityQueue<OTCommit<K, D>> queue,
+	private <R> Promise<R> walkGraphImpl(GraphWalker<K, D, R> walker, PriorityQueue<OTCommit<K, D>> queue,
 			Set<K> visited) {
 		if (queue.isEmpty()) {
-			return Stage.ofException(new OTException("Incomplete graph"));
+			return Promise.ofException(new OTException("Incomplete graph"));
 		}
 
 		OTCommit<K, D> commit = queue.poll();
@@ -107,7 +107,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 		return walker.onCommit(commit)
 				.thenCompose(maybeResult -> maybeResult.isPresent() ?
-						Stage.of(maybeResult.get()) :
+						Promise.of(maybeResult.get()) :
 						toList(commit.getParents().keySet().stream().filter(visited::add).map(remote::loadCommit))
 								.async()
 								.thenCompose(parentCommits -> {
@@ -187,7 +187,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
-	public <A> Stage<FindResult<K, A>> findParent(Set<K> startNodes,
+	public <A> Promise<FindResult<K, A>> findParent(Set<K> startNodes,
 			DiffsReducer<A, D> diffAccumulator,
 			AsyncPredicate<OTCommit<K, D>> matchPredicate) {
 		return walkGraph(startNodes,
@@ -226,7 +226,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		@Override
-		public Stage<Optional<FindResult<K, A>>> onCommit(OTCommit<K, D> commit) {
+		public Promise<Optional<FindResult<K, A>>> onCommit(OTCommit<K, D> commit) {
 			K node = commit.getId();
 			FindEntry<K, A> nodeWithPath = entries.get(node);
 			if (nodeWithPath.childLevel == null) {
@@ -266,12 +266,12 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	@SuppressWarnings("ConstantConditions")
-	public Stage<K> mergeHeadsAndPush() {
+	public Promise<K> mergeHeadsAndPush() {
 		return remote.getHeads()
 				.thenCompose(heads -> {
-					if (heads.size() == 1) return Stage.of(first(heads)); // nothing to merge
+					if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge
 
-					return Stages.toTuple(Tuple::new,
+					return Promises.toTuple(Tuple::new,
 							loadAndMerge(heads),
 							toList(heads.stream()
 									.map(remote::loadCommit))
@@ -286,7 +286,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
-	public Stage<Set<K>> findCut(Set<K> startNodes,
+	public Promise<Set<K>> findCut(Set<K> startNodes,
 			Predicate<Set<OTCommit<K, D>>> matchPredicate) {
 		return toList(startNodes.stream().map(remote::loadCommit))
 				.thenCompose(commits -> {
@@ -297,15 +297,15 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				.whenComplete(findCut.recordStats());
 	}
 
-	private Stage<Set<K>> findCutImpl(PriorityQueue<OTCommit<K, D>> queue, Set<K> visited,
+	private Promise<Set<K>> findCutImpl(PriorityQueue<OTCommit<K, D>> queue, Set<K> visited,
 			Predicate<Set<OTCommit<K, D>>> matchPredicate) {
 		if (queue.isEmpty()) {
-			return Stage.ofException(new NoSuchElementException());
+			return Promise.ofException(new NoSuchElementException());
 		}
 
 		HashSet<OTCommit<K, D>> commits = new HashSet<>(queue);
 		if (matchPredicate.test(commits)) {
-			return Stage.of(commits.stream().map(OTCommit::getId).collect(toSet()));
+			return Promise.of(commits.stream().map(OTCommit::getId).collect(toSet()));
 		}
 
 		OTCommit<K, D> commit = queue.poll();
@@ -318,19 +318,19 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				});
 	}
 
-	public Stage<K> findAnyCommonParent(Set<K> startCut) {
+	public Promise<K> findAnyCommonParent(Set<K> startCut) {
 		return walkGraph(startCut, new FindAnyCommonParentWalker<>(startCut))
 				.whenComplete(toLogger(logger, thisMethod(), startCut));
 	}
 
-	public Stage<Set<K>> findAllCommonParents(Set<K> startCut) {
+	public Promise<Set<K>> findAllCommonParents(Set<K> startCut) {
 		return walkGraph(startCut, new FindAllCommonParentsWalker<>(startCut))
 				.whenComplete(toLogger(logger, thisMethod(), startCut));
 	}
 
-	public Stage<Set<K>> excludeParents(Set<K> startNodes) {
+	public Promise<Set<K>> excludeParents(Set<K> startNodes) {
 		checkArgument(!startNodes.isEmpty());
-		if (startNodes.size() == 1) return Stage.of(startNodes);
+		if (startNodes.size() == 1) return Promise.of(startNodes);
 		return walkGraph(startNodes, new GraphWalker<K, D, Set<K>>() {
 			long minLevel;
 			Set<K> nodes = new HashSet<>(startNodes);
@@ -342,11 +342,11 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			}
 
 			@Override
-			public Stage<Optional<Set<K>>> onCommit(OTCommit<K, D> commit) {
+			public Promise<Optional<Set<K>>> onCommit(OTCommit<K, D> commit) {
 				nodes.removeAll(commit.getParentIds());
 				if (commit.getLevel() <= minLevel)
-					return Stage.of(Optional.of(nodes));
-				return Stage.of(Optional.empty());
+					return Promise.of(Optional.of(nodes));
+				return Promise.of(Optional.empty());
 			}
 		}).whenComplete(toLogger(logger, thisMethod(), startNodes));
 	}
@@ -412,7 +412,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
-	public <A> Stage<Map<K, A>> reduceEdges(Set<K> heads, K parentNode,
+	public <A> Promise<Map<K, A>> reduceEdges(Set<K> heads, K parentNode,
 			DiffsReducer<A, D> diffAccumulator) {
 		return walkGraph(heads, new ReduceEdgesWalker<>(heads, parentNode, diffAccumulator));
 	}
@@ -474,29 +474,29 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	@SuppressWarnings({"SimplifiableConditionalExpression", "ConstantConditions", "OptionalIsPresent", "unchecked"})
-	public Stage<List<D>> checkout(K commitId) {
+	public Promise<List<D>> checkout(K commitId) {
 		List<D>[] cachedSnapshot = new List[1];
 		return findParent(singleton(commitId), DiffsReducer.toList(),
 				commit -> commit.getSnapshotHint() == Boolean.FALSE ?
-						Stage.of(false) :
+						Promise.of(false) :
 						remote.loadSnapshot(commit.getId())
 								.thenApply(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null))
 				.thenCompose(findResult -> {
 					if (!findResult.isFound())
-						return Stage.ofException(new OTException("No snapshot or root from id:" + commitId));
+						return Promise.ofException(new OTException("No snapshot or root from id:" + commitId));
 
 					List<D> changes = concat(cachedSnapshot[0], findResult.getAccumulatedDiffs());
-					return Stage.of(otSystem.squash(changes));
+					return Promise.of(otSystem.squash(changes));
 				})
 				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 
-	public Stage<Void> saveSnapshot(K revisionId) {
+	public Promise<Void> saveSnapshot(K revisionId) {
 		return checkout(revisionId)
 				.thenCompose(diffs -> remote.saveSnapshot(revisionId, diffs));
 	}
 
-	private Stage<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
+	private Promise<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
 		checkArgument(heads.size() >= 2);
 		return loadGraph(heads)
 				.thenCompose(graph -> {
@@ -505,12 +505,12 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 						if (logger.isTraceEnabled()) {
 							logger.info(graph.toGraphViz() + "\n");
 						}
-						return Stage.of(mergeResult);
+						return Promise.of(mergeResult);
 					} catch (OTException e) {
 						if (logger.isTraceEnabled()) {
 							logger.error(graph.toGraphViz() + "\n", e);
 						}
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				})
 				.whenComplete(toLogger(logger, thisMethod(), heads));
@@ -563,7 +563,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
-	public Stage<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {
+	public Promise<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {
 		return walkGraph(heads, new LoadGraphWalker(heads))
 //				.whenException(throwable -> {
 //					if (logger.isTraceEnabled()) {
@@ -574,22 +574,22 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	@JmxAttribute
-	public StageStats getFindParent() {
+	public PromiseStats getFindParent() {
 		return findParent;
 	}
 
 	@JmxAttribute
-	public StageStats getFindParentLoadCommit() {
+	public PromiseStats getFindParentLoadCommit() {
 		return findParentLoadCommit;
 	}
 
 	@JmxAttribute
-	public StageStats getFindCut() {
+	public PromiseStats getFindCut() {
 		return findCut;
 	}
 
 	@JmxAttribute
-	public StageStats getFindCutLoadCommit() {
+	public PromiseStats getFindCutLoadCommit() {
 		return findCutLoadCommit;
 	}
 

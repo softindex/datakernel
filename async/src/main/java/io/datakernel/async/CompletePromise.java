@@ -27,7 +27,7 @@ import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
-public abstract class CompleteStage<T> implements MaterializedStage<T> {
+public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 	@Override
 	public final boolean isComplete() {
 		return true;
@@ -74,110 +74,110 @@ public abstract class CompleteStage<T> implements MaterializedStage<T> {
 	}
 
 	@Override
-	public final <U, S extends BiConsumer<? super T, Throwable> & Stage<U>> Stage<U> then(S stage) {
-		stage.accept(getResult(), null);
-		return stage;
+	public final <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(S promise) {
+		promise.accept(getResult(), null);
+		return promise;
 	}
 
 	@Override
-	public final <U> Stage<U> thenApply(Function<? super T, ? extends U> fn) {
+	public final <U> Promise<U> thenApply(Function<? super T, ? extends U> fn) {
 		try {
-			return Stage.of(fn.apply(getResult()));
+			return Promise.of(fn.apply(getResult()));
 		} catch (UncheckedException u) {
-			return Stage.ofException(u.getCause());
+			return Promise.ofException(u.getCause());
 		}
 	}
 
 	@Override
-	public final <U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
+	public final <U> Promise<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
 		try {
-			return Stage.of(fn.apply(getResult(), null));
+			return Promise.of(fn.apply(getResult(), null));
 		} catch (UncheckedException u) {
-			return Stage.ofException(u.getCause());
+			return Promise.ofException(u.getCause());
 		}
 	}
 
 	@Override
-	public final <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {
+	public final <U> Promise<U> thenCompose(Function<? super T, ? extends Promise<U>> fn) {
 		try {
 			return fn.apply(getResult());
 		} catch (UncheckedException u) {
-			return Stage.ofException(u.getCause());
+			return Promise.ofException(u.getCause());
 		}
 	}
 
 	@Override
-	public final <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
+	public final <U> Promise<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
 		try {
 			return fn.apply(getResult(), null);
 		} catch (UncheckedException u) {
-			return Stage.ofException(u.getCause());
+			return Promise.ofException(u.getCause());
 		}
 	}
 
 	@Override
-	public final Stage<T> whenComplete(BiConsumer<? super T, Throwable> action) {
+	public final Promise<T> whenComplete(BiConsumer<? super T, Throwable> action) {
 		action.accept(getResult(), null);
 		return this;
 	}
 
 	@Override
-	public final Stage<T> whenResult(Consumer<? super T> action) {
+	public final Promise<T> whenResult(Consumer<? super T> action) {
 		action.accept(getResult());
 		return this;
 	}
 
 	@Override
-	public final Stage<T> whenException(Consumer<Throwable> action) {
+	public final Promise<T> whenException(Consumer<Throwable> action) {
 		return this;
 	}
 
 	@Override
-	public final Stage<T> thenException(Function<? super T, Throwable> fn) {
+	public final Promise<T> thenException(Function<? super T, Throwable> fn) {
 		Throwable maybeException = fn.apply(getResult());
 		if (maybeException == null) return this;
-		return Stage.ofException(maybeException);
+		return Promise.ofException(maybeException);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
-		if (other instanceof CompleteStage) {
-			return Stage.of(fn.apply(getResult(), ((CompleteStage<U>) other).getResult()));
+	public final <U, V> Promise<V> combine(Promise<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
+		if (other instanceof CompletePromise) {
+			return Promise.of(fn.apply(getResult(), ((CompletePromise<U>) other).getResult()));
 		}
-		return other.thenApply(otherResult -> fn.apply(CompleteStage.this.getResult(), otherResult));
+		return other.thenApply(otherResult -> fn.apply(CompletePromise.this.getResult(), otherResult));
 	}
 
 	@Override
-	public final Stage<Void> both(Stage<?> other) {
-		if (other instanceof CompleteStage) {
-			return Stage.complete();
+	public final Promise<Void> both(Promise<?> other) {
+		if (other instanceof CompletePromise) {
+			return Promise.complete();
 		}
 		return other.toVoid();
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final Stage<T> either(Stage<? extends T> other) {
+	public final Promise<T> either(Promise<? extends T> other) {
 		return this;
 	}
 
 	@Override
-	public final MaterializedStage<T> async() {
-		SettableStage<T> result = new SettableStage<>();
+	public final MaterializedPromise<T> async() {
+		SettablePromise<T> result = new SettablePromise<>();
 		getCurrentEventloop().post(() -> result.set(getResult()));
 		return result;
 	}
 
 	@Override
-	public final Stage<Try<T>> toTry() {
-		return Stage.of(Try.of(getResult()));
+	public final Promise<Try<T>> toTry() {
+		return Promise.of(Try.of(getResult()));
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final Stage<Void> toVoid() {
-		return Stage.complete();
+	public final Promise<Void> toVoid() {
+		return Promise.complete();
 	}
 
 	@Override

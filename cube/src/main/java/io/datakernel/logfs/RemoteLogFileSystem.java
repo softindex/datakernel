@@ -16,12 +16,12 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serial.SerialConsumer;
@@ -45,9 +45,9 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 	private final String logName;
 	private final RemoteFsClient client;
 
-	private final StageStats stageList = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageRead = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageWrite = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseList = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseRead = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseWrite = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private final StreamRegistry<String> streamReads = StreamRegistry.create();
 	private final StreamRegistry<String> streamWrites = StreamRegistry.create();
@@ -66,29 +66,29 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 	}
 
 	@Override
-	public Stage<List<LogFile>> list(String logPartition) {
+	public Promise<List<LogFile>> list(String logPartition) {
 		return client.list()
 				.thenApply(files -> getLogFiles(files.stream().map(FileMetadata::getName).collect(toList()), logPartition))
-				.whenComplete(stageList.recordStats());
+				.whenComplete(promiseList.recordStats());
 	}
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
+	public Promise<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
 		return client.download(path(logPartition, logFile), startPosition)
 				.thenApply(stream -> stream
 						.apply(streamReads.register(logPartition + ":" + logFile + "@" + startPosition))
 						.apply(streamReadStats))
-				.whenComplete(stageRead.recordStats());
+				.whenComplete(promiseRead.recordStats());
 	}
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
+	public Promise<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
 		String fileName = path(logPartition, logFile);
 		return client.upload(fileName)
 				.thenApply(stream -> stream
 						.apply(streamWrites.register(logPartition + ":" + logFile))
 						.apply(streamWriteStats))
-				.whenComplete(stageWrite.recordStats());
+				.whenComplete(promiseWrite.recordStats());
 	}
 
 	private String path(String logPartition, LogFile logFile) {
@@ -118,18 +118,18 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 	}
 
 	@JmxAttribute
-	public StageStats getStageList() {
-		return stageList;
+	public PromiseStats getPromiseList() {
+		return promiseList;
 	}
 
 	@JmxAttribute
-	public StageStats getStageRead() {
-		return stageRead;
+	public PromiseStats getPromiseRead() {
+		return promiseRead;
 	}
 
 	@JmxAttribute
-	public StageStats getStageWrite() {
-		return stageWrite;
+	public PromiseStats getPromiseWrite() {
+		return promiseWrite;
 	}
 
 	@JmxAttribute

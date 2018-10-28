@@ -16,7 +16,7 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
@@ -58,7 +58,7 @@ public final class Utils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <R> Stage<Void> resolveAttributes(List<R> results, AttributeResolver attributeResolver,
+	public static <R> Promise<Void> resolveAttributes(List<R> results, AttributeResolver attributeResolver,
 			List<String> recordDimensions, List<String> recordAttributes,
 			Map<String, Object> fullySpecifiedDimensions,
 			Class<R> recordClass, DefiningClassLoader classLoader) {

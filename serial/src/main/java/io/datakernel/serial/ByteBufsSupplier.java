@@ -41,9 +41,9 @@ public abstract class ByteBufsSupplier implements Cancellable {
 		return bufs;
 	}
 
-	public abstract Stage<Void> needMoreData();
+	public abstract Promise<Void> needMoreData();
 
-	public abstract Stage<Void> endOfStream();
+	public abstract Promise<Void> endOfStream();
 
 	public static ByteBufsSupplier ofIterable(Iterable<ByteBuf> iterable) {
 		return of(SerialSupplier.ofIterator(iterable.iterator()));
@@ -56,31 +56,31 @@ public abstract class ByteBufsSupplier implements Cancellable {
 	public static ByteBufsSupplier of(SerialSupplier<ByteBuf> input) {
 		return new ByteBufsSupplier() {
 			@Override
-			public Stage<Void> needMoreData() {
+			public Promise<Void> needMoreData() {
 				return input.get()
 						.thenCompose(buf -> {
 							if (buf != null) {
 								bufs.add(buf);
-								return Stage.complete();
+								return Promise.complete();
 							} else {
-								return Stage.ofException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
+								return Promise.ofException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
 							}
 						});
 			}
 
 			@Override
-			public Stage<Void> endOfStream() {
+			public Promise<Void> endOfStream() {
 				if (!bufs.isEmpty()) {
 					bufs.recycle();
-					return Stage.ofException(UNEXPECTED_DATA_EXCEPTION);
+					return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 				}
 				return input.get()
 						.thenCompose(buf -> {
 							if (buf != null) {
 								buf.recycle();
-								return Stage.ofException(UNEXPECTED_DATA_EXCEPTION);
+								return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 							} else {
-								return Stage.complete();
+								return Promise.complete();
 							}
 						});
 			}
@@ -97,12 +97,12 @@ public abstract class ByteBufsSupplier implements Cancellable {
 			AsyncSupplier<Void> get, AsyncSupplier<Void> complete, Cancellable cancellable) {
 		return new ByteBufsSupplier(queue) {
 			@Override
-			public Stage<Void> needMoreData() {
+			public Promise<Void> needMoreData() {
 				return get.get();
 			}
 
 			@Override
-			public Stage<Void> endOfStream() {
+			public Promise<Void> endOfStream() {
 				return complete.get();
 			}
 
@@ -113,24 +113,24 @@ public abstract class ByteBufsSupplier implements Cancellable {
 		};
 	}
 
-	public final <T> Stage<T> parse(ByteBufsParser<T> parser) {
+	public final <T> Promise<T> parse(ByteBufsParser<T> parser) {
 		if (!bufs.isEmpty()) {
 			T result;
 			try {
 				result = parser.tryParse(bufs);
 			} catch (Exception e) {
-				return Stage.ofException(e);
+				return Promise.ofException(e);
 			}
 			if (result != null) {
-				return Stage.of(result);
+				return Promise.of(result);
 			}
 		}
-		SettableStage<T> cb = new SettableStage<>();
+		SettablePromise<T> cb = new SettablePromise<>();
 		doParse(parser, cb);
 		return cb;
 	}
 
-	private <T> void doParse(ByteBufsParser<T> parser, SettableStage<T> cb) {
+	private <T> void doParse(ByteBufsParser<T> parser, SettablePromise<T> cb) {
 		needMoreData()
 				.whenComplete(($, e) -> {
 					if (e == null) {
@@ -153,12 +153,12 @@ public abstract class ByteBufsSupplier implements Cancellable {
 				});
 	}
 
-	public final <T> Stage<T> parseRemaining(ByteBufsParser<T> parser) {
+	public final <T> Promise<T> parseRemaining(ByteBufsParser<T> parser) {
 		return parse(parser)
 				.thenCompose(result -> {
 					if (!bufs.isEmpty()) {
 						close(UNEXPECTED_DATA_EXCEPTION);
-						return Stage.ofException(UNEXPECTED_DATA_EXCEPTION);
+						return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 					}
 					return endOfStream().thenApply($ -> result);
 				});
@@ -168,14 +168,14 @@ public abstract class ByteBufsSupplier implements Cancellable {
 		return SerialSupplier.of(
 				() -> parse(parser)
 						.thenComposeEx((value, e) -> {
-							if (e == null) return Stage.of(value);
-							if (e == UNEXPECTED_END_OF_STREAM_EXCEPTION && bufs.isEmpty()) return Stage.of(null);
-							return Stage.ofException(e);
+							if (e == null) return Promise.of(value);
+							if (e == UNEXPECTED_END_OF_STREAM_EXCEPTION && bufs.isEmpty()) return Promise.of(null);
+							return Promise.ofException(e);
 						}),
 				this);
 	}
 
-	public MaterializedStage<Void> bindTo(ByteBufsInput input) {
+	public MaterializedPromise<Void> bindTo(ByteBufsInput input) {
 		return input.set(this);
 	}
 }

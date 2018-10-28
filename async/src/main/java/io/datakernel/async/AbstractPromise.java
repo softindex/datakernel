@@ -10,33 +10,33 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-abstract class AbstractStage<T> implements Stage<T> {
+abstract class AbstractPromise<T> implements Promise<T> {
 
-	private static final BiConsumer<Object, Throwable> COMPLETED_STAGE =
+	private static final BiConsumer<Object, Throwable> COMPLETED_PROMISE =
 			(value, e) -> { throw new UnsupportedOperationException();};
 
-	private static final BiConsumer<Object, Throwable> COMPLETED_EXCEPTIONALLY_STAGE =
+	private static final BiConsumer<Object, Throwable> COMPLETED_EXCEPTIONALLY_PROMISE =
 			(value, e) -> { throw new UnsupportedOperationException();};
 
 	protected BiConsumer<? super T, Throwable> next;
 
 	@Override
 	public boolean isComplete() {
-		return next == COMPLETED_STAGE || next == COMPLETED_EXCEPTIONALLY_STAGE;
+		return next == COMPLETED_PROMISE || next == COMPLETED_EXCEPTIONALLY_PROMISE;
 	}
 
 	@Override
 	public boolean isResult() {
-		return next == COMPLETED_STAGE;
+		return next == COMPLETED_PROMISE;
 	}
 
 	@Override
 	public boolean isException() {
-		return next == COMPLETED_EXCEPTIONALLY_STAGE;
+		return next == COMPLETED_EXCEPTIONALLY_PROMISE;
 	}
 
 	protected void complete(@Nullable T value, @Nullable Throwable error) {
-		assert next != COMPLETED_STAGE && next != COMPLETED_EXCEPTIONALLY_STAGE;
+		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
 		if (error == null) {
 			complete(value);
 		} else {
@@ -46,19 +46,19 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
 	protected void complete(@Nullable T value) {
-		assert next != COMPLETED_STAGE && next != COMPLETED_EXCEPTIONALLY_STAGE;
+		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
 		if (next != null) {
 			next.accept(value, null);
-			next = COMPLETED_STAGE;
+			next = COMPLETED_PROMISE;
 		}
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
 	protected void completeExceptionally(@Nullable Throwable error) {
-		assert next != COMPLETED_STAGE && next != COMPLETED_EXCEPTIONALLY_STAGE;
+		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
 		if (next != null) {
 			next.accept(null, error);
-			next = COMPLETED_EXCEPTIONALLY_STAGE;
+			next = COMPLETED_EXCEPTIONALLY_PROMISE;
 		}
 	}
 
@@ -81,9 +81,9 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public <U, S extends BiConsumer<? super T, Throwable> & Stage<U>> Stage<U> then(S stage) {
-		subscribe(stage);
-		return stage;
+	public <U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(S promise) {
+		subscribe(promise);
+		return promise;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -91,7 +91,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 		if (next == null) {
 			next = consumer;
 		} else {
-			assert !isComplete() : "Stage has already been completed";
+			assert !isComplete() : "Promise has already been completed";
 			final BiConsumer<? super T, Throwable> finalNext = this.next;
 			next = (BiConsumer<T, Throwable>) (result, error) -> {
 				finalNext.accept(result, error);
@@ -101,8 +101,8 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public <U> Stage<U> thenApply(Function<? super T, ? extends U> fn) {
-		return then(new NextStage<T, U>() {
+	public <U> Promise<U> thenApply(Function<? super T, ? extends U> fn) {
+		return then(new NextPromise<T, U>() {
 			@Override
 			public void accept(T result, Throwable e) {
 				if (e == null) {
@@ -122,8 +122,8 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public <U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
-		return then(new NextStage<T, U>() {
+	public <U> Promise<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
+		return then(new NextPromise<T, U>() {
 			@Override
 			public void accept(T result, Throwable e) {
 				if (e == null) {
@@ -150,19 +150,19 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public <U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn) {
-		return then(new NextStage<T, U>() {
+	public <U> Promise<U> thenCompose(Function<? super T, ? extends Promise<U>> fn) {
+		return then(new NextPromise<T, U>() {
 			@Override
 			public void accept(T result, Throwable e) {
 				if (e == null) {
-					Stage<U> stage;
+					Promise<U> promise;
 					try {
-						stage = fn.apply(result);
+						promise = fn.apply(result);
 					} catch (UncheckedException u) {
 						completeExceptionally(u.getCause());
 						return;
 					}
-					stage.whenComplete(this::complete);
+					promise.whenComplete(this::complete);
 				} else {
 					completeExceptionally(e);
 				}
@@ -171,41 +171,41 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
-		return then(new NextStage<T, U>() {
+	public <U> Promise<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Promise<U>> fn) {
+		return then(new NextPromise<T, U>() {
 			@Override
 			public void accept(T result, Throwable e) {
 				if (e == null) {
-					Stage<U> stage;
+					Promise<U> promise;
 					try {
-						stage = fn.apply(result, null);
+						promise = fn.apply(result, null);
 					} catch (UncheckedException u) {
 						completeExceptionally(u.getCause());
 						return;
 					}
-					stage.whenComplete(this::complete);
+					promise.whenComplete(this::complete);
 				} else {
-					Stage<U> stage;
+					Promise<U> promise;
 					try {
-						stage = fn.apply(null, e);
+						promise = fn.apply(null, e);
 					} catch (UncheckedException u) {
 						completeExceptionally(u.getCause());
 						return;
 					}
-					stage.whenComplete(this::complete);
+					promise.whenComplete(this::complete);
 				}
 			}
 		});
 	}
 
 	@Override
-	public Stage<T> whenComplete(BiConsumer<? super T, Throwable> action) {
+	public Promise<T> whenComplete(BiConsumer<? super T, Throwable> action) {
 		subscribe(action);
 		return this;
 	}
 
 	@Override
-	public Stage<T> whenResult(Consumer<? super T> action) {
+	public Promise<T> whenResult(Consumer<? super T> action) {
 		return whenComplete((result, e) -> {
 			if (e == null) {
 				action.accept(result);
@@ -214,7 +214,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> whenException(Consumer<Throwable> action) {
+	public Promise<T> whenException(Consumer<Throwable> action) {
 		return whenComplete((result, e) -> {
 			if (e != null) {
 				action.accept(e);
@@ -223,8 +223,8 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> thenException(Function<? super T, Throwable> fn) {
-		return then(new NextStage<T, T>() {
+	public Promise<T> thenException(Function<? super T, Throwable> fn) {
+		return then(new NextPromise<T, T>() {
 			@Override
 			public void accept(T result, Throwable e) {
 				if (e == null) {
@@ -244,14 +244,14 @@ abstract class AbstractStage<T> implements Stage<T> {
 	private static final Object NO_RESULT = new Object();
 
 	@SuppressWarnings("unchecked")
-	private static class StageCombine<T, V, U> extends NextStage<T, V> {
+	private static class PromiseCombine<T, V, U> extends NextPromise<T, V> {
 		final BiFunction<? super T, ? super U, ? extends V> fn;
 		@Nullable
 		T thisResult = (T) NO_RESULT;
 		@Nullable
 		U otherResult = (U) NO_RESULT;
 
-		StageCombine(BiFunction<? super T, ? super U, ? extends V> fn) {
+		PromiseCombine(BiFunction<? super T, ? super U, ? extends V> fn) {
 			this.fn = fn;
 		}
 
@@ -291,23 +291,23 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
-		if (other instanceof CompleteStage) {
-			return thenApply(result -> fn.apply(result, ((CompleteStage<U>) other).getResult()));
+	public <U, V> Promise<V> combine(Promise<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
+		if (other instanceof CompletePromise) {
+			return thenApply(result -> fn.apply(result, ((CompletePromise<U>) other).getResult()));
 		}
-		StageCombine<T, V, U> resultStage = new StageCombine<>(fn);
+		PromiseCombine<T, V, U> resultPromise = new PromiseCombine<>(fn);
 		other.whenComplete((result, e) -> {
 			if (e == null) {
-				resultStage.onOtherComplete(result);
+				resultPromise.onOtherComplete(result);
 			} else {
-				resultStage.onAnyException(e);
+				resultPromise.onAnyException(e);
 			}
 		});
-		return then(resultStage);
+		return then(resultPromise);
 	}
 
 	@SuppressWarnings("unchecked")
-	private static class StageBoth<T> extends NextStage<T, Void> {
+	private static class PromiseBoth<T> extends NextPromise<T, Void> {
 		int counter = 2;
 
 		@Override
@@ -323,22 +323,22 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<Void> both(Stage<?> other) {
-		if (other instanceof CompleteStage) return toVoid();
-		StageBoth<T> resultStage = new StageBoth<>();
+	public Promise<Void> both(Promise<?> other) {
+		if (other instanceof CompletePromise) return toVoid();
+		PromiseBoth<T> resultPromise = new PromiseBoth<>();
 		other.whenComplete((result, e) -> {
 			if (e == null) {
-				if (--resultStage.counter == 0) {
-					resultStage.complete(null);
+				if (--resultPromise.counter == 0) {
+					resultPromise.complete(null);
 				}
 			} else {
-				resultStage.tryCompleteExceptionally(e);
+				resultPromise.tryCompleteExceptionally(e);
 			}
 		});
-		return then(resultStage);
+		return then(resultPromise);
 	}
 
-	private static final class EitherStage<T> extends NextStage<T, T> {
+	private static final class EitherPromise<T> extends NextPromise<T, T> {
 		int errors;
 
 		@Override
@@ -354,28 +354,28 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> either(Stage<? extends T> other) {
-		if (other instanceof CompleteStage) {
-			@SuppressWarnings("unchecked") CompleteStage<T> otherCompleteStage = (CompleteStage<T>) other;
-			if (otherCompleteStage.isException()) return this;
-			return otherCompleteStage;
+	public Promise<T> either(Promise<? extends T> other) {
+		if (other instanceof CompletePromise) {
+			@SuppressWarnings("unchecked") CompletePromise<T> otherCompletePromise = (CompletePromise<T>) other;
+			if (otherCompletePromise.isException()) return this;
+			return otherCompletePromise;
 		}
-		EitherStage<T> resultStage = new EitherStage<>();
+		EitherPromise<T> resultPromise = new EitherPromise<>();
 		other.whenComplete((result, e) -> {
 			if (e == null) {
-				resultStage.tryComplete(result);
+				resultPromise.tryComplete(result);
 			} else {
-				if (++resultStage.errors == 2) {
-					resultStage.completeExceptionally(e);
+				if (++resultPromise.errors == 2) {
+					resultPromise.completeExceptionally(e);
 				}
 			}
 		});
-		return then(resultStage);
+		return then(resultPromise);
 	}
 
 	@Override
-	public Stage<Try<T>> toTry() {
-		return then(new NextStage<T, Try<T>>() {
+	public Promise<Try<T>> toTry() {
+		return then(new NextPromise<T, Try<T>>() {
 			@Override
 			public void accept(T result, Throwable e) {
 				if (e == null) {
@@ -389,7 +389,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Stage<Void> toVoid() {
+	public Promise<Void> toVoid() {
 		return thenApply($ -> null);
 	}
 

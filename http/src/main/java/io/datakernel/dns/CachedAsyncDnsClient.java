@@ -17,9 +17,9 @@
 package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
@@ -46,7 +46,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 	private final AsyncDnsClient client;
 
 	private DnsCache cache;
-	private final Map<DnsQuery, MaterializedStage<DnsResponse>> pending = new HashMap<>();
+	private final Map<DnsQuery, MaterializedPromise<DnsResponse>> pending = new HashMap<>();
 	private final Set<DnsQuery> refreshingNow = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
 	private CachedAsyncDnsClient(Eventloop eventloop, AsyncDnsClient client, DnsCache cache) {
@@ -90,11 +90,11 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 		}
 		return new AsyncDnsClient() {
 			@Override
-			public MaterializedStage<DnsResponse> resolve(DnsQuery query) {
+			public MaterializedPromise<DnsResponse> resolve(DnsQuery query) {
 				DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 				if (fromQuery != null) {
 					logger.trace("{} already contained an IP address within itself", query);
-					return Stage.of(fromQuery);
+					return Promise.of(fromQuery);
 				}
 
 				DnsQueryCacheResult cacheResult = cache.tryToResolve(query);
@@ -102,18 +102,18 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 					if (cacheResult.doesNeedRefreshing() && !refreshingNow.add(query)) {
 						eventloop.execute(() -> refresh(query));
 					}
-					return cacheResult.getResponseAsStage();
+					return cacheResult.getResponseAsPromise();
 				}
 
-				SettableStage<DnsResponse> stage = new SettableStage<>();
+				SettablePromise<DnsResponse> promise = new SettablePromise<>();
 				other.startExternalTask(); // keep other eventloop alive while we wait for an answer in main one
 				eventloop.execute(() ->
 						CachedAsyncDnsClient.this.resolve(query)
 								.whenComplete((result, e) -> {
-									other.execute(() -> stage.set(result, e));
+									other.execute(() -> promise.set(result, e));
 									other.completeExternalTask();
 								}));
-				return stage;
+				return promise;
 			}
 
 			@Override
@@ -145,13 +145,13 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 	}
 
 	@Override
-	public MaterializedStage<DnsResponse> resolve(DnsQuery query) {
+	public MaterializedPromise<DnsResponse> resolve(DnsQuery query) {
 		assert eventloop.inEventloopThread() : "Concurrent resolves are not allowed, to reuse the cache use adaptToOtherEventloop";
 
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {
 			logger.trace("{} already contained an IP address within itself", query);
-			return Stage.of(fromQuery);
+			return Promise.of(fromQuery);
 		}
 
 		logger.trace("Resolving {}", query);
@@ -160,14 +160,14 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 			if (cacheResult.doesNeedRefreshing()) {
 				refresh(query);
 			}
-			return cacheResult.getResponseAsStage();
+			return cacheResult.getResponseAsPromise();
 		}
-		MaterializedStage<DnsResponse> stage = pending.compute(query, (k, v) -> {
+		MaterializedPromise<DnsResponse> promise = pending.compute(query, (k, v) -> {
 			if (v != null) {
 				logger.trace("{} is already pending", k);
 				return v;
 			}
-			MaterializedStage<DnsResponse> resolve = client.resolve(k);
+			MaterializedPromise<DnsResponse> resolve = client.resolve(k);
 			resolve.whenComplete((response, e) -> {
 				addToCache(k, response, e);
 				pending.remove(k);
@@ -175,7 +175,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 			return resolve;
 		});
 		cache.performCleanup();
-		return stage;
+		return promise;
 	}
 
 	@Override

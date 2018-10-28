@@ -17,13 +17,13 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.QueryException;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 
 import java.lang.reflect.Type;
 import java.util.Map;
 
 public interface ICube {
-	Stage<QueryResult> query(CubeQuery cubeQuery) throws QueryException;
+	Promise<QueryResult> query(CubeQuery cubeQuery) throws QueryException;
 
 	Map<String, Type> getAttributeTypes();
 

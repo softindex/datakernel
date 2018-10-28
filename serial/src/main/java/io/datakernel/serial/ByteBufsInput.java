@@ -1,13 +1,13 @@
 package io.datakernel.serial;
 
-import io.datakernel.async.MaterializedStage;
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.bytebuf.ByteBuf;
 
 public interface ByteBufsInput extends SerialInput<ByteBuf> {
-	MaterializedStage<Void> set(ByteBufsSupplier input);
+	MaterializedPromise<Void> set(ByteBufsSupplier input);
 
 	@Override
-	default MaterializedStage<Void> set(SerialSupplier<ByteBuf> input) {
+	default MaterializedPromise<Void> set(SerialSupplier<ByteBuf> input) {
 		return set(ByteBufsSupplier.of(input));
 	}
 }

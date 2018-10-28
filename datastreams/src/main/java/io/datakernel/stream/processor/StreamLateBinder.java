@@ -1,7 +1,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
 
 import java.util.Set;
@@ -41,7 +41,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected Stage<Void> onEndOfStream() {
+		protected Promise<Void> onEndOfStream() {
 			return output.sendEndOfStream();
 		}
 

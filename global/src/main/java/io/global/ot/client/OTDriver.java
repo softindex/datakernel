@@ -16,8 +16,8 @@
 
 package io.global.ot.client;
 
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
@@ -77,7 +77,7 @@ public final class OTDriver {
 				.withSerializedData(rawCommitData);
 	}
 
-	public Stage<Optional<SimKey>> getSharedKey(MyRepositoryId<?> myRepositoryId,
+	public Promise<Optional<SimKey>> getSharedKey(MyRepositoryId<?> myRepositoryId,
 			PubKey senderPubKey, Hash simKeyHash) {
 		return server.getSharedKey(senderPubKey, myRepositoryId.getRepositoryId().getOwner(), simKeyHash)
 				.thenApply(maybeSignedSimKey -> {
@@ -107,19 +107,19 @@ public final class OTDriver {
 				});
 	}
 
-	public Stage<SimKey> ensureSimKey(MyRepositoryId<?> myRepositoryId,
+	public Promise<SimKey> ensureSimKey(MyRepositoryId<?> myRepositoryId,
 			Set<RepoID> originRepositoryIds, Hash simKeyHash) {
 		return simKeys.containsKey(simKeyHash) ?
-				Stage.of(simKeys.get(simKeyHash)) :
-				Stages.any(union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds).stream()
+				Promise.of(simKeys.get(simKeyHash)) :
+				Promises.any(union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds).stream()
 						.map(RepoID::getOwner)
 						.collect(toSet())
 						.stream()
 						.map(originPubKey -> getSharedKey(myRepositoryId, originPubKey, simKeyHash)
-								.thenCompose(Stage::ofOptional)));
+								.thenCompose(Promise::ofOptional)));
 	}
 
-	public <D> Stage<Void> push(MyRepositoryId<D> myRepositoryId,
+	public <D> Promise<Void> push(MyRepositoryId<D> myRepositoryId,
 			OTCommit<CommitId, D> commit) {
 		return server.save(
 				myRepositoryId.getRepositoryId(),
@@ -133,7 +133,7 @@ public final class OTDriver {
 		);
 	}
 
-	public Stage<Set<CommitId>> getHeads(RepoID repositoryId) {
+	public Promise<Set<CommitId>> getHeads(RepoID repositoryId) {
 		return server.getHeads(repositoryId)
 				.thenApply(signedCommitHeads -> signedCommitHeads.stream()
 						.filter(signedCommitHead ->
@@ -146,17 +146,17 @@ public final class OTDriver {
 						.collect(toSet()));
 	}
 
-	public Stage<Set<CommitId>> getHeads(Set<RepoID> repositoryIds) {
-		return Stages.toList(repositoryIds.stream().map(this::getHeads))
+	public Promise<Set<CommitId>> getHeads(Set<RepoID> repositoryIds) {
+		return Promises.toList(repositoryIds.stream().map(this::getHeads))
 				.thenApply(commitIds -> commitIds.stream().flatMap(Collection::stream).collect(toSet()))
 				.thenException(heads -> !heads.isEmpty() ? null : new IOException());
 	}
 
-	public <D> Stage<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,
+	public <D> Promise<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,
 			Set<RepoID> originRepositoryIds, CommitId revisionId) {
-		return Stages.firstSuccessful(
+		return Promises.firstSuccessful(
 				() -> server.loadCommit(myRepositoryId.getRepositoryId(), revisionId),
-				() -> Stages.any(originRepositoryIds.stream()
+				() -> Promises.any(originRepositoryIds.stream()
 						.map(originRepositoryId -> server.loadCommit(originRepositoryId, revisionId))))
 				.thenException(rawCommit ->
 						Arrays.equals(revisionId.toBytes(), sha256(rawCommit.toBytes())) ?
@@ -182,27 +182,27 @@ public final class OTDriver {
 						}));
 	}
 
-	public <D> Stage<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
+	public <D> Promise<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
 			Set<RepoID> originRepositoryIds, CommitId revisionId) {
-		return Stages.any(
+		return Promises.any(
 				union(singleton(myRepositoryId.getRepositoryId()), originRepositoryIds).stream()
 						.map(repositoryId -> loadSnapshot(myRepositoryId, repositoryId, revisionId)
-								.thenCompose(Stage::ofOptional)))
+								.thenCompose(Promise::ofOptional)))
 				.thenApplyEx((snapshot, e) -> e == null ? Optional.of(snapshot) : Optional.empty());
 	}
 
-	public <D> Stage<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
+	public <D> Promise<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
 			RepoID repositoryId, CommitId revisionId) {
 		return server.loadSnapshot(repositoryId, revisionId)
 				.thenCompose(optionalRawSnapshot -> {
 					if (!optionalRawSnapshot.isPresent()) {
-						return Stage.of(Optional.empty());
+						return Promise.of(Optional.empty());
 					}
 
 					SignedData<RawSnapshot> signedSnapshot = optionalRawSnapshot.get();
 					if (!verify(signedSnapshot.toBytes(), signedSnapshot.getSignature(),
 							repositoryId.getOwner().getEcPublicKey())) {
-						return Stage.of(Optional.empty());
+						return Promise.of(Optional.empty());
 					}
 
 					RawSnapshot rawSnapshot = signedSnapshot.getData();
@@ -225,7 +225,7 @@ public final class OTDriver {
 				});
 	}
 
-	public <D> Stage<Void> saveSnapshot(MyRepositoryId<D> myRepositoryId,
+	public <D> Promise<Void> saveSnapshot(MyRepositoryId<D> myRepositoryId,
 			CommitId revisionId, List<D> diffs) {
 		return server.saveSnapshot(myRepositoryId.getRepositoryId(),
 				SignedData.sign(

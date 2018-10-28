@@ -7,7 +7,7 @@ import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +19,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	private final Eventloop eventloop;
 	private final AsyncSupplier<?> task;
-	private final StageStats stats = StageStats.create(Duration.ofMinutes(5));
+	private final PromiseStats stats = PromiseStats.create(Duration.ofMinutes(5));
 
 	private long initialDelay;
 	private Schedule schedule;
@@ -174,7 +174,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	private final AsyncSupplier<Void> doCall = AsyncSuppliers.reuse(this::doCall);
 
-	private Stage<Void> doCall() {
+	private Promise<Void> doCall() {
 		lastStartTime = eventloop.currentTimeMillis();
 		return task.get()
 				.whenComplete(stats.recordStats())
@@ -203,22 +203,22 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	}
 
 	@Override
-	public Stage<Void> start() {
+	public Promise<Void> start() {
 		scheduleTask();
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Void> stop() {
+	public Promise<Void> stop() {
 		if (scheduledTask != null) {
 			scheduledTask.cancel();
 		}
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	public void setSchedule(Schedule schedule) {
 		this.schedule = schedule;
-		if (stats.getActiveStages() != 0 && scheduledTask != null && !scheduledTask.isCancelled()) {
+		if (stats.getActivePromises() != 0 && scheduledTask != null && !scheduledTask.isCancelled()) {
 			scheduledTask.cancel();
 			scheduledTask = null;
 			scheduleTask();
@@ -227,7 +227,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	public void setRetryPolicy(RetryPolicy retryPolicy) {
 		this.retryPolicy = retryPolicy;
-		if (stats.getActiveStages() != 0 && scheduledTask != null && !scheduledTask.isCancelled() && lastException != null) {
+		if (stats.getActivePromises() != 0 && scheduledTask != null && !scheduledTask.isCancelled() && lastException != null) {
 			scheduledTask.cancel();
 			scheduledTask = null;
 			scheduleTask();
@@ -243,7 +243,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	public void setEnabled(boolean enabled) {
 		if (this.enabled == enabled) return;
 		this.enabled = enabled;
-		if (stats.getActiveStages() == 0) {
+		if (stats.getActivePromises() == 0) {
 			if (enabled) {
 				scheduleTask();
 			} else {
@@ -256,7 +256,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	}
 
 	@JmxAttribute(name = "")
-	public StageStats getStats() {
+	public PromiseStats getStats() {
 		return stats;
 	}
 

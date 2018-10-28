@@ -19,7 +19,7 @@ package io.datakernel.http;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -385,13 +385,13 @@ public abstract class AbstractHttpConnection {
 						.thenComposeEx((buf, e) -> {
 							if (e == null) {
 								readQueue.add(buf);
-								return Stage.complete();
+								return Promise.complete();
 							} else {
 								closeWithError(e);
-								return Stage.<Void>ofException(e);
+								return Promise.<Void>ofException(e);
 							}
 						}),
-				Stage::complete,
+				Promise::complete,
 				this::closeWithError);
 
 		SerialOutput<ByteBuf> bodyStream;

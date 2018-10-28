@@ -21,7 +21,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.file.SerialFileWriter;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.test.TestUtils;
 import org.junit.After;
@@ -61,7 +61,7 @@ public class TestPartialRemoteFs {
 	public TemporaryFolder tempFolder = new TemporaryFolder();
 
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private RemoteFsServer server;
 	private Eventloop eventloop;

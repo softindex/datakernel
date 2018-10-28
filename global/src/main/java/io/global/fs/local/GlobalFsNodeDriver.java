@@ -117,24 +117,24 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 	}
 
 	@Override
-	public Stage<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit) {
+	public Promise<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit) {
 		Namespace.Filesystem fs = ensureFilesystem(path.toRepoID());
 		return fs.download(path.getPath(), offset, limit)
 				.thenComposeEx((result, e) -> {
 					if (e == null) {
 						logger.trace("Found own local file at " + path + " at " + id);
-						return Stage.of(result);
+						return Promise.of(result);
 					}
 					logger.trace("Did not found own file at " + path + " at " + id + ", searching...", e);
 					return fs.ensureMasterNodes()
 							.thenCompose(nodes ->
-									Stages.firstSuccessful(nodes.stream().map(node -> node.getMetadata(path)
+									Promises.firstSuccessful(nodes.stream().map(node -> node.getMetadata(path)
 											.thenCompose(signedMeta -> {
 												if (signedMeta == null) {
-													return Stage.ofException(FILE_NOT_FOUND);
+													return Promise.ofException(FILE_NOT_FOUND);
 												}
 												if (!signedMeta.verify(path.getOwner())) {
-													return Stage.ofException(CANT_VERIFY_METADATA);
+													return Promise.ofException(CANT_VERIFY_METADATA);
 												}
 												if (!doesCaching) {
 													logger.trace("Trying to download file at " + path + " from " + node.getId() + "...");
@@ -145,7 +145,7 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 														.thenApply(supplier -> {
 															SerialSplitter<DataFrame> splitter = SerialSplitter.create(supplier);
 
-															splitter.addOutput().set(SerialConsumer.ofStage(fs.upload(path, offset)));
+															splitter.addOutput().set(SerialConsumer.ofPromise(fs.upload(path, offset)));
 
 															return splitter.addOutput()
 																	.getSupplier()
@@ -159,25 +159,25 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 	}
 
 	@Override
-	public Stage<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset) {
+	public Promise<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset) {
 		if (managedPubKeys.contains(path.getOwner())) {
 			return ensureFilesystem(path.toRepoID()).upload(path, offset);
 		}
 		if (!searchingForUpload.add(path)) {
-			return Stage.ofException(RECURSIVE_UPLOAD_ERROR);
+			return Promise.ofException(RECURSIVE_UPLOAD_ERROR);
 		}
 		Namespace.Filesystem fs = ensureFilesystem(path.toRepoID());
 		return fs.ensureMasterNodes()
 				.thenCompose(nodes -> {
 					if (!doesUploadCaching) {
-						return Stages.firstSuccessful(nodes
+						return Promises.firstSuccessful(nodes
 								.stream()
 								.map(node -> {
 									logger.trace("Trying to upload file at {} at {}", path, node.getId());
 									return node.upload(path, offset);
 								}));
 					}
-					return Stages.firstSuccessful(nodes
+					return Promises.firstSuccessful(nodes
 							.stream()
 							.map(node -> {
 								logger.trace("Trying to upload and cache file at {} at {}", path, node.getId());
@@ -188,10 +188,10 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 											SerialSplitter<DataFrame> splitter = SerialSplitter.<DataFrame>create()
 													.withInput(buffer.getSupplier());
 
-											splitter.addOutput().set(SerialConsumer.ofStage(fs.upload(path, offset)));
+											splitter.addOutput().set(SerialConsumer.ofPromise(fs.upload(path, offset)));
 											splitter.addOutput().set(consumer);
 
-											MaterializedStage<Void> process = splitter.startProcess();
+											MaterializedPromise<Void> process = splitter.startProcess();
 
 											return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
 										});
@@ -200,15 +200,15 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 	}
 
 	@Override
-	public Stage<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob) {
+	public Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob) {
 		return ensureFilesystem(space).list(glob);
 	}
 
 	@Override
-	public Stage<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata) {
+	public Promise<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata) {
 		GlobalFsMetadata meta = signedMetadata.getData();
 		if (!signedMetadata.verify(pubKey)) {
-			return Stage.ofException(CANT_VERIFY_METADATA);
+			return Promise.ofException(CANT_VERIFY_METADATA);
 		}
 		return ensureFilesystem(RepoID.of(pubKey, meta.getLocalPath().getFs())).pushMetadata(signedMetadata);
 	}
@@ -221,14 +221,14 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 		return ensureNamespace(space.getOwner()).ensureFilesystem(space);
 	}
 
-	public Stage<Boolean> fetch(PubKey pubKey) {
+	public Promise<Boolean> fetch(PubKey pubKey) {
 		logger.trace("Fetching from {}", pubKey);
 		return ensureNamespace(pubKey).fetch();
 	}
 
-	public Stage<Boolean> fetchManaged() {
-		return Stages.collectSequence(Try.reducer(false, (a, b) -> a || b), managedPubKeys.stream().map(pk -> fetch(pk).toTry()))
-				.thenCompose(Stage::ofTry);
+	public Promise<Boolean> fetchManaged() {
+		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), managedPubKeys.stream().map(pk -> fetch(pk).toTry()))
+				.thenCompose(Promise::ofTry);
 	}
 
 	class Namespace {
@@ -245,13 +245,13 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 			return fileSystems.computeIfAbsent(repo, Filesystem::new);
 		}
 
-		public Stage<Boolean> fetch() {
+		public Promise<Boolean> fetch() {
 			return fetchImpl.get();
 		}
 
-		private Stage<Boolean> doFetch() {
-			return Stages.collectSequence(Try.reducer(false, (a, b) -> a || b), fileSystems.values().stream().map(fs -> fs.fetch().toTry()))
-					.thenCompose(Stage::ofTry);
+		private Promise<Boolean> doFetch() {
+			return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), fileSystems.values().stream().map(fs -> fs.fetch().toTry()))
+					.thenCompose(Promise::ofTry);
 		}
 
 		class Filesystem {
@@ -261,7 +261,7 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 			private final CheckpointStorage checkpointStorage;
 			private final Map<RawServerId, GlobalFsNode> masterNodes = new HashMap<>();
 
-			private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Stage.ofCallback(this::catchUpIteration));
+			private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpIteration));
 			private final AsyncSupplier<List<GlobalFsNode>> ensureMasterNodesImpl = reuse(this::doEnsureMasterNodes);
 
 			private long masterNodesLastDiscoveryTime;
@@ -279,11 +279,11 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 			}
 			// endregion
 
-			public Stage<Void> catchUp() {
+			public Promise<Void> catchUp() {
 				return catchUpImpl.get();
 			}
 
-			private void catchUpIteration(SettableStage<Void> callback) {
+			private void catchUpIteration(SettablePromise<Void> callback) {
 				long started = now.currentTimeMillis();
 				fetch()
 						.whenResult(didAnything -> {
@@ -296,13 +296,13 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 						});
 			}
 
-			public Stage<List<GlobalFsNode>> ensureMasterNodes() {
+			public Promise<List<GlobalFsNode>> ensureMasterNodes() {
 				return ensureMasterNodesImpl.get();
 			}
 
-			private Stage<List<GlobalFsNode>> doEnsureMasterNodes() {
+			private Promise<List<GlobalFsNode>> doEnsureMasterNodes() {
 				if (masterNodesLastDiscoveryTime >= now.currentTimeMillis() - latencyMargin.toMillis()) {
-					return Stage.of(new ArrayList<>(masterNodes.values()));
+					return Promise.of(new ArrayList<>(masterNodes.values()));
 				}
 				return discoveryService.find(repoID)
 						.thenApply(announceData -> {
@@ -319,24 +319,24 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 						});
 			}
 
-			public Stage<Boolean> fetch() {
+			public Promise<Boolean> fetch() {
 				return ensureMasterNodes()
 						.thenCompose(nodes ->
-								Stages.collectSequence(Try.reducer(false, (a, b) -> a || b), nodes.stream()
+								Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), nodes.stream()
 										.map(node -> fetch(node).toTry())))
-						.thenCompose(Stage::ofTry);
+						.thenCompose(Promise::ofTry);
 			}
 
-			public Stage<Boolean> fetch(GlobalFsNode node) {
+			public Promise<Boolean> fetch(GlobalFsNode node) {
 				checkState(node != GlobalFsNodeDriver.this, "Trying to fetch from itself");
 
 				logger.trace("{} fetching from {}", repoID, node.getId());
 				return node.list(repoID, "**")
 						.thenCompose(files ->
-								Stages.collectSequence(Try.reducer(false, (a, b) -> a || b), files.stream()
+								Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), files.stream()
 										.map(signedMeta -> {
 											if (!signedMeta.verify(owner)) {
-												return Stage.of(false).toTry();
+												return Promise.of(false).toTry();
 											}
 											GlobalFsMetadata meta = signedMeta.getData();
 											String fileName = meta.getLocalPath().getPath();
@@ -347,7 +347,7 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 														// ourFile can be null, but meta - can't,
 														// so if ourFile is null then the condition below is false
 														if (GlobalFsMetadata.getBetter(ourFile, meta) == ourFile) {
-															return Stage.of(false);
+															return Promise.of(false);
 														}
 
 														logger.trace(ourFile != null ?
@@ -387,10 +387,10 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 													})
 													.toTry();
 										})))
-						.thenCompose(Stage::ofTry);
+						.thenCompose(Promise::ofTry);
 			}
 
-			private Stage<Void> downloadMissingPart(GlobalFsNode node, String fileName, long ourSize, long partSize, GlobalPath path) {
+			private Promise<Void> downloadMissingPart(GlobalFsNode node, String fileName, long ourSize, long partSize, GlobalPath path) {
 				if (ourSize == 0) {
 					return node.download(path, ourSize, partSize)
 							.thenCompose(supplier ->
@@ -434,13 +434,13 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 						});
 			}
 
-			public Stage<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset) {
+			public Promise<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset) {
 				logger.info("Uploading to local storage {}, offset: {}", path, offset);
 				return folder.upload(path.getPath(), offset)
 						.thenApply(consumer -> consumer.apply(new FramesIntoStorage(path.toLocalPath(), owner, checkpointStorage)));
 			}
 
-			public Stage<SerialSupplier<DataFrame>> download(String fileName, long offset, long length) {
+			public Promise<SerialSupplier<DataFrame>> download(String fileName, long offset, long length) {
 				logger.info("Downloading local copy of {} at {}, offset: {}, length: {}", fileName, repoID, offset, length);
 				return checkpointStorage.getCheckpoints(fileName)
 						.thenCompose(checkpoints -> {
@@ -454,23 +454,23 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 						});
 			}
 
-			public Stage<List<SignedData<GlobalFsMetadata>>> list(String glob) {
+			public Promise<List<SignedData<GlobalFsMetadata>>> list(String glob) {
 				return metadataFolder.list(glob)
 						.thenCompose(res ->
-								Stages.collectSequence(toList(), res.stream().map(metameta ->
+								Promises.collectSequence(toList(), res.stream().map(metameta ->
 										metadataFolder
 												.download(metameta.getName())
 												.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 												.thenCompose(buf -> {
 													try {
-														return Stage.of(SignedData.ofBytes(buf.asArray(), GlobalFsMetadata::fromBytes));
+														return Promise.of(SignedData.ofBytes(buf.asArray(), GlobalFsMetadata::fromBytes));
 													} catch (ParseException e) {
-														return Stage.ofException(e);
+														return Promise.ofException(e);
 													}
 												}))));
 			}
 
-			public Stage<Void> pushMetadata(SignedData<GlobalFsMetadata> metadata) {
+			public Promise<Void> pushMetadata(SignedData<GlobalFsMetadata> metadata) {
 				logger.trace("Pushing {}", metadata);
 				String path = metadata.getData().getLocalPath().getPath();
 				return metadataFolder.delete(escapeGlob(path))

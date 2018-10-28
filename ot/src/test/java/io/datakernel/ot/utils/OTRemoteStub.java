@@ -1,6 +1,6 @@
 package io.datakernel.ot.utils;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemote;
 
@@ -61,25 +61,25 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 		doPush(commits);
 	}
 
-	public Stage<K> createCommitId() {
-		return Stage.of(doCreateCommitId());
+	public Promise<K> createCommitId() {
+		return Promise.of(doCreateCommitId());
 	}
 
 	@Override
-	public Stage<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
+	public Promise<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
 		return createCommitId()
 				.thenApply(newId -> OTCommit.of(newId, parentDiffs, level));
 	}
 
 	@Override
-	public Stage<Void> push(Collection<OTCommit<K, D>> commits) {
+	public Promise<Void> push(Collection<OTCommit<K, D>> commits) {
 		doPush(commits);
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Set<K>> getHeads() {
-		return Stage.of(doGetHeads());
+	public Promise<Set<K>> getHeads() {
+		return Promise.of(doGetHeads());
 	}
 
 	public K doCreateCommitId() {
@@ -87,22 +87,22 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	}
 
 	@Override
-	public Stage<OTCommit<K, D>> loadCommit(K revisionId) {
-		return Stage.of(doLoadCommit(revisionId));
+	public Promise<OTCommit<K, D>> loadCommit(K revisionId) {
+		return Promise.of(doLoadCommit(revisionId));
 	}
 
 	@Override
-	public Stage<Void> saveSnapshot(K revisionId, List<D> diffs) {
+	public Promise<Void> saveSnapshot(K revisionId, List<D> diffs) {
 		doSaveSnapshot(revisionId, diffs);
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Optional<List<D>>> loadSnapshot(K revisionId) {
+	public Promise<Optional<List<D>>> loadSnapshot(K revisionId) {
 		try {
-			return Stage.of(Optional.of(doLoadSnapshot(revisionId)));
+			return Promise.of(Optional.of(doLoadSnapshot(revisionId)));
 		} catch (IOException e) {
-			return Stage.ofException(e);
+			return Promise.ofException(e);
 		}
 	}
 

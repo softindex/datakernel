@@ -1,6 +1,6 @@
 package io.datakernel.logfs.ot;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
@@ -31,7 +31,7 @@ public class LogDataConsumerSplitterTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
-	private <T> void assertStreamResult(List<T> values, StreamConsumerWithResult<T, List<T>> consumer, Stage<List<T>> result)
+	private <T> void assertStreamResult(List<T> values, StreamConsumerWithResult<T, List<T>> consumer, Promise<List<T>> result)
 			throws ExecutionException, InterruptedException {
 
 		StreamSupplier.ofIterable(values).streamTo(consumer.getConsumer());

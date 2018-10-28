@@ -18,8 +18,8 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -75,14 +75,14 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	private MemSize bufferSize = DEFAULT_BUFFER_SIZE;
 
 	private final ValueStats chunksCount = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageIdGenerator = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageOpenR = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageOpenW = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageFinishChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageList = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageBackup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageCleanup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageCleanupCheckRequiredChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseIdGenerator = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseOpenR = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseOpenW = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseFinishChunks = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseList = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseBackup = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseCleanup = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseCleanupCheckRequiredChunks = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private boolean detailed;
 
@@ -147,11 +147,11 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> Stage<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields,
+	public <T> Promise<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId,
 			DefiningClassLoader classLoader) {
 		return client.download(getPath(chunkId))
-				.whenComplete(stageOpenR.recordStats())
+				.whenComplete(promiseOpenR.recordStats())
 				.thenApply(supplier -> supplier
 						.apply(readFile)
 						.apply(SerialLZ4Decompressor.create())
@@ -164,11 +164,11 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> Stage<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields,
+	public <T> Promise<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields,
 			Class<T> recordClass, C chunkId,
 			DefiningClassLoader classLoader) {
 		return client.upload(getTempPath(chunkId))
-				.whenComplete(stageOpenW.recordStats())
+				.whenComplete(promiseOpenW.recordStats())
 				.thenApply(consumer -> StreamConsumer.ofSupplier(
 						supplier -> supplier
 								.apply((StreamStats<T>) (detailed ? writeSerializeDetailed : writeSerialize))
@@ -186,35 +186,35 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	}
 
 	@Override
-	public Stage<Void> finish(Set<C> chunkIds) {
+	public Promise<Void> finish(Set<C> chunkIds) {
 		finishChunks = chunkIds.size();
 		return client.strictMove(chunkIds.stream().collect(toMap(this::getTempPath, this::getPath)))
-				.whenComplete(stageFinishChunks.recordStats());
+				.whenComplete(promiseFinishChunks.recordStats());
 	}
 
 	@Override
-	public Stage<C> createId() {
-		return idGenerator.createId().whenComplete(stageIdGenerator.recordStats());
+	public Promise<C> createId() {
+		return idGenerator.createId().whenComplete(promiseIdGenerator.recordStats());
 	}
 
-	public Stage<Void> backup(String backupId, Set<C> chunkIds) {
+	public Promise<Void> backup(String backupId, Set<C> chunkIds) {
 		String tempBackupDir = backupDir + File.separator + backupId + "_tmp";
 
-		return Stages.all(chunkIds.stream().map(chunkId -> client.copy(chunkId + LOG, tempBackupDir + File.separator + chunkId + LOG)))
+		return Promises.all(chunkIds.stream().map(chunkId -> client.copy(chunkId + LOG, tempBackupDir + File.separator + chunkId + LOG)))
 				.thenCompose($ -> client.move(tempBackupDir, backupDir + File.separator + backupId))
-				.whenComplete(stageBackup.recordStats());
+				.whenComplete(promiseBackup.recordStats());
 	}
 
-	public Stage<Void> cleanup(Set<C> saveChunks) {
+	public Promise<Void> cleanup(Set<C> saveChunks) {
 		return cleanup(saveChunks, null);
 	}
 
-	public Stage<Void> cleanup(Set<C> preserveChunks, @Nullable Instant instant) {
+	public Promise<Void> cleanup(Set<C> preserveChunks, @Nullable Instant instant) {
 		long timestamp = instant != null ? instant.toEpochMilli() : -1;
 		int[] skipped = {0};
 		int[] deleted = {0};
 		return client.listLocal()
-				.thenCompose(list -> Stages.all(list.stream()
+				.thenCompose(list -> Promises.all(list.stream()
 						.filter(file -> {
 							if (!file.getName().endsWith(LOG)) {
 								return false;
@@ -257,10 +257,10 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 							cleanupSkippedFiles = skipped[0];
 							cleanupSkippedFilesTotal += skipped[0];
 						}))
-				.whenComplete(stageCleanup.recordStats());
+				.whenComplete(promiseCleanup.recordStats());
 	}
 
-	public Stage<Set<Long>> list(Predicate<String> filter, Predicate<Long> lastModified) {
+	public Promise<Set<Long>> list(Predicate<String> filter, Predicate<Long> lastModified) {
 		return client.list()
 				.thenApply(list ->
 						list.stream()
@@ -269,17 +269,17 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 								.filter(name -> name.endsWith(LOG) && filter.test(name))
 								.map(name -> Long.parseLong(name.substring(0, name.length() - LOG.length())))
 								.collect(Collectors.toSet()))
-				.whenComplete(stageList.recordStats());
+				.whenComplete(promiseList.recordStats());
 	}
 
-	public Stage<Void> checkRequiredChunks(Set<C> requiredChunks) {
+	public Promise<Void> checkRequiredChunks(Set<C> requiredChunks) {
 		return list(s -> true, timestamp -> true)
 				.whenResult(actualChunks -> chunksCount.recordValue(actualChunks.size()))
 				.thenCompose(actualChunks -> actualChunks.containsAll(requiredChunks) ?
-						Stage.of((Void) null) :
-						Stage.ofException(new IllegalStateException("Missed chunks from storage: " +
+						Promise.of((Void) null) :
+						Promise.ofException(new IllegalStateException("Missed chunks from storage: " +
 								toLimitedString(difference(requiredChunks, actualChunks), 100))))
-				.whenComplete(stageCleanupCheckRequiredChunks.recordStats())
+				.whenComplete(promiseCleanupCheckRequiredChunks.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), toLimitedString(requiredChunks, 6)));
 	}
 
@@ -289,50 +289,50 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	}
 
 	@Override
-	public Stage<Void> start() {
+	public Promise<Void> start() {
 		return client.ping();
 	}
 
 	@Override
-	public Stage<Void> stop() {
-		return Stage.complete();
+	public Promise<Void> stop() {
+		return Promise.complete();
 	}
 
 	// region JMX
 
 	@JmxAttribute
-	public StageStats getStageIdGenerator() {
-		return stageIdGenerator;
+	public PromiseStats getPromiseIdGenerator() {
+		return promiseIdGenerator;
 	}
 
 	@JmxAttribute
-	public StageStats getStageFinishChunks() {
-		return stageFinishChunks;
+	public PromiseStats getPromiseFinishChunks() {
+		return promiseFinishChunks;
 	}
 
 	@JmxAttribute
-	public StageStats getStageBackup() {
-		return stageBackup;
+	public PromiseStats getPromiseBackup() {
+		return promiseBackup;
 	}
 
 	@JmxAttribute
-	public StageStats getStageCleanup() {
-		return stageCleanup;
+	public PromiseStats getPromiseCleanup() {
+		return promiseCleanup;
 	}
 
 	@JmxAttribute
-	public StageStats getStageList() {
-		return stageList;
+	public PromiseStats getPromiseList() {
+		return promiseList;
 	}
 
 	@JmxAttribute
-	public StageStats getStageOpenR() {
-		return stageOpenR;
+	public PromiseStats getPromiseOpenR() {
+		return promiseOpenR;
 	}
 
 	@JmxAttribute
-	public StageStats getStageOpenW() {
-		return stageOpenW;
+	public PromiseStats getPromiseOpenW() {
+		return promiseOpenW;
 	}
 
 	@JmxAttribute
@@ -421,8 +421,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	}
 
 	@JmxAttribute
-	public StageStats getStageCleanupCheckRequiredChunks() {
-		return stageCleanupCheckRequiredChunks;
+	public PromiseStats getPromiseCleanupCheckRequiredChunks() {
+		return promiseCleanupCheckRequiredChunks;
 	}
 
 	@JmxOperation

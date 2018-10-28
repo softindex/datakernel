@@ -16,7 +16,7 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -27,19 +27,19 @@ import java.util.List;
  * Represents a file system where logs are persisted.
  */
 public interface LogFileSystem {
-	Stage<LogFile> makeUniqueLogFile(String logPartition, String logName);
+	Promise<LogFile> makeUniqueLogFile(String logPartition, String logName);
 
-	Stage<List<LogFile>> list(String logPartition);
+	Promise<List<LogFile>> list(String logPartition);
 
-	Stage<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition);
+	Promise<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition);
 
 	default SerialSupplier<ByteBuf> readStream(String logPartition, LogFile logFile, long startPosition) {
-		return SerialSupplier.ofStage(read(logPartition, logFile, startPosition));
+		return SerialSupplier.ofPromise(read(logPartition, logFile, startPosition));
 	}
 
-	Stage<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile);
+	Promise<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile);
 
 	default SerialConsumer<ByteBuf> writeStream(String logPartition, LogFile logFile) {
-		return SerialConsumer.ofStage(write(logPartition, logFile));
+		return SerialConsumer.ofPromise(write(logPartition, logFile));
 	}
 }

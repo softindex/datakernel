@@ -17,8 +17,8 @@
 package io.datakernel.serial.processor;
 
 import io.datakernel.async.AbstractAsyncProcess;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
@@ -101,10 +101,10 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 								if (lenientExceptions.size() < outputs.size()) {
 									outputs.remove(output);
 									lenientExceptions.add(e);
-									return Stage.complete();
+									return Promise.complete();
 								}
 								lenientExceptions.forEach(e::addSuppressed);
-								return Stage.ofException(e);
+								return Promise.ofException(e);
 							})));
 		}
 	}
@@ -116,7 +116,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 				.whenComplete((item, e) -> {
 					if (e == null) {
 						if (item != null) {
-							Stages.all(outputs.stream().map(output -> output.accept(trySlice(item))))
+							Promises.all(outputs.stream().map(output -> output.accept(trySlice(item))))
 									.whenComplete(($, e2) -> {
 										if (e2 == null) {
 											doProcess();
@@ -126,7 +126,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 									});
 							tryRecycle(item);
 						} else {
-							Stages.all(outputs.stream().map(output -> output.accept(null)))
+							Promises.all(outputs.stream().map(output -> output.accept(null)))
 									.whenComplete(($, e1) -> completeProcess(e1));
 						}
 					} else {

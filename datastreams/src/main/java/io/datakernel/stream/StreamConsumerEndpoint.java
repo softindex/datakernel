@@ -1,6 +1,6 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.serial.SerialBuffer;
 
 public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
@@ -43,7 +43,7 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	protected Stage<Void> onEndOfStream() {
+	protected Promise<Void> onEndOfStream() {
 		return buffer.put(null);
 	}
 
@@ -52,7 +52,7 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 		buffer.close(t);
 	}
 
-	public Stage<T> take() {
+	public Promise<T> take() {
 		if (buffer.willBeExhausted()) {
 			getSupplier().resume(this);
 		}

@@ -17,7 +17,7 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -32,35 +32,35 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class MockFsClient implements FsClient {
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		if (offset == -1) {
-			return Stage.ofException(new RemoteFsException(MockFsClient.class, "FileAlreadyExistsException"));
+			return Promise.ofException(new RemoteFsException(MockFsClient.class, "FileAlreadyExistsException"));
 		}
-		return Stage.of(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
+		return Promise.of(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
 	}
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
-		return Stage.of(SerialSupplier.of(ByteBuf.wrapForReading("mock file".substring((int) offset, length == -1 ? 9 : (int) (offset + length)).getBytes(UTF_8))));
+	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+		return Promise.of(SerialSupplier.of(ByteBuf.wrapForReading("mock file".substring((int) offset, length == -1 ? 9 : (int) (offset + length)).getBytes(UTF_8))));
 	}
 
 	@Override
-	public Stage<Set<String>> move(Map<String, String> changes) {
-		return Stage.of(Collections.emptySet());
+	public Promise<Set<String>> move(Map<String, String> changes) {
+		return Promise.of(Collections.emptySet());
 	}
 
 	@Override
-	public Stage<Set<String>> copy(Map<String, String> changes) {
-		return Stage.of(Collections.emptySet());
+	public Promise<Set<String>> copy(Map<String, String> changes) {
+		return Promise.of(Collections.emptySet());
 	}
 
 	@Override
-	public Stage<List<FileMetadata>> list(String glob) {
-		return Stage.of(Collections.emptyList());
+	public Promise<List<FileMetadata>> list(String glob) {
+		return Promise.of(Collections.emptyList());
 	}
 
 	@Override
-	public Stage<Void> delete(String glob) {
-		return Stage.ofException(new RemoteFsException(MockFsClient.class, "no files to delete"));
+	public Promise<Void> delete(String glob) {
+		return Promise.ofException(new RemoteFsException(MockFsClient.class, "no files to delete"));
 	}
 }

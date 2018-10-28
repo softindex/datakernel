@@ -16,7 +16,7 @@
 
 package io.global.fs.api;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
@@ -33,77 +33,77 @@ import static io.datakernel.file.FileUtils.escapeGlob;
 import static java.util.stream.Collectors.toList;
 
 public interface GlobalFsGateway {
-	Stage<SerialConsumer<ByteBuf>> upload(GlobalPath path, long offset);
+	Promise<SerialConsumer<ByteBuf>> upload(GlobalPath path, long offset);
 
-	default Stage<SerialConsumer<ByteBuf>> upload(GlobalPath path) {
+	default Promise<SerialConsumer<ByteBuf>> upload(GlobalPath path) {
 		return upload(path, -1);
 	}
 
 	default SerialConsumer<ByteBuf> uploader(GlobalPath path, long offset) {
-		return SerialConsumer.ofStage(upload(path, offset));
+		return SerialConsumer.ofPromise(upload(path, offset));
 	}
 
 	default SerialConsumer<ByteBuf> uploader(GlobalPath path) {
-		return SerialConsumer.ofStage(upload(path, -1));
+		return SerialConsumer.ofPromise(upload(path, -1));
 	}
 
-	Stage<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset, long limit);
+	Promise<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset, long limit);
 
-	default Stage<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset) {
+	default Promise<SerialSupplier<ByteBuf>> download(GlobalPath path, long offset) {
 		return download(path, offset, -1);
 	}
 
-	default Stage<SerialSupplier<ByteBuf>> download(GlobalPath path) {
+	default Promise<SerialSupplier<ByteBuf>> download(GlobalPath path) {
 		return download(path, 0, -1);
 	}
 
 	default SerialSupplier<ByteBuf> downloader(GlobalPath path, long offset, long limit) {
-		return SerialSupplier.ofStage(download(path, offset, limit));
+		return SerialSupplier.ofPromise(download(path, offset, limit));
 	}
 
 	default SerialSupplier<ByteBuf> downloader(GlobalPath path, long offset) {
-		return SerialSupplier.ofStage(download(path, offset, -1));
+		return SerialSupplier.ofPromise(download(path, offset, -1));
 	}
 
 	default SerialSupplier<ByteBuf> downloader(GlobalPath path) {
-		return SerialSupplier.ofStage(download(path, 0, -1));
+		return SerialSupplier.ofPromise(download(path, 0, -1));
 	}
 
-	Stage<List<GlobalFsMetadata>> list(RepoID space, String glob);
+	Promise<List<GlobalFsMetadata>> list(RepoID space, String glob);
 
-	default Stage<GlobalFsMetadata> getMetadata(GlobalPath path) {
+	default Promise<GlobalFsMetadata> getMetadata(GlobalPath path) {
 		return list(path.toRepoID(), escapeGlob(path.getPath()))
 				.thenApply(list -> list.isEmpty() ? null : list.get(0));
 	}
 
-	Stage<Void> delete(GlobalPath path);
+	Promise<Void> delete(GlobalPath path);
 
-	Stage<Void> delete(RepoID space, String glob);
+	Promise<Void> delete(RepoID space, String glob);
 
 	default FsClient createFsAdapter(RepoID space, CurrentTimeProvider timeProvider) {
 		return new FsClient() {
 			@Override
-			public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+			public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 				return GlobalFsGateway.this.upload(GlobalPath.of(space, filename), offset);
 			}
 
 			@Override
-			public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+			public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
 				return GlobalFsGateway.this.download(GlobalPath.of(space, filename), offset, length);
 			}
 
 			@Override
-			public Stage<Set<String>> move(Map<String, String> changes) {
+			public Promise<Set<String>> move(Map<String, String> changes) {
 				throw new UnsupportedOperationException("No file moving in GlobalFS yet");
 			}
 
 			@Override
-			public Stage<Set<String>> copy(Map<String, String> changes) {
+			public Promise<Set<String>> copy(Map<String, String> changes) {
 				throw new UnsupportedOperationException("No file copying in GlobalFS yet");
 			}
 
 			@Override
-			public Stage<List<FileMetadata>> list(String glob) {
+			public Promise<List<FileMetadata>> list(String glob) {
 				return GlobalFsGateway.this.list(space, glob)
 						.thenApply(res -> res.stream()
 								.map(meta -> new FileMetadata(meta.getLocalPath().getPath(), meta.getSize(), meta.getRevision()))
@@ -111,7 +111,7 @@ public interface GlobalFsGateway {
 			}
 
 			@Override
-			public Stage<Void> delete(String glob) {
+			public Promise<Void> delete(String glob) {
 				return GlobalFsGateway.this.delete(space, glob);
 			}
 		};

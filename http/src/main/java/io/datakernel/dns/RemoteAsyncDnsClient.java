@@ -17,9 +17,9 @@
 package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncUdpSocket;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
@@ -39,8 +39,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.async.Stages.TIMEOUT_EXCEPTION;
-import static io.datakernel.async.Stages.timeout;
+import static io.datakernel.async.Promises.TIMEOUT_EXCEPTION;
+import static io.datakernel.async.Promises.timeout;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.TIMED_OUT;
 
 public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.EventHandler, EventloopJmxMBeanEx {
@@ -51,7 +51,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 	public static final InetSocketAddress LOCAL_DNS = new InetSocketAddress("192.168.0.1", DNS_SERVER_PORT);
 
 	private final Eventloop eventloop;
-	private final Map<DnsTransaction, SettableStage<DnsResponse>> transactions = new HashMap<>();
+	private final Map<DnsTransaction, SettablePromise<DnsResponse>> transactions = new HashMap<>();
 
 	private DatagramSocketSettings datagramSocketSettings = DatagramSocketSettings.create();
 	private InetSocketAddress dnsServerAddress = GOOGLE_PUBLIC_DNS;
@@ -113,11 +113,11 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 	}
 
 	@Override
-	public MaterializedStage<DnsResponse> resolve(DnsQuery query) {
+	public MaterializedPromise<DnsResponse> resolve(DnsQuery query) {
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {
 			logger.trace("{} already contained an IP address within itself", query);
-			return Stage.of(fromQuery);
+			return Promise.of(fromQuery);
 		}
 
 		if (socket == null) {
@@ -131,16 +131,16 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 				this.socket = s;
 			} catch (IOException e) {
 				logger.error("UDP socket creation failed.", e);
-				return Stage.ofException(e);
+				return Promise.ofException(e);
 			}
 		}
 
 		logger.trace("Resolving {} with DNS server {}", query, dnsServerAddress);
 
 		DnsTransaction transaction = DnsTransaction.of(DnsProtocol.generateTransactionId(), query);
-		SettableStage<DnsResponse> stage = new SettableStage<>();
+		SettablePromise<DnsResponse> promise = new SettablePromise<>();
 
-		transactions.put(transaction, stage);
+		transactions.put(transaction, promise);
 
 		ByteBuf payload = DnsProtocol.createDnsQueryPayload(transaction);
 		if (inspector != null) {
@@ -148,14 +148,14 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 		}
 		socket.send(UdpPacket.of(payload, dnsServerAddress));
 		socket.receive();
-		return timeout(stage, timeout)
+		return timeout(promise, timeout)
 				.thenComposeEx((queryResult, e) -> {
 					if (e == null) {
 						if (inspector != null) {
 							inspector.onDnsQueryResult(query, queryResult);
 						}
 						logger.trace("DNS query {} resolved as {}", query, queryResult.getRecord());
-						return Stage.of(queryResult);
+						return Promise.of(queryResult);
 					}
 					if (e == TIMEOUT_EXCEPTION) {
 						logger.trace("{} timed out", query);
@@ -166,7 +166,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 					if (inspector != null) {
 						inspector.onDnsQueryError(query, e);
 					}
-					return Stage.ofException(e);
+					return Promise.ofException(e);
 				})
 				.materialize();
 	}
@@ -175,15 +175,15 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 	public void onReceive(UdpPacket packet) {
 		try {
 			DnsResponse queryResult = DnsProtocol.readDnsResponse(packet.getBuf());
-			SettableStage<DnsResponse> stage = transactions.remove(queryResult.getTransaction());
-			if (stage == null) {
+			SettablePromise<DnsResponse> promise = transactions.remove(queryResult.getTransaction());
+			if (promise == null) {
 				logger.warn("Received a DNS response that had no listener (most likely because it timed out) : {}", queryResult);
 				return;
 			}
 			if (queryResult.isSuccessful()) {
-				stage.set(queryResult);
+				promise.set(queryResult);
 			} else {
-				stage.setException(new DnsQueryException(RemoteAsyncDnsClient.class, queryResult));
+				promise.setException(new DnsQueryException(RemoteAsyncDnsClient.class, queryResult));
 			}
 			closeIfDone();
 		} catch (ParseException e) {

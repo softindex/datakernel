@@ -19,8 +19,8 @@ package io.datakernel.cube;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.aggregation.*;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.cube.ot.CubeDiff;
@@ -31,7 +31,7 @@ import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -68,7 +68,7 @@ public class CubeTest {
 	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(CubeTest.class);
 
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -166,7 +166,7 @@ public class CubeTest {
 		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), RemoteFsClient.create(eventloop, new InetSocketAddress("localhost", LISTEN_PORT)));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		List<Stage<?>> tasks = new ArrayList<>();
+		List<Promise<?>> tasks = new ArrayList<>();
 		{
 			StreamSupplier<DataItem1> supplier = StreamSupplier.of(
 					new DataItem1(1, 2, 10, 20),
@@ -189,7 +189,7 @@ public class CubeTest {
 							.thenApply($ -> cubeDiff))
 					.whenResult(cube::apply));
 		}
-		Stages.all(tasks).whenComplete(assertComplete($ -> stop(remoteFsServer1)));
+		Promises.all(tasks).whenComplete(assertComplete($ -> stop(remoteFsServer1)));
 
 		eventloop.run();
 

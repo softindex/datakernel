@@ -18,7 +18,7 @@ package io.global.ot.http;
 
 import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.ToDoException;
@@ -80,80 +80,80 @@ public class RawServerHttpClient implements RawServer {
 				.withBody(toJson(gson, value).getBytes(UTF_8));
 	}
 
-	private <T> Stage<T> processResult(HttpResponse r, @Nullable TypeAdapter<T> gson) {
-		if (r.getCode() != 200) Stage.ofException(HttpException.ofCode(r.getCode()));
+	private <T> Promise<T> processResult(HttpResponse r, @Nullable TypeAdapter<T> gson) {
+		if (r.getCode() != 200) Promise.ofException(HttpException.ofCode(r.getCode()));
 		try {
-			return Stage.of(gson != null ? fromJson(gson, r.getBody().asString(UTF_8)) : null);
+			return Promise.of(gson != null ? fromJson(gson, r.getBody().asString(UTF_8)) : null);
 		} catch (ParseException e) {
-			return Stage.ofException(e);
+			return Promise.ofException(e);
 		}
 	}
 
 	@Override
-	public Stage<Set<String>> list(PubKey pubKey) {
+	public Promise<Set<String>> list(PubKey pubKey) {
 		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, LIST, urlEncodePubKey(pubKey)))
 				.thenCompose(r -> processResult(r, SET_OF_STRINGS));
 	}
 
 	@Override
-	public Stage<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
+	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
 		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(POST, SAVE, apiQuery(repositoryId))
 				.initialize(withJson(SAVE_GSON, new SaveTuple(commits, heads))))
 				.thenCompose(r -> processResult(r, null));
 	}
 
 	@Override
-	public Stage<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
+	public Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, LOAD_COMMIT, apiQuery(repositoryId, map("commitId", urlEncodeCommitId(id)))))
 				.thenCompose(r -> processResult(r, COMMIT_JSON));
 	}
 
 	@Override
-	public Stage<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
+	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
 		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, GET_HEADS_INFO, apiQuery(repositoryId)))
 				.thenCompose(r -> processResult(r, HEADS_INFO_GSON));
 	}
 
 	@Override
-	public Stage<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+	public Promise<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Stage<SerialConsumer<CommitEntry>> upload(RepoID repositoryId) {
+	public Promise<SerialConsumer<CommitEntry>> upload(RepoID repositoryId) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Stage<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
+	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(POST, SAVE_SNAPSHOT, apiQuery(repositoryId))
 				.withBody(encryptedSnapshot.toBytes()))
 				.thenCompose(r -> processResult(r, null));
 	}
 
 	@Override
-	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId id) {
+	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId id) {
 		//noinspection RedundantTypeArguments - IntelliJ thinks its redundant, but it's Java compiler does not
 		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, LOAD_SNAPSHOT, apiQuery(repositoryId, map("id", urlEncodeCommitId(id)))))
 				.<Optional<SignedData<RawSnapshot>>>thenCompose(r -> {
 					if (r.getCode() != 200)
-						return Stage.ofException(HttpException.ofCode(r.getCode()));
+						return Promise.ofException(HttpException.ofCode(r.getCode()));
 					try (ByteBuf body = r.getBody()) {
 						if (!body.canRead()) {
-							return Stage.of(Optional.empty());
+							return Promise.of(Optional.empty());
 						}
 						try {
-							return Stage.of(Optional.of(
+							return Promise.of(Optional.of(
 									SignedData.ofBytes(body.getArray(), RawSnapshot::ofBytes)));
 						} catch (ParseException e) {
-							return Stage.ofException(e);
+							return Promise.ofException(e);
 						}
 					}
 				});
 	}
 
 	@Override
-	public Stage<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
+	public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
 		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, GET_HEADS, apiQuery(repositoryId, map("heads",
 				remoteHeads.stream()
 						.map(HttpDataFormats::urlEncodeCommitId)
@@ -162,24 +162,24 @@ public class RawServerHttpClient implements RawServer {
 	}
 
 	@Override
-	public Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
+	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
 		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(POST, SHARE_KEY + "/" + owner.asString(), apiQuery((RepoID) null))
 				.initialize(withJson(SHARED_SIM_KEY_JSON, simKey)))
 				.thenCompose(r -> processResult(r, null));
 	}
 
 	@Override
-	public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey repositoryOwner, PubKey receiver, Hash simKeyHash) {
+	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey repositoryOwner, PubKey receiver, Hash simKeyHash) {
 		throw new ToDoException();
 	}
 
 	@Override
-	public Stage<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
+	public Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
 		throw new ToDoException();
 	}
 
 	@Override
-	public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
+	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
 		throw new ToDoException();
 	}
 

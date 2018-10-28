@@ -18,7 +18,7 @@ package io.datakernel.cube.http;
 
 import com.google.gson.*;
 import io.datakernel.aggregation.PrimaryKey;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -57,8 +57,8 @@ public final class ConsolidationDebugServlet extends AsyncServletWithStats {
 	}
 
 	@Override
-	public Stage<HttpResponse> doServe(HttpRequest request) {
-		return Stage.of(HttpResponse.ok200()
+	public Promise<HttpResponse> doServe(HttpRequest request) {
+		return Promise.of(HttpResponse.ok200()
 				.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(MediaTypes.JSON)))
 				.withBody(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo()))));
 	}

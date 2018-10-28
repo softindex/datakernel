@@ -1,14 +1,14 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.SettablePromise;
 
 import java.util.function.Function;
 
 public class TestStreamSuppliers {
 	public static <T> StreamSupplierFunction<T, StreamSupplier<T>> decorator(Decorator<T> decorator) {
 		return supplier -> new ForwardingStreamSupplier<T>(supplier) {
-			final SettableStage<Void> endOfStream = new SettableStage<>();
+			final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 			{
 				supplier.getEndOfStream().whenComplete(endOfStream::trySet);
@@ -30,7 +30,7 @@ public class TestStreamSuppliers {
 			}
 
 			@Override
-			public MaterializedStage<Void> getEndOfStream() {
+			public MaterializedPromise<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};

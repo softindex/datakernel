@@ -16,7 +16,7 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.DataFrame;
@@ -51,7 +51,7 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 	// endregion
 
 	@Override
-	protected Stage<Void> postNextCheckpoint() {
+	protected Promise<Void> postNextCheckpoint() {
 		long checkpoint = nextCheckpoint;
 		if (nextCheckpointIndex < lastCheckpointIndex) {
 			nextCheckpoint = checkpoints[++nextCheckpointIndex];
@@ -62,7 +62,7 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 						// we are loading a checkpoint from a position that was obtained using getCheckpoints,
 						// so somewhere in between the file was corrupted, or CheckpointStorage implementation is broken
 						output.close(new StacklessException(FramesFromStorage.class, "No checkpoint at position " + position + " for file " + fileName + " found! Is checkpoint data corrupted?"));
-						return Stage.complete();
+						return Promise.complete();
 					}
 					return output.accept(DataFrame.of(signedCheckpoint));
 				});

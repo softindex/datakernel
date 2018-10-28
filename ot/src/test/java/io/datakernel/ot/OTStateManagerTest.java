@@ -1,8 +1,8 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.exceptions.OTTransformException;
 import io.datakernel.ot.utils.OTRemoteStub;
@@ -42,14 +42,14 @@ public class OTStateManagerTest {
 		OTRemote<Integer, TestOp> remoteStub = OTRemoteStub.create(asList(2, 3));
 		OTRemote<Integer, TestOp> remote = new OTRemoteDecorator<Integer, TestOp>(remoteStub) {
 			@Override
-			public Stage<Void> push(Collection<OTCommit<Integer, TestOp>> otCommits) {
+			public Promise<Void> push(Collection<OTCommit<Integer, TestOp>> otCommits) {
 				return super.push(otCommits).thenCompose($ -> scheduledResult(eventloop, 100, null));
 			}
 		};
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, new TestOpState());
 
-		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -80,7 +80,7 @@ public class OTStateManagerTest {
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -102,7 +102,7 @@ public class OTStateManagerTest {
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -128,7 +128,7 @@ public class OTStateManagerTest {
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -153,7 +153,7 @@ public class OTStateManagerTest {
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -180,7 +180,7 @@ public class OTStateManagerTest {
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -210,7 +210,7 @@ public class OTStateManagerTest {
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -237,7 +237,7 @@ public class OTStateManagerTest {
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -266,7 +266,7 @@ public class OTStateManagerTest {
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -295,7 +295,7 @@ public class OTStateManagerTest {
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
-		Stages.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
+		Promises.all(remote.push(ofRoot(0)), remote.saveSnapshot(0, emptyList()))
 				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 
@@ -325,32 +325,32 @@ public class OTStateManagerTest {
 		}
 
 		@Override
-		public Stage<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
+		public Promise<OTCommit<K, D>> createCommit(Map<K, ? extends List<? extends D>> parentDiffs, long level) {
 			return remote.createCommit(parentDiffs, level);
 		}
 
 		@Override
-		public Stage<Void> push(Collection<OTCommit<K, D>> otCommits) {
+		public Promise<Void> push(Collection<OTCommit<K, D>> otCommits) {
 			return remote.push(otCommits);
 		}
 
 		@Override
-		public Stage<Set<K>> getHeads() {
+		public Promise<Set<K>> getHeads() {
 			return remote.getHeads();
 		}
 
 		@Override
-		public Stage<Optional<List<D>>> loadSnapshot(K revisionId) {
+		public Promise<Optional<List<D>>> loadSnapshot(K revisionId) {
 			return remote.loadSnapshot(revisionId);
 		}
 
 		@Override
-		public Stage<OTCommit<K, D>> loadCommit(K revisionId) {
+		public Promise<OTCommit<K, D>> loadCommit(K revisionId) {
 			return remote.loadCommit(revisionId);
 		}
 
 		@Override
-		public Stage<Void> saveSnapshot(K revisionId, List<D> diffs) {
+		public Promise<Void> saveSnapshot(K revisionId, List<D> diffs) {
 			return remote.saveSnapshot(revisionId, diffs);
 		}
 
@@ -360,10 +360,10 @@ public class OTStateManagerTest {
 		}
 	}
 
-	private static <T> Stage<T> scheduledResult(Eventloop eventloop, long delta, T result) {
-		SettableStage<T> stage = new SettableStage<>();
-		eventloop.delay(delta, () -> stage.set(result));
-		return stage;
+	private static <T> Promise<T> scheduledResult(Eventloop eventloop, long delta, T result) {
+		SettablePromise<T> promise = new SettablePromise<>();
+		eventloop.delay(delta, () -> promise.set(result));
+		return promise;
 	}
 
 }

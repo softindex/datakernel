@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serial.file.SerialFileReader;
 import io.datakernel.serial.file.SerialFileWriter;
@@ -119,12 +119,12 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	}
 
 	@Override
-	public Stage<Integer> newPartitionId() {
-		return Stage.of(PARTITION.incrementAndGet());
+	public Promise<Integer> newPartitionId() {
+		return Promise.of(PARTITION.incrementAndGet());
 	}
 
 	@Override
-	public Stage<StreamConsumer<T>> write(int partition) {
+	public Promise<StreamConsumer<T>> write(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{WRITE, CREATE_NEW, APPEND})
 				.thenApply(file -> StreamConsumer.<T>ofSupplier(
@@ -144,7 +144,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 * @param partition index of partition to read
 	 */
 	@Override
-	public Stage<StreamSupplier<T>> read(int partition) {
+	public Promise<StreamSupplier<T>> read(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
 				.thenApply(file -> SerialFileReader.readFile(file).withBufferSize(readBlockSize)
@@ -157,8 +157,8 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 * Method which removes all creating files
 	 */
 	@Override
-	public Stage<Void> cleanup(List<Integer> partitionsToDelete) {
-		return Stage.ofCallable(executorService, () -> {
+	public Promise<Void> cleanup(List<Integer> partitionsToDelete) {
+		return Promise.ofCallable(executorService, () -> {
 			for (Integer partitionToDelete : partitionsToDelete) {
 				Path path1 = partitionPath(partitionToDelete);
 				try {

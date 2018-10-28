@@ -16,13 +16,13 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-import static io.datakernel.async.Stage.ofCallback;
+import static io.datakernel.async.Promise.ofCallback;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.lang.Math.min;
@@ -45,7 +45,7 @@ import static org.junit.Assert.assertEquals;
 public class HttpStreamTest {
 	public static final int PORT = 33453;
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 	public Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
@@ -75,7 +75,7 @@ public class HttpStreamTest {
 								.collect(Collectors.joining("")))
 						.thenCompose(s -> {
 							assertEquals(requestBody, s);
-							return Stage.of(HttpResponse.ok200());
+							return Promise.of(HttpResponse.ok200());
 						}))
 				.withListenPort(PORT);
 		server.listen();
@@ -97,7 +97,7 @@ public class HttpStreamTest {
 	@Test
 	public void testStreamDownload() throws IOException {
 		server = AsyncHttpServer.create(eventloop,
-				request -> Stage.of(
+				request -> Promise.of(
 						HttpResponse.ok200()
 								.withBodyStream(SerialSupplier.ofIterable(expectedList)
 										.transformAsync(item -> ofCallback(cb ->
@@ -131,7 +131,7 @@ public class HttpStreamTest {
 				request ->
 						request.getBodyStream().async().toList()
 								.thenApply(SerialSupplier::ofIterable)
-								.thenCompose(bodyStream -> Stage.of(
+								.thenCompose(bodyStream -> Promise.of(
 										HttpResponse.ok200()
 												.withBodyStream(bodyStream.async()))))
 				.withListenPort(PORT);
@@ -165,7 +165,7 @@ public class HttpStreamTest {
 		server = AsyncHttpServer.create(eventloop,
 				request -> {
 					HttpException testException = new HttpException(432, exceptionMessage);
-					return Stage.ofException(testException);
+					return Promise.ofException(testException);
 				})
 				.withListenPort(PORT);
 		server.listen();

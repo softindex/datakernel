@@ -18,8 +18,8 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.rpc.protocol.RpcOverloadException;
 
@@ -27,20 +27,20 @@ public interface IRpcClient {
 	AsyncTimeoutException RPC_TIMEOUT_EXCEPTION = new AsyncTimeoutException(IRpcClient.class, "RPC request has timed out");
 	RpcOverloadException RPC_OVERLOAD_EXCEPTION = new RpcOverloadException(IRpcClient.class, "RPC client is overloaded");
 
-	default <I, O> Stage<O> sendRequest(I request, int timeout) {
-		SettableStage<O> resultStage = new SettableStage<>();
+	default <I, O> Promise<O> sendRequest(I request, int timeout) {
+		SettablePromise<O> resultPromise = new SettablePromise<>();
 		sendRequest(request, timeout, new Callback<O>() {
 			@Override
 			public void set(@Nullable O result) {
-				resultStage.set(result);
+				resultPromise.set(result);
 			}
 
 			@Override
 			public void setException(Throwable e) {
-				resultStage.setException(e);
+				resultPromise.setException(e);
 			}
 		});
-		return resultStage;
+		return resultPromise;
 	}
 
 	<I, O> void sendRequest(I request, int timeout, Callback<O> cb);

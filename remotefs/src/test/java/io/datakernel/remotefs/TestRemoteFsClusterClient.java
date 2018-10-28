@@ -17,14 +17,14 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.file.SerialFileWriter;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
@@ -57,7 +57,7 @@ public class TestRemoteFsClusterClient {
 	public final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private final Path[] serverStorages = new Path[CLIENT_SERVER_PAIRS];
 
@@ -163,7 +163,7 @@ public class TestRemoteFsClusterClient {
 
 		String[] files = {"file_1.txt", "file_2.txt", "file_3.txt", "other.txt"};
 
-		Stages.all(Arrays.stream(files).map(f -> SerialSupplier.of(data.slice()).streamTo(client.uploadSerial(f))))
+		Promises.all(Arrays.stream(files).map(f -> SerialSupplier.of(data.slice()).streamTo(client.uploadSerial(f))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete());
 
@@ -183,7 +183,7 @@ public class TestRemoteFsClusterClient {
 		String content = "test content of the file";
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));
 
-		Stages.runSequence(IntStream.range(0, 1000)
+		Promises.runSequence(IntStream.range(0, 1000)
 				.mapToObj(i -> SerialSupplier.of(data.slice()).streamTo(client.uploadSerial("file_uploaded_" + i + ".txt"))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete());

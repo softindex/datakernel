@@ -1,7 +1,7 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.Random;
@@ -14,7 +14,7 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 public class TestStreamConsumers {
 	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> decorator(Decorator<T> decorator) {
 		return consumer -> new ForwardingStreamConsumer<T>(consumer) {
-			final SettableStage<Void> acknowledgement = new SettableStage<>();
+			final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 			{
 				consumer.getAcknowledgement().whenComplete(acknowledgement::trySet);
@@ -52,7 +52,7 @@ public class TestStreamConsumers {
 			}
 
 			@Override
-			public MaterializedStage<Void> getAcknowledgement() {
+			public MaterializedPromise<Void> getAcknowledgement() {
 				return acknowledgement;
 			}
 

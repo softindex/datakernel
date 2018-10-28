@@ -4,7 +4,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -108,7 +108,7 @@ public abstract class HttpServerLauncher extends Launcher {
 					@Provides
 					public AsyncServlet provide(Config config) {
 						String message = config.get("message", "Hello, world!");
-						return req -> Stage.of(
+						return req -> Promise.of(
 								HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii(message))));
 					}
 				};

@@ -5,8 +5,8 @@ import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.async.Stages.collectSequence;
+import static io.datakernel.async.Promises.collectSequence;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
@@ -45,8 +45,8 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 
 	private boolean parallelRunner;
 
-	private StageStats stageProcessLogs = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private StageStats stageProcessLogsImpl = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private PromiseStats promiseProcessLogs = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private PromiseStats promiseProcessLogsImpl = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private ValueStats addedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private ValueStats addedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withRate();
 
@@ -89,21 +89,21 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 
 	private final AsyncSupplier<Boolean> processLogs = reuse(this::doProcessLogs);
 
-	public Stage<Boolean> processLogs() {
+	public Promise<Boolean> processLogs() {
 		return processLogs.get();
 	}
 
-	Stage<Boolean> doProcessLogs() {
+	Promise<Boolean> doProcessLogs() {
 		return process()
-				.whenComplete(stageProcessLogs.recordStats())
+				.whenComplete(promiseProcessLogs.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), stateManager));
 	}
 
-	Stage<Boolean> process() {
+	Promise<Boolean> process() {
 		return stateManager.pull()
 				.thenCompose(predicate::test)
 				.thenCompose(ok -> {
-					if (!ok) return Stage.of(false);
+					if (!ok) return Promise.of(false);
 
 					logger.info("Pull to commit: {}, start log processing", stateManager.getRevision());
 
@@ -111,12 +111,12 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 							.map(logProcessor -> AsyncSupplier.of(logProcessor::processLog))
 							.collect(toList());
 
-					Stage<List<LogDiff<CubeDiff>>> stage = parallelRunner ?
-							Stages.toList(tasks.stream().map(AsyncSupplier::get)) :
+					Promise<List<LogDiff<CubeDiff>>> promise = parallelRunner ?
+							Promises.toList(tasks.stream().map(AsyncSupplier::get)) :
 							collectSequence(toList(), tasks);
 
-					return stage
-							.whenComplete(stageProcessLogsImpl.recordStats())
+					return promise
+							.whenComplete(promiseProcessLogsImpl.recordStats())
 							.whenResult(this::cubeDiffJmx)
 							.thenCompose(diffs -> {
 								stateManager.add(otSystem.squash(diffs));
@@ -179,13 +179,13 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 	}
 
 	@JmxAttribute
-	public StageStats getStageProcessLogs() {
-		return stageProcessLogs;
+	public PromiseStats getPromiseProcessLogs() {
+		return promiseProcessLogs;
 	}
 
 	@JmxAttribute
-	public StageStats getStageProcessLogsImpl() {
-		return stageProcessLogsImpl;
+	public PromiseStats getPromiseProcessLogsImpl() {
+		return promiseProcessLogsImpl;
 	}
 
 	@JmxAttribute

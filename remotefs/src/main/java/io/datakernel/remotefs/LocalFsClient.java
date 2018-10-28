@@ -16,8 +16,8 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -25,7 +25,7 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialConsumerFunction;
 import io.datakernel.serial.SerialSupplier;
@@ -70,16 +70,16 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	private MemSize readerBufferSize = MemSize.kilobytes(256);
 
 	//region JMX
-	private final StageStats writeBeginStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats writeFinishStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats readBeginStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats readFinishStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats moveStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats singleMoveStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats copyStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats singleCopyStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats listStage = StageStats.create(Duration.ofMinutes(5));
-	private final StageStats deleteStage = StageStats.create(Duration.ofMinutes(5));
+	private final PromiseStats writeBeginPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats writeFinishPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats readBeginPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats readFinishPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats movePromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats singleMovePromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats copyPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats singleCopyPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats listPromise = PromiseStats.create(Duration.ofMinutes(5));
+	private final PromiseStats deletePromise = PromiseStats.create(Duration.ofMinutes(5));
 	//endregion
 
 	// region creators
@@ -109,7 +109,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	// endregion
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
 		checkNotNull(filename, "fileName");
 
 		return ensureDirectory(filename)
@@ -120,49 +120,49 @@ public final class LocalFsClient implements FsClient, EventloopService {
 							.thenCompose(size -> {
 								if (offset != -1) {
 									if (size == null) {
-										return Stage.ofException(APPEND_NON_EXISTENT);
+										return Promise.ofException(APPEND_NON_EXISTENT);
 									}
 									if (offset > size) {
-										return Stage.ofException(APPEND_OFFSET_EXCEEDS_SIZE);
+										return Promise.ofException(APPEND_OFFSET_EXCEEDS_SIZE);
 									}
 								}
-								return Stage.of(
+								return Promise.of(
 										SerialFileWriter.create(file)
 												.withOffset(offset == -1 ? 0L : size)
 												.withForceOnClose(true)
 												.withAcknowledgement(ack ->
-														ack.whenComplete(writeFinishStage.recordStats()))
+														ack.whenComplete(writeFinishPromise.recordStats()))
 												.apply(offset != -1 && offset != size ?
 														SerialByteBufCutter.create(size - offset) :
 														SerialConsumerFunction.identity()));
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
-				.whenComplete(writeBeginStage.recordStats());
+				.whenComplete(writeBeginPromise.recordStats());
 	}
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		checkNotNull(filename, "fileName");
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
 
 		Path path = storageDir.resolve(filename).normalize();
 		if (!path.startsWith(storageDir)) {
-			return Stage.ofException(new RemoteFsException(LocalFsClient.class, "File " + filename + " goes outside of the root directory"));
+			return Promise.ofException(new RemoteFsException(LocalFsClient.class, "File " + filename + " goes outside of the root directory"));
 		}
 
 		return AsyncFile.size(executor, path)
 				.thenCompose(size -> {
 					if (size == null) {
-						return Stage.ofException(new StacklessException(LocalFsClient.class, "File not found: " + filename));
+						return Promise.ofException(new StacklessException(LocalFsClient.class, "File not found: " + filename));
 					}
 					String repr = filename + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "") + ")";
 					if (offset > size) {
-						return Stage.ofException(new StacklessException(LocalFsClient.class, "Offset exceeds file size for " + repr));
+						return Promise.ofException(new StacklessException(LocalFsClient.class, "Offset exceeds file size for " + repr));
 					}
 					if (length != -1 && offset + length > size) {
-						return Stage.ofException(new StacklessException(LocalFsClient.class, "Boundaries size exceed file for " + repr));
+						return Promise.ofException(new StacklessException(LocalFsClient.class, "Boundaries size exceed file for " + repr));
 					}
 					return AsyncFile.openAsync(executor, path, SerialFileReader.READ_OPTIONS, this)
 							.thenApply(file -> {
@@ -172,27 +172,27 @@ public final class LocalFsClient implements FsClient, EventloopService {
 										.withOffset(offset)
 										.withLength(length == -1 ? Long.MAX_VALUE : length)
 										.withEndOfStream(eos ->
-												eos.whenComplete(readFinishStage.recordStats()));
+												eos.whenComplete(readFinishPromise.recordStats()));
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "download", filename, offset, length, this))
-				.whenComplete(readBeginStage.recordStats());
+				.whenComplete(readBeginPromise.recordStats());
 	}
 
 	@Override
-	public Stage<Set<String>> move(Map<String, String> changes) {
-		return Stages.toList(changes.entrySet().stream().map(e ->
+	public Promise<Set<String>> move(Map<String, String> changes) {
+		return Promises.toList(changes.entrySet().stream().map(e ->
 				move(e.getKey(), e.getValue())
 						.whenException(err -> logger.warn("Failed to move file {} into {}: {}", e.getKey(), e.getValue(), err))
 						.thenApplyEx(($, err) -> err != null ? null : e.getKey())))
 				.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
 				.whenComplete(toLogger(logger, TRACE, "move", changes, this))
-				.whenComplete(moveStage.recordStats());
+				.whenComplete(movePromise.recordStats());
 	}
 
 	@Override
-	public Stage<Void> move(String filename, String targetName) {
-		return Stage.ofRunnable(executor,
+	public Promise<Void> move(String filename, String targetName) {
+		return Promise.ofRunnable(executor,
 				() -> {
 					synchronized (this) {
 						try {
@@ -236,23 +236,23 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 				})
 				.whenComplete(toLogger(logger, TRACE, "move", filename, targetName, this))
-				.whenComplete(singleMoveStage.recordStats());
+				.whenComplete(singleMovePromise.recordStats());
 	}
 
 	@Override
-	public Stage<Set<String>> copy(Map<String, String> changes) {
-		return Stages.toList(changes.entrySet().stream().map(e ->
+	public Promise<Set<String>> copy(Map<String, String> changes) {
+		return Promises.toList(changes.entrySet().stream().map(e ->
 				copy(e.getKey(), e.getValue())
 						.whenException(err -> logger.warn("Failed to copy file {} into {}: {}", e.getKey(), e.getValue(), err))
 						.thenApplyEx(($, err) -> err != null ? null : e.getKey())))
 				.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
 				.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
-				.whenComplete(copyStage.recordStats());
+				.whenComplete(copyPromise.recordStats());
 	}
 
 	@Override
-	public Stage<Void> copy(String filename, String copyName) {
-		return Stage.ofRunnable(executor,
+	public Promise<Void> copy(String filename, String copyName) {
+		return Promise.ofRunnable(executor,
 				() -> {
 					synchronized (this) {
 						try {
@@ -281,12 +281,12 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					}
 				})
 				.whenComplete(toLogger(logger, TRACE, "copy", filename, copyName, this))
-				.whenComplete(singleCopyStage.recordStats());
+				.whenComplete(singleCopyPromise.recordStats());
 	}
 
 	@Override
-	public Stage<Void> delete(String glob) {
-		return Stage.ofRunnable(executor, () -> {
+	public Promise<Void> delete(String glob) {
+		return Promise.ofRunnable(executor, () -> {
 			synchronized (this) {
 				try {
 					walkFiles(glob, (meta, path) -> {
@@ -299,29 +299,29 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			}
 		})
 				.whenComplete(toLogger(logger, TRACE, "delete", glob, this))
-				.whenComplete(deleteStage.recordStats());
+				.whenComplete(deletePromise.recordStats());
 	}
 
 	@Override
-	public Stage<List<FileMetadata>> list(String glob) {
-		return Stage.ofCallable(executor,
+	public Promise<List<FileMetadata>> list(String glob) {
+		return Promise.ofCallable(executor,
 				() -> {
 					List<FileMetadata> list = new ArrayList<>();
 					walkFiles(glob, (meta, $) -> list.add(meta));
 					return list;
 				})
 				.whenComplete(toLogger(logger, TRACE, "list", glob, this))
-				.whenComplete(listStage.recordStats());
+				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override
-	public Stage<Void> ping() {
-		return Stage.of(null); // local fs is always awailable
+	public Promise<Void> ping() {
+		return Promise.of(null); // local fs is always awailable
 	}
 
 	@Override
-	public Stage<FileMetadata> getMetadata(String filename) {
-		return Stage.ofCallable(executor,
+	public Promise<FileMetadata> getMetadata(String filename) {
+		return Promise.ofCallable(executor,
 				() -> {
 					Path file = storageDir.resolve(filename);
 					if (Files.isRegularFile(file)) {
@@ -337,13 +337,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Stage<Void> start() {
+	public Promise<Void> start() {
 		return AsyncFile.createDirectories(executor, storageDir, null);
 	}
 
 	@Override
-	public Stage<Void> stop() {
-		return Stage.complete();
+	public Promise<Void> stop() {
+		return Promise.complete();
 	}
 
 	@Override
@@ -364,8 +364,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return path;
 	}
 
-	private Stage<Path> ensureDirectory(String filePath) {
-		return Stage.ofCallable(executor,
+	private Promise<Path> ensureDirectory(String filePath) {
+		return Promise.ofCallable(executor,
 				() -> {
 					Path path = resolveFilePath(filePath);
 					Files.createDirectories(path.getParent());
@@ -425,53 +425,53 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	//region JMX
 	@JmxAttribute
-	public StageStats getWriteBeginStage() {
-		return writeBeginStage;
+	public PromiseStats getWriteBeginPromise() {
+		return writeBeginPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getWriteFinishStage() {
-		return writeFinishStage;
+	public PromiseStats getWriteFinishPromise() {
+		return writeFinishPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getReadBeginStage() {
-		return readBeginStage;
+	public PromiseStats getReadBeginPromise() {
+		return readBeginPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getReadFinishStage() {
-		return readFinishStage;
+	public PromiseStats getReadFinishPromise() {
+		return readFinishPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getMoveStage() {
-		return moveStage;
+	public PromiseStats getMovePromise() {
+		return movePromise;
 	}
 
 	@JmxAttribute
-	public StageStats getSingleMoveStage() {
-		return singleMoveStage;
+	public PromiseStats getSingleMovePromise() {
+		return singleMovePromise;
 	}
 
 	@JmxAttribute
-	public StageStats getCopyStage() {
-		return copyStage;
+	public PromiseStats getCopyPromise() {
+		return copyPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getSingleCopyStage() {
-		return singleCopyStage;
+	public PromiseStats getSingleCopyPromise() {
+		return singleCopyPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getListStage() {
-		return listStage;
+	public PromiseStats getListPromise() {
+		return listPromise;
 	}
 
 	@JmxAttribute
-	public StageStats getDeleteStage() {
-		return deleteStage;
+	public PromiseStats getDeletePromise() {
+		return deletePromise;
 	}
 	//endregion
 }

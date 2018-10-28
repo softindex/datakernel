@@ -18,12 +18,12 @@ package io.datakernel.ot;
 
 import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 import io.datakernel.json.GsonAdapters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,13 +68,13 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 
 	private String createdBy = null;
 
-	private final StageStats stageCreateCommitId = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stagePush = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageGetHeads = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageLoadCommit = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageIsSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageLoadSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageSaveSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseCreateCommitId = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promisePush = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseGetHeads = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseLoadCommit = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseIsSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseLoadSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseSaveSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private OTRemoteSql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, TypeAdapter<List<D>> diffsAdapter,
 			DataSource dataSource) {
@@ -131,8 +131,8 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 		}
 	}
 
-	public Stage<Long> createCommitId() {
-		return Stage.ofCallable(executor,
+	public Promise<Long> createCommitId() {
+		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(true);
@@ -148,12 +148,12 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 						}
 					}
 				})
-				.whenComplete(stageCreateCommitId.recordStats())
+				.whenComplete(promiseCreateCommitId.recordStats())
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	@Override
-	public Stage<OTCommit<Long, D>> createCommit(Map<Long, ? extends List<? extends D>> parentDiffs, long level) {
+	public Promise<OTCommit<Long, D>> createCommit(Map<Long, ? extends List<? extends D>> parentDiffs, long level) {
 		return createCommitId()
 				.thenApply(newId -> OTCommit.of(newId, parentDiffs, level));
 	}
@@ -168,9 +168,9 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 	}
 
 	@Override
-	public Stage<Void> push(Collection<OTCommit<Long, D>> commits) {
-		if (commits.isEmpty()) return Stage.complete();
-		return Stage.ofCallable(executor,
+	public Promise<Void> push(Collection<OTCommit<Long, D>> commits) {
+		if (commits.isEmpty()) return Promise.complete();
+		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(false);
@@ -229,13 +229,13 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 					}
 					return (Void) null;
 				})
-				.whenComplete(stagePush.recordStats())
+				.whenComplete(promisePush.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), commits.stream().map(OTCommit::toString).collect(toList())));
 	}
 
 	@Override
-	public Stage<Set<Long>> getHeads() {
-		return Stage.ofCallable(executor,
+	public Promise<Set<Long>> getHeads() {
+		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						try (PreparedStatement ps = connection.prepareStatement(
@@ -250,13 +250,13 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 						}
 					}
 				})
-				.whenComplete(stageGetHeads.recordStats())
+				.whenComplete(promiseGetHeads.recordStats())
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	@Override
-	public Stage<Optional<List<D>>> loadSnapshot(Long revisionId) {
-		return Stage.ofCallable(executor,
+	public Promise<Optional<List<D>>> loadSnapshot(Long revisionId) {
+		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						try (PreparedStatement ps = connection.prepareStatement(
@@ -272,13 +272,13 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 						}
 					}
 				})
-				.whenComplete(stageLoadSnapshot.recordStats())
+				.whenComplete(promiseLoadSnapshot.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), revisionId));
 	}
 
 	@Override
-	public Stage<OTCommit<Long, D>> loadCommit(Long revisionId) {
-		return Stage.ofCallable(executor,
+	public Promise<OTCommit<Long, D>> loadCommit(Long revisionId) {
+		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						Map<Long, List<D>> parentDiffs = new HashMap<>();
@@ -321,13 +321,13 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 								.withSnapshotHint(snapshot);
 					}
 				})
-				.whenComplete(stageLoadCommit.recordStats())
+				.whenComplete(promiseLoadCommit.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), revisionId));
 	}
 
 	@Override
-	public Stage<Void> saveSnapshot(Long revisionId, List<D> diffs) {
-		return Stage.ofCallable(executor,
+	public Promise<Void> saveSnapshot(Long revisionId, List<D> diffs) {
+		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						String snapshot = toJson(otSystem.squash(diffs));
@@ -342,13 +342,13 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 						}
 					}
 				})
-				.whenComplete(stageSaveSnapshot.recordStats())
+				.whenComplete(promiseSaveSnapshot.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), revisionId, diffs));
 	}
 
 	@Override
-	public Stage<Void> cleanup(Long minId) {
-		return Stage.ofCallable(executor,
+	public Promise<Void> cleanup(Long minId) {
+		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(false);
@@ -375,9 +375,9 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 	}
 
 	@Override
-	public Stage<Void> backup(OTCommit<Long, D> commit, List<D> snapshot) {
+	public Promise<Void> backup(OTCommit<Long, D> commit, List<D> snapshot) {
 		checkState(this.tableBackup != null);
-		return Stage.ofCallable(executor,
+		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						try (PreparedStatement statement = connection.prepareStatement(
@@ -398,38 +398,38 @@ public class OTRemoteSql<D> implements OTRemoteEx<Long, D>, EventloopJmxMBeanEx 
 	}
 
 	@JmxAttribute
-	public StageStats getStageCreateCommitId() {
-		return stageCreateCommitId;
+	public PromiseStats getPromiseCreateCommitId() {
+		return promiseCreateCommitId;
 	}
 
 	@JmxAttribute
-	public StageStats getStagePush() {
-		return stagePush;
+	public PromiseStats getPromisePush() {
+		return promisePush;
 	}
 
 	@JmxAttribute
-	public StageStats getStageGetHeads() {
-		return stageGetHeads;
+	public PromiseStats getPromiseGetHeads() {
+		return promiseGetHeads;
 	}
 
 	@JmxAttribute
-	public StageStats getStageLoadCommit() {
-		return stageLoadCommit;
+	public PromiseStats getPromiseLoadCommit() {
+		return promiseLoadCommit;
 	}
 
 	@JmxAttribute
-	public StageStats getStageIsSnapshot() {
-		return stageIsSnapshot;
+	public PromiseStats getPromiseIsSnapshot() {
+		return promiseIsSnapshot;
 	}
 
 	@JmxAttribute
-	public StageStats getStageLoadSnapshot() {
-		return stageLoadSnapshot;
+	public PromiseStats getPromiseLoadSnapshot() {
+		return promiseLoadSnapshot;
 	}
 
 	@JmxAttribute
-	public StageStats getStageSaveSnapshot() {
-		return stageSaveSnapshot;
+	public PromiseStats getPromiseSaveSnapshot() {
+		return promiseSaveSnapshot;
 	}
 
 }

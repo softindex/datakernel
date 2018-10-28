@@ -16,7 +16,7 @@
 
 package io.global.fs.local;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
@@ -29,33 +29,33 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 	private Map<String, Map<Long, SignedData<GlobalFsCheckpoint>>> storage = new HashMap<>();
 
 	@Override
-	public Stage<long[]> getCheckpoints(String filename) {
+	public Promise<long[]> getCheckpoints(String filename) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
 		if (checkpoints == null) {
-			return Stage.of(new long[0]);
+			return Promise.of(new long[0]);
 		}
-		return Stage.of(checkpoints.keySet().stream().mapToLong(Long::longValue).sorted().toArray());
+		return Promise.of(checkpoints.keySet().stream().mapToLong(Long::longValue).sorted().toArray());
 	}
 
 	@Override
-	public Stage<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position) {
+	public Promise<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
 		if (checkpoints == null) {
-			return Stage.of(null);
+			return Promise.of(null);
 		}
-		return Stage.of(checkpoints.get(position));
+		return Promise.of(checkpoints.get(position));
 	}
 
 	@Override
-	public Stage<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
+	public Promise<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> fileCheckpoints = storage.computeIfAbsent(filename, $ -> new HashMap<>());
 		long pos = checkpoint.getData().getPosition();
 		SignedData<GlobalFsCheckpoint> existing = fileCheckpoints.get(pos);
 		if (existing == null) {
 			fileCheckpoints.put(pos, checkpoint);
 		} else if (!existing.equals(checkpoint)) {
-			return Stage.ofException(new StacklessException(RuntimeCheckpointStorage.class, "Trying to override existing checkpoint"));
+			return Promise.ofException(new StacklessException(RuntimeCheckpointStorage.class, "Trying to override existing checkpoint"));
 		}
-		return Stage.of(null);
+		return Promise.of(null);
 	}
 }

@@ -30,7 +30,7 @@ public class AsyncExecutors {
 	public static AsyncExecutor direct() {
 		return new AsyncExecutor() {
 			@Override
-			public <T> Stage<T> execute(AsyncSupplier<T> supplier) {
+			public <T> Promise<T> execute(AsyncSupplier<T> supplier) {
 				return supplier.get();
 			}
 		};
@@ -39,12 +39,12 @@ public class AsyncExecutors {
 	public static AsyncExecutor ofEventloop(Eventloop eventloop) {
 		return new AsyncExecutor() {
 			@Override
-			public <T> Stage<T> execute(AsyncSupplier<T> supplier) {
+			public <T> Promise<T> execute(AsyncSupplier<T> supplier) {
 				Eventloop currentEventloop = Eventloop.getCurrentEventloop();
 				if (eventloop == currentEventloop) {
 					return supplier.get();
 				}
-				return Stage.ofCallback(cb -> {
+				return Promise.ofCallback(cb -> {
 					currentEventloop.startExternalTask();
 					eventloop.execute(() -> supplier.get()
 							.whenComplete((result, throwable) -> {
@@ -62,7 +62,7 @@ public class AsyncExecutors {
 			int index;
 
 			@Override
-			public <T> Stage<T> execute(AsyncSupplier<T> supplier) {
+			public <T> Promise<T> execute(AsyncSupplier<T> supplier) {
 				AsyncExecutor executor = executors.get(index);
 				index = (index + 1) % executors.size();
 				return executor.execute(supplier);
@@ -83,18 +83,18 @@ public class AsyncExecutors {
 			private void processBuffer() {
 				while (pendingCalls < maxParallelCalls && !deque.isEmpty()) {
 					AsyncSupplier<Object> supplier = (AsyncSupplier<Object>) deque.pollFirst();
-					SettableStage<Object> settableStage = (SettableStage<Object>) deque.pollFirst();
+					SettablePromise<Object> settablePromise = (SettablePromise<Object>) deque.pollFirst();
 					pendingCalls++;
 					supplier.get().whenComplete((result, throwable) -> {
 						pendingCalls--;
 						processBuffer();
-						settableStage.set(result, throwable);
+						settablePromise.set(result, throwable);
 					});
 				}
 			}
 
 			@Override
-			public <T> Stage<T> execute(AsyncSupplier<T> supplier) throws RejectedExecutionException {
+			public <T> Promise<T> execute(AsyncSupplier<T> supplier) throws RejectedExecutionException {
 				if (pendingCalls <= maxParallelCalls) {
 					pendingCalls++;
 					return supplier.get().async().whenComplete(($, throwable) -> {
@@ -105,7 +105,7 @@ public class AsyncExecutors {
 				if (deque.size() > maxBufferedCalls) {
 					throw new RejectedExecutionException();
 				}
-				SettableStage<T> result = new SettableStage<>();
+				SettablePromise<T> result = new SettablePromise<>();
 				deque.addLast(supplier);
 				deque.addLast(result);
 				return result;
@@ -116,15 +116,15 @@ public class AsyncExecutors {
 	public static AsyncExecutor retry(RetryPolicy retryPolicy) {
 		return new AsyncExecutor() {
 			@Override
-			public <T> Stage<T> execute(AsyncSupplier<T> supplier) {
-				return Stage.ofCallback(settableStage ->
-						retryImpl(supplier, retryPolicy, 0, 0, settableStage));
+			public <T> Promise<T> execute(AsyncSupplier<T> supplier) {
+				return Promise.ofCallback(settablePromise ->
+						retryImpl(supplier, retryPolicy, 0, 0, settablePromise));
 			}
 		};
 	}
 
 	private static <T> void retryImpl(AsyncSupplier<? extends T> supplier, RetryPolicy retryPolicy,
-			int retryCount, long _retryTimestamp, SettableStage<T> cb) {
+			int retryCount, long _retryTimestamp, SettablePromise<T> cb) {
 		supplier.get().async().whenComplete((value, throwable) -> {
 			if (throwable == null) {
 				cb.set(value);
@@ -150,13 +150,13 @@ public class AsyncExecutors {
 			private int counter = 0;
 
 			@Override
-			public <T> Stage<T> execute(AsyncSupplier<T> supplier) {
-				Stage<T> stage = supplier.get();
-				if (stage.isComplete() && counter++ % maxCalls == 0) {
+			public <T> Promise<T> execute(AsyncSupplier<T> supplier) {
+				Promise<T> promise = supplier.get();
+				if (promise.isComplete() && counter++ % maxCalls == 0) {
 					counter = 0;
-					return stage.async();
+					return promise.async();
 				}
-				return stage;
+				return promise;
 			}
 		};
 	}

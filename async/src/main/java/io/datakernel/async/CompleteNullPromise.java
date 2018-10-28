@@ -16,15 +16,15 @@
 
 package io.datakernel.async;
 
-public final class CompleteNullStage<T> extends CompleteStage<T> {
-	public static final CompleteNullStage<?> INSTANCE = new CompleteNullStage<>();
+public final class CompleteNullPromise<T> extends CompletePromise<T> {
+	public static final CompleteNullPromise<?> INSTANCE = new CompleteNullPromise<>();
 
 	@SuppressWarnings("unchecked")
-	static <T> CompleteNullStage<T> instance() {
-		return (CompleteNullStage<T>) INSTANCE;
+	static <T> CompleteNullPromise<T> instance() {
+		return (CompleteNullPromise<T>) INSTANCE;
 	}
 
-	private CompleteNullStage() {
+	private CompleteNullPromise() {
 	}
 
 	@Override

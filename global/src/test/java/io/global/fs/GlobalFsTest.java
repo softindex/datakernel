@@ -16,7 +16,7 @@
 
 package io.global.fs;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
@@ -26,7 +26,7 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.RawServerId;
@@ -76,7 +76,7 @@ public class GlobalFsTest {
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private Eventloop eventloop;
 	private ExecutorService executor;
@@ -317,7 +317,7 @@ public class GlobalFsTest {
 		}
 
 		eventloop.post(() ->
-				Stages.all(
+				Promises.all(
 						discoveryService.announce(aliceTestFs, AnnounceData.of(123, servers), alice.getPrivKey()),
 						discoveryService.announce(bobTestFs, AnnounceData.of(234, servers), bob.getPrivKey())
 				)

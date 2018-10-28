@@ -16,8 +16,8 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventStats;
@@ -50,7 +50,7 @@ public class AbstractHttpConnectionTest {
 	@Test
 	public void testMultiLineHeader() throws Exception {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				request -> Stage.of(
+				request -> Promise.of(
 						HttpResponse.ok200()
 								.withHeader(DATE, "Mon, 27 Jul 2009 12:28:53 GMT")
 								.withHeader(CONTENT_TYPE, "text/\n          html")
@@ -77,7 +77,7 @@ public class AbstractHttpConnectionTest {
 	@Test
 	public void testGzipCompression() throws Exception {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				request -> Stage.of(
+				request -> Promise.of(
 						HttpResponse.ok200()
 								.withBodyGzipCompression()
 								.withBody(encodeAscii("Test message"))))
@@ -102,7 +102,7 @@ public class AbstractHttpConnectionTest {
 	public void testClientWithMaxKeepAliveRequests() throws Exception {
 		client.withMaxKeepAliveRequests(3);
 
-		AsyncServlet servlet = request -> Stage.of(HttpResponse.ok200());
+		AsyncServlet servlet = request -> Promise.of(HttpResponse.ok200());
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
@@ -147,7 +147,7 @@ public class AbstractHttpConnectionTest {
 	@Test
 	public void testServerWithMaxKeepAliveRequests() throws Exception {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				request -> Stage.of(
+				request -> Promise.of(
 						HttpResponse.ok200()))
 				.withListenAddress(new InetSocketAddress("localhost", PORT))
 				.withMaxKeepAliveRequests(3);
@@ -191,7 +191,7 @@ public class AbstractHttpConnectionTest {
 		eventloop.run();
 	}
 
-	private Stage<Void> stopClientAndServer(AsyncHttpClient client, AsyncHttpServer server) {
-		return Stages.all(client.stop(), server.close());
+	private Promise<Void> stopClientAndServer(AsyncHttpClient client, AsyncHttpServer server) {
+		return Promises.all(client.stop(), server.close());
 	}
 }

@@ -2,11 +2,11 @@ package io.datakernel.aggregation.util;
 
 import io.datakernel.aggregation.IdGenerator;
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -30,9 +30,9 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	private long next;
 	private long limit;
 
-	private final StageStats stageCreateId = StageStats.create(Duration.ofMinutes(5));
+	private final PromiseStats promiseCreateId = PromiseStats.create(Duration.ofMinutes(5));
 
-	private final AsyncSupplier<Void> reserveId = reuse(this::doReserveId).with(stageCreateId::wrapper);
+	private final AsyncSupplier<Void> reserveId = reuse(this::doReserveId).with(promiseCreateId::wrapper);
 
 	private IdGeneratorSql(Eventloop eventloop, ExecutorService executor, DataSource dataSource, SqlAtomicSequence sequence) {
 		this.eventloop = eventloop;
@@ -51,9 +51,9 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 		return this;
 	}
 
-	private Stage<Void> doReserveId() {
+	private Promise<Void> doReserveId() {
 		int finalStride = stride;
-		return Stage.ofCallable(executor, () -> getAndAdd(finalStride))
+		return Promise.ofCallable(executor, () -> getAndAdd(finalStride))
 				.whenResult(next -> {
 					this.next = next;
 					this.limit = next + finalStride;
@@ -69,10 +69,10 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	}
 
 	@Override
-	public Stage<Long> createId() {
+	public Promise<Long> createId() {
 		checkState(next <= limit);
 		if (next < limit) {
-			return Stage.of(next++);
+			return Promise.of(next++);
 		}
 		return reserveId.get()
 				.thenCompose($ -> createId());
@@ -84,8 +84,8 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	}
 
 	@JmxAttribute
-	public StageStats getStageCreateId() {
-		return stageCreateId;
+	public PromiseStats getPromiseCreateId() {
+		return promiseCreateId;
 	}
 
 	@JmxAttribute

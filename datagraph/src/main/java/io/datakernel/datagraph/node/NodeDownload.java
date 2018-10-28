@@ -56,7 +56,7 @@ public final class NodeDownload<T> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		DatagraphClient client = taskContext.environment().getInstance(DatagraphClient.class);
-		StreamSupplier<T> stream = StreamSupplier.ofStage(client.download(address, streamId, type));
+		StreamSupplier<T> stream = StreamSupplier.ofPromise(client.download(address, streamId, type));
 		taskContext.export(output, stream);
 	}
 

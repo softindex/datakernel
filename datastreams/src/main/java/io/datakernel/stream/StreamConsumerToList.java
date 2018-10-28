@@ -1,8 +1,8 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -14,7 +14,7 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
 public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
 	protected final List<T> list;
-	private final SettableStage<List<T>> resultStage = new SettableStage<>();
+	private final SettablePromise<List<T>> resultPromise = new SettablePromise<>();
 
 	private StreamConsumerToList() {
 		this(new ArrayList<>());
@@ -28,8 +28,8 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 		return new StreamConsumerToList<>();
 	}
 
-	public StreamConsumerToList<T> withResultAcceptor(Consumer<Stage<List<T>>> resultAcceptor) {
-		resultAcceptor.accept(resultStage);
+	public StreamConsumerToList<T> withResultAcceptor(Consumer<Promise<List<T>>> resultAcceptor) {
+		resultAcceptor.accept(resultPromise);
 		return this;
 	}
 
@@ -48,18 +48,18 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 	}
 
 	@Override
-	protected Stage<Void> onEndOfStream() {
-		resultStage.set(list);
-		return Stage.complete();
+	protected Promise<Void> onEndOfStream() {
+		resultPromise.set(list);
+		return Promise.complete();
 	}
 
 	@Override
 	protected void onError(Throwable t) {
-		resultStage.setException(t);
+		resultPromise.setException(t);
 	}
 
-	public MaterializedStage<List<T>> getResult() {
-		return resultStage;
+	public MaterializedPromise<List<T>> getResult() {
+		return resultPromise;
 	}
 
 	public final List<T> getList() {

@@ -17,8 +17,8 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
@@ -27,7 +27,7 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialSuppliers;
 import io.datakernel.serial.file.SerialFileWriter;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.test.TestUtils;
 import org.junit.After;
@@ -76,7 +76,7 @@ public class FsIntegrationTest {
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	private Path storage;
 	private RemoteFsServer server;
@@ -125,7 +125,7 @@ public class FsIntegrationTest {
 	public void testUploadMultiple() throws IOException {
 		int files = 10;
 
-		Stages.all(IntStream.range(0, 10)
+		Promises.all(IntStream.range(0, 10)
 				.mapToObj(i -> SerialSupplier.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploadSerial("file" + i))))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
@@ -250,7 +250,7 @@ public class FsIntegrationTest {
 	@Test
 	public void testDownloadNotExist() {
 		String file = "file_not_exist_downloaded.txt";
-		client.downloadSerial(file).streamTo(SerialConsumer.of($ -> Stage.complete()))
+		client.downloadSerial(file).streamTo(SerialConsumer.of($ -> Promise.complete()))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "File not found"));
 		eventloop.run();
@@ -261,13 +261,13 @@ public class FsIntegrationTest {
 		String file = "some_file.txt";
 		Files.write(storage.resolve(file), CONTENT);
 
-		List<Stage<Void>> tasks = new ArrayList<>();
+		List<Promise<Void>> tasks = new ArrayList<>();
 
 		for (int i = 0; i < 10; i++) {
 			tasks.add(client.downloadSerial(file).streamTo(SerialFileWriter.create(executor, storage.resolve("file" + i))));
 		}
 
-		Stages.all(tasks)
+		Promises.all(tasks)
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
 
@@ -366,7 +366,7 @@ public class FsIntegrationTest {
 		List<FileMetadata> actual = new ArrayList<>();
 		List<FileMetadata> actual2 = new ArrayList<>();
 
-		Stages.all(client.subfolder("subfolder1").list().whenResult(actual::addAll),
+		Promises.all(client.subfolder("subfolder1").list().whenResult(actual::addAll),
 				client.subfolder("subfolder2").list().whenResult(actual2::addAll)).whenComplete(($, err) -> server.close());
 
 		eventloop.run();
@@ -385,7 +385,7 @@ public class FsIntegrationTest {
 		}
 	}
 
-	private Stage<Void> upload(String resultFile, byte[] bytes) {
+	private Promise<Void> upload(String resultFile, byte[] bytes) {
 		return SerialSupplier.of(ByteBuf.wrapForReading(bytes)).streamTo(client.uploadSerial(resultFile));
 	}
 }

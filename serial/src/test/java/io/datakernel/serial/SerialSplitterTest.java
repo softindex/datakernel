@@ -17,7 +17,7 @@
 package io.datakernel.serial;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.serial.processor.SerialSplitter;
@@ -110,12 +110,12 @@ public class SerialSplitterTest {
 			}
 		}
 
-		Stage<Void> stage = splitter.startProcess()
+		Promise<Void> promise = splitter.startProcess()
 				.whenComplete(($, e) -> System.out.println("completed"))
 				.whenComplete(assertFailure("test exception"));
 
 		eventloop.run();
 
-		assertTrue(stage.isComplete());
+		assertTrue(promise.isComplete());
 	}
 }

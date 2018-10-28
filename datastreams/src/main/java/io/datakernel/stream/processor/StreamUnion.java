@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
@@ -61,7 +61,7 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 
 	private final class Input extends AbstractStreamConsumer<T> {
 		@Override
-		protected Stage<Void> onEndOfStream() {
+		protected Promise<Void> onEndOfStream() {
 			if (inputs.stream().allMatch(input -> input.getEndOfStream().isResult())) {
 				output.sendEndOfStream();
 			}

@@ -17,8 +17,8 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.serial.AbstractSerialConsumer;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.stream.processor.StreamLateBinder;
@@ -44,7 +44,7 @@ public interface StreamConsumer<T> extends Cancellable {
 	 */
 	void setSupplier(StreamSupplier<T> supplier);
 
-	MaterializedStage<Void> getAcknowledgement();
+	MaterializedPromise<Void> getAcknowledgement();
 
 	Set<StreamCapability> getCapabilities();
 
@@ -64,11 +64,11 @@ public interface StreamConsumer<T> extends Cancellable {
 		return new StreamConsumers.OfSerialConsumerImpl<>(consumer);
 	}
 
-	static <T> StreamConsumer<T> ofSupplier(Function<StreamSupplier<T>, MaterializedStage<Void>> supplier) {
+	static <T> StreamConsumer<T> ofSupplier(Function<StreamSupplier<T>, MaterializedPromise<Void>> supplier) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
-		MaterializedStage<Void> extraAcknowledge = supplier.apply(forwarder.getOutput());
+		MaterializedPromise<Void> extraAcknowledge = supplier.apply(forwarder.getOutput());
 		StreamConsumer<T> result = forwarder.getInput();
-		if (extraAcknowledge == Stage.complete()) return result;
+		if (extraAcknowledge == Promise.complete()) return result;
 		return result
 				.withAcknowledgement(ack -> ack.both(extraAcknowledge));
 	}
@@ -86,7 +86,7 @@ public interface StreamConsumer<T> extends Cancellable {
 		endpoint.streamTo(this);
 		return new AbstractSerialConsumer<T>(this) {
 			@Override
-			protected Stage<Void> doAccept(T item) {
+			protected Promise<Void> doAccept(T item) {
 				if (item != null) return endpoint.put(item);
 				assert endpoint.getConsumer() != null;
 				return endpoint.put(null).both(endpoint.getConsumer().getAcknowledgement());
@@ -99,10 +99,10 @@ public interface StreamConsumer<T> extends Cancellable {
 			"it must be bound in the same tick when it is created. " +
 			"Alternatively, use .withLateBinding() modifier";
 
-	static <T> StreamConsumer<T> ofStage(Stage<? extends StreamConsumer<T>> stage) {
-		if (stage.isResult()) return stage.materialize().getResult();
+	static <T> StreamConsumer<T> ofPromise(Promise<? extends StreamConsumer<T>> promise) {
+		if (promise.isResult()) return promise.materialize().getResult();
 		StreamLateBinder<T> lateBounder = StreamLateBinder.create();
-		stage.whenComplete((consumer, throwable) -> {
+		promise.whenComplete((consumer, throwable) -> {
 			if (throwable == null) {
 				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, consumer);
@@ -114,14 +114,14 @@ public interface StreamConsumer<T> extends Cancellable {
 		return lateBounder.getInput();
 	}
 
-	default StreamConsumer<T> withAcknowledgement(Function<Stage<Void>, Stage<Void>> fn) {
-		Stage<Void> acknowledgement = getAcknowledgement();
-		Stage<Void> suppliedAcknowledgement = fn.apply(acknowledgement);
+	default StreamConsumer<T> withAcknowledgement(Function<Promise<Void>, Promise<Void>> fn) {
+		Promise<Void> acknowledgement = getAcknowledgement();
+		Promise<Void> suppliedAcknowledgement = fn.apply(acknowledgement);
 		if (acknowledgement == suppliedAcknowledgement) return this;
-		MaterializedStage<Void> newAcknowledgement = suppliedAcknowledgement.materialize();
+		MaterializedPromise<Void> newAcknowledgement = suppliedAcknowledgement.materialize();
 		return new ForwardingStreamConsumer<T>(this) {
 			@Override
-			public MaterializedStage<Void> getAcknowledgement() {
+			public MaterializedPromise<Void> getAcknowledgement() {
 				return newAcknowledgement;
 			}
 		};

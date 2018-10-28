@@ -18,10 +18,10 @@ package io.datakernel.remotefs;
 
 import ch.qos.logback.classic.Level;
 import io.datakernel.async.EventloopTaskScheduler;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promises;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
@@ -44,7 +44,7 @@ import static io.datakernel.test.TestUtils.enableLogging;
 
 public class TestRepartitionController {
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	public static final int CLIENT_SERVER_PAIRS = 10;
 
@@ -163,7 +163,7 @@ public class TestRepartitionController {
 					scheduler.stop();
 					double ms = (System.nanoTime() - start2) / 1e6;
 					System.out.println(String.format("Done repartitioning in %.2f ms", ms));
-					Stages.toList(cluster.getAliveClients().values().stream().map(fsClient -> fsClient.list().toTry()))
+					Promises.toList(cluster.getAliveClients().values().stream().map(fsClient -> fsClient.list().toTry()))
 							.thenApply(lss -> lss.stream().mapToLong(ls -> {
 								List<FileMetadata> mss = ls.getOrNull();
 								return mss == null ? 0 : mss.stream().mapToLong(FileMetadata::getSize).sum();

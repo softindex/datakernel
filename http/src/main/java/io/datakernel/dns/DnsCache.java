@@ -17,8 +17,8 @@
 package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.dns.DnsProtocol.ResponseErrorCode;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.time.CurrentTimeProvider;
@@ -280,11 +280,11 @@ public final class DnsCache {
 			this.needsRefreshing = needsRefreshing;
 		}
 
-		public MaterializedStage<DnsResponse> getResponseAsStage() {
+		public MaterializedPromise<DnsResponse> getResponseAsPromise() {
 			if (response.getErrorCode() == NO_ERROR) {
-				return Stage.of(response);
+				return Promise.of(response);
 			}
-			return Stage.ofException(new DnsQueryException(DnsCache.class, response));
+			return Promise.ofException(new DnsQueryException(DnsCache.class, response));
 		}
 
 		public boolean doesNeedRefreshing() {

@@ -16,7 +16,7 @@
 
 package io.datakernel.serial.file;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.file.AsyncFile;
@@ -86,10 +86,10 @@ public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 	}
 
 	@Override
-	protected Stage<ByteBuf> doGet() {
+	protected Promise<ByteBuf> doGet() {
 		if (finished) {
 			close();
-			return Stage.of(null);
+			return Promise.of(null);
 		}
 		int bufSize = (int) Math.min(bufferSize, limit);
 		ByteBuf buf = ByteBufPool.allocateExact(bufSize);
@@ -98,13 +98,13 @@ public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 					if (e != null) {
 						buf.recycle();
 						close(e);
-						return Stage.ofException(getException());
+						return Promise.ofException(getException());
 					}
 					int bytesRead = buf.readRemaining(); // bytes written (as they were read from file, thus the name) to be read by a consumer (thus the method)
 					if (bytesRead == 0) { // this happens when file size is exact multiple of buffer size
 						buf.recycle();
 						close();
-						return Stage.of(null);
+						return Promise.of(null);
 					}
 					position += bytesRead;
 					if (limit != Long.MAX_VALUE) {
@@ -113,7 +113,7 @@ public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 					if (limit == 0L || bytesRead < bufSize) { // AsyncFile#read finishes either if file is done or buffer is filled
 						finished = true;
 					}
-					return Stage.of(buf);
+					return Promise.of(buf);
 				});
 	}
 

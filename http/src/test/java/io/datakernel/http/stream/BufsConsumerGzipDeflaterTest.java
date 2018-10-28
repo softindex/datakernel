@@ -22,7 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.http.TestUtils.AssertingConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -42,7 +42,7 @@ public class BufsConsumerGzipDeflaterTest {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	public final AssertingConsumer consumer = new AssertingConsumer();
 	public BufsConsumerGzipDeflater gzip = BufsConsumerGzipDeflater.create();

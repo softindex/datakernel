@@ -18,9 +18,9 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
-import io.datakernel.async.StagesAccumulator;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamConsumer;
@@ -47,7 +47,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 	private final Class<T> recordClass;
 	private final Function<T, K> keyFunction;
 	private final Aggregate<T, Object> aggregate;
-	private final StagesAccumulator<List<AggregationChunk>> resultsTracker;
+	private final PromisesAccumulator<List<AggregationChunk>> resultsTracker;
 	private final DefiningClassLoader classLoader;
 	private final int chunkSize;
 
@@ -66,12 +66,12 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 		this.aggregate = checkNotNull(aggregate, "Cannot create AggregationGroupReducer with Aggregate that is null");
 		this.chunkSize = chunkSize;
 		this.aggregation = checkNotNull(aggregation, "Cannot create AggregationGroupReducer with AggregationStructure that is null");
-		this.resultsTracker = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(this.getEndOfStream(), (accumulator, $) -> {});
+		this.resultsTracker = PromisesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
+				.withPromise(this.getEndOfStream(), (accumulator, $) -> {});
 		this.classLoader = checkNotNull(classLoader, "Cannot create AggregationGroupReducer with ClassLoader that is null");
 	}
 
-	public MaterializedStage<List<AggregationChunk>> getResult() {
+	public MaterializedPromise<List<AggregationChunk>> getResult() {
 		return resultsTracker.get().materialize();
 	}
 
@@ -121,7 +121,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 		AggregationChunker<C, T> chunker = AggregationChunker.create(aggregation, measures, recordClass,
 				partitionPredicate, storage, classLoader, chunkSize);
 
-		resultsTracker.addStage(
+		resultsTracker.addPromise(
 				supplier.streamTo(chunker)
 						.thenCompose($ -> chunker.getResult()),
 				List::addAll)
@@ -129,7 +129,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 	}
 
 	private void suspendOrResume() {
-		if (resultsTracker.getActiveStages() > 2) {
+		if (resultsTracker.getActivePromises() > 2) {
 			logger.trace("Suspend group reduce: {}", this);
 			getSupplier().suspend();
 		} else {
@@ -139,7 +139,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 	}
 
 	@Override
-	protected Stage<Void> onEndOfStream() {
+	protected Promise<Void> onEndOfStream() {
 		doFlush();
 		return resultsTracker.get().toVoid();
 	}

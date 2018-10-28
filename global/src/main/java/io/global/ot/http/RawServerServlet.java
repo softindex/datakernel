@@ -16,7 +16,7 @@
 
 package io.global.ot.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
@@ -58,7 +58,7 @@ public final class RawServerServlet implements AsyncServlet {
 	private final MiddlewareServlet middlewareServlet;
 
 	private interface ServletFunction {
-		Stage<HttpResponse> convert(HttpRequest in) throws ParseException;
+		Promise<HttpResponse> convert(HttpRequest in) throws ParseException;
 	}
 
 	private RawServerServlet(RawServer rawServer) {
@@ -166,7 +166,7 @@ public final class RawServerServlet implements AsyncServlet {
 	}
 
 	@Override
-	public Stage<HttpResponse> serve(HttpRequest request) throws ParseException {
+	public Promise<HttpResponse> serve(HttpRequest request) throws ParseException {
 		return middlewareServlet.serve(request);
 	}
 }

@@ -1,26 +1,26 @@
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.PromiseStats;
 
 import java.time.Duration;
 
 public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJmxMBeanEx {
 	protected final Eventloop eventloop;
 
-	private final StageStats stats = StageStats.create(Duration.ofMinutes(5));
+	private final PromiseStats stats = PromiseStats.create(Duration.ofMinutes(5));
 
 	protected AsyncServletWithStats(Eventloop eventloop) {
 		this.eventloop = eventloop;
 	}
 
-	protected abstract Stage<HttpResponse> doServe(HttpRequest request);
+	protected abstract Promise<HttpResponse> doServe(HttpRequest request);
 
 	@Override
-	public final Stage<HttpResponse> serve(HttpRequest request) {
+	public final Promise<HttpResponse> serve(HttpRequest request) {
 		return doServe(request).whenComplete(stats.recordStats());
 	}
 
@@ -30,7 +30,7 @@ public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJm
 	}
 
 	@JmxAttribute
-	public StageStats getStats() {
+	public PromiseStats getStats() {
 		return stats;
 	}
 

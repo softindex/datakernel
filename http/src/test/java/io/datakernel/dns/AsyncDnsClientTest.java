@@ -17,12 +17,12 @@
 package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.ActiveStagesRule;
+import io.datakernel.stream.processor.ActivePromisesRule;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
 import org.junit.Rule;
@@ -57,7 +57,7 @@ public class AsyncDnsClientTest {
 	private static final InetSocketAddress LOCAL_DNS = new InetSocketAddress("192.168.0.1", DNS_SERVER_PORT);
 
 	@Rule
-	public ActiveStagesRule activeStagesRule = new ActiveStagesRule();
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
@@ -129,7 +129,7 @@ public class AsyncDnsClientTest {
 	public void testDnsClient() {
 		AsyncDnsClient dnsClient = RemoteAsyncDnsClient.create(eventloop);
 
-		Stages.toList(Stream.of("www.google.com", "www.github.com", "www.kpi.ua")
+		Promises.toList(Stream.of("www.google.com", "www.github.com", "www.kpi.ua")
 				.map(dnsClient::resolve4))
 				.whenComplete(assertComplete());
 
@@ -180,7 +180,7 @@ public class AsyncDnsClientTest {
 
 					AsyncDnsClient cachedClient = primaryCachedDnsClient.adaptToOtherEventloop(subloop);
 
-					Stages.toList(
+					Promises.toList(
 							Stream.generate(() -> null)
 									.flatMap($2 -> Stream.of("www.google.com", "www.github.com", "www.kpi.ua"))
 									.limit(100)
@@ -189,10 +189,10 @@ public class AsyncDnsClientTest {
 								if (e instanceof DnsQueryException) {
 									if (((DnsQueryException) e).getResult().getErrorCode() == TIMED_OUT) {
 										System.out.println("TIMED_OUT");
-										return Stage.complete();
+										return Promise.complete();
 									}
 								}
-								return Stage.of(null, e);
+								return Promise.of(null, e);
 							})
 							.whenComplete(assertComplete());
 

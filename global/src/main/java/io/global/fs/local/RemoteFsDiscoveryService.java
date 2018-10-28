@@ -16,7 +16,7 @@
 
 package io.global.fs.local;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
@@ -33,27 +33,27 @@ public final class RemoteFsDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Stage<Void> announce(RepoID repo, SignedData<AnnounceData> announceData) {
+	public Promise<Void> announce(RepoID repo, SignedData<AnnounceData> announceData) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#announce is not implemented yet");
 	}
 
 	@Override
-	public Stage<Optional<SignedData<AnnounceData>>> find(RepoID repo) {
+	public Promise<Optional<SignedData<AnnounceData>>> find(RepoID repo) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#find is not implemented yet");
 	}
 
 	@Override
-	public Stage<List<SignedData<AnnounceData>>> find(PubKey owner) {
+	public Promise<List<SignedData<AnnounceData>>> find(PubKey owner) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#find is not implemented yet");
 	}
 
 	@Override
-	public Stage<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
+	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#shareKey is not implemented yet");
 	}
 
 	@Override
-	public Stage<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
+	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#getSharedKey is not implemented yet");
 	}
 }

@@ -16,9 +16,9 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.serial.SerialConsumer;
 
@@ -36,7 +36,7 @@ public final class StreamConsumers {
 
 	static final class ClosingWithErrorImpl<T> implements StreamConsumer<T> {
 		private final Throwable exception;
-		private final SettableStage<Void> acknowledgement = new SettableStage<>();
+		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		ClosingWithErrorImpl(Throwable exception) {
 			this.exception = exception;
@@ -48,7 +48,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public MaterializedStage<Void> getAcknowledgement() {
+		public MaterializedPromise<Void> getAcknowledgement() {
 			return acknowledgement;
 		}
 
@@ -83,12 +83,12 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		protected Stage<Void> onEndOfStream() {
+		protected Promise<Void> onEndOfStream() {
 			try {
 				consumer.accept(null);
-				return Stage.complete();
+				return Promise.complete();
 			} catch (UncheckedException u) {
-				return Stage.ofException(u.getCause());
+				return Promise.ofException(u.getCause());
 			}
 		}
 
@@ -105,7 +105,7 @@ public final class StreamConsumers {
 	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
 		private final SerialConsumer<T> consumer;
 		private final ArrayDeque<T> deque = new ArrayDeque<>();
-		private final SettableStage<Void> result = new SettableStage<>();
+		private final SettablePromise<Void> result = new SettablePromise<>();
 		private boolean writing;
 
 		OfSerialConsumerImpl(SerialConsumer<T> consumer) {
@@ -129,15 +129,15 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		protected Stage<Void> onEndOfStream() {
+		protected Promise<Void> onEndOfStream() {
 			produce();
-			return Stage.complete();
+			return Promise.complete();
 		}
 
 		private void produce() {
 			if (writing) return;
 			while (!deque.isEmpty()) {
-				Stage<Void> accept = consumer.accept(deque.poll());
+				Promise<Void> accept = consumer.accept(deque.poll());
 				if (accept.isResult()) continue;
 				writing = true;
 				accept.whenComplete(($, e) -> {
@@ -177,7 +177,7 @@ public final class StreamConsumers {
 	 * @param <T> type of received data
 	 */
 	static final class Idle<T> implements StreamConsumer<T> {
-		private final SettableStage<Void> acknowledgement = new SettableStage<>();
+		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		@Override
 		public void setSupplier(StreamSupplier<T> supplier) {
@@ -185,7 +185,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public MaterializedStage<Void> getAcknowledgement() {
+		public MaterializedPromise<Void> getAcknowledgement() {
 			return acknowledgement;
 		}
 
@@ -201,7 +201,7 @@ public final class StreamConsumers {
 	}
 
 	static final class Skip<T> implements StreamConsumer<T> {
-		private final SettableStage<Void> acknowledgement = new SettableStage<>();
+		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		@Override
 		public void setSupplier(StreamSupplier<T> supplier) {
@@ -210,7 +210,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public MaterializedStage<Void> getAcknowledgement() {
+		public MaterializedPromise<Void> getAcknowledgement() {
 			return acknowledgement;
 		}
 

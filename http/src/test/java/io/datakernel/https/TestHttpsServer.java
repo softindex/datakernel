@@ -18,7 +18,7 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
@@ -53,8 +53,8 @@ public class TestHttpsServer {
 
 		AsyncServlet bobServlet = new AsyncServlet() {
 			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				return Stage.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
+			public Promise<HttpResponse> serve(HttpRequest request) {
+				return Promise.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
 			}
 		};
 

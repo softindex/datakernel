@@ -17,8 +17,8 @@
 package io.datakernel.rpc.client;
 
 import io.datakernel.async.Callback;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -107,8 +107,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	private RpcSender requestSender;
 
-	private SettableStage<Void> startStage;
-	private SettableStage<Void> stopStage;
+	private SettablePromise<Void> startPromise;
+	private SettablePromise<Void> stopPromise;
 	private boolean running;
 
 	private final RpcClientConnectionPool pool = address -> connections.get(address);
@@ -273,30 +273,30 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	}
 
 	@Override
-	public Stage<Void> start() {
+	public Promise<Void> start() {
 		checkState(eventloop.inEventloopThread());
 		checkState(messageTypes != null, "Message types must be specified");
 		checkState(!running);
 
-		SettableStage<Void> stage = new SettableStage<>();
+		SettablePromise<Void> promise = new SettablePromise<>();
 		running = true;
-		startStage = stage;
+		startPromise = promise;
 		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 
 		if (forceStart) {
-			startStage.set(null);
+			startPromise.set(null);
 			RpcSender sender = strategy.createSender(pool);
 			requestSender = sender != null ? sender : new NoSenderAvailable();
-			startStage = null;
+			startPromise = null;
 		} else {
 			if (connectTimeoutMillis != 0) {
 				eventloop.delayBackground(connectTimeoutMillis, () -> {
-					if (running && this.startStage != null) {
+					if (running && this.startPromise != null) {
 						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
 								connectTimeoutMillis / 1000.0);
-						this.startStage.setException(new InterruptedException(errorMsg));
+						this.startPromise.setException(new InterruptedException(errorMsg));
 						running = false;
-						this.startStage = null;
+						this.startPromise = null;
 					}
 				});
 			}
@@ -306,32 +306,32 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 			connect(address);
 		}
 
-		return stage;
+		return promise;
 	}
 
 	@Override
-	public Stage<Void> stop() {
-		if (!running) return Stage.complete();
+	public Promise<Void> stop() {
+		if (!running) return Promise.complete();
 		checkState(eventloop.inEventloopThread());
 
-		SettableStage<Void> stage = new SettableStage<>();
+		SettablePromise<Void> promise = new SettablePromise<>();
 
 		running = false;
-		if (startStage != null) {
-			startStage.setException(new InterruptedException("Start aborted"));
-			startStage = null;
+		if (startPromise != null) {
+			startPromise.setException(new InterruptedException("Start aborted"));
+			startPromise = null;
 		}
 
 		if (connections.size() == 0) {
-			stage.set(null);
+			promise.set(null);
 		} else {
-			stopStage = stage;
+			stopPromise = promise;
 			for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
 				connection.close();
 			}
 		}
 
-		return stage;
+		return promise;
 	}
 
 	private void connect(InetSocketAddress address) {
@@ -360,10 +360,10 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 					connectsStatsPerAddress.get(address).successfulConnects++;
 
 					logger.info("Connection to {} established", address);
-					if (startStage != null && !(requestSender instanceof NoSenderAvailable)) {
-						SettableStage<Void> startStage = this.startStage;
-						this.startStage = null;
-						eventloop.postLater(() -> startStage.set(null));
+					if (startPromise != null && !(requestSender instanceof NoSenderAvailable)) {
+						SettablePromise<Void> startPromise = this.startPromise;
+						this.startPromise = null;
+						eventloop.postLater(() -> startPromise.set(null));
 					}
 				})
 				.whenException(e -> {
@@ -404,10 +404,10 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 		connections.remove(address);
 
-		if (stopStage != null && connections.size() == 0) {
+		if (stopPromise != null && connections.size() == 0) {
 			eventloop.post(() -> {
-				stopStage.set(null);
-				stopStage = null;
+				stopPromise.set(null);
+				stopPromise = null;
 			});
 		}
 

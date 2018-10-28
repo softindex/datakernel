@@ -16,8 +16,8 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -78,7 +78,7 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	public static final ParseException INVALID_RESPONSE = new UnknownFormatException(HttpClientConnection.class, "Invalid response");
-	private SettableStage<HttpResponse> callback;
+	private SettablePromise<HttpResponse> callback;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
 	private final AsyncHttpClient.Inspector inspector;
@@ -99,7 +99,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	public void onClosedWithError(Throwable e) {
 		if (inspector != null) inspector.onHttpError(this, callback == null, e);
 		if (callback != null) {
-			SettableStage<HttpResponse> callback = this.callback;
+			SettablePromise<HttpResponse> callback = this.callback;
 			this.callback = null;
 			callback.setException(e);
 		}
@@ -170,7 +170,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		response.bodySupplier = bodySupplier;
 		if (inspector != null) inspector.onHttpResponse(this, response);
 
-		SettableStage<HttpResponse> callback = this.callback;
+		SettablePromise<HttpResponse> callback = this.callback;
 		this.callback = null;
 		callback.set(response);
 
@@ -228,8 +228,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 *
 	 * @param request request for sending
 	 */
-	public Stage<HttpResponse> send(HttpRequest request) {
-		this.callback = new SettableStage<>();
+	public Promise<HttpResponse> send(HttpRequest request) {
+		this.callback = new SettablePromise<>();
 		switchPool(client.poolReadWrite);
 		HttpHeaderValue connectionHeader = CONNECTION_KEEP_ALIVE_HEADER;
 		if (client.maxKeepAliveRequests != -1) {

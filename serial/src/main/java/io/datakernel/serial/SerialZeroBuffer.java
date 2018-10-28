@@ -18,8 +18,8 @@ package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 
@@ -29,8 +29,8 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	@Nullable
 	private T value;
 
-	private SettableStage<Void> put;
-	private SettableStage<T> take;
+	private SettablePromise<Void> put;
+	private SettablePromise<T> take;
 
 	public boolean isWaiting() {
 		return take != null || put != null;
@@ -46,43 +46,43 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Stage<Void> put(@Nullable T value) {
+	public Promise<Void> put(@Nullable T value) {
 		assert put == null;
 		if (exception == null) {
 			if (take != null) {
-				SettableStage<T> take = this.take;
+				SettablePromise<T> take = this.take;
 				this.take = null;
 				take.set(value);
-				return Stage.complete();
+				return Promise.complete();
 			}
 
 			this.value = value;
-			this.put = new SettableStage<>();
+			this.put = new SettablePromise<>();
 			return put;
 		} else {
 			tryRecycle(value);
-			return Stage.ofException(exception);
+			return Promise.ofException(exception);
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Stage<T> take() {
+	public Promise<T> take() {
 		assert take == null;
 		if (exception == null) {
 			if (put != null) {
 				T value = this.value;
-				SettableStage<Void> put = this.put;
+				SettablePromise<Void> put = this.put;
 				this.value = null;
 				this.put = null;
 				put.set(null);
-				return Stage.of(value);
+				return Promise.of(value);
 			}
 
-			this.take = new SettableStage<>();
+			this.take = new SettablePromise<>();
 			return take;
 		} else {
-			return Stage.ofException(exception);
+			return Promise.ofException(exception);
 		}
 	}
 

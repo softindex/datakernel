@@ -19,7 +19,7 @@ package io.datakernel.serial;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AbstractCancellable;
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 
@@ -34,13 +34,13 @@ public abstract class AbstractSerialConsumer<T> extends AbstractCancellable impl
 	}
 	// endregion
 
-	protected abstract Stage<Void> doAccept(@Nullable T value);
+	protected abstract Promise<Void> doAccept(@Nullable T value);
 
 	@Override
-	public Stage<Void> accept(@Nullable T value) {
+	public Promise<Void> accept(@Nullable T value) {
 		if (isClosed()) {
 			tryRecycle(value);
-			return Stage.ofException(getException());
+			return Promise.ofException(getException());
 		}
 		return doAccept(value);
 	}

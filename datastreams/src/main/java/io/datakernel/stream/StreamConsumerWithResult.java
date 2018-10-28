@@ -16,21 +16,21 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 
 import java.util.function.Function;
 
 public final class StreamConsumerWithResult<T, X> {
 	private final StreamConsumer<T> consumer;
-	private final MaterializedStage<X> result;
+	private final MaterializedPromise<X> result;
 
-	private StreamConsumerWithResult(StreamConsumer<T> consumer, MaterializedStage<X> result) {
+	private StreamConsumerWithResult(StreamConsumer<T> consumer, MaterializedPromise<X> result) {
 		this.consumer = consumer;
 		this.result = result;
 	}
 
-	public static <T, X> StreamConsumerWithResult<T, X> of(StreamConsumer<T> consumer, Stage<X> result) {
+	public static <T, X> StreamConsumerWithResult<T, X> of(StreamConsumer<T> consumer, Promise<X> result) {
 		return new StreamConsumerWithResult<>(consumer, result.materialize());
 	}
 
@@ -41,7 +41,7 @@ public final class StreamConsumerWithResult<T, X> {
 
 	public <T1, X1> StreamConsumerWithResult<T1, X1> transform(
 			Function<StreamConsumer<T>, StreamConsumer<T1>> consumerTransformer,
-			Function<Stage<X>, Stage<X1>> resultTransformer) {
+			Function<Promise<X>, Promise<X1>> resultTransformer) {
 		return new StreamConsumerWithResult<>(
 				consumerTransformer.apply(consumer),
 				resultTransformer.apply(result).materialize());
@@ -51,21 +51,21 @@ public final class StreamConsumerWithResult<T, X> {
 		return transform(consumerTransformer, Function.identity());
 	}
 
-	public <X1> StreamConsumerWithResult<T, X1> transformResult(Function<Stage<X>, Stage<X1>> resultTransformer) {
+	public <X1> StreamConsumerWithResult<T, X1> transformResult(Function<Promise<X>, Promise<X1>> resultTransformer) {
 		return transform(Function.identity(), resultTransformer);
 	}
 
-	public static <T, X> StreamConsumerWithResult<T, X> ofStage(Stage<StreamConsumerWithResult<T, X>> stage) {
+	public static <T, X> StreamConsumerWithResult<T, X> ofPromise(Promise<StreamConsumerWithResult<T, X>> promise) {
 		return of(
-				StreamConsumer.ofStage(stage.thenApply(StreamConsumerWithResult::getConsumer)),
-				stage.thenCompose(StreamConsumerWithResult::getResult));
+				StreamConsumer.ofPromise(promise.thenApply(StreamConsumerWithResult::getConsumer)),
+				promise.thenCompose(StreamConsumerWithResult::getResult));
 	}
 
 	public StreamConsumer<T> getConsumer() {
 		return consumer;
 	}
 
-	public MaterializedStage<X> getResult() {
+	public MaterializedPromise<X> getResult() {
 		return result;
 	}
 }

@@ -17,7 +17,7 @@
 package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.MaterializedStage;
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.http.HttpUtils;
 
 import java.net.InetAddress;
@@ -34,7 +34,7 @@ public interface AsyncDnsClient {
 	 *
 	 * @param domainName domain name for to get IP for
 	 */
-	default MaterializedStage<DnsResponse> resolve4(String domainName) {
+	default MaterializedPromise<DnsResponse> resolve4(String domainName) {
 		return resolve(DnsQuery.ipv4(domainName));
 	}
 
@@ -43,7 +43,7 @@ public interface AsyncDnsClient {
 	 *
 	 * @param domainName domain name for to get IP for
 	 */
-	default MaterializedStage<DnsResponse> resolve6(String domainName) {
+	default MaterializedPromise<DnsResponse> resolve6(String domainName) {
 		return resolve(DnsQuery.ipv6(domainName));
 	}
 
@@ -52,7 +52,7 @@ public interface AsyncDnsClient {
 	 *
 	 * @param query domain and IP version
 	 */
-	MaterializedStage<DnsResponse> resolve(DnsQuery query);
+	MaterializedPromise<DnsResponse> resolve(DnsQuery query);
 
 	/**
 	 * Closes the underlying UDP socket if it's open.

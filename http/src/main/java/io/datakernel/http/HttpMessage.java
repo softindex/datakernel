@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.annotation.NotNull;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.exception.ParseException;
@@ -189,28 +189,28 @@ public abstract class HttpMessage {
 		return body;
 	}
 
-	public Stage<ByteBuf> getBodyStage(MemSize maxBodySize) {
-		return getBodyStage(maxBodySize.toInt());
+	public Promise<ByteBuf> getBodyPromise(MemSize maxBodySize) {
+		return getBodyPromise(maxBodySize.toInt());
 	}
 
-	public Stage<ByteBuf> getBodyStage(int maxBodySize) {
+	public Promise<ByteBuf> getBodyPromise(int maxBodySize) {
 		checkState(body != null ^ bodySupplier != null);
 		if (body != null) {
 			ByteBuf body = this.body;
 			this.body = null;
-			return Stage.of(body);
+			return Promise.of(body);
 		}
 		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		this.bodySupplier = null;
 		return bodySupplier.toCollector(ByteBufQueue.collector(maxBodySize));
 	}
 
-	public final Stage<Void> ensureBody(MemSize maxBodySize) {
+	public final Promise<Void> ensureBody(MemSize maxBodySize) {
 		return ensureBody(maxBodySize.toInt());
 	}
 
-	public final Stage<Void> ensureBody(int maxBodySize) {
-		if (body != null) return Stage.of(null);
+	public final Promise<Void> ensureBody(int maxBodySize) {
+		if (body != null) return Promise.of(null);
 		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		if (bodySupplier != null) {
 			this.bodySupplier = null;
@@ -218,13 +218,13 @@ public abstract class HttpMessage {
 					.thenComposeEx((buf, e) -> {
 						if (e == null) {
 							this.body = buf;
-							return Stage.of(null);
+							return Promise.of(null);
 						} else {
-							return Stage.ofException(e);
+							return Promise.ofException(e);
 						}
 					});
 		}
-		return Stage.of(null);
+		return Promise.of(null);
 	}
 
 	public SerialSupplier<ByteBuf> getBodyStream() {

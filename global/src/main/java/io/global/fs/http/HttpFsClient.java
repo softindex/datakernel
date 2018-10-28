@@ -16,7 +16,7 @@
 
 package io.global.fs.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpClient;
@@ -52,14 +52,14 @@ public class HttpFsClient implements FsClient {
 	// endregion
 
 	@Override
-	public Stage<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
-		return Stage.of(uploadSerial(filename, offset));
+	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+		return Promise.of(uploadSerial(filename, offset));
 	}
 
 	@Override
 	public SerialConsumer<ByteBuf> uploadSerial(String filename, long offset) {
 		SerialZeroBuffer<ByteBuf> buffer = new SerialZeroBuffer<>();
-		Stage<HttpResponse> res = client.request(
+		Promise<HttpResponse> res = client.request(
 				HttpRequest.put(
 						UrlBuilder.http()
 								.withAuthority(address)
@@ -73,7 +73,7 @@ public class HttpFsClient implements FsClient {
 	}
 
 	@Override
-	public Stage<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		return client.request(
 				HttpRequest.get(
 						UrlBuilder.http()
@@ -86,7 +86,7 @@ public class HttpFsClient implements FsClient {
 	}
 
 	@Override
-	public Stage<Set<String>> move(Map<String, String> changes) {
+	public Promise<Set<String>> move(Map<String, String> changes) {
 		return client.request(
 				HttpRequest.post(
 						UrlBuilder.http()
@@ -96,15 +96,15 @@ public class HttpFsClient implements FsClient {
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
 				.thenCompose(response -> {
 					try {
-						return Stage.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
+						return Promise.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
 					} catch (ParseException e) {
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 	}
 
 	@Override
-	public Stage<Set<String>> copy(Map<String, String> changes) {
+	public Promise<Set<String>> copy(Map<String, String> changes) {
 		return client.request(
 				HttpRequest.post(
 						UrlBuilder.http()
@@ -114,15 +114,15 @@ public class HttpFsClient implements FsClient {
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
 				.thenCompose(response -> {
 					try {
-						return Stage.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
+						return Promise.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
 					} catch (ParseException e) {
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 	}
 
 	@Override
-	public Stage<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(String glob) {
 		return client.request(
 				HttpRequest.post(
 						UrlBuilder.http()
@@ -132,15 +132,15 @@ public class HttpFsClient implements FsClient {
 								.build()))
 				.thenCompose(response -> {
 					try {
-						return Stage.of(GsonAdapters.fromJson(FILE_META_LIST, response.getBody().asString(UTF_8)));
+						return Promise.of(GsonAdapters.fromJson(FILE_META_LIST, response.getBody().asString(UTF_8)));
 					} catch (ParseException e) {
-						return Stage.ofException(e);
+						return Promise.ofException(e);
 					}
 				});
 	}
 
 	@Override
-	public Stage<Void> delete(String glob) {
+	public Promise<Void> delete(String glob) {
 		return client.request(
 				HttpRequest.post(
 						UrlBuilder.http()

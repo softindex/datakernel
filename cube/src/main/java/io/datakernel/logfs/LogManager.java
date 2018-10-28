@@ -16,7 +16,7 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplierWithResult;
 
@@ -30,10 +30,10 @@ public interface LogManager<T> {
 	 * @param logPartition log partition name
 	 * @return StreamConsumer, which will write records, streamed from wired supplier.
 	 */
-	Stage<StreamConsumer<T>> consumer(String logPartition);
+	Promise<StreamConsumer<T>> consumer(String logPartition);
 
 	default StreamConsumer<T> consumerStream(String logPartition) {
-		return StreamConsumer.ofStage(consumer(logPartition));
+		return StreamConsumer.ofPromise(consumer(logPartition));
 	}
 
 	/**
@@ -44,14 +44,14 @@ public interface LogManager<T> {
 	 * @param startPosition position
 	 * @return StreamSupplier, which will stream read items to its wired consumer.
 	 */
-	Stage<StreamSupplierWithResult<T, LogPosition>> supplier(String logPartition,
+	Promise<StreamSupplierWithResult<T, LogPosition>> supplier(String logPartition,
 			LogFile startLogFile, long startPosition,
 			LogFile endLogFile);
 
 	default StreamSupplierWithResult<T, LogPosition> supplierStream(String logPartition,
 			LogFile startLogFile, long startPosition,
 			LogFile endLogFile) {
-		return StreamSupplierWithResult.ofStage(
+		return StreamSupplierWithResult.ofPromise(
 				supplier(logPartition, startLogFile, startPosition, endLogFile));
 	}
 

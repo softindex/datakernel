@@ -18,7 +18,7 @@ package io.global.fs.http;
 
 import com.google.gson.TypeAdapter;
 import com.google.inject.Inject;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
@@ -29,7 +29,7 @@ import io.global.common.api.DiscoveryService;
 import java.io.IOException;
 import java.util.List;
 
-import static io.datakernel.util.gson.GsonAdapters.ofList;
+import static io.datakernel.json.GsonAdapters.ofList;
 import static io.global.common.GlobalJsonAdapters.*;
 import static io.global.fs.util.HttpDataFormats.parseRepoID;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -52,12 +52,12 @@ public final class DiscoveryServlet implements AsyncServlet {
 		servlet = MiddlewareServlet.create()
 				.with(HttpMethod.PUT, "/" + ANNOUNCE, request -> {
 					RepoID pubKey = parseRepoID(request);
-					return request.getBodyStage(Integer.MAX_VALUE)
+					return request.getBodyPromise(Integer.MAX_VALUE)
 							.thenCompose(body -> {
 								try {
 									return discoveryService.announce(pubKey, SIGNED_ANNOUNCE.fromJson(body.asString(UTF_8)));
 								} catch (IOException e) {
-									return Stage.ofException(e);
+									return Promise.ofException(e);
 								}
 							})
 							.thenApply($ -> HttpResponse.ok201());
@@ -67,10 +67,10 @@ public final class DiscoveryServlet implements AsyncServlet {
 						discoveryService.find(parseRepoID(request))
 								.thenCompose(data -> data
 										.map(signedData ->
-												(Stage<HttpResponse>) Stage.of(HttpResponse.ok200()
+												(Promise<HttpResponse>) Promise.of(HttpResponse.ok200()
 														.withBody(SIGNED_ANNOUNCE.toJson(signedData).getBytes(UTF_8))))
 										.orElseGet(() ->
-												Stage.ofException(HttpException.notFound404()))))
+												Promise.ofException(HttpException.notFound404()))))
 				.with(HttpMethod.GET, "/" + FIND_ALL, request ->
 						discoveryService.find(PubKey.fromString(request.getQueryParameter("owner")))
 								.thenApply(data ->
@@ -78,12 +78,12 @@ public final class DiscoveryServlet implements AsyncServlet {
 												.withBody(LIST_OF_SIGNED_ANNOUNCES.toJson(data).getBytes(UTF_8))))
 				.with(HttpMethod.POST, "/" + SHARE_KEY, request -> {
 					PubKey owner = PubKey.fromString(request.getQueryParameter("owner"));
-					return request.getBodyStage(Integer.MAX_VALUE)
+					return request.getBodyPromise(Integer.MAX_VALUE)
 							.thenCompose(body -> {
 								try {
 									return discoveryService.shareKey(owner, SIGNED_SHARED_SIM_KEY.fromJson(body.asString(UTF_8)));
 								} catch (IOException e) {
-									return Stage.ofException(e);
+									return Promise.ofException(e);
 								}
 							})
 							.thenApply($ -> HttpResponse.ok201());
@@ -95,14 +95,14 @@ public final class DiscoveryServlet implements AsyncServlet {
 					return discoveryService.getSharedKey(owner, receiver, simKeyHash)
 							.thenCompose(optionalSignedSharedKey -> optionalSignedSharedKey
 									.map(signedSharedSimKey ->
-											(Stage<HttpResponse>) Stage.of(HttpResponse.ok200()
+											(Promise<HttpResponse>) Promise.of(HttpResponse.ok200()
 													.withBody(SIGNED_SHARED_SIM_KEY.toJson(signedSharedSimKey).getBytes(UTF_8))))
-									.orElseGet(() -> Stage.ofException(HttpException.notFound404())));
+									.orElseGet(() -> Promise.ofException(HttpException.notFound404())));
 				});
 	}
 
 	@Override
-	public Stage<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException {
+	public Promise<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException {
 		return servlet.serve(request);
 	}
 }

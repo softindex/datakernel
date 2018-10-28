@@ -17,8 +17,8 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.AbstractAsyncProcess;
-import io.datakernel.async.MaterializedStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
@@ -56,7 +56,7 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 	}
 
 	@Override
-	public MaterializedStage<Void> set(SerialSupplier<ByteBuf> input) {
+	public MaterializedPromise<Void> set(SerialSupplier<ByteBuf> input) {
 		this.input = input;
 		if (this.input != null) startProcess();
 		return getProcessResult();
@@ -86,17 +86,17 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 				.whenException(this::close);
 	}
 
-	private Stage<Void> ensureConsumer() {
+	private Promise<Void> ensureConsumer() {
 		String chunkName = datetimeFormat.format(Instant.ofEpochMilli(currentTimeProvider.currentTimeMillis()));
 		return chunkName.equals(currentChunkName) ?
-				Stage.complete() :
+				Promise.complete() :
 				startNewChunk(chunkName);
 	}
 
-	private Stage<Void> startNewChunk(String chunkName) {
+	private Promise<Void> startNewChunk(String chunkName) {
 		return flush()
 				.thenCompose($ -> {
-					if (isProcessComplete()) return Stage.complete();
+					if (isProcessComplete()) return Promise.complete();
 					currentChunkName = chunkName;
 					return fileSystem.makeUniqueLogFile(logPartition, chunkName)
 							.thenCompose(newLogFile -> fileSystem.write(logPartition, newLogFile)
@@ -111,8 +111,8 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 				});
 	}
 
-	private Stage<Void> flush() {
-		if (currentConsumer == null) return Stage.complete();
+	private Promise<Void> flush() {
+		if (currentConsumer == null) return Promise.complete();
 		return currentConsumer.accept(null)
 				.whenResult($ -> currentConsumer = null);
 	}

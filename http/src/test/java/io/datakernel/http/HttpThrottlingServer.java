@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopInspector;
@@ -84,8 +84,8 @@ public class HttpThrottlingServer {
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public Stage<HttpResponse> serve(HttpRequest request) {
-				return Stage.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
+			public Promise<HttpResponse> serve(HttpRequest request) {
+				return Promise.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
 			}
 		};
 		return AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", SERVER_PORT));

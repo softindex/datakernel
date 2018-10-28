@@ -16,7 +16,7 @@
 
 package io.global.ot.stub;
 
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.global.common.RepoID;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
@@ -37,37 +37,37 @@ public class CommitStorageStub implements CommitStorage {
 	private final Map<RepoID, Set<SignedData<RawPullRequest>>> pullRequests = new HashMap<>();
 
 	@Override
-	public Stage<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
-		return Stage.of(heads.getOrDefault(repositoryId, emptyMap()));
+	public Promise<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
+		return Promise.of(heads.getOrDefault(repositoryId, emptyMap()));
 	}
 
 	@Override
-	public Stage<Void> applyHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
+	public Promise<Void> applyHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
 		Map<CommitId, SignedData<RawCommitHead>> map = heads.computeIfAbsent(repositoryId, repositoryId1 -> new HashMap<>());
 		newHeads.forEach(head -> map.put(head.getData().commitId, head));
 		excludedHeads.forEach(map::remove);
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	@Override
-	public Stage<Boolean> hasCommit(CommitId commitId) {
-		return Stage.of(commits.containsKey(commitId));
+	public Promise<Boolean> hasCommit(CommitId commitId) {
+		return Promise.of(commits.containsKey(commitId));
 	}
 
 	@Override
-	public Stage<Optional<RawCommit>> loadCommit(CommitId commitId) {
-		return Stage.of(Optional.ofNullable(commits.get(commitId)));
+	public Promise<Optional<RawCommit>> loadCommit(CommitId commitId) {
+		return Promise.of(Optional.ofNullable(commits.get(commitId)));
 	}
 
 	@Override
-	public Stage<Set<CommitId>> getChildren(CommitId commitId) {
-		return Stage.of(parentToChildren.getOrDefault(commitId, emptySet()));
+	public Promise<Set<CommitId>> getChildren(CommitId commitId) {
+		return Promise.of(parentToChildren.getOrDefault(commitId, emptySet()));
 	}
 
 	@Override
-	public Stage<Boolean> saveCommit(CommitId commitId, RawCommit rawCommit) {
+	public Promise<Boolean> saveCommit(CommitId commitId, RawCommit rawCommit) {
 		RawCommit old = commits.put(commitId, rawCommit);
-		if (old != null) return Stage.of(false);
+		if (old != null) return Promise.of(false);
 		for (CommitId parentId : rawCommit.getParents()) {
 			parentToChildren.computeIfAbsent(parentId, $ -> new HashSet<>()).add(commitId);
 		}
@@ -78,40 +78,40 @@ public class CommitStorageStub implements CommitStorage {
 		if (incompleteParents == 0) {
 			pendingCompleteCommits.add(commitId);
 		}
-		return Stage.of(true);
+		return Promise.of(true);
 	}
 
 	@Override
-	public Stage<Boolean> saveSnapshot(SignedData<RawSnapshot> encryptedSnapshot) {
+	public Promise<Boolean> saveSnapshot(SignedData<RawSnapshot> encryptedSnapshot) {
 		SignedData<RawSnapshot> old = snapshots
 				.computeIfAbsent(encryptedSnapshot.getData().repositoryId, $ -> new HashMap<>())
 				.put(encryptedSnapshot.getData().commitId, encryptedSnapshot);
-		return Stage.of(old == null);
+		return Promise.of(old == null);
 	}
 
 	@Override
-	public Stage<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
-		return Stage.of(Optional.ofNullable(
+	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
+		return Promise.of(Optional.ofNullable(
 				snapshots.getOrDefault(repositoryId, emptyMap()).get(commitId)));
 	}
 
 	@Override
-	public Stage<Boolean> savePullRequest(SignedData<RawPullRequest> pullRequest) {
+	public Promise<Boolean> savePullRequest(SignedData<RawPullRequest> pullRequest) {
 		this.pullRequests.computeIfAbsent(pullRequest.getData().repository, $ -> new HashSet<>()).add(pullRequest);
 		return null;
 	}
 
 	@Override
-	public Stage<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repository) {
-		return Stage.of(pullRequests.getOrDefault(repository, emptySet()));
+	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repository) {
+		return Promise.of(pullRequests.getOrDefault(repository, emptySet()));
 	}
 
 	@Override
-	public Stage<Void> markCompleteCommits() {
+	public Promise<Void> markCompleteCommits() {
 		while (!pendingCompleteCommits.isEmpty()) {
 			pendingCompleteCommits.forEach(this::markCompleteCommit);
 		}
-		return Stage.complete();
+		return Promise.complete();
 	}
 
 	@SuppressWarnings("ConstantConditions")
@@ -126,8 +126,8 @@ public class CommitStorageStub implements CommitStorage {
 	}
 
 	@Override
-	public Stage<Boolean> isCompleteCommit(CommitId commitId) {
-		return Stage.of(incompleteParentsCount.get(commitId) == 0);
+	public Promise<Boolean> isCompleteCommit(CommitId commitId) {
+		return Promise.of(incompleteParentsCount.get(commitId) == 0);
 	}
 
 }
