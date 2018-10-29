@@ -27,6 +27,10 @@ public final class Hash implements Base64Identity {
 		this.bytes = bytes;
 	}
 
+	public static Hash of(byte[] data) {
+		return new Hash(CryptoUtils.sha256(data));
+	}
+
 	public static Hash of(ByteArrayIdentity object) {
 		return new Hash(CryptoUtils.sha256(object.toBytes()));
 	}

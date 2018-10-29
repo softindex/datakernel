@@ -18,6 +18,7 @@ package io.global.fs.transformers;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.global.common.Hash;
 import io.global.common.PrivKey;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointPosStrategy;
@@ -33,7 +34,7 @@ import org.spongycastle.crypto.digests.SHA256Digest;
  * It's counterpart is the {@link FrameVerifier}.
  */
 public final class FrameSigner extends ByteBufsToFrames {
-	private final byte[] localPathHash;
+	private final Hash localPathHash;
 	private final CheckpointPosStrategy checkpointPosStrategy;
 	private final PrivKey privateKey;
 	private final SHA256Digest digest;
@@ -41,12 +42,16 @@ public final class FrameSigner extends ByteBufsToFrames {
 	private boolean lastPostedCheckpoint = false;
 
 	// region creators
-	public FrameSigner(LocalPath localPath, long offset, CheckpointPosStrategy checkpointPosStrategy, PrivKey privateKey, SHA256Digest digest) {
+	private FrameSigner(LocalPath localPath, long offset, CheckpointPosStrategy checkpointPosStrategy, PrivKey privateKey, SHA256Digest digest) {
 		super(offset);
 		this.localPathHash = localPath.hash();
 		this.checkpointPosStrategy = checkpointPosStrategy;
 		this.privateKey = privateKey;
 		this.digest = digest;
+	}
+
+	public static FrameSigner create(LocalPath localPath, long offset, CheckpointPosStrategy checkpointPosStrategy, PrivKey privateKey, SHA256Digest digest) {
+		return new FrameSigner(localPath, offset, checkpointPosStrategy, privateKey, digest);
 	}
 	// endregion
 
@@ -78,6 +83,6 @@ public final class FrameSigner extends ByteBufsToFrames {
 										postNextCheckpoint()
 												.thenCompose($ -> output.accept(null)))
 										.whenResult($ -> completeProcess()))
-				.whenException(this::close);
+				.whenException(this::completeProcess);
 	}
 }

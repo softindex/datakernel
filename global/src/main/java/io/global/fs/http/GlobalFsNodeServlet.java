@@ -56,12 +56,12 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 	@Inject
 	public GlobalFsNodeServlet(GlobalFsNode node) {
 		this.servlet = MiddlewareServlet.create()
-				.with(GET, "/" + DOWNLOAD + "/:key/:fs/:path*", request -> {
+				.with(GET, "/" + DOWNLOAD + "/:owner/:fs/:path*", request -> {
 					long[] range = parseRange(request);
 					return node.download(parsePath(request), range[0], range[1])
 							.thenApply(supplier -> HttpResponse.ok200().withBodyStream(supplier.apply(new FrameEncoder())));
 				})
-				.with(PUT, "/" + UPLOAD + "/:key/:fs/:path*", request -> {
+				.with(PUT, "/" + UPLOAD + "/:owner/:fs/:path*", request -> {
 					long offset = parseOffset(request);
 					GlobalPath globalPath = parsePath(request);
 					SerialSupplier<ByteBuf> body = request.getBodyStream();
@@ -71,13 +71,13 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 											.thenCompose(consumer -> body.streamTo(consumer.apply(new FrameDecoder())))
 											.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
 				})
-				.with(POST, "/" + PUSH + "/:key", ensureRequestBody(MemSize.kilobytes(16), request -> {
-					PubKey pubKey = PubKey.fromString(request.getPathParameter("key"));
+				.with(POST, "/" + PUSH + "/:owner", ensureRequestBody(MemSize.kilobytes(16), request -> {
+					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
 					SignedData<GlobalFsMetadata> signedMeta = SignedData.ofBytes(request.getBody().asArray(), GlobalFsMetadata::fromBytes);
 					return node.pushMetadata(pubKey, signedMeta)
 							.thenApply($ -> HttpResponse.ok200());
 				}))
-				.with(GET, "/" + LIST + "/:key/:fs", request -> node.list(parseRepoID(request), request.getQueryParameter("glob"))
+				.with(GET, "/" + LIST + "/:owner/:name", request -> node.list(parseRepoID(request), request.getQueryParameter("glob"))
 						.thenApply(list -> HttpResponse.ok200()
 								.withBodyStream(SerialSupplier.ofStream(list.stream()
 										.map(meta -> {
@@ -86,10 +86,10 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 											BinaryDataFormats.writeBytes(buf, bytes);
 											return buf;
 										})))));
-		// .with(POST, "/" + COPY + "/:key/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
+		// .with(POST, "/" + COPY + "/:owner/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
 		// 		node.copy(parseNamespace(request), request.getPostParameters())
 		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))))
-		// .with(POST, "/" + MOVE + "/:key/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
+		// .with(POST, "/" + MOVE + "/:owner/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
 		// 		node.move(parseNamespace(request), request.getPostParameters())
 		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))));
 	}

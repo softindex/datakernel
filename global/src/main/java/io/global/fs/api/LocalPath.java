@@ -16,7 +16,7 @@
 
 package io.global.fs.api;
 
-import io.global.common.CryptoUtils;
+import io.global.common.Hash;
 import io.global.common.PubKey;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -36,8 +36,8 @@ public final class LocalPath {
 	}
 	// endregion
 
-	public GlobalPath complete(PubKey pubKey) {
-		return new GlobalPath(pubKey, fs, path);
+	public GlobalPath complete(PubKey owner) {
+		return new GlobalPath(owner, fs, path);
 	}
 
 	public String getFs() {
@@ -48,8 +48,10 @@ public final class LocalPath {
 		return path;
 	}
 
-	public byte[] hash() {
-		return CryptoUtils.sha256((fs + path).getBytes(UTF_8));
+	public Hash hash() {
+		// NUL is not allowed un Unix filenames so it is a good
+		// unambiguous delimiter to hash these two values together
+		return Hash.of((fs + '\0' + path).getBytes(UTF_8));
 	}
 
 	@Override

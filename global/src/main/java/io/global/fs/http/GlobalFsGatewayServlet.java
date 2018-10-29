@@ -46,7 +46,7 @@ public final class GlobalFsGatewayServlet implements AsyncServlet {
 	@Inject
 	public GlobalFsGatewayServlet(GlobalFsGateway gateway) {
 		this.servlet = MiddlewareServlet.create()
-				.with(GET, "/" + DOWNLOAD + "/:key/:fs/:path*", request -> {
+				.with(GET, "/" + DOWNLOAD + "/:owner/:fs/:path*", request -> {
 					long[] range = parseRange(request);
 					GlobalPath path = parsePath(request);
 					String name = path.getPath();
@@ -60,11 +60,11 @@ public final class GlobalFsGatewayServlet implements AsyncServlet {
 									.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
 									::withBodyStream);
 				})
-				.with(PUT, "/" + UPLOAD + "/:key/:fs/:path*", request ->
+				.with(PUT, "/" + UPLOAD + "/:owner/:fs/:path*", request ->
 						gateway.upload(parsePath(request), parseOffset(request))
 								.thenCompose(request.getBodyStream()::streamTo)
 								.thenApply($ -> HttpResponse.ok200()))
-				.with(GET, "/" + LIST + "/:key/:fs", request -> gateway.list(parseRepoID(request), request.getQueryParameter("glob"))
+				.with(GET, "/" + LIST + "/:owner/:name", request -> gateway.list(parseRepoID(request), request.getQueryParameter("glob"))
 						.thenApply(list -> HttpResponse.ok200()
 								.withBodyStream(SerialSupplier.ofStream(list.stream()
 										.map(meta -> {
@@ -73,7 +73,7 @@ public final class GlobalFsGatewayServlet implements AsyncServlet {
 											BinaryDataFormats.writeBytes(buf, bytes);
 											return buf;
 										})))))
-				.with(DELETE, "/" + DEL + "/:key/:fs", request -> gateway.delete(parseRepoID(request), request.getQueryParameter("glob"))
+				.with(DELETE, "/" + DEL + "/:owner/:name", request -> gateway.delete(parseRepoID(request), request.getQueryParameter("glob"))
 						.thenApply($ -> HttpResponse.ok200()));
 	}
 

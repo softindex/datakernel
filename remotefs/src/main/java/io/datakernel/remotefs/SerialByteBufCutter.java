@@ -17,6 +17,7 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.AbstractAsyncProcess;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
@@ -48,7 +49,7 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			if (this.output != null) startProcess();
+			if (output != null) startProcess();
 			return getProcessResult();
 		};
 	}
@@ -57,7 +58,7 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 	public SerialOutput<ByteBuf> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (this.input != null) startProcess();
+			if (input != null) startProcess();
 		};
 	}
 
@@ -70,25 +71,25 @@ public class SerialByteBufCutter extends AbstractAsyncProcess
 	@Override
 	protected void doProcess() {
 		input.get()
-				.whenResult(item -> {
+				.thenCompose(item -> {
 					if (item != null) {
 						int size = item.readRemaining();
 						position += size;
 						if (position <= offset) {
 							item.recycle();
 							doProcess();
-							return;
+							return Promise.complete();
 						}
 						if (position - size < offset) {
 							item.moveReadPosition(size - (int) (position - offset));
 						}
-						output.accept(item)
-								.whenResult(($) -> doProcess());
-					} else {
-						output.accept(null)
-								.whenComplete(($, e2) -> completeProcess(e2));
+						return output.accept(item)
+								.whenResult($ -> doProcess());
 					}
-				});
+					return output.accept(null)
+							.whenResult($ -> completeProcess());
+				})
+				.whenException(this::completeProcess);
 	}
 
 	@Override

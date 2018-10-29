@@ -357,7 +357,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		if (pathParameters == null) {
 			pathParameters = new HashMap<>();
 		}
-		pathParameters.put(key, value);
+		pathParameters.put(key, UrlParser.urlDecode(value));
 	}
 
 	@Override

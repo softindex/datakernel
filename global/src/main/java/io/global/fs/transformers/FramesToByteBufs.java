@@ -25,6 +25,7 @@ import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
+import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
@@ -38,7 +39,7 @@ import java.io.IOException;
 abstract class FramesToByteBufs extends AbstractAsyncProcess
 		implements WithSerialToSerial<FramesToByteBufs, DataFrame, ByteBuf> {
 	private final PubKey pubKey;
-	private final byte[] localPathHash;
+	private final Hash localPathHash;
 
 	protected SerialSupplier<DataFrame> input;
 	protected SerialConsumer<ByteBuf> output;
@@ -47,12 +48,10 @@ abstract class FramesToByteBufs extends AbstractAsyncProcess
 	private boolean first = true;
 	private SHA256Digest digest;
 
-	// region creators
 	FramesToByteBufs(LocalPath localPath, PubKey pubKey) {
 		this.pubKey = pubKey;
 		this.localPathHash = localPath.hash();
 	}
-	// endregion
 
 	@Override
 	public SerialInput<DataFrame> getInput() {

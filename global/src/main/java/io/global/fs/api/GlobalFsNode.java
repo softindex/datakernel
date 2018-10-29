@@ -41,6 +41,8 @@ public interface GlobalFsNode {
 
 	RawServerId getId();
 
+	// Promise<Set<String>> getFileSystemsOf(PubKey owner);
+
 	Promise<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset);
 
 	default SerialConsumer<DataFrame> uploader(GlobalPath path, long offset) {

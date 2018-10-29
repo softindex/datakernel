@@ -80,16 +80,16 @@ public interface GlobalFsGateway {
 
 	Promise<Void> delete(RepoID space, String glob);
 
-	default FsClient createFsAdapter(RepoID space, CurrentTimeProvider timeProvider) {
+	default FsClient createFsAdapter(RepoID repo, CurrentTimeProvider timeProvider) {
 		return new FsClient() {
 			@Override
 			public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
-				return GlobalFsGateway.this.upload(GlobalPath.of(space, filename), offset);
+				return GlobalFsGateway.this.upload(GlobalPath.of(repo, filename), offset);
 			}
 
 			@Override
 			public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
-				return GlobalFsGateway.this.download(GlobalPath.of(space, filename), offset, length);
+				return GlobalFsGateway.this.download(GlobalPath.of(repo, filename), offset, length);
 			}
 
 			@Override
@@ -104,7 +104,7 @@ public interface GlobalFsGateway {
 
 			@Override
 			public Promise<List<FileMetadata>> list(String glob) {
-				return GlobalFsGateway.this.list(space, glob)
+				return GlobalFsGateway.this.list(repo, glob)
 						.thenApply(res -> res.stream()
 								.map(meta -> new FileMetadata(meta.getLocalPath().getPath(), meta.getSize(), meta.getRevision()))
 								.collect(toList()));
@@ -112,7 +112,7 @@ public interface GlobalFsGateway {
 
 			@Override
 			public Promise<Void> delete(String glob) {
-				return GlobalFsGateway.this.delete(space, glob);
+				return GlobalFsGateway.this.delete(repo, glob);
 			}
 		};
 	}

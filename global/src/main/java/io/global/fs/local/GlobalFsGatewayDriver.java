@@ -136,7 +136,7 @@ public class GlobalFsGatewayDriver implements GlobalFsGateway, Initializable<Glo
 								.thenApply(consumer -> {
 									LocalPath localPath = path.toLocalPath();
 									return consumer
-											.apply(new FrameSigner(localPath, normalizedOffset + toSkip[0], checkpointPosStrategy, privKey, digest[0]))
+											.apply(FrameSigner.create(localPath, normalizedOffset + toSkip[0], checkpointPosStrategy, privKey, digest[0]))
 											.apply(SerialByteBufCutter.create(toSkip[0]))
 											.peek(buf -> size[0] += buf.readRemaining())
 											.withAcknowledgement(ack -> ack
@@ -192,10 +192,10 @@ public class GlobalFsGatewayDriver implements GlobalFsGateway, Initializable<Glo
 	}
 
 	@Override
-	public FsClient createFsAdapter(RepoID space, CurrentTimeProvider timeProvider) {
-		if (!keymap.containsKey(space.getOwner())) {
+	public FsClient createFsAdapter(RepoID repo, CurrentTimeProvider timeProvider) {
+		if (!keymap.containsKey(repo.getOwner())) {
 			throw new IllegalArgumentException("Cannot get remotefs adapter for space with unknown public key");
 		}
-		return GlobalFsGateway.super.createFsAdapter(space, timeProvider);
+		return GlobalFsGateway.super.createFsAdapter(repo, timeProvider);
 	}
 }

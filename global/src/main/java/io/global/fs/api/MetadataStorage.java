@@ -19,9 +19,12 @@ package io.global.fs.api;
 import io.datakernel.async.Promise;
 import io.global.common.SignedData;
 
+import java.util.List;
+
 public interface MetadataStorage {
+	Promise<Void> store(SignedData<GlobalFsMetadata> signedMetadata);
 
-	Promise<SignedData<GlobalFsMetadata>> getMetadata(String fileName);
+	Promise<SignedData<GlobalFsMetadata>> load(String fileName);
 
-	Promise<Void> pushMetadata(SignedData<GlobalFsMetadata> signedMetadata);
+	Promise<List<SignedData<GlobalFsMetadata>>> list(String glob);
 }

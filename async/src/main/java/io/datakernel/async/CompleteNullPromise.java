@@ -16,6 +16,8 @@
 
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
+
 public final class CompleteNullPromise<T> extends CompletePromise<T> {
 	public static final CompleteNullPromise<?> INSTANCE = new CompleteNullPromise<>();
 
@@ -27,9 +29,9 @@ public final class CompleteNullPromise<T> extends CompletePromise<T> {
 	private CompleteNullPromise() {
 	}
 
+	@Nullable
 	@Override
 	public final T getResult() {
 		return null;
 	}
-
 }

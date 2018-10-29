@@ -46,34 +46,36 @@ public final class HttpDataFormats {
 	}
 
 	public static RepoID parseRepoID(HttpRequest request) throws ParseException {
-		return RepoID.of(PubKey.fromString(request.getQueryParameter("owner")), request.getQueryParameter("name"));
+		return RepoID.of(PubKey.fromString(request.getPathParameter("owner")), request.getPathParameter("name"));
 	}
 
 	public static long[] parseRange(HttpRequest request) throws ParseException {
-		String param = request.getQueryParameterOrNull("range");
+		String param = request.getQueryParameter("range", "");
 		long[] range = {0, -1};
-		if (param == null) {
-			return range;
-		}
-		try {
-			range[0] = Long.parseUnsignedLong(param);
-			return range;
-		} catch (NumberFormatException ignored) {
-		}
 		String[] parts = param.split("-");
-		if (parts.length != 2) {
-			throw INVALID_RANGE_FORMAT;
+		switch (parts.length) {
+			case 0:
+				return range;
+			case 1:
+				try {
+					range[0] = Long.parseUnsignedLong(param);
+					return range;
+				} catch (NumberFormatException ignored) {
+				}
+			case 2:
+				try {
+					range[0] = Long.parseUnsignedLong(parts[0]);
+					range[1] = Long.parseUnsignedLong(parts[1]) - range[0];
+					if (range[1] < 0) {
+						throw RANGE_OUT_OF_BOUNDS;
+					}
+				} catch (NumberFormatException ignored) {
+					throw INVALID_RANGE_FORMAT;
+				}
+				return range;
+			default:
+				throw INVALID_RANGE_FORMAT;
 		}
-		try {
-			range[0] = Long.parseUnsignedLong(parts[0]);
-			range[1] = Long.parseUnsignedLong(parts[1]) - range[0];
-			if (range[1] < 0) {
-				throw RANGE_OUT_OF_BOUNDS;
-			}
-		} catch (NumberFormatException ignored) {
-			throw INVALID_RANGE_FORMAT;
-		}
-		return range;
 	}
 
 	public static long parseOffset(HttpRequest request) throws ParseException {

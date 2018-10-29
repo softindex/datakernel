@@ -72,9 +72,9 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return response;
 	}
 
-	public Promise<Void> ensureStatusCode(int code) {
+	public Promise<HttpResponse> ensureStatusCode(int code) {
 		if (this.code == code) {
-			return Promise.complete();
+			return Promise.of(this);
 		}
 		return Promise.ofException(HttpException.ofCode(this.code, this.body.getString(UTF_8)));
 	}

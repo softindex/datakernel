@@ -53,11 +53,12 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(ANNOUNCE)
-								.appendQuery("owner", repo.getOwner().asString())
-								.appendQuery("name", repo.getName())
+								.appendPathPart(repo.getOwner().asString())
+								.appendPathPart(repo.getName())
 								.build())
 						.withBody(SIGNED_ANNOUNCE.toJson(announceData).getBytes(UTF_8)))
-				.thenCompose(response -> response.ensureStatusCode(201));
+				.thenCompose(response -> response.ensureStatusCode(201))
+				.toVoid();
 	}
 
 	@Override
@@ -67,8 +68,8 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(FIND)
-								.appendQuery("owner", repo.getOwner().asString())
-								.appendQuery("name", repo.getName())
+								.appendPathPart(repo.getOwner().asString())
+								.appendPathPart(repo.getName())
 								.build()))
 				.thenCompose(response -> {
 					switch (response.getCode()) {
@@ -93,7 +94,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(FIND_ALL)
-								.appendQuery("owner", owner.asString())
+								.appendPathPart(owner.asString())
 								.build()))
 				.thenCompose(response -> response.ensureStatusCode(200)
 						.thenCompose($ -> {
@@ -112,10 +113,11 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(SHARE_KEY)
-								.appendQuery("owner", owner.asString())
+								.appendPathPart(owner.asString())
 								.build())
 						.withBody(SIGNED_SHARED_SIM_KEY.toJson(simKey).getBytes(UTF_8)))
-				.thenCompose(response -> response.ensureStatusCode(201));
+				.thenCompose(response -> response.ensureStatusCode(201))
+				.toVoid();
 	}
 
 	@Override
@@ -125,9 +127,9 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(GET_SHARED_KEY)
-								.appendQuery("owner", owner.asString())
-								.appendQuery("receiver", receiver.asString())
-								.appendQuery("hash", hash.asString())
+								.appendPathPart(owner.asString())
+								.appendPathPart(receiver.asString())
+								.appendPathPart(hash.asString())
 								.build()))
 				.thenCompose(response -> {
 					switch (response.getCode()) {

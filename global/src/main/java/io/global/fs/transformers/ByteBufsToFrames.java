@@ -43,7 +43,7 @@ abstract class ByteBufsToFrames extends AbstractAsyncProcess implements WithSeri
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			if (this.output != null) startProcess();
+			if (output != null) startProcess();
 			return getProcessResult();
 		};
 	}
@@ -52,7 +52,7 @@ abstract class ByteBufsToFrames extends AbstractAsyncProcess implements WithSeri
 	public SerialOutput<DataFrame> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (this.input != null) startProcess();
+			if (input != null) startProcess();
 		};
 	}
 

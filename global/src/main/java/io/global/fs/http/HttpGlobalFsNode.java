@@ -75,8 +75,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 								.appendPathPart(path.getOwner().asString())
 								.appendPathPart(path.getFs())
 								.appendPath(path.getPath())
-								.appendQuery("offset", "" + offset)
-								.appendQuery("limit", "" + limit)
+								.appendQuery("range", offset + (limit != -1 ? "-" + (offset + limit) : ""))
 								.build()))
 				.thenApply(response -> {
 					if (response.getCode() != 200) {

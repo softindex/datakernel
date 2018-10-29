@@ -16,6 +16,7 @@
 
 package io.datakernel.launchers.globalfs;
 
+import ch.qos.logback.classic.Level;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
@@ -42,6 +43,7 @@ import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsGatewayServlet;
 import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.local.GlobalFsGatewayDriver;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -102,8 +104,8 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 										.with("storage", "/tmp/TESTS/server" + server)
 										// this node manages Alice and Bob
 										.with("managedPubKeys",
-												/* alice(p) = */"IQDgF5F32vMi0aU8hqBmOmyzescMgioB5U_RZbtmDcGIZyEArIGynsVJNr88gsJBTbS9fm93Eif5k1EpMFQK4Hwx4IsAAAAAAAA," +
-														/* bob(p) = */"IQC1ILOZnWg5ZHyW9suZvkUNvPOanhme9Ht7oeB5cwcMoyAbXTCPO9NLpdJxwMIteowm5tHV7P7uOCx67s6KPZsLLwAAAAAAAAA")
+												/* alice(p) = */"cb78f3ac392aa96ec7a1ba3d1848423097cb5d892638ab297149ea03e9b7ba7d:10d6096aaff36c5b11d5abf063e0499e68e63270ef70d6dc18f0c47566ffdac5," +
+														/* bob(p) = */"aed50797fe8950ea25745c5cee391156905033ee4e3f5a2df418f687df78a7f1:784ca80eaa2fc2f643052a7469ec23fa2f72dd9ce248044e34ae986d7ce9ef8d")
 
 										// very short latency margin so it will actually do the task each time we call it *testing*
 										.with("fetching.latencyMargin", "1 second")
@@ -120,12 +122,12 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 												.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(7000 + server)))
 												// our Alice and Bob
 												.with("privateKeys",
-														/* alice(s) = */ "IGt2RZdSjXaDLoLZn4DvimyjXRm4QNYSiXSip-uUkjzE," +
-																/* bob(s) = */ "IEioklPt2UgNsAM0UfSFjKMU5JAu0qBm7EMWwoVQG3Wf")
+														/* alice(s) = */ "d6577f45e352a16e21a29e8b9fb927b17902332c7f141e51a6265558c6bdd7ef," +
+																/* bob(s) = */ "538451a22387ba099222bdbfdeaed63435fde46c724eb3c72e8c64843c339ea1")
 
 												// fixed 32 bytes is extremely small - *testing*
-												.with("checkpointPositionStrategy", "fixed")
-												.with("checkpointPositionStrategy.offset", "32b")))
+												.with("checkpointPosStrategy", "fixed")
+												.with("checkpointPosStrategy.offset", "32b")))
 
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
@@ -197,8 +199,8 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		// ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("ROOT");
-		// logger.setLevel(Level.TRACE);
+		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("ROOT");
+		logger.setLevel(Level.TRACE);
 		new GatewayGlobalFsNodeLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }

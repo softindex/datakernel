@@ -17,7 +17,7 @@
 package io.datakernel.launchers.globalfs;
 
 import com.google.inject.*;
-import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
@@ -29,7 +29,6 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.KeyPair;
@@ -50,6 +49,7 @@ import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.launchers.Initializers.ofEventloop;
 import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofRawServerId;
 import static java.lang.Boolean.parseBoolean;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 
 public final class GlobalFsGatewayUsageDemo extends Launcher {
@@ -60,8 +60,8 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 
 	static {
 		try {
-			alice = PrivKey.fromString("IGt2RZdSjXaDLoLZn4DvimyjXRm4QNYSiXSip-uUkjzE").computeKeys();
-			bob = PrivKey.fromString("IEioklPt2UgNsAM0UfSFjKMU5JAu0qBm7EMWwoVQG3Wf").computeKeys();
+			alice = PrivKey.fromString("d6577f45e352a16e21a29e8b9fb927b17902332c7f141e51a6265558c6bdd7ef").computeKeys();
+			bob = PrivKey.fromString("538451a22387ba099222bdbfdeaed63435fde46c724eb3c72e8c64843c339ea1").computeKeys();
 		} catch (ParseException e) {
 			throw new UncheckedException(e);
 		}
@@ -83,7 +83,7 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("app.discoveryService", "localhost:9001")
-								.with("app.gatewayAddress", "localhost:7001")
+								.with("app.gatewayAddress", "localhost:7004")
 								.with("app.storage", "/tmp/testStorage")
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
@@ -132,15 +132,28 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 	@Override
 	protected void run() throws Exception {
 		GlobalPath testFile = GlobalPath.of(alice, "firstFs", "folder/test.txt");
-		eventloop.post(() ->
-				gateway.getMetadata(testFile)
-						.thenCompose(meta ->
-								SerialSupplier.of(ByteBufStrings.wrapAscii("a surprising addition to the file!\n"))
-										.streamTo(gateway.uploader(testFile, meta.getSize())))
-						.whenComplete(($, e) -> {
-							System.out.println("whenComplete: " + $ + ", " + e);
-							shutdown();
-						}));
+		// eventloop.post(() ->
+		// 		gateway.getMetadata(testFile)
+		// 				.thenCompose(meta ->
+		// 						SerialSupplier.of(ByteBufStrings.wrapAscii("file!\n\na surprising addition to the file!\n"))
+		// 								.streamTo(gateway.uploader(testFile, meta.getSize() - 6)))
+		// 				.whenComplete(($, e) -> {
+		// 					System.out.println("whenComplete: " + $ + ", " + e);
+		// 					shutdown();
+		// 				}));
+
+		eventloop.post(() -> {
+			gateway.downloader(testFile).toCollector(ByteBufQueue.collector())
+					.whenComplete((buf, e) -> {
+						if (e == null) {
+							System.out.println(buf.asString(UTF_8));
+						} else {
+							e.printStackTrace();
+						}
+						shutdown();
+					});
+		});
+
 		// eventloop.post(() ->
 		// 		storage.downloadSerial("test.txt").streamTo(gateway.uploader(testFile, 0))
 		// 				.thenCompose($ -> gateway.downloader(testFile).streamTo(storage.uploadSerial("test2.txt", 0)))

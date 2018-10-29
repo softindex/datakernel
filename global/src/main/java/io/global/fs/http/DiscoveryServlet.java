@@ -50,12 +50,12 @@ public final class DiscoveryServlet implements AsyncServlet {
 	@Inject
 	public DiscoveryServlet(DiscoveryService discoveryService) {
 		servlet = MiddlewareServlet.create()
-				.with(HttpMethod.PUT, "/" + ANNOUNCE, request -> {
-					RepoID pubKey = parseRepoID(request);
+				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner/:name", request -> {
+					RepoID repoID = parseRepoID(request);
 					return request.getBodyPromise(Integer.MAX_VALUE)
 							.thenCompose(body -> {
 								try {
-									return discoveryService.announce(pubKey, SIGNED_ANNOUNCE.fromJson(body.asString(UTF_8)));
+									return discoveryService.announce(repoID, SIGNED_ANNOUNCE.fromJson(body.asString(UTF_8)));
 								} catch (IOException e) {
 									return Promise.ofException(e);
 								}
@@ -63,7 +63,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 							.thenApply($ -> HttpResponse.ok201());
 
 				})
-				.with(HttpMethod.GET, "/" + FIND, request ->
+				.with(HttpMethod.GET, "/" + FIND + "/:owner/:name", request ->
 						discoveryService.find(parseRepoID(request))
 								.thenCompose(data -> data
 										.map(signedData ->
@@ -71,13 +71,13 @@ public final class DiscoveryServlet implements AsyncServlet {
 														.withBody(SIGNED_ANNOUNCE.toJson(signedData).getBytes(UTF_8))))
 										.orElseGet(() ->
 												Promise.ofException(HttpException.notFound404()))))
-				.with(HttpMethod.GET, "/" + FIND_ALL, request ->
-						discoveryService.find(PubKey.fromString(request.getQueryParameter("owner")))
+				.with(HttpMethod.GET, "/" + FIND_ALL + "/:owner", request ->
+						discoveryService.find(PubKey.fromString(request.getPathParameter("owner")))
 								.thenApply(data ->
 										HttpResponse.ok200()
 												.withBody(LIST_OF_SIGNED_ANNOUNCES.toJson(data).getBytes(UTF_8))))
-				.with(HttpMethod.POST, "/" + SHARE_KEY, request -> {
-					PubKey owner = PubKey.fromString(request.getQueryParameter("owner"));
+				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:owner", request -> {
+					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
 					return request.getBodyPromise(Integer.MAX_VALUE)
 							.thenCompose(body -> {
 								try {
@@ -88,10 +88,10 @@ public final class DiscoveryServlet implements AsyncServlet {
 							})
 							.thenApply($ -> HttpResponse.ok201());
 				})
-				.with(HttpMethod.GET, "/" + GET_SHARED_KEY, request -> {
-					PubKey owner = PubKey.fromString(request.getQueryParameter("owner"));
-					PubKey receiver = PubKey.fromString(request.getQueryParameter("receiver"));
-					Hash simKeyHash = Hash.fromString(request.getQueryParameter("hash"));
+				.with(HttpMethod.GET, "/" + GET_SHARED_KEY + "/:owner/:receiver/:hash", request -> {
+					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
+					PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
+					Hash simKeyHash = Hash.fromString(request.getPathParameter("hash"));
 					return discoveryService.getSharedKey(owner, receiver, simKeyHash)
 							.thenCompose(optionalSignedSharedKey -> optionalSignedSharedKey
 									.map(signedSharedSimKey ->

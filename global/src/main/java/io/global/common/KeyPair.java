@@ -49,7 +49,7 @@ public class KeyPair {
 	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	public static void main(String[] args) {
 		KeyPair keys = KeyPair.generate();
-		System.out.println("PK = " + keys.getPrivKey().asString());
+		System.out.println("PK = " + keys.getPubKey().asString());
 		System.out.println("SK = " + keys.getPrivKey().asString());
 	}
 }

@@ -65,9 +65,9 @@ public final class HttpGlobalFsGateway implements GlobalFsGateway {
 								.appendPathPart(path.getOwner().asString())
 								.appendPathPart(path.getFs())
 								.appendPath(path.getPath())
-								.appendQuery("offset", "" + offset)
-								.appendQuery("limit", "" + limit)
+								.appendQuery("range", offset + (limit != -1 ? "-" + (offset + limit) : ""))
 								.build()))
+				.thenCompose(response -> response.ensureStatusCode(200))
 				.thenApply(HttpMessage::getBodyStream);
 	}
 
@@ -84,6 +84,7 @@ public final class HttpGlobalFsGateway implements GlobalFsGateway {
 						.appendQuery("offset", "" + offset)
 						.build())
 				.withBodyStream(buffer.getSupplier()))
+				.thenCompose(response -> response.ensureStatusCode(200))
 				.materialize();
 		return buffer.getConsumer().withAcknowledgement(ack -> ack.both(request));
 	}
@@ -104,6 +105,7 @@ public final class HttpGlobalFsGateway implements GlobalFsGateway {
 						.appendPathPart(space.getName())
 						.appendQuery("glob", glob)
 						.build()))
+				.thenCompose(response -> response.ensureStatusCode(200))
 				.thenCompose(response ->
 						ByteBufsSupplier.of(response.getBodyStream())
 								.parseStream(ofVarIntSizePrefixedBytes())
@@ -132,6 +134,7 @@ public final class HttpGlobalFsGateway implements GlobalFsGateway {
 						.appendPathPart(space.getName())
 						.appendQuery("glob", glob)
 						.build()))
+				.thenCompose(response -> response.ensureStatusCode(200))
 				.toVoid();
 	}
 }

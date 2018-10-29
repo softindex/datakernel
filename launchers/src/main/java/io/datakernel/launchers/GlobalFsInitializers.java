@@ -31,7 +31,7 @@ public class GlobalFsInitializers {
 	private GlobalFsInitializers() {
 	}
 
-	public static Initializer<GlobalFsNodeDriver> ofLocalGlobalFsNode(Config config) {
+	public static Initializer<GlobalFsNodeDriver> ofGlobalFsNodeDriver(Config config) {
 		return node -> node
 				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
 				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching"))

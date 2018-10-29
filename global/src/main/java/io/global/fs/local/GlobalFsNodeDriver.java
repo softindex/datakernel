@@ -19,8 +19,6 @@ package io.global.fs.local;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.exception.ParseException;
 import io.datakernel.functional.Try;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
@@ -46,7 +44,6 @@ import java.time.Duration;
 import java.util.*;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.file.FileUtils.escapeGlob;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.stream.Collectors.toList;
 
@@ -119,13 +116,13 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 	@Override
 	public Promise<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit) {
 		Namespace.Filesystem fs = ensureFilesystem(path.toRepoID());
-		return fs.download(path.getPath(), offset, limit)
-				.thenComposeEx((result, e) -> {
-					if (e == null) {
+		return fs.getMetadata(path.getPath())
+				.thenCompose(meta -> {
+					if (meta != null) {
 						logger.trace("Found own local file at " + path + " at " + id);
-						return Promise.of(result);
+						return fs.download(path.getPath(), offset, limit);
 					}
-					logger.trace("Did not found own file at " + path + " at " + id + ", searching...", e);
+					logger.trace("Did not found own file at " + path + " at " + id + ", searching...");
 					return fs.ensureMasterNodes()
 							.thenCompose(nodes ->
 									Promises.firstSuccessful(nodes.stream().map(node -> node.getMetadata(path)
@@ -257,7 +254,7 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 		class Filesystem {
 			private final RepoID repoID;
 			private final FsClient folder;
-			private final FsClient metadataFolder;
+			private final MetadataStorage metadataStorage;
 			private final CheckpointStorage checkpointStorage;
 			private final Map<RawServerId, GlobalFsNode> masterNodes = new HashMap<>();
 
@@ -274,7 +271,7 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 				String name = repoID.getName();
 				String pubKeyStr = owner.asString();
 				this.folder = dataFsClient.subfolder(pubKeyStr).subfolder(name);
-				this.metadataFolder = metadataFsClient.subfolder(pubKeyStr).subfolder(name);
+				this.metadataStorage = new RemoteFsMetadataStorage(metadataFsClient.subfolder(pubKeyStr).subfolder(name));
 				this.checkpointStorage = new RemoteFsCheckpointStorage(checkpointFsClient.subfolder(pubKeyStr).subfolder(name));
 			}
 			// endregion
@@ -455,27 +452,15 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 			}
 
 			public Promise<List<SignedData<GlobalFsMetadata>>> list(String glob) {
-				return metadataFolder.list(glob)
-						.thenCompose(res ->
-								Promises.collectSequence(toList(), res.stream().map(metameta ->
-										metadataFolder
-												.download(metameta.getName())
-												.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-												.thenCompose(buf -> {
-													try {
-														return Promise.of(SignedData.ofBytes(buf.asArray(), GlobalFsMetadata::fromBytes));
-													} catch (ParseException e) {
-														return Promise.ofException(e);
-													}
-												}))));
+				return metadataStorage.list(glob);
+			}
+
+			public Promise<SignedData<GlobalFsMetadata>> getMetadata(String fileName) {
+				return metadataStorage.load(fileName);
 			}
 
 			public Promise<Void> pushMetadata(SignedData<GlobalFsMetadata> metadata) {
-				logger.trace("Pushing {}", metadata);
-				String path = metadata.getData().getLocalPath().getPath();
-				return metadataFolder.delete(escapeGlob(path))
-						.thenCompose($ -> metadataFolder.upload(path, 0)) // offset 0 because atst this same file could be fetched from another node too
-						.thenCompose(SerialSupplier.of(ByteBuf.wrapForReading(metadata.toBytes()))::streamTo);
+				return metadataStorage.store(metadata);
 			}
 
 			@Nullable
