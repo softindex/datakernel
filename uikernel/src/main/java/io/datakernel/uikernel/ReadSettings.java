@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ public final class ReadSettings<K> {
 	}
 
 	public static <K> ReadSettings<K> from(Gson gson, HttpRequest request) throws ParseException {
-		String fieldsParameter = request.getQueryParameter("fields");
+		String fieldsParameter = request.getQueryParameterOrNull("fields");
 		List<String> fields;
 		if (fieldsParameter != null && !fieldsParameter.isEmpty()) {
 			fields = fromJson(gson, fieldsParameter, LIST_STRING_TYPE_TOKEN);
@@ -78,19 +78,19 @@ public final class ReadSettings<K> {
 			fields = Collections.emptyList();
 		}
 
-		String offsetParameter = request.getQueryParameter("offset");
+		String offsetParameter = request.getQueryParameterOrNull("offset");
 		int offset = DEFAULT_OFFSET;
 		if (offsetParameter != null && !offsetParameter.isEmpty()) {
 			offset = decodeDecimal(encodeAscii(offsetParameter), 0, offsetParameter.length());
 		}
 
-		String limitParameter = request.getQueryParameter("limit");
+		String limitParameter = request.getQueryParameterOrNull("limit");
 		int limit = DEFAULT_LIMIT;
 		if (limitParameter != null && !limitParameter.isEmpty()) {
 			limit = decodeDecimal(encodeAscii(limitParameter), 0, limitParameter.length());
 		}
 
-		String filtersParameter = request.getQueryParameter("filters");
+		String filtersParameter = request.getQueryParameterOrNull("filters");
 		Map<String, String> filters;
 		if (filtersParameter != null && !filtersParameter.isEmpty()) {
 			filters = fromJson(gson, filtersParameter, MAP_STRING_STRING_TYPE_TOKEN);
@@ -99,7 +99,7 @@ public final class ReadSettings<K> {
 			filters = Collections.emptyMap();
 		}
 
-		String sortParameter = request.getQueryParameter("sort");
+		String sortParameter = request.getQueryParameterOrNull("sort");
 		Map<String, SortOrder> sort;
 		if (sortParameter != null && !sortParameter.isEmpty()) {
 			sort = new LinkedHashMap<>();
@@ -118,7 +118,7 @@ public final class ReadSettings<K> {
 			sort = Collections.emptyMap();
 		}
 
-		String extraParameter = request.getQueryParameter("extra");
+		String extraParameter = request.getQueryParameterOrNull("extra");
 		Set<K> extra;
 		if (extraParameter != null && !extraParameter.isEmpty()) {
 			extra = fromJson(gson, extraParameter, new TypeToken<LinkedHashSet<K>>() {}.getType());

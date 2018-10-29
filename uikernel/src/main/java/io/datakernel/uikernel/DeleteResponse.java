@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static io.datakernel.uikernel.Utils.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class DeleteResponse {
 	private static final DeleteResponse OK = new DeleteResponse(Collections.<String>emptyList());

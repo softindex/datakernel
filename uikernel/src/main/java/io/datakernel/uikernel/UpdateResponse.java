@@ -24,7 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.uikernel.Utils.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class UpdateResponse<K, R extends AbstractRecord<K>> {
 	private final List<R> changes;

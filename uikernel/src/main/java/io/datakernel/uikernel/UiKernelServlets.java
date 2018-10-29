@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,9 +25,12 @@ import io.datakernel.http.*;
 import java.nio.charset.Charset;
 import java.util.List;
 
+import static io.datakernel.http.HttpHeaderValue.ofContentType;
+import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
 import static io.datakernel.uikernel.Utils.fromJson;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Rest API for UiKernel Tables
@@ -47,94 +50,79 @@ public class UiKernelServlets {
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet read(GridModel<K, R> model, Gson gson) {
-		return new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				try {
-					ReadSettings<K> settings = ReadSettings.from(gson, request);
-					return model.read(settings).thenApply(response ->
-							createResponse(response.toJson(gson, model.getRecordType(), model.getIdType())));
-				} catch (ParseException e) {
-					return Promise.ofException((Throwable) e);
+		return request -> {
+			try {
+				ReadSettings<K> settings = ReadSettings.from(gson, request);
+				return model.read(settings).thenApply(response ->
+						createResponse(response.toJson(gson, model.getRecordType(), model.getIdType())));
+			} catch (ParseException e) {
+				return Promise.ofException((Throwable) e);
 
-				}
 			}
 		};
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet get(GridModel<K, R> model, Gson gson) {
-		return new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				try {
-					ReadSettings<K> settings = ReadSettings.from(gson, request);
-					K id = fromJson(gson, request.getPathParameter(ID_PARAMETER_NAME), model.getIdType());
-					return model.read(id, settings).thenApply(obj ->
-							createResponse(gson.toJson(obj, model.getRecordType())));
-				} catch (ParseException e) {
-					return Promise.ofException((Throwable) e);
-				}
+		return request -> {
+			try {
+				ReadSettings<K> settings = ReadSettings.from(gson, request);
+				K id = fromJson(gson, request.getPathParameter(ID_PARAMETER_NAME), model.getIdType());
+				return model.read(id, settings).thenApply(obj ->
+						createResponse(gson.toJson(obj, model.getRecordType())));
+			} catch (ParseException e) {
+				return Promise.ofException((Throwable) e);
 			}
 		};
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet create(GridModel<K, R> model, Gson gson) {
-		return new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				try {
-					String json = ByteBufStrings.decodeUtf8(request.getBody());
-					R obj = fromJson(gson, json, model.getRecordType());
-					return model.create(obj).thenApply(response ->
-							createResponse(response.toJson(gson, model.getIdType())));
-				} catch (ParseException e) {
-					return Promise.ofException((Throwable) e);
-				}
+		return request -> {
+			try {
+				String json = request.getBody().asString(UTF_8);
+				R obj = fromJson(gson, json, model.getRecordType());
+				return model.create(obj).thenApply(response ->
+						createResponse(response.toJson(gson, model.getIdType())));
+			} catch (ParseException e) {
+				return Promise.ofException((Throwable) e);
 			}
 		};
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet update(GridModel<K, R> model, Gson gson) {
-		return new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				try {
-					String json = ByteBufStrings.decodeUtf8(request.getBody());
-					List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
-					return model.update(list).thenApply(result ->
-							createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
-				} catch (ParseException e) {
-					return Promise.ofException((Throwable) e);
-				}
+		return request -> {
+			try {
+				String json = request.getBody().asString(UTF_8);
+				List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
+				return model.update(list).thenApply(result ->
+						createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
+			} catch (ParseException e) {
+				return Promise.ofException((Throwable) e);
 			}
 		};
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(GridModel<K, R> model, Gson gson) {
-		return new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				try {
-					K id = fromJson(gson, request.getPathParameter("id"), model.getIdType());
-					return model.delete(id).thenApply(response -> {
-						HttpResponse res = HttpResponse.ok200();
-						if (response.hasErrors()) {
-							String json = gson.toJson(response.getErrors());
-							res.setContentType(JSON_UTF8);
-							res.setBody(ByteBufStrings.wrapUtf8(json));
-						}
-						return res;
-					});
-				} catch (ParseException e) {
-					return Promise.ofException((Throwable) e);
-				}
+		return request -> {
+			try {
+				K id = fromJson(gson, request.getPathParameter("id"), model.getIdType());
+				return model.delete(id).thenApply(response -> {
+					HttpResponse res = HttpResponse.ok200();
+					if (response.hasErrors()) {
+						String json = gson.toJson(response.getErrors());
+						res.setHeader(CONTENT_TYPE, ofContentType(JSON_UTF8));
+						res.setBody(ByteBufStrings.wrapUtf8(json));
+					}
+					return res;
+				});
+			} catch (ParseException e) {
+				return Promise.ofException(e);
 			}
 		};
 	}
 
 	private static HttpResponse createResponse(String body) {
 		return HttpResponse.ok200()
-				.withContentType(JSON_UTF8)
+				.withHeader(CONTENT_TYPE, ofContentType(JSON_UTF8))
 				.withBody(ByteBufStrings.wrapUtf8(body));
 	}
 }

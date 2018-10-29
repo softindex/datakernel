@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,17 +40,11 @@ class Utils {
 		return result;
 	}
 
-	static <E> E checkNotNull(E object, String msg) {
-		if (object == null)
-			throw new NullPointerException(msg);
-		return object;
-	}
-
 	static <T> T fromJson(Gson gson, String json, Type typeOfT) throws ParseException {
 		try {
 			return gson.fromJson(json, typeOfT);
 		} catch (JsonSyntaxException e) {
-			throw new ParseException(e);
+			throw new ParseException(Utils.class, "Failed to read from Json", e);
 		}
 	}
 
@@ -58,7 +52,7 @@ class Utils {
 		try {
 			return gson.fromJson(json, typeOfT);
 		} catch (JsonSyntaxException e) {
-			throw new ParseException(e);
+			throw new ParseException(Utils.class, "Failed to read from Json", e);
 		}
 	}
 
@@ -66,7 +60,7 @@ class Utils {
 		try {
 			return gson.fromJson(json, typeOfT);
 		} catch (JsonSyntaxException e) {
-			throw new ParseException(e);
+			throw new ParseException(Utils.class, "Failed to read from Json", e);
 		}
 	}
 
@@ -74,7 +68,7 @@ class Utils {
 		try {
 			return gson.fromJson(json, typeOfT);
 		} catch (JsonSyntaxException e) {
-			throw new ParseException(e);
+			throw new ParseException(Utils.class, "Failed to read from Json", e);
 		}
 	}
 
