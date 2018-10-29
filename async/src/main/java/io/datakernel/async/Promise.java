@@ -27,7 +27,7 @@ import java.util.concurrent.*;
 import java.util.function.*;
 
 /**
- * Replacement of default java CompletionPromise interface.
+ * Replacement of default java CompletionStage interface.
  *
  * @see SettablePromise
  */
@@ -105,9 +105,9 @@ public interface Promise<T> {
 	}
 
 	/**
-	 * Wraps Java {@code CompletionPromise} in a {@code Promise}, running it in current eventloop.
+	 * Wraps Java {@code CompletionStage} in a {@code Promise}, running it in current eventloop.
 	 *
-	 * @param completionStage completion promise itself
+	 * @param completionStage completion stage itself
 	 * @return result of the given completionStage wrapped in a {@code Promise}
 	 */
 	static <T> Promise<T> ofCompletionStage(CompletionStage<? extends T> completionStage) {

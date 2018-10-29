@@ -32,8 +32,8 @@ import java.net.InetAddress;
 import java.time.Duration;
 
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
+import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final Duration DEFAULT_KEEP_ALIVE = Duration.ofSeconds(30);
@@ -41,22 +41,17 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = e -> {
 		HttpResponse response;
 		if (e instanceof HttpException) {
-			HttpException httpException = (HttpException) e;
-			response = HttpResponse.ofCode(httpException.getCode());
+			int code = ((HttpException) e).getCode();
+			response = HttpResponse.ofCode(code).withBodyString(e.getLocalizedMessage());
 		} else if (e instanceof ParseException) {
-			response = HttpResponse.ofCode(400);
+			response = HttpResponse.ofCode(400).withBodyString(e.getLocalizedMessage());
 		} else {
 			response = HttpResponse.ofCode(500);
 		}
-		String msg = e.getLocalizedMessage();
-		if (msg != null) {
-			response.withBody(msg.getBytes(UTF_8));
-		}
-		throw new RuntimeException(e);
-		// return response
-		// 		.withHeader(CACHE_CONTROL, "no-store")
-		// 		.withHeader(PRAGMA, "no-cache")
-		// 		.withHeader(AGE, "0");
+		return response
+				.withHeader(CACHE_CONTROL, "no-store")
+				.withHeader(PRAGMA, "no-cache")
+				.withHeader(AGE, "0");
 	};
 
 	private final AsyncServlet servlet;

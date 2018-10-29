@@ -37,7 +37,7 @@ public final class PubKey implements StringIdentity {
 	public static PubKey fromString(String string) throws ParseException {
 		String[] parts = string.split(":");
 		if (parts.length != 2) {
-			throw new ParseException(PubKey.class, "No ':' delimiter in public key string");
+			throw new ParseException(PubKey.class, "No or more than one ':' delimiters in public key string");
 		}
 		try {
 			BigInteger x = new BigInteger(parts[0], 16);

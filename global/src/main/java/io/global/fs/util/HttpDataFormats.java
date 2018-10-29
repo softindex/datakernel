@@ -70,15 +70,16 @@ public final class HttpDataFormats {
 			if (range[1] < 0) {
 				throw RANGE_OUT_OF_BOUNDS;
 			}
-		} catch (NumberFormatException e2) {
+		} catch (NumberFormatException ignored) {
 			throw INVALID_RANGE_FORMAT;
 		}
 		return range;
 	}
 
 	public static long parseOffset(HttpRequest request) throws ParseException {
+		String param = request.getQueryParameterOrNull("offset");
 		try {
-			return Long.parseLong(request.getQueryParameter("offset"));
+			return param == null ? -1 : Long.parseLong(param);
 		} catch (NumberFormatException e) {
 			throw new ParseException(HttpDataFormats.class, "Failed to parse offset", e);
 		}

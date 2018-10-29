@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
@@ -131,6 +132,13 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	public HttpResponse withBody(byte[] array) {
 		setBody(array);
+		return this;
+	}
+
+	public HttpResponse withBodyString(@Nullable String body) {
+		if (body != null) {
+			setBody(body.getBytes(UTF_8));
+		}
 		return this;
 	}
 

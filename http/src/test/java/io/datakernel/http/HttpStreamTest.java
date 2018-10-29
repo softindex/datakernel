@@ -171,7 +171,6 @@ public class HttpStreamTest {
 		server.listen();
 
 		SerialSupplier<ByteBuf> supplier = SerialSupplier.ofIterable(expectedList);
-		// SerialSupplier<ByteBuf> supplier = new DelayingSupplier<>(5, expectedList);
 
 		client.request(
 				HttpRequest.post("http://127.0.0.1:" + PORT)
@@ -180,7 +179,7 @@ public class HttpStreamTest {
 				.thenCompose(SerialSupplier::toList)
 				.whenComplete(assertComplete(list -> {
 							assertEquals(1, list.size());
-							assertEquals(exceptionMessage, list.get(0).getString(UTF_8));
+					assertEquals(exceptionMessage, list.get(0).asString(UTF_8));
 							supplier.close();
 							close();
 						}

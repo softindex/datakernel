@@ -16,13 +16,17 @@
 
 package io.global.fs.http;
 
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.*;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.serial.SerialSupplier;
 
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
+import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_DISPOSITION;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.http.MediaTypes.OCTET_STREAM;
 import static io.global.fs.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -51,30 +55,37 @@ public final class RemoteFsServlet {
 					}
 					return client.download(path, range[0], range[1])
 							.thenApply(HttpResponse.ok200()
-									.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(OCTET_STREAM)))
+									.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(OCTET_STREAM)))
 									.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
 									::withBodyStream);
 				})
 				.with(PUT, "/" + UPLOAD + "/:path*", request -> {
 					String path = request.getRelativePath();
 					long offset = parseOffset(request);
+					SerialSupplier<ByteBuf> bodyStream = request.getBodyStream();
 					return client.getMetadata(path)
 							.thenCompose(meta ->
 									client.upload(path, offset)
-											.thenCompose(request.getBodyStream()::streamTo)
+											.thenCompose(bodyStream::streamTo)
 											.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
 				})
 				.with(GET, "/" + LIST, request ->
 						client.list(request.getQueryParameter("glob"))
-								.thenApply(list -> HttpResponse.ok200().withBody(FILE_META_LIST.toJson(list).getBytes(UTF_8))))
+								.thenApply(list -> HttpResponse.ok200()
+										.withBody(FILE_META_LIST.toJson(list).getBytes(UTF_8))
+										.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(JSON)))))
 				.with(DELETE, "/" + DEL, request ->
 						client.delete(request.getQueryParameter("glob"))
 								.thenApply($ -> HttpResponse.ok200()))
 				.with(POST, "/" + COPY, ensureRequestBody(Integer.MAX_VALUE, request ->
 						client.copy(request.getPostParameters())
-								.thenApply(set -> HttpResponse.ok200().withBody(STRING_SET.toJson(set).getBytes(UTF_8)))))
+								.thenApply(set -> HttpResponse.ok200()
+										.withBody(STRING_SET.toJson(set).getBytes(UTF_8))
+										.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(JSON))))))
 				.with(POST, "/" + MOVE, ensureRequestBody(Integer.MAX_VALUE, request ->
 						client.move(request.getPostParameters())
-								.thenApply(set -> HttpResponse.ok200().withBody(STRING_SET.toJson(set).getBytes(UTF_8)))));
+								.thenApply(set -> HttpResponse.ok200()
+										.withBody(STRING_SET.toJson(set).getBytes(UTF_8))
+										.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(JSON))))));
 	}
 }
