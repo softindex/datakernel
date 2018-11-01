@@ -79,6 +79,20 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return Promise.ofException(HttpException.ofCode(this.code, this.body.getString(UTF_8)));
 	}
 
+	public Promise<HttpResponse> ensureStatusCodes(int code1, int code2) {
+		if (code == code1 || code == code2) {
+			return Promise.of(this);
+		}
+		return Promise.ofException(HttpException.ofCode(this.code, this.body.getString(UTF_8)));
+	}
+
+	public Promise<HttpResponse> ensureStatusCodes(int code1, int code2, int code3) {
+		if (code == code1 || code == code2 || code == code3) {
+			return Promise.of(this);
+		}
+		return Promise.ofException(HttpException.ofCode(this.code, this.body.getString(UTF_8)));
+	}
+
 	// common builder methods
 	public HttpResponse withHeader(HttpHeader header, String value) {
 		setHeader(header, value);

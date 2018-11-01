@@ -20,31 +20,36 @@ import io.datakernel.async.Promise;
 import io.global.common.*;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 public interface DiscoveryService {
-	Promise<Void> announce(RepoID repo, SignedData<AnnounceData> announceData);
+	Promise<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData);
 
-	Promise<Optional<SignedData<AnnounceData>>> find(RepoID repo);
+	Promise<Void> announceSpecific(RepoID repo, SignedData<AnnounceData> announceData);
 
-	Promise<List<SignedData<AnnounceData>>> find(PubKey owner);
+	default Promise<Void> announceSpecific(RepoID repo, AnnounceData announceData, PrivKey privKey) {
+		return announceSpecific(repo, SignedData.sign(announceData, privKey));
+	}
 
-	default Promise<Void> announce(RepoID repo, AnnounceData announceData, PrivKey privKey) {
-		return announce(repo, SignedData.sign(announceData, privKey));
+	Promise<Optional<SignedData<AnnounceData>>> findSpecific(RepoID repoID);
+
+	Promise<Optional<SignedData<AnnounceData>>> find(PubKey owner);
+
+	default Promise<Optional<SignedData<AnnounceData>>> find(RepoID repoID) {
+		return findSpecific(repoID).thenCompose(res -> res.isPresent() ? Promise.of(res) : find(repoID.getOwner()));
 	}
 
 	default Promise<Void> append(RepoID repo, AnnounceData announceData, PrivKey privKey) {
-		return find(repo)
+		return findSpecific(repo)
 				.thenCompose(data -> {
 					if (!data.isPresent()) {
-						return announce(repo, announceData, privKey);
+						return announceSpecific(repo, announceData, privKey);
 					}
 					Set<RawServerId> serverIds = new HashSet<>(data.get().getData().getServerIds());
 					serverIds.addAll(announceData.getServerIds());
 					long timestamp = Math.max(announceData.getTimestamp(), data.get().getData().getTimestamp());
-					return announce(repo, AnnounceData.of(timestamp, serverIds), privKey);
+					return announceSpecific(repo, AnnounceData.of(timestamp, serverIds), privKey);
 				});
 	}
 

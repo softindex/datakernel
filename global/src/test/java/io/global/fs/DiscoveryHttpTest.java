@@ -71,23 +71,23 @@ public class DiscoveryHttpTest {
 
 		AnnounceData testAnnounce = AnnounceData.of(123, set(new RawServerId(new InetSocketAddress(localhost, 123))));
 
-		clientService.announce(aliceTestFs, testAnnounce, alice.getPrivKey())
-				.thenCompose($ -> clientService.announce(bobTestFs, testAnnounce, bob.getPrivKey()))
+		clientService.announceSpecific(aliceTestFs, testAnnounce, alice.getPrivKey())
+				.thenCompose($ -> clientService.announceSpecific(bobTestFs, testAnnounce, bob.getPrivKey()))
 
-				.thenCompose($ -> clientService.find(aliceTestFs))
+				.thenCompose($ -> clientService.findSpecific(aliceTestFs))
 				.whenComplete(assertComplete(data -> {
 					assertTrue(data.isPresent());
 					assertTrue(data.get().verify(alice.getPubKey()));
 				}))
 
-				.thenCompose($ -> clientService.find(bobTestFs))
+				.thenCompose($ -> clientService.findSpecific(bobTestFs))
 				.whenComplete(assertComplete(data -> {
 					assertTrue(data.isPresent());
 					assertTrue(data.get().verify(bob.getPubKey()));
 				}))
 
-				.thenCompose($ -> clientService.announce(aliceTestFs, AnnounceData.of(90, set()), alice.getPrivKey()))
-				.thenCompose($ -> clientService.find(aliceTestFs))
+				.thenCompose($ -> clientService.announceSpecific(aliceTestFs, AnnounceData.of(90, set()), alice.getPrivKey()))
+				.thenCompose($ -> clientService.findSpecific(aliceTestFs))
 				.whenComplete(assertComplete(data -> {
 					assertTrue(data.isPresent());
 					assertTrue(data.get().verify(alice.getPubKey()));

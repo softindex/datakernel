@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
+import io.datakernel.remotefs.FileMetadata;
 import io.global.common.ByteArrayIdentity;
 import io.global.common.Hash;
 
@@ -46,12 +47,22 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 		this.simKeyHash = simKeyHash;
 	}
 
-	public static GlobalFsMetadata of(LocalPath localPath, long size, long revision) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(localPath) + 9 + 8);
+	public static GlobalFsMetadata of(LocalPath localPath, long size, long revision, @Nullable Hash simKeyHash) {
+		ByteBuf buf = ByteBufPool.allocate(sizeof(localPath) + 9 + 8 + 1 + (simKeyHash != null ? sizeof(simKeyHash) : 0));
 		writeLocalPath(buf, localPath);
 		buf.writeVarLong(size);
 		buf.writeLong(revision);
-		return new GlobalFsMetadata(buf.asArray(), localPath, size, revision, null);
+		if (simKeyHash != null) {
+			buf.writeByte((byte) 1);
+			write(buf, simKeyHash);
+		} else {
+			buf.writeByte((byte) 0);
+		}
+		return new GlobalFsMetadata(buf.asArray(), localPath, size, revision, simKeyHash);
+	}
+
+	public static GlobalFsMetadata of(LocalPath localPath, long size, long revision) {
+		return of(localPath, size, revision, null);
 	}
 
 	public static GlobalFsMetadata ofRemoved(LocalPath localPath, long revision) {
@@ -63,7 +74,11 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 		LocalPath localPath = readLocalPath(buf);
 		long size = buf.readVarLong();
 		long revision = buf.readLong();
-		return new GlobalFsMetadata(bytes, localPath, size, revision, null);
+		Hash simKeyHash = null;
+		if (buf.readByte() == 1) {
+			simKeyHash = read(buf, Hash::ofBytes);
+		}
+		return new GlobalFsMetadata(bytes, localPath, size, revision, simKeyHash);
 	}
 	// endregion
 
@@ -81,7 +96,7 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 		if (second.revision > first.revision) {
 			return second;
 		}
-		return first.size < second.size ? second : first;
+		return second.size > first.size ? second : first;
 	}
 
 	public GlobalFsMetadata toRemoved() {
@@ -107,6 +122,10 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 
 	public boolean isRemoved() {
 		return size == -1;
+	}
+
+	public FileMetadata toFileMetadata() {
+		return new FileMetadata(localPath.getPath(), size, revision);
 	}
 
 	@Override

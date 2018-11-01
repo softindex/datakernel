@@ -25,6 +25,7 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.IAsyncHttpClient;
+import io.datakernel.http.UrlBuilder;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -108,14 +109,14 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob) {
-		PubKey pubKey = space.getOwner();
+	public Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID repo, String glob) {
+		PubKey pubKey = repo.getOwner();
 		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(LIST)
 						.appendPathPart(pubKey.asString())
-						.appendPathPart(space.getName())
+						.appendPathPart(repo.getName())
 						.appendQuery("glob", glob)
 						.build()))
 				.thenCompose(response ->

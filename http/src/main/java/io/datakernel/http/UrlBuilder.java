@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package io.global.fs.http;
+package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.global.common.StringIdentity;
 
 import java.io.UnsupportedEncodingException;
 import java.net.Inet6Address;
@@ -123,13 +122,8 @@ public class UrlBuilder {
 		return this;
 	}
 
-	public UrlBuilder appendQuery(String key, StringIdentity value) {
-		query.put(key, value.asString());
-		return this;
-	}
-
-	public UrlBuilder appendQuery(String key, String value) {
-		query.put(key, value);
+	public UrlBuilder appendQuery(String key, Object value) {
+		query.put(key, value.toString());
 		return this;
 	}
 

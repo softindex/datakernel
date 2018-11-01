@@ -16,22 +16,26 @@
 
 package io.global.fs.http;
 
+import com.google.gson.TypeAdapter;
+import com.google.inject.Inject;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
+import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialSupplier;
+import io.global.fs.util.HttpDataFormats;
 
-import static io.datakernel.http.AsyncServlet.ensureRequestBody;
-import static io.datakernel.http.HttpHeaderValue.ofContentType;
-import static io.datakernel.http.HttpHeaders.CONTENT_DISPOSITION;
-import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
-import static io.datakernel.http.HttpMethod.*;
-import static io.datakernel.http.MediaTypes.JSON;
-import static io.datakernel.http.MediaTypes.OCTET_STREAM;
-import static io.global.fs.util.HttpDataFormats.*;
+import java.util.List;
+import java.util.Set;
+
+import static io.datakernel.json.GsonAdapters.*;
+import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_JSON;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public final class RemoteFsServlet {
+public final class RemoteFsServlet implements AsyncServlet {
 	public static final String UPLOAD = "upload";
 	public static final String DOWNLOAD = "download";
 	public static final String LIST = "list";
@@ -39,15 +43,17 @@ public final class RemoteFsServlet {
 	public static final String COPY = "copy";
 	public static final String MOVE = "move";
 
-	private RemoteFsServlet() {
-		throw new AssertionError("nope.");
-	}
+	static final TypeAdapter<Set<String>> STRING_SET = ofSet(STRING_JSON);
+	static final TypeAdapter<List<FileMetadata>> FILE_META_LIST = ofList(FILE_META_JSON);
 
-	public static AsyncServlet wrap(FsClient client) {
-		return MiddlewareServlet.create()
-				.with(GET, "/" + DOWNLOAD + "/:path*", request -> {
+	private final AsyncServlet servlet;
+
+	@Inject
+	public RemoteFsServlet(FsClient client) {
+		servlet = MiddlewareServlet.create()
+				.with(HttpMethod.GET, "/" + DOWNLOAD + "/:path*", request -> {
 					String path = request.getRelativePath();
-					long[] range = parseRange(request);
+					long[] range = HttpDataFormats.parseRange(request);
 					String name = path;
 					int lastSlash = path.lastIndexOf('/');
 					if (lastSlash != -1) {
@@ -55,13 +61,13 @@ public final class RemoteFsServlet {
 					}
 					return client.download(path, range[0], range[1])
 							.thenApply(HttpResponse.ok200()
-									.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(OCTET_STREAM)))
-									.withHeader(CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
+									.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.OCTET_STREAM)))
+									.withHeader(HttpHeaders.CONTENT_DISPOSITION, HttpHeaderValue.of("attachment; filename=\"" + name + "\""))
 									::withBodyStream);
 				})
-				.with(PUT, "/" + UPLOAD + "/:path*", request -> {
+				.with(HttpMethod.PUT, "/" + UPLOAD + "/:path*", request -> {
 					String path = request.getRelativePath();
-					long offset = parseOffset(request);
+					long offset = HttpDataFormats.parseOffset(request);
 					SerialSupplier<ByteBuf> bodyStream = request.getBodyStream();
 					return client.getMetadata(path)
 							.thenCompose(meta ->
@@ -69,23 +75,28 @@ public final class RemoteFsServlet {
 											.thenCompose(bodyStream::streamTo)
 											.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
 				})
-				.with(GET, "/" + LIST, request ->
+				.with(HttpMethod.GET, "/" + LIST, request ->
 						client.list(request.getQueryParameter("glob"))
 								.thenApply(list -> HttpResponse.ok200()
 										.withBody(FILE_META_LIST.toJson(list).getBytes(UTF_8))
-										.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(JSON)))))
-				.with(DELETE, "/" + DEL, request ->
+										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON)))))
+				.with(HttpMethod.DELETE, "/" + DEL, request ->
 						client.delete(request.getQueryParameter("glob"))
 								.thenApply($ -> HttpResponse.ok200()))
-				.with(POST, "/" + COPY, ensureRequestBody(Integer.MAX_VALUE, request ->
+				.with(HttpMethod.POST, "/" + COPY, AsyncServlet.ensureRequestBody(Integer.MAX_VALUE, request ->
 						client.copy(request.getPostParameters())
 								.thenApply(set -> HttpResponse.ok200()
-										.withBody(STRING_SET.toJson(set).getBytes(UTF_8))
-										.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(JSON))))))
-				.with(POST, "/" + MOVE, ensureRequestBody(Integer.MAX_VALUE, request ->
+										.withBody(HttpDataFormats.STRING_SET.toJson(set).getBytes(UTF_8))
+										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON))))))
+				.with(HttpMethod.POST, "/" + MOVE, AsyncServlet.ensureRequestBody(Integer.MAX_VALUE, request ->
 						client.move(request.getPostParameters())
 								.thenApply(set -> HttpResponse.ok200()
-										.withBody(STRING_SET.toJson(set).getBytes(UTF_8))
-										.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(JSON))))));
+										.withBody(HttpDataFormats.STRING_SET.toJson(set).getBytes(UTF_8))
+										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON))))));
+	}
+
+	@Override
+	public Promise<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException {
+		return servlet.serve(request);
 	}
 }

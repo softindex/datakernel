@@ -22,7 +22,6 @@ import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 
-import java.util.List;
 import java.util.Optional;
 
 public final class RemoteFsDiscoveryService implements DiscoveryService {
@@ -33,17 +32,22 @@ public final class RemoteFsDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Promise<Void> announce(RepoID repo, SignedData<AnnounceData> announceData) {
+	public Promise<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#announce is not implemented yet");
 	}
 
 	@Override
-	public Promise<Optional<SignedData<AnnounceData>>> find(RepoID repo) {
-		throw new UnsupportedOperationException("RemoteFsDiscoveryService#find is not implemented yet");
+	public Promise<Void> announceSpecific(RepoID repo, SignedData<AnnounceData> announceData) {
+		throw new UnsupportedOperationException("RemoteFsDiscoveryService#announceSpecific is not implemented yet");
 	}
 
 	@Override
-	public Promise<List<SignedData<AnnounceData>>> find(PubKey owner) {
+	public Promise<Optional<SignedData<AnnounceData>>> findSpecific(RepoID repoID) {
+		throw new UnsupportedOperationException("RemoteFsDiscoveryService#findSpecific is not implemented yet");
+	}
+
+	@Override
+	public Promise<Optional<SignedData<AnnounceData>>> find(PubKey owner) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#find is not implemented yet");
 	}
 

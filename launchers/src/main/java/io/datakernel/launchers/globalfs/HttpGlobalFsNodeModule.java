@@ -27,17 +27,17 @@ import io.datakernel.remotefs.FsClient;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.fs.api.GlobalFsNode;
-import io.global.fs.api.NodeFactory;
+import io.global.fs.api.NodeClientFactory;
 import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.http.HttpGlobalFsNode;
-import io.global.fs.local.GlobalFsNodeDriver;
+import io.global.fs.local.LocalGlobalFsNode;
 
 import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.launchers.Initializers.ofEventloopTaskScheduler;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey;
-import static io.global.fs.local.GlobalFsNodeDriver.DEFAULT_LATENCY_MARGIN;
+import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofRepoID;
+import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
 
 public class HttpGlobalFsNodeModule extends AbstractModule {
 
@@ -56,16 +56,16 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	NodeFactory provide(AsyncHttpClient httpClient) {
+	NodeClientFactory provide(AsyncHttpClient httpClient) {
 		return serverId -> new HttpGlobalFsNode(serverId, httpClient);
 	}
 
 	@Provides
 	@Singleton
-	GlobalFsNode provide(Config config, DiscoveryService discoveryService, NodeFactory nodeFactory, FsClient storage) {
+	GlobalFsNode provide(Config config, DiscoveryService discoveryService, NodeClientFactory nodeClientFactory, FsClient storage) {
 		RawServerId id = new RawServerId(config.get(ofInetSocketAddress(), "globalfs.http.listenAddresses"));
-		return GlobalFsNodeDriver.create(id, discoveryService, nodeFactory, storage)
-				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "globalfs.managedPubKeys")))
+		return LocalGlobalFsNode.create(id, discoveryService, nodeClientFactory, storage)
+				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofRepoID()), "globalfs.managedRepos")))
 				.withDownloadCaching(config.get(ofBoolean(), "globalfs.caching.download", true))
 				.withUploadCaching(config.get(ofBoolean(), "globalfs.caching.upload", false))
 				.withLatencyMargin(config.get(ofDuration(), "globalfs.fetching.latencyMargin", DEFAULT_LATENCY_MARGIN));
@@ -74,7 +74,7 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 	@Provides
 	@Singleton
 	EventloopTaskScheduler provide(Config config, Eventloop eventloop, GlobalFsNode node) {
-		return EventloopTaskScheduler.create(eventloop, ((GlobalFsNodeDriver) node)::fetchManaged)
+		return EventloopTaskScheduler.create(eventloop, ((LocalGlobalFsNode) node)::fetch)
 				.initialize(ofEventloopTaskScheduler(config.getChild("globalfs.fetching")));
 	}
 }

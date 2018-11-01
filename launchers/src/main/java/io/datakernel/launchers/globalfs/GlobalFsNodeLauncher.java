@@ -81,9 +81,9 @@ public class GlobalFsNodeLauncher extends Launcher {
 										// storage path for this node
 										.with("storage", "/tmp/TESTS/server" + server)
 										// this node manages Alice and Bob
-										.with("managedPubKeys",
-												/* alice(p) = */"cb78f3ac392aa96ec7a1ba3d1848423097cb5d892638ab297149ea03e9b7ba7d:10d6096aaff36c5b11d5abf063e0499e68e63270ef70d6dc18f0c47566ffdac5," +
-														/* bob(p) = */"aed50797fe8950ea25745c5cee391156905033ee4e3f5a2df418f687df78a7f1:784ca80eaa2fc2f643052a7469ec23fa2f72dd9ce248044e34ae986d7ce9ef8d")
+										.with("managedRepos",
+												/* alice(p) = */"cb78f3ac392aa96ec7a1ba3d1848423097cb5d892638ab297149ea03e9b7ba7d:10d6096aaff36c5b11d5abf063e0499e68e63270ef70d6dc18f0c47566ffdac5/testFs," +
+														/* bob(p) = */"aed50797fe8950ea25745c5cee391156905033ee4e3f5a2df418f687df78a7f1:784ca80eaa2fc2f643052a7469ec23fa2f72dd9ce248044e34ae986d7ce9ef8d/testFs")
 
 										// address of the node for inter-Global-FS HTTP communication
 										.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8000 + server))))

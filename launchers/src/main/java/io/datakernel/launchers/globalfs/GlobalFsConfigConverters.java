@@ -21,9 +21,8 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverter;
 import io.datakernel.config.SimpleConfigConverter;
 import io.datakernel.exception.ParseException;
-import io.global.common.PrivKey;
-import io.global.common.PubKey;
-import io.global.common.RawServerId;
+import io.datakernel.util.ParserFunction;
+import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
@@ -39,42 +38,43 @@ public final class GlobalFsConfigConverters {
 		return ofInetSocketAddress().transform(RawServerId::new, RawServerId::getInetSocketAddress);
 	}
 
-	public static ConfigConverter<PubKey> ofPubKey() {
-		return new SimpleConfigConverter<PubKey>() {
-			@Nullable
+	private static <T extends StringIdentity> ConfigConverter<T> ofStringIdentity(ParserFunction<String, T> from) {
+		return new SimpleConfigConverter<T>() {
 			@Override
-			protected PubKey fromString(@Nullable String string) {
+			protected T fromString(String string) {
 				try {
-					return PubKey.fromString(string);
+					return from.parse(string);
 				} catch (ParseException e) {
-					throw new AssertionError(e);
+					throw new IllegalArgumentException(e);
 				}
 			}
 
 			@Override
-			protected String toString(PubKey value) {
+			protected String toString(T value) {
 				return value.asString();
 			}
 		};
+
+	}
+
+	public static ConfigConverter<RepoID> ofRepoID() {
+		return ofStringIdentity(RepoID::fromString);
+	}
+
+	public static ConfigConverter<PubKey> ofPubKey() {
+		return ofStringIdentity(PubKey::fromString);
 	}
 
 	public static ConfigConverter<PrivKey> ofPrivKey() {
-		return new SimpleConfigConverter<PrivKey>() {
-			@Nullable
-			@Override
-			protected PrivKey fromString(@Nullable String string) {
-				try {
-					return PrivKey.fromString(string);
-				} catch (ParseException e) {
-					throw new AssertionError(e);
-				}
-			}
+		return ofStringIdentity(PrivKey::fromString);
+	}
 
-			@Override
-			protected String toString(PrivKey value) {
-				return value.asString();
-			}
-		};
+	public static ConfigConverter<SimKey> ofSimKey() {
+		return ofStringIdentity(SimKey::fromString);
+	}
+
+	public static ConfigConverter<Hash> ofHash() {
+		return ofStringIdentity(Hash::fromString);
 	}
 
 	public static ConfigConverter<CheckpointPosStrategy> ofCheckpointPositionStrategy() {

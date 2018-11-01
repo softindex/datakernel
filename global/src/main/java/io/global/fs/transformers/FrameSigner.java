@@ -41,7 +41,6 @@ public final class FrameSigner extends ByteBufsToFrames {
 
 	private boolean lastPostedCheckpoint = false;
 
-	// region creators
 	private FrameSigner(LocalPath localPath, long offset, CheckpointPosStrategy checkpointPosStrategy, PrivKey privateKey, SHA256Digest digest) {
 		super(offset);
 		this.localPathHash = localPath.hash();
@@ -53,7 +52,6 @@ public final class FrameSigner extends ByteBufsToFrames {
 	public static FrameSigner create(LocalPath localPath, long offset, CheckpointPosStrategy checkpointPosStrategy, PrivKey privateKey, SHA256Digest digest) {
 		return new FrameSigner(localPath, offset, checkpointPosStrategy, privateKey, digest);
 	}
-	// endregion
 
 	@Override
 	protected Promise<Void> postByteBuf(ByteBuf buf) {

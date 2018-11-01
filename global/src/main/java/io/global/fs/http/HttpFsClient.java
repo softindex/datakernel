@@ -19,10 +19,7 @@ package io.global.fs.http;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.HttpMessage;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
+import io.datakernel.http.*;
 import io.datakernel.json.GsonAdapters;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
@@ -36,20 +33,20 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.global.fs.http.RemoteFsServlet.*;
-import static io.global.fs.util.HttpDataFormats.FILE_META_LIST;
-import static io.global.fs.util.HttpDataFormats.STRING_SET;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class HttpFsClient implements FsClient {
-	private final AsyncHttpClient client;
+	private final IAsyncHttpClient client;
 	private final InetSocketAddress address;
 
-	// region creators
-	public HttpFsClient(InetSocketAddress address, AsyncHttpClient client) {
+	private HttpFsClient(InetSocketAddress address, IAsyncHttpClient client) {
 		this.address = address;
 		this.client = client;
 	}
-	// endregion
+
+	public static HttpFsClient create(InetSocketAddress address, IAsyncHttpClient client) {
+		return new HttpFsClient(address, client);
+	}
 
 	@Override
 	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
@@ -68,6 +65,7 @@ public class HttpFsClient implements FsClient {
 								.appendQuery("offset", "" + offset)
 								.build())
 						.withBodyStream(buffer.getSupplier()))
+				.thenCompose(response -> response.ensureStatusCodes(200, 201))
 				.materialize();
 		return buffer.getConsumer().withAcknowledgement(ack -> ack.both(res));
 	}
@@ -82,6 +80,7 @@ public class HttpFsClient implements FsClient {
 								.appendPath(filename)
 								.appendQuery("range", offset + (length == -1 ? "" : ("-" + (offset + length))))
 								.build()))
+				.thenCompose(response -> response.ensureStatusCode(200))
 				.thenApply(HttpMessage::getBodyStream);
 	}
 
@@ -94,6 +93,7 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(MOVE)
 								.build())
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
+				.thenCompose(response -> response.ensureStatusCode(200))
 				.thenCompose(response -> {
 					try {
 						return Promise.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
@@ -112,6 +112,7 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(COPY)
 								.build())
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
+				.thenCompose(response -> response.ensureStatusCode(200))
 				.thenCompose(response -> {
 					try {
 						return Promise.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
@@ -130,6 +131,7 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(LIST)
 								.appendQuery("glob", glob)
 								.build()))
+				.thenCompose(response -> response.ensureStatusCode(200))
 				.thenCompose(response -> {
 					try {
 						return Promise.of(GsonAdapters.fromJson(FILE_META_LIST, response.getBody().asString(UTF_8)));
@@ -148,6 +150,7 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(DEL)
 								.appendQuery("glob", glob)
 								.build()))
+				.thenCompose(response -> response.ensureStatusCode(200))
 				.toVoid();
 	}
 }

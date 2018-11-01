@@ -36,30 +36,31 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.PrivKey;
+import io.global.common.RepoID;
 import io.global.common.api.DiscoveryService;
 import io.global.fs.api.CheckpointPosStrategy;
-import io.global.fs.api.GlobalFsGateway;
 import io.global.fs.api.GlobalFsNode;
-import io.global.fs.http.GlobalFsGatewayServlet;
 import io.global.fs.http.GlobalFsNodeServlet;
-import io.global.fs.local.GlobalFsGatewayDriver;
+import io.global.fs.http.RemoteFsServlet;
+import io.global.fs.local.GlobalFsDriver;
+import io.global.fs.local.GlobalFsGatewayAdapter;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.launchers.Initializers.ofEventloop;
 import static io.datakernel.launchers.Initializers.ofHttpServer;
 import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofCheckpointPositionStrategy;
 import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPrivKey;
+import static io.datakernel.util.CollectionUtils.list;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -102,10 +103,10 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 										.with("discoveryService", "localhost:9001")
 										// storage path for this node
 										.with("storage", "/tmp/TESTS/server" + server)
-										// this node manages Alice and Bob
-										.with("managedPubKeys",
-												/* alice(p) = */"cb78f3ac392aa96ec7a1ba3d1848423097cb5d892638ab297149ea03e9b7ba7d:10d6096aaff36c5b11d5abf063e0499e68e63270ef70d6dc18f0c47566ffdac5," +
-														/* bob(p) = */"aed50797fe8950ea25745c5cee391156905033ee4e3f5a2df418f687df78a7f1:784ca80eaa2fc2f643052a7469ec23fa2f72dd9ce248044e34ae986d7ce9ef8d")
+										// this node manages Alice and Bob repos both named 'testFs'
+										.with("managedRepos",
+												/* alice(p) = */"cb78f3ac392aa96ec7a1ba3d1848423097cb5d892638ab297149ea03e9b7ba7d:10d6096aaff36c5b11d5abf063e0499e68e63270ef70d6dc18f0c47566ffdac5/testFs," +
+														/* bob(p) = */"aed50797fe8950ea25745c5cee391156905033ee4e3f5a2df418f687df78a7f1:784ca80eaa2fc2f643052a7469ec23fa2f72dd9ce248044e34ae986d7ce9ef8d/testFs")
 
 										// very short latency margin so it will actually do the task each time we call it *testing*
 										.with("fetching.latencyMargin", "1 second")
@@ -162,10 +163,13 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 
 					@Provides
 					@Singleton
-					GlobalFsGateway provide(Config config, GlobalFsNode node) {
-						Set<PrivKey> privateKeys = new HashSet<>(config.get(ofList(ofPrivKey()), "globalfs.gateway.privateKeys"));
+					GlobalFsGatewayAdapter provide(Config config, GlobalFsNode node) {
+						PrivKey privateKey = config.get(ofPrivKey(), "globalfs.gateway.privateKey");
 						CheckpointPosStrategy checkpointPosStrategy = config.get(ofCheckpointPositionStrategy(), "globalfs.gateway.checkpointPosStrategy");
-						return GlobalFsGatewayDriver.create(node, privateKeys, checkpointPosStrategy);
+
+						// TODO anton: fix all these stubs
+						GlobalFsDriver driver = GlobalFsDriver.create(node, list(privateKey.computeKeys()), checkpointPosStrategy);
+						return (GlobalFsGatewayAdapter) driver.createClientFor(RepoID.of(privateKey.computePubKey(), "stub"));
 					}
 
 					@Provides
@@ -178,7 +182,7 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 					@Provides
 					@Named("gateway")
 					@Singleton
-					AsyncHttpServer provide(Eventloop eventloop, GlobalFsGatewayServlet servlet, Config config) {
+					AsyncHttpServer provide(Eventloop eventloop, RemoteFsServlet servlet, Config config) {
 						return AsyncHttpServer.create(eventloop, servlet)
 								.initialize(ofHttpServer(config.getChild("globalfs.gateway.http")));
 					}

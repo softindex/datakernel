@@ -18,6 +18,6 @@ package io.global.fs.api;
 
 import io.global.common.RawServerId;
 
-public interface NodeFactory {
+public interface NodeClientFactory {
 	GlobalFsNode create(RawServerId serverId);
 }

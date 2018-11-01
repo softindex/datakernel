@@ -18,22 +18,22 @@ package io.datakernel.launchers;
 
 import io.datakernel.config.Config;
 import io.datakernel.util.Initializer;
-import io.global.fs.local.GlobalFsNodeDriver;
+import io.global.fs.local.LocalGlobalFsNode;
 
 import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.*;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey;
-import static io.global.fs.local.GlobalFsNodeDriver.DEFAULT_LATENCY_MARGIN;
+import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofRepoID;
+import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
 import static java.util.Collections.emptyList;
 
 public class GlobalFsInitializers {
 	private GlobalFsInitializers() {
 	}
 
-	public static Initializer<GlobalFsNodeDriver> ofGlobalFsNodeDriver(Config config) {
+	public static Initializer<LocalGlobalFsNode> ofGlobalFsNodeDriver(Config config) {
 		return node -> node
-				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
+				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofRepoID()), "managedKeys", emptyList())))
 				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching"))
 				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching"))
 				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));

@@ -35,9 +35,10 @@ import static io.global.fs.util.HttpDataFormats.parseRepoID;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class DiscoveryServlet implements AsyncServlet {
+	public static final String ANNOUNCE_ALL = "announceAll";
+	public static final String ANNOUNCE = "announce";
 	public static final String FIND = "find";
 	public static final String FIND_ALL = "findAll";
-	public static final String ANNOUNCE = "announce";
 	public static final String SHARE_KEY = "shareKey";
 	public static final String GET_SHARED_KEY = "getSharedKey";
 
@@ -50,12 +51,25 @@ public final class DiscoveryServlet implements AsyncServlet {
 	@Inject
 	public DiscoveryServlet(DiscoveryService discoveryService) {
 		servlet = MiddlewareServlet.create()
+				.with(HttpMethod.PUT, "/" + ANNOUNCE_ALL + "/:owner", request -> {
+					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
+					return request.getBodyPromise(Integer.MAX_VALUE)
+							.thenCompose(body -> {
+								try {
+									return discoveryService.announce(owner, SIGNED_ANNOUNCE.fromJson(body.asString(UTF_8)));
+								} catch (IOException e) {
+									return Promise.ofException(e);
+								}
+							})
+							.thenApply($ -> HttpResponse.ok201());
+
+				})
 				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner/:name", request -> {
 					RepoID repoID = parseRepoID(request);
 					return request.getBodyPromise(Integer.MAX_VALUE)
 							.thenCompose(body -> {
 								try {
-									return discoveryService.announce(repoID, SIGNED_ANNOUNCE.fromJson(body.asString(UTF_8)));
+									return discoveryService.announceSpecific(repoID, SIGNED_ANNOUNCE.fromJson(body.asString(UTF_8)));
 								} catch (IOException e) {
 									return Promise.ofException(e);
 								}
@@ -64,7 +78,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 
 				})
 				.with(HttpMethod.GET, "/" + FIND + "/:owner/:name", request ->
-						discoveryService.find(parseRepoID(request))
+						discoveryService.findSpecific(parseRepoID(request))
 								.thenCompose(data -> data
 										.map(signedData ->
 												(Promise<HttpResponse>) Promise.of(HttpResponse.ok200()
@@ -73,9 +87,12 @@ public final class DiscoveryServlet implements AsyncServlet {
 												Promise.ofException(HttpException.notFound404()))))
 				.with(HttpMethod.GET, "/" + FIND_ALL + "/:owner", request ->
 						discoveryService.find(PubKey.fromString(request.getPathParameter("owner")))
-								.thenApply(data ->
-										HttpResponse.ok200()
-												.withBody(LIST_OF_SIGNED_ANNOUNCES.toJson(data).getBytes(UTF_8))))
+								.thenCompose(data -> data
+										.map(signedData ->
+												(Promise<HttpResponse>) Promise.of(HttpResponse.ok200()
+														.withBody(SIGNED_ANNOUNCE.toJson(signedData).getBytes(UTF_8))))
+										.orElseGet(() ->
+												Promise.ofException(HttpException.notFound404()))))
 				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:owner", request -> {
 					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
 					return request.getBodyPromise(Integer.MAX_VALUE)

@@ -17,7 +17,6 @@
 package io.global.fs.local;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -54,8 +53,8 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 		if (existing == null) {
 			fileCheckpoints.put(pos, checkpoint);
 		} else if (!existing.equals(checkpoint)) {
-			return Promise.ofException(new StacklessException(RuntimeCheckpointStorage.class, "Trying to override existing checkpoint"));
+			return Promise.ofException(OVERRIDING_EXISTING_CHECKPOINT);
 		}
-		return Promise.of(null);
+		return Promise.complete();
 	}
 }

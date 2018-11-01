@@ -112,13 +112,21 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 
 	@Override
 	public Promise<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
-		return fsClient.getMetadata(filename)
-				.thenCompose(m -> fsClient.upload(filename, m != null ? m.getSize() : 0))
-				.thenCompose(consumer -> {
-					byte[] bytes = checkpoint.toBytes();
-					ByteBuf buf = ByteBufPool.allocate(bytes.length + 5);
-					BinaryDataFormats.writeBytes(buf, bytes);
-					return SerialSupplier.of(buf).streamTo(consumer);
+		return loadCheckpoint(filename, checkpoint.getData().getPosition())
+				.thenCompose(existing -> {
+					if (existing != null) {
+						return checkpoint.equals(existing) ?
+								Promise.complete() :
+								Promise.ofException(OVERRIDING_EXISTING_CHECKPOINT);
+					}
+					return fsClient.getMetadata(filename)
+							.thenCompose(m -> fsClient.upload(filename, m != null ? m.getSize() : 0))
+							.thenCompose(consumer -> {
+								byte[] bytes = checkpoint.toBytes();
+								ByteBuf buf = ByteBufPool.allocate(bytes.length + 5);
+								BinaryDataFormats.writeBytes(buf, bytes);
+								return SerialSupplier.of(buf).streamTo(consumer);
+							});
 				});
 	}
 }

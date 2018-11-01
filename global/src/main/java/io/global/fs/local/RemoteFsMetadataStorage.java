@@ -54,6 +54,7 @@ public class RemoteFsMetadataStorage implements MetadataStorage {
 
 	@Override
 	public Promise<SignedData<GlobalFsMetadata>> load(String fileName) {
+		logger.trace("loading {}", fileName);
 		return fsClient.getMetadata(fileName)
 				.thenCompose(metameta -> {
 					if (metameta == null) {

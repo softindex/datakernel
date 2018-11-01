@@ -19,23 +19,20 @@ package io.global.fs.util;
 import com.google.gson.TypeAdapter;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
-import io.datakernel.remotefs.FileMetadata;
 import io.global.common.PubKey;
 import io.global.common.RepoID;
 import io.global.fs.api.GlobalPath;
 
-import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.json.GsonAdapters.*;
-import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_JSON;
+import static io.datakernel.json.GsonAdapters.STRING_JSON;
+import static io.datakernel.json.GsonAdapters.ofSet;
 
 public final class HttpDataFormats {
 	public static final ParseException INVALID_RANGE_FORMAT = new ParseException(HttpDataFormats.class, "Invalid range format");
 	public static final ParseException RANGE_OUT_OF_BOUNDS = new ParseException(HttpDataFormats.class, "Specified range is out of bounds");
 
 	public static final TypeAdapter<Set<String>> STRING_SET = ofSet(STRING_JSON);
-	public static final TypeAdapter<List<FileMetadata>> FILE_META_LIST = ofList(FILE_META_JSON);
 
 	private HttpDataFormats() {
 		throw new AssertionError("nope.");

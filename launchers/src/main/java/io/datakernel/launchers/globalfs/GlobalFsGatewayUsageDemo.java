@@ -34,10 +34,9 @@ import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.api.DiscoveryService;
-import io.global.fs.api.GlobalFsGateway;
 import io.global.fs.api.GlobalPath;
 import io.global.fs.http.HttpDiscoveryService;
-import io.global.fs.http.HttpGlobalFsGateway;
+import io.global.fs.http.HttpFsClient;
 
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
@@ -47,7 +46,6 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.launchers.Initializers.ofEventloop;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofRawServerId;
 import static java.lang.Boolean.parseBoolean;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -71,10 +69,10 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 	Eventloop eventloop;
 
 	@Inject
-	GlobalFsGateway gateway;
+	FsClient storage;
 
 	@Inject
-	FsClient storage;
+	HttpFsClient gateway;
 
 	@Override
 	protected Collection<Module> getModules() {
@@ -117,8 +115,8 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 
 					@Provides
 					@Singleton
-					GlobalFsGateway provide(Config config, AsyncHttpClient httpClient) {
-						return new HttpGlobalFsGateway(config.get(ofRawServerId(), "app.gatewayAddress"), httpClient);
+					HttpFsClient provide(Config config, AsyncHttpClient httpClient) {
+						return HttpFsClient.create(config.get(ofInetSocketAddress(), "app.gatewayAddress"), httpClient);
 					}
 
 					@Provides
@@ -143,7 +141,7 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 		// 				}));
 
 		eventloop.post(() -> {
-			gateway.downloader(testFile).toCollector(ByteBufQueue.collector())
+			gateway.downloadSerial("folder/test.txt").toCollector(ByteBufQueue.collector())
 					.whenComplete((buf, e) -> {
 						if (e == null) {
 							System.out.println(buf.asString(UTF_8));

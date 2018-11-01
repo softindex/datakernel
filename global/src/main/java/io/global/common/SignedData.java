@@ -91,6 +91,6 @@ public final class SignedData<T extends ByteArrayIdentity> implements ByteArrayI
 
 	@Override
 	public String toString() {
-		return data.toString();
+		return "☉" + data.toString();
 	}
 }

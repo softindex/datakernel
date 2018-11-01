@@ -41,8 +41,6 @@ public interface GlobalFsNode {
 
 	RawServerId getId();
 
-	// Promise<Set<String>> getFileSystemsOf(PubKey owner);
-
 	Promise<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset);
 
 	default SerialConsumer<DataFrame> uploader(GlobalPath path, long offset) {
@@ -59,7 +57,7 @@ public interface GlobalFsNode {
 		return list(path.toRepoID(), escapeGlob(path.getPath())).thenApply(res -> res.size() == 1 ? res.get(0) : null);
 	}
 
-	Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob);
+	Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID repo, String glob);
 
 	Promise<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata);
 }

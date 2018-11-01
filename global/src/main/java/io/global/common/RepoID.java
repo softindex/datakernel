@@ -16,7 +16,9 @@
 
 package io.global.common;
 
-public final class RepoID {
+import io.datakernel.exception.ParseException;
+
+public final class RepoID implements StringIdentity {
 	private final PubKey owner;
 	private final String name;
 
@@ -33,12 +35,25 @@ public final class RepoID {
 		return of(keys.getPubKey(), name);
 	}
 
+	public static RepoID fromString(String string) throws ParseException {
+		String[] parts = string.split("/", 2);
+		if (parts.length != 2) {
+			throw new ParseException(PubKey.class, "No '/' delimiters in repo id string");
+		}
+		return new RepoID(PubKey.fromString(parts[0]), parts[1]);
+	}
+
 	public PubKey getOwner() {
 		return owner;
 	}
 
 	public String getName() {
 		return name;
+	}
+
+	@Override
+	public String asString() {
+		return owner.asString() + '/' + name;
 	}
 
 	@Override

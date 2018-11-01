@@ -33,8 +33,10 @@ import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.RepoID;
 import io.global.common.SignedData;
+import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.fs.api.*;
+import io.global.fs.local.LocalGlobalFsNode.Namespace.Repo;
 import io.global.fs.transformers.FramesFromStorage;
 import io.global.fs.transformers.FramesIntoStorage;
 import org.slf4j.Logger;
@@ -44,65 +46,69 @@ import java.time.Duration;
 import java.util.*;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 
-public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<GlobalFsNodeDriver> {
+public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<LocalGlobalFsNode> {
 	public static final Duration DEFAULT_LATENCY_MARGIN = Duration.ofMinutes(5);
-	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNodeDriver.class);
+	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalFsNode.class);
 
-	private final Set<PubKey> managedPubKeys = new HashSet<>();
+	private final Set<RepoID> managedRepos = new HashSet<>();
 	private final Set<GlobalPath> searchingForUpload = new HashSet<>();
 	private boolean doesCaching = true;
 	private boolean doesUploadCaching = false;
 
-	private final Map<PubKey, Namespace> publicKeyGroups = new HashMap<>();
+	private final Map<PubKey, Namespace> namespaces = new HashMap<>();
 
 	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
 
 	private final RawServerId id;
 	private final DiscoveryService discoveryService;
-	private final NodeFactory nodeFactory;
+	private final NodeClientFactory nodeClientFactory;
 	private final FsClient dataFsClient;
 	private final FsClient metadataFsClient;
 	private final FsClient checkpointFsClient;
 
+	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
+
 	// region creators
-	private GlobalFsNodeDriver(RawServerId id, DiscoveryService discoveryService, NodeFactory nodeFactory,
+	private LocalGlobalFsNode(RawServerId id, DiscoveryService discoveryService, NodeClientFactory nodeClientFactory,
 			FsClient dataFsClient, FsClient metadataFsClient, FsClient checkpointFsClient) {
 		this.id = id;
 		this.discoveryService = discoveryService;
-		this.nodeFactory = nodeFactory;
+		this.nodeClientFactory = nodeClientFactory;
 		this.dataFsClient = dataFsClient;
 		this.metadataFsClient = metadataFsClient;
 		this.checkpointFsClient = checkpointFsClient;
 	}
 
-	public static GlobalFsNodeDriver create(RawServerId id, DiscoveryService discoveryService, NodeFactory nodeFactory, FsClient fsClient) {
-		return new GlobalFsNodeDriver(id, discoveryService, nodeFactory,
+	public static LocalGlobalFsNode create(RawServerId id, DiscoveryService discoveryService, NodeClientFactory nodeClientFactory, FsClient fsClient) {
+		return new LocalGlobalFsNode(id, discoveryService, nodeClientFactory,
 				fsClient.subfolder("data"), fsClient.subfolder("metadata"), fsClient.subfolder("checkpoints"));
 	}
 
-	public GlobalFsNodeDriver withManagedPubKeys(Set<PubKey> managedPubKeys) {
-		this.managedPubKeys.addAll(managedPubKeys);
+	public LocalGlobalFsNode withManagedPubKeys(Set<RepoID> managedPubKeys) {
+		this.managedRepos.addAll(managedPubKeys);
 		return this;
 	}
 
-	public GlobalFsNodeDriver withDownloadCaching(boolean caching) {
+	public LocalGlobalFsNode withDownloadCaching(boolean caching) {
 		this.doesCaching = caching;
 		return this;
 	}
 
-	public GlobalFsNodeDriver withUploadCaching(boolean caching) {
+	public LocalGlobalFsNode withUploadCaching(boolean caching) {
 		this.doesUploadCaching = caching;
 		return this;
 	}
 
-	public GlobalFsNodeDriver withoutCaching() {
+	public LocalGlobalFsNode withoutCaching() {
 		return withDownloadCaching(false);
 	}
 
-	public GlobalFsNodeDriver withLatencyMargin(Duration latencyMargin) {
+	public LocalGlobalFsNode withLatencyMargin(Duration latencyMargin) {
 		this.latencyMargin = latencyMargin;
 		return this;
 	}
@@ -115,7 +121,7 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 
 	@Override
 	public Promise<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit) {
-		Namespace.Filesystem fs = ensureFilesystem(path.toRepoID());
+		Repo fs = ensureRepo(path.toRepoID());
 		return fs.getMetadata(path.getPath())
 				.thenCompose(meta -> {
 					if (meta != null) {
@@ -123,7 +129,7 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 						return fs.download(path.getPath(), offset, limit);
 					}
 					logger.trace("Did not found own file at " + path + " at " + id + ", searching...");
-					return fs.ensureMasterNodes()
+					return fs.ensureRepoNodes()
 							.thenCompose(nodes ->
 									Promises.firstSuccessful(nodes.stream().map(node -> node.getMetadata(path)
 											.thenCompose(signedMeta -> {
@@ -152,19 +158,21 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 																					fs.pushMetadata(signedMeta)));
 														});
 											}))));
-				});
+				})
+				.whenComplete(toLogger(logger, "download", path, offset, limit));
 	}
 
 	@Override
 	public Promise<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset) {
-		if (managedPubKeys.contains(path.getOwner())) {
-			return ensureFilesystem(path.toRepoID()).upload(path, offset);
+		RepoID repoID = path.toRepoID();
+		if (managedRepos.contains(repoID)) {
+			return ensureRepo(repoID).upload(path, offset);
 		}
 		if (!searchingForUpload.add(path)) {
 			return Promise.ofException(RECURSIVE_UPLOAD_ERROR);
 		}
-		Namespace.Filesystem fs = ensureFilesystem(path.toRepoID());
-		return fs.ensureMasterNodes()
+		Repo repo = ensureRepo(repoID);
+		return repo.ensureRepoNodes()
 				.thenCompose(nodes -> {
 					if (!doesUploadCaching) {
 						return Promises.firstSuccessful(nodes
@@ -185,7 +193,7 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 											SerialSplitter<DataFrame> splitter = SerialSplitter.<DataFrame>create()
 													.withInput(buffer.getSupplier());
 
-											splitter.addOutput().set(SerialConsumer.ofPromise(fs.upload(path, offset)));
+											splitter.addOutput().set(SerialConsumer.ofPromise(repo.upload(path, offset)));
 											splitter.addOutput().set(consumer);
 
 											MaterializedPromise<Void> process = splitter.startProcess();
@@ -193,12 +201,13 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 											return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
 										});
 							}));
-				});
+				})
+				.whenComplete(toLogger(logger, "download", path, offset));
 	}
 
 	@Override
-	public Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID space, String glob) {
-		return ensureFilesystem(space).list(glob);
+	public Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID repo, String glob) {
+		return ensureRepo(repo).list(glob);
 	}
 
 	@Override
@@ -207,132 +216,145 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 		if (!signedMetadata.verify(pubKey)) {
 			return Promise.ofException(CANT_VERIFY_METADATA);
 		}
-		return ensureFilesystem(RepoID.of(pubKey, meta.getLocalPath().getFs())).pushMetadata(signedMetadata);
+		return ensureRepo(RepoID.of(pubKey, meta.getLocalPath().getFs())).pushMetadata(signedMetadata);
 	}
 
-	private Namespace ensureNamespace(PubKey key) {
-		return publicKeyGroups.computeIfAbsent(key, GlobalFsNodeDriver.Namespace::new);
+	private Repo ensureRepo(RepoID repoID) {
+		return ensureNamespace(repoID.getOwner()).ensureRepo(repoID);
 	}
 
-	private Namespace.Filesystem ensureFilesystem(RepoID space) {
-		return ensureNamespace(space.getOwner()).ensureFilesystem(space);
+	private Namespace ensureNamespace(PubKey owner) {
+		return namespaces.computeIfAbsent(owner, Namespace::new);
 	}
 
-	public Promise<Boolean> fetch(PubKey pubKey) {
-		logger.trace("Fetching from {}", pubKey);
-		return ensureNamespace(pubKey).fetch();
+	public Promise<Boolean> fetch(RepoID repoID) {
+		logger.trace("fetching from {}", repoID);
+		return ensureRepo(repoID).fetch();
 	}
 
-	public Promise<Boolean> fetchManaged() {
-		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), managedPubKeys.stream().map(pk -> fetch(pk).toTry()))
+	public Promise<Boolean> fetch() {
+		logger.info("fetching from managed repos");
+		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), managedRepos.stream().map(pk -> fetch(pk).toTry()))
 				.thenCompose(Promise::ofTry);
+	}
+
+	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpIteration));
+
+	public Promise<Void> catchUp() {
+		return catchUpImpl.get();
+	}
+
+	private void catchUpIteration(SettablePromise<Void> callback) {
+		long started = now.currentTimeMillis();
+		fetch()
+				.whenResult(didAnything -> {
+					long timestampEnd = now.currentTimeMillis();
+					if (!didAnything || timestampEnd - started > latencyMargin.toMillis()) {
+						callback.set(null);
+					} else {
+						catchUpIteration(callback);
+					}
+				});
 	}
 
 	class Namespace {
 		private final PubKey owner;
-		private final Map<RepoID, Filesystem> fileSystems = new HashMap<>();
+		private final Map<String, Repo> repos = new HashMap<>();
 
-		private final AsyncSupplier<Boolean> fetchImpl = reuse(this::doFetch);
+		private final Map<RawServerId, GlobalFsNode> masterNodes = new HashMap<>();
+		private long masterNodesLastDiscoveryTime;
+		private final AsyncSupplier<List<GlobalFsNode>> ensureMasterNodesImpl = reuse(this::doEnsureMasterNodes);
 
 		Namespace(PubKey owner) {
 			this.owner = owner;
 		}
 
-		public Filesystem ensureFilesystem(RepoID repo) {
-			return fileSystems.computeIfAbsent(repo, Filesystem::new);
+		public Repo ensureRepo(RepoID repo) {
+			return repos.computeIfAbsent(repo.getName(), $ -> new Repo(repo));
 		}
 
-		public Promise<Boolean> fetch() {
-			return fetchImpl.get();
+		public Promise<List<GlobalFsNode>> ensureMasterNodes() {
+			return ensureMasterNodesImpl.get();
 		}
 
-		private Promise<Boolean> doFetch() {
-			return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), fileSystems.values().stream().map(fs -> fs.fetch().toTry()))
-					.thenCompose(Promise::ofTry);
+		private Promise<List<GlobalFsNode>> ensureNodes(AsyncSupplier<Optional<SignedData<AnnounceData>>> find, Map<RawServerId, GlobalFsNode> nodes, long discoveryTime) {
+			if (discoveryTime > now.currentTimeMillis() - latencyMargin.toMillis()) {
+				return Promise.of(new ArrayList<>(nodes.values()));
+			}
+			return find.get()
+					.thenApply(announceData -> {
+						if (announceData.isPresent()) {
+							if (announceData.get().verify(owner)) {
+								Set<RawServerId> newServerIds = announceData.get().getData().getServerIds();
+								nodes.keySet().removeIf(id -> !newServerIds.contains(id));
+								newServerIds.forEach(id -> nodes.computeIfAbsent(id, nodeClientFactory::create));
+								nodes.remove(id);
+								return new ArrayList<>(nodes.values());
+							} else {
+								logger.warn("received announce data with invalid signature");
+							}
+						}
+						nodes.clear();
+						return emptyList();
+					});
 		}
 
-		class Filesystem {
+		private Promise<List<GlobalFsNode>> doEnsureMasterNodes() {
+			return ensureNodes(() -> discoveryService.find(owner), masterNodes, masterNodesLastDiscoveryTime)
+					.whenResult($ -> masterNodesLastDiscoveryTime = now.currentTimeMillis());
+		}
+
+		class Repo {
 			private final RepoID repoID;
 			private final FsClient folder;
 			private final MetadataStorage metadataStorage;
 			private final CheckpointStorage checkpointStorage;
-			private final Map<RawServerId, GlobalFsNode> masterNodes = new HashMap<>();
 
-			private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpIteration));
-			private final AsyncSupplier<List<GlobalFsNode>> ensureMasterNodesImpl = reuse(this::doEnsureMasterNodes);
+			private final Map<RawServerId, GlobalFsNode> specificNodes = new HashMap<>();
+			private long specificNodesLastDiscoveryTime;
+			private final AsyncSupplier<List<GlobalFsNode>> ensureSpecificNodesImpl = reuse(this::doEnsureSpecificNodes);
 
-			private long masterNodesLastDiscoveryTime;
-
-			CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
-
-			// region creators
-			Filesystem(RepoID repoID) {
+			Repo(RepoID repoID) {
 				this.repoID = repoID;
 				String name = repoID.getName();
-				String pubKeyStr = owner.asString();
+				String pubKeyStr = repoID.getOwner().asString();
 				this.folder = dataFsClient.subfolder(pubKeyStr).subfolder(name);
 				this.metadataStorage = new RemoteFsMetadataStorage(metadataFsClient.subfolder(pubKeyStr).subfolder(name));
 				this.checkpointStorage = new RemoteFsCheckpointStorage(checkpointFsClient.subfolder(pubKeyStr).subfolder(name));
 			}
-			// endregion
 
-			public Promise<Void> catchUp() {
-				return catchUpImpl.get();
+			public Promise<List<GlobalFsNode>> ensureRepoNodes() {
+				return ensureSpecificNodes()
+						.thenCompose(specificNodes -> specificNodes.isEmpty() ? ensureMasterNodes() : Promise.of(specificNodes));
 			}
 
-			private void catchUpIteration(SettablePromise<Void> callback) {
-				long started = now.currentTimeMillis();
-				fetch()
-						.whenResult(didAnything -> {
-							long timestampEnd = now.currentTimeMillis();
-							if (!didAnything || timestampEnd - started > latencyMargin.toMillis()) {
-								callback.set(null);
-							} else {
-								catchUpIteration(callback);
-							}
-						});
+			public Promise<List<GlobalFsNode>> ensureSpecificNodes() {
+				return ensureSpecificNodesImpl.get();
 			}
 
-			public Promise<List<GlobalFsNode>> ensureMasterNodes() {
-				return ensureMasterNodesImpl.get();
-			}
-
-			private Promise<List<GlobalFsNode>> doEnsureMasterNodes() {
-				if (masterNodesLastDiscoveryTime >= now.currentTimeMillis() - latencyMargin.toMillis()) {
-					return Promise.of(new ArrayList<>(masterNodes.values()));
-				}
-				return discoveryService.find(repoID)
-						.thenApply(announceData -> {
-							announceData.ifPresent(signedData -> {
-								if (signedData.verify(owner)) {
-									Set<RawServerId> newServerIds = signedData.getData().getServerIds();
-									masterNodes.keySet().removeIf(id -> !newServerIds.contains(id));
-									newServerIds.forEach(id -> masterNodes.computeIfAbsent(id, nodeFactory::create));
-									masterNodes.remove(id);
-									masterNodesLastDiscoveryTime = now.currentTimeMillis();
-								}
-							});
-							return new ArrayList<>(masterNodes.values());
-						});
+			private Promise<List<GlobalFsNode>> doEnsureSpecificNodes() {
+				return ensureNodes(() -> discoveryService.find(repoID), specificNodes, specificNodesLastDiscoveryTime)
+						.whenResult($ -> specificNodesLastDiscoveryTime = now.currentTimeMillis());
 			}
 
 			public Promise<Boolean> fetch() {
-				return ensureMasterNodes()
+				return ensureRepoNodes()
 						.thenCompose(nodes ->
-								Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), nodes.stream()
-										.map(node -> fetch(node).toTry())))
+								Promises.collectSequence(Try.reducer(false, (a, b) -> a || b),
+										nodes.stream().map(node -> fetch(node).toTry())))
 						.thenCompose(Promise::ofTry);
 			}
 
 			public Promise<Boolean> fetch(GlobalFsNode node) {
-				checkState(node != GlobalFsNodeDriver.this, "Trying to fetch from itself");
+				checkState(!node.getId().equals(id), "Trying to fetch from itself");
 
 				logger.trace("{} fetching from {}", repoID, node.getId());
 				return node.list(repoID, "**")
 						.thenCompose(files ->
 								Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), files.stream()
 										.map(signedMeta -> {
-											if (!signedMeta.verify(owner)) {
+											if (!signedMeta.verify(repoID.getOwner())) {
+												logger.warn("Received metadata with signature that is not verified, skipping {}", signedMeta.getData());
 												return Promise.of(false).toTry();
 											}
 											GlobalFsMetadata meta = signedMeta.getData();
@@ -361,7 +383,7 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 
 														long ourSize = ourFileMeta != null ? ourFileMeta.getSize() : 0;
 														long partSize = meta.getSize() - ourSize;
-														GlobalPath path = GlobalPath.of(owner, meta.getLocalPath().getFs(), fileName);
+														GlobalPath path = GlobalPath.of(repoID.getOwner(), meta.getLocalPath().getFs(), fileName);
 
 														// meta is newer but our size is bigger - someone truncated his file?
 														if (partSize <= 0) {
@@ -413,18 +435,23 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 							return download(fileName, ourSize, 0)
 									.thenCompose(supplier -> supplier.toCollector(toList()))
 									.thenCompose(frames2 -> {
-										// here we MUST have been landed on an checkpoint, or everything is broken
-										assert frames.size() == 1;
+										// here we MUST land on a checkpoint or everything is broken
+										assert frames2.size() == 1;
+
 										DataFrame ourLastFrame = frames2.get(0);
+
 										GlobalFsCheckpoint before = firstFrame.getCheckpoint().getData();
+
 										ByteBuf buf = secondFrame.getBuf();
 										int delta = (int) (ourSize - before.getPosition());
+
 										buf.moveReadPosition(delta);
-										return node.download(path, thirdFrame.getCheckpoint().getData().getPosition(), partSize - delta)
+
+										return node.download(path, thirdFrame.getCheckpoint().getData().getPosition(), partSize - buf.readRemaining())
 												.thenCompose(supplier ->
 														upload(path, ourSize)
 																.thenCompose(SerialSuppliers.concat(
-																		SerialSupplier.of(ourLastFrame, DataFrame.of(buf), thirdFrame),
+																		SerialSupplier.of(ourLastFrame, DataFrame.of(buf)),
 																		supplier
 																)::streamTo));
 									});
@@ -432,13 +459,13 @@ public final class GlobalFsNodeDriver implements GlobalFsNode, Initializable<Glo
 			}
 
 			public Promise<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset) {
-				logger.info("Uploading to local storage {}, offset: {}", path, offset);
+				logger.trace("uploading to local storage {}, offset: {}", path, offset);
 				return folder.upload(path.getPath(), offset)
-						.thenApply(consumer -> consumer.apply(new FramesIntoStorage(path.toLocalPath(), owner, checkpointStorage)));
+						.thenApply(consumer -> consumer.apply(new FramesIntoStorage(path.toLocalPath(), repoID.getOwner(), checkpointStorage)));
 			}
 
 			public Promise<SerialSupplier<DataFrame>> download(String fileName, long offset, long length) {
-				logger.info("Downloading local copy of {} at {}, offset: {}, length: {}", fileName, repoID, offset, length);
+				logger.trace("downloading local copy of {} at {}, offset: {}, length: {}", fileName, repoID, offset, length);
 				return checkpointStorage.getCheckpoints(fileName)
 						.thenCompose(checkpoints -> {
 							assert Arrays.equals(checkpoints, Arrays.stream(checkpoints).sorted().toArray()) : "Checkpoint array must be sorted!";

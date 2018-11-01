@@ -32,13 +32,15 @@ public final class FrameVerifier extends FramesToByteBufs {
 	private final long offset;
 	private final long endOffset;
 
-	// region creators
-	public FrameVerifier(LocalPath localPath, PubKey pubKey, long offset, long length) {
+	private FrameVerifier(LocalPath localPath, PubKey pubKey, long offset, long length) {
 		super(localPath, pubKey);
 		this.offset = offset;
 		this.endOffset = length == -1 ? Long.MAX_VALUE : offset + length;
 	}
-	// endregion
+
+	public static FrameVerifier create(LocalPath localPath, PubKey pubKey, long offset, long length) {
+		return new FrameVerifier(localPath, pubKey, offset, length);
+	}
 
 	@Override
 	protected Promise<Void> receiveByteBuffer(ByteBuf byteBuf) {

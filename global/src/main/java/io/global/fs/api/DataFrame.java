@@ -85,6 +85,6 @@ public final class DataFrame implements Recyclable, Sliceable<DataFrame> {
 	@Override
 	public String toString() {
 		assert !isBuf() || buf != null;
-		return "DataFrame{" + (isBuf() ? "buf=(size=" + buf.readRemaining() + ")" : "checkpoint=" + checkpoint) + '}';
+		return "DataFrame{" + (isBuf() ? "buf='" + buf + '\'' : "checkpoint=" + checkpoint) + '}';
 	}
 }
