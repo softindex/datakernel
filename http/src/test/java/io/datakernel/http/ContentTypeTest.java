@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,6 +57,14 @@ public class ContentTypeTest {
 		num = encodeAscii("1.0");
 		q = parseQ(num, 0, num.length);
 		assertEquals(100, q);
+
+		num = encodeAscii("1");
+		q = parseQ(num, 0, num.length);
+		assertEquals(100, q);
+
+		num = encodeAscii("0");
+		q = parseQ(num, 0, num.length);
+		assertEquals(0, q);
 	}
 
 	@Test

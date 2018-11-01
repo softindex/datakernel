@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.util.List;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.HttpUtils.skipSpaces;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AcceptMediaType {
 	public static final int DEFAULT_Q = 100;
@@ -48,6 +49,7 @@ public final class AcceptMediaType {
 	}
 
 	public static AcceptMediaType of(MediaType mime, int q) {
+		checkArgument(q >= 0 && q <= 100, "Cannot create AcceptMediaType with 'q' that is outside of bounds [0, 100]");
 		return new AcceptMediaType(mime, q);
 	}
 

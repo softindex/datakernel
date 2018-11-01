@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ import io.datakernel.exception.ParseException;
 import java.net.InetSocketAddress;
 
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
-import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
+import static io.datakernel.http.HttpUtils.decodeUnsignedInt;
 
 
 /**
@@ -145,7 +145,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			}
 		}
 
-		int statusCode = decodeDecimal(line.array(), sp1, sp2 - sp1);
+		int statusCode = decodeUnsignedInt(line.array(), sp1, sp2 - sp1);
 		if (!(statusCode >= 100 && statusCode < 600)) {
 			line.recycle();
 			throw new ParseException("Invalid HTTP Status Code " + statusCode);

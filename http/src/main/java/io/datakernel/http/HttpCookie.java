@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.Date;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.http.HttpUtils.decodeUnsignedInt;
 import static io.datakernel.http.HttpUtils.skipSpaces;
 
 // RFC 6265
@@ -388,7 +389,7 @@ public final class HttpCookie {
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException {
-						cookie.setMaxAge(decodeDecimal(bytes, start, end - start));
+						cookie.setMaxAge(decodeUnsignedInt(bytes, start, end - start));
 					}
 				};
 			case DOMAIN_HC:

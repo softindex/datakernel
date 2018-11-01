@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package io.datakernel.http;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
@@ -29,6 +28,7 @@ import io.datakernel.util.MemSize;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.GzipProcessorUtils.fromGzip;
 import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.http.HttpUtils.decodeUnsignedInt;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
@@ -222,7 +222,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		assert eventloop.inEventloopThread();
 
 		if (header == CONTENT_LENGTH) {
-			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.readPosition(), value.readRemaining());
+			contentLength = decodeUnsignedInt(value.array(), value.readPosition(), value.readRemaining());
 
 			if (contentLength > maxHttpMessageSize) {
 				value.recycle();

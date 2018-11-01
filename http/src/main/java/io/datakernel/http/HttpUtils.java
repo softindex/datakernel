@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,15 @@ import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.util.Map;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
-import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 
 /**
  * Util for working with {@link HttpRequest}
  */
 public final class HttpUtils {
+	public static final ParseException INVALID_Q_VALUE = new ParseException("Value of 'q' should start either from 0 or 1");
+	public static final ParseException ENCODE_NEGATIVE_VALUE = new ParseException("Trying to encode value that is less than 0");
+	public static final ParseException DECODE_NEGATIVE_VALUE = new ParseException("Trying to decode negative value");
 	private static final String ENCODING = "UTF-8";
 
 	public static InetAddress inetAddress(String host) {
@@ -92,7 +94,7 @@ public final class HttpUtils {
 					return false;
 				}
 				try {
-					v = decodeDecimal(bytes, start, i - start);
+					v = decodeUnsignedInt(bytes, start, i - start);
 				} catch (ParseException e) {
 					return false;
 				}
@@ -159,12 +161,14 @@ public final class HttpUtils {
 	static int parseQ(byte[] bytes, int pos, int length) throws ParseException {
 		if (bytes[pos] == '1') {
 			return 100;
-		} else {
+		} else if (bytes[pos] == '0') {
+			if (length == 1) return  0;
 			length = length > 4 ? 2 : length - 2;
-			int q = decodeDecimal(bytes, pos + 2, length);
+			int q = decodeUnsignedInt(bytes, pos + 2, length);
 			if (length == 1) q *= 10;
 			return q;
 		}
+		throw INVALID_Q_VALUE;
 	}
 
 	/**
@@ -216,6 +220,83 @@ public final class HttpUtils {
 		}
 	}
 
+	/**
+	 * Encodes non-negative decimal value into bytes and puts these bytes into an array starting from specified position.
+	 *
+	 * @param array array that will hold encoded bytes
+	 * @param pos   position from which encoded bytes will be put into array
+	 * @param value non-negative decimal value to be encoded
+	 * @return number of bytes that were put into array
+	 * @throws ParseException if value to be encoded is negative
+	 */
+	public static int encodeUnsignedDecimal(byte[] array, int pos, long value) throws ParseException {
+		if (value < 0) {
+			throw ENCODE_NEGATIVE_VALUE;
+		}
+		return encodeDecimal(array, pos, value);
+	}
 
+	/**
+	 * Decodes non-negative {@code int} value from byte array starting from specified position, with given length.
+	 *
+	 * @param array array that stores bytes to be decoded
+	 * @param pos   position from which to start decoding
+	 * @param len   number of bytes to be decoded
+	 * @return {@code int} value of number that has been encoded
+	 * @throws ParseException in case decoded value is out of bounds of type {@code int}, is negative, or in case
+	 *                        decimal value has been inproperly encoded
+	 */
+	public static int decodeUnsignedInt(byte[] array, int pos, int len) throws ParseException {
+		int offsetLeft = trimOffsetLeft(array, pos, len);
+		if (array[offsetLeft] == (byte) '-') {
+			throw DECODE_NEGATIVE_VALUE;
+		}
+		;
 
+		pos += offsetLeft;
+		len -= offsetLeft;
+		len -= trimOffsetRight(array, pos, len);
+		return decodeInt(array, pos, len);
+	}
+
+	/**
+	 * Decodes non-negative {@code long} value from byte array starting from specified position, with given length
+	 *
+	 * @param array array that stores bytes to be decoded
+	 * @param pos   position from which to start decoding
+	 * @param len   number of bytes to be decoded
+	 * @return {@code long} value of number that has been encoded
+	 * @throws ParseException in case decoded value is out of bounds of type {@code long}, is negative, or in case
+	 *                        decimal value has been inproperly encoded
+	 */
+	public static long decodeUnsignedLong(byte[] array, int pos, int len) throws ParseException {
+		int offsetLeft = trimOffsetLeft(array, pos, len);
+		if (array[offsetLeft] == (byte) '-') {
+			throw DECODE_NEGATIVE_VALUE;
+		}
+
+		pos += offsetLeft;
+		len -= offsetLeft;
+		len -= trimOffsetRight(array, pos, len);
+
+		return decodeLong(array, pos, len);
+	}
+
+	private static int trimOffsetLeft(byte[] array, int pos, int len) {
+		for (int i = 0; i < len; i++) {
+			if (array[pos + i] != SP && array[pos + i] != HT) {
+				return i;
+			}
+		}
+		return 0;
+	}
+
+	private static int trimOffsetRight(byte[] array, int pos, int len) {
+		for (int i = len - 1; i >= 0; i--) {
+			if (array[pos + i] != SP && array[pos + i] != HT) {
+				return len - i - 1;
+			}
+		}
+		return 0;
+	}
 }
