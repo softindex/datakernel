@@ -46,9 +46,7 @@ import org.junit.rules.TemporaryFolder;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.HashSet;
@@ -104,7 +102,7 @@ public class GlobalFsTest {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
 				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverId.getInetSocketAddress().getPort()))
-						.withManagedPubKeys(set(aliceFs, bobFs));
+						.withManagedPubKeys(set(alice.getPubKey(), bob.getPubKey()));
 			}
 		};
 	}
@@ -119,7 +117,7 @@ public class GlobalFsTest {
 		GlobalFsNode client = wrapWithHttpInterface(clientFactory.create(new RawServerId(new InetSocketAddress(12345))));
 
 		GlobalFsDriver driver = GlobalFsDriver.create(client, list(alice), randRange(25, 50));
-		FsClient adapter = driver.createClientFor(aliceFs);
+		FsClient adapter = driver.createClientFor(alice.getPubKey());
 
 		SerialSupplier.of(
 				ByteBuf.wrapForReading("hello, this is a test buffer data #01\n".getBytes(UTF_8)),
@@ -179,8 +177,8 @@ public class GlobalFsTest {
 		GlobalFsNode client = clientFactory.create(new RawServerId(new InetSocketAddress(12345)));
 
 		GlobalFsDriver driver = GlobalFsDriver.create(client, list(alice, bob), CheckpointPosStrategy.fixed(5));
-		FsClient adapted = driver.createClientFor(aliceFs);
-		FsClient other = driver.createClientFor(bobFs);
+		FsClient adapted = driver.createClientFor(alice.getPubKey());
+		FsClient other = driver.createClientFor(bob.getPubKey());
 
 		String content = "hello world, i am here!";
 
@@ -198,16 +196,17 @@ public class GlobalFsTest {
 	@Test
 	public void downloadOnlyCheckpoint() {
 		GlobalFsNode client = clientFactory.create(new RawServerId(new InetSocketAddress(12345)));
-		GlobalPath file = GlobalPath.of(aliceFs, "folder/test.txt");
 
 		String content = "little test content";
 
+		String filename = "folder/test.txt";
+
 		SerialSupplier.of(wrapUtf8(content))
-				.apply(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.fixed(4), file.toLocalPath(), 0, new SHA256Digest()))
-				.streamTo(client.uploader(file, -1))
+				.apply(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.fixed(4), filename, 0, new SHA256Digest()))
+				.streamTo(client.uploader(alice.getPubKey(), filename, -1))
 				.thenCompose($ -> client.pushMetadata(alice.getPubKey(),
-						SignedData.sign(GlobalFsMetadata.of(file.toLocalPath(), content.length(), System.currentTimeMillis()), alice.getPrivKey())))
-				.thenCompose($ -> client.download(file, 4, 0))
+						SignedData.sign(GlobalFsMetadata.of(filename, content.length(), System.currentTimeMillis()), alice.getPrivKey())))
+				.thenCompose($ -> client.download(alice.getPubKey(), filename, 4, 0))
 				.thenCompose(supplier -> supplier.toCollector(toList()))
 				.whenComplete(assertComplete(list -> {
 					System.out.println(list);
@@ -226,7 +225,7 @@ public class GlobalFsTest {
 		GlobalFsNode client = clientFactory.create(new RawServerId(new InetSocketAddress(12345)));
 
 		GlobalFsDriver driver = GlobalFsDriver.create(client, list(alice), fixed(5));
-		FsClient gateway = driver.createClientFor(aliceFs);
+		FsClient gateway = driver.createClientFor(alice.getPubKey());
 
 		SerialSupplier.of(wrapUtf8("first line of the content\n"))
 				.streamTo(gateway.uploadSerial("folder/test.txt"))
@@ -246,7 +245,7 @@ public class GlobalFsTest {
 		GlobalFsNode client = wrapWithHttpInterface(clientFactory.create(new RawServerId(new InetSocketAddress(12345))));
 
 		GlobalFsDriver driver = GlobalFsDriver.create(client, list(alice), fixed(5));
-		FsClient adapter = driver.createClientFor(aliceFs);
+		FsClient adapter = driver.createClientFor(alice.getPubKey());
 
 		String first = "Hello world, this is some bytes ";
 		String second = "to be sent through the GlobalFs HTTP interface";
@@ -274,11 +273,11 @@ public class GlobalFsTest {
 		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, list(alice), fixed(5));
 		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, list(alice), fixed(6));
 
-		FsClient firstAdapter = firstDriver.createClientFor(aliceFs);
-		FsClient secondAdapter = secondDriver.createClientFor(aliceFs);
+		FsClient firstAdapter = firstDriver.createClientFor(alice.getPubKey());
+		FsClient secondAdapter = secondDriver.createClientFor(alice.getPubKey());
 
 		String string = "hello, this is a test little string of bytes";
-		discoveryService.announceSpecific(aliceFs, AnnounceData.of(123, set(first, second)), alice.getPrivKey())
+		discoveryService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
 				.thenCompose($ -> firstAdapter.upload("test.txt"))
 				.thenCompose(SerialSupplier.of(wrapUtf8(string))::streamTo)
 				.thenCompose($ -> secondAdapter.download("test.txt"))
@@ -302,11 +301,11 @@ public class GlobalFsTest {
 		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, list(alice), fixed(5));
 		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, list(alice), fixed(6));
 
-		FsClient firstAdapter = firstDriver.createClientFor(aliceFs);
-		FsClient secondAdapter = secondDriver.createClientFor(aliceFs);
+		FsClient firstAdapter = firstDriver.createClientFor(alice.getPubKey());
+		FsClient secondAdapter = secondDriver.createClientFor(alice.getPubKey());
 
 		String string = "hello, this is a test little string of bytes";
-		discoveryService.announceSpecific(aliceFs, AnnounceData.of(123, set(first, second)), alice.getPrivKey())
+		discoveryService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
 				.thenCompose($ -> firstAdapter.upload("test.txt"))
 				.thenCompose(SerialSupplier.of(wrapUtf8(string))::streamTo)
 				.thenCompose($ -> rawSecondClient.fetch())
@@ -330,12 +329,12 @@ public class GlobalFsTest {
 		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, list(alice), fixed(5));
 		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, list(alice), fixed(6));
 
-		FsClient firstAdapter = firstDriver.createClientFor(aliceFs);
-		FsClient secondAdapter = secondDriver.createClientFor(aliceFs);
+		FsClient firstAdapter = firstDriver.createClientFor(alice.getPubKey());
+		FsClient secondAdapter = secondDriver.createClientFor(alice.getPubKey());
 
 		String part = "hello, this is a test little string of bytes";
 		String string = part + "\nwhich has a second line by the way, hello there";
-		discoveryService.announceSpecific(aliceFs, AnnounceData.of(123, set(first, second)), alice.getPrivKey())
+		discoveryService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
 				.thenCompose($ -> secondAdapter.upload("test.txt"))
 				.thenCompose(SerialSupplier.of(wrapUtf8(part))::streamTo)
 				.thenCompose($ -> firstAdapter.upload("test.txt"))
@@ -351,39 +350,39 @@ public class GlobalFsTest {
 
 	private GlobalFsNode wrapWithHttpInterface(GlobalFsNode node) {
 		GlobalFsNodeServlet servlet = new GlobalFsNodeServlet(node);
-		return new HttpGlobalFsNode(node.getId(), request -> {
+		return new HttpGlobalFsNode(request -> {
 			try {
 				return servlet.serve(request);
 			} catch (ParseException e) {
 				throw new AssertionError(e);
 			}
-		});
+		}, new InetSocketAddress(123));
 	}
 
 	@Test
 	@Ignore // requires launched discovery service and two nodes
-	public void uploadDownload() throws UnknownHostException {
+	public void uploadDownload() {
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 		DiscoveryService discoveryService = HttpDiscoveryService.create(new InetSocketAddress(9001), client);
 
-		RawServerId firstId = new RawServerId(new InetSocketAddress(InetAddress.getLocalHost(), 8001));
-		RawServerId secondId = new RawServerId(new InetSocketAddress(InetAddress.getLocalHost(), 8002));
+		RawServerId firstId = new RawServerId(new InetSocketAddress(8001));
+		RawServerId secondId = new RawServerId(new InetSocketAddress(8002));
 
-		GlobalFsNode firstClient = new HttpGlobalFsNode(firstId, client);
-		GlobalFsNode secondClient = new HttpGlobalFsNode(secondId, client);
+		GlobalFsNode firstClient = new HttpGlobalFsNode(client, firstId.getInetSocketAddress());
+		GlobalFsNode secondClient = new HttpGlobalFsNode(client, secondId.getInetSocketAddress());
 
 		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, list(alice), fixed(5));
 		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, list(alice), fixed(6));
 
-		FsClient firstAdapter = firstDriver.createClientFor(aliceFs);
-		FsClient secondAdapter = secondDriver.createClientFor(aliceFs);
+		FsClient firstAdapter = firstDriver.createClientFor(alice.getPubKey());
+		FsClient secondAdapter = secondDriver.createClientFor(alice.getPubKey());
 
 		String text1 = "Hello world, this is some bytes ";
 		String text2 = "to be sent through the GlobalFs HTTP interface";
 
 		SerialSupplier<ByteBuf> supplier = SerialSupplier.of(ByteBuf.wrapForReading(text1.getBytes(UTF_8)), ByteBuf.wrapForReading(text2.getBytes(UTF_8)));
 
-		discoveryService.append(aliceFs, AnnounceData.of(Instant.now().toEpochMilli(), set(firstId, secondId)), alice.getPrivKey())
+		discoveryService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(Instant.now().toEpochMilli(), set(firstId, secondId)), alice.getPrivKey()))
 				.whenResult($ -> System.out.println("Servers announced"))
 				.thenCompose($ -> firstAdapter.upload("test.txt"))
 				.thenCompose(supplier::streamTo)
@@ -413,8 +412,8 @@ public class GlobalFsTest {
 
 		eventloop.post(() ->
 				Promises.all(
-						discoveryService.announceSpecific(aliceFs, AnnounceData.of(123, servers), alice.getPrivKey()),
-						discoveryService.announceSpecific(bobFs, AnnounceData.of(234, servers), bob.getPrivKey())
+						discoveryService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(123, servers), alice.getPrivKey())),
+						discoveryService.announce(bob.getPubKey(), SignedData.sign(AnnounceData.of(234, servers), bob.getPrivKey()))
 				)
 						.whenComplete(assertComplete()));
 

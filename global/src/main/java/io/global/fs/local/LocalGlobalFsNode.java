@@ -44,6 +44,7 @@ import java.util.*;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.LogUtils.toLogger;
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 
 public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<LocalGlobalFsNode> {
@@ -201,7 +202,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 	@Override
 	public Promise<Void> pushMetadata(PubKey space, SignedData<GlobalFsMetadata> signedMetadata) {
-		GlobalFsMetadata meta = signedMetadata.getData();
 		if (!signedMetadata.verify(space)) {
 			return Promise.ofException(CANT_VERIFY_METADATA);
 		}
@@ -269,11 +269,14 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 		private Promise<Void> doRefreshAnnouncement() {
 			return discoveryService.find(space)
-					.whenResult(announcement -> {
-						if (announcement.getData().getTimestamp() > announceTimestamp) {
+					.thenComposeEx((announcement, e) -> {
+						if (e == null && announcement.getData().getTimestamp() > announceTimestamp) {
 							announceTimestamp = announcement.getData().getTimestamp();
 							announceServerIds = announcement.getData().getServerIds();
+						} else {
+							announceServerIds = emptySet();
 						}
+						return Promise.complete();
 					})
 					.toVoid();
 		}

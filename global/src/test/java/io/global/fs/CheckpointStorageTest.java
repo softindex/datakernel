@@ -19,7 +19,6 @@ package io.global.fs;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
-import io.global.common.Hash;
 import io.global.common.KeyPair;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -36,7 +35,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -75,12 +73,12 @@ public class CheckpointStorageTest {
 			digest3.update((byte) (i % 128));
 		}
 
-		Hash filenameHash = Hash.of("test.txt".getBytes(UTF_8));
+		String filename = "test.txt";
 
 		Promise.complete()
-				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(filenameHash, 567, digest1), keys.getPrivKey())))
-				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(filenameHash, 123, digest2), keys.getPrivKey())))
-				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(filenameHash, 321, digest3), keys.getPrivKey())))
+				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(filename, 567, digest1), keys.getPrivKey())))
+				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(filename, 123, digest2), keys.getPrivKey())))
+				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(GlobalFsCheckpoint.of(filename, 321, digest3), keys.getPrivKey())))
 				.thenCompose($ -> storage.getCheckpoints("test.txt"))
 				.whenResult(positions -> assertArrayEquals(new long[]{123, 321, 567}, positions))
 				.thenCompose($ -> storage.loadCheckpoint("test.txt", 321))

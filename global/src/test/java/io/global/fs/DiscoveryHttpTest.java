@@ -25,7 +25,6 @@ import io.global.common.api.DiscoveryService;
 import io.global.fs.http.DiscoveryServlet;
 import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.local.RuntimeDiscoveryService;
-import io.global.ot.api.RepoID;
 import org.junit.Rule;
 import org.junit.Test;
 import org.spongycastle.crypto.CryptoException;
@@ -60,39 +59,29 @@ public class DiscoveryHttpTest {
 		});
 
 		KeyPair alice = KeyPair.generate();
-		RepoID aliceTestFs = RepoID.of(alice, "testFs");
-
 		KeyPair bob = KeyPair.generate();
-		SimKey bobSimKey = SimKey.generate();
-		RepoID bobTestFs = RepoID.of(bob, "testFs");
 
+		SimKey bobSimKey = SimKey.generate();
 		Hash bobSimKeyHash = Hash.of(bobSimKey);
 
 		InetAddress localhost = InetAddress.getLocalHost();
 
 		AnnounceData testAnnounce = AnnounceData.of(123, set(new RawServerId(new InetSocketAddress(localhost, 123))));
 
-		clientService.announceSpecific(aliceTestFs, testAnnounce, alice.getPrivKey())
-				.thenCompose($ -> clientService.announceSpecific(bobTestFs, testAnnounce, bob.getPrivKey()))
+		clientService.announce(alice.getPubKey(), SignedData.sign(testAnnounce, alice.getPrivKey()))
+				.thenCompose($ -> clientService.announce(bob.getPubKey(), SignedData.sign(testAnnounce, bob.getPrivKey())))
 
-				.thenCompose($ -> clientService.findSpecific(aliceTestFs))
-				.whenComplete(assertComplete(data -> {
-					assertTrue(data.isPresent());
-					assertTrue(data.get().verify(alice.getPubKey()));
-				}))
+				.thenCompose($ -> clientService.find(alice.getPubKey()))
+				.whenComplete(assertComplete(data -> assertTrue(data.verify(alice.getPubKey()))))
 
-				.thenCompose($ -> clientService.findSpecific(bobTestFs))
-				.whenComplete(assertComplete(data -> {
-					assertTrue(data.isPresent());
-					assertTrue(data.get().verify(bob.getPubKey()));
-				}))
+				.thenCompose($ -> clientService.find(bob.getPubKey()))
+				.whenComplete(assertComplete(data -> assertTrue(data.verify(bob.getPubKey()))))
 
-				.thenCompose($ -> clientService.announceSpecific(aliceTestFs, AnnounceData.of(90, set()), alice.getPrivKey()))
-				.thenCompose($ -> clientService.findSpecific(aliceTestFs))
+				.thenCompose($ -> clientService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(90, set()), alice.getPrivKey())))
+				.thenCompose($ -> clientService.find(alice.getPubKey()))
 				.whenComplete(assertComplete(data -> {
-					assertTrue(data.isPresent());
-					assertTrue(data.get().verify(alice.getPubKey()));
-					assertEquals(123, data.get().getData().getTimestamp());
+					assertTrue(data.verify(alice.getPubKey()));
+					assertEquals(123, data.getData().getTimestamp());
 				}))
 
 				.thenCompose($ -> clientService.shareKey(bob, SharedSimKey.of(alice.getPubKey(), bobSimKey)))
