@@ -17,7 +17,6 @@
 package io.global.ot.stub;
 
 import io.datakernel.async.Promise;
-import io.global.common.RepoID;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 import io.global.ot.server.CommitStorage;

@@ -36,7 +36,6 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.PrivKey;
-import io.global.common.RepoID;
 import io.global.common.api.DiscoveryService;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
@@ -44,6 +43,7 @@ import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.RemoteFsServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.GlobalFsGatewayAdapter;
+import io.global.ot.api.RepoID;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;

@@ -24,6 +24,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.util.ParserFunction;
 import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
+import io.global.ot.api.RepoID;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofMemSizeAsLong;

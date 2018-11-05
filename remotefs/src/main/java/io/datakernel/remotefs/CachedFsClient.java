@@ -231,7 +231,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 				.thenApply(list -> {
 					Map<String, FileMetadata> mapOfMeta = new HashMap<>();
 					list.forEach(metaNew ->
-							mapOfMeta.compute(metaNew.getName(), (s, metaExisting) ->
+							mapOfMeta.compute(metaNew.getFilename(), (s, metaExisting) ->
 									FileMetadata.getMoreCompleteFile(metaExisting, metaNew)));
 					return new ArrayList<>(mapOfMeta.values());
 				});
@@ -246,7 +246,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	@Override
 	public Promise<Void> delete(String glob) {
 		return Promises.all(cacheClient.list(glob)
-						.whenResult(listOfMeta -> listOfMeta.forEach(meta -> cacheStats.remove(meta.getName())))
+						.whenResult(listOfMeta -> listOfMeta.forEach(meta -> cacheStats.remove(meta.getFilename())))
 						.thenApply(listOfMeta -> listOfMeta.stream().mapToLong(FileMetadata::getSize).sum())
 						.thenCompose(size -> cacheClient.delete(glob)
 								.thenApply($ -> size))
@@ -283,7 +283,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 				.thenApply(list -> list
 						.stream()
 						.map(metadata -> {
-							CacheStat cacheStat = cacheStats.get(metadata.getName());
+							CacheStat cacheStat = cacheStats.get(metadata.getFilename());
 							return cacheStat == null ?
 									new FullCacheStat(metadata, 0, 0) :
 									new FullCacheStat(metadata, cacheStat.numberOfHits, cacheStat.lastHitTimestamp);
@@ -295,10 +295,10 @@ public class CachedFsClient implements FsClient, EventloopService {
 						}))
 				.thenCompose(filesToDelete -> Promises.all(filesToDelete
 						.map(fullCacheStat -> cacheClient
-								.delete(fullCacheStat.getFileMetadata().getName())
+								.delete(fullCacheStat.getFileMetadata().getFilename())
 								.whenResult($ -> {
 									this.totalCacheSize -= fullCacheStat.getFileMetadata().getSize();
-									cacheStats.remove(fullCacheStat.getFileMetadata().getName());
+									cacheStats.remove(fullCacheStat.getFileMetadata().getFilename());
 								}))));
 	}
 

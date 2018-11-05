@@ -24,18 +24,18 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * This is a POJO for holding name, size and timestamp of some file
  */
 public class FileMetadata {
-	private final String name;
+	private final String filename;
 	private final long size;
 	private final long timestamp;
 
-	public FileMetadata(String name, long size, long timestamp) {
-		this.name = checkNotNull(name, "name");
+	public FileMetadata(String filename, long size, long timestamp) {
+		this.filename = checkNotNull(filename, "name");
 		this.size = size;
 		this.timestamp = timestamp;
 	}
 
-	public String getName() {
-		return name;
+	public String getFilename() {
+		return filename;
 	}
 
 	public long getSize() {
@@ -47,12 +47,12 @@ public class FileMetadata {
 	}
 
 	public boolean equalsIgnoringTimestamp(FileMetadata other) {
-		return name.equals(other.name) && size == other.size;
+		return filename.equals(other.filename) && size == other.size;
 	}
 
 	@Override
 	public String toString() {
-		return name + "(size=" + size + ", timestamp=" + timestamp + ')';
+		return filename + "(size=" + size + ", timestamp=" + timestamp + ')';
 	}
 
 	@Override
@@ -62,12 +62,12 @@ public class FileMetadata {
 
 		FileMetadata that = (FileMetadata) o;
 
-		return size == that.size && timestamp == that.timestamp && name.equals(that.name);
+		return size == that.size && timestamp == that.timestamp && filename.equals(that.filename);
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * (31 * name.hashCode() + (int) (size ^ (size >>> 32))) + (int) (timestamp ^ (timestamp >>> 32));
+		return 31 * (31 * filename.hashCode() + (int) (size ^ (size >>> 32))) + (int) (timestamp ^ (timestamp >>> 32));
 	}
 
 	@Nullable

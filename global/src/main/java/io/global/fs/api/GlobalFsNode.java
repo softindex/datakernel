@@ -21,8 +21,6 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.PubKey;
-import io.global.common.RawServerId;
-import io.global.common.RepoID;
 import io.global.common.SignedData;
 
 import java.util.List;
@@ -39,25 +37,23 @@ public interface GlobalFsNode {
 	StacklessException CANT_VERIFY_METADATA = new StacklessException(GlobalFsNode.class, "Failed to verify signature of the metadata.");
 	StacklessException FILE_NOT_FOUND = new StacklessException(GlobalFsNode.class, "Did not found the requested file on given node.");
 
-	RawServerId getId();
+	Promise<SerialConsumer<DataFrame>> upload(PubKey space, String filename, long offset);
 
-	Promise<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset);
-
-	default SerialConsumer<DataFrame> uploader(GlobalPath path, long offset) {
-		return SerialConsumer.ofPromise(upload(path, offset));
+	default SerialConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
+		return SerialConsumer.ofPromise(upload(space, filename, offset));
 	}
 
-	Promise<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit);
+	Promise<SerialSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit);
 
-	default SerialSupplier<DataFrame> downloader(GlobalPath path, long offset, long limit) {
-		return SerialSupplier.ofPromise(download(path, offset, limit));
+	default SerialSupplier<DataFrame> downloader(PubKey space, String filename, long offset, long limit) {
+		return SerialSupplier.ofPromise(download(space, filename, offset, limit));
 	}
 
-	default Promise<SignedData<GlobalFsMetadata>> getMetadata(GlobalPath path) {
-		return list(path.toRepoID(), escapeGlob(path.getPath())).thenApply(res -> res.size() == 1 ? res.get(0) : null);
+	default Promise<SignedData<GlobalFsMetadata>> getMetadata(PubKey space, String filename) {
+		return list(space, escapeGlob(filename)).thenApply(res -> res.size() == 1 ? res.get(0) : null);
 	}
 
-	Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID repo, String glob);
+	Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob);
 
 	Promise<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata);
 }

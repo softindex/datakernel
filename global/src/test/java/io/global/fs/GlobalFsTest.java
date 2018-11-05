@@ -26,7 +26,10 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ActivePromisesRule;
-import io.global.common.*;
+import io.global.common.KeyPair;
+import io.global.common.PrivKey;
+import io.global.common.RawServerId;
+import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.fs.api.*;
@@ -37,6 +40,7 @@ import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.LocalGlobalFsNode;
 import io.global.fs.local.RuntimeDiscoveryService;
 import io.global.fs.transformers.FrameSigner;
+import io.global.ot.api.RepoID;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.spongycastle.crypto.digests.SHA256Digest;
@@ -199,7 +203,7 @@ public class GlobalFsTest {
 		String content = "little test content";
 
 		SerialSupplier.of(wrapUtf8(content))
-				.apply(FrameSigner.create(file.toLocalPath(), 0, CheckpointPosStrategy.fixed(4), alice.getPrivKey(), new SHA256Digest()))
+				.apply(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.fixed(4), file.toLocalPath(), 0, new SHA256Digest()))
 				.streamTo(client.uploader(file, -1))
 				.thenCompose($ -> client.pushMetadata(alice.getPubKey(),
 						SignedData.sign(GlobalFsMetadata.of(file.toLocalPath(), content.length(), System.currentTimeMillis()), alice.getPrivKey())))

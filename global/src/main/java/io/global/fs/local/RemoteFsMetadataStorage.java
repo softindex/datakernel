@@ -46,7 +46,7 @@ public class RemoteFsMetadataStorage implements MetadataStorage {
 	@Override
 	public Promise<Void> store(SignedData<GlobalFsMetadata> signedMetadata) {
 		logger.trace("pushing {}", signedMetadata);
-		String path = signedMetadata.getData().getLocalPath().getPath();
+		String path = signedMetadata.getData().getFilename();
 		return fsClient.delete(escapeGlob(path))
 				.thenCompose($ -> fsClient.upload(path, 0)) // offset 0 because atst this same file could be fetched from another node too
 				.thenCompose(SerialSupplier.of(ByteBuf.wrapForReading(signedMetadata.toBytes()))::streamTo);
@@ -76,6 +76,6 @@ public class RemoteFsMetadataStorage implements MetadataStorage {
 	@Override
 	public Promise<List<SignedData<GlobalFsMetadata>>> list(String glob) {
 		return fsClient.list(glob)
-				.thenCompose(res -> Promises.collectSequence(toList(), res.stream().map(metameta -> load(metameta.getName()))));
+				.thenCompose(res -> Promises.collectSequence(toList(), res.stream().map(metameta -> load(metameta.getFilename()))));
 	}
 }

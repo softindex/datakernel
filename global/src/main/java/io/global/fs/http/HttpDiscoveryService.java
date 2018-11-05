@@ -19,10 +19,14 @@ package io.global.fs.http;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
+import io.datakernel.functional.Try;
 import io.datakernel.http.*;
 import io.datakernel.json.GsonAdapters;
 import io.datakernel.util.ParserFunction;
-import io.global.common.*;
+import io.global.common.Hash;
+import io.global.common.PubKey;
+import io.global.common.SharedSimKey;
+import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 
@@ -46,76 +50,50 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Promise<Void> announce(PubKey owner, SignedData<AnnounceData> announceData) {
+	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
 		return client.request(
 				HttpRequest.of(HttpMethod.PUT,
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(ANNOUNCE_ALL)
-								.appendPathPart(owner.asString())
+								.appendPathPart(space.asString())
 								.build())
 						.withBody(SIGNED_ANNOUNCE.toJson(announceData).getBytes(UTF_8)))
 				.thenCompose(response -> response.ensureStatusCode(201))
 				.toVoid();
 	}
 
-	@Override
-	public Promise<Void> announceSpecific(RepoID repo, SignedData<AnnounceData> announceData) {
-		return client.request(
-				HttpRequest.of(HttpMethod.PUT,
-						UrlBuilder.http()
-								.withAuthority(address)
-								.appendPathPart(ANNOUNCE)
-								.appendPathPart(repo.getOwner().asString())
-								.appendPathPart(repo.getName())
-								.build())
-						.withBody(SIGNED_ANNOUNCE.toJson(announceData).getBytes(UTF_8)))
-				.thenCompose(response -> response.ensureStatusCode(201))
-				.toVoid();
-	}
-
-	private <T> Promise<Optional<T>> parseOptionalResponse(HttpResponse response, ParserFunction<ByteBuf, T> from) {
+	private <T> Try<T> tryParseResponse(HttpResponse response, ParserFunction<ByteBuf, T> from) {
 		switch (response.getCode()) {
 			case 200:
 				try {
-					return Promise.of(Optional.of(from.parse(response.getBody())));
+					return Try.of(from.parse(response.getBody()));
 				} catch (ParseException e) {
-					return Promise.ofException(e);
+					return Try.ofException(e);
 				}
 			case 404:
-				return Promise.of(Optional.empty());
+				return Try.of(null);
 			default:
-				return Promise.ofException(HttpException.ofCode(response.getCode(), response.getBody().getString(UTF_8)));
+				return Try.ofException(HttpException.ofCode(response.getCode(), response.getBody().getString(UTF_8)));
 		}
 	}
 
 	@Override
-	public Promise<Optional<SignedData<AnnounceData>>> findSpecific(RepoID repoID) {
-		return client.requestWithResponseBody(Integer.MAX_VALUE,
-				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
-								.appendPathPart(FIND)
-								.appendPathPart(repoID.getOwner().asString())
-								.appendPathPart(repoID.getName())
-								.build()))
-				.thenCompose(response ->
-						parseOptionalResponse(response, body ->
-								GsonAdapters.fromJson(SIGNED_ANNOUNCE, body.asString(UTF_8))));
-	}
-
-	@Override
-	public Promise<Optional<SignedData<AnnounceData>>> find(PubKey owner) {
+	public Promise<SignedData<AnnounceData>> find(PubKey space) {
 		return client.requestWithResponseBody(Integer.MAX_VALUE,
 				HttpRequest.get(
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(FIND_ALL)
-								.appendPathPart(owner.asString())
+								.appendPathPart(space.asString())
 								.build()))
-				.thenCompose(response ->
-						parseOptionalResponse(response, body ->
-								GsonAdapters.fromJson(SIGNED_ANNOUNCE, body.asString(UTF_8))));
+				.thenCompose(response -> Promise.ofTry(
+						tryParseResponse(response,
+								body ->
+										GsonAdapters.fromJson(SIGNED_ANNOUNCE, body.asString(UTF_8)))
+								.flatMap(v -> v != null ?
+										Try.of(v) :
+										Try.ofException(NO_ANNOUNCE_DATE))));
 	}
 
 	@Override
@@ -143,8 +121,10 @@ public final class HttpDiscoveryService implements DiscoveryService {
 								.appendPathPart(receiver.asString())
 								.appendPathPart(hash.asString())
 								.build()))
-				.thenCompose(response ->
-						parseOptionalResponse(response, body ->
-								GsonAdapters.fromJson(SIGNED_SHARED_SIM_KEY, body.asString(UTF_8))));
+				.thenCompose(response -> Promise.ofTry(
+						tryParseResponse(response,
+								body ->
+										GsonAdapters.fromJson(SIGNED_SHARED_SIM_KEY, body.asString(UTF_8)))
+								.map(Optional::ofNullable)));
 	}
 }

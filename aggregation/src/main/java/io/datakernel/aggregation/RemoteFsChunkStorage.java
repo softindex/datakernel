@@ -216,12 +216,12 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 		return client.listLocal()
 				.thenCompose(list -> Promises.all(list.stream()
 						.filter(file -> {
-							if (!file.getName().endsWith(LOG)) {
+							if (!file.getFilename().endsWith(LOG)) {
 								return false;
 							}
 							C id;
 							try {
-								String filename = file.getName();
+								String filename = file.getFilename();
 								id = fromFileName(filename.substring(0, filename.length() - LOG.length()));
 							} catch (NumberFormatException e) {
 								cleanupWarnings.recordException(e);
@@ -244,11 +244,11 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 						.map(file -> {
 							if (logger.isTraceEnabled()) {
 								FileTime lastModifiedTime = FileTime.fromMillis(file.getTimestamp());
-								logger.trace("Delete file: {} with last modifiedTime: {}({} millis)", file.getName(),
+								logger.trace("Delete file: {} with last modifiedTime: {}({} millis)", file.getFilename(),
 										lastModifiedTime, lastModifiedTime.toMillis());
 							}
 							deleted[0]++;
-							return client.delete(file.getName());
+							return client.delete(file.getFilename());
 						}))
 						.whenResult($ -> {
 							cleanupPreservedFiles = preserveChunks.size();
@@ -265,7 +265,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 				.thenApply(list ->
 						list.stream()
 								.filter(file -> lastModified.test(file.getTimestamp()))
-								.map(FileMetadata::getName)
+								.map(FileMetadata::getFilename)
 								.filter(name -> name.endsWith(LOG) && filter.test(name))
 								.map(name -> Long.parseLong(name.substring(0, name.length() - LOG.length())))
 								.collect(Collectors.toSet()))

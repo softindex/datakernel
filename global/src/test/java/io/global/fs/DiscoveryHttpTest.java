@@ -25,6 +25,7 @@ import io.global.common.api.DiscoveryService;
 import io.global.fs.http.DiscoveryServlet;
 import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.local.RuntimeDiscoveryService;
+import io.global.ot.api.RepoID;
 import org.junit.Rule;
 import org.junit.Test;
 import org.spongycastle.crypto.CryptoException;

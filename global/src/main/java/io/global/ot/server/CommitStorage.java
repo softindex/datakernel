@@ -17,7 +17,6 @@
 package io.global.ot.server;
 
 import io.datakernel.async.Promise;
-import io.global.common.RepoID;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 

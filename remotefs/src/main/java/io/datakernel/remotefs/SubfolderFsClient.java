@@ -57,7 +57,7 @@ class SubfolderFsClient implements FsClient {
 				.thenApply(list ->
 						list.stream()
 								.map(meta -> new FileMetadata(
-										meta.getName().substring(folder.length()),
+										meta.getFilename().substring(folder.length()),
 										meta.getSize(),
 										meta.getTimestamp()))
 								.collect(toList()));

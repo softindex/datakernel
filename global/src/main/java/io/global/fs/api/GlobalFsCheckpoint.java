@@ -19,43 +19,45 @@ package io.global.fs.api;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
-import io.global.common.*;
-import io.global.ot.util.BinaryDataFormats;
+import io.global.common.ByteArrayIdentity;
+import io.global.common.CryptoUtils;
+import io.global.common.PubKey;
+import io.global.common.SignedData;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.Arrays;
 
-import static io.global.ot.util.BinaryDataFormats.sizeof;
+import static io.global.ot.util.BinaryDataFormats.*;
 
 public final class GlobalFsCheckpoint implements ByteArrayIdentity {
 	private final byte[] bytes;
 
+	private final String filename;
 	private final long position;
 	private final SHA256Digest digest;
-	private final Hash localPathHash;
 
-	private GlobalFsCheckpoint(byte[] bytes, long position, SHA256Digest digest, Hash localPathHash) {
+	private GlobalFsCheckpoint(byte[] bytes, String filename, long position, SHA256Digest digest) {
 		this.bytes = bytes;
+		this.filename = filename;
 		this.position = position;
 		this.digest = digest;
-		this.localPathHash = localPathHash;
 	}
 
 	public static GlobalFsCheckpoint ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
+		String filename = readString(buf);
 		long position = buf.readLong();
-		byte[] digestState = BinaryDataFormats.readBytes(buf);
-		Hash localPathHash = BinaryDataFormats.read(buf, Hash::ofBytes);
-		return new GlobalFsCheckpoint(bytes, position, CryptoUtils.ofSha256PackedState(digestState, position), localPathHash);
+		byte[] digestState = readBytes(buf);
+		return new GlobalFsCheckpoint(bytes, filename, position, CryptoUtils.ofSha256PackedState(digestState, position));
 	}
 
-	public static GlobalFsCheckpoint of(long position, SHA256Digest digest, Hash localPathHash) {
+	public static GlobalFsCheckpoint of(String filename, long position, SHA256Digest digest) {
 		byte[] digestState = CryptoUtils.toSha256PackedState(digest);
-		ByteBuf buf = ByteBufPool.allocate(8 + sizeof(digestState) + sizeof(localPathHash));
+		ByteBuf buf = ByteBufPool.allocate(8 + sizeof(digestState) + sizeof(filename));
+		writeString(buf, filename);
 		buf.writeLong(position);
-		BinaryDataFormats.writeBytes(buf, digestState);
-		BinaryDataFormats.write(buf, localPathHash);
-		return new GlobalFsCheckpoint(buf.asArray(), position, digest, localPathHash);
+		writeBytes(buf, digestState);
+		return new GlobalFsCheckpoint(buf.asArray(), filename, position, digest);
 	}
 
 	public enum CheckpointVerificationResult {
@@ -72,7 +74,7 @@ public final class GlobalFsCheckpoint implements ByteArrayIdentity {
 		}
 	}
 
-	public static CheckpointVerificationResult verify(SignedData<GlobalFsCheckpoint> signedCheckpoint, PubKey pubKey, long position, SHA256Digest digest, Hash localPathHash) {
+	public static CheckpointVerificationResult verify(SignedData<GlobalFsCheckpoint> signedCheckpoint, PubKey pubKey, long position, SHA256Digest digest, String filename) {
 		if (!signedCheckpoint.verify(pubKey)) {
 			return CheckpointVerificationResult.SIGNATURE_FAIL;
 		}
@@ -80,7 +82,7 @@ public final class GlobalFsCheckpoint implements ByteArrayIdentity {
 		if (checkpoint.position != position) {
 			return CheckpointVerificationResult.POSITION_FAIL;
 		}
-		if (!checkpoint.localPathHash.equals(localPathHash)) {
+		if (!filename.equals(checkpoint.filename)) {
 			return CheckpointVerificationResult.FILENAME_FAIL;
 		}
 		if (!CryptoUtils.areEqual(checkpoint.digest, digest)) {
@@ -133,8 +135,8 @@ public final class GlobalFsCheckpoint implements ByteArrayIdentity {
 		return digest;
 	}
 
-	public Hash getLocalPathHash() {
-		return localPathHash;
+	public String getFilename() {
+		return filename;
 	}
 
 	@Override

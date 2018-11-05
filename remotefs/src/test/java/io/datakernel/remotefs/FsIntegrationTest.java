@@ -329,7 +329,7 @@ public class FsIntegrationTest {
 
 		eventloop.run();
 
-		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getName);
+		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getFilename);
 		actual.sort(comparator);
 		expected.sort(comparator);
 
@@ -371,7 +371,7 @@ public class FsIntegrationTest {
 
 		eventloop.run();
 
-		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getName);
+		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getFilename);
 		actual.sort(comparator);
 		expected.sort(comparator);
 		actual2.sort(comparator);

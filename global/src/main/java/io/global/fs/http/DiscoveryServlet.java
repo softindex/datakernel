@@ -22,7 +22,10 @@ import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
-import io.global.common.*;
+import io.global.common.Hash;
+import io.global.common.PubKey;
+import io.global.common.SharedSimKey;
+import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 
@@ -31,7 +34,6 @@ import java.util.List;
 
 import static io.datakernel.json.GsonAdapters.ofList;
 import static io.global.common.GlobalJsonAdapters.*;
-import static io.global.fs.util.HttpDataFormats.parseRepoID;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class DiscoveryServlet implements AsyncServlet {
@@ -64,35 +66,13 @@ public final class DiscoveryServlet implements AsyncServlet {
 							.thenApply($ -> HttpResponse.ok201());
 
 				})
-				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner/:name", request -> {
-					RepoID repoID = parseRepoID(request);
-					return request.getBodyPromise(Integer.MAX_VALUE)
-							.thenCompose(body -> {
-								try {
-									return discoveryService.announceSpecific(repoID, SIGNED_ANNOUNCE.fromJson(body.asString(UTF_8)));
-								} catch (IOException e) {
-									return Promise.ofException(e);
-								}
-							})
-							.thenApply($ -> HttpResponse.ok201());
-
-				})
-				.with(HttpMethod.GET, "/" + FIND + "/:owner/:name", request ->
-						discoveryService.findSpecific(parseRepoID(request))
-								.thenCompose(data -> data
-										.map(signedData ->
-												(Promise<HttpResponse>) Promise.of(HttpResponse.ok200()
-														.withBody(SIGNED_ANNOUNCE.toJson(signedData).getBytes(UTF_8))))
-										.orElseGet(() ->
-												Promise.ofException(HttpException.notFound404()))))
 				.with(HttpMethod.GET, "/" + FIND_ALL + "/:owner", request ->
 						discoveryService.find(PubKey.fromString(request.getPathParameter("owner")))
-								.thenCompose(data -> data
-										.map(signedData ->
-												(Promise<HttpResponse>) Promise.of(HttpResponse.ok200()
-														.withBody(SIGNED_ANNOUNCE.toJson(signedData).getBytes(UTF_8))))
-										.orElseGet(() ->
-												Promise.ofException(HttpException.notFound404()))))
+								.thenComposeEx((data, e) ->
+										e == null ?
+												Promise.of(HttpResponse.ok200()
+														.withBody(SIGNED_ANNOUNCE.toJson(data).getBytes(UTF_8))) :
+												Promise.ofException(HttpException.notFound404())))
 				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:owner", request -> {
 					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
 					return request.getBodyPromise(Integer.MAX_VALUE)

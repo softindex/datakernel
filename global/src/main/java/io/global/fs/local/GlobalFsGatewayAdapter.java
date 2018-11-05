@@ -29,9 +29,11 @@ import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Initializable;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
-import io.global.common.RepoID;
 import io.global.common.SignedData;
-import io.global.fs.api.*;
+import io.global.fs.api.CheckpointPosStrategy;
+import io.global.fs.api.GlobalFsCheckpoint;
+import io.global.fs.api.GlobalFsMetadata;
+import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameSigner;
 import io.global.fs.transformers.FrameVerifier;
 import org.spongycastle.crypto.digests.SHA256Digest;
@@ -49,26 +51,25 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 	private final GlobalFsDriver driver;
 
 	private final GlobalFsNode node;
-	private final RepoID repoID;
 	private final PubKey pubKey;
 	private final PrivKey privKey;
 
 	private final CheckpointPosStrategy checkpointPosStrategy;
-	private final CurrentTimeProvider timeProvider = CurrentTimeProvider.ofSystem();
 
-	GlobalFsGatewayAdapter(GlobalFsDriver driver, GlobalFsNode node, RepoID repoID, PrivKey privKey, CheckpointPosStrategy checkpointPosStrategy) {
+	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
+
+	GlobalFsGatewayAdapter(GlobalFsDriver driver, GlobalFsNode node,
+			PubKey pubKey, PrivKey privKey,
+			CheckpointPosStrategy checkpointPosStrategy) {
 		this.driver = driver;
 		this.node = node;
-		this.repoID = repoID;
+		this.pubKey = pubKey;
 		this.privKey = privKey;
 		this.checkpointPosStrategy = checkpointPosStrategy;
-		pubKey = repoID.getOwner();
 	}
 
 	@Override
 	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
-		GlobalPath path = GlobalPath.of(repoID, filename);
-
 		long normalizedOffset = offset == -1 ? 0 : offset;
 		long[] size = {normalizedOffset};
 		long[] toSkip = {0};
@@ -78,13 +79,13 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 		// but we simply skip the prefix to not (potentially) send it over the network
 		// and also getting the proper digest for checkpoints ofc
 
-		return node.getMetadata(path)
+		return node.getMetadata(pubKey, filename)
 				.thenCompose(signedMeta -> {
 					if (signedMeta == null) {
 						digest[0] = new SHA256Digest();
 						return Promise.complete();
 					}
-					if (!signedMeta.verify(path.getOwner())) {
+					if (!signedMeta.verify(pubKey)) {
 						return Promise.ofException(METADATA_SIG);
 					}
 
@@ -94,14 +95,14 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 						return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "Trying to upload at offset greater than the file size"));
 					}
 					toSkip[0] = metaSize - offset;
-					return node.download(path, metaSize, 0)
+					return node.download(pubKey, filename, metaSize, 0)
 							.thenCompose(supplier -> supplier.toCollector(toList()))
 							.thenCompose(frames -> {
 								if (frames.size() != 1) {
 									return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "No checkpoint at metadata size position!"));
 								}
 								SignedData<GlobalFsCheckpoint> checkpoint = frames.get(0).getCheckpoint();
-								if (!checkpoint.verify(path.getOwner())) {
+								if (!checkpoint.verify(pubKey)) {
 									return Promise.ofException(CHECKPOINT_SIG);
 								}
 								digest[0] = checkpoint.getData().getDigest();
@@ -109,16 +110,15 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 							});
 				})
 				.thenCompose($ ->
-						node.upload(path, offset != -1 ? offset + toSkip[0] : offset)
+						node.upload(pubKey, filename, offset != -1 ? offset + toSkip[0] : offset)
 								.thenApply(consumer -> {
-									LocalPath localPath = path.toLocalPath();
 									return consumer
-											.apply(FrameSigner.create(localPath, normalizedOffset + toSkip[0], checkpointPosStrategy, privKey, digest[0]))
+											.apply(FrameSigner.create(privKey, checkpointPosStrategy, filename, normalizedOffset + toSkip[0], digest[0]))
 											.apply(SerialByteBufCutter.create(toSkip[0]))
 											.peek(buf -> size[0] += buf.readRemaining())
 											.withAcknowledgement(ack -> ack
 													.thenCompose($2 -> {
-														GlobalFsMetadata meta = GlobalFsMetadata.of(localPath, size[0], timeProvider.currentTimeMillis());
+														GlobalFsMetadata meta = GlobalFsMetadata.of(filename, size[0], now.currentTimeMillis());
 														return node.pushMetadata(pubKey, SignedData.sign(meta, privKey));
 													}));
 								}));
@@ -126,23 +126,22 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 
 	@Override
 	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long limit) {
-		GlobalPath path = GlobalPath.of(repoID, filename);
-		return node.download(path, offset, limit)
-				.thenApply(supplier -> supplier.apply(FrameVerifier.create(path.toLocalPath(), path.getOwner(), offset, limit)));
+		return node.download(pubKey, filename, offset, limit)
+				.thenApply(supplier -> supplier.apply(FrameVerifier.create(pubKey, filename, offset, limit)));
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
-		return node.list(repoID, glob)
+		return node.list(pubKey, glob)
 				.thenApply(res -> res.stream()
-						.filter(signedMeta -> signedMeta.verify(repoID.getOwner()))
+						.filter(signedMeta -> signedMeta.verify(pubKey))
 						.map(signedMeta -> signedMeta.getData().toFileMetadata())
 						.collect(toList()));
 	}
 
 	@Override
 	public Promise<Void> delete(String glob) {
-		return node.list(repoID, glob)
+		return node.list(pubKey, glob)
 				.thenCompose(list ->
 						Promises.all(list.stream()
 								.filter(signedMeta -> signedMeta.verify(pubKey))

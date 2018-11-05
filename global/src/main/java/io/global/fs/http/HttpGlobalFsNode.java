@@ -31,13 +31,10 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialZeroBuffer;
 import io.global.common.PubKey;
-import io.global.common.RawServerId;
-import io.global.common.RepoID;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsMetadata;
 import io.global.fs.api.GlobalFsNode;
-import io.global.fs.api.GlobalPath;
 import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
 
@@ -49,33 +46,25 @@ import static io.global.fs.http.GlobalFsNodeServlet.*;
 import static java.util.stream.Collectors.toList;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {
-	private final RawServerId id;
 	private final InetSocketAddress address;
 	private final IAsyncHttpClient client;
 
 	// region creators
-	public HttpGlobalFsNode(RawServerId id, IAsyncHttpClient client) {
-		this.id = id;
+	public HttpGlobalFsNode(IAsyncHttpClient client, InetSocketAddress address) {
 		this.client = client;
-		this.address = id.getInetSocketAddress();
+		this.address = address;
 	}
 	// endregion
 
 	@Override
-	public RawServerId getId() {
-		return id;
-	}
-
-	@Override
-	public Promise<SerialSupplier<DataFrame>> download(GlobalPath path, long offset, long limit) {
+	public Promise<SerialSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
 		return client.request(
 				HttpRequest.get(
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(DOWNLOAD)
-								.appendPathPart(path.getOwner().asString())
-								.appendPathPart(path.getFs())
-								.appendPath(path.getPath())
+								.appendPathPart(space.asString())
+								.appendPath(filename)
 								.appendQuery("range", offset + (limit != -1 ? "-" + (offset + limit) : ""))
 								.build()))
 				.thenApply(response -> {
@@ -87,15 +76,14 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public SerialConsumer<DataFrame> uploader(GlobalPath path, long offset) {
+	public SerialConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
 		SerialZeroBuffer<DataFrame> buffer = new SerialZeroBuffer<>();
 		MaterializedPromise<HttpResponse> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(UPLOAD)
-						.appendPathPart(path.getOwner().asString())
-						.appendPathPart(path.getFs())
-						.appendPath(path.getPath())
+						.appendPathPart(space.asString())
+						.appendPath(filename)
 						.appendQuery("offset", "" + offset)
 						.build())
 				.withBodyStream(buffer.getSupplier().apply(new FrameEncoder())))
@@ -104,19 +92,17 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public Promise<SerialConsumer<DataFrame>> upload(GlobalPath path, long offset) {
-		return Promise.of(uploader(path, offset));
+	public Promise<SerialConsumer<DataFrame>> upload(PubKey space, String filename, long offset) {
+		return Promise.of(uploader(space, filename, offset));
 	}
 
 	@Override
-	public Promise<List<SignedData<GlobalFsMetadata>>> list(RepoID repo, String glob) {
-		PubKey pubKey = repo.getOwner();
+	public Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob) {
 		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(LIST)
-						.appendPathPart(pubKey.asString())
-						.appendPathPart(repo.getName())
+						.appendPathPart(space.asString())
 						.appendQuery("glob", glob)
 						.build()))
 				.thenCompose(response ->

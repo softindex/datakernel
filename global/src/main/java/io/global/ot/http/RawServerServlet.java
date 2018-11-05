@@ -28,11 +28,11 @@ import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.processor.SerialByteChunker;
 import io.datakernel.util.MemSize;
 import io.global.common.PubKey;
-import io.global.common.RepoID;
 import io.global.common.SignedData;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RawServer;
 import io.global.ot.api.RawSnapshot;
+import io.global.ot.api.RepoID;
 import io.global.ot.util.BinaryDataFormats;
 import io.global.ot.util.HttpDataFormats;
 

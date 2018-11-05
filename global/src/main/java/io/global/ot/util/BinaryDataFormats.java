@@ -23,8 +23,6 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.util.ParserFunction;
 import io.global.common.*;
-import io.global.fs.api.GlobalPath;
-import io.global.fs.api.LocalPath;
 import io.global.ot.api.*;
 import org.spongycastle.math.ec.ECPoint;
 
@@ -297,22 +295,6 @@ public final class BinaryDataFormats {
 	}
 	// endregion
 
-	// region GlobalPath
-	public static int sizeof(GlobalPath globalPath) {
-		return sizeof(globalPath.getOwner()) + sizeof(globalPath.getFs()) + sizeof(globalPath.getPath());
-	}
-
-	public static void writeGlobalPath(ByteBuf buf, GlobalPath globalPath) {
-		writePubKey(buf, globalPath.getOwner());
-		writeString(buf, globalPath.getFs());
-		writeString(buf, globalPath.getPath());
-	}
-
-	public static GlobalPath readGlobalPath(ByteBuf buf) throws ParseException {
-		return GlobalPath.of(readRepoID(buf), readString(buf));
-	}
-	// endregion
-
 	// region RepoID
 	public static int sizeof(RepoID repoID) {
 		return sizeof(repoID.getOwner()) + sizeof(repoID.getName());
@@ -328,28 +310,13 @@ public final class BinaryDataFormats {
 	}
 	// endregion
 
-	// region LocalPath
-	public static int sizeof(LocalPath localPath) {
-		return sizeof(localPath.getFs()) + sizeof(localPath.getPath());
-	}
-
-	public static void writeLocalPath(ByteBuf buf, LocalPath localPath) {
-		writeString(buf, localPath.getFs());
-		writeString(buf, localPath.getPath());
-	}
-
-	public static LocalPath readLocalPath(ByteBuf buf) throws ParseException {
-		return LocalPath.of(readString(buf), readString(buf));
-	}
-	// endregion
-
 	// region FileMetadata
 	public static int sizeof(FileMetadata metadata) {
-		return sizeof(metadata.getName()) + 9 + 8;
+		return sizeof(metadata.getFilename()) + 9 + 8;
 	}
 
 	public static void writeFileMetadata(ByteBuf buf, FileMetadata metadata) {
-		writeString(buf, metadata.getName());
+		writeString(buf, metadata.getFilename());
 		buf.writeVarLong(metadata.getSize());
 		buf.writeLong(metadata.getTimestamp());
 	}

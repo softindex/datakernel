@@ -322,7 +322,7 @@ public class TestLocalFsClient {
 		client.list().whenComplete(assertComplete(actual::addAll));
 		eventloop.run();
 
-		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getName);
+		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getFilename);
 		expected.sort(comparator);
 		actual.sort(comparator);
 
@@ -346,7 +346,7 @@ public class TestLocalFsClient {
 		client.list("2/*/*.txt").whenComplete(assertComplete(actual::addAll));
 		eventloop.run();
 
-		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getName);
+		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getFilename);
 		expected.sort(comparator);
 		actual.sort(comparator);
 

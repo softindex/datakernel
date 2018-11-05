@@ -21,8 +21,6 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import io.global.common.api.AnnounceData;
 import io.global.fs.api.GlobalFsMetadata;
-import io.global.fs.api.GlobalPath;
-import io.global.fs.api.LocalPath;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -71,39 +69,6 @@ public final class GlobalJsonAdapters {
 		GLOBAL_PATH_PROPS.put("path", STRING_JSON);
 	}
 
-	@SuppressWarnings("unchecked")
-	public static final TypeAdapter<GlobalPath> GLOBAL_PATH =
-			transform(ofHeterogeneousMap(GLOBAL_PATH_PROPS),
-					data -> GlobalPath.of((PubKey) data.get("owner"), (String) data.get("fs"), (String) data.get("path")),
-					globalPath -> {
-						Map<String, Object> map = new HashMap<>();
-						map.put("owner", globalPath.getOwner());
-						map.put("fs", globalPath.getFs());
-						map.put("path", globalPath.getPath());
-						return map;
-					});
-	// endregion
-
-	// region RepoID
-	private static final Map<String, TypeAdapter<?>> REPO_ID_PROPS = new HashMap<>();
-
-	static {
-		REPO_ID_PROPS.put("owner", PUB_KEY);
-		REPO_ID_PROPS.put("name", STRING_JSON);
-	}
-
-	@SuppressWarnings("unchecked")
-	public static final TypeAdapter<RepoID> REPO_ID =
-			transform(ofHeterogeneousMap(REPO_ID_PROPS),
-					data -> RepoID.of((PubKey) data.get("owner"), (String) data.get("name")),
-					globalPath -> {
-						Map<String, Object> map = new HashMap<>();
-						map.put("owner", globalPath.getOwner());
-						map.put("name", globalPath.getName());
-						return map;
-					});
-	// endregion
-
 	// region LocalPath
 	private static final Map<String, TypeAdapter<?>> LOCAL_PATH_PROPS = new HashMap<>();
 
@@ -112,33 +77,21 @@ public final class GlobalJsonAdapters {
 		LOCAL_PATH_PROPS.put("path", STRING_JSON);
 	}
 
-	@SuppressWarnings("unchecked")
-	public static final TypeAdapter<LocalPath> LOCAL_PATH =
-			transform(ofHeterogeneousMap(LOCAL_PATH_PROPS),
-					data -> LocalPath.of((String) data.get("fs"), (String) data.get("path")),
-					localPath -> {
-						Map<String, Object> map = new HashMap<>();
-						map.put("fs", localPath.getFs());
-						map.put("path", localPath.getPath());
-						return map;
-					});
-	// endregion
-
 	// region GlobalFsMetadata
 	private static final Map<String, TypeAdapter<?>> GLOBAL_FS_METADATA_PROPS = new HashMap<>();
 
 	static {
-		GLOBAL_FS_METADATA_PROPS.put("localPath", LOCAL_PATH);
+		GLOBAL_FS_METADATA_PROPS.put("filename", STRING_JSON);
 		GLOBAL_FS_METADATA_PROPS.put("size", LONG_JSON);
 		GLOBAL_FS_METADATA_PROPS.put("revision", LONG_JSON);
 	}
 
 	public static final TypeAdapter<GlobalFsMetadata> GLOBAL_FS_METADATA =
 			transform(ofHeterogeneousMap(GLOBAL_FS_METADATA_PROPS),
-					data -> GlobalFsMetadata.of((LocalPath) data.get("localPath"), (Long) data.get("size"), (Long) data.get("revision")),
+					data -> GlobalFsMetadata.of((String) data.get("filename"), (Long) data.get("size"), (Long) data.get("revision")),
 					meta -> {
 						Map<String, Object> map = new HashMap<>();
-						map.put("localPath", meta.getLocalPath());
+						map.put("filename", meta.getFilename());
 						map.put("size", meta.getSize());
 						map.put("revision", meta.getRevision());
 						return map;

@@ -18,13 +18,11 @@ package io.global.fs.transformers;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.global.common.Hash;
 import io.global.common.PrivKey;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
-import io.global.fs.api.LocalPath;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 /**
@@ -34,23 +32,25 @@ import org.spongycastle.crypto.digests.SHA256Digest;
  * It's counterpart is the {@link FrameVerifier}.
  */
 public final class FrameSigner extends ByteBufsToFrames {
-	private final Hash localPathHash;
+	private final String filename;
 	private final CheckpointPosStrategy checkpointPosStrategy;
 	private final PrivKey privateKey;
 	private final SHA256Digest digest;
 
 	private boolean lastPostedCheckpoint = false;
 
-	private FrameSigner(LocalPath localPath, long offset, CheckpointPosStrategy checkpointPosStrategy, PrivKey privateKey, SHA256Digest digest) {
+	private FrameSigner(PrivKey privateKey, CheckpointPosStrategy checkpointPosStrategy,
+			String filename, long offset, SHA256Digest digest) {
 		super(offset);
-		this.localPathHash = localPath.hash();
+		this.filename = filename;
 		this.checkpointPosStrategy = checkpointPosStrategy;
 		this.privateKey = privateKey;
 		this.digest = digest;
 	}
 
-	public static FrameSigner create(LocalPath localPath, long offset, CheckpointPosStrategy checkpointPosStrategy, PrivKey privateKey, SHA256Digest digest) {
-		return new FrameSigner(localPath, offset, checkpointPosStrategy, privateKey, digest);
+	public static FrameSigner create(PrivKey privateKey, CheckpointPosStrategy checkpointPosStrategy,
+			String filename, long offset, SHA256Digest digest) {
+		return new FrameSigner(privateKey, checkpointPosStrategy, filename, offset, digest);
 	}
 
 	@Override
@@ -64,7 +64,7 @@ public final class FrameSigner extends ByteBufsToFrames {
 	@Override
 	protected Promise<Void> postNextCheckpoint() {
 		nextCheckpoint = checkpointPosStrategy.nextPosition(nextCheckpoint);
-		GlobalFsCheckpoint checkpoint = GlobalFsCheckpoint.of(position, new SHA256Digest(digest), localPathHash);
+		GlobalFsCheckpoint checkpoint = GlobalFsCheckpoint.of(filename, position, new SHA256Digest(digest));
 		lastPostedCheckpoint = true;
 		return output.accept(DataFrame.of(SignedData.sign(checkpoint, privateKey)));
 	}

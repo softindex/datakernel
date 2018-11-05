@@ -18,7 +18,10 @@ package io.global.fs.local;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.remotefs.FsClient;
-import io.global.common.*;
+import io.global.common.KeyPair;
+import io.global.common.PrivKey;
+import io.global.common.PubKey;
+import io.global.common.SimKey;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
 
@@ -58,8 +61,8 @@ public final class GlobalFsDriver {
 		return privKey;
 	}
 
-	public FsClient createClientFor(RepoID repoID) {
-		return new GlobalFsGatewayAdapter(this, node, repoID, getPrivKey(repoID.getOwner()), checkpointPosStrategy);
+	public FsClient createClientFor(PubKey pubKey) {
+		return new GlobalFsGatewayAdapter(this, node, pubKey, getPrivKey(pubKey), checkpointPosStrategy);
 	}
 
 	@Nullable

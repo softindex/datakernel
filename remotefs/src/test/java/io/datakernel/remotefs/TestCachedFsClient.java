@@ -405,7 +405,7 @@ public class TestCachedFsClient {
 		downloadFiles(20, 1, "newTestFile_");
 
 		cache.list()
-				.whenResult(list -> list.forEach(val -> assertTrue(val.getName().startsWith("new"))));
+				.whenResult(list -> list.forEach(val -> assertTrue(val.getFilename().startsWith("new"))));
 		eventloop.run();
 	}
 
@@ -423,7 +423,7 @@ public class TestCachedFsClient {
 		initializeCacheDownloadFiles(2, "newTestFile_");
 
 		cache.list()
-				.whenResult(list -> assertEquals(1, list.stream().filter(fileMetadata -> fileMetadata.getName().startsWith("new")).count()));
+				.whenResult(list -> assertEquals(1, list.stream().filter(fileMetadata -> fileMetadata.getFilename().startsWith("new")).count()));
 		eventloop.run();
 	}
 
@@ -450,7 +450,7 @@ public class TestCachedFsClient {
 				.whenResult(list ->
 						list.forEach(value -> {
 							System.out.println(value);
-							assertTrue(value.getName().startsWith("test"));
+							assertTrue(value.getFilename().startsWith("test"));
 						}))
 				.whenComplete(($, e) -> server.close());
 		eventloop.run();
@@ -491,7 +491,7 @@ public class TestCachedFsClient {
 				.thenCompose($ -> cache.list())
 				.whenComplete(assertComplete(list -> {
 					assertEquals(2, list.size());
-					list.forEach(file -> assertTrue(file.getName().startsWith("test")));
+					list.forEach(file -> assertTrue(file.getFilename().startsWith("test")));
 				}))
 				.whenComplete(($, e) -> server.close());
 		eventloop.run();

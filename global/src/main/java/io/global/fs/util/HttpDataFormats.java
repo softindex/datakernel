@@ -19,9 +19,6 @@ package io.global.fs.util;
 import com.google.gson.TypeAdapter;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
-import io.global.common.PubKey;
-import io.global.common.RepoID;
-import io.global.fs.api.GlobalPath;
 
 import java.util.Set;
 
@@ -36,14 +33,6 @@ public final class HttpDataFormats {
 
 	private HttpDataFormats() {
 		throw new AssertionError("nope.");
-	}
-
-	public static GlobalPath parsePath(HttpRequest request) throws ParseException {
-		return GlobalPath.of(PubKey.fromString(request.getPathParameter("owner")), request.getPathParameter("fs"), request.getPathParameter("path"));
-	}
-
-	public static RepoID parseRepoID(HttpRequest request) throws ParseException {
-		return RepoID.of(PubKey.fromString(request.getPathParameter("owner")), request.getPathParameter("name"));
 	}
 
 	public static long[] parseRange(HttpRequest request) throws ParseException {

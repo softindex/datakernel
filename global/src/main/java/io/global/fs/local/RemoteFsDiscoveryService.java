@@ -18,7 +18,10 @@ package io.global.fs.local;
 
 import io.datakernel.async.Promise;
 import io.datakernel.remotefs.FsClient;
-import io.global.common.*;
+import io.global.common.Hash;
+import io.global.common.PubKey;
+import io.global.common.SharedSimKey;
+import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 
@@ -32,22 +35,12 @@ public final class RemoteFsDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Promise<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
+	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#announce is not implemented yet");
 	}
 
 	@Override
-	public Promise<Void> announceSpecific(RepoID repo, SignedData<AnnounceData> announceData) {
-		throw new UnsupportedOperationException("RemoteFsDiscoveryService#announceSpecific is not implemented yet");
-	}
-
-	@Override
-	public Promise<Optional<SignedData<AnnounceData>>> findSpecific(RepoID repoID) {
-		throw new UnsupportedOperationException("RemoteFsDiscoveryService#findSpecific is not implemented yet");
-	}
-
-	@Override
-	public Promise<Optional<SignedData<AnnounceData>>> find(PubKey owner) {
+	public Promise<SignedData<AnnounceData>> find(PubKey space) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#find is not implemented yet");
 	}
 

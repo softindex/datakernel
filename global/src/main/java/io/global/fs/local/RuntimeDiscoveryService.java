@@ -19,7 +19,10 @@ package io.global.fs.local;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
-import io.global.common.*;
+import io.global.common.Hash;
+import io.global.common.PubKey;
+import io.global.common.SharedSimKey;
+import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import org.slf4j.Logger;
@@ -40,13 +43,13 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 	private final Map<SimKeyKey, SignedData<SharedSimKey>> sharedKeys = new HashMap<>();
 
 	@Override
-	public Promise<Void> announce(PubKey pubKey, SignedData<AnnounceData> announceData) {
-		logger.info("received {} for {}", announceData, pubKey);
-		if (!announceData.verify(pubKey)) {
+	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
+		logger.info("received {} for {}", announceData, space);
+		if (!announceData.verify(space)) {
 			logger.warn("failed to verify " + announceData);
 			return Promise.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
 		}
-		Namespace namespace = announced.computeIfAbsent(pubKey, $ -> new Namespace());
+		Namespace namespace = announced.computeIfAbsent(space, $ -> new Namespace());
 		if (namespace.main != null && namespace.main.getData().getTimestamp() >= announceData.getData().getTimestamp()) {
 			logger.info("rejected as outdated " + announceData);
 			return Promise.ofException(REJECTED_OUTDATED_ANNOUNCE_DATA);
@@ -56,32 +59,11 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Promise<Void> announceSpecific(RepoID repo, SignedData<AnnounceData> announceData) {
-		logger.info("received {} for {}", announceData, repo);
-		if (!announceData.verify(repo.getOwner())) {
-			logger.warn("failed to verify " + announceData);
-			return Promise.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
-		}
-		Namespace namespace = announced.computeIfAbsent(repo.getOwner(), $ -> new Namespace());
-		SignedData<AnnounceData> old = namespace.specific.get(repo.getName());
-		if (old != null && old.getData().getTimestamp() >= announceData.getData().getTimestamp()) {
-			logger.info("rejected as outdated " + announceData);
-			return Promise.ofException(REJECTED_OUTDATED_ANNOUNCE_DATA);
-		}
-		namespace.specific.put(repo.getName(), announceData);
-		return Promise.complete();
-	}
-
-	@Override
-	public Promise<Optional<SignedData<AnnounceData>>> findSpecific(RepoID repoID) {
-		Namespace namespace = announced.get(repoID.getOwner());
-		return Promise.of(Optional.ofNullable(namespace != null ? namespace.specific.get(repoID.getName()) : null));
-	}
-
-	@Override
-	public Promise<Optional<SignedData<AnnounceData>>> find(PubKey owner) {
-		Namespace namespace = announced.get(owner);
-		return Promise.of(Optional.ofNullable(namespace != null ? namespace.main : null));
+	public Promise<SignedData<AnnounceData>> find(PubKey space) {
+		Namespace namespace = announced.get(space);
+		return namespace != null ?
+				Promise.of(namespace.main) :
+				Promise.ofException(NO_ANNOUNCE_DATE);
 	}
 
 	@Override
@@ -102,7 +84,6 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 	}
 
 	private static class Namespace {
-
 		@Nullable
 		private SignedData<AnnounceData> main = null;
 		private final Map<String, SignedData<AnnounceData>> specific = new HashMap<>();

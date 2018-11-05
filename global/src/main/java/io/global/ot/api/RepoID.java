@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-package io.global.common;
+package io.global.ot.api;
 
 import io.datakernel.exception.ParseException;
+import io.global.common.KeyPair;
+import io.global.common.PubKey;
+import io.global.common.StringIdentity;
 
 public final class RepoID implements StringIdentity {
 	private final PubKey owner;

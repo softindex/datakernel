@@ -19,8 +19,8 @@ package io.global.ot.client;
 import io.datakernel.async.Promise;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepository;
-import io.global.common.RepoID;
 import io.global.ot.api.CommitId;
+import io.global.ot.api.RepoID;
 
 import java.util.List;
 import java.util.Map;

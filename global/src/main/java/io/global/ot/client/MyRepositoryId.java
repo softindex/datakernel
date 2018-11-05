@@ -18,7 +18,7 @@ package io.global.ot.client;
 
 import io.datakernel.util.ParserFunction;
 import io.global.common.PrivKey;
-import io.global.common.RepoID;
+import io.global.ot.api.RepoID;
 
 import java.util.List;
 import java.util.function.Function;

@@ -68,7 +68,7 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 	@Override
 	public Promise<List<LogFile>> list(String logPartition) {
 		return client.list()
-				.thenApply(files -> getLogFiles(files.stream().map(FileMetadata::getName).collect(toList()), logPartition))
+				.thenApply(files -> getLogFiles(files.stream().map(FileMetadata::getFilename).collect(toList()), logPartition))
 				.whenComplete(promiseList.recordStats());
 	}
 

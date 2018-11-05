@@ -154,23 +154,23 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 			return stream;
 		}
 		if (!isWildcard(glob)) {
-			return stream.filter(file -> !file.getName().equals(negativeGlob));
+			return stream.filter(file -> !file.getFilename().equals(negativeGlob));
 		}
 		PathMatcher negativeMatcher = FileSystems.getDefault().getPathMatcher("glob:" + negativeGlob);
-		return stream.filter(file -> !negativeMatcher.matches(Paths.get(file.getName())));
+		return stream.filter(file -> !negativeMatcher.matches(Paths.get(file.getFilename())));
 	}
 
 	private Promise<Boolean> repartitionFile(FileMetadata meta) {
 		Set<Object> partitionIds = new HashSet<>(clients.keySet());
 		partitionIds.add(localPartitionId); // ensure local partition could also be selected
-		List<Object> selected = serverSelector.selectFrom(meta.getName(), partitionIds, replicationCount);
+		List<Object> selected = serverSelector.selectFrom(meta.getFilename(), partitionIds, replicationCount);
 
 		return getPartitionsWithoutFile(meta, selected)
 				.thenCompose(uploadTargets -> {
 					if (uploadTargets == null) { // null return means failure
 						return Promise.of(false);
 					}
-					String name = meta.getName();
+					String name = meta.getFilename();
 					if (uploadTargets.isEmpty()) { // everybody had the file
 						logger.trace("deleting file {} locally", meta);
 						return localStorage.delete(name) // so we delete the copy which does not belong to local partition
@@ -241,7 +241,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 						return Promise.of(Try.of(null));  // and skip other logic
 					}
 					return clients.get(partitionId)
-							.list(fileToUpload.getName()) // checking file existense and size on particular partition
+							.list(fileToUpload.getFilename()) // checking file existense and size on particular partition
 							.whenComplete((list, err) -> {
 								if (err != null) {
 									logger.warn("failed connecting to partition " + partitionId + " (" + err + ')');

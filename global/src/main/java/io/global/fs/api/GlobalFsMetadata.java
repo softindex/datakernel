@@ -31,7 +31,7 @@ import static io.global.ot.util.BinaryDataFormats.*;
 public final class GlobalFsMetadata implements ByteArrayIdentity {
 	private byte[] bytes;
 
-	private final LocalPath localPath;
+	private final String filename;
 	private final long size;
 	private final long revision;
 
@@ -39,17 +39,17 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 	private final Hash simKeyHash;
 
 	// region creators
-	private GlobalFsMetadata(byte[] bytes, LocalPath localPath, long size, long revision, @Nullable Hash simKeyHash) {
+	private GlobalFsMetadata(byte[] bytes, String filename, long size, long revision, @Nullable Hash simKeyHash) {
 		this.bytes = bytes;
-		this.localPath = localPath;
+		this.filename = filename;
 		this.size = size;
 		this.revision = revision;
 		this.simKeyHash = simKeyHash;
 	}
 
-	public static GlobalFsMetadata of(LocalPath localPath, long size, long revision, @Nullable Hash simKeyHash) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(localPath) + 9 + 8 + 1 + (simKeyHash != null ? sizeof(simKeyHash) : 0));
-		writeLocalPath(buf, localPath);
+	public static GlobalFsMetadata of(String filename, long size, long revision, @Nullable Hash simKeyHash) {
+		ByteBuf buf = ByteBufPool.allocate(sizeof(filename) + 9 + 8 + 1 + (simKeyHash != null ? sizeof(simKeyHash) : 0));
+		writeString(buf, filename);
 		buf.writeVarLong(size);
 		buf.writeLong(revision);
 		if (simKeyHash != null) {
@@ -58,27 +58,27 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 		} else {
 			buf.writeByte((byte) 0);
 		}
-		return new GlobalFsMetadata(buf.asArray(), localPath, size, revision, simKeyHash);
+		return new GlobalFsMetadata(buf.asArray(), filename, size, revision, simKeyHash);
 	}
 
-	public static GlobalFsMetadata of(LocalPath localPath, long size, long revision) {
-		return of(localPath, size, revision, null);
+	public static GlobalFsMetadata of(String filename, long size, long revision) {
+		return of(filename, size, revision, null);
 	}
 
-	public static GlobalFsMetadata ofRemoved(LocalPath localPath, long revision) {
-		return of(localPath, -1, revision);
+	public static GlobalFsMetadata ofRemoved(String filename, long revision) {
+		return of(filename, -1, revision);
 	}
 
 	public static GlobalFsMetadata fromBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		LocalPath localPath = readLocalPath(buf);
+		String filename = readString(buf);
 		long size = buf.readVarLong();
 		long revision = buf.readLong();
 		Hash simKeyHash = null;
 		if (buf.readByte() == 1) {
 			simKeyHash = read(buf, Hash::ofBytes);
 		}
-		return new GlobalFsMetadata(bytes, localPath, size, revision, simKeyHash);
+		return new GlobalFsMetadata(bytes, filename, size, revision, simKeyHash);
 	}
 	// endregion
 
@@ -100,11 +100,11 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 	}
 
 	public GlobalFsMetadata toRemoved() {
-		return ofRemoved(localPath, revision);
+		return ofRemoved(filename, revision);
 	}
 
-	public LocalPath getLocalPath() {
-		return localPath;
+	public String getFilename() {
+		return filename;
 	}
 
 	public long getSize() {
@@ -125,7 +125,7 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 	}
 
 	public FileMetadata toFileMetadata() {
-		return new FileMetadata(localPath.getPath(), size, revision);
+		return new FileMetadata(filename, size, revision);
 	}
 
 	@Override
@@ -135,7 +135,7 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 
 	@Override
 	public int hashCode() {
-		return 31 * (31 * (31 * localPath.hashCode() + (int) (size ^ (size >>> 32))) + (int) (revision ^ (revision >>> 32))) + (simKeyHash != null ? simKeyHash.hashCode() : 0);
+		return 31 * (31 * (31 * filename.hashCode() + (int) (size ^ (size >>> 32))) + (int) (revision ^ (revision >>> 32))) + (simKeyHash != null ? simKeyHash.hashCode() : 0);
 	}
 
 	@Override
@@ -148,12 +148,12 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 		//noinspection ConstantConditions
 		return size == metadata.size &&
 				revision == metadata.revision &&
-				localPath.equals(metadata.localPath) &&
+				filename.equals(metadata.filename) &&
 				(simKeyHash != null ? simKeyHash.equals(metadata.simKeyHash) : metadata.simKeyHash == null);
 	}
 
 	@Override
 	public String toString() {
-		return "GlobalFsMetadata{localPath=" + localPath + ", size=" + size + ", revision=" + revision + ", simKeyHash=" + simKeyHash + '}';
+		return "GlobalFsMetadata{filename=" + filename + ", size=" + size + ", revision=" + revision + ", simKeyHash=" + simKeyHash + '}';
 	}
 }
