@@ -274,7 +274,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 							announceTimestamp = announcement.getData().getTimestamp();
 							announceServerIds = announcement.getData().getServerIds();
 						} else {
-							announceServerIds = emptySet();
+							announceServerIds = emptySet(); // TODO anton: we dont know any masters for this space, this is bad
 						}
 						return Promise.complete();
 					})

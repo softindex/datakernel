@@ -19,7 +19,6 @@ package io.global.common;
 import org.spongycastle.crypto.params.KeyParameter;
 
 import java.util.Arrays;
-import java.util.Base64;
 
 public final class SimKey implements Base64Identity {
 	private final byte[] key;
@@ -48,7 +47,7 @@ public final class SimKey implements Base64Identity {
 	}
 
 	public static SimKey fromString(String string) {
-		return new SimKey(Base64.getUrlDecoder().decode(string));
+		return new SimKey(decoder.decode(string));
 	}
 
 	@Override

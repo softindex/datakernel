@@ -36,7 +36,7 @@ import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.launchers.Initializers.ofEventloopTaskScheduler;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofRepoID;
+import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey;
 import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
 
 public class HttpGlobalFsNodeModule extends AbstractModule {
@@ -57,7 +57,7 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 	@Provides
 	@Singleton
 	NodeClientFactory provide(AsyncHttpClient httpClient) {
-		return serverId -> new HttpGlobalFsNode(serverId, httpClient);
+		return serverId -> new HttpGlobalFsNode(httpClient, serverId.getInetSocketAddress());
 	}
 
 	@Provides
@@ -65,7 +65,7 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 	GlobalFsNode provide(Config config, DiscoveryService discoveryService, NodeClientFactory nodeClientFactory, FsClient storage) {
 		RawServerId id = new RawServerId(config.get(ofInetSocketAddress(), "globalfs.http.listenAddresses"));
 		return LocalGlobalFsNode.create(id, discoveryService, nodeClientFactory, storage)
-				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofRepoID()), "globalfs.managedRepos")))
+				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "globalfs.managedRepos")))
 				.withDownloadCaching(config.get(ofBoolean(), "globalfs.caching.download", true))
 				.withUploadCaching(config.get(ofBoolean(), "globalfs.caching.upload", false))
 				.withLatencyMargin(config.get(ofDuration(), "globalfs.fetching.latencyMargin", DEFAULT_LATENCY_MARGIN));

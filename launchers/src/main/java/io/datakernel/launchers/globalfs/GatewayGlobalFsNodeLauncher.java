@@ -43,7 +43,6 @@ import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.RemoteFsServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.GlobalFsGatewayAdapter;
-import io.global.ot.api.RepoID;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
@@ -169,7 +168,7 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 
 						// TODO anton: fix all these stubs
 						GlobalFsDriver driver = GlobalFsDriver.create(node, list(privateKey.computeKeys()), checkpointPosStrategy);
-						return (GlobalFsGatewayAdapter) driver.createClientFor(RepoID.of(privateKey.computePubKey(), "stub"));
+						return (GlobalFsGatewayAdapter) driver.createClientFor(privateKey.computePubKey());
 					}
 
 					@Provides

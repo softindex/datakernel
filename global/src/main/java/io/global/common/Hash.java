@@ -17,7 +17,6 @@
 package io.global.common;
 
 import java.util.Arrays;
-import java.util.Base64;
 
 public final class Hash implements Base64Identity {
 	private final byte[] bytes;
@@ -40,7 +39,7 @@ public final class Hash implements Base64Identity {
 	}
 
 	public static Hash fromString(String s) {
-		return new Hash(Base64.getUrlDecoder().decode(s));
+		return new Hash(decoder.decode(s));
 	}
 	// endregion
 

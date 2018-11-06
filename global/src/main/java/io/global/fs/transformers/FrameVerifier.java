@@ -45,7 +45,7 @@ public final class FrameVerifier extends FramesToByteBufs {
 	protected Promise<Void> receiveByteBuffer(ByteBuf byteBuf) {
 		int size = byteBuf.readRemaining();
 		if (position <= offset || position - size > endOffset) {
-			return Promise.of(null);
+			return Promise.complete();
 		}
 		if (position - size < offset) {
 			byteBuf.moveReadPosition((int) (offset - position + size));

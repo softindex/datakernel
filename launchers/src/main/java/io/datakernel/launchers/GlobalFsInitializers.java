@@ -23,7 +23,7 @@ import io.global.fs.local.LocalGlobalFsNode;
 import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.*;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofRepoID;
+import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey;
 import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
 import static java.util.Collections.emptyList;
 
@@ -33,7 +33,7 @@ public class GlobalFsInitializers {
 
 	public static Initializer<LocalGlobalFsNode> ofGlobalFsNodeDriver(Config config) {
 		return node -> node
-				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofRepoID()), "managedKeys", emptyList())))
+				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
 				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching"))
 				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching"))
 				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));

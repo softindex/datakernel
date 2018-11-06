@@ -34,7 +34,6 @@ import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.api.DiscoveryService;
-import io.global.fs.api.GlobalPath;
 import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.http.HttpFsClient;
 
@@ -129,7 +128,6 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		GlobalPath testFile = GlobalPath.of(alice, "firstFs", "folder/test.txt");
 		// eventloop.post(() ->
 		// 		gateway.getMetadata(testFile)
 		// 				.thenCompose(meta ->

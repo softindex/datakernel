@@ -21,6 +21,7 @@ import java.util.Base64;
 // TODO anton: find a better name for this, or just remove/replace this
 public interface Base64Identity extends ByteArrayIdentity, StringIdentity {
 	Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+	Base64.Decoder decoder = Base64.getUrlDecoder();
 
 	@Override
 	default String asString() {

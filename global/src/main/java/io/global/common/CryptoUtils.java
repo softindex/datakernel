@@ -52,7 +52,7 @@ public final class CryptoUtils {
 	public static final ECDomainParameters CURVE;
 	public static final BigInteger HALF_CURVE_ORDER;
 
-	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+	static final SecureRandom SECURE_RANDOM = new SecureRandom();
 	private static final X9ECParameters CURVE_PARAMS = CustomNamedCurves.getByName("secp256k1");
 	private static final ECKeyPairGenerator KEY_PAIR_GENERATOR = new ECKeyPairGenerator();
 	private static final FixedPointCombMultiplier FIXED_POINT_COMB_MULTIPLIER = new FixedPointCombMultiplier();
