@@ -19,40 +19,42 @@ package io.global.fs.transformers;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.global.common.PubKey;
+import io.global.fs.api.CheckpointStorage;
 
 /**
- * Converts stream of frames to a stream of bytebufs of pure data.
- * Does the checkpoint verification and so on.
- * Also it cuts out the checkpoint paddings out of the resulting stream.
+ * Something like a splitter, which outputs the bytebuf data, but
+ * also stores the checkpoints in given {@link CheckpointStorage}.
  * <p>
- * It's counterpart is the {@link FrameSigner}.
+ * It's counterpart is the {@link FramesFromStorage}.
  */
 public final class FrameVerifier extends FramesToByteBufs {
 	private final long offset;
 	private final long endOffset;
 
-	private FrameVerifier(PubKey pubKey, String filename, long offset, long length) {
+	private FrameVerifier(PubKey pubKey, String filename, long offset, long endOffset) {
 		super(pubKey, filename);
 		this.offset = offset;
-		this.endOffset = length == -1 ? Long.MAX_VALUE : offset + length;
+		this.endOffset = endOffset;
 	}
 
-	public static FrameVerifier create(PubKey pubKey, String filename, long offset, long length) {
-		return new FrameVerifier(pubKey, filename, offset, length);
+	public static FrameVerifier create(PubKey pubKey, String filename, long offset, long limit) {
+		return new FrameVerifier(pubKey, filename, offset, limit == -1 ? Long.MAX_VALUE : offset + limit);
 	}
 
+	@SuppressWarnings("Duplicates") // stolen from SerialByteRanger
 	@Override
-	protected Promise<Void> receiveByteBuffer(ByteBuf byteBuf) {
-		int size = byteBuf.readRemaining();
-		if (position <= offset || position - size > endOffset) {
+	protected Promise<Void> receiveByteBuf(ByteBuf byteBuf) {
+		long oldPos = position - byteBuf.readRemaining();
+		if (oldPos > endOffset || position <= offset) {
+			byteBuf.recycle();
 			return Promise.complete();
 		}
-		if (position - size < offset) {
-			byteBuf.moveReadPosition((int) (offset - position + size));
+		if (oldPos < offset) {
+			byteBuf.moveReadPosition((int) (offset - oldPos));
 		}
 		if (position > endOffset) {
 			byteBuf.moveWritePosition((int) (endOffset - position));
 		}
-		return output.accept(byteBuf);
+		return send(byteBuf);
 	}
 }

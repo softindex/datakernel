@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.global.fs.transformers;
+package io.datakernel.serial.processor;
 
 import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Promise;
@@ -22,13 +22,14 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.WithSerialToSerial;
+
+import static io.datakernel.util.Preconditions.checkState;
 
 public abstract class SerialTransformer<S extends SerialTransformer<S, I, O>, I, O>
 		extends AbstractAsyncProcess
 		implements WithSerialToSerial<S, I, O> {
-	private SerialSupplier<I> input;
-	private SerialConsumer<O> output;
+	protected SerialSupplier<I> input;
+	protected SerialConsumer<O> output;
 
 	protected final Promise<Void> send(O item) {
 		return output.accept(item);
@@ -38,37 +39,43 @@ public abstract class SerialTransformer<S extends SerialTransformer<S, I, O>, I,
 		return output.accept(null);
 	}
 
-	protected abstract Promise<Void> receiveItem(I item);
+	protected abstract Promise<Void> onItem(I item);
 
-	protected Promise<Void> receiveEndOfStream() {
+	protected Promise<Void> onProcessFinish() {
 		return sendEndOfStream();
 	}
 
-	protected Promise<Void> before() {
+	protected Promise<Void> onProcessStart() {
 		return Promise.complete();
 	}
 
-	private void iteration() {
-		input.get()
-				.thenCompose(item ->
-						item != null ?
-								receiveItem(item)
-										.whenResult($ -> iteration()) :
-								receiveEndOfStream()
-										.whenResult($ -> completeProcess()))
-				.whenException(this::close);
+	@Override
+	protected void beforeProcess() {
+		checkState(input != null, "Input was not set");
+		checkState(output != null, "Output was not set");
 	}
 
 	@Override
 	protected void doProcess() {
-		before()
+		onProcessStart()
 				.whenComplete(($, e) -> {
 					if (e == null) {
-						iteration();
+						iterate();
 					} else {
 						close(e);
 					}
 				});
+	}
+
+	private void iterate() {
+		input.get()
+				.thenCompose(item ->
+						item != null ?
+								onItem(item)
+										.whenResult($ -> iterate()) :
+								onProcessFinish()
+										.whenResult($ -> completeProcess()))
+				.whenException(this::close);
 	}
 
 	@Override

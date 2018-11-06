@@ -84,7 +84,9 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 				}))
 				.with(GET, "/" + LIST + "/:owner/:name", request -> {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-					return node.list(pubKey, request.getQueryParameter("glob"))
+					return (request.getQueryParameter("local", "").isEmpty() ?
+							node.list(pubKey, request.getQueryParameter("glob")) :
+							node.listLocal(pubKey, request.getQueryParameter("glob")))
 							.thenApply(list -> HttpResponse.ok200()
 									.withBodyStream(SerialSupplier.ofStream(list.stream()
 											.map(meta -> {

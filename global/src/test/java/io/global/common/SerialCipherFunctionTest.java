@@ -19,7 +19,7 @@ package io.global.common;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialSupplier;
-import io.global.fs.transformers.CipherSerialTransformer;
+import io.global.fs.transformers.SerialCipherFunction;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -28,11 +28,10 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static io.global.common.CryptoUtils.SECURE_RANDOM;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-public class CipherSerialTransformerTest {
+public class SerialCipherFunctionTest {
 
 	@Test
 	public void test() {
@@ -45,16 +44,14 @@ public class CipherSerialTransformerTest {
 		);
 
 		SimKey key = SimKey.generate();
-		byte[] nonce = new byte[8];
-		SECURE_RANDOM.nextBytes(nonce);
-		long pos = ThreadLocalRandom.current().nextLong(15000);
+		long pos = ThreadLocalRandom.current().nextLong(Long.MAX_VALUE >>> 1);
 
 		SerialSupplier.ofIterable(data)
-				.apply(new CipherSerialTransformer(key, nonce, pos))
+				.apply(SerialCipherFunction.create(key, "test.txt", pos))
 				.toList()
 				.whenComplete(assertComplete(enc -> enc.forEach(System.out::println)))
 				.thenCompose(enc -> SerialSupplier.ofIterable(enc)
-						.apply(new CipherSerialTransformer(key, nonce, pos))
+						.apply(SerialCipherFunction.create(key, "test.txt", pos))
 						.toList())
 				.whenComplete(assertComplete(dec -> {
 					dec.forEach(System.out::println);

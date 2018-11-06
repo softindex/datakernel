@@ -25,8 +25,6 @@ import io.global.fs.api.GlobalFsCheckpoint;
 /**
  * Something like a splitter, which outputs the bytebuf data, but
  * also stores the checkpoints in given {@link CheckpointStorage}.
- * Unlike {@link FrameVerifier}, it does not cut the output stream,
- * although it does verify received checkpoints and data.
  * <p>
  * It's counterpart is the {@link FramesFromStorage}.
  */
@@ -34,13 +32,15 @@ public final class FramesIntoStorage extends FramesToByteBufs {
 	private final String filename;
 	private final CheckpointStorage checkpointStorage;
 
-	// region creators
-	public FramesIntoStorage(String  filename, PubKey pubKey, CheckpointStorage checkpointStorage) {
+	private FramesIntoStorage(String filename, PubKey pubKey, CheckpointStorage checkpointStorage) {
 		super(pubKey, filename);
 		this.filename = filename;
 		this.checkpointStorage = checkpointStorage;
 	}
-	// endregion
+
+	public static FramesIntoStorage create(String filename, PubKey pubKey, CheckpointStorage checkpointStorage) {
+		return new FramesIntoStorage(filename, pubKey, checkpointStorage);
+	}
 
 	@Override
 	protected Promise<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {

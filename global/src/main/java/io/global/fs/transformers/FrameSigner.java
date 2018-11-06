@@ -56,31 +56,22 @@ public final class FrameSigner extends ByteBufsToFrames {
 	@Override
 	protected Promise<Void> postByteBuf(ByteBuf buf) {
 		int size = buf.readRemaining();
+		position += size;
 		digest.update(buf.array(), buf.readPosition(), size);
 		lastPostedCheckpoint = false;
-		return super.postByteBuf(buf);
+		return send(DataFrame.of(buf));
 	}
 
 	@Override
-	protected Promise<Void> postNextCheckpoint() {
+	protected Promise<Void> postCheckpoint() {
 		nextCheckpoint = checkpointPosStrategy.nextPosition(nextCheckpoint);
 		GlobalFsCheckpoint checkpoint = GlobalFsCheckpoint.of(filename, position, new SHA256Digest(digest));
 		lastPostedCheckpoint = true;
-		return output.accept(DataFrame.of(SignedData.sign(checkpoint, privateKey)));
+		return send(DataFrame.of(SignedData.sign(checkpoint, privateKey)));
 	}
 
 	@Override
-	protected void iteration() {
-		input.get()
-				.thenCompose(buf ->
-						buf != null ?
-								handleBuffer(buf)
-										.whenResult($ -> iteration()) :
-								(lastPostedCheckpoint ?
-										output.accept(null) :
-										postNextCheckpoint()
-												.thenCompose($ -> output.accept(null)))
-										.whenResult($ -> completeProcess()))
-				.whenException(this::completeProcess);
+	protected Promise<Void> onProcessFinish() {
+		return (lastPostedCheckpoint ? sendEndOfStream() : postCheckpoint().thenCompose($ -> sendEndOfStream()));
 	}
 }

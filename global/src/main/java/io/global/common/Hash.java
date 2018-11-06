@@ -18,6 +18,7 @@ package io.global.common;
 
 import java.util.Arrays;
 
+/** Thin holder/wrapper around SHA-256 hash of some object. */
 public final class Hash implements Base64Identity {
 	private final byte[] bytes;
 

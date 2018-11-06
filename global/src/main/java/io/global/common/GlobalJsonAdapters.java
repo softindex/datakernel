@@ -60,23 +60,6 @@ public final class GlobalJsonAdapters {
 				});
 	}
 
-	// region GlobalPath
-	private static final Map<String, TypeAdapter<?>> GLOBAL_PATH_PROPS = new HashMap<>();
-
-	static {
-		GLOBAL_PATH_PROPS.put("owner", PUB_KEY);
-		GLOBAL_PATH_PROPS.put("fs", STRING_JSON);
-		GLOBAL_PATH_PROPS.put("path", STRING_JSON);
-	}
-
-	// region LocalPath
-	private static final Map<String, TypeAdapter<?>> LOCAL_PATH_PROPS = new HashMap<>();
-
-	static {
-		LOCAL_PATH_PROPS.put("fs", STRING_JSON);
-		LOCAL_PATH_PROPS.put("path", STRING_JSON);
-	}
-
 	// region GlobalFsMetadata
 	private static final Map<String, TypeAdapter<?>> GLOBAL_FS_METADATA_PROPS = new HashMap<>();
 
@@ -84,16 +67,21 @@ public final class GlobalJsonAdapters {
 		GLOBAL_FS_METADATA_PROPS.put("filename", STRING_JSON);
 		GLOBAL_FS_METADATA_PROPS.put("size", LONG_JSON);
 		GLOBAL_FS_METADATA_PROPS.put("revision", LONG_JSON);
+		GLOBAL_FS_METADATA_PROPS.put("simKeyHash", HASH);
 	}
 
 	public static final TypeAdapter<GlobalFsMetadata> GLOBAL_FS_METADATA =
 			transform(ofHeterogeneousMap(GLOBAL_FS_METADATA_PROPS),
-					data -> GlobalFsMetadata.of((String) data.get("filename"), (Long) data.get("size"), (Long) data.get("revision")),
+					data -> GlobalFsMetadata.of((String) data.get("filename"), (Long) data.get("size"), (Long) data.get("revision"), (Hash) data.get("simKeyHash")),
 					meta -> {
 						Map<String, Object> map = new HashMap<>();
 						map.put("filename", meta.getFilename());
 						map.put("size", meta.getSize());
 						map.put("revision", meta.getRevision());
+						Hash simKeyHash = meta.getSimKeyHash();
+						if (simKeyHash != null) {
+							map.put("simKeyHash", simKeyHash);
+						}
 						return map;
 					});
 	// endregion

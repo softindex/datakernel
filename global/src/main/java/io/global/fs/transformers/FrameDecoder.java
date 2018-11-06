@@ -16,11 +16,12 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.AbstractAsyncProcess;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
-import io.datakernel.serial.*;
-import io.datakernel.serial.processor.WithSerialToSerial;
+import io.datakernel.serial.ByteBufsParser;
+import io.datakernel.serial.ByteBufsSupplier;
+import io.datakernel.serial.processor.SerialTransformer;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -30,25 +31,11 @@ import io.global.fs.api.GlobalFsCheckpoint;
  * <p>
  * It's counterpart is the {@link FrameEncoder}.
  */
-public final class FrameDecoder extends AbstractAsyncProcess implements WithSerialToSerial<FrameDecoder, ByteBuf, DataFrame> {
-	protected SerialSupplier<ByteBuf> input;
-	protected SerialConsumer<DataFrame> output;
+public final class FrameDecoder extends SerialTransformer<FrameDecoder, ByteBuf, DataFrame> {
 
 	@Override
-	public SerialInput<ByteBuf> getInput() {
-		return input -> {
-			this.input = sanitize(input);
-			if (output != null) startProcess();
-			return getProcessResult();
-		};
-	}
-
-	@Override
-	public SerialOutput<DataFrame> getOutput() {
-		return output -> {
-			this.output = sanitize(output);
-			if (input != null) startProcess();
-		};
+	protected Promise<Void> onItem(ByteBuf item) {
+		return Promise.complete();
 	}
 
 	@Override
@@ -56,13 +43,8 @@ public final class FrameDecoder extends AbstractAsyncProcess implements WithSeri
 		ByteBufsSupplier.of(input)
 				.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes().andThen(this::parseDataFrame))
 				.streamTo(output)
-				.whenResult($ -> completeProcess());
-	}
-
-	@Override
-	protected final void doCloseWithError(Throwable e) {
-		input.close(e);
-		output.close(e);
+				.whenResult($ -> completeProcess())
+				.whenException(this::close);
 	}
 
 	private DataFrame parseDataFrame(ByteBuf buf) throws ParseException {

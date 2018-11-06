@@ -78,4 +78,9 @@ public final class SimKey implements Base64Identity {
 	public String toString() {
 		return "SimKey@" + Integer.toHexString(Arrays.hashCode(key));
 	}
+
+	@SuppressWarnings("UseOfSystemOutOrSystemErr")
+	public static void main(String[] args) {
+		System.out.println(SimKey.generate().asString());
+	}
 }

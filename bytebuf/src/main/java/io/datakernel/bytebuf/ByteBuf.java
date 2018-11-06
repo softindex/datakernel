@@ -734,9 +734,8 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		char[] chars = new char[min(readRemaining(), 256)];
 		for (int i = 0; i < chars.length; i++) {
 			byte b = array[readPosition + i];
-			chars[i] = (b >= ' ') ? (char) b : (char) 65533;
+			chars[i] = (b == '\n') ? (char) 9166 : (b >= ' ') ? (char) b : (char) 65533;
 		}
 		return new String(chars);
 	}
-
 }

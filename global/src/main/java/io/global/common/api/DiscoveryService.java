@@ -23,7 +23,7 @@ import io.global.common.*;
 import java.util.Optional;
 
 public interface DiscoveryService {
-	StacklessException NO_ANNOUNCE_DATE = new StacklessException(DiscoveryService.class, "Announce data not found");
+	StacklessException NO_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Announce data not found");
 
 	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
 

@@ -211,11 +211,11 @@ public final class BinaryDataFormats {
 
 	// region EncryptedData
 	public static int sizeof(EncryptedData encryptedData) {
-		return sizeof(encryptedData.initializationVector) + sizeof(encryptedData.encryptedBytes);
+		return sizeof(encryptedData.nonce) + sizeof(encryptedData.encryptedBytes);
 	}
 
 	public static void writeEncryptedData(ByteBuf buf, EncryptedData encryptedData) {
-		writeBytes(buf, encryptedData.initializationVector);
+		writeBytes(buf, encryptedData.nonce);
 		writeBytes(buf, encryptedData.encryptedBytes);
 	}
 

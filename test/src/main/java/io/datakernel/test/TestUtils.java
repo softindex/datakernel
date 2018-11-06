@@ -31,8 +31,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
+import java.util.function.*;
 import java.util.regex.Pattern;
 
 public class TestUtils {
@@ -174,5 +173,69 @@ public class TestUtils {
 
 	public static void clearActivePromises() {
 		activePromises = 0;
+	}
+
+	@FunctionalInterface
+	public interface ThrowingSupplier<T> {
+
+		T get() throws Throwable;
+	}
+
+	public static <T> Supplier<T> asserting(ThrowingSupplier<T> supplier) {
+		return () -> {
+			try {
+				return supplier.get();
+			} catch (Throwable throwable) {
+				throw new AssertionError(throwable);
+			}
+		};
+	}
+
+	@FunctionalInterface
+	public interface ThrowingConsumer<T> {
+
+		void accept(T t) throws Throwable;
+	}
+
+	public static <T> Consumer<T> asserting(ThrowingConsumer<T> consumer) {
+		return x -> {
+			try {
+				consumer.accept(x);
+			} catch (Throwable throwable) {
+				throw new AssertionError(throwable);
+			}
+		};
+	}
+
+	@FunctionalInterface
+	public interface ThrowingFunction<T, R> {
+
+		R apply(T t) throws Throwable;
+	}
+
+	public static <T, R> Function<T, R> asserting(ThrowingFunction<T, R> function) {
+		return x -> {
+			try {
+				return function.apply(x);
+			} catch (Throwable throwable) {
+				throw new AssertionError(throwable);
+			}
+		};
+	}
+
+	@FunctionalInterface
+	public interface ThrowingBiFunction<T, U, R> {
+
+		R apply(T t, U u) throws Throwable;
+	}
+
+	public static <T, U, R> BiFunction<T, U, R> asserting(ThrowingBiFunction<T, U, R> function) {
+		return (x, y) -> {
+			try {
+				return function.apply(x, y);
+			} catch (Throwable throwable) {
+				throw new AssertionError(throwable);
+			}
+		};
 	}
 }

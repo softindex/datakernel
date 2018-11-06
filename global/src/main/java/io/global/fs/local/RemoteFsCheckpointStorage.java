@@ -46,30 +46,22 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 
 	private Promise<ByteBuf> download(String filename) {
 		return fsClient.download(filename)
-				.thenComposeEx((supplier, e) -> {
-					if (e != null) {
-						logger.warn("Failed to read checkpoint data for {}", filename, e);
-						return Promise.of(null);
-					}
-					return supplier
-							.withEndOfStream(eos -> eos
-									.thenComposeEx(($, e2) -> {
-										if (e2 != null) {
-											return Promise.<Void>ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Failed to read checkpoint data for " + filename));
-										}
-										return Promise.of(null);
-									}))
-							.toCollector(ByteBufQueue.collector());
-				});
+				.thenCompose(supplier -> supplier
+						.withEndOfStream(eos -> eos
+								.thenComposeEx(($, e) -> {
+									if (e == null) {
+										return Promise.complete();
+									}
+									logger.warn("Failed to read checkpoint data for {}", filename);
+									return Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Failed to read checkpoint data for " + filename));
+								}))
+						.toCollector(ByteBufQueue.collector()));
 	}
 
 	@Override
 	public Promise<long[]> getCheckpoints(String filename) {
 		return download(filename)
 				.thenCompose(buf -> {
-					if (buf == null) {
-						return Promise.of(new long[]{0});
-					}
 					long[] array = new long[32];
 					int size = 0;
 					while (buf.canRead()) {
@@ -106,18 +98,19 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 							return Promise.ofException(e);
 						}
 					}
-					return Promise.of(null);
+					return Promise.ofException(new StacklessException(CheckpointStorage.class, "No checkpoint found on position " + position));
 				});
 	}
 
 	@Override
 	public Promise<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
-		return loadCheckpoint(filename, checkpoint.getData().getPosition())
-				.thenCompose(existing -> {
-					if (existing != null) {
+		long pos = checkpoint.getData().getPosition();
+		return loadCheckpoint(filename, pos)
+				.thenComposeEx((existing, e) -> {
+					if (e == null) {
 						return checkpoint.equals(existing) ?
 								Promise.complete() :
-								Promise.ofException(OVERRIDING_EXISTING_CHECKPOINT);
+								Promise.ofException(new StacklessException(CheckpointStorage.class, "Trying to override existing checkpoint at " + pos));
 					}
 					return fsClient.getMetadata(filename)
 							.thenCompose(m -> fsClient.upload(filename, m != null ? m.getSize() : 0))

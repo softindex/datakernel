@@ -23,14 +23,11 @@ import org.spongycastle.crypto.agreement.ECDHBasicAgreement;
 import org.spongycastle.crypto.digests.SHA1Digest;
 import org.spongycastle.crypto.digests.SHA256Digest;
 import org.spongycastle.crypto.ec.CustomNamedCurves;
-import org.spongycastle.crypto.engines.AESFastEngine;
 import org.spongycastle.crypto.engines.IESEngine;
 import org.spongycastle.crypto.generators.ECKeyPairGenerator;
 import org.spongycastle.crypto.generators.EphemeralKeyPairGenerator;
 import org.spongycastle.crypto.generators.KDF2BytesGenerator;
 import org.spongycastle.crypto.macs.HMac;
-import org.spongycastle.crypto.modes.CBCBlockCipher;
-import org.spongycastle.crypto.paddings.PaddedBufferedBlockCipher;
 import org.spongycastle.crypto.params.*;
 import org.spongycastle.crypto.parsers.ECIESPublicKeyParser;
 import org.spongycastle.crypto.signers.ECDSASigner;
@@ -44,6 +41,7 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 
 import static java.lang.System.arraycopy;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class CryptoUtils {
 	public static final int SHA256_LENGTH = 32;
@@ -118,40 +116,20 @@ public final class CryptoUtils {
 
 	@SuppressWarnings("deprecation")
 	public static EncryptedData encryptAES(byte[] plainBytes, CipherParameters aesKey) {
-		try {
-			BlockCipher blockCipher = new AESFastEngine();
-
-			byte[] iv = new byte[blockCipher.getBlockSize()];
-			SECURE_RANDOM.nextBytes(iv);
-
-			ParametersWithIV keyWithIv = new ParametersWithIV(aesKey, iv);
-
-			BufferedBlockCipher cipher = new PaddedBufferedBlockCipher(new CBCBlockCipher(blockCipher));
-			cipher.init(true, keyWithIv);
-			byte[] encryptedBytes = new byte[cipher.getOutputSize(plainBytes.length)];
-			int length1 = cipher.processBytes(plainBytes, 0, plainBytes.length, encryptedBytes, 0);
-			int length2 = cipher.doFinal(encryptedBytes, length1);
-
-			return new EncryptedData(iv, Arrays.copyOf(encryptedBytes, length1 + length2));
-		} catch (InvalidCipherTextException e) {
-			throw new RuntimeException(e);
-		}
+		byte[] nonce = new byte[16];
+		SECURE_RANDOM.nextBytes(nonce);
+		byte[] newBytes = Arrays.copyOf(plainBytes, plainBytes.length);
+		AESCipherCTR cipher = AESCipherCTR.create(aesKey, nonce);
+		cipher.apply(newBytes);
+		return new EncryptedData(nonce, newBytes);
 	}
 
 	@SuppressWarnings("deprecation")
-	public static byte[] decryptAES(EncryptedData dataToDecrypt, CipherParameters aesKey) throws CryptoException {
-		ParametersWithIV keyWithIv = new ParametersWithIV(aesKey, dataToDecrypt.initializationVector);
-
-		// Decrypt the message.
-		BufferedBlockCipher cipher = new PaddedBufferedBlockCipher(new CBCBlockCipher(new AESFastEngine()));
-		cipher.init(false, keyWithIv);
-
-		byte[] cipherBytes = dataToDecrypt.encryptedBytes;
-		byte[] decryptedBytes = new byte[cipher.getOutputSize(cipherBytes.length)];
-		int length1 = cipher.processBytes(cipherBytes, 0, cipherBytes.length, decryptedBytes, 0);
-		int length2 = cipher.doFinal(decryptedBytes, length1);
-
-		return Arrays.copyOf(decryptedBytes, length1 + length2);
+	public static byte[] decryptAES(EncryptedData dataToDecrypt, CipherParameters aesKey) {
+		AESCipherCTR cipher = AESCipherCTR.create(aesKey, dataToDecrypt.nonce);
+		byte[] newBytes = Arrays.copyOf(dataToDecrypt.encryptedBytes, dataToDecrypt.encryptedBytes.length);
+		cipher.apply(newBytes);
+		return newBytes;
 	}
 
 	public static byte[] encryptECIES(byte[] message, ECPublicKeyParameters ecPublicKeyParameters) {
@@ -214,6 +192,10 @@ public final class CryptoUtils {
 
 	public static AsymmetricCipherKeyPair generateKeyPair() {
 		return KEY_PAIR_GENERATOR.generateKeyPair();
+	}
+
+	public static byte[] nonceFromString(String string) {
+		return Arrays.copyOf(sha1(string.getBytes(UTF_8)), 16);
 	}
 
 	public static ECPublicKeyParameters computePubKey(ECPrivateKeyParameters privKey) {

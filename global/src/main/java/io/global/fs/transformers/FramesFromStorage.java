@@ -37,8 +37,7 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 
 	private int nextCheckpointIndex;
 
-	// region creators
-	public FramesFromStorage(String fileName, CheckpointStorage checkpointStorage,
+	private FramesFromStorage(String fileName, CheckpointStorage checkpointStorage,
 			long[] checkpoints, int firstCheckpointIndex, int lastCheckpointIndex) {
 		super(checkpoints[firstCheckpointIndex]);
 		this.fileName = fileName;
@@ -48,34 +47,27 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 
 		nextCheckpointIndex = firstCheckpointIndex;
 	}
-	// endregion
+
+	public static FramesFromStorage create(String fileName, CheckpointStorage checkpointStorage,
+			long[] checkpoints, int firstCheckpointIndex, int lastCheckpointIndex) {
+		return new FramesFromStorage(fileName, checkpointStorage, checkpoints, firstCheckpointIndex, lastCheckpointIndex);
+	}
 
 	@Override
-	protected Promise<Void> postNextCheckpoint() {
+	protected Promise<Void> postCheckpoint() {
 		long checkpoint = nextCheckpoint;
 		if (nextCheckpointIndex < lastCheckpointIndex) {
 			nextCheckpoint = checkpoints[++nextCheckpointIndex];
 		}
 		return checkpointStorage.loadCheckpoint(fileName, checkpoint)
 				.thenComposeEx((signedCheckpoint, e) -> {
-					if (e != null || signedCheckpoint == null) {
+					if (e != null) {
 						// we are loading a checkpoint from a position that was obtained using getCheckpoints,
 						// so somewhere in between the file was corrupted, or CheckpointStorage implementation is broken
-						output.close(new StacklessException(FramesFromStorage.class, "No checkpoint at position " + position + " for file " + fileName + " found! Is checkpoint data corrupted?"));
-						return Promise.complete();
+						return Promise.ofException(new StacklessException(FramesFromStorage.class,
+								"No checkpoint at position " + position + " for file " + fileName + " found! Is checkpoint data corrupted?", e));
 					}
-					return output.accept(DataFrame.of(signedCheckpoint));
+					return send(DataFrame.of(signedCheckpoint));
 				});
-	}
-
-	@Override
-	protected void iteration() {
-		input.get()
-				.thenCompose(buf -> buf != null ?
-						handleBuffer(buf)
-								.whenResult($ -> iteration()) :
-						output.accept(null)
-								.whenResult($ -> completeProcess()))
-				.whenException(this::close);
 	}
 }

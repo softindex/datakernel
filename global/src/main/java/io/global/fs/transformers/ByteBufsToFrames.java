@@ -16,86 +16,52 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialInput;
-import io.datakernel.serial.SerialOutput;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.WithSerialToSerial;
+import io.datakernel.serial.processor.SerialTransformer;
 import io.global.fs.api.DataFrame;
 
-abstract class ByteBufsToFrames extends AbstractAsyncProcess implements WithSerialToSerial<ByteBufsToFrames, ByteBuf, DataFrame> {
+/** Abstracted out bytebuf cutting code */
+abstract class ByteBufsToFrames extends SerialTransformer<ByteBufsToFrames, ByteBuf, DataFrame> {
 	protected long position;
 	protected long nextCheckpoint;
 
-	protected SerialSupplier<ByteBuf> input;
-	protected SerialConsumer<DataFrame> output;
-
-	// region creators
 	ByteBufsToFrames(long offset) {
 		this.position = nextCheckpoint = offset;
 	}
-	// endregion
 
-	@Override
-	public SerialInput<ByteBuf> getInput() {
-		return input -> {
-			this.input = sanitize(input);
-			if (output != null) startProcess();
-			return getProcessResult();
-		};
-	}
-
-	@Override
-	public SerialOutput<DataFrame> getOutput() {
-		return output -> {
-			this.output = sanitize(output);
-			if (input != null) startProcess();
-		};
-	}
-
-	@Override
-	protected void doProcess() {
-		postNextCheckpoint()
-				.whenResult($ -> iteration());
-	}
-
-	@Override
-	protected final void doCloseWithError(Throwable e) {
-		input.close(e);
-		output.close(e);
-	}
-
-	protected abstract Promise<Void> postNextCheckpoint();
-
-	protected abstract void iteration();
+	protected abstract Promise<Void> postCheckpoint();
 
 	protected Promise<Void> postByteBuf(ByteBuf buf) {
 		position += buf.readRemaining();
-		return output.accept(DataFrame.of(buf));
+		return send(DataFrame.of(buf));
 	}
 
-	protected Promise<Void> handleBuffer(ByteBuf buf) {
-		int size = buf.readRemaining();
+	@Override
+	protected Promise<Void> onProcessStart() {
+		return postCheckpoint();
+	}
+
+	@Override
+	protected Promise<Void> onItem(ByteBuf item) {
+		int size = item.readRemaining();
 
 		if (position + size < nextCheckpoint) {
-			return postByteBuf(buf);
+			return postByteBuf(item);
 		}
 
 		int bytesUntilCheckpoint = (int) (nextCheckpoint - position);
 		int remaining = size - bytesUntilCheckpoint;
 
 		if (remaining == 0) {
-			return postByteBuf(buf)
-					.thenCompose($ -> postNextCheckpoint());
+			return postByteBuf(item)
+					.thenCompose($ -> postCheckpoint());
 		}
 
-		ByteBuf afterCheckpoint = buf.slice(buf.readPosition() + bytesUntilCheckpoint, remaining);
-		buf.recycle(); // set refcount back to 1
-		return postByteBuf(buf.slice(bytesUntilCheckpoint))
-				.thenCompose($ -> postNextCheckpoint())
-				.thenCompose($ -> handleBuffer(afterCheckpoint));
+		ByteBuf afterCheckpoint = item.slice(item.readPosition() + bytesUntilCheckpoint, remaining);
+		item.recycle(); // set refcount back to 1
+		return postByteBuf(item.slice(bytesUntilCheckpoint))
+				.thenCompose($ -> postCheckpoint())
+				.thenCompose($ -> onItem(afterCheckpoint));
 	}
 }

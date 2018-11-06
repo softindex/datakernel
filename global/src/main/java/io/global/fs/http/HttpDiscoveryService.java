@@ -93,7 +93,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 										GsonAdapters.fromJson(SIGNED_ANNOUNCE, body.asString(UTF_8)))
 								.flatMap(v -> v != null ?
 										Try.of(v) :
-										Try.ofException(NO_ANNOUNCE_DATE))));
+										Try.ofException(NO_ANNOUNCE_DATA))));
 	}
 
 	@Override

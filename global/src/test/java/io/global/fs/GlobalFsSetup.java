@@ -1,0 +1,128 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.global.fs;
+
+import io.datakernel.async.Promises;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
+import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.remotefs.FsClient;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.stream.processor.ActivePromisesRule;
+import io.global.common.KeyPair;
+import io.global.common.PrivKey;
+import io.global.common.RawServerId;
+import io.global.common.SignedData;
+import io.global.common.api.AnnounceData;
+import io.global.common.api.DiscoveryService;
+import io.global.fs.api.GlobalFsNode;
+import io.global.fs.http.HttpDiscoveryService;
+import io.global.fs.http.HttpGlobalFsNode;
+import io.global.fs.local.GlobalFsDriver;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
+
+import java.net.InetSocketAddress;
+import java.util.HashSet;
+import java.util.Set;
+
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.util.CollectionUtils.list;
+import static io.datakernel.util.CollectionUtils.set;
+import static io.global.fs.api.CheckpointPosStrategy.fixed;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertEquals;
+
+@Ignore("those are run configs that are launched manually")
+public class GlobalFsSetup {
+
+	@Rule
+	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
+
+	private Eventloop eventloop;
+	private KeyPair alice, bob;
+
+	@Before
+	public void setUp() throws ParseException {
+		eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+		alice = PrivKey.fromString("d6577f45e352a16e21a29e8b9fb927b17902332c7f141e51a6265558c6bdd7ef").computeKeys();
+		bob = PrivKey.fromString("538451a22387ba099222bdbfdeaed63435fde46c724eb3c72e8c64843c339ea1").computeKeys();
+	}
+
+	@Test
+	public void uploadDownload() {
+		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+		DiscoveryService discoveryService = HttpDiscoveryService.create(new InetSocketAddress(9001), client);
+
+		RawServerId first = new RawServerId(new InetSocketAddress(8001));
+		RawServerId second = new RawServerId(new InetSocketAddress(8002));
+
+		GlobalFsNode firstClient = new HttpGlobalFsNode(client, first.getInetSocketAddress());
+		GlobalFsNode secondClient = new HttpGlobalFsNode(client, second.getInetSocketAddress());
+
+		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, list(alice), fixed(5));
+		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, list(alice), fixed(6));
+
+		FsClient firstAdapter = firstDriver.createClientFor(alice.getPubKey());
+		FsClient secondAdapter = secondDriver.createClientFor(alice.getPubKey());
+
+		String text1 = "Hello world, this is some bytes ";
+		String text2 = "to be sent through the GlobalFs HTTP interface";
+
+		SerialSupplier<ByteBuf> supplier = SerialSupplier.of(ByteBuf.wrapForReading(text1.getBytes(UTF_8)), ByteBuf.wrapForReading(text2.getBytes(UTF_8)));
+
+		discoveryService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
+				.whenResult($ -> System.out.println("Servers announced"))
+				.thenCompose($ -> firstAdapter.upload("test.txt"))
+				.thenCompose(supplier::streamTo)
+				.whenResult($ -> System.out.println("Upload to first server finished"))
+				.thenCompose($ -> secondAdapter.download("test.txt"))
+				.thenCompose(s -> s.toCollector(ByteBufQueue.collector()))
+				.whenResult(s -> System.out.println("  downloaded: " + s.getString(UTF_8)))
+				.whenResult(res -> assertEquals(text1 + text2, res.asString(UTF_8)))
+				.whenResult($ -> System.out.println("Download from second server finished"))
+				.whenComplete(assertComplete());
+
+		eventloop.run();
+	}
+
+	@Test
+	public void announceNodes() {
+		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+		DiscoveryService discoveryService = HttpDiscoveryService.create(new InetSocketAddress(9001), client);
+
+		Set<RawServerId> servers = new HashSet<>();
+
+		for (int i = 1; i <= Integer.parseInt(System.getProperty("globalfs.testing.numOfServers")); i++) {
+			servers.add(new RawServerId(new InetSocketAddress(8000 + i)));
+		}
+
+		eventloop.post(() ->
+				Promises.all(
+						discoveryService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(123, servers), alice.getPrivKey())),
+						discoveryService.announce(bob.getPubKey(), SignedData.sign(AnnounceData.of(234, servers), bob.getPrivKey()))
+				)
+						.whenComplete(assertComplete()));
+
+		eventloop.run();
+	}
+}

@@ -16,7 +16,6 @@
 
 package io.global.fs.local;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
 import io.global.common.Hash;
@@ -39,62 +38,56 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 	public static final StacklessException CANNOT_VERIFY_ANNOUNCE_DATA = new StacklessException(RuntimeDiscoveryService.class, "Cannot verify announce data");
 	public static final StacklessException CANNOT_VERIFY_SHARED_KEY = new StacklessException(RuntimeDiscoveryService.class, "Cannot verify shared key");
 
-	private final Map<PubKey, Namespace> announced = new HashMap<>();
-	private final Map<SimKeyKey, SignedData<SharedSimKey>> sharedKeys = new HashMap<>();
+	private final Map<PubKey, SignedData<AnnounceData>> announced = new HashMap<>();
+	private final Map<ShareInfo, SignedData<SharedSimKey>> sharedKeys = new HashMap<>();
 
 	@Override
 	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
 		logger.info("received {} for {}", announceData, space);
 		if (!announceData.verify(space)) {
-			logger.warn("failed to verify " + announceData);
+			logger.warn("failed to verify: {}", announceData);
 			return Promise.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
 		}
-		Namespace namespace = announced.computeIfAbsent(space, $ -> new Namespace());
-		if (namespace.main != null && namespace.main.getData().getTimestamp() >= announceData.getData().getTimestamp()) {
-			logger.info("rejected as outdated " + announceData);
+		SignedData<AnnounceData> signedAnnounceData = announced.get(space);
+		if (signedAnnounceData != null && signedAnnounceData.getData().getTimestamp() >= announceData.getData().getTimestamp()) {
+			logger.info("rejected as outdated: {}", announceData);
 			return Promise.ofException(REJECTED_OUTDATED_ANNOUNCE_DATA);
 		}
-		namespace.main = announceData;
+		announced.put(space, announceData);
 		return Promise.complete();
 	}
 
 	@Override
 	public Promise<SignedData<AnnounceData>> find(PubKey space) {
-		Namespace namespace = announced.get(space);
-		return namespace != null ?
-				Promise.of(namespace.main) :
-				Promise.ofException(NO_ANNOUNCE_DATE);
+		SignedData<AnnounceData> signedAnnounceData = announced.get(space);
+		return signedAnnounceData != null ?
+				Promise.of(signedAnnounceData) :
+				Promise.ofException(NO_ANNOUNCE_DATA);
 	}
 
 	@Override
 	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
 		logger.info("received {}", simKey);
 		if (!simKey.verify(owner)) {
-			logger.warn("failed to verify " + simKey);
+			logger.warn("failed to verify {}", simKey);
 			return Promise.ofException(CANNOT_VERIFY_SHARED_KEY);
 		}
 		SharedSimKey data = simKey.getData();
-		sharedKeys.put(new SimKeyKey(owner, data.getReceiver(), data.getHash()), simKey);
+		sharedKeys.put(new ShareInfo(owner, data.getReceiver(), data.getHash()), simKey);
 		return Promise.complete();
 	}
 
 	@Override
 	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
-		return Promise.of(Optional.ofNullable(sharedKeys.get(new SimKeyKey(owner, receiver, hash))));
+		return Promise.of(Optional.ofNullable(sharedKeys.get(new ShareInfo(owner, receiver, hash))));
 	}
 
-	private static class Namespace {
-		@Nullable
-		private SignedData<AnnounceData> main = null;
-		private final Map<String, SignedData<AnnounceData>> specific = new HashMap<>();
-	}
-
-	private static class SimKeyKey {
+	private static class ShareInfo {
 		final PubKey owner;
 		final PubKey receiver;
 		final Hash hash;
 
-		public SimKeyKey(PubKey owner, PubKey receiver, Hash hash) {
+		public ShareInfo(PubKey owner, PubKey receiver, Hash hash) {
 			this.owner = owner;
 			this.receiver = receiver;
 			this.hash = hash;
@@ -105,14 +98,16 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 
-			SimKeyKey simKeyKey = (SimKeyKey) o;
+			ShareInfo shareInfo = (ShareInfo) o;
 
-			return owner.equals(simKeyKey.owner) && receiver.equals(simKeyKey.receiver) && hash.equals(simKeyKey.hash);
+			return owner.equals(shareInfo.owner) && receiver.equals(shareInfo.receiver) && hash.equals(shareInfo.hash);
 		}
 
 		@Override
 		public int hashCode() {
-			return 31 * (31 * owner.hashCode() + receiver.hashCode()) + hash.hashCode();
+			return 961 * owner.hashCode() +
+					31 * receiver.hashCode() +
+					hash.hashCode();
 		}
 	}
 }

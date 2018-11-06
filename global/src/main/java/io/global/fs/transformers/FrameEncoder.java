@@ -16,14 +16,10 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.AbstractAsyncProcess;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialInput;
-import io.datakernel.serial.SerialOutput;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.WithSerialToSerial;
+import io.datakernel.serial.processor.SerialTransformer;
 import io.global.fs.api.DataFrame;
 
 /**
@@ -31,52 +27,14 @@ import io.global.fs.api.DataFrame;
  * <p>
  * It's counterpart is the {@link FrameDecoder}.
  */
-public final class FrameEncoder extends AbstractAsyncProcess implements WithSerialToSerial<FrameEncoder, DataFrame, ByteBuf> {
-	private static final byte[] DATA_HEADER = new byte[]{0};
-	private static final byte[] CHECKPOINT_HEADER = new byte[]{1};
-
-	protected SerialSupplier<DataFrame> input;
-	protected SerialConsumer<ByteBuf> output;
+public final class FrameEncoder extends SerialTransformer<FrameEncoder, DataFrame, ByteBuf> {
 
 	@Override
-	public SerialInput<DataFrame> getInput() {
-		return input -> {
-			this.input = sanitize(input);
-			if (output != null) startProcess();
-			return getProcessResult();
-		};
-	}
-
-	@Override
-	public SerialOutput<ByteBuf> getOutput() {
-		return output -> {
-			this.output = sanitize(output);
-			if (input != null) startProcess();
-		};
-	}
-
-	@Override
-	protected final void doProcess() {
-		input.get()
-				.whenResult(item -> {
-					if (item != null) {
-						ByteBuf data = item.isBuf() ? item.getBuf() : ByteBuf.wrapForReading(item.getCheckpoint().toBytes());
-						ByteBuf sizeBuf = ByteBufPool.allocate(5);
-						sizeBuf.writeVarInt(data.readRemaining() + 1); // + 1 is for that header byte
-						output.accept(sizeBuf)
-								.thenCompose($ -> output.accept(ByteBuf.wrapForReading(item.isBuf() ? DATA_HEADER : CHECKPOINT_HEADER)))
-								.thenCompose($ -> output.accept(data))
-								.whenResult($ -> doProcess());
-					} else {
-						output.accept(null)
-								.whenResult($ -> completeProcess());
-					}
-				});
-	}
-
-	@Override
-	protected final void doCloseWithError(Throwable e) {
-		input.close(e);
-		output.close(e);
+	protected Promise<Void> onItem(DataFrame item) {
+		ByteBuf data = item.isBuf() ? item.getBuf() : ByteBuf.wrapForReading(item.getCheckpoint().toBytes());
+		ByteBuf header = ByteBufPool.allocate(5 + 1);
+		header.writeVarInt(data.readRemaining() + 1); // + 1 is for that tag byte below
+		header.writeByte((byte) (item.isBuf() ? 0 : 1));
+		return send(header).thenCompose($ -> send(data));
 	}
 }

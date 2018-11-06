@@ -24,11 +24,9 @@ import io.datakernel.remotefs.FileMetadata;
 import io.global.common.ByteArrayIdentity;
 import io.global.common.Hash;
 
-import java.util.Objects;
-
 import static io.global.ot.util.BinaryDataFormats.*;
 
-public final class GlobalFsMetadata implements ByteArrayIdentity {
+public final class GlobalFsMetadata implements Comparable<GlobalFsMetadata>, ByteArrayIdentity {
 	private byte[] bytes;
 
 	private final String filename;
@@ -74,32 +72,29 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 		String filename = readString(buf);
 		long size = buf.readVarLong();
 		long revision = buf.readLong();
-		Hash simKeyHash = null;
-		if (buf.readByte() == 1) {
-			simKeyHash = read(buf, Hash::ofBytes);
-		}
+		Hash simKeyHash = buf.readByte() == 1 ? read(buf, Hash::ofBytes) : null;
 		return new GlobalFsMetadata(bytes, filename, size, revision, simKeyHash);
 	}
 	// endregion
 
-	public static GlobalFsMetadata getBetter(GlobalFsMetadata first, GlobalFsMetadata second) {
-		if (first == null) {
-			return second;
+	@Override
+	public int compareTo(@Nullable GlobalFsMetadata other) {
+		// existing file is better than non-existing
+		if (other == null) {
+			return 1;
 		}
-		if (second == null) {
-			return first;
-		}
-		assert Objects.equals(first.simKeyHash, second.simKeyHash);
-		if (first.revision > second.revision) {
-			return first;
-		}
-		if (second.revision > first.revision) {
-			return second;
-		}
-		return second.size > first.size ? second : first;
+		// revisions are straight precedence
+		int res = Long.compare(revision, other.revision);
+		return res != 0 ?
+				res :
+				// we are obviously biased towards bigger files here
+				// (also tombstones have size == -1 so even empty
+				// files are considered better than their absense)
+				Long.compare(size, other.size);
 	}
 
 	public GlobalFsMetadata toRemoved() {
+		// no key hash because tombstones do not need any encryption
 		return ofRemoved(filename, revision);
 	}
 
@@ -134,11 +129,6 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 	}
 
 	@Override
-	public int hashCode() {
-		return 31 * (31 * (31 * filename.hashCode() + (int) (size ^ (size >>> 32))) + (int) (revision ^ (revision >>> 32))) + (simKeyHash != null ? simKeyHash.hashCode() : 0);
-	}
-
-	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
@@ -150,6 +140,14 @@ public final class GlobalFsMetadata implements ByteArrayIdentity {
 				revision == metadata.revision &&
 				filename.equals(metadata.filename) &&
 				(simKeyHash != null ? simKeyHash.equals(metadata.simKeyHash) : metadata.simKeyHash == null);
+	}
+
+	@Override
+	public int hashCode() {
+		return 29791 * filename.hashCode() +
+				961 * (int) (size ^ (size >>> 32)) +
+				31 * (int) (revision ^ (revision >>> 32)) +
+				(simKeyHash != null ? simKeyHash.hashCode() : 0);
 	}
 
 	@Override

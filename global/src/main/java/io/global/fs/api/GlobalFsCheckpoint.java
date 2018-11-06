@@ -62,8 +62,8 @@ public final class GlobalFsCheckpoint implements ByteArrayIdentity {
 
 	public enum CheckpointVerificationResult {
 		SIGNATURE_FAIL("can't verify checkpoint signature"),
-		POSITION_FAIL("wrong checkpoint position"),
 		FILENAME_FAIL("wrong checkpoint filename"),
+		POSITION_FAIL("wrong checkpoint position"),
 		CHECKSUM_FAIL("wrong checksum"),
 		SUCCESS("");
 
@@ -74,16 +74,16 @@ public final class GlobalFsCheckpoint implements ByteArrayIdentity {
 		}
 	}
 
-	public static CheckpointVerificationResult verify(SignedData<GlobalFsCheckpoint> signedCheckpoint, PubKey pubKey, long position, SHA256Digest digest, String filename) {
+	public static CheckpointVerificationResult verify(SignedData<GlobalFsCheckpoint> signedCheckpoint, PubKey pubKey, String filename, long position, SHA256Digest digest) {
 		if (!signedCheckpoint.verify(pubKey)) {
 			return CheckpointVerificationResult.SIGNATURE_FAIL;
 		}
 		GlobalFsCheckpoint checkpoint = signedCheckpoint.getData();
-		if (checkpoint.position != position) {
-			return CheckpointVerificationResult.POSITION_FAIL;
-		}
 		if (!filename.equals(checkpoint.filename)) {
 			return CheckpointVerificationResult.FILENAME_FAIL;
+		}
+		if (checkpoint.position != position) {
+			return CheckpointVerificationResult.POSITION_FAIL;
 		}
 		if (!CryptoUtils.areEqual(checkpoint.digest, digest)) {
 			return CheckpointVerificationResult.CHECKSUM_FAIL;
@@ -154,6 +154,6 @@ public final class GlobalFsCheckpoint implements ByteArrayIdentity {
 
 	@Override
 	public String toString() {
-		return "GlobalFsCheckpoint{position=" + position + '}';
+		return "GlobalFsCheckpoint{filename='" + filename + '\'' + ", position=" + position + ", digest=@" + Integer.toHexString(Arrays.hashCode(digest.getEncodedState())) + '}';
 	}
 }

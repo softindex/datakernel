@@ -17,6 +17,7 @@
 package io.global.fs.local;
 
 import io.datakernel.async.Promise;
+import io.datakernel.exception.StacklessException;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -30,19 +31,15 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 	@Override
 	public Promise<long[]> getCheckpoints(String filename) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
-		if (checkpoints == null) {
-			return Promise.of(new long[0]);
-		}
-		return Promise.of(checkpoints.keySet().stream().mapToLong(Long::longValue).sorted().toArray());
+		return Promise.of(checkpoints != null ? checkpoints.keySet().stream().mapToLong(Long::longValue).sorted().toArray() : new long[0]);
 	}
 
 	@Override
 	public Promise<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
-		if (checkpoints == null) {
-			return Promise.of(null);
-		}
-		return Promise.of(checkpoints.get(position));
+		return checkpoints != null ?
+				Promise.of(checkpoints.get(position)) :
+				Promise.ofException(new StacklessException(CheckpointStorage.class, "No checkpoint found on position " + position));
 	}
 
 	@Override
@@ -53,7 +50,7 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 		if (existing == null) {
 			fileCheckpoints.put(pos, checkpoint);
 		} else if (!existing.equals(checkpoint)) {
-			return Promise.ofException(OVERRIDING_EXISTING_CHECKPOINT);
+			return Promise.ofException(new StacklessException(CheckpointStorage.class, "Trying to override existing checkpoint at " + pos));
 		}
 		return Promise.complete();
 	}

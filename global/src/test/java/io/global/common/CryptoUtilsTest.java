@@ -30,7 +30,7 @@ import static org.junit.Assert.*;
 public class CryptoUtilsTest {
 
 	@Test
-	public void testSymmetricEncryption() throws CryptoException {
+	public void testSymmetricEncryption() {
 		KeyParameter aesKey = generateCipherKey(16);
 
 		String message = "Hello!";

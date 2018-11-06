@@ -31,6 +31,7 @@ import io.datakernel.serial.SerialConsumerFunction;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.file.SerialFileReader;
 import io.datakernel.serial.file.SerialFileWriter;
+import io.datakernel.serial.processor.SerialByteRanger;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,14 +61,12 @@ import static java.util.stream.Collectors.toSet;
 public final class LocalFsClient implements FsClient, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(LocalFsClient.class);
 
-	public static final StacklessException APPEND_OFFSET_EXCEEDS_SIZE = new StacklessException(LocalFsClient.class, "Trying to append at offset greater than the file size");
-	public static final StacklessException APPEND_NON_EXISTENT = new StacklessException(LocalFsClient.class, "Trying to append to non-existent file");
-
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
 	private final Path storageDir;
 
 	private MemSize readerBufferSize = MemSize.kilobytes(256);
+	private boolean lazyOverrides = true;
 
 	//region JMX
 	private final PromiseStats writeBeginPromise = PromiseStats.create(Duration.ofMinutes(5));
@@ -99,6 +98,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return new LocalFsClient(eventloop, executor, storageDir);
 	}
 
+	public LocalFsClient withLazyOverrides(boolean lazyOverrides) {
+		this.lazyOverrides = lazyOverrides;
+		return this;
+	}
+
 	/**
 	 * Sets the buffer size for reading files from the filesystem.
 	 */
@@ -120,20 +124,22 @@ public final class LocalFsClient implements FsClient, EventloopService {
 							.thenCompose(size -> {
 								if (offset != -1) {
 									if (size == null) {
-										return Promise.ofException(APPEND_NON_EXISTENT);
+										return Promise.ofException(new StacklessException(LocalFsClient.class,
+												"Trying to append to to file" + filename + " at offset " + offset + " but file does not exist"));
 									}
 									if (offset > size) {
-										return Promise.ofException(APPEND_OFFSET_EXCEEDS_SIZE);
+										return Promise.ofException(new StacklessException(LocalFsClient.class,
+												"Trying to append to file " + filename + " at offset " + offset + ", which is greater than the file size " + size));
 									}
 								}
 								return Promise.of(
 										SerialFileWriter.create(file)
-												.withOffset(offset == -1 ? 0L : size)
+												.withOffset(offset == -1 ? 0L : lazyOverrides ? size : offset)
 												.withForceOnClose(true)
 												.withAcknowledgement(ack ->
 														ack.whenComplete(writeFinishPromise.recordStats()))
-												.apply(offset != -1 && offset != size ?
-														SerialByteBufCutter.create(size - offset) :
+												.apply(lazyOverrides && offset != -1 && offset != size ?
+														SerialByteRanger.drop(size - offset) :
 														SerialConsumerFunction.identity()));
 							});
 				})

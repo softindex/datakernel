@@ -40,6 +40,7 @@ import io.global.fs.transformers.FrameEncoder;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.function.Function;
 
 import static io.datakernel.serial.ByteBufsParser.ofVarIntSizePrefixedBytes;
 import static io.global.fs.http.GlobalFsNodeServlet.*;
@@ -96,6 +97,18 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 		return Promise.of(uploader(space, filename, offset));
 	}
 
+	private static final Function<HttpResponse, Promise<List<SignedData<GlobalFsMetadata>>>> listResponseHandler =
+			response ->
+					ByteBufsSupplier.of(response.getBodyStream())
+							.parseStream(ofVarIntSizePrefixedBytes())
+							.transform(buf -> {
+								try {
+									return SignedData.ofBytes(buf.asArray(), GlobalFsMetadata::fromBytes);
+								} catch (ParseException e) {
+									throw new UncheckedException(e);
+								}
+							}).toCollector(toList());
+
 	@Override
 	public Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob) {
 		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
@@ -105,16 +118,20 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(space.asString())
 						.appendQuery("glob", glob)
 						.build()))
-				.thenCompose(response ->
-						ByteBufsSupplier.of(response.getBodyStream())
-								.parseStream(ofVarIntSizePrefixedBytes())
-								.transform(buf -> {
-									try {
-										return SignedData.ofBytes(buf.asArray(), GlobalFsMetadata::fromBytes);
-									} catch (ParseException e) {
-										throw new UncheckedException(e);
-									}
-								}).toCollector(toList()));
+				.thenCompose(listResponseHandler);
+	}
+
+	@Override
+	public Promise<List<SignedData<GlobalFsMetadata>>> listLocal(PubKey space, String glob) {
+		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
+				UrlBuilder.http()
+						.withAuthority(address)
+						.appendPathPart(LIST)
+						.appendPathPart(space.asString())
+						.appendQuery("glob", glob)
+						.appendQuery("local", "1")
+						.build()))
+				.thenCompose(listResponseHandler);
 	}
 
 	@Override

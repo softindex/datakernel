@@ -16,26 +16,26 @@
 
 package io.global.fs.local;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.remotefs.SerialByteBufCutter;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.serial.processor.SerialByteRanger;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Initializable;
-import io.global.common.PrivKey;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
+import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsMetadata;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameSigner;
 import io.global.fs.transformers.FrameVerifier;
+import io.global.fs.transformers.SerialCipherFunction;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.List;
@@ -68,33 +68,49 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 		this.checkpointPosStrategy = checkpointPosStrategy;
 	}
 
+	private Promise<SerialConsumer<ByteBuf>> doUpload(String filename, @Nullable GlobalFsMetadata metadata, long offset, long skip, SHA256Digest startingDigest) {
+		long[] size = {offset + skip};
+		Promise<SimKey> simKey = metadata != null ?
+				driver.getKey(metadata.getSimKeyHash()) :
+				Promise.of(driver.getCurrentSimKey());
+		return simKey.thenCompose(key ->
+				node.upload(pubKey, filename, offset + skip)
+						.thenApply(consumer -> consumer
+								.apply(FrameSigner.create(privKey, checkpointPosStrategy, filename, offset + skip, startingDigest))
+								.apply(SerialCipherFunction.create(key, filename, offset + skip))
+								.peek(buf -> size[0] += buf.readRemaining())
+								.apply(SerialByteRanger.drop(skip))
+								.withAcknowledgement(ack -> ack
+										.thenCompose($ -> {
+											GlobalFsMetadata updatedMetadata =
+													GlobalFsMetadata.of(filename, size[0], now.currentTimeMillis(), key != null ? Hash.of(key) : null);
+											return node.pushMetadata(pubKey, SignedData.sign(updatedMetadata, privKey));
+										}))));
+	}
+
 	@Override
 	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
-		long normalizedOffset = offset == -1 ? 0 : offset;
-		long[] size = {normalizedOffset};
-		long[] toSkip = {0};
-		SHA256Digest[] digest = new SHA256Digest[1];
-
-		// all the below cutting logic is also present on the server
-		// but we simply skip the prefix to not (potentially) send it over the network
-		// and also getting the proper digest for checkpoints ofc
-
-		return node.getMetadata(pubKey, filename)
-				.thenCompose(signedMeta -> {
-					if (signedMeta == null) {
-						digest[0] = new SHA256Digest();
-						return Promise.complete();
+		// cut off the part of the file that is already on the local node
+		return node.getLocalMetadata(pubKey, filename)
+				.thenCompose(signedMetadata -> {
+					if (signedMetadata == null) {
+						if (offset != -1 && offset != 0) {
+							return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "Trying to upload at offset greater than known file size"));
+						}
+						return doUpload(filename, null, 0, 0, new SHA256Digest());
 					}
-					if (!signedMeta.verify(pubKey)) {
+					if (!signedMetadata.verify(pubKey)) {
 						return Promise.ofException(METADATA_SIG);
 					}
-
-					GlobalFsMetadata meta = signedMeta.getData();
-					long metaSize = meta.getSize();
+					if (offset == -1) {
+						return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "File already exists"));
+					}
+					GlobalFsMetadata metadata = signedMetadata.getData();
+					long metaSize = metadata.getSize();
 					if (offset > metaSize) {
 						return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "Trying to upload at offset greater than the file size"));
 					}
-					toSkip[0] = metaSize - offset;
+					long skip = metaSize - offset;
 					return node.download(pubKey, filename, metaSize, 0)
 							.thenCompose(supplier -> supplier.toCollector(toList()))
 							.thenCompose(frames -> {
@@ -105,29 +121,30 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 								if (!checkpoint.verify(pubKey)) {
 									return Promise.ofException(CHECKPOINT_SIG);
 								}
-								digest[0] = checkpoint.getData().getDigest();
-								return Promise.complete();
+								return doUpload(filename, metadata, offset, skip, checkpoint.getData().getDigest());
 							});
-				})
-				.thenCompose($ ->
-						node.upload(pubKey, filename, offset != -1 ? offset + toSkip[0] : offset)
-								.thenApply(consumer -> {
-									return consumer
-											.apply(FrameSigner.create(privKey, checkpointPosStrategy, filename, normalizedOffset + toSkip[0], digest[0]))
-											.apply(SerialByteBufCutter.create(toSkip[0]))
-											.peek(buf -> size[0] += buf.readRemaining())
-											.withAcknowledgement(ack -> ack
-													.thenCompose($2 -> {
-														GlobalFsMetadata meta = GlobalFsMetadata.of(filename, size[0], now.currentTimeMillis());
-														return node.pushMetadata(pubKey, SignedData.sign(meta, privKey));
-													}));
-								}));
+				});
 	}
 
 	@Override
 	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long limit) {
-		return node.download(pubKey, filename, offset, limit)
-				.thenApply(supplier -> supplier.apply(FrameVerifier.create(pubKey, filename, offset, limit)));
+		return node.getMetadata(pubKey, filename)
+				.thenCompose(signedMetadata -> {
+					if (signedMetadata == null) {
+						return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "No file " + filename + " found"));
+					}
+					return node.download(pubKey, filename, offset, limit)
+							.thenCompose(supplier -> {
+								if (!signedMetadata.verify(pubKey)) {
+									return Promise.ofException(METADATA_SIG);
+								}
+								GlobalFsMetadata metadata = signedMetadata.getData();
+								return driver.getKey(metadata.getSimKeyHash())
+										.thenApply(key -> supplier
+												.apply(FrameVerifier.create(pubKey, filename, offset, limit))
+												.apply(SerialCipherFunction.create(key, filename, offset)));
+							});
+				});
 	}
 
 	@Override

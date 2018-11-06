@@ -17,13 +17,11 @@
 package io.global.fs.api;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
 import io.global.common.SignedData;
 
 import java.util.Arrays;
 
 public interface CheckpointStorage {
-	StacklessException OVERRIDING_EXISTING_CHECKPOINT = new StacklessException(CheckpointStorage.class, "Trying to override existing checkpoint");
 
 	Promise<long[]> getCheckpoints(String filename);
 

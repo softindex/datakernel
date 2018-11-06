@@ -176,7 +176,7 @@ public final class OTDriver {
 
 								return OTCommit.of(revisionId, parents, rawCommit.getLevel())
 										.withTimestamp(rawCommit.getTimestamp());
-							} catch (CryptoException | ParseException e) {
+							} catch (ParseException e) {
 								throw new UncheckedException(e);
 							}
 						}));
@@ -207,13 +207,7 @@ public final class OTDriver {
 
 					RawSnapshot rawSnapshot = signedSnapshot.getData();
 					return ensureSimKey(myRepositoryId, singleton(repositoryId), rawSnapshot.getSimKeyHash())
-							.thenApply(simKey -> {
-								try {
-									return decryptAES(rawSnapshot.encryptedDiffs, simKey.getAesKey());
-								} catch (CryptoException e) {
-									throw new UncheckedException(e);
-								}
-							})
+							.thenApply(simKey -> decryptAES(rawSnapshot.encryptedDiffs, simKey.getAesKey()))
 							.thenApply(diffs -> {
 								try {
 									return myRepositoryId.getDiffsDeserializer().parse(diffs);

@@ -24,7 +24,7 @@ package io.global.common;
  * the doc:
  * <p>
  * Classes which implement this interface must also define a static
- * factory method <code>ofBytes</code> which creates a new object
+ * factory method named <code>ofBytes</code> which creates a new object
  * from single byte array, that was aquired using the
  * {@link ByteArrayIdentity#toBytes toBytes()} method.
  */

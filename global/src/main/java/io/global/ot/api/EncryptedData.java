@@ -19,16 +19,15 @@ package io.global.ot.api;
 import io.global.common.ByteArrayIdentity;
 import io.global.common.CryptoUtils;
 import io.global.common.SimKey;
-import org.spongycastle.crypto.CryptoException;
 
 import java.util.Arrays;
 
 public final class EncryptedData {
-	public final byte[] initializationVector;
+	public final byte[] nonce;
 	public final byte[] encryptedBytes;
 
-	public EncryptedData(byte[] initializationVector, byte[] encryptedBytes) {
-		this.initializationVector = initializationVector;
+	public EncryptedData(byte[] nonce, byte[] encryptedBytes) {
+		this.nonce = nonce;
 		this.encryptedBytes = encryptedBytes;
 	}
 
@@ -40,7 +39,7 @@ public final class EncryptedData {
 		return CryptoUtils.encryptAES(bytes, simKey.getAesKey());
 	}
 
-	public byte[] decrypt(SimKey simKey) throws CryptoException {
+	public byte[] decrypt(SimKey simKey) {
 		return CryptoUtils.decryptAES(this, simKey.getAesKey());
 	}
 
@@ -49,12 +48,12 @@ public final class EncryptedData {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		EncryptedData that = (EncryptedData) o;
-		return Arrays.equals(initializationVector, that.initializationVector) &&
+		return Arrays.equals(nonce, that.nonce) &&
 				Arrays.equals(encryptedBytes, that.encryptedBytes);
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * Arrays.hashCode(initializationVector) + Arrays.hashCode(encryptedBytes);
+		return 31 * Arrays.hashCode(nonce) + Arrays.hashCode(encryptedBytes);
 	}
 }

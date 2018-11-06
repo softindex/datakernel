@@ -16,15 +16,10 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialInput;
-import io.datakernel.serial.SerialOutput;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.WithSerialToSerial;
+import io.datakernel.serial.processor.SerialTransformer;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
@@ -32,95 +27,58 @@ import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsCheckpoint.CheckpointVerificationResult;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
-import java.io.IOException;
-
-abstract class FramesToByteBufs extends AbstractAsyncProcess
-		implements WithSerialToSerial<FramesToByteBufs, DataFrame, ByteBuf> {
+/**
+ * Converts stream of frames to a stream of bytebufs of pure data.
+ * Does the checkpoint verification.
+ * <p>
+ * It's counterpart is the {@link FrameSigner}.
+ */
+abstract class FramesToByteBufs extends SerialTransformer<FramesToByteBufs, DataFrame, ByteBuf> {
 	private final PubKey pubKey;
 	private final String filename;
 
-	protected SerialSupplier<DataFrame> input;
-	protected SerialConsumer<ByteBuf> output;
 	protected long position = 0;
 
 	private boolean first = true;
-	private SHA256Digest digest;
+	private SHA256Digest digest = null;
 
 	FramesToByteBufs(PubKey pubKey, String filename) {
 		this.pubKey = pubKey;
 		this.filename = filename;
 	}
 
-	@Override
-	public SerialInput<DataFrame> getInput() {
-		return input -> {
-			this.input = sanitize(input);
-			if (this.output != null) startProcess();
-			return getProcessResult();
-		};
-	}
-
-	@Override
-	public SerialOutput<ByteBuf> getOutput() {
-		return output -> {
-			this.output = sanitize(output);
-			if (this.input != null) startProcess();
-		};
-	}
-
-	@Override
-	protected void doProcess() {
-		input.get()
-				.thenCompose(frame ->
-						frame != null ?
-								handleFrame(frame)
-										.whenResult($ -> doProcess()) :
-								output.accept(null)
-										.whenResult($ -> completeProcess()))
-				.whenException(this::close);
-	}
-
 	protected Promise<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
-	protected Promise<Void> receiveByteBuffer(ByteBuf byteBuf) {
-		return output.accept(byteBuf);
+	protected Promise<Void> receiveByteBuf(ByteBuf byteBuf) {
+		return send(byteBuf);
 	}
 
-	private Promise<Void> handleFrame(DataFrame frame) {
+	@Override
+	protected Promise<Void> onItem(DataFrame frame) {
 		if (first) {
 			first = false;
 			if (!frame.isCheckpoint()) {
-				return Promise.ofException(new IOException("First dataframe is not a checkpoint!"));
+				return Promise.ofException(new StacklessException(getClass(), "First dataframe is not a checkpoint!"));
 			}
 			GlobalFsCheckpoint data = frame.getCheckpoint().getData();
 			position = data.getPosition();
 			digest = new SHA256Digest(data.getDigest());
 		}
-		if (frame.isCheckpoint()) {
-			SignedData<GlobalFsCheckpoint> checkpoint = frame.getCheckpoint();
-			CheckpointVerificationResult result = GlobalFsCheckpoint.verify(checkpoint, pubKey, position, digest, filename);
-			if (result != CheckpointVerificationResult.SUCCESS) {
-				return Promise.ofException(new StacklessException(FramesToByteBufs.class, "Checkpoint verification failed: " + result.message));
-			}
-			// return output.post(ByteBuf.wrapForReading(new byte[]{124}));
-			return receiveCheckpoint(checkpoint);
+		if (frame.isBuf()) {
+			ByteBuf buf = frame.getBuf();
+			int size = buf.readRemaining();
+			position += size;
+			digest.update(buf.array(), buf.readPosition(), size);
+			return receiveByteBuf(buf);
 		}
-		ByteBuf buf = frame.getBuf();
-		int size = buf.readRemaining();
-		position += size;
-		digest.update(buf.array(), buf.readPosition(), size);
-		return receiveByteBuffer(buf);
-	}
-
-	@Override
-	protected final void doCloseWithError(Throwable e) {
-		if (input != null) {
-			input.close(e);
+		SignedData<GlobalFsCheckpoint> checkpoint = frame.getCheckpoint();
+		CheckpointVerificationResult result = GlobalFsCheckpoint.verify(checkpoint, pubKey, filename, position, digest);
+		if (result != CheckpointVerificationResult.SUCCESS) {
+			return Promise.ofException(new StacklessException(getClass(), "Checkpoint verification failed: " + result.message));
 		}
-		if (output != null) {
-			output.close(e);
-		}
+		// return output.post(ByteBuf.wrapForReading(new byte[]{124}));
+		return receiveCheckpoint(checkpoint);
 	}
 }

@@ -17,11 +17,9 @@
 package io.global.fs.local;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Promise;
 import io.datakernel.remotefs.FsClient;
-import io.global.common.KeyPair;
-import io.global.common.PrivKey;
-import io.global.common.PubKey;
-import io.global.common.SimKey;
+import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
 
@@ -32,6 +30,7 @@ import java.util.Map;
 import static java.util.stream.Collectors.toMap;
 
 public final class GlobalFsDriver {
+	private final Map<Hash, SimKey> keyMap = new HashMap<>();
 	private final Map<PubKey, PrivKey> keys = new HashMap<>();
 	private final GlobalFsNode node;
 	private final CheckpointPosStrategy checkpointPosStrategy;
@@ -43,6 +42,8 @@ public final class GlobalFsDriver {
 		this.node = node;
 		this.keys.putAll(keys);
 		this.checkpointPosStrategy = checkpointPosStrategy;
+
+		changeCurrentSimKey(SimKey.fromString("GBKadnXVViYZEYopiY0_sg")); // TODO anton: testing stub
 	}
 
 	public static GlobalFsDriver create(GlobalFsNode node, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
@@ -61,6 +62,17 @@ public final class GlobalFsDriver {
 		return privKey;
 	}
 
+	public Promise<SimKey> getKey(@Nullable Hash simKeyHash) {
+		if (simKeyHash == null) {
+			return Promise.of(null);
+		}
+		SimKey key = keyMap.get(simKeyHash);
+		if (key != null) {
+			return Promise.of(key);
+		}
+		return Promise.ofException(new UnsupportedOperationException("stub")); // TODO anton: get it from discovery server somehow
+	}
+
 	public FsClient createClientFor(PubKey pubKey) {
 		return new GlobalFsGatewayAdapter(this, node, pubKey, getPrivKey(pubKey), checkpointPosStrategy);
 	}
@@ -70,7 +82,10 @@ public final class GlobalFsDriver {
 		return currentSimKey;
 	}
 
-	public void setCurrentSimKey(@Nullable SimKey currentSimKey) {
+	public void changeCurrentSimKey(@Nullable SimKey currentSimKey) {
 		this.currentSimKey = currentSimKey;
+		if (currentSimKey != null) {
+			keyMap.put(Hash.of(currentSimKey), currentSimKey);
+		}
 	}
 }

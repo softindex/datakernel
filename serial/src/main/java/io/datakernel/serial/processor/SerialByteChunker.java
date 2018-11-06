@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,28 +16,19 @@
 
 package io.datakernel.serial.processor;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialInput;
-import io.datakernel.serial.SerialOutput;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.MemSize;
 
 import static java.lang.Math.min;
 
-public final class SerialByteChunker extends AbstractAsyncProcess
-		implements WithSerialToSerial<SerialByteChunker, ByteBuf, ByteBuf> {
-	private SerialSupplier<ByteBuf> input;
-	private SerialConsumer<ByteBuf> output;
+public final class SerialByteChunker extends SerialTransformer<SerialByteChunker, ByteBuf, ByteBuf> {
+	private final ByteBufQueue bufs = new ByteBufQueue();
 
 	private final int minChunkSize;
 	private final int maxChunkSize;
-	private final ByteBufQueue bufs = new ByteBufQueue();
 
-	// region creators
 	private SerialByteChunker(int minChunkSize, int maxChunkSize) {
 		this.minChunkSize = minChunkSize;
 		this.maxChunkSize = maxChunkSize;
@@ -48,58 +39,26 @@ public final class SerialByteChunker extends AbstractAsyncProcess
 	}
 
 	@Override
-	public SerialInput<ByteBuf> getInput() {
-		return input -> {
-			this.input = input;
-			if (this.input != null && this.output != null) startProcess();
-			return getProcessResult();
-		};
+	protected Promise<Void> onItem(ByteBuf item) {
+		bufs.add(item);
+		if (!bufs.hasRemainingBytes(minChunkSize)) {
+			return Promise.complete();
+		}
+		int exactSize = 0;
+		for (int i = 0; i != bufs.remainingBufs(); i++) {
+			exactSize += bufs.peekBuf(i).readRemaining();
+			if (exactSize >= minChunkSize) {
+				break;
+			}
+		}
+		return send(bufs.takeExactSize(min(exactSize, maxChunkSize)));
 	}
 
 	@Override
-	public SerialOutput<ByteBuf> getOutput() {
-		return output -> {
-			this.output = output;
-			if (this.input != null && this.output != null) startProcess();
-		};
+	protected Promise<Void> onProcessFinish() {
+		return bufs.hasRemaining() ?
+				send(bufs.takeRemaining())
+						.thenCompose($ -> sendEndOfStream()) :
+				sendEndOfStream();
 	}
-	// endregion
-
-	@Override
-	protected void doProcess() {
-		input.get()
-				.whenResult(buf -> {
-					if (buf != null) {
-						bufs.add(buf);
-						if (!bufs.hasRemainingBytes(minChunkSize)) {
-							doProcess();
-							return;
-						}
-
-						int exactSize = 0;
-						for (int i = 0; i != bufs.remainingBufs(); i++) {
-							exactSize += bufs.peekBuf(i).readRemaining();
-							if (exactSize >= minChunkSize) {
-								break;
-							}
-						}
-						ByteBuf out = bufs.takeExactSize(min(exactSize, maxChunkSize));
-						output.accept(out)
-								.whenResult($ -> doProcess());
-					} else {
-						Promise.complete()
-								.thenCompose($ -> bufs.hasRemaining() ? output.accept(bufs.takeRemaining()) : Promise.complete())
-								.thenCompose($ -> output.accept(null))
-								.whenResult($ -> completeProcess());
-					}
-				});
-	}
-
-	@Override
-	protected void doCloseWithError(Throwable e) {
-		bufs.recycle();
-		input.close(e);
-		output.close(e);
-	}
-
 }
