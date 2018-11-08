@@ -44,7 +44,7 @@ public final class BinaryDataFormats {
 	private BinaryDataFormats() {
 	}
 
-	public static ByteBuf ofCommitEntry(RawServer.CommitEntry commitEntry) {
+	public static ByteBuf ofCommitEntry(GlobalOTNode.CommitEntry commitEntry) {
 		byte[] commitIdBytes = commitEntry.commitId.toBytes();
 		byte[] commitBytes = commitEntry.commit.toBytes();
 		byte[] headBytes = commitEntry.head != null ? commitEntry.head.toBytes() : new byte[]{};
@@ -378,12 +378,12 @@ public final class BinaryDataFormats {
 	}
 	// endregion
 
-	public static RawServer.CommitEntry toCommitEntry(ByteBuf buf) throws ParseException {
+	public static GlobalOTNode.CommitEntry toCommitEntry(ByteBuf buf) throws ParseException {
 		CommitId commitId = CommitId.ofBytes(readBytes(buf));
 		RawCommit rawCommit = RawCommit.ofBytes(readBytes(buf));
 		SignedData<RawCommitHead> head = buf.canRead() ?
 				SignedData.ofBytes(readBytes(buf), RawCommitHead::ofBytes) :
 				null;
-		return new RawServer.CommitEntry(commitId, rawCommit, head);
+		return new GlobalOTNode.CommitEntry(commitId, rawCommit, head);
 	}
 }

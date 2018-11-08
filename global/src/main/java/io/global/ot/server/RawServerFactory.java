@@ -17,8 +17,8 @@
 package io.global.ot.server;
 
 import io.global.common.RawServerId;
-import io.global.ot.api.RawServer;
+import io.global.ot.api.GlobalOTNode;
 
 public interface RawServerFactory {
-	RawServer create(RawServerId rawServerId);
+	GlobalOTNode create(RawServerId rawServerId);
 }

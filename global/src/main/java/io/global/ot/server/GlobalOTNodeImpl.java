@@ -26,8 +26,9 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.*;
+import io.global.common.api.DiscoveryService;
 import io.global.ot.api.*;
-import io.global.ot.server.RawServerImpl.PubKeyEntry.RepositoryEntry;
+import io.global.ot.server.GlobalOTNodeImpl.PubKeyEntry.RepositoryEntry;
 
 import java.time.Duration;
 import java.util.*;
@@ -41,9 +42,9 @@ import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 
-public final class RawServerImpl implements RawServer, EventloopService {
+public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 	private final Eventloop eventloop;
-	private final RawDiscoveryService discoveryService;
+	private final DiscoveryService discoveryService;
 	private final CommitStorage commitStorage;
 	private final RawServerFactory rawServerFactory;
 
@@ -54,7 +55,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public RawServerImpl(Eventloop eventloop, RawDiscoveryService discoveryService, CommitStorage commitStorage, RawServerFactory rawServerFactory) {
+	public GlobalOTNodeImpl(Eventloop eventloop, DiscoveryService discoveryService, CommitStorage commitStorage, RawServerFactory rawServerFactory) {
 		this.eventloop = eventloop;
 		this.discoveryService = discoveryService;
 		this.commitStorage = commitStorage;
@@ -73,11 +74,11 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		return sharedKeysDb.computeIfAbsent(receiver, $ -> new HashMap<>());
 	}
 
-	private Promise<List<RawServer>> ensureServers(PubKey pubKey) {
+	private Promise<List<GlobalOTNode>> ensureServers(PubKey pubKey) {
 		return ensurePubKey(pubKey).ensureServers();
 	}
 
-	private Promise<List<RawServer>> ensureServers(RepoID repositoryId) {
+	private Promise<List<GlobalOTNode>> ensureServers(RepoID repositoryId) {
 		return ensureServers(repositoryId.getOwner());
 	}
 
@@ -417,10 +418,10 @@ public final class RawServerImpl implements RawServer, EventloopService {
 		private final PubKey pubKey;
 		private final Map<RepoID, RepositoryEntry> repositories = new HashMap<>();
 
-		private final Map<RawServerId, RawServer> servers = new HashMap<>();
+		private final Map<RawServerId, GlobalOTNode> servers = new HashMap<>();
 		public long updateServersTimestamp;
 
-		private final AsyncSupplier<List<RawServer>> ensureServers = reuse(this::doEnsureServers);
+		private final AsyncSupplier<List<GlobalOTNode>> ensureServers = reuse(this::doEnsureServers);
 
 		PubKeyEntry(PubKey pubKey) {
 			this.pubKey = pubKey;
@@ -430,15 +431,15 @@ public final class RawServerImpl implements RawServer, EventloopService {
 			return repositories.computeIfAbsent(repositoryId, RepositoryEntry::new);
 		}
 
-		public Promise<List<RawServer>> ensureServers() {
+		public Promise<List<GlobalOTNode>> ensureServers() {
 			return ensureServers.get();
 		}
 
-		private Promise<List<RawServer>> doEnsureServers() {
+		private Promise<List<GlobalOTNode>> doEnsureServers() {
 			if (updateServersTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
 				return Promise.of(getServers());
 			}
-			return discoveryService.findServers(pubKey)
+			return discoveryService.find(pubKey)
 					.whenResult(announceData -> {
 						Set<RawServerId> newServerIds = announceData.getData().getServerIds();
 						difference(servers.keySet(), newServerIds).forEach(servers::remove);
@@ -456,7 +457,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 			return Promises.all(repositories.values().stream().map(fn));
 		}
 
-		public List<RawServer> getServers() {
+		public List<GlobalOTNode> getServers() {
 			return new ArrayList<>(servers.values());
 		}
 
@@ -536,7 +537,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 						.thenCompose(servers -> Promises.firstSuccessful(servers.stream().map(this::doFetch)));
 			}
 
-			private Promise<Void> doFetch(RawServer server) {
+			private Promise<Void> doFetch(GlobalOTNode server) {
 				return getHeadsInfo(repositoryId)
 						.thenCompose(headsInfo -> server.downloader(repositoryId, headsInfo.bases, headsInfo.heads)
 								.streamTo(SerialConsumer.ofPromise(getStreamConsumer(repositoryId))));
@@ -573,7 +574,7 @@ public final class RawServerImpl implements RawServer, EventloopService {
 						.thenCompose(servers -> Promises.all(servers.stream().map(this::doPush).map(Promise::toTry)));
 			}
 
-			private Promise<Void> doPush(RawServer server) {
+			private Promise<Void> doPush(GlobalOTNode server) {
 				return server.getHeadsInfo(repositoryId)
 						.thenCompose(headsInfo -> SerialSupplier.ofPromise(
 								getCommitsSupplier(repositoryId, headsInfo.bases, headsInfo.heads))

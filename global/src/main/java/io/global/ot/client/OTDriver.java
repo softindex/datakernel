@@ -39,15 +39,15 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 
 public final class OTDriver {
-	private final RawServer server;
+	private final GlobalOTNode service;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	private Map<Hash, SimKey> simKeys = new HashMap<>();
 	private SimKey currentSimKey;
 
-	public OTDriver(RawServer server, List<RepoID> originRepositoryIds, RepoID myRepositoryId) {
-		this.server = server;
+	public OTDriver(GlobalOTNode service, List<RepoID> originRepositoryIds, RepoID myRepositoryId) {
+		this.service = service;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -79,7 +79,7 @@ public final class OTDriver {
 
 	public Promise<Optional<SimKey>> getSharedKey(MyRepositoryId<?> myRepositoryId,
 			PubKey senderPubKey, Hash simKeyHash) {
-		return server.getSharedKey(senderPubKey, myRepositoryId.getRepositoryId().getOwner(), simKeyHash)
+		return service.getSharedKey(senderPubKey, myRepositoryId.getRepositoryId().getOwner(), simKeyHash)
 				.thenApply(maybeSignedSimKey -> {
 					if (!maybeSignedSimKey.isPresent()) {
 						return Optional.empty();
@@ -121,7 +121,7 @@ public final class OTDriver {
 
 	public <D> Promise<Void> push(MyRepositoryId<D> myRepositoryId,
 			OTCommit<CommitId, D> commit) {
-		return server.save(
+		return service.save(
 				myRepositoryId.getRepositoryId(),
 				(RawCommit) commit.getSerializedData(),
 				SignedData.sign(
@@ -134,7 +134,7 @@ public final class OTDriver {
 	}
 
 	public Promise<Set<CommitId>> getHeads(RepoID repositoryId) {
-		return server.getHeads(repositoryId)
+		return service.getHeads(repositoryId)
 				.thenApply(signedCommitHeads -> signedCommitHeads.stream()
 						.filter(signedCommitHead ->
 								verify(
@@ -155,9 +155,9 @@ public final class OTDriver {
 	public <D> Promise<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,
 			Set<RepoID> originRepositoryIds, CommitId revisionId) {
 		return Promises.firstSuccessful(
-				() -> server.loadCommit(myRepositoryId.getRepositoryId(), revisionId),
+				() -> service.loadCommit(myRepositoryId.getRepositoryId(), revisionId),
 				() -> Promises.any(originRepositoryIds.stream()
-						.map(originRepositoryId -> server.loadCommit(originRepositoryId, revisionId))))
+						.map(originRepositoryId -> service.loadCommit(originRepositoryId, revisionId))))
 				.thenException(rawCommit ->
 						Arrays.equals(revisionId.toBytes(), sha256(rawCommit.toBytes())) ?
 								null : new IOException())
@@ -193,7 +193,7 @@ public final class OTDriver {
 
 	public <D> Promise<Optional<List<D>>> loadSnapshot(MyRepositoryId<D> myRepositoryId,
 			RepoID repositoryId, CommitId revisionId) {
-		return server.loadSnapshot(repositoryId, revisionId)
+		return service.loadSnapshot(repositoryId, revisionId)
 				.thenCompose(optionalRawSnapshot -> {
 					if (!optionalRawSnapshot.isPresent()) {
 						return Promise.of(Optional.empty());
@@ -221,7 +221,7 @@ public final class OTDriver {
 
 	public <D> Promise<Void> saveSnapshot(MyRepositoryId<D> myRepositoryId,
 			CommitId revisionId, List<D> diffs) {
-		return server.saveSnapshot(myRepositoryId.getRepositoryId(),
+		return service.saveSnapshot(myRepositoryId.getRepositoryId(),
 				SignedData.sign(
 						RawSnapshot.of(
 								myRepositoryId.getRepositoryId(),

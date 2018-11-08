@@ -30,7 +30,7 @@ import io.datakernel.util.MemSize;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.ot.api.CommitId;
-import io.global.ot.api.RawServer;
+import io.global.ot.api.GlobalOTNode;
 import io.global.ot.api.RawSnapshot;
 import io.global.ot.api.RepoID;
 import io.global.ot.util.BinaryDataFormats;
@@ -54,55 +54,55 @@ public final class RawServerServlet implements AsyncServlet {
 	public static final MemSize DEFAULT_CHUNK_SIZE = MemSize.kilobytes(128);
 	private static final Pattern HEADS_SPLITTER = Pattern.compile(",");
 
-	private final RawServer rawServer;
+	private final GlobalOTNode node;
 	private final MiddlewareServlet middlewareServlet;
 
 	private interface ServletFunction {
 		Promise<HttpResponse> convert(HttpRequest in) throws ParseException;
 	}
 
-	private RawServerServlet(RawServer rawServer) {
-		this.rawServer = rawServer;
+	private RawServerServlet(GlobalOTNode node) {
+		this.node = node;
 		this.middlewareServlet = servlet();
 	}
 
-	public static RawServerServlet create(RawServer rawServer) {
-		return new RawServerServlet(rawServer);
+	public static RawServerServlet create(GlobalOTNode service) {
+		return new RawServerServlet(service);
 	}
 
 	private MiddlewareServlet servlet() {
 		return MiddlewareServlet.create()
 				.with(GET, "/" + LIST + "/:pubKey", req ->
-						rawServer.list(req.parsePathParameter("pubKey", HttpDataFormats::urlDecodePubKey))
+						node.list(req.parsePathParameter("pubKey", HttpDataFormats::urlDecodePubKey))
 								.thenApply(names ->
 										HttpResponse.ok200()
 												.withBody(toJson(SET_OF_STRINGS, names).getBytes(UTF_8))))
 				.with(POST, "/" + SAVE + "/:pubKey/:name", ensureRequestBody(Integer.MAX_VALUE, req -> {
 					SaveTuple saveTuple = fromJson(SAVE_GSON, req.getBody().asString(UTF_8));
-					return rawServer.save(urlDecodeRepositoryId(req), saveTuple.commits, saveTuple.heads)
+					return node.save(urlDecodeRepositoryId(req), saveTuple.commits, saveTuple.heads)
 							.thenApply($ ->
 									HttpResponse.ok200());
 				}))
 				.with(GET, "/" + LOAD_COMMIT + "/:pubKey/:name", req ->
-						rawServer.loadCommit(
+						node.loadCommit(
 								urlDecodeRepositoryId(req),
 								urlDecodeCommitId(req.getQueryParameter("commitId")))
 								.thenApply(rawCommit ->
 										HttpResponse.ok200()
 												.withBody(toJson(COMMIT_JSON, rawCommit).getBytes(UTF_8))))
 				.with(GET, "/" + GET_HEADS_INFO + "/:pubKey/:name", req ->
-						rawServer.getHeadsInfo(
+						node.getHeadsInfo(
 								urlDecodeRepositoryId(req))
 								.thenApply(headsInfo ->
 										HttpResponse.ok200()
 												.withBody(toJson(HEADS_INFO_GSON, headsInfo).getBytes(UTF_8))))
 				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", ensureRequestBody(Integer.MAX_VALUE, req -> {
 					SignedData<RawSnapshot> encryptedSnapshot = SignedData.ofBytes(req.getBody().asArray(), RawSnapshot::ofBytes);
-					return rawServer.saveSnapshot(encryptedSnapshot.getData().repositoryId, encryptedSnapshot)
+					return node.saveSnapshot(encryptedSnapshot.getData().repositoryId, encryptedSnapshot)
 							.thenApply($2 -> HttpResponse.ok200());
 				}))
 				.with(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", req ->
-						rawServer.loadSnapshot(
+						node.loadSnapshot(
 								urlDecodeRepositoryId(req),
 								urlDecodeCommitId(req.getQueryParameter("id")))
 								.thenApply(maybeRawSnapshot -> maybeRawSnapshot.isPresent() ?
@@ -110,7 +110,7 @@ public final class RawServerServlet implements AsyncServlet {
 												.withBody(maybeRawSnapshot.get().toBytes()) :
 										HttpResponse.ofCode(404)))
 				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", req ->
-						rawServer.getHeads(
+						node.getHeads(
 								urlDecodeRepositoryId(req),
 								req.parseQueryParameter("heads", HEADS_SPLITTER::splitAsStream)
 										.map(str -> {
@@ -125,7 +125,7 @@ public final class RawServerServlet implements AsyncServlet {
 										HttpResponse.ok200()
 												.withBody(toJson(HEADS_DELTA_GSON, heads).getBytes(UTF_8))))
 				.with(POST, "/" + SHARE_KEY + "/:owner", ensureRequestBody(Integer.MAX_VALUE, req ->
-						rawServer.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SHARED_SIM_KEY_JSON, req.getBody().asString(UTF_8)))
+						node.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SHARED_SIM_KEY_JSON, req.getBody().asString(UTF_8)))
 								.thenApply($1 ->
 										HttpResponse.ok200())))
 				.with(GET, "/" + DOWNLOAD, req -> {
@@ -148,7 +148,7 @@ public final class RawServerServlet implements AsyncServlet {
 								}
 							})
 							.collect(toSet());
-					return rawServer.download(repoID, bases, heads)
+					return node.download(repoID, bases, heads)
 							.thenApply(downloader ->
 									HttpResponse.ok200()
 											.withBodyStream(downloader
@@ -160,7 +160,7 @@ public final class RawServerServlet implements AsyncServlet {
 					return ByteBufsSupplier.of(req.getBodyStream())
 							.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
 									.andThen(BinaryDataFormats::toCommitEntry))
-							.streamTo(rawServer.uploader(repoID))
+							.streamTo(node.uploader(repoID))
 							.thenApply($ -> HttpResponse.ok200());
 				});
 	}

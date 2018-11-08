@@ -25,8 +25,8 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.*;
 import io.global.ot.api.*;
-import io.global.ot.api.RawServer.Heads;
-import io.global.ot.api.RawServer.HeadsInfo;
+import io.global.ot.api.GlobalOTNode.Heads;
+import io.global.ot.api.GlobalOTNode.HeadsInfo;
 import org.junit.Test;
 
 import java.util.LinkedList;
@@ -45,7 +45,7 @@ import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class RawServerHttpClientTest {
+public class GlobalOTNodeHttpClientTest {
 
 	@Test
 	public void test1() throws ExecutionException, InterruptedException {
@@ -68,7 +68,7 @@ public class RawServerHttpClientTest {
 
 		LinkedList<Object> parameters = new LinkedList<>();
 
-		RawServerServlet servlet = RawServerServlet.create(new RawServer() {
+		RawServerServlet servlet = RawServerServlet.create(new GlobalOTNode() {
 			<T> Promise<T> resultOf(@Nullable T result, Object... args) {
 				parameters.add(result);
 				parameters.addAll(asList(args));
@@ -159,7 +159,7 @@ public class RawServerHttpClientTest {
 			}
 		};
 
-		RawServerHttpClient client = new RawServerHttpClient(httpClient, "http://localhost/");
+		GlobalOTNodeHttpClient client = new GlobalOTNodeHttpClient(httpClient, "http://localhost/");
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 

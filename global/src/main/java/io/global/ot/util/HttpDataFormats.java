@@ -27,10 +27,10 @@ import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.ot.api.CommitId;
+import io.global.ot.api.GlobalOTNode.Heads;
+import io.global.ot.api.GlobalOTNode.HeadsInfo;
 import io.global.ot.api.RawCommit;
 import io.global.ot.api.RawCommitHead;
-import io.global.ot.api.RawServer.Heads;
-import io.global.ot.api.RawServer.HeadsInfo;
 import io.global.ot.api.RepoID;
 import org.spongycastle.math.ec.ECPoint;
 

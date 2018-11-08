@@ -20,7 +20,10 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.global.common.*;
+import io.global.common.Hash;
+import io.global.common.PubKey;
+import io.global.common.SharedSimKey;
+import io.global.common.SignedData;
 
 import java.util.Map;
 import java.util.Optional;
@@ -28,7 +31,7 @@ import java.util.Set;
 
 import static java.util.Collections.*;
 
-public interface RawServer {
+public interface GlobalOTNode {
 	Promise<Set<String>> list(PubKey pubKey);
 
 	Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads);

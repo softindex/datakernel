@@ -26,7 +26,10 @@ import io.datakernel.http.*;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializer;
-import io.global.common.*;
+import io.global.common.Hash;
+import io.global.common.PubKey;
+import io.global.common.SharedSimKey;
+import io.global.common.SignedData;
 import io.global.ot.api.*;
 import io.global.ot.util.HttpDataFormats;
 
@@ -47,11 +50,11 @@ import static io.global.ot.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 
-public class RawServerHttpClient implements RawServer {
+public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	private final IAsyncHttpClient httpClient;
 	private final String url;
 
-	public RawServerHttpClient(IAsyncHttpClient httpClient, String url) {
+	public GlobalOTNodeHttpClient(IAsyncHttpClient httpClient, String url) {
 		this.httpClient = httpClient;
 		this.url = url;
 	}
