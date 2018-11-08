@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -242,6 +242,10 @@ public class ByteBufTest {
 		assertEquals(5, buf.find((byte) 'm'));
 		assertEquals(-1, buf.find(new byte[]{'T', 'e', 's', 's'}));
 		assertEquals(1, buf.find(new byte[]{'T', 'e', 's', 's'}, 1, 2));
+
+		assertEquals(0, buf.find(BYTES));
+		assertEquals(1, buf.find("est message".getBytes()));
+		assertEquals(1, buf.find("_est message__".getBytes(), 1, 11));
 	}
 
 	@Test
