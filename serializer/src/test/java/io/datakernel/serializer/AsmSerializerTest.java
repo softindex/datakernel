@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1972,5 +1972,63 @@ public class AsmSerializerTest {
 		CustomArrayHolder _holder = doTest(holder, serializer, serializer);
 
 		assertArrayEquals(holder.getStringWrappers(), _holder.getStringWrappers());
+	}
+
+	@FunctionalInterface
+	interface TestInterface {
+		Object getValue();
+	}
+
+	public static class Imp implements TestInterface {
+		private Integer value;
+
+		@Override
+		@Serialize(order = 1, added = 0)
+		@SerializeNullable
+		public Integer getValue() {
+			return value;
+		}
+
+		public void setValue(Integer value) {
+			this.value = value;
+		}
+	}
+
+	@Test
+	public void testOverridenBridgeMethod() {
+		BufferSerializer<Imp> serializer = SerializerBuilder.create(DefiningClassLoader.create()).build(Imp.class);
+		Imp object = new Imp();
+		object.setValue(100);
+		Imp deserialized = doTest(object, serializer, serializer);
+		assertEquals(100, deserialized.getValue().intValue());
+	}
+
+	@FunctionalInterface
+	interface TestGenericInterface<T> {
+		T getValue();
+	}
+
+	public static class GenericImp implements TestGenericInterface<Integer> {
+		private Integer value;
+
+		@Override
+		@Serialize(order = 1, added = 0)
+		@SerializeNullable
+		public Integer getValue() {
+			return value;
+		}
+
+		public void setValue(Integer value) {
+			this.value = value;
+		}
+	}
+
+	@Test
+	public void testGenericBridgeMethod() {
+		BufferSerializer<GenericImp> serializer = SerializerBuilder.create(DefiningClassLoader.create()).build(GenericImp.class);
+		GenericImp object = new GenericImp();
+		object.setValue(100);
+		GenericImp deserialized = doTest(object, serializer, serializer);
+		assertEquals(100, deserialized.getValue().intValue());
 	}
 }
