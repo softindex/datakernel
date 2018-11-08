@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialSupplier;
@@ -70,27 +69,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		HttpResponse response = HttpResponse.ofCode(302);
 		response.setHeader(LOCATION, url);
 		return response;
-	}
-
-	public Promise<HttpResponse> ensureStatusCode(int code) {
-		if (this.code == code) {
-			return Promise.of(this);
-		}
-		return Promise.ofException(HttpException.ofCode(this.code, this.body.getString(UTF_8)));
-	}
-
-	public Promise<HttpResponse> ensureStatusCodes(int code1, int code2) {
-		if (code == code1 || code == code2) {
-			return Promise.of(this);
-		}
-		return Promise.ofException(HttpException.ofCode(this.code, this.body.getString(UTF_8)));
-	}
-
-	public Promise<HttpResponse> ensureStatusCodes(int code1, int code2, int code3) {
-		if (code == code1 || code == code2 || code == code3) {
-			return Promise.of(this);
-		}
-		return Promise.ofException(HttpException.ofCode(this.code, this.body.getString(UTF_8)));
 	}
 
 	// common builder methods

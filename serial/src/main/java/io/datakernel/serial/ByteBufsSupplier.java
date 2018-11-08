@@ -72,15 +72,17 @@ public abstract class ByteBufsSupplier implements Cancellable {
 			public Promise<Void> endOfStream() {
 				if (!bufs.isEmpty()) {
 					bufs.recycle();
+					input.close(UNEXPECTED_DATA_EXCEPTION);
 					return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 				}
 				return input.get()
 						.thenCompose(buf -> {
-							if (buf != null) {
-								buf.recycle();
-								return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
-							} else {
+							if (buf == null) {
 								return Promise.complete();
+							} else {
+								buf.recycle();
+								input.close(UNEXPECTED_DATA_EXCEPTION);
+								return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 							}
 						});
 			}

@@ -47,6 +47,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HelloWorldServer.HELLO_WORLD;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
@@ -86,7 +87,8 @@ public class AsyncHttpClientTest {
 
 		httpServer.listen();
 
-		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT))
+		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.thenCompose(ensureResponseBody())
 				.thenApply(HttpMessage::getBody)
 				.thenApply(buf -> buf.asString(UTF_8))
 				.whenComplete(($, e) -> {
@@ -107,7 +109,8 @@ public class AsyncHttpClientTest {
 
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
 
-		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://google.com"))
+		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://google.com"))
+				.thenCompose(ensureResponseBody())
 				.thenApply(response -> response.getBody().asString(UTF_8))
 				.whenComplete(($, e) -> httpClient.stop())
 				.toCompletableFuture();
@@ -129,7 +132,8 @@ public class AsyncHttpClientTest {
 		httpServer.listen();
 
 		int maxBodySize = HELLO_WORLD.length - 1;
-		CompletableFuture<String> future = httpClient.requestWithResponseBody(maxBodySize, HttpRequest.get("http://127.0.0.1:" + PORT))
+		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.thenCompose(ensureResponseBody())
 				.thenApply(response -> response.getBody().asString(UTF_8))
 				.whenComplete(($, e) -> {
 					httpClient.stop();
@@ -159,7 +163,8 @@ public class AsyncHttpClientTest {
 		server.listen();
 
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
-		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, request)
+		CompletableFuture<String> future = httpClient.request(request)
+				.thenCompose(ensureResponseBody())
 				.thenApply(response -> response.getBody().asString(UTF_8))
 				.whenComplete(($, e) -> {
 					httpClient.stop();
@@ -193,11 +198,16 @@ public class AsyncHttpClientTest {
 				.withInspector(inspector);
 
 		Promises.all(
-				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)),
-				httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT)))
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+						.thenCompose(ensureResponseBody()),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+						.thenCompose(ensureResponseBody()),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+						.thenCompose(ensureResponseBody()),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+						.thenCompose(ensureResponseBody()),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+						.thenCompose(ensureResponseBody()))
 				.whenComplete(($, e) -> {
 					server.close();
 					responses.forEach(response -> response.set(HttpResponse.ok200()));

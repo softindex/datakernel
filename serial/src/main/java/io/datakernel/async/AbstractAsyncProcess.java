@@ -79,17 +79,22 @@ public abstract class AbstractAsyncProcess implements AsyncProcess {
 	public final void close(Throwable e) {
 		if (isProcessComplete()) return;
 		processComplete = true;
-		doCloseWithError(e);
+		doClose(e);
 		processResult.trySetException(e);
 		afterProcess(e);
 	}
+
+	protected abstract void doClose(Throwable e);
 
 	@Override
 	public final void cancel() {
 		AsyncProcess.super.cancel();
 	}
 
-	protected abstract void doCloseWithError(Throwable e);
+	@Override
+	public final void close() {
+		AsyncProcess.super.close();
+	}
 
 	protected final <T> SerialSupplier<T> sanitize(SerialSupplier<T> supplier) {
 		return new AbstractSerialSupplier<T>() {

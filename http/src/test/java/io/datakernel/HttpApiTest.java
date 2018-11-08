@@ -38,6 +38,7 @@ import java.util.List;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaderValue.*;
 import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static java.time.ZoneOffset.UTC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -118,7 +119,8 @@ public class HttpApiTest {
 	@Test
 	public void test() throws IOException {
 		server.listen();
-		client.requestWithResponseBody(Integer.MAX_VALUE, createRequest())
+		client.request(createRequest())
+				.thenCompose(ensureResponseBody())
 				.whenComplete((response, throwable) -> {
 					if (throwable != null) {
 						fail("Should not end here");

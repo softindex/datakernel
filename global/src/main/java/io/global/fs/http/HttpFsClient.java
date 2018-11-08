@@ -32,6 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.http.IAsyncHttpClient.ensureOk200;
+import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.fs.http.RemoteFsServlet.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -65,7 +67,7 @@ public class HttpFsClient implements FsClient {
 								.appendQuery("offset", "" + offset)
 								.build())
 						.withBodyStream(buffer.getSupplier()))
-				.thenCompose(response -> response.ensureStatusCodes(200, 201))
+				.thenCompose(ensureStatusCode(200, 201))
 				.materialize();
 		return buffer.getConsumer().withAcknowledgement(ack -> ack.both(res));
 	}
@@ -80,7 +82,7 @@ public class HttpFsClient implements FsClient {
 								.appendPath(filename)
 								.appendQuery("range", offset + (length == -1 ? "" : ("-" + (offset + length))))
 								.build()))
-				.thenCompose(response -> response.ensureStatusCode(200))
+				.thenCompose(ensureOk200())
 				.thenApply(HttpMessage::getBodyStream);
 	}
 
@@ -93,7 +95,7 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(MOVE)
 								.build())
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
-				.thenCompose(response -> response.ensureStatusCode(200))
+				.thenCompose(ensureOk200())
 				.thenCompose(response -> {
 					try {
 						return Promise.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
@@ -112,7 +114,7 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(COPY)
 								.build())
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
-				.thenCompose(response -> response.ensureStatusCode(200))
+				.thenCompose(ensureOk200())
 				.thenCompose(response -> {
 					try {
 						return Promise.of(GsonAdapters.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
@@ -131,7 +133,7 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(LIST)
 								.appendQuery("glob", glob)
 								.build()))
-				.thenCompose(response -> response.ensureStatusCode(200))
+				.thenCompose(ensureOk200())
 				.thenCompose(response -> {
 					try {
 						return Promise.of(GsonAdapters.fromJson(FILE_META_LIST, response.getBody().asString(UTF_8)));
@@ -150,7 +152,7 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(DEL)
 								.appendQuery("glob", glob)
 								.build()))
-				.thenCompose(response -> response.ensureStatusCode(200))
+				.thenCompose(ensureOk200())
 				.toVoid();
 	}
 }

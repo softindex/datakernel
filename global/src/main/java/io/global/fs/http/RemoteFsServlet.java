@@ -31,6 +31,7 @@ import io.global.fs.util.HttpDataFormats;
 import java.util.List;
 import java.util.Set;
 
+import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.json.GsonAdapters.*;
 import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_JSON;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -83,12 +84,12 @@ public final class RemoteFsServlet implements AsyncServlet {
 				.with(HttpMethod.DELETE, "/" + DEL, request ->
 						client.delete(request.getQueryParameter("glob"))
 								.thenApply($ -> HttpResponse.ok200()))
-				.with(HttpMethod.POST, "/" + COPY, AsyncServlet.ensureRequestBody(Integer.MAX_VALUE, request ->
+				.with(HttpMethod.POST, "/" + COPY, ensureRequestBody(request ->
 						client.copy(request.getPostParameters())
 								.thenApply(set -> HttpResponse.ok200()
 										.withBody(HttpDataFormats.STRING_SET.toJson(set).getBytes(UTF_8))
 										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON))))))
-				.with(HttpMethod.POST, "/" + MOVE, AsyncServlet.ensureRequestBody(Integer.MAX_VALUE, request ->
+				.with(HttpMethod.POST, "/" + MOVE, ensureRequestBody(request ->
 						client.move(request.getPostParameters())
 								.thenApply(set -> HttpResponse.ok200()
 										.withBody(HttpDataFormats.STRING_SET.toJson(set).getBytes(UTF_8))

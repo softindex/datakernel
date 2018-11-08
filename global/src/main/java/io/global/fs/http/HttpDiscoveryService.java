@@ -33,6 +33,8 @@ import io.global.common.api.DiscoveryService;
 import java.net.InetSocketAddress;
 import java.util.Optional;
 
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
+import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.fs.http.DiscoveryServlet.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -59,7 +61,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 								.appendPathPart(space.asString())
 								.build())
 						.withBody(SIGNED_ANNOUNCE.toJson(announceData).getBytes(UTF_8)))
-				.thenCompose(response -> response.ensureStatusCode(201))
+				.thenCompose(ensureStatusCode(201))
 				.toVoid();
 	}
 
@@ -80,13 +82,13 @@ public final class HttpDiscoveryService implements DiscoveryService {
 
 	@Override
 	public Promise<SignedData<AnnounceData>> find(PubKey space) {
-		return client.requestWithResponseBody(Integer.MAX_VALUE,
-				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
-								.appendPathPart(FIND_ALL)
-								.appendPathPart(space.asString())
-								.build()))
+		return client.request(HttpRequest.get(
+				UrlBuilder.http()
+						.withAuthority(address)
+						.appendPathPart(FIND_ALL)
+						.appendPathPart(space.asString())
+						.build()))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(response -> Promise.ofTry(
 						tryParseResponse(response,
 								body ->
@@ -106,21 +108,21 @@ public final class HttpDiscoveryService implements DiscoveryService {
 								.appendPathPart(owner.asString())
 								.build())
 						.withBody(SIGNED_SHARED_SIM_KEY.toJson(simKey).getBytes(UTF_8)))
-				.thenCompose(response -> response.ensureStatusCode(201))
+				.thenCompose(ensureStatusCode(201))
 				.toVoid();
 	}
 
 	@Override
 	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
-		return client.requestWithResponseBody(Integer.MAX_VALUE,
-				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
-								.appendPathPart(GET_SHARED_KEY)
-								.appendPathPart(owner.asString())
-								.appendPathPart(receiver.asString())
-								.appendPathPart(hash.asString())
-								.build()))
+		return client.request(HttpRequest.get(
+				UrlBuilder.http()
+						.withAuthority(address)
+						.appendPathPart(GET_SHARED_KEY)
+						.appendPathPart(owner.asString())
+						.appendPathPart(receiver.asString())
+						.appendPathPart(hash.asString())
+						.build()))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(response -> Promise.ofTry(
 						tryParseResponse(response,
 								body ->

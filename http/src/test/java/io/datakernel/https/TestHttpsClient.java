@@ -43,6 +43,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaderValue.ofAcceptMediaTypes;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.MediaTypes.*;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
@@ -72,7 +73,8 @@ public class TestHttpsClient {
 				.withSslEnabled(SSLContext.getDefault(), executor);
 
 		String url = "https://en.wikipedia.org/wiki/Wikipedia";
-		CompletableFuture<HttpResponse> future = client.requestWithResponseBody(Integer.MAX_VALUE, get(url))
+		CompletableFuture<HttpResponse> future = client.request(get(url))
+				.thenCompose(ensureResponseBody())
 				.whenComplete(($, e) -> client.stop())
 				.toCompletableFuture();
 

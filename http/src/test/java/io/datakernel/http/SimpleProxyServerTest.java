@@ -36,6 +36,7 @@ import java.net.Socket;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -52,7 +53,8 @@ public class SimpleProxyServerTest {
 		return AsyncHttpServer.create(primaryEventloop,
 				request -> {
 					String path = ECHO_SERVER_PORT + request.getUrl().getPath();
-					return httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + path))
+					return httpClient.request(HttpRequest.get("http://127.0.0.1:" + path))
+							.thenCompose(ensureResponseBody())
 							.thenApply(result -> HttpResponse.ofCode(result.getCode())
 									.withBody(encodeAscii("FORWARDED: " + result.getBody().asString(UTF_8))));
 				})

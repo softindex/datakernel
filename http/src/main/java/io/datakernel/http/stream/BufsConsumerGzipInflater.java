@@ -263,7 +263,7 @@ public final class BufsConsumerGzipInflater extends AbstractAsyncProcess
 	// endregion
 
 	@Override
-	protected void doCloseWithError(Throwable e) {
+	protected void doClose(Throwable e) {
 		inflater.end();
 		input.close(e);
 		output.close(e);

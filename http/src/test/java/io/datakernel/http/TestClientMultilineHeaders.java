@@ -30,6 +30,7 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.ALLOW;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static org.junit.Assert.assertEquals;
 
 public class TestClientMultilineHeaders {
@@ -57,7 +58,8 @@ public class TestClientMultilineHeaders {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
-		CompletableFuture<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + PORT))
+		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.thenCompose(ensureResponseBody())
 				.thenApply(response -> {
 					httpClient.stop();
 					server.close();

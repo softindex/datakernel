@@ -80,7 +80,7 @@ public final class BufsConsumerDelimiter extends AbstractAsyncProcess
 	}
 
 	@Override
-	protected void doCloseWithError(Throwable e) {
+	protected void doClose(Throwable e) {
 		input.close(e);
 		output.close(e);
 	}

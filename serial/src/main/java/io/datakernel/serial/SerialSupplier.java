@@ -270,7 +270,7 @@ public interface SerialSupplier<T> extends Cancellable {
 	}
 
 	default MaterializedPromise<Void> streamTo(SerialConsumer<T> consumer) {
-		return SerialSuppliers.stream(this, consumer);
+		return SerialSuppliers.streamTo(this, consumer);
 	}
 
 	default MaterializedPromise<Void> bindTo(SerialInput<T> to) {

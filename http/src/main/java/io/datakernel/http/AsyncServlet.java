@@ -19,6 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 
 /**
@@ -30,11 +31,18 @@ import io.datakernel.util.MemSize;
 public interface AsyncServlet {
 	Promise<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException;
 
-	static AsyncServlet ensureRequestBody(MemSize maxBodySize, AsyncServlet delegate) {
-		return ensureRequestBody(maxBodySize.toInt(), delegate);
+	MemSize DEFAULT_MAX_REQUEST_BODY = MemSize.of(
+			ApplicationSettings.getInt(AsyncServlet.class, "maxRequestBody", 1024 * 1024));
+
+	static AsyncServlet ensureRequestBody(AsyncServlet delegate) {
+		return ensureRequestBody(delegate, DEFAULT_MAX_REQUEST_BODY);
 	}
 
-	static AsyncServlet ensureRequestBody(int maxBodySize, AsyncServlet delegate) {
+	static AsyncServlet ensureRequestBody(AsyncServlet delegate, MemSize maxBodySize) {
+		return ensureRequestBody(delegate, maxBodySize.toInt());
+	}
+
+	static AsyncServlet ensureRequestBody(AsyncServlet delegate, int maxBodySize) {
 		return request -> request.ensureBody(maxBodySize)
 				.thenCompose($ -> {
 					try {

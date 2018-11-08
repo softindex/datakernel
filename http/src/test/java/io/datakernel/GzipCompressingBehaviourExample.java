@@ -25,6 +25,7 @@ import java.io.IOException;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 
 public final class GzipCompressingBehaviourExample {
 	public static void main(String[] args) throws IOException {
@@ -54,6 +55,7 @@ public final class GzipCompressingBehaviourExample {
 				.withBodyGzipCompression()
 				.withHeader(ACCEPT_ENCODING, "gzip");
 
-		client.requestWithResponseBody(Integer.MAX_VALUE, request);
+		client.request(request)
+				.thenCompose(ensureResponseBody());
 	}
 }

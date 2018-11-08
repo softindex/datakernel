@@ -145,13 +145,13 @@ public final class SerialSuppliers {
 		});
 	}
 
-	public static <T> MaterializedPromise<Void> stream(SerialSupplier<T> supplier, SerialConsumer<T> consumer) {
+	public static <T> MaterializedPromise<Void> streamTo(SerialSupplier<T> supplier, SerialConsumer<T> consumer) {
 		SettablePromise<Void> cb = new SettablePromise<>();
-		streamImpl(supplier, consumer, cb);
+		streamToImpl(supplier, consumer, cb);
 		return cb;
 	}
 
-	private static <T> void streamImpl(SerialSupplier<T> supplier, SerialConsumer<T> consumer, SettablePromise<Void> result) {
+	private static <T> void streamToImpl(SerialSupplier<T> supplier, SerialConsumer<T> consumer, SettablePromise<Void> result) {
 		Promise<T> supplierPromise;
 		while (true) {
 			supplierPromise = supplier.get();
@@ -162,7 +162,7 @@ public final class SerialSuppliers {
 			if (consumerPromise.isResult()) continue;
 			consumerPromise.whenComplete(($, e) -> {
 				if (e == null) {
-					streamImpl(supplier, consumer, result);
+					streamToImpl(supplier, consumer, result);
 				} else {
 					supplier.close(e);
 					result.trySetException(e);
@@ -177,7 +177,7 @@ public final class SerialSuppliers {
 								.whenComplete(($, e2) -> {
 									if (e2 == null) {
 										if (item != null) {
-											streamImpl(supplier, consumer, result);
+											streamToImpl(supplier, consumer, result);
 										} else {
 											result.trySet(null);
 										}

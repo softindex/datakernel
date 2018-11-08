@@ -136,7 +136,7 @@ public final class SerialSplitter<T> extends AbstractAsyncProcess
 	}
 
 	@Override
-	protected void doCloseWithError(Throwable e) {
+	protected void doClose(Throwable e) {
 		input.close(e);
 		outputs.forEach(output -> output.close(e));
 	}

@@ -759,6 +759,10 @@ public final class Promises {
 		return cb;
 	}
 
+	public static Promise<Void> loop(Predicate<Void> test, Function<Void, Promise<Void>> next) {
+		return loop(null, test, next);
+	}
+
 	private static <T> void loopImpl(T seed, Predicate<T> test, Function<T, Promise<T>> next, SettablePromise<Void> cb) {
 		while (true) {
 			Promise<T> promise = next.apply(seed);

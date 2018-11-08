@@ -33,6 +33,7 @@ import java.util.concurrent.Future;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static org.junit.Assert.assertEquals;
@@ -133,7 +134,8 @@ public class HttpTolerantApplicationTest {
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
-			Future<String> future = httpClient.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get("http://127.0.0.1:" + port))
+			Future<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + port))
+					.thenCompose(ensureResponseBody())
 					.thenApply(response ->
 							response.getHeaderOrNull(HttpHeaders.CONTENT_TYPE))
 					.whenComplete(($, e) -> httpClient.stop())

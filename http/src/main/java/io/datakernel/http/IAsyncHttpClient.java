@@ -17,18 +17,47 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
+
+import java.util.function.Function;
 
 public interface IAsyncHttpClient {
 	Promise<HttpResponse> request(HttpRequest request);
 
-	default Promise<HttpResponse> requestWithResponseBody(int maxBodySize, HttpRequest request) {
-		return request(request)
-				.thenCompose(response -> response.ensureBody(maxBodySize).thenApply($ -> response));
+	MemSize DEFAULT_MAX_RESPONSE_BODY = MemSize.of(
+			ApplicationSettings.getInt(AsyncHttpClient.class, "maxResponseBody", 1024 * 1024));
+
+	static Function<HttpResponse, Promise<HttpResponse>> ensureResponseBody() {
+		return response -> response.ensureBody(DEFAULT_MAX_RESPONSE_BODY).thenApply($ -> response);
 	}
 
-	default Promise<HttpResponse> requestWithResponseBody(MemSize maxBodySize, HttpRequest request) {
-		return requestWithResponseBody(maxBodySize.toInt(), request);
+	static Function<HttpResponse, Promise<HttpResponse>> ensureResponseBody(int maxBodySize) {
+		return response -> response.ensureBody(maxBodySize).thenApply($ -> response);
+	}
+
+	static Function<HttpResponse, Promise<HttpResponse>> ensureResponseBody(MemSize maxBodySize) {
+		return response -> response.ensureBody(maxBodySize).thenApply($ -> response);
+	}
+
+	static Function<HttpResponse, Promise<HttpResponse>> ensureOk200() {
+		return response -> {
+			if (response.getCode() == 200) {
+				return Promise.of(response);
+			}
+			return Promise.ofException(HttpException.ofCode(response.getCode()));
+		};
+	}
+
+	static Function<HttpResponse, Promise<HttpResponse>> ensureStatusCode(int... codes) {
+		return response -> {
+			for (int i = 0; i < codes.length; i++) {
+				if (response.getCode() == codes[i]) {
+					return Promise.of(response);
+				}
+			}
+			return Promise.ofException(HttpException.ofCode(response.getCode()));
+		};
 	}
 
 }

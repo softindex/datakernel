@@ -151,7 +151,7 @@ public class AbstractAsyncProcessTest {
 		}
 
 		@Override
-		protected void doCloseWithError(Throwable e) {
+		protected void doClose(Throwable e) {
 			output.close(e);
 			input.close(e);
 		}

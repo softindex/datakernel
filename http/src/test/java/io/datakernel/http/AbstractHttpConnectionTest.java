@@ -33,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static junit.framework.TestCase.assertNotNull;
 import static org.junit.Assert.assertEquals;
@@ -59,7 +60,8 @@ public class AbstractHttpConnectionTest {
 		server.listen();
 
 		Map<String, String> data = new HashMap<>();
-		CompletableFuture<Void> future = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+		CompletableFuture<Void> future = client.request(HttpRequest.get(url))
+				.thenCompose(ensureResponseBody())
 				.whenResult(result -> {
 					data.put("body", result.getBody().asString(UTF_8));
 					data.put("header", result.getHeaderOrNull(CONTENT_TYPE));
@@ -86,7 +88,8 @@ public class AbstractHttpConnectionTest {
 
 		HttpRequest request = HttpRequest.get(url)
 				.withHeader(ACCEPT_ENCODING, "gzip");
-		CompletableFuture<String> future = client.requestWithResponseBody(Integer.MAX_VALUE, request)
+		CompletableFuture<String> future = client.request(request)
+				.thenCompose(ensureResponseBody())
 				.thenApply(response -> {
 					assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING));
 					return response.getBody().asString(UTF_8);
@@ -109,25 +112,29 @@ public class AbstractHttpConnectionTest {
 
 		EventStats clientConnectionCount = client.getStats().getConnected();
 
-		client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+		client.request(HttpRequest.get(url))
+				.thenCompose(ensureResponseBody())
 				.whenResult(response1 -> {
 					clientConnectionCount.refresh(System.currentTimeMillis());
 					assertEquals("keep-alive", response1.getHeaderOrNull(CONNECTION));
 					assertEquals(1, clientConnectionCount.getTotalCount());
 					eventloop.post(() -> {
-						client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+						client.request(HttpRequest.get(url))
+								.thenCompose(ensureResponseBody())
 								.whenResult(response2 -> {
 									clientConnectionCount.refresh(System.currentTimeMillis());
 									assertEquals("keep-alive", response2.getHeaderOrNull(CONNECTION));
 									assertEquals(1, clientConnectionCount.getTotalCount());
 									eventloop.post(() -> {
-										client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+										client.request(HttpRequest.get(url))
+												.thenCompose(ensureResponseBody())
 												.whenResult(response3 -> {
 													clientConnectionCount.refresh(System.currentTimeMillis());
 													assertEquals("close", response3.getHeaderOrNull(CONNECTION));
 													assertEquals(1, client.getStats().getConnected().getTotalCount());
 													eventloop.post(() -> {
-														client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+														client.request(HttpRequest.get(url))
+																.thenCompose(ensureResponseBody())
 																.whenResult(r -> {
 																	clientConnectionCount.refresh(System.currentTimeMillis());
 																	assertEquals("keep-alive", r.getHeaderOrNull(CONNECTION));
@@ -156,25 +163,29 @@ public class AbstractHttpConnectionTest {
 		EventStats serverConnectionCount = server.getAccepts();
 		assert serverConnectionCount != null;
 
-		client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+		client.request(HttpRequest.get(url))
+				.thenCompose(ensureResponseBody())
 				.whenResult(response1 -> {
 					serverConnectionCount.refresh(System.currentTimeMillis());
 					assertEquals("keep-alive", response1.getHeaderOrNull(CONNECTION));
 					assertEquals(1, serverConnectionCount.getTotalCount());
 					eventloop.post(() -> {
-						client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+						client.request(HttpRequest.get(url))
+								.thenCompose(ensureResponseBody())
 								.whenResult(response2 -> {
 									serverConnectionCount.refresh(System.currentTimeMillis());
 									assertEquals("keep-alive", response2.getHeaderOrNull(CONNECTION));
 									assertEquals(1, serverConnectionCount.getTotalCount());
 									eventloop.post(() -> {
-										client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+										client.request(HttpRequest.get(url))
+												.thenCompose(ensureResponseBody())
 												.whenResult(response3 -> {
 													serverConnectionCount.refresh(System.currentTimeMillis());
 													assertEquals("close", response3.getHeaderOrNull(CONNECTION));
 													assertEquals(1, serverConnectionCount.getTotalCount());
 													eventloop.post(() -> {
-														client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(url))
+														client.request(HttpRequest.get(url))
+																.thenCompose(ensureResponseBody())
 																.whenResult(r -> {
 																	serverConnectionCount.refresh(System.currentTimeMillis());
 																	assertEquals("keep-alive", r.getHeaderOrNull(CONNECTION));

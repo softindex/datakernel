@@ -92,7 +92,7 @@ public final class BufsConsumerChunkedEncoder extends AbstractAsyncProcess
 	}
 
 	@Override
-	protected void doCloseWithError(Throwable e) {
+	protected void doClose(Throwable e) {
 		input.close(e);
 		output.close(e);
 	}

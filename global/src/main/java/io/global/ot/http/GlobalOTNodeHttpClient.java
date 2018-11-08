@@ -42,6 +42,7 @@ import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpUtils.renderQueryString;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.json.GsonAdapters.fromJson;
 import static io.datakernel.json.GsonAdapters.toJson;
@@ -94,26 +95,30 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 
 	@Override
 	public Promise<Set<String>> list(PubKey pubKey) {
-		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, LIST, urlEncodePubKey(pubKey)))
+		return httpClient.request(request(GET, LIST, urlEncodePubKey(pubKey)))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, SET_OF_STRINGS));
 	}
 
 	@Override
 	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
-		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(POST, SAVE, apiQuery(repositoryId))
+		return httpClient.request(request(POST, SAVE, apiQuery(repositoryId))
 				.initialize(withJson(SAVE_GSON, new SaveTuple(commits, heads))))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, null));
 	}
 
 	@Override
 	public Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
-		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, LOAD_COMMIT, apiQuery(repositoryId, map("commitId", urlEncodeCommitId(id)))))
+		return httpClient.request(request(GET, LOAD_COMMIT, apiQuery(repositoryId, map("commitId", urlEncodeCommitId(id)))))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, COMMIT_JSON));
 	}
 
 	@Override
 	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
-		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, GET_HEADS_INFO, apiQuery(repositoryId)))
+		return httpClient.request(request(GET, GET_HEADS_INFO, apiQuery(repositoryId)))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, HEADS_INFO_GSON));
 	}
 
@@ -129,15 +134,17 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 
 	@Override
 	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
-		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(POST, SAVE_SNAPSHOT, apiQuery(repositoryId))
+		return httpClient.request(request(POST, SAVE_SNAPSHOT, apiQuery(repositoryId))
 				.withBody(encryptedSnapshot.toBytes()))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, null));
 	}
 
 	@Override
 	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId id) {
 		//noinspection RedundantTypeArguments - IntelliJ thinks its redundant, but it's Java compiler does not
-		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, LOAD_SNAPSHOT, apiQuery(repositoryId, map("id", urlEncodeCommitId(id)))))
+		return httpClient.request(request(GET, LOAD_SNAPSHOT, apiQuery(repositoryId, map("id", urlEncodeCommitId(id)))))
+				.thenCompose(ensureResponseBody())
 				.<Optional<SignedData<RawSnapshot>>>thenCompose(r -> {
 					if (r.getCode() != 200)
 						return Promise.ofException(HttpException.ofCode(r.getCode()));
@@ -157,17 +164,19 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 
 	@Override
 	public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
-		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(GET, GET_HEADS, apiQuery(repositoryId, map("heads",
+		return httpClient.request(request(GET, GET_HEADS, apiQuery(repositoryId, map("heads",
 				remoteHeads.stream()
 						.map(HttpDataFormats::urlEncodeCommitId)
 						.collect(joining(","))))))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, HEADS_DELTA_GSON));
 	}
 
 	@Override
 	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
-		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, request(POST, SHARE_KEY + "/" + owner.asString(), apiQuery((RepoID) null))
+		return httpClient.request(request(POST, SHARE_KEY + "/" + owner.asString(), apiQuery((RepoID) null))
 				.initialize(withJson(SHARED_SIM_KEY_JSON, simKey)))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, null));
 	}
 

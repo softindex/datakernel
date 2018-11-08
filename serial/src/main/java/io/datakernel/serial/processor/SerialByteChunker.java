@@ -17,6 +17,7 @@
 package io.datakernel.serial.processor;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.util.MemSize;
@@ -41,17 +42,18 @@ public final class SerialByteChunker extends SerialTransformer<SerialByteChunker
 	@Override
 	protected Promise<Void> onItem(ByteBuf item) {
 		bufs.add(item);
-		if (!bufs.hasRemainingBytes(minChunkSize)) {
-			return Promise.complete();
-		}
-		int exactSize = 0;
-		for (int i = 0; i != bufs.remainingBufs(); i++) {
-			exactSize += bufs.peekBuf(i).readRemaining();
-			if (exactSize >= minChunkSize) {
-				break;
-			}
-		}
-		return send(bufs.takeExactSize(min(exactSize, maxChunkSize)));
+		return Promises.loop(
+				$ -> bufs.hasRemainingBytes(minChunkSize),
+				$ -> {
+					int exactSize = 0;
+					for (int i = 0; i != bufs.remainingBufs(); i++) {
+						exactSize += bufs.peekBuf(i).readRemaining();
+						if (exactSize >= minChunkSize) {
+							break;
+						}
+					}
+					return send(bufs.takeExactSize(min(exactSize, maxChunkSize)));
+				});
 	}
 
 	@Override

@@ -27,7 +27,6 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.util.MemSize;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsMetadata;
@@ -76,7 +75,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 											.thenCompose(consumer -> body.streamTo(consumer.apply(new FrameDecoder())))
 											.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
 				})
-				.with(POST, "/" + PUSH + "/:owner", ensureRequestBody(MemSize.kilobytes(16), request -> {
+				.with(POST, "/" + PUSH + "/:owner", ensureRequestBody(request -> {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
 					SignedData<GlobalFsMetadata> signedMeta = SignedData.ofBytes(request.getBody().asArray(), GlobalFsMetadata::fromBytes);
 					return node.pushMetadata(pubKey, signedMeta)

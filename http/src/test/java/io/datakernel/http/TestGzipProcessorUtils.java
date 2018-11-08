@@ -48,6 +48,7 @@ import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.GzipProcessorUtils.fromGzip;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -109,7 +110,7 @@ public class TestGzipProcessorUtils {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				ensureRequestBody(Integer.MAX_VALUE, request -> {
+				ensureRequestBody(request -> {
 					ByteBuf buf = request.getBody();
 					String receivedData = asAscii(buf);
 					assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
@@ -129,7 +130,8 @@ public class TestGzipProcessorUtils {
 				.withBody(wrapAscii(text));
 
 		server.listen();
-		CompletableFuture<String> future = client.requestWithResponseBody(Integer.MAX_VALUE, request)
+		CompletableFuture<String> future = client.request(request)
+				.thenCompose(ensureResponseBody())
 				.thenApply(result -> {
 					assertEquals("gzip", result.getHeaderOrNull(HttpHeaders.CONTENT_ENCODING));
 					server.close();

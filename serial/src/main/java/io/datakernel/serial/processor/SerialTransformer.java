@@ -96,7 +96,7 @@ public abstract class SerialTransformer<S extends SerialTransformer<S, I, O>, I,
 	}
 
 	@Override
-	protected final void doCloseWithError(Throwable e) {
+	protected final void doClose(Throwable e) {
 		input.close(e);
 		output.close(e);
 	}

@@ -118,7 +118,7 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 	}
 
 	@Override
-	protected void doCloseWithError(Throwable e) {
+	protected void doClose(Throwable e) {
 		input.close(e);
 		if (currentConsumer != null) {
 			currentConsumer.close(e);

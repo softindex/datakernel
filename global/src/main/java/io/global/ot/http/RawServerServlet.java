@@ -77,7 +77,7 @@ public final class RawServerServlet implements AsyncServlet {
 								.thenApply(names ->
 										HttpResponse.ok200()
 												.withBody(toJson(SET_OF_STRINGS, names).getBytes(UTF_8))))
-				.with(POST, "/" + SAVE + "/:pubKey/:name", ensureRequestBody(Integer.MAX_VALUE, req -> {
+				.with(POST, "/" + SAVE + "/:pubKey/:name", ensureRequestBody(req -> {
 					SaveTuple saveTuple = fromJson(SAVE_GSON, req.getBody().asString(UTF_8));
 					return node.save(urlDecodeRepositoryId(req), saveTuple.commits, saveTuple.heads)
 							.thenApply($ ->
@@ -96,7 +96,7 @@ public final class RawServerServlet implements AsyncServlet {
 								.thenApply(headsInfo ->
 										HttpResponse.ok200()
 												.withBody(toJson(HEADS_INFO_GSON, headsInfo).getBytes(UTF_8))))
-				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", ensureRequestBody(Integer.MAX_VALUE, req -> {
+				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", ensureRequestBody(req -> {
 					SignedData<RawSnapshot> encryptedSnapshot = SignedData.ofBytes(req.getBody().asArray(), RawSnapshot::ofBytes);
 					return node.saveSnapshot(encryptedSnapshot.getData().repositoryId, encryptedSnapshot)
 							.thenApply($2 -> HttpResponse.ok200());
@@ -124,7 +124,7 @@ public final class RawServerServlet implements AsyncServlet {
 								.thenApply(heads ->
 										HttpResponse.ok200()
 												.withBody(toJson(HEADS_DELTA_GSON, heads).getBytes(UTF_8))))
-				.with(POST, "/" + SHARE_KEY + "/:owner", ensureRequestBody(Integer.MAX_VALUE, req ->
+				.with(POST, "/" + SHARE_KEY + "/:owner", ensureRequestBody(req ->
 						node.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SHARED_SIM_KEY_JSON, req.getBody().asString(UTF_8)))
 								.thenApply($1 ->
 										HttpResponse.ok200())))

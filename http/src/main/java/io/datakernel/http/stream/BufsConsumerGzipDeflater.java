@@ -133,7 +133,7 @@ public final class BufsConsumerGzipDeflater extends AbstractAsyncProcess
 	}
 
 	@Override
-	protected void doCloseWithError(Throwable e) {
+	protected void doClose(Throwable e) {
 		deflater.end();
 		input.close(e);
 		output.close(e);

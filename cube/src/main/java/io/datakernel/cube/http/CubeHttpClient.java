@@ -39,6 +39,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static io.datakernel.cube.http.Utils.*;
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -105,7 +106,8 @@ public final class CubeHttpClient implements ICube {
 
 	@Override
 	public Promise<QueryResult> query(CubeQuery query) {
-		return httpClient.requestWithResponseBody(Integer.MAX_VALUE, buildRequest(query))
+		return httpClient.request(buildRequest(query))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(httpResponse -> {
 					String response = httpResponse.getBody().asString(UTF_8);
 

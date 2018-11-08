@@ -275,30 +275,6 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 				});
 	}
 
-	public Promise<SerialConsumer<CommitEntry>> getStreamConsumer(RepoID repositoryId) {
-		return commitStorage.getHeads(repositoryId)
-				.thenApply(Map::keySet)
-				.thenApply(thisHeads -> {
-					Set<CommitId> excludedHeads = new HashSet<>();
-					Set<SignedData<RawCommitHead>> addedHeads = new HashSet<>();
-					return SerialConsumer.of(
-							(CommitEntry entry) -> {
-								for (CommitId parentId : entry.getCommit().getParents()) {
-									if (thisHeads.contains(parentId)) {
-										excludedHeads.add(parentId);
-									}
-								}
-								if (entry.hasHead()) {
-									addedHeads.add(entry.getHead());
-								}
-								return commitStorage.saveCommit(entry.commitId, entry.commit).toVoid();
-							})
-							.withAcknowledgement(ack -> ack
-									.thenCompose($ -> commitStorage.markCompleteCommits())
-									.thenCompose($ -> applyHeads(repositoryId, new Heads(addedHeads, excludedHeads))));
-				});
-	}
-
 	private Promise<Void> applyHeads(RepoID repositoryId, Heads heads) {
 		return commitStorage.applyHeads(repositoryId, heads.newHeads, heads.excludedHeads)
 				.whenResult($ -> {
@@ -540,7 +516,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 			private Promise<Void> doFetch(GlobalOTNode server) {
 				return getHeadsInfo(repositoryId)
 						.thenCompose(headsInfo -> server.downloader(repositoryId, headsInfo.bases, headsInfo.heads)
-								.streamTo(SerialConsumer.ofPromise(getStreamConsumer(repositoryId))));
+								.streamTo(SerialConsumer.ofPromise(upload(repositoryId))));
 			}
 
 			private Promise<Void> doCatchUp() {

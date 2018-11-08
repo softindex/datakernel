@@ -42,6 +42,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.function.Function;
 
+import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.serial.ByteBufsParser.ofVarIntSizePrefixedBytes;
 import static io.global.fs.http.GlobalFsNodeServlet.*;
 import static java.util.stream.Collectors.toList;
@@ -79,7 +80,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	@Override
 	public SerialConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
 		SerialZeroBuffer<DataFrame> buffer = new SerialZeroBuffer<>();
-		MaterializedPromise<HttpResponse> request = client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.post(
+		MaterializedPromise<HttpResponse> request = client.request(HttpRequest.post(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(UPLOAD)
@@ -88,6 +89,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendQuery("offset", "" + offset)
 						.build())
 				.withBodyStream(buffer.getSupplier().apply(new FrameEncoder())))
+				.thenCompose(ensureResponseBody())
 				.materialize();
 		return buffer.getConsumer().withAcknowledgement(ack -> ack.both(request));
 	}
@@ -111,19 +113,20 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 
 	@Override
 	public Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob) {
-		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
+		return client.request(HttpRequest.get(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(LIST)
 						.appendPathPart(space.asString())
 						.appendQuery("glob", glob)
 						.build()))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(listResponseHandler);
 	}
 
 	@Override
 	public Promise<List<SignedData<GlobalFsMetadata>>> listLocal(PubKey space, String glob) {
-		return client.requestWithResponseBody(Integer.MAX_VALUE, HttpRequest.get(
+		return client.request(HttpRequest.get(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(LIST)
@@ -131,6 +134,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendQuery("glob", glob)
 						.appendQuery("local", "1")
 						.build()))
+				.thenCompose(ensureResponseBody())
 				.thenCompose(listResponseHandler);
 	}
 
