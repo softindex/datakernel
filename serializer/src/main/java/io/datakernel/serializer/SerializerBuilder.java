@@ -546,6 +546,9 @@ public final class SerializerBuilder {
 	}
 
 	private FoundSerializer tryAddGetter(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, Method getter) {
+		if (getter.isBridge()) {
+			return null;
+		}
 		FoundSerializer result = findAnnotations(getter, getter.getAnnotations());
 		if (result == null)
 			return null;

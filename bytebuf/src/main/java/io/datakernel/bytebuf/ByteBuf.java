@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -320,7 +320,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	public int find(byte[] bytes, int off, int len) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		L:
-		for (int pos = readPosition; pos < writePosition - len; pos++) {
+		for (int pos = readPosition; pos <= writePosition - len; pos++) {
 			for (int i = 0; i < len; i++) {
 				if (array[pos + i] != bytes[off + i]) {
 					continue L;
