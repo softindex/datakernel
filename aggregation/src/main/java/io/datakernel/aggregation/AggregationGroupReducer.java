@@ -23,7 +23,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
 import org.slf4j.Logger;
@@ -37,7 +36,7 @@ import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
+public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final AggregationChunkStorage<C> storage;

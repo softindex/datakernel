@@ -68,7 +68,7 @@ import static java.util.Collections.emptyIterator;
  * eventloop will be ended, when it has not selected keys and its queues with
  * tasks are empty.
  */
-public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, Initializable<Eventloop>, EventloopJmxMBeanEx {
+public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, Initializable<Eventloop>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
 	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 

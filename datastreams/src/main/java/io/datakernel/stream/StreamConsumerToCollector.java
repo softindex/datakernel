@@ -27,7 +27,7 @@ import java.util.stream.Collector;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
-public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamConsumer<T> implements StreamConsumer<T> {
+public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamConsumer<T> {
 	private final Collector<T, A, R> collector;
 	private final SettablePromise<R> resultPromise = new SettablePromise<>();
 	private A accumulator;

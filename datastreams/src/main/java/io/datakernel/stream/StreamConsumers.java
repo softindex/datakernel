@@ -102,7 +102,7 @@ public final class StreamConsumers {
 		}
 	}
 
-	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
+	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 		private final SerialConsumer<T> consumer;
 		private final ArrayDeque<T> deque = new ArrayDeque<>();
 		private final SettablePromise<Void> result = new SettablePromise<>();

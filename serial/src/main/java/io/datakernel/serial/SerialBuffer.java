@@ -17,14 +17,13 @@
 package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.lang.Integer.numberOfLeadingZeros;
 
-public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
+public final class SerialBuffer<T> implements SerialQueue<T> {
 	private Exception exception;
 
 	@SuppressWarnings("unchecked")

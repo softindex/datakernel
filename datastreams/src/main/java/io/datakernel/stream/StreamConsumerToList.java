@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
-public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
+public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 	protected final List<T> list;
 	private final SettablePromise<List<T>> resultPromise = new SettablePromise<>();
 
