@@ -21,14 +21,14 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.SerialBidiFunction;
-import io.global.common.AESCipherCTR;
+import io.global.common.CTRAESCipher;
 import io.global.common.CryptoUtils;
 import io.global.common.SimKey;
 
-public final class SerialCipherFunction implements SerialBidiFunction<ByteBuf, ByteBuf> {
-	private final AESCipherCTR cipher;
+public final class SerialFileCipher implements SerialBidiFunction<ByteBuf, ByteBuf> {
+	private final CTRAESCipher cipher;
 
-	private SerialCipherFunction(AESCipherCTR cipher) {
+	private SerialFileCipher(CTRAESCipher cipher) {
 		this.cipher = cipher;
 	}
 
@@ -36,23 +36,16 @@ public final class SerialCipherFunction implements SerialBidiFunction<ByteBuf, B
 		if (key == null) {
 			return SerialBidiFunction.identity();
 		}
-		return new SerialCipherFunction(AESCipherCTR.create(key.getAesKey(), CryptoUtils.nonceFromString(filename), position));
-	}
-
-	private ByteBuf apply(ByteBuf item) {
-		// we assume that this transformer 'consumed'
-		// the byte buf and 'created' an output new one
-		cipher.apply(item);
-		return item;
+		return new SerialFileCipher(CTRAESCipher.create(key.getAesKey(), CryptoUtils.nonceFromString(filename), position));
 	}
 
 	@Override
 	public SerialConsumer<ByteBuf> apply(SerialConsumer<ByteBuf> consumer) {
-		return consumer.transform(this::apply);
+		return consumer.transform(cipher::apply);
 	}
 
 	@Override
 	public SerialSupplier<ByteBuf> apply(SerialSupplier<ByteBuf> supplier) {
-		return supplier.transform(this::apply);
+		return supplier.transform(cipher::apply);
 	}
 }

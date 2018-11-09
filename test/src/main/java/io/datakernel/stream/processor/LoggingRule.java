@@ -16,23 +16,38 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.test.TestUtils;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
+import org.slf4j.LoggerFactory;
 
 /**
- * {@link TestRule} that fails if not all active promises have been completed either succesfully or exceptionally.
- * Promises to be monitored should have either a {@link TestUtils#assertComplete()} or a {@link TestUtils#assertFailure()}
- * listener attached
+ * {@link TestRule} that enables deeper logger levels for specific tests that request it.
  */
-public final class ActivePromisesRule implements TestRule {
+public final class LoggingRule implements TestRule {
 	@Override
 	public Statement apply(Statement base, Description description) {
+		Enable info = description.getAnnotation(Enable.class);
+		if (info == null) {
+			return base;
+		}
 		return new LambdaStatement(() -> {
-			TestUtils.clearActivePromises();
-			base.evaluate();
-			assert TestUtils.getActivePromises() == 0 : "Some promises has not been completed";
+			ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(info.value());
+			Level oldLevel = logger.getLevel();
+			logger.setLevel(Level.toLevel(info.level()));
+			try {
+				base.evaluate();
+			} finally {
+				logger.setLevel(oldLevel);
+			}
 		});
+	}
+
+	public @interface Enable {
+		String value() default Logger.ROOT_LOGGER_NAME;
+
+		String level() default "TRACE";
 	}
 }

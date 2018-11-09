@@ -73,9 +73,11 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 							}
 							array[size++] = checkpoint.getData().getPosition();
 						} catch (ParseException e) {
+							buf.recycle();
 							return Promise.ofException(e);
 						}
 					}
+					buf.recycle();
 					return Promise.of(Arrays.stream(array).limit(size).sorted().toArray());
 				});
 	}
@@ -92,12 +94,15 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 							byte[] bytes = BinaryDataFormats.readBytes(buf);
 							SignedData<GlobalFsCheckpoint> checkpoint = SignedData.ofBytes(bytes, GlobalFsCheckpoint::ofBytes);
 							if (checkpoint.getData().getPosition() == position) {
+								buf.recycle();
 								return Promise.of(checkpoint);
 							}
 						} catch (ParseException e) {
+							buf.recycle();
 							return Promise.ofException(e);
 						}
 					}
+					buf.recycle();
 					return Promise.ofException(new StacklessException(CheckpointStorage.class, "No checkpoint found on position " + position));
 				});
 	}

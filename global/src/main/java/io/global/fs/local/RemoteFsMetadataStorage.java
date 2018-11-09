@@ -54,17 +54,19 @@ public class RemoteFsMetadataStorage implements MetadataStorage {
 
 	@Override
 	public Promise<SignedData<GlobalFsMetadata>> load(String fileName) {
-		logger.trace("loading {}", fileName);
 		return fsClient.getMetadata(fileName)
 				.thenCompose(metameta -> {
 					if (metameta == null) {
+						logger.trace("loading {}, found nothing", fileName);
 						return Promise.of(null);
 					}
 					return fsClient.download(fileName)
 							.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 							.thenCompose(buf -> {
 								try {
-									return Promise.of(SignedData.ofBytes(buf.asArray(), GlobalFsMetadata::fromBytes));
+									SignedData<GlobalFsMetadata> signedMetadata = SignedData.ofBytes(buf.asArray(), GlobalFsMetadata::fromBytes);
+									logger.trace("loading {}, found {}", fileName, signedMetadata);
+									return Promise.of(signedMetadata);
 								} catch (ParseException e) {
 									return Promise.ofException(e);
 								}

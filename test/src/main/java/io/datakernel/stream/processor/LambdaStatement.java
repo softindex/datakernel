@@ -16,23 +16,22 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.test.TestUtils;
-import org.junit.rules.TestRule;
-import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
-/**
- * {@link TestRule} that fails if not all active promises have been completed either succesfully or exceptionally.
- * Promises to be monitored should have either a {@link TestUtils#assertComplete()} or a {@link TestUtils#assertFailure()}
- * listener attached
- */
-public final class ActivePromisesRule implements TestRule {
+public final class LambdaStatement extends Statement {
+	private final ThrowingRunnable body;
+
+	public LambdaStatement(ThrowingRunnable body) {
+		this.body = body;
+	}
+
 	@Override
-	public Statement apply(Statement base, Description description) {
-		return new LambdaStatement(() -> {
-			TestUtils.clearActivePromises();
-			base.evaluate();
-			assert TestUtils.getActivePromises() == 0 : "Some promises has not been completed";
-		});
+	public void evaluate() throws Throwable {
+		body.run();
+	}
+
+	@FunctionalInterface
+	public interface ThrowingRunnable {
+		void run() throws Throwable;
 	}
 }

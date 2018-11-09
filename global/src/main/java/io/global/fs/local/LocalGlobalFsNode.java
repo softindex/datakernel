@@ -260,6 +260,11 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 				});
 	}
 
+	@Override
+	public String toString() {
+		return "LocalGlobalFsNode{id=" + id + '}';
+	}
+
 	class Namespace {
 		private final PubKey space;
 
@@ -326,13 +331,13 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 				return Promise.of(false);
 			}
 
-			logger.info("{} fetching from {}", space, node);
-			return node.list(space, "**")
+			logger.trace("{} fetching from {}", space, node);
+			return node.listLocal(space, "**")
 					.thenCompose(files ->
 							Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), files.stream()
 									.map(signedMetadata -> {
 										if (!signedMetadata.verify(space)) {
-											logger.warn("Received metadata with signature that is not verified, skipping {}", signedMetadata.getData());
+											logger.warn("received metadata with unverified signature, skipping {}", signedMetadata.getData());
 											return Promise.of(false).toTry();
 										}
 										GlobalFsMetadata metadata = signedMetadata.getData();
@@ -345,11 +350,12 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 													if (signedLocalMetadata != null) {
 														localMetadata = signedLocalMetadata.getData();
 														if (!signedLocalMetadata.verify(space)) {
-															logger.warn("Received metadata with signature that is not verified, skipping {}", localMetadata);
+															logger.warn("received metadata with unverified signature, skipping {}", localMetadata);
 															return Promise.of(false);
 														}
 														// our file is better
 														if (localMetadata.compareTo(metadata) >= 0) {
+															logger.trace("our file {} is better than remote");
 															return Promise.of(false);
 														}
 														// other file is encrypted with different key
@@ -357,9 +363,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 														if (!metadata.isRemoved() && !Objects.equals(localMetadata.getSimKeyHash(), metadata.getSimKeyHash())) {
 															return Promise.of(false);
 														}
-														logger.trace("Found better file at {}, {}", node, metadata);
+														logger.trace("found better file {}", metadata);
 													} else {
-														logger.trace("Found a new file at {}, {}", node, metadata);
+														logger.trace("found a new file {}", metadata);
 													}
 
 													if (metadata.isRemoved()) {

@@ -148,19 +148,17 @@ public final class GlobalJsonAdapters {
 	private static final Map<String, TypeAdapter<?>> SHARED_SIM_KEY_PROPS = new HashMap<>();
 
 	static {
-		SHARED_SIM_KEY_PROPS.put("receiver", PUB_KEY);
 		SHARED_SIM_KEY_PROPS.put("hash", HASH);
 		SHARED_SIM_KEY_PROPS.put("encryptedSimKey", BYTES_JSON);
 	}
 
 	public static final TypeAdapter<SharedSimKey> SHARED_SIM_KEY =
 			transform(ofHeterogeneousMap(SHARED_SIM_KEY_PROPS),
-					data -> SharedSimKey.of((PubKey) data.get("receiver"), (Hash) data.get("hash"), (byte[]) data.get("encryptedSimKey")),
+					data -> SharedSimKey.of((Hash) data.get("hash"), (byte[]) data.get("encryptedSimKey")),
 					sharedSimKey -> {
 						Map<String, Object> map = new HashMap<>();
-						map.put("receiver", sharedSimKey.getReceiver());
 						map.put("hash", sharedSimKey.getHash());
-						map.put("encryptedSimKey", sharedSimKey.getEncryptedSimKey());
+						map.put("encryptedSimKey", sharedSimKey.getEncrypted());
 						return map;
 					});
 	// endregion

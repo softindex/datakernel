@@ -39,7 +39,8 @@ import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.System.currentTimeMillis;
-import static java.util.Collections.*;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
@@ -51,7 +52,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 	private Duration latencyMargin;
 
 	private final Map<PubKey, PubKeyEntry> pubKeys = new HashMap<>();
-	private final Map<PubKey, Map<PubKey, Map<Hash, SignedData<SharedSimKey>>>> sharedKeysDb = new HashMap<>();
+	private final Map<PubKey, Map<Hash, SignedData<SharedSimKey>>> sharedKeysDb = new HashMap<>();
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
@@ -70,7 +71,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 		return ensurePubKey(repositoryId.getOwner()).ensureRepository(repositoryId);
 	}
 
-	private Map<PubKey, Map<Hash, SignedData<SharedSimKey>>> ensureSharedKeysDb(PubKey receiver) {
+	private Map<Hash, SignedData<SharedSimKey>> ensureSharedKeysDb(PubKey receiver) {
 		return sharedKeysDb.computeIfAbsent(receiver, $ -> new HashMap<>());
 	}
 
@@ -357,19 +358,14 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 	}
 
 	@Override
-	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
-		ensureSharedKeysDb(simKey.getData().getReceiver())
-				.computeIfAbsent(owner, $ -> new HashMap<>())
-				.put(simKey.getData().getHash(), simKey);
+	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
+		ensureSharedKeysDb(receiver).put(simKey.getData().getHash(), simKey);
 		return Promise.complete();
 	}
 
 	@Override
-	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash simKeyHash) {
-		return Promise.of(Optional.ofNullable(
-				ensureSharedKeysDb(receiver)
-						.getOrDefault(owner, emptyMap())
-						.get(simKeyHash)));
+	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey receiver, Hash simKeyHash) {
+		return Promise.of(Optional.ofNullable(ensureSharedKeysDb(receiver).get(simKeyHash)));
 	}
 
 	@Override

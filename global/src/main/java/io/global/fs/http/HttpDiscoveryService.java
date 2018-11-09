@@ -31,7 +31,7 @@ import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 
 import java.net.InetSocketAddress;
-import java.util.Optional;
+import java.util.List;
 
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
@@ -90,22 +90,17 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.build()))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(response -> Promise.ofTry(
-						tryParseResponse(response,
-								body ->
-										GsonAdapters.fromJson(SIGNED_ANNOUNCE, body.asString(UTF_8)))
-								.flatMap(v -> v != null ?
-										Try.of(v) :
-										Try.ofException(NO_ANNOUNCE_DATA))));
+						tryParseResponse(response, body -> GsonAdapters.fromJson(SIGNED_ANNOUNCE, body.asString(UTF_8)))
+								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_ANNOUNCE_DATA))));
 	}
 
 	@Override
-	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
+	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
 		return client.request(
 				HttpRequest.post(
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(SHARE_KEY)
-								.appendPathPart(owner.asString())
 								.build())
 						.withBody(SIGNED_SHARED_SIM_KEY.toJson(simKey).getBytes(UTF_8)))
 				.thenCompose(ensureStatusCode(201))
@@ -113,20 +108,31 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
+	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash) {
 		return client.request(HttpRequest.get(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(GET_SHARED_KEY)
-						.appendPathPart(owner.asString())
 						.appendPathPart(receiver.asString())
 						.appendPathPart(hash.asString())
 						.build()))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(response -> Promise.ofTry(
-						tryParseResponse(response,
-								body ->
-										GsonAdapters.fromJson(SIGNED_SHARED_SIM_KEY, body.asString(UTF_8)))
-								.map(Optional::ofNullable)));
+						tryParseResponse(response, body -> GsonAdapters.fromJson(SIGNED_SHARED_SIM_KEY, body.asString(UTF_8)))
+								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_KEY))));
+	}
+
+	@Override
+	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
+		return client.request(HttpRequest.get(
+				UrlBuilder.http()
+						.withAuthority(address)
+						.appendPathPart(GET_SHARED_KEY)
+						.appendPathPart(receiver.asString())
+						.build()))
+				.thenCompose(ensureResponseBody())
+				.thenCompose(response -> Promise.ofTry(
+						tryParseResponse(response, body ->
+								GsonAdapters.fromJson(LIST_OF_SIGNED_SHARED_SIM_KEYS, body.asString(UTF_8)))));
 	}
 }

@@ -93,7 +93,7 @@ public final class GlobalFsMetadata implements Comparable<GlobalFsMetadata>, Byt
 				Long.compare(size, other.size);
 	}
 
-	public GlobalFsMetadata toRemoved() {
+	public GlobalFsMetadata toRemoved(long revision) {
 		// no key hash because tombstones do not need any encryption
 		return ofRemoved(filename, revision);
 	}

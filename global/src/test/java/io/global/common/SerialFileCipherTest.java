@@ -19,7 +19,7 @@ package io.global.common;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialSupplier;
-import io.global.fs.transformers.SerialCipherFunction;
+import io.global.fs.transformers.SerialFileCipher;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -31,7 +31,7 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-public class SerialCipherFunctionTest {
+public class SerialFileCipherTest {
 
 	@Test
 	public void test() {
@@ -47,11 +47,11 @@ public class SerialCipherFunctionTest {
 		long pos = ThreadLocalRandom.current().nextLong(Long.MAX_VALUE >>> 1);
 
 		SerialSupplier.ofIterable(data)
-				.apply(SerialCipherFunction.create(key, "test.txt", pos))
+				.apply(SerialFileCipher.create(key, "test.txt", pos))
 				.toList()
 				.whenComplete(assertComplete(enc -> enc.forEach(System.out::println)))
 				.thenCompose(enc -> SerialSupplier.ofIterable(enc)
-						.apply(SerialCipherFunction.create(key, "test.txt", pos))
+						.apply(SerialFileCipher.create(key, "test.txt", pos))
 						.toList())
 				.whenComplete(assertComplete(dec -> {
 					dec.forEach(System.out::println);

@@ -35,13 +35,14 @@ import io.global.fs.api.GlobalFsMetadata;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameSigner;
 import io.global.fs.transformers.FrameVerifier;
-import io.global.fs.transformers.SerialCipherFunction;
+import io.global.fs.transformers.SerialFileCipher;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.file.FileUtils.isWildcard;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsGatewayAdapter implements FsClient, Initializable<GlobalFsGatewayAdapter> {
@@ -71,13 +72,13 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 	private Promise<SerialConsumer<ByteBuf>> doUpload(String filename, @Nullable GlobalFsMetadata metadata, long offset, long skip, SHA256Digest startingDigest) {
 		long[] size = {offset + skip};
 		Promise<SimKey> simKey = metadata != null ?
-				driver.getKey(metadata.getSimKeyHash()) :
+				driver.getKey(pubKey, metadata.getSimKeyHash()) :
 				Promise.of(driver.getCurrentSimKey());
 		return simKey.thenCompose(key ->
 				node.upload(pubKey, filename, offset + skip)
 						.thenApply(consumer -> consumer
 								.apply(FrameSigner.create(privKey, checkpointPosStrategy, filename, offset + skip, startingDigest))
-								.apply(SerialCipherFunction.create(key, filename, offset + skip))
+								.apply(SerialFileCipher.create(key, filename, offset + skip))
 								.peek(buf -> size[0] += buf.readRemaining())
 								.apply(SerialByteRanger.drop(skip))
 								.withAcknowledgement(ack -> ack
@@ -139,10 +140,10 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 									return Promise.ofException(METADATA_SIG);
 								}
 								GlobalFsMetadata metadata = signedMetadata.getData();
-								return driver.getKey(metadata.getSimKeyHash())
+								return driver.getKey(pubKey, metadata.getSimKeyHash())
 										.thenApply(key -> supplier
 												.apply(FrameVerifier.create(pubKey, filename, offset, limit))
-												.apply(SerialCipherFunction.create(key, filename, offset)));
+												.apply(SerialFileCipher.create(key, filename, offset)));
 							});
 				});
 	}
@@ -158,12 +159,15 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 
 	@Override
 	public Promise<Void> delete(String glob) {
-		return node.list(pubKey, glob)
-				.thenCompose(list ->
-						Promises.all(list.stream()
-								.filter(signedMeta -> signedMeta.verify(pubKey))
-								.map(signedMeta ->
-										node.pushMetadata(pubKey, SignedData.sign(signedMeta.getData().toRemoved(), privKey)))));
+		if (isWildcard(glob)) {
+			return node.list(pubKey, glob)
+					.thenCompose(list ->
+							Promises.all(list.stream()
+									.filter(signedMeta -> !signedMeta.getData().isRemoved() && signedMeta.verify(pubKey))
+									.map(signedMeta ->
+											node.pushMetadata(pubKey, SignedData.sign(signedMeta.getData().toRemoved(now.currentTimeMillis()), privKey)))));
+		}
+		return node.pushMetadata(pubKey, SignedData.sign(GlobalFsMetadata.ofRemoved(glob, now.currentTimeMillis()), privKey));
 	}
 
 	@Override

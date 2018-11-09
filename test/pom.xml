@@ -17,7 +17,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-common</artifactId>
+			<artifactId>datakernel-eventloop</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>

@@ -123,9 +123,9 @@ public interface GlobalOTNode {
 				.thenApply(headsDelta -> headsDelta.newHeads);
 	}
 
-	Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey);
+	Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey);
 
-	Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey repositoryOwner, PubKey receiver, Hash simKeyHash);
+	Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey receiver, Hash simKeyHash);
 
 	Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest);
 

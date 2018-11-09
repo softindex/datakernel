@@ -79,8 +79,8 @@ public class GlobalFsSetup {
 		GlobalFsNode firstClient = new HttpGlobalFsNode(client, first.getInetSocketAddress());
 		GlobalFsNode secondClient = new HttpGlobalFsNode(client, second.getInetSocketAddress());
 
-		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, list(alice), fixed(5));
-		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, list(alice), fixed(6));
+		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, discoveryService, list(alice), fixed(5));
+		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, discoveryService, list(alice), fixed(6));
 
 		FsClient firstAdapter = firstDriver.createClientFor(alice.getPubKey());
 		FsClient secondAdapter = secondDriver.createClientFor(alice.getPubKey());

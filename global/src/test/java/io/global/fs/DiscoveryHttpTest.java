@@ -84,13 +84,11 @@ public class DiscoveryHttpTest {
 					assertEquals(123, data.getData().getTimestamp());
 				}))
 
-				.thenCompose($ -> clientService.shareKey(bob, SharedSimKey.of(alice.getPubKey(), bobSimKey)))
-				.thenCompose($ -> clientService.getSharedKey(bob.getPubKey(), alice.getPubKey(), bobSimKeyHash))
-				.whenComplete(assertComplete(response -> {
-					assertTrue(response.isPresent());
-					SignedData<SharedSimKey> signed = response.get();
-					assertTrue(signed.verify(bob.getPubKey()));
-					SharedSimKey sharedSimKey = signed.getData();
+				.thenCompose($ -> clientService.shareKey(alice.getPubKey(), SignedData.sign(SharedSimKey.of(bobSimKey, alice.getPubKey()), bob.getPrivKey())))
+				.thenCompose($ -> clientService.getSharedKey(alice.getPubKey(), bobSimKeyHash))
+				.whenComplete(assertComplete(signedSharedSimKey -> {
+					assertTrue(signedSharedSimKey.verify(bob.getPubKey()));
+					SharedSimKey sharedSimKey = signedSharedSimKey.getData();
 					try {
 						System.out.println(sharedSimKey);
 						assertEquals(bobSimKey, sharedSimKey.decryptSimKey(alice.getPrivKey()));

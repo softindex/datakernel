@@ -18,10 +18,13 @@ package io.global.fs.local;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.*;
+import io.global.common.api.DiscoveryService;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
+import org.spongycastle.crypto.CryptoException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -33,36 +36,30 @@ public final class GlobalFsDriver {
 	private final Map<Hash, SimKey> keyMap = new HashMap<>();
 	private final Map<PubKey, PrivKey> keys = new HashMap<>();
 	private final GlobalFsNode node;
+	private final DiscoveryService discoveryService;
 	private final CheckpointPosStrategy checkpointPosStrategy;
 
 	@Nullable
 	private SimKey currentSimKey = null;
 
-	private GlobalFsDriver(GlobalFsNode node, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
+	private GlobalFsDriver(GlobalFsNode node, DiscoveryService discoveryService, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
 		this.node = node;
+		this.discoveryService = discoveryService;
 		this.keys.putAll(keys);
 		this.checkpointPosStrategy = checkpointPosStrategy;
 
-		changeCurrentSimKey(SimKey.fromString("GBKadnXVViYZEYopiY0_sg")); // TODO anton: testing stub
+		// changeCurrentSimKey(SimKey.fromString("GBKadnXVViYZEYopiY0_sg")); // TODO anton: testing stub
 	}
 
-	public static GlobalFsDriver create(GlobalFsNode node, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
-		return new GlobalFsDriver(node, keys, checkpointPosStrategy);
+	public static GlobalFsDriver create(GlobalFsNode node, DiscoveryService discoveryService, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
+		return new GlobalFsDriver(node, discoveryService, keys, checkpointPosStrategy);
 	}
 
-	public static GlobalFsDriver create(GlobalFsNode node, List<KeyPair> keys, CheckpointPosStrategy checkpointPosStrategy) {
-		return new GlobalFsDriver(node, keys.stream().collect(toMap(KeyPair::getPubKey, KeyPair::getPrivKey)), checkpointPosStrategy);
+	public static GlobalFsDriver create(GlobalFsNode node, DiscoveryService discoveryService, List<KeyPair> keys, CheckpointPosStrategy checkpointPosStrategy) {
+		return new GlobalFsDriver(node, discoveryService, keys.stream().collect(toMap(KeyPair::getPubKey, KeyPair::getPrivKey)), checkpointPosStrategy);
 	}
 
-	private PrivKey getPrivKey(PubKey pubKey) {
-		PrivKey privKey = keys.get(pubKey);
-		if (privKey == null) {
-			throw new IllegalArgumentException("No private key stored for " + pubKey);
-		}
-		return privKey;
-	}
-
-	public Promise<SimKey> getKey(@Nullable Hash simKeyHash) {
+	public Promise<SimKey> getKey(PubKey receiver, @Nullable Hash simKeyHash) {
 		if (simKeyHash == null) {
 			return Promise.of(null);
 		}
@@ -70,11 +67,29 @@ public final class GlobalFsDriver {
 		if (key != null) {
 			return Promise.of(key);
 		}
-		return Promise.ofException(new UnsupportedOperationException("stub")); // TODO anton: get it from discovery server somehow
+		return discoveryService.getSharedKey(receiver, simKeyHash)
+				.thenCompose(signedSharedSimKey -> {
+					SharedSimKey sharedSimKey = signedSharedSimKey.getData();
+					PrivKey privKey = keys.get(receiver);
+					if (privKey == null) {
+						return Promise.ofException(new StacklessException(GlobalFsDriver.class, "No private key stored for " + receiver));
+					}
+					try {
+						SimKey newKey = sharedSimKey.decryptSimKey(privKey);
+						keyMap.put(Hash.of(sharedSimKey), newKey);
+						return Promise.of(newKey);
+					} catch (CryptoException e) {
+						return Promise.ofException(e);
+					}
+				});
 	}
 
 	public FsClient createClientFor(PubKey pubKey) {
-		return new GlobalFsGatewayAdapter(this, node, pubKey, getPrivKey(pubKey), checkpointPosStrategy);
+		PrivKey privKey = keys.get(pubKey);
+		if (privKey == null) {
+			throw new IllegalArgumentException("No private key stored for " + pubKey);
+		}
+		return new GlobalFsGatewayAdapter(this, node, pubKey, privKey, checkpointPosStrategy);
 	}
 
 	@Nullable
@@ -87,5 +102,9 @@ public final class GlobalFsDriver {
 		if (currentSimKey != null) {
 			keyMap.put(Hash.of(currentSimKey), currentSimKey);
 		}
+	}
+
+	public void forget(Hash simKeyHash) {
+		keyMap.remove(simKeyHash);
 	}
 }

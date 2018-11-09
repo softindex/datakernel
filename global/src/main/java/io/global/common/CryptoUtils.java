@@ -40,6 +40,7 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
+import static io.global.common.CTRAESCipher.BLOCK_SIZE;
 import static java.lang.System.arraycopy;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -116,19 +117,16 @@ public final class CryptoUtils {
 
 	@SuppressWarnings("deprecation")
 	public static EncryptedData encryptAES(byte[] plainBytes, CipherParameters aesKey) {
-		byte[] nonce = new byte[16];
-		SECURE_RANDOM.nextBytes(nonce);
 		byte[] newBytes = Arrays.copyOf(plainBytes, plainBytes.length);
-		AESCipherCTR cipher = AESCipherCTR.create(aesKey, nonce);
-		cipher.apply(newBytes);
+		byte[] nonce = generateNonce();
+		CTRAESCipher.create(aesKey, nonce).apply(newBytes);
 		return new EncryptedData(nonce, newBytes);
 	}
 
 	@SuppressWarnings("deprecation")
 	public static byte[] decryptAES(EncryptedData dataToDecrypt, CipherParameters aesKey) {
-		AESCipherCTR cipher = AESCipherCTR.create(aesKey, dataToDecrypt.nonce);
 		byte[] newBytes = Arrays.copyOf(dataToDecrypt.encryptedBytes, dataToDecrypt.encryptedBytes.length);
-		cipher.apply(newBytes);
+		CTRAESCipher.create(aesKey, dataToDecrypt.nonce).apply(newBytes);
 		return newBytes;
 	}
 
@@ -196,6 +194,12 @@ public final class CryptoUtils {
 
 	public static byte[] nonceFromString(String string) {
 		return Arrays.copyOf(sha1(string.getBytes(UTF_8)), 16);
+	}
+
+	public static byte[] generateNonce() {
+		byte[] nonce = new byte[BLOCK_SIZE];
+		SECURE_RANDOM.nextBytes(nonce);
+		return nonce;
 	}
 
 	public static ECPublicKeyParameters computePubKey(ECPrivateKeyParameters privKey) {

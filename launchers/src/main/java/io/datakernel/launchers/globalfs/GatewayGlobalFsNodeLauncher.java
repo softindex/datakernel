@@ -167,7 +167,7 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 						CheckpointPosStrategy checkpointPosStrategy = config.get(ofCheckpointPositionStrategy(), "globalfs.gateway.checkpointPosStrategy");
 
 						// TODO anton: fix all these stubs
-						GlobalFsDriver driver = GlobalFsDriver.create(node, list(privateKey.computeKeys()), checkpointPosStrategy);
+						GlobalFsDriver driver = GlobalFsDriver.create(node, discoveryService, list(privateKey.computeKeys()), checkpointPosStrategy);
 						return (GlobalFsGatewayAdapter) driver.createClientFor(privateKey.computePubKey());
 					}
 

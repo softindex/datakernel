@@ -22,10 +22,7 @@ import org.spongycastle.crypto.engines.AESFastEngine;
 
 import java.util.Arrays;
 
-/**
- * CTR streaming mode of operation for the AES block cipher.
- */
-public final class AESCipherCTR {
+public final class CTRAESCipher {
 	@SuppressWarnings("deprecation") // just a warning about bad AESFastEngine impl, we're okay with that
 	private final AESFastEngine cipher = new AESFastEngine();
 
@@ -38,10 +35,10 @@ public final class AESCipherCTR {
 
 	public static final int BLOCK_SIZE = 16;
 
-	private AESCipherCTR(CipherParameters key, byte[] nonce, long position) {
+	private CTRAESCipher(CipherParameters key, byte[] nonce, long initialPosition) {
 		this.nonce = nonce;
-		blockCounter = position >> 4;
-		blockPos = (byte) (position & 0xF);
+		blockCounter = initialPosition >> 4;
+		blockPos = (byte) (initialPosition & 0xF);
 
 		cipherBlock = new byte[BLOCK_SIZE];
 		mixedNonce = Arrays.copyOf(nonce, BLOCK_SIZE);
@@ -50,12 +47,12 @@ public final class AESCipherCTR {
 		nextCipherBlock();
 	}
 
-	public static AESCipherCTR create(CipherParameters key, byte[] nonce, long position) {
-		return new AESCipherCTR(key, nonce, position);
+	public static CTRAESCipher create(CipherParameters key, byte[] nonce, long initialPosition) {
+		return new CTRAESCipher(key, nonce, initialPosition);
 	}
 
-	public static AESCipherCTR create(CipherParameters key, byte[] nonce) {
-		return new AESCipherCTR(key, nonce, 0);
+	public static CTRAESCipher create(CipherParameters key, byte[] nonce) {
+		return new CTRAESCipher(key, nonce, 0);
 	}
 
 	private void nextCipherBlock() {
@@ -67,23 +64,29 @@ public final class AESCipherCTR {
 		cipher.processBlock(mixedNonce, 0, cipherBlock, 0);
 	}
 
+	public byte nextByte() {
+		if (blockPos == BLOCK_SIZE) {
+			blockPos = 0;
+			nextCipherBlock();
+		}
+		return cipherBlock[blockPos++];
+	}
+
 	public void apply(byte[] data, int offset, int length) {
 		for (int i = offset, endOffset = offset + length; i < endOffset; i++) {
-			if (blockPos == BLOCK_SIZE) {
-				blockPos = 0;
-				nextCipherBlock();
-			}
-			data[i] ^= cipherBlock[blockPos++];
+			data[i] ^= nextByte();
 		}
-
 	}
 
 	public void apply(byte[] data) {
 		apply(data, 0, data.length);
 	}
 
-	public void apply(ByteBuf byteBuf) {
+	public ByteBuf apply(ByteBuf byteBuf) {
+		// we assume that this we've 'consumed'
+		// the buffer and 'created' a new one in return
 		apply(byteBuf.array(), byteBuf.readPosition(), byteBuf.readRemaining());
+		return byteBuf;
 	}
 
 	public void reset() {

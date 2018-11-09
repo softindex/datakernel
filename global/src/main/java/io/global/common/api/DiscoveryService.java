@@ -18,22 +18,24 @@ package io.global.common.api;
 
 import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
-import io.global.common.*;
+import io.global.common.Hash;
+import io.global.common.PubKey;
+import io.global.common.SharedSimKey;
+import io.global.common.SignedData;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface DiscoveryService {
 	StacklessException NO_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Announce data not found");
+	StacklessException NO_KEY = new StacklessException(DiscoveryService.class, "Key not found");
 
 	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
 
 	Promise<SignedData<AnnounceData>> find(PubKey space);
 
-	Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey);
+	Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey);
 
-	default Promise<Void> shareKey(KeyPair keys, SharedSimKey simKey) {
-		return shareKey(keys.getPubKey(), SignedData.sign(simKey, keys.getPrivKey()));
-	}
+	Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash);
 
-	Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash);
+	Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver);
 }

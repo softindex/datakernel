@@ -25,7 +25,7 @@ import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 
-import java.util.Optional;
+import java.util.List;
 
 public final class RemoteFsDiscoveryService implements DiscoveryService {
 	private final FsClient fsClient;
@@ -45,12 +45,17 @@ public final class RemoteFsDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
+	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#shareKey is not implemented yet");
 	}
 
 	@Override
-	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
+	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash) {
 		throw new UnsupportedOperationException("RemoteFsDiscoveryService#getSharedKey is not implemented yet");
+	}
+
+	@Override
+	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
+		throw new UnsupportedOperationException("RemoteFsDiscoveryService#getSharedKeys is not implemented yet");
 	}
 }

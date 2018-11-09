@@ -79,7 +79,7 @@ public final class OTDriver {
 
 	public Promise<Optional<SimKey>> getSharedKey(MyRepositoryId<?> myRepositoryId,
 			PubKey senderPubKey, Hash simKeyHash) {
-		return service.getSharedKey(senderPubKey, myRepositoryId.getRepositoryId().getOwner(), simKeyHash)
+		return service.getSharedKey(myRepositoryId.getRepositoryId().getOwner(), simKeyHash)
 				.thenApply(maybeSignedSimKey -> {
 					if (!maybeSignedSimKey.isPresent()) {
 						return Optional.empty();

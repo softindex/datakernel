@@ -24,10 +24,10 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import io.global.common.KeyPair;
-import io.global.common.RawServerId;
-import io.global.common.SignedData;
+import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.LoggingRule;
+import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.fs.api.*;
@@ -39,6 +39,7 @@ import io.global.fs.local.RuntimeDiscoveryService;
 import io.global.fs.transformers.FrameSigner;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
@@ -49,7 +50,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.list;
@@ -57,18 +57,14 @@ import static io.datakernel.util.CollectionUtils.set;
 import static io.global.fs.api.CheckpointPosStrategy.fixed;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
-public class GlobalFsTest {
+@RunWith(DatakernelRunner.class)
+public final class GlobalFsTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
-
-	private Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
 	private ExecutorService executor = Executors.newSingleThreadExecutor();
 
 	private DiscoveryService discoveryService = new RuntimeDiscoveryService();
@@ -92,7 +88,7 @@ public class GlobalFsTest {
 		Runtime.getRuntime().exec("rm -r /tmp/TESTS2").waitFor();
 
 		NodeClientFactory clientFactory = new NodeClientFactory() {
-			FsClient storage = LocalFsClient.create(eventloop, executor, Paths.get("/tmp/TESTS2/")); //temporaryFolder.newFolder().toPath());
+			FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, Paths.get("/tmp/TESTS2/")); //temporaryFolder.newFolder().toPath());
 
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
@@ -107,16 +103,11 @@ public class GlobalFsTest {
 		firstClient = wrapWithHttpInterface(rawFirstClient);
 		GlobalFsNode secondClient = wrapWithHttpInterface(rawSecondClient);
 
-		firstDriver = GlobalFsDriver.create(firstClient, list(alice, bob), fixed(10));
-		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, list(alice, bob), fixed(15));
+		firstDriver = GlobalFsDriver.create(firstClient, discoveryService, list(alice, bob), fixed(10));
+		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, discoveryService, list(alice, bob), fixed(15));
 
 		firstAliceAdapter = firstDriver.createClientFor(alice.getPubKey());
 		secondAliceAdapter = secondDriver.createClientFor(alice.getPubKey());
-	}
-
-	@After
-	public void tearDown() {
-		executor.shutdownNow();
 	}
 
 	private Promise<Void> announce(KeyPair keys, Set<RawServerId> rawServerIds) {
@@ -175,8 +166,6 @@ public class GlobalFsTest {
 						assertEquals("hello, this is a test buffer data #07", buf.asString(UTF_8))))
 				.thenCompose($ -> firstAliceAdapter.downloadSerial("test1.txt").toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf -> assertEquals(570, buf.asString(UTF_8).length())));
-
-		eventloop.run();
 	}
 
 	@Test
@@ -192,8 +181,6 @@ public class GlobalFsTest {
 				.whenResult(buf -> assertEquals(content, buf.asString(UTF_8)))
 				.thenCompose($ -> firstBobAdapter.download("test.txt"))
 				.whenComplete(assertFailure());
-
-		eventloop.run();
 	}
 
 	@Test
@@ -217,8 +204,6 @@ public class GlobalFsTest {
 					assertTrue(frame.getCheckpoint().verify(alice.getPubKey()));
 					assertEquals(4, frame.getCheckpoint().getData().getPosition());
 				}));
-
-		eventloop.run();
 	}
 
 	@Test
@@ -233,12 +218,20 @@ public class GlobalFsTest {
 				.whenResult(buf -> System.out.println(buf.asString(UTF_8)))
 				.thenCompose($ -> firstAliceAdapter.getMetadata("folder/test.txt"))
 				.whenComplete(assertComplete(meta -> assertEquals(48, meta.getSize())));
-
-		eventloop.run();
 	}
 
 	@Test
-	public void testAppend() {
+	public void bbt() {
+		String first = "Hello world, this is some bytes";
+
+		announce(alice, set(firstId))
+				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
+				.thenCompose(SerialSupplier.of(wrapUtf8(first))::streamTo)
+				.whenComplete(assertComplete());
+	}
+
+	@Test
+	public void append() {
 		String first = "Hello world, this is some bytes ";
 		String second = "to be sent through the GlobalFs HTTP interface";
 
@@ -251,12 +244,10 @@ public class GlobalFsTest {
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(first + second, res.asString(UTF_8))));
-
-		eventloop.run();
 	}
 
 	@Test
-	public void testDownloadFromOther() {
+	public void downloadFromOther() {
 		String string = "hello, this is a test little string of bytes";
 		announce(alice, set(firstId, secondId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
@@ -264,12 +255,10 @@ public class GlobalFsTest {
 				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(string, res.asString(UTF_8))));
-
-		eventloop.run();
 	}
 
 	@Test
-	public void testFetch() {
+	public void fetch() {
 		String string = "hello, this is a test little string of bytes";
 		announce(alice, set(firstId, secondId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
@@ -279,12 +268,10 @@ public class GlobalFsTest {
 				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> System.out.println(res.asString(UTF_8))));
-
-		eventloop.run();
 	}
 
 	@Test
-	public void testPartialFetch() {
+	public void partialFetch() {
 		String part = "hello, this is a test little string of bytes";
 		String string = part + "\nwhich has a second line by the way, hello there";
 		announce(alice, set(firstId, secondId))
@@ -297,12 +284,40 @@ public class GlobalFsTest {
 				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(string, res.asString(UTF_8))));
+	}
 
-		eventloop.run();
+	@Test
+	@ByteBufRule.IgnoreLeaks("TODO") // TODO anton: fix this
+	public void encryptionAndDriver() {
+		SimKey key1 = SimKey.generate();
+		SimKey key2 = SimKey.generate();
+
+		firstDriver.changeCurrentSimKey(key1);
+
+		String data = "some plain ASCII data to be uploaded and encrypted";
+
+		firstAliceAdapter.upload("test.txt")
+				.thenCompose(SerialSupplier.of(wrapUtf8(data))::streamTo)
+				.thenCompose($ -> firstAliceAdapter.download("test.txt", 12, 32))
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
+				.whenComplete(assertComplete(res -> assertEquals(data.substring(12, 12 + 32), res.asString(UTF_8))))
+				.whenResult($ -> {
+					firstDriver.forget(Hash.of(key1));
+					firstDriver.changeCurrentSimKey(key2);
+				})
+				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
+				.whenComplete(assertFailure(e -> assertSame(DiscoveryService.NO_KEY, e)))
+				.thenComposeEx(($, e) -> discoveryService.shareKey(alice.getPubKey(),
+						SignedData.sign(SharedSimKey.of(key1, alice.getPubKey()), alice.getPrivKey())))
+				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
+				.whenComplete(assertComplete(res -> assertEquals(data, res.asString(UTF_8))));
 	}
 
 	@Test
 	@Ignore("does not work yet for some reason")
+	@LoggingRule.Enable("io.global")
 	public void uploadWhenOldCache() {
 		announce(alice, set(secondId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
@@ -312,8 +327,6 @@ public class GlobalFsTest {
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
 				.thenCompose(SerialSupplier.of(wrapUtf8("another string of bytes to test"))::streamTo)
 				.whenComplete(assertComplete());
-
-		eventloop.run();
 	}
 
 	private GlobalFsNode wrapWithHttpInterface(GlobalFsNode node) {

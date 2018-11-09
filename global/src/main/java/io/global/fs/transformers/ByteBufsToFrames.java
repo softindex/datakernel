@@ -58,10 +58,10 @@ abstract class ByteBufsToFrames extends SerialTransformer<ByteBufsToFrames, Byte
 					.thenCompose($ -> postCheckpoint());
 		}
 
-		ByteBuf afterCheckpoint = item.slice(item.readPosition() + bytesUntilCheckpoint, remaining);
-		item.recycle(); // set refcount back to 1
-		return postByteBuf(item.slice(bytesUntilCheckpoint))
+		ByteBuf until = item.slice(bytesUntilCheckpoint);
+		item.moveReadPosition(bytesUntilCheckpoint);
+		return postByteBuf(until)
 				.thenCompose($ -> postCheckpoint())
-				.thenCompose($ -> onItem(afterCheckpoint));
+				.thenCompose($ -> onItem(item));
 	}
 }

@@ -16,23 +16,27 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.test.TestUtils;
+import io.datakernel.eventloop.Eventloop;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+
 /**
- * {@link TestRule} that fails if not all active promises have been completed either succesfully or exceptionally.
- * Promises to be monitored should have either a {@link TestUtils#assertComplete()} or a {@link TestUtils#assertFailure()}
- * listener attached
+ * NOTE: this rule must apply before checks like {@link ByteBufRule},
+ * so either use Rule annotation with priority (from JUnit 4.13)
+ * or use the {@link DatakernelRunner}
  */
-public final class ActivePromisesRule implements TestRule {
+public final class EventloopRule implements TestRule {
 	@Override
 	public Statement apply(Statement base, Description description) {
 		return new LambdaStatement(() -> {
-			TestUtils.clearActivePromises();
+			Eventloop eventloop = Eventloop.create()
+					.withCurrentThread()
+					.withFatalErrorHandler(rethrowOnAnyError());
 			base.evaluate();
-			assert TestUtils.getActivePromises() == 0 : "Some promises has not been completed";
+			eventloop.run();
 		});
 	}
 }

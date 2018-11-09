@@ -173,15 +173,15 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
-		return httpClient.request(request(POST, SHARE_KEY + "/" + owner.asString(), apiQuery((RepoID) null))
+	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
+		return httpClient.request(request(POST, SHARE_KEY + "/" + receiver.asString(), apiQuery((RepoID) null))
 				.initialize(withJson(SHARED_SIM_KEY_JSON, simKey)))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, null));
 	}
 
 	@Override
-	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey repositoryOwner, PubKey receiver, Hash simKeyHash) {
+	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey receiver, Hash simKeyHash) {
 		throw new ToDoException();
 	}
 

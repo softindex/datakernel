@@ -16,23 +16,28 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.test.TestUtils;
 import org.junit.rules.TestRule;
-import org.junit.runner.Description;
-import org.junit.runners.model.Statement;
+import org.junit.runners.BlockJUnit4ClassRunner;
+import org.junit.runners.model.InitializationError;
+
+import java.util.List;
 
 /**
- * {@link TestRule} that fails if not all active promises have been completed either succesfully or exceptionally.
- * Promises to be monitored should have either a {@link TestUtils#assertComplete()} or a {@link TestUtils#assertFailure()}
- * listener attached
+ * Runner that adds essential DataKernel test rules in appropriate order
+ * (for example {@link EventloopRule} must apply before any other rules)
  */
-public final class ActivePromisesRule implements TestRule {
+public final class DatakernelRunner extends BlockJUnit4ClassRunner {
+	public DatakernelRunner(Class<?> klass) throws InitializationError {
+		super(klass);
+	}
+
 	@Override
-	public Statement apply(Statement base, Description description) {
-		return new LambdaStatement(() -> {
-			TestUtils.clearActivePromises();
-			base.evaluate();
-			assert TestUtils.getActivePromises() == 0 : "Some promises has not been completed";
-		});
+	protected List<TestRule> getTestRules(Object target) {
+		List<TestRule> rules = super.getTestRules(target);
+		rules.add(0, new EventloopRule());
+		rules.add(new ActivePromisesRule());
+		rules.add(new ByteBufRule());
+		rules.add(new LoggingRule());
+		return rules;
 	}
 }

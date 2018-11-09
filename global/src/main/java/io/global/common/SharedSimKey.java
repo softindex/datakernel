@@ -28,39 +28,29 @@ import static io.global.ot.util.BinaryDataFormats.*;
 public final class SharedSimKey implements ByteArrayIdentity {
 	private final byte[] bytes;
 
-	private final PubKey receiver;
 	private final Hash hash;
-	private final byte[] encryptedSimKey;
+	private final byte[] encrypted;
 
-	private SharedSimKey(byte[] bytes, PubKey receiver, Hash hash, byte[] encryptedSimKey) {
+	private SharedSimKey(byte[] bytes, Hash hash, byte[] encrypted) {
 		this.bytes = bytes;
-		this.receiver = receiver;
 		this.hash = hash;
-		this.encryptedSimKey = encryptedSimKey;
+		this.encrypted = encrypted;
 	}
 
 	public static SharedSimKey ofBytes(byte[] bytes) throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-
-		PubKey receiver = readPubKey(buf);
-		Hash hash = Hash.ofBytes(readBytes(buf));
-		byte[] encryptedSimKey = readBytes(buf);
-
-		return new SharedSimKey(bytes, receiver, hash, encryptedSimKey);
+		return new SharedSimKey(bytes, Hash.ofBytes(readBytes(buf)), readBytes(buf));
 	}
 
-	public static SharedSimKey of(PubKey receiver, Hash hash, byte[] encryptedSimKey) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(receiver) + sizeof(hash.toBytes()) + sizeof(encryptedSimKey));
-
-		writePubKey(buf, receiver);
+	public static SharedSimKey of(Hash hash, byte[] encryptedSimKey) {
+		ByteBuf buf = ByteBufPool.allocate(sizeof(hash.toBytes()) + sizeof(encryptedSimKey));
 		write(buf, hash);
 		writeBytes(buf, encryptedSimKey);
-
-		return new SharedSimKey(buf.asArray(), receiver, hash, encryptedSimKey);
+		return new SharedSimKey(buf.asArray(), hash, encryptedSimKey);
 	}
 
-	public static SharedSimKey of(PubKey receiver, SimKey simKey) {
-		return of(receiver, Hash.of(simKey), receiver.encrypt(simKey));
+	public static SharedSimKey of(SimKey simKey, PubKey receiver) {
+		return of(Hash.of(simKey), receiver.encrypt(simKey));
 	}
 
 	@Override
@@ -68,25 +58,21 @@ public final class SharedSimKey implements ByteArrayIdentity {
 		return bytes;
 	}
 
-	public PubKey getReceiver() {
-		return receiver;
-	}
-
 	public Hash getHash() {
 		return hash;
 	}
 
-	public byte[] getEncryptedSimKey() {
-		return encryptedSimKey;
+	public byte[] getEncrypted() {
+		return encrypted;
 	}
 
 	public SimKey decryptSimKey(PrivKey privKey) throws CryptoException {
-		return SimKey.ofBytes(privKey.decrypt(encryptedSimKey));
+		return SimKey.ofBytes(privKey.decrypt(encrypted));
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * (31 * receiver.hashCode() + hash.hashCode()) + Arrays.hashCode(encryptedSimKey);
+		return 31 * hash.hashCode() + Arrays.hashCode(encrypted);
 	}
 
 	@Override
@@ -96,11 +82,11 @@ public final class SharedSimKey implements ByteArrayIdentity {
 
 		SharedSimKey that = (SharedSimKey) o;
 
-		return receiver.equals(that.receiver) && hash.equals(that.hash) && Arrays.equals(encryptedSimKey, that.encryptedSimKey);
+		return hash.equals(that.hash) && Arrays.equals(encrypted, that.encrypted);
 	}
 
 	@Override
 	public String toString() {
-		return "SharedSimKey{receiver=" + receiver + ", hash=" + hash + ", encryptedSimKey=@" + Integer.toHexString(Arrays.hashCode(encryptedSimKey)) + '}';
+		return "SharedSimKey{hash=" + hash + ", encrypted=@" + Integer.toHexString(Arrays.hashCode(encrypted)) + '}';
 	}
 }

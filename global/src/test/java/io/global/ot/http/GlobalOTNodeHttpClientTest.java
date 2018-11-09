@@ -127,14 +127,14 @@ public class GlobalOTNodeHttpClientTest {
 			}
 
 			@Override
-			public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> signedSimKey) {
+			public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> signedSimKey) {
 				return resultOf(null, signedSimKey);
 			}
 
 			@Override
-			public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash simKeyHash) {
-				SharedSimKey sharedSimKey = SharedSimKey.of(receiver, simKey);
-				return resultOf(Optional.of(SignedData.sign(sharedSimKey, privKey)), owner, receiver, simKeyHash);
+			public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey receiver, Hash simKeyHash) {
+				SharedSimKey sharedSimKey = SharedSimKey.of(simKey, receiver);
+				return resultOf(Optional.of(SignedData.sign(sharedSimKey, privKey)), receiver, simKeyHash);
 			}
 
 			@Override
@@ -228,7 +228,7 @@ public class GlobalOTNodeHttpClientTest {
 		assertEquals(set(rootCommitId), parameters.remove());
 		assertTrue(parameters.isEmpty());
 
-		SharedSimKey sharedSimKey = SharedSimKey.of(pubKey, simKey);
+		SharedSimKey sharedSimKey = SharedSimKey.of(simKey, pubKey);
 		SignedData<SharedSimKey> signedSharedSimKey = SignedData.sign(sharedSimKey, privKey);
 
 		CompletableFuture<Void> shareKeyFuture = client.shareKey(pubKey, signedSharedSimKey)

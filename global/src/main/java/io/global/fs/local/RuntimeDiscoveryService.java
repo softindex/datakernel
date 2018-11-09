@@ -27,9 +27,12 @@ import io.global.common.api.DiscoveryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+
+import static java.util.Collections.emptyMap;
 
 public final class RuntimeDiscoveryService implements DiscoveryService {
 	private static final Logger logger = LoggerFactory.getLogger(RuntimeDiscoveryService.class);
@@ -39,7 +42,7 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 	public static final StacklessException CANNOT_VERIFY_SHARED_KEY = new StacklessException(RuntimeDiscoveryService.class, "Cannot verify shared key");
 
 	private final Map<PubKey, SignedData<AnnounceData>> announced = new HashMap<>();
-	private final Map<ShareInfo, SignedData<SharedSimKey>> sharedKeys = new HashMap<>();
+	private final Map<PubKey, Map<Hash, SignedData<SharedSimKey>>> sharedKeys = new HashMap<>();
 
 	@Override
 	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
@@ -66,48 +69,26 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 	}
 
 	@Override
-	public Promise<Void> shareKey(PubKey owner, SignedData<SharedSimKey> simKey) {
+	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
 		logger.info("received {}", simKey);
-		if (!simKey.verify(owner)) {
-			logger.warn("failed to verify {}", simKey);
-			return Promise.ofException(CANNOT_VERIFY_SHARED_KEY);
-		}
-		SharedSimKey data = simKey.getData();
-		sharedKeys.put(new ShareInfo(owner, data.getReceiver(), data.getHash()), simKey);
+		sharedKeys.computeIfAbsent(receiver, $ -> new HashMap<>()).put(simKey.getData().getHash(), simKey);
 		return Promise.complete();
 	}
 
 	@Override
-	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey owner, PubKey receiver, Hash hash) {
-		return Promise.of(Optional.ofNullable(sharedKeys.get(new ShareInfo(owner, receiver, hash))));
+	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash) {
+		Map<Hash, SignedData<SharedSimKey>> keys = sharedKeys.get(receiver);
+		if (keys != null) {
+			SignedData<SharedSimKey> data = keys.get(hash);
+			if (data != null) {
+				return Promise.of(data);
+			}
+		}
+		return Promise.ofException(NO_KEY);
 	}
 
-	private static class ShareInfo {
-		final PubKey owner;
-		final PubKey receiver;
-		final Hash hash;
-
-		public ShareInfo(PubKey owner, PubKey receiver, Hash hash) {
-			this.owner = owner;
-			this.receiver = receiver;
-			this.hash = hash;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-
-			ShareInfo shareInfo = (ShareInfo) o;
-
-			return owner.equals(shareInfo.owner) && receiver.equals(shareInfo.receiver) && hash.equals(shareInfo.hash);
-		}
-
-		@Override
-		public int hashCode() {
-			return 961 * owner.hashCode() +
-					31 * receiver.hashCode() +
-					hash.hashCode();
-		}
+	@Override
+	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
+		return Promise.of(new ArrayList<>(sharedKeys.getOrDefault(receiver, emptyMap()).values()));
 	}
 }
