@@ -231,8 +231,7 @@ public final class SerializerBuilder {
 	}
 
 	public <T> void setSubclasses(Class<T> type, List<Class<? extends T>> subclasses) {
-		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>();
-		subclassesSet.addAll(subclasses);
+		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>(subclasses);
 		check(subclassesSet.size() == subclasses.size());
 		SerializerGen subclassesSerializer = createSubclassesSerializer(type, subclassesSet, 0);
 		setSerializer(type, subclassesSerializer);
@@ -315,8 +314,7 @@ public final class SerializerBuilder {
 	}
 
 	private SerializerGen createSubclassesSerializer(Class<?> type, SerializeSubclasses serializeSubclasses) {
-		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>();
-		subclassesSet.addAll(Arrays.asList(serializeSubclasses.value()));
+		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>(Arrays.asList(serializeSubclasses.value()));
 		check(subclassesSet.size() == serializeSubclasses.value().length);
 
 		if (!serializeSubclasses.extraSubclassesId().isEmpty()) {
