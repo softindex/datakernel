@@ -82,9 +82,7 @@ public class SerializerGenNullable implements SerializerGen {
 
 		SerializerGenNullable that = (SerializerGenNullable) o;
 
-		if (!serializer.equals(that.serializer)) return false;
-
-		return true;
+		return serializer.equals(that.serializer);
 	}
 
 	@Override

@@ -45,9 +45,7 @@ public final class SerializerGenLong extends SerializerGenPrimitive {
 
 		SerializerGenLong that = (SerializerGenLong) o;
 
-		if (varLength != that.varLength) return false;
-
-		return true;
+		return varLength == that.varLength;
 	}
 
 	@Override
