@@ -45,9 +45,6 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	@Nullable
 	protected Throwable exception = PROMISE_NOT_SET;
 
-	public SettablePromise() {
-	}
-
 	public static <T> SettablePromise<T> ofPromise(Promise<T> promise) {
 		SettablePromise<T> result = new SettablePromise<>();
 		promise.whenComplete(result::set);
