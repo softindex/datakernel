@@ -28,6 +28,8 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -56,7 +58,7 @@ import static org.junit.Assert.fail;
 public class TestGzipProcessorUtils {
 	private static final int PORT = 5595;
 
-	@Parameterized.Parameters
+	@Parameters
 	public static Collection<Object[]> testData() {
 		return Arrays.asList(new Object[][]{
 				{"I"},
@@ -66,7 +68,7 @@ public class TestGzipProcessorUtils {
 		});
 	}
 
-	@Parameterized.Parameter
+	@Parameter
 	public String text;
 
 	@Rule

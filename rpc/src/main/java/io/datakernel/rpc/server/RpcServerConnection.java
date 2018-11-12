@@ -22,13 +22,14 @@ import io.datakernel.jmx.*;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.protocol.RpcStream;
+import io.datakernel.rpc.protocol.RpcStream.Listener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.Map;
 
-public final class RpcServerConnection implements RpcStream.Listener, JmxRefreshable {
+public final class RpcServerConnection implements Listener, JmxRefreshable {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private final RpcServer rpcServer;

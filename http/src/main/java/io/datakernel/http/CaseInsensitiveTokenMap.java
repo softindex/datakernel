@@ -16,11 +16,13 @@
 
 package io.datakernel.http;
 
+import io.datakernel.http.CaseInsensitiveTokenMap.Token;
+
 import java.lang.reflect.Array;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 
-public abstract class CaseInsensitiveTokenMap<T extends CaseInsensitiveTokenMap.Token> {
+public abstract class CaseInsensitiveTokenMap<T extends Token> {
 	public static abstract class Token {
 		protected byte[] lowerCaseBytes;
 		protected int lowerCaseHashCode;

@@ -3,6 +3,7 @@ package io.datakernel.stream;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.TestStreamConsumers.Decorator.Context;
 
 import java.util.Random;
 import java.util.function.Consumer;
@@ -27,7 +28,7 @@ public class TestStreamConsumers {
 					@Override
 					public void resume(StreamDataAcceptor<T> dataAcceptor) {
 						StreamDataAcceptor<T>[] dataAcceptors = new StreamDataAcceptor[1];
-						Decorator.Context context = new Decorator.Context() {
+						Context context = new Context() {
 							final Eventloop eventloop = getCurrentEventloop();
 
 							@Override
@@ -76,7 +77,7 @@ public class TestStreamConsumers {
 				});
 	}
 
-	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> suspendDecorator(Predicate<T> predicate, Consumer<Decorator.Context> resumer) {
+	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> suspendDecorator(Predicate<T> predicate, Consumer<Context> resumer) {
 		return decorator((context, dataAcceptor) ->
 				item -> {
 					dataAcceptor.accept(item);
@@ -89,7 +90,7 @@ public class TestStreamConsumers {
 	}
 
 	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> suspendDecorator(Predicate<T> predicate) {
-		return suspendDecorator(predicate, Decorator.Context::resume);
+		return suspendDecorator(predicate, Context::resume);
 	}
 
 	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> oneByOne() {

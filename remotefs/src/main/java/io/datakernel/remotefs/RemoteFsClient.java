@@ -24,9 +24,7 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.remotefs.RemoteFsCommands.Download;
-import io.datakernel.remotefs.RemoteFsCommands.FsCommand;
-import io.datakernel.remotefs.RemoteFsCommands.Upload;
+import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
@@ -180,7 +178,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	public Promise<Set<String>> move(Map<String, String> changes) {
 		checkNotNull(changes, "changes");
 
-		return simpleCommand(new RemoteFsCommands.Move(changes), MoveFinished.class, MoveFinished::getMoved)
+		return simpleCommand(new Move(changes), MoveFinished.class, MoveFinished::getMoved)
 				.whenComplete(toLogger(logger, TRACE, "move", changes, this))
 				.whenComplete(movePromise.recordStats());
 	}
@@ -189,7 +187,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	public Promise<Set<String>> copy(Map<String, String> changes) {
 		checkNotNull(changes, "changes");
 
-		return simpleCommand(new RemoteFsCommands.Copy(changes), CopyFinished.class, CopyFinished::getCopied)
+		return simpleCommand(new Copy(changes), CopyFinished.class, CopyFinished::getCopied)
 				.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
 				.whenComplete(copyPromise.recordStats());
 	}
@@ -198,7 +196,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	public Promise<Void> delete(String glob) {
 		checkNotNull(glob, "glob");
 
-		return simpleCommand(new RemoteFsCommands.Delete(glob), DeleteFinished.class, $ -> (Void) null)
+		return simpleCommand(new Delete(glob), DeleteFinished.class, $ -> (Void) null)
 				.whenComplete(toLogger(logger, TRACE, "delete", glob, this))
 				.whenComplete(deletePromise.recordStats());
 	}

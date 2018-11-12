@@ -22,6 +22,8 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.cube.attributes.AttributeResolver;
+import io.datakernel.cube.attributes.AttributeResolver.AttributesFunction;
+import io.datakernel.cube.attributes.AttributeResolver.KeyFunction;
 import io.datakernel.cube.ot.CubeDiff;
 
 import java.util.*;
@@ -69,7 +71,7 @@ public final class Utils {
 				fullySpecifiedDimensionsArray[i] = fullySpecifiedDimensions.get(dimension);
 			}
 		}
-		AttributeResolver.KeyFunction keyFunction = ClassBuilder.create(classLoader, AttributeResolver.KeyFunction.class)
+		KeyFunction keyFunction = ClassBuilder.create(classLoader, KeyFunction.class)
 				.withMethod("extractKey", () -> {
 					ExpressionSequence extractKey = ExpressionSequence.create();
 					Expression key = let(newArray(Object.class, value(recordDimensions.size())));
@@ -85,7 +87,7 @@ public final class Utils {
 				.buildClassAndCreateNewInstance();
 
 		List<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
-		AttributeResolver.AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributeResolver.AttributesFunction.class)
+		AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributesFunction.class)
 				.withMethod("applyAttributes", () -> {
 					ExpressionSequence applyAttributes = ExpressionSequence.create();
 					for (String attribute : recordAttributes) {

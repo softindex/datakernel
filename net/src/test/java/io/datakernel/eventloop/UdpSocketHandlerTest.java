@@ -17,6 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncUdpSocket.EventHandler;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
@@ -39,7 +40,7 @@ public class UdpSocketHandlerTest {
 
 	private AsyncUdpSocketImpl getEchoServerUdpSocket(DatagramChannel serverChannel) {
 		AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, serverChannel);
-		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
+		socket.setEventHandler(new EventHandler() {
 			@Override
 			public void onRegistered() {
 				socket.receive();
@@ -65,7 +66,7 @@ public class UdpSocketHandlerTest {
 
 	private AsyncUdpSocketImpl getClientUdpSocket(DatagramChannel clientChannel) {
 		AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, clientChannel);
-		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
+		socket.setEventHandler(new EventHandler() {
 			@Override
 			public void onRegistered() {
 				sendTestData(bytesToSend, SERVER_ADDRESS);

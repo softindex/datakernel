@@ -23,6 +23,7 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UnknownFormatException;
+import io.datakernel.http.AsyncHttpClient.Inspector;
 import io.datakernel.serial.SerialSupplier;
 
 import java.net.InetSocketAddress;
@@ -81,7 +82,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private SettablePromise<HttpResponse> callback;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
-	private final AsyncHttpClient.Inspector inspector;
+	private final Inspector inspector;
 
 	final InetSocketAddress remoteAddress;
 	HttpClientConnection addressPrev;

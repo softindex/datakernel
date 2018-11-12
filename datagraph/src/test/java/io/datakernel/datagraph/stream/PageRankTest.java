@@ -32,7 +32,11 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.processor.*;
+import io.datakernel.stream.processor.ActivePromisesRule;
+import io.datakernel.stream.processor.StreamJoin.InnerJoiner;
+import io.datakernel.stream.processor.StreamMap.MapperProjection;
+import io.datakernel.stream.processor.StreamReducers.ReducerToResult;
+import io.datakernel.stream.processor.StreamSorterStorage;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -137,7 +141,7 @@ public class PageRankTest {
 		}
 	}
 
-	private static final class RankAccumulatorReducer extends StreamReducers.ReducerToResult<Long, Rank, Rank, RankAccumulator> {
+	private static final class RankAccumulatorReducer extends ReducerToResult<Long, Rank, Rank, RankAccumulator> {
 		@Override
 		public RankAccumulator createAccumulator(Long pageId) {
 			return new RankAccumulator(pageId);
@@ -163,7 +167,7 @@ public class PageRankTest {
 
 	public static SortedDataset<Long, Rank> pageRankIteration(SortedDataset<Long, Page> pages, SortedDataset<Long, Rank> ranks) {
 		Dataset<Rank> updates = join(pages, ranks,
-			new StreamJoin.InnerJoiner<Long, Page, Rank, Rank>() {
+			new InnerJoiner<Long, Page, Rank, Rank>() {
 				@Override
 				public void onInnerJoin(Long key, Page page, Rank rank, StreamDataAcceptor<Rank> output) {
 					page.disperse(rank, output);
@@ -181,7 +185,7 @@ public class PageRankTest {
 
 	public static SortedDataset<Long, Rank> pageRank(SortedDataset<Long, Page> pages) {
 		SortedDataset<Long, Rank> ranks = castToSorted(map(pages,
-			new StreamMap.MapperProjection<Page, Rank>() {
+			new MapperProjection<Page, Rank>() {
 				@Override
 				public Rank apply(Page page) {
 					return new Rank(page.pageId, 1.0);

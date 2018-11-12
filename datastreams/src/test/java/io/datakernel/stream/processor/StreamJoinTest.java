@@ -22,6 +22,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
+import io.datakernel.stream.processor.StreamJoin.ValueJoiner;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -31,7 +32,8 @@ import java.util.Objects;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class StreamJoinTest {
 	private static final class DataItemMaster {
@@ -126,7 +128,7 @@ public class StreamJoinTest {
 				StreamJoin.create(Integer::compareTo,
 						input -> input.detailId,
 						input -> input.id,
-						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
+						new ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
 							@Override
 							public DataItemMasterDetail doInnerJoin(Integer key, DataItemMaster left, DataItemDetail right) {
 								return new DataItemMasterDetail(left.id, left.detailId, left.master, right.detail);
@@ -181,7 +183,7 @@ public class StreamJoinTest {
 				StreamJoin.create(Integer::compareTo,
 						input -> input.detailId,
 						input -> input.id,
-						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
+						new ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
 							@Override
 							public DataItemMasterDetail doInnerJoin(Integer key, DataItemMaster left, DataItemDetail right) {
 								return new DataItemMasterDetail(left.id, left.detailId, left.master, right.detail);
@@ -236,7 +238,7 @@ public class StreamJoinTest {
 				StreamJoin.create(Integer::compareTo,
 						input -> input.detailId,
 						input -> input.id,
-						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
+						new ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
 							@Override
 							public DataItemMasterDetail doInnerJoin(Integer key, DataItemMaster left, DataItemDetail right) {
 								return new DataItemMasterDetail(left.id, left.detailId, left.master, right.detail);

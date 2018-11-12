@@ -16,7 +16,7 @@
 
 package io.datakernel.cube.http;
 
-import io.datakernel.cube.CubeQuery;
+import io.datakernel.cube.CubeQuery.Ordering;
 import io.datakernel.exception.ParseException;
 import io.datakernel.json.GsonAdapters.TypeAdapterMapping;
 import io.datakernel.json.GsonAdapters.TypeAdapterMappingImpl;
@@ -45,18 +45,18 @@ class Utils {
 
 	private static final Pattern splitter = Pattern.compile(",");
 
-	static String formatOrderings(List<CubeQuery.Ordering> orderings) {
+	static String formatOrderings(List<Ordering> orderings) {
 		StringBuilder sb = new StringBuilder();
 		boolean first = true;
-		for (CubeQuery.Ordering ordering : orderings) {
+		for (Ordering ordering : orderings) {
 			sb.append(first ? "" : ",").append(ordering.getField()).append(":").append(ordering.isAsc() ? "ASC" : "DESC");
 			first = false;
 		}
 		return sb.toString();
 	}
 
-	static List<CubeQuery.Ordering> parseOrderings(String string) throws ParseException {
-		List<CubeQuery.Ordering> result = new ArrayList<>();
+	static List<Ordering> parseOrderings(String string) throws ParseException {
+		List<Ordering> result = new ArrayList<>();
 		List<String> tokens = splitter.splitAsStream(string)
 				.map(String::trim)
 				.filter(s -> !s.isEmpty())
@@ -69,9 +69,9 @@ class Utils {
 			String field = s.substring(0, i);
 			String tail = s.substring(i + 1).toLowerCase();
 			if ("asc".equals(tail))
-				result.add(CubeQuery.Ordering.asc(field));
+				result.add(Ordering.asc(field));
 			else if ("desc".equals(tail))
-				result.add(CubeQuery.Ordering.desc(field));
+				result.add(Ordering.desc(field));
 			else {
 				throw MALFORMED_TAIL;
 			}

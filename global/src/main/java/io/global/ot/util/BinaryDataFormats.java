@@ -24,6 +24,7 @@ import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.util.ParserFunction;
 import io.global.common.*;
 import io.global.ot.api.*;
+import io.global.ot.api.GlobalOTNode.CommitEntry;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
@@ -44,7 +45,7 @@ public final class BinaryDataFormats {
 	private BinaryDataFormats() {
 	}
 
-	public static ByteBuf ofCommitEntry(GlobalOTNode.CommitEntry commitEntry) {
+	public static ByteBuf ofCommitEntry(CommitEntry commitEntry) {
 		byte[] commitIdBytes = commitEntry.commitId.toBytes();
 		byte[] commitBytes = commitEntry.commit.toBytes();
 		byte[] headBytes = commitEntry.head != null ? commitEntry.head.toBytes() : new byte[]{};
@@ -378,12 +379,12 @@ public final class BinaryDataFormats {
 	}
 	// endregion
 
-	public static GlobalOTNode.CommitEntry toCommitEntry(ByteBuf buf) throws ParseException {
+	public static CommitEntry toCommitEntry(ByteBuf buf) throws ParseException {
 		CommitId commitId = CommitId.ofBytes(readBytes(buf));
 		RawCommit rawCommit = RawCommit.ofBytes(readBytes(buf));
 		SignedData<RawCommitHead> head = buf.canRead() ?
 				SignedData.ofBytes(readBytes(buf), RawCommitHead::ofBytes) :
 				null;
-		return new GlobalOTNode.CommitEntry(commitId, rawCommit, head);
+		return new CommitEntry(commitId, rawCommit, head);
 	}
 }

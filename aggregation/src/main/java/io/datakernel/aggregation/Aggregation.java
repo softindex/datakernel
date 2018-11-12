@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation;
 
+import io.datakernel.aggregation.QueryPlan.Sequence;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
@@ -30,6 +31,8 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.*;
+import io.datakernel.stream.processor.StreamMap.MapperProjection;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
@@ -204,7 +207,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return structure.getPartitioningKey();
 	}
 
-	public <K extends Comparable, I, O, A> StreamReducers.Reducer<K, I, O, A> aggregationReducer(Class<I> inputClass, Class<O> outputClass,
+	public <K extends Comparable, I, O, A> Reducer<K, I, O, A> aggregationReducer(Class<I> inputClass, Class<O> outputClass,
 			List<String> keys, List<String> measures,
 			DefiningClassLoader classLoader) {
 		return AggregationUtils.aggregationReducer(structure, inputClass, outputClass,
@@ -324,39 +327,39 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 				.thenCompose($ -> chunker.getResult());
 	}
 
-	private static void addChunkToPlan(Map<List<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> planIndex,
+	private static void addChunkToPlan(Map<List<String>, TreeMap<PrimaryKey, List<Sequence>>> planIndex,
 			AggregationChunk chunk, List<String> queryFields) {
 		queryFields = new ArrayList<>(queryFields);
 		queryFields.retainAll(chunk.getMeasures());
 		checkArgument(!queryFields.isEmpty());
-		TreeMap<PrimaryKey, List<QueryPlan.Sequence>> map = planIndex.computeIfAbsent(queryFields, k -> new TreeMap<>());
+		TreeMap<PrimaryKey, List<Sequence>> map = planIndex.computeIfAbsent(queryFields, k -> new TreeMap<>());
 
-		Map.Entry<PrimaryKey, List<QueryPlan.Sequence>> entry = map.lowerEntry(chunk.getMinPrimaryKey());
-		QueryPlan.Sequence sequence;
+		Map.Entry<PrimaryKey, List<Sequence>> entry = map.lowerEntry(chunk.getMinPrimaryKey());
+		Sequence sequence;
 		if (entry == null) {
-			sequence = new QueryPlan.Sequence(queryFields);
+			sequence = new Sequence(queryFields);
 		} else {
-			List<QueryPlan.Sequence> list = entry.getValue();
+			List<Sequence> list = entry.getValue();
 			sequence = list.remove(list.size() - 1);
 			if (list.isEmpty()) {
 				map.remove(entry.getKey());
 			}
 		}
 		sequence.add(chunk);
-		List<QueryPlan.Sequence> list = map.computeIfAbsent(chunk.getMaxPrimaryKey(), k -> new ArrayList<>());
+		List<Sequence> list = map.computeIfAbsent(chunk.getMaxPrimaryKey(), k -> new ArrayList<>());
 		list.add(sequence);
 	}
 
 	private static QueryPlan createPlan(List<AggregationChunk> chunks, List<String> queryFields) {
-		Map<List<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> index = new HashMap<>();
+		Map<List<String>, TreeMap<PrimaryKey, List<Sequence>>> index = new HashMap<>();
 		chunks = new ArrayList<>(chunks);
 		chunks.sort(comparing(AggregationChunk::getMinPrimaryKey));
 		for (AggregationChunk chunk : chunks) {
 			addChunkToPlan(index, chunk, queryFields);
 		}
-		List<QueryPlan.Sequence> sequences = new ArrayList<>();
-		for (TreeMap<PrimaryKey, List<QueryPlan.Sequence>> map : index.values()) {
-			for (List<QueryPlan.Sequence> list : map.values()) {
+		List<Sequence> sequences = new ArrayList<>();
+		for (TreeMap<PrimaryKey, List<Sequence>> map : index.values()) {
+			for (List<Sequence> list : map.values()) {
 				sequences.addAll(list);
 			}
 		}
@@ -376,7 +379,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 
 		List<SequenceStream<S>> sequenceStreams = new ArrayList<>();
 
-		for (QueryPlan.Sequence sequence : plan.getSequences()) {
+		for (Sequence sequence : plan.getSequences()) {
 			Class<S> sequenceClass = createRecordClass(structure,
 					getKeys(),
 					sequence.getChunksFields(),
@@ -415,7 +418,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 			from record class to result class.
 			 */
 			SequenceStream<S> sequence = sequences.get(0);
-			StreamMap.MapperProjection<S, R> mapper = createMapper(sequence.type, resultClass,
+			MapperProjection<S, R> mapper = createMapper(sequence.type, resultClass,
 					queryKeys, measures.stream().filter(sequence.fields::contains).collect(toList()),
 					classLoader);
 			StreamSupplier<S> stream = sequence.stream;
@@ -435,7 +438,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		for (SequenceStream<S> sequence : sequences) {
 			Function<S, K> extractKeyFunction = createKeyFunction(sequence.type, keyClass, queryKeys, this.classLoader);
 
-			StreamReducers.Reducer<K, S, R, Object> reducer = AggregationUtils.aggregationReducer(structure,
+			Reducer<K, S, R, Object> reducer = AggregationUtils.aggregationReducer(structure,
 					sequence.type, resultClass,
 					queryKeys, measures.stream().filter(sequence.fields::contains).collect(toList()),
 					classLoader);

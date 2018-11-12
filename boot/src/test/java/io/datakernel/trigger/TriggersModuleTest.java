@@ -7,6 +7,7 @@ import com.google.inject.name.Named;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializer;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
@@ -138,7 +139,7 @@ public class TriggersModuleTest {
 		try {
 			serviceGraph.startFuture().get();
 			Triggers triggersWatcher = injector.getInstance(Triggers.class);
-			List<Triggers.TriggerWithResult> triggerResults = triggersWatcher.getResults();
+			List<TriggerWithResult> triggerResults = triggersWatcher.getResults();
 			assertEquals(3, triggerResults.size());
 			triggerResults.forEach(result -> assertTrue(result.toString().startsWith("HIGH : Eventloop : test")));
 			wasExecuted[0] = true;

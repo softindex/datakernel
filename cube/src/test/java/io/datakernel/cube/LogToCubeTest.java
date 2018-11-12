@@ -21,6 +21,7 @@ import io.datakernel.aggregation.ChunkIdScheme;
 import io.datakernel.aggregation.RemoteFsChunkStorage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
+import io.datakernel.cube.bean.TestPubRequest.TestAdvRequest;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffJson;
 import io.datakernel.cube.ot.CubeOT;
@@ -114,9 +115,9 @@ public class LogToCubeTest {
 			cubeDiffLogOTState);
 
 		StreamSupplier.of(
-			new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
-			new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
-			new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),
+			new TestPubRequest(1000, 1, asList(new TestAdvRequest(10))),
+			new TestPubRequest(1001, 2, asList(new TestAdvRequest(10), new TestAdvRequest(20))),
+			new TestPubRequest(1002, 1, asList(new TestAdvRequest(30))),
 			new TestPubRequest(1002, 2, Arrays.asList()))
 			.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();

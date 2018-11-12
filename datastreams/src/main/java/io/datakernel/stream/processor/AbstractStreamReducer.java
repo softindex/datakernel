@@ -19,6 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.util.*;
 import java.util.function.Function;
@@ -76,7 +77,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		return this;
 	}
 
-	protected <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
+	protected <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, Reducer<K, I, O, A> reducer) {
 		Input<I> input = new Input<I>(inputs.size(), priorityQueue, keyFunction, reducer, bufferSize);
 		inputs.add(input);
 		streamsAwaiting++;
@@ -103,10 +104,10 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		private final int bufferSize;
 
 		private final Function<I, K> keyFunction;
-		private final StreamReducers.Reducer<K, I, O, A> reducer;
+		private final Reducer<K, I, O, A> reducer;
 
 		private Input(int index,
-				PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer, int bufferSize) {
+				PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, Reducer<K, I, O, A> reducer, int bufferSize) {
 			this.index = index;
 			this.priorityQueue = priorityQueue;
 			this.keyFunction = keyFunction;

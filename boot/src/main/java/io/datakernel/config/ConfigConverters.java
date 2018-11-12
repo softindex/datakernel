@@ -16,7 +16,7 @@
 
 package io.datakernel.config;
 
-import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.async.EventloopTaskScheduler.Schedule;
 import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.FatalErrorHandler;
 import io.datakernel.eventloop.InetAddressRange;
@@ -593,26 +593,26 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverter<EventloopTaskScheduler.Schedule> ofEventloopTaskSchedule() {
-		return new ConfigConverter<EventloopTaskScheduler.Schedule>() {
+	public static ConfigConverter<Schedule> ofEventloopTaskSchedule() {
+		return new ConfigConverter<Schedule>() {
 			@Override
-			public EventloopTaskScheduler.Schedule get(Config config) {
+			public Schedule get(Config config) {
 				switch (config.get("type")) {
 					case "immediate":
-						return EventloopTaskScheduler.Schedule.immediate();
+						return Schedule.immediate();
 					case "delay":
-						return EventloopTaskScheduler.Schedule.ofDelay(config.get(ofDuration(), "value"));
+						return Schedule.ofDelay(config.get(ofDuration(), "value"));
 					case "interval":
-						return EventloopTaskScheduler.Schedule.ofInterval(config.get(ofDuration(), "value"));
+						return Schedule.ofInterval(config.get(ofDuration(), "value"));
 					case "period":
-						return EventloopTaskScheduler.Schedule.ofPeriod(config.get(ofDuration(), "value"));
+						return Schedule.ofPeriod(config.get(ofDuration(), "value"));
 					default:
 						throw new IllegalArgumentException("No eventloop task schedule type named " + config.getValue() + " exists!");
 				}
 			}
 
 			@Override
-			public EventloopTaskScheduler.Schedule get(Config config, EventloopTaskScheduler.Schedule defaultValue) {
+			public Schedule get(Config config, Schedule defaultValue) {
 				if (config.isEmpty()) {
 					return defaultValue;
 				}

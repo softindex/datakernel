@@ -22,6 +22,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
+import io.datakernel.eventloop.AsyncTcpSocketImpl.JmxInspector;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -125,7 +126,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
 	private final ExceptionStats lastProtocolError = ExceptionStats.create();
 
-	private final AsyncTcpSocketImpl.JmxInspector statsSocket = new AsyncTcpSocketImpl.JmxInspector();
+	private final JmxInspector statsSocket = new JmxInspector();
 //	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
 //	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
 //	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
@@ -576,7 +577,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	}
 
 	@JmxAttribute
-	public AsyncTcpSocketImpl.JmxInspector getStatsSocket() {
+	public JmxInspector getStatsSocket() {
 		return statsSocket;
 	}
 

@@ -28,6 +28,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.codegen.*;
+import io.datakernel.cube.CubeQuery.Ordering;
 import io.datakernel.cube.asm.MeasuresFunction;
 import io.datakernel.cube.asm.RecordFunction;
 import io.datakernel.cube.asm.TotalsFunction;
@@ -42,7 +43,12 @@ import io.datakernel.ot.OTState;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.*;
+import io.datakernel.stream.processor.StreamFilter;
+import io.datakernel.stream.processor.StreamMap;
+import io.datakernel.stream.processor.StreamMap.MapperProjection;
+import io.datakernel.stream.processor.StreamReducer;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.stream.processor.StreamSplitter;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -618,7 +624,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				If query is fulfilled from the single aggregation,
 				just use mapper instead of reducer to copy requested fields.
 				 */
-				StreamMap.MapperProjection<S, T> mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
+				MapperProjection<S, T> mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
 						compatibleMeasures, queryClassLoader);
 				queryResultSupplier = aggregationSupplier.apply(StreamMap.create(mapper));
 				break;
@@ -626,7 +632,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 			Function<S, K> keyFunction = AggregationUtils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
 
-			StreamReducers.Reducer<K, S, T, A> reducer = aggregationContainer.aggregation.aggregationReducer(aggregationClass, resultClass,
+			Reducer<K, S, T, A> reducer = aggregationContainer.aggregation.aggregationReducer(aggregationClass, resultClass,
 					dimensions, compatibleMeasures, queryClassLoader);
 
 			StreamConsumer<S> streamReducerInput = streamReducer.newInput(keyFunction, reducer);
@@ -965,7 +971,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 			ExpressionComparator comparator = ExpressionComparator.create();
 
-			for (CubeQuery.Ordering ordering : query.getOrderings()) {
+			for (Ordering ordering : query.getOrderings()) {
 				String field = ordering.getField();
 
 				if (resultMeasures.contains(field) || resultAttributes.contains(field)) {

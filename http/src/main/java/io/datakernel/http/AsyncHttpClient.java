@@ -25,6 +25,7 @@ import io.datakernel.dns.DnsResponse;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.SocketSettings;
 
 import javax.net.ssl.SSLContext;
@@ -193,13 +194,13 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return httpErrors;
 		}
 
-		@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+		@JmxAttribute(reducer = JmxReducerSum.class)
 		public long getActiveRequests() {
 			return totalRequests.getTotalCount() -
 					(httpTimeouts.getTotalCount() + resolveErrors.getTotal() + connectErrors.getTotal() + responsesErrors + responses);
 		}
 
-		@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+		@JmxAttribute(reducer = JmxReducerSum.class)
 		public long getTotalResponses() {
 			return responses;
 		}
@@ -431,27 +432,27 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	// region jmx
-	@JmxAttribute(description = "current number of connections", reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(description = "current number of connections", reducer = JmxReducerSum.class)
 	public int getConnectionsCount() {
 		return poolKeepAlive.size() + poolReadWrite.size();
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsKeepAliveCount() {
 		return poolKeepAlive.size();
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsReadWriteCount() {
 		return poolReadWrite.size();
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsKeepAliveExpired() {
 		return poolKeepAliveExpired;
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsReadWriteExpired() {
 		return poolReadWriteExpired;
 	}

@@ -21,6 +21,10 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.serial.AbstractSerialConsumer;
 import io.datakernel.serial.SerialConsumer;
+import io.datakernel.stream.StreamConsumers.ClosingWithErrorImpl;
+import io.datakernel.stream.StreamConsumers.Idle;
+import io.datakernel.stream.StreamConsumers.OfSerialConsumerImpl;
+import io.datakernel.stream.StreamConsumers.Skip;
 import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.stream.processor.StreamTransformer;
 
@@ -49,19 +53,19 @@ public interface StreamConsumer<T> extends Cancellable {
 	Set<StreamCapability> getCapabilities();
 
 	static <T> StreamConsumer<T> idle() {
-		return new StreamConsumers.Idle<>();
+		return new Idle<>();
 	}
 
 	static <T> StreamConsumer<T> skip() {
-		return new StreamConsumers.Skip<>();
+		return new Skip<>();
 	}
 
 	static <T> StreamConsumer<T> closingWithError(Throwable exception) {
-		return new StreamConsumers.ClosingWithErrorImpl<>(exception);
+		return new ClosingWithErrorImpl<>(exception);
 	}
 
 	static <T> StreamConsumer<T> ofSerialConsumer(SerialConsumer<T> consumer) {
-		return new StreamConsumers.OfSerialConsumerImpl<>(consumer);
+		return new OfSerialConsumerImpl<>(consumer);
 	}
 
 	static <T> StreamConsumer<T> ofSupplier(Function<StreamSupplier<T>, MaterializedPromise<Void>> supplier) {

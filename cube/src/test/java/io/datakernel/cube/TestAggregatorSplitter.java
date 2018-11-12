@@ -17,6 +17,7 @@
 package io.datakernel.cube;
 
 import io.datakernel.cube.bean.TestPubRequest;
+import io.datakernel.cube.bean.TestPubRequest.TestAdvRequest;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.logfs.ot.LogDataConsumerSplitter;
 import io.datakernel.stream.StreamDataAcceptor;
@@ -89,7 +90,7 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 				outputItem.hourOfDay = (byte) ((pubRequest.timestamp / (60 * 60 * 1000L)) % 24);
 				outputItem.pub = pubRequest.pub;
 				pubAggregator.accept(outputItem);
-				for (TestPubRequest.TestAdvRequest remRequest : pubRequest.advRequests) {
+				for (TestAdvRequest remRequest : pubRequest.advRequests) {
 					outputItem.adv = remRequest.adv;
 					advAggregator.accept(outputItem);
 				}

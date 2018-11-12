@@ -50,7 +50,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	private final DatagramChannel channel;
 	private final ArrayDeque<UdpPacket> writeQueue = new ArrayDeque<>();
 
-	private AsyncUdpSocket.EventHandler eventHandler;
+	private EventHandler eventHandler;
 
 	private int ops = 0;
 
@@ -147,7 +147,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	// endregion
 
 	@Override
-	public void setEventHandler(AsyncUdpSocket.EventHandler eventHandler) {
+	public void setEventHandler(EventHandler eventHandler) {
 		this.eventHandler = eventHandler;
 	}
 

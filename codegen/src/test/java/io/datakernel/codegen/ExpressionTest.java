@@ -800,7 +800,7 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testComparatorNullable() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Comparator<ExpressionTest.StringHolder> generatedComparator = ClassBuilder.create(classLoader, Comparator.class)
+		Comparator<StringHolder> generatedComparator = ClassBuilder.create(classLoader, Comparator.class)
 				.withMethod("compare", ExpressionComparator.create()
 						.with(leftProperty(StringHolder.class, "string1"), rightProperty(StringHolder.class, "string1"), true)
 						.with(leftProperty(StringHolder.class, "string2"), rightProperty(StringHolder.class, "string2"), true))

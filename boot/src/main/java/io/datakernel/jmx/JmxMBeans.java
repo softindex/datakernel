@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxReducers.JmxReducerDistinct;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.ReflectionUtils;
 import org.slf4j.Logger;
@@ -57,7 +58,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private final Map<Eventloop, Integer> refreshableStatsCounts = new ConcurrentHashMap<>();
 	private final Map<Eventloop, Integer> effectiveRefreshPeriods = new ConcurrentHashMap<>();
 
-	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
+	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducerDistinct();
 
 	// JmxStats creator methods
 	private static final String CREATE = "create";

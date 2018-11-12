@@ -19,7 +19,7 @@ package io.datakernel.datagraph.node;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.processor.StreamReducerSimple;
-import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,14 +40,14 @@ import static java.util.Collections.singletonList;
 public final class NodeReduceSimple<K, I, O, A> implements Node {
 	private Function<I, K> keyFunction;
 	private Comparator<K> keyComparator;
-	private StreamReducers.Reducer<K, I, O, A> reducer;
+	private Reducer<K, I, O, A> reducer;
 	private List<StreamId> inputs;
 	private StreamId output;
 
 	public NodeReduceSimple() {
 	}
 
-	public NodeReduceSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, StreamReducers.Reducer<K, I, O, A> reducer) {
+	public NodeReduceSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, Reducer<K, I, O, A> reducer) {
 		this.keyFunction = keyFunction;
 		this.keyComparator = keyComparator;
 		this.reducer = reducer;
@@ -90,11 +90,11 @@ public final class NodeReduceSimple<K, I, O, A> implements Node {
 		this.keyComparator = keyComparator;
 	}
 
-	public StreamReducers.Reducer<K, I, O, A> getReducer() {
+	public Reducer<K, I, O, A> getReducer() {
 		return reducer;
 	}
 
-	public void setReducer(StreamReducers.Reducer<K, I, O, A> reducer) {
+	public void setReducer(Reducer<K, I, O, A> reducer) {
 		this.reducer = reducer;
 	}
 

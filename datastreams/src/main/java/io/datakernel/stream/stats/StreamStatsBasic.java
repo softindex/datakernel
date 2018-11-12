@@ -3,7 +3,7 @@ package io.datakernel.stream.stats;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.stream.StreamDataAcceptor;
 
 import java.time.Duration;
@@ -80,7 +80,7 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 		return error;
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getActive() {
 		return (int) (started.getTotalCount() - (endOfStream.getTotalCount() + error.getTotal()));
 	}

@@ -1,6 +1,7 @@
 package io.datakernel.logfs.ot;
 
 import io.datakernel.logfs.LogPosition;
+import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.ot.OTState;
 
 import java.util.HashMap;
@@ -37,7 +38,7 @@ public final class LogOTState<D> implements OTState<LogDiff<D>> {
 	@Override
 	public void apply(LogDiff<D> op) {
 		for (String log : op.getPositions().keySet()) {
-			LogDiff.LogPositionDiff positionDiff = op.getPositions().get(log);
+			LogPositionDiff positionDiff = op.getPositions().get(log);
 			positions.put(log, positionDiff.to);
 		}
 		for (D d : op.getDiffs()) {

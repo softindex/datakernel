@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
@@ -40,7 +41,7 @@ public class JmxMBeansSettingsTest {
 
 	private static final Set<String> NO_MONITORABLES = Collections.emptySet();
 	private static final Map<String, AttributeModifier<?>> NO_MODIFIERS = Collections.emptyMap();
-	private static final Map<Type, JmxMBeans.JmxCustomTypeAdapter<?>> NO_CUSTOM_TYPES = Collections.emptyMap();
+	private static final Map<Type, JmxCustomTypeAdapter<?>> NO_CUSTOM_TYPES = Collections.emptyMap();
 
 	// region included optionals
 	@Test

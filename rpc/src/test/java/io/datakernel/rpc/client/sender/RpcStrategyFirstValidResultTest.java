@@ -18,6 +18,7 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
+import io.datakernel.rpc.client.sender.RpcStrategyFirstValidResult.ResultValidator;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import org.junit.Test;
@@ -112,12 +113,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcStrategy strategy2 = new RequestSenderOnResultWithValueStrategy(validKey);
 		RpcStrategy strategy3 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategyFirstValidResult firstValidResult = firstValidResult(strategy1, strategy2, strategy3)
-				.withResultValidator(new RpcStrategyFirstValidResult.ResultValidator<Integer>() {
-					@Override
-					public boolean isValidResult(Integer input) {
-						return input == validKey;
-					}
-				})
+				.withResultValidator((ResultValidator<Integer>) input -> input == validKey)
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 		CompletableFuture<Object> future = new CompletableFuture<>();
@@ -135,12 +131,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcStrategy strategy2 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategy strategy3 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategyFirstValidResult firstValidResult = firstValidResult(strategy1, strategy2, strategy3)
-				.withResultValidator(new RpcStrategyFirstValidResult.ResultValidator<Integer>() {
-					@Override
-					public boolean isValidResult(Integer input) {
-						return input == validKey;
-					}
-				})
+				.withResultValidator((ResultValidator<Integer>) input -> input == validKey)
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 		CompletableFuture<Object> future = new CompletableFuture<>();

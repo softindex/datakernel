@@ -18,6 +18,7 @@ package io.datakernel.serializer;
 
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
+import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 
 import java.util.*;
 
@@ -99,7 +100,7 @@ final class TypedModsMap {
 		return result == null ? empty() : result;
 	}
 
-	public SerializerGen rewrite(Class<?> type, SerializerGenBuilder.SerializerForType[] generics, SerializerGen serializer) {
+	public SerializerGen rewrite(Class<?> type, SerializerForType[] generics, SerializerGen serializer) {
 		SerializerGen result = serializer;
 		for (SerializerGenBuilder mod : mods) {
 			result = mod.serializer(type, generics, result);

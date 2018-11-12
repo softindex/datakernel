@@ -17,6 +17,7 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.AggregationPredicates.RangeScan;
+import io.datakernel.aggregation.RangeTree.Segment;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.annotation.Nullable;
@@ -125,7 +126,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		chunks.clear();
 	}
 
-	private static int getNumberOfOverlaps(RangeTree.Segment<?> segment) {
+	private static int getNumberOfOverlaps(Segment<?> segment) {
 		return segment.getSet().size() + segment.getClosingSet().size();
 	}
 
@@ -133,8 +134,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		int minOverlaps = 2;
 		Set<AggregationChunk> result = new HashSet<>();
 		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[aggregation.getKeys().size()];
-		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
-			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+		for (Map.Entry<PrimaryKey, Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+			Segment<AggregationChunk> segment = segmentEntry.getValue();
 			int overlaps = getNumberOfOverlaps(segment);
 			if (overlaps >= minOverlaps) {
 				result.addAll(segment.getSet());
@@ -151,8 +152,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	private static List<AggregationChunk> findChunksGroupWithMostOverlaps(RangeTree<PrimaryKey, AggregationChunk> tree) {
 		int maxOverlaps = 2;
 		List<AggregationChunk> result = new ArrayList<>();
-		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
-			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+		for (Map.Entry<PrimaryKey, Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+			Segment<AggregationChunk> segment = segmentEntry.getValue();
 			int overlaps = getNumberOfOverlaps(segment);
 			if (overlaps >= maxOverlaps) {
 				maxOverlaps = overlaps;
@@ -179,9 +180,9 @@ public final class AggregationState implements OTState<AggregationDiff> {
 			int maxChunks, int optimalChunkSize) {
 		int minOverlaps = 2;
 		List<AggregationChunk> result = new ArrayList<>();
-		SortedMap<PrimaryKey, RangeTree.Segment<AggregationChunk>> tailMap = null;
-		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
-			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+		SortedMap<PrimaryKey, Segment<AggregationChunk>> tailMap = null;
+		for (Map.Entry<PrimaryKey, Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+			Segment<AggregationChunk> segment = segmentEntry.getValue();
 			int overlaps = getNumberOfOverlaps(segment);
 
 			// "min key" strategy
@@ -206,11 +207,11 @@ public final class AggregationState implements OTState<AggregationDiff> {
 			return new ChunksAndStrategy(PickingStrategy.SIZE_FIX, emptyList());
 
 		Set<AggregationChunk> chunks = new HashSet<>();
-		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tailMap.entrySet()) {
+		for (Map.Entry<PrimaryKey, Segment<AggregationChunk>> segmentEntry : tailMap.entrySet()) {
 			if (chunks.size() >= maxChunks)
 				break;
 
-			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+			Segment<AggregationChunk> segment = segmentEntry.getValue();
 			chunks.addAll(segment.getSet());
 			chunks.addAll(segment.getClosingSet());
 		}
@@ -409,9 +410,9 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		List<ConsolidationDebugInfo> infos = new ArrayList<>();
 		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[aggregation.getKeys().size()];
 
-		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+		for (Map.Entry<PrimaryKey, Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
 			PrimaryKey key = segmentEntry.getKey();
-			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+			Segment<AggregationChunk> segment = segmentEntry.getValue();
 			int overlaps = segment.getSet().size() + segment.getClosingSet().size();
 			Set<AggregationChunk> segmentSet = segment.getSet();
 			Set<AggregationChunk> segmentClosingSet = segment.getClosingSet();

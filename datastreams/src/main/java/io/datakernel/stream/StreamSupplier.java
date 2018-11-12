@@ -22,6 +22,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.serial.AbstractSerialSupplier;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.stream.StreamSuppliers.*;
 import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.stream.processor.StreamTransformer;
 
@@ -88,21 +89,21 @@ public interface StreamSupplier<T> extends Cancellable {
 	 * Returns supplier which doing nothing - not sending any data and not closing itself.
 	 */
 	static <T> StreamSupplier<T> idle() {
-		return new StreamSuppliers.IdleImpl<>();
+		return new IdleImpl<>();
 	}
 
 	/**
 	 * Returns supplier which only closes itself.
 	 */
 	static <T> StreamSupplier<T> closing() {
-		return new StreamSuppliers.ClosingImpl<>();
+		return new ClosingImpl<>();
 	}
 
 	/**
 	 * Returns supplier which only closes itself with given error.
 	 */
 	static <T> StreamSupplier<T> closingWithError(Throwable e) {
-		return new StreamSuppliers.ClosingWithErrorImpl<>(e);
+		return new ClosingWithErrorImpl<>(e);
 	}
 
 	/**
@@ -113,31 +114,31 @@ public interface StreamSupplier<T> extends Cancellable {
 	 */
 	@SafeVarargs
 	static <T> StreamSupplier<T> of(T... values) {
-		return new StreamSuppliers.OfIteratorImpl<>(asList(values).iterator());
+		return new OfIteratorImpl<>(asList(values).iterator());
 	}
 
 	/**
-	 * Returns new {@link StreamSuppliers.OfIteratorImpl} which sends items from iterator
+	 * Returns new {@link OfIteratorImpl} which sends items from iterator
 	 *
 	 * @param iterator iterator with items for sending
 	 * @param <T>      type of item
 	 */
 	static <T> StreamSupplier<T> ofIterator(Iterator<T> iterator) {
-		return new StreamSuppliers.OfIteratorImpl<>(iterator);
+		return new OfIteratorImpl<>(iterator);
 	}
 
 	/**
-	 * Returns new {@link StreamSuppliers.OfIteratorImpl} which sends items from {@code iterable}
+	 * Returns new {@link OfIteratorImpl} which sends items from {@code iterable}
 	 *
 	 * @param iterable iterable with items for sending
 	 * @param <T>      type of item
 	 */
 	static <T> StreamSupplier<T> ofIterable(Iterable<T> iterable) {
-		return new StreamSuppliers.OfIteratorImpl<>(iterable.iterator());
+		return new OfIteratorImpl<>(iterable.iterator());
 	}
 
 	static <T> StreamSupplier<T> ofStream(Stream<T> stream) {
-		return new StreamSuppliers.OfIteratorImpl<>(stream.iterator());
+		return new OfIteratorImpl<>(stream.iterator());
 	}
 
 	/**
@@ -145,7 +146,7 @@ public interface StreamSupplier<T> extends Cancellable {
 	 * End of stream is marked as null, so no null values cannot be used.
 	 */
 	static <T> StreamSupplier<T> ofSupplier(Supplier<T> supplier) {
-		return new StreamSuppliers.OfIteratorImpl<>(new Iterator<T>() {
+		return new OfIteratorImpl<>(new Iterator<T>() {
 			private T next = supplier.get();
 
 			@Override
@@ -163,7 +164,7 @@ public interface StreamSupplier<T> extends Cancellable {
 	}
 
 	static <T> StreamSupplier<T> ofSerialSupplier(SerialSupplier<T> supplier) {
-		return new StreamSuppliers.OfSerialSupplierImpl<>(supplier);
+		return new OfSerialSupplierImpl<>(supplier);
 	}
 
 	default <R> R apply(StreamSupplierFunction<T, R> fn) {

@@ -20,7 +20,8 @@ import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerBuilder.StaticMethods;
+import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 import io.datakernel.util.Preconditions;
 import org.objectweb.asm.Type;
 
@@ -81,7 +82,7 @@ public class SerializerGenClass implements SerializerGen {
 	private boolean implInterface;
 	private Class<?> dataTypeIn;
 	private Class<?> dataTypeOut;
-	private List<SerializerGenBuilder.SerializerForType> generics;
+	private List<SerializerForType> generics;
 
 	private final Map<String, FieldGen> fields = new LinkedHashMap<>();
 
@@ -108,12 +109,12 @@ public class SerializerGenClass implements SerializerGen {
 		this.implInterface = true;
 	}
 
-	public SerializerGenClass(Class<?> type, SerializerGenBuilder.SerializerForType[] generics) {
+	public SerializerGenClass(Class<?> type, SerializerForType[] generics) {
 		this(type);
 		this.generics = asList(generics);
 	}
 
-	public SerializerGenClass(Class<?> type, SerializerGenBuilder.SerializerForType[] generics, Class<?> typeImpl) {
+	public SerializerGenClass(Class<?> type, SerializerForType[] generics, Class<?> typeImpl) {
 		this(type, typeImpl);
 		this.generics = asList(generics);
 	}
@@ -272,7 +273,7 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (staticMethods.startSerializeStaticMethod(this, version)) {
 			return;
 		}
@@ -302,12 +303,12 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression field, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression field, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return staticMethods.callStaticSerializeMethod(this, version, byteArray, off, field);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (staticMethods.startDeserializeStaticMethod(this, version)) {
 			return;
 		}
@@ -387,7 +388,7 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
 	}
 
@@ -431,7 +432,7 @@ public class SerializerGenClass implements SerializerGen {
 	@SuppressWarnings("unchecked")
 	private Expression deserializeInterface(Class<?> targetType,
 	                                        int version,
-	                                        SerializerBuilder.StaticMethods staticMethods,
+	                                        StaticMethods staticMethods,
 	                                        CompatibilityLevel compatibilityLevel) {
 		ClassBuilder<?> asmFactory = ClassBuilder.create(staticMethods.getDefiningClassLoader(), (Class<Object>) targetType);
 		for (String fieldName : fields.keySet()) {
@@ -467,7 +468,7 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	private Expression deserializeClassSimple(int version,
-	                                          SerializerBuilder.StaticMethods staticMethods,
+	                                          StaticMethods staticMethods,
 	                                          CompatibilityLevel compatibilityLevel) {
 		Expression local = let(constructor(dataTypeIn));
 

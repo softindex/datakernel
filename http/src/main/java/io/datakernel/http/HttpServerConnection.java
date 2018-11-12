@@ -23,6 +23,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.exception.UnknownFormatException;
+import io.datakernel.http.AsyncHttpServer.Inspector;
 import io.datakernel.serial.SerialSupplier;
 
 import java.net.InetAddress;
@@ -64,7 +65,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private HttpRequest request;
 	private final AsyncHttpServer server;
-	private final AsyncHttpServer.Inspector inspector;
+	private final Inspector inspector;
 	private final AsyncServlet servlet;
 
 	private static final byte[] EXPECT_100_CONTINUE = encodeAscii("100-continue");

@@ -2,6 +2,7 @@ package io.datakernel.trigger;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.trigger.Triggers.TriggerWithResult;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -92,7 +93,7 @@ public class TriggersTest {
 			}
 			return TriggerResult.create();
 		});
-		List<Triggers.TriggerWithResult> results = triggers.getResults();
+		List<TriggerWithResult> results = triggers.getResults();
 		assertEquals(1, results.size());
 		triggers.suppressTriggerByName("nameOne");
 		assertEquals(0, triggers.getResults().size());
@@ -184,7 +185,7 @@ public class TriggersTest {
 		triggers.addTrigger(HIGH, Eventloop.class.getName(), "ProcessDelay", TriggerResult::create);
 
 		long currentTimestamp = timestamp;
-		List<Triggers.TriggerWithResult> results = triggers.getResults();
+		List<TriggerWithResult> results = triggers.getResults();
 		assertEquals(1, results.size());
 		assertEquals(currentTimestamp, results.get(0).getTriggerResult().getTimestamp());
 
@@ -201,7 +202,7 @@ public class TriggersTest {
 		triggers.addTrigger(HIGH, Eventloop.class.getName(), "ProcessDelay", () -> TriggerResult.ofTimestamp(increaseTimestampAndGet()));
 
 		long currentTimestamp = timestamp;
-		List<Triggers.TriggerWithResult> results = triggers.getResults();
+		List<TriggerWithResult> results = triggers.getResults();
 		assertEquals(1, results.size());
 		assertEquals(currentTimestamp + 10000, results.get(0).getTriggerResult().getTimestamp());
 
@@ -218,7 +219,7 @@ public class TriggersTest {
 		triggers.addTrigger(HIGH, Eventloop.class.getName(), "ProcessDelay", () -> TriggerResult.ofInstant(Instant.ofEpochMilli(increaseTimestampAndGet())));
 
 		long currentTimestamp = timestamp;
-		List<Triggers.TriggerWithResult> results = triggers.getResults();
+		List<TriggerWithResult> results = triggers.getResults();
 		assertEquals(1, results.size());
 		assertEquals(currentTimestamp + 10000, results.get(0).getTriggerResult().getTimestamp());
 
@@ -235,7 +236,7 @@ public class TriggersTest {
 		triggers.addTrigger(HIGH, Eventloop.class.getName(), "ProcessDelay", () -> TriggerResult.ofValue(increaseTimestampAndGet(), time -> time > 1000));
 
 		long currentTimestamp = timestamp;
-		List<Triggers.TriggerWithResult> results = triggers.getResults();
+		List<TriggerWithResult> results = triggers.getResults();
 
 		assertEquals(1, results.size());
 		assertEquals(currentTimestamp, results.get(0).getTriggerResult().getTimestamp());

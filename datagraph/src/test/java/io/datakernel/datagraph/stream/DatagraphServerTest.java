@@ -24,6 +24,7 @@ import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.helper.StreamMergeSorterStorageStub;
 import io.datakernel.datagraph.server.*;
+import io.datakernel.datagraph.stream.DatagraphServerTest.TestItem.KeyFunction;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -190,7 +191,7 @@ public class DatagraphServerTest {
 				asList(partition1, partition2));
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
-				TestItem.class, Long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+				TestItem.class, Long.class, new KeyFunction(), new Comparator<Long>() {
 					@Override
 					public int compare(Long o1, Long o2) {
 						return o1.compareTo(o2);
@@ -271,7 +272,7 @@ public class DatagraphServerTest {
 				});
 
 		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+				localSort(filterDataset, long.class, new KeyFunction(), new Comparator<Long>() {
 					@Override
 					public int compare(Long o1, Long o2) {
 						return o1.compareTo(o2);
@@ -352,7 +353,7 @@ public class DatagraphServerTest {
 				});
 
 		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+				localSort(filterDataset, long.class, new KeyFunction(), new Comparator<Long>() {
 					@Override
 					public int compare(Long o1, Long o2) {
 						return o1.compareTo(o2);

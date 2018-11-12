@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.dns.RemoteAsyncDnsClient.Inspector;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.ActivePromisesRule;
@@ -213,7 +214,7 @@ public class AsyncDnsClientTest {
 		inspector.getRequestCounts().forEach((k, v) -> assertEquals(1, v.intValue()));
 	}
 
-	private static class InspectorGadget implements RemoteAsyncDnsClient.Inspector {
+	private static class InspectorGadget implements Inspector {
 		private Map<DnsQuery, Integer> requestCounts = new ConcurrentHashMap<>();
 //		private Map<DnsQuery, Integer> expirations = new ConcurrentHashMap<>();
 

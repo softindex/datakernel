@@ -28,8 +28,8 @@ import io.datakernel.json.GsonAdapters;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
-import io.datakernel.stream.processor.StreamMap;
-import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.stream.processor.StreamMap.MapperProjection;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -74,10 +74,10 @@ public class AggregationUtils {
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static <T, R> StreamMap.MapperProjection<T, R> createMapper(Class<T> recordClass, Class<R> resultClass,
+	public static <T, R> MapperProjection<T, R> createMapper(Class<T> recordClass, Class<R> resultClass,
 			List<String> keys, List<String> fields,
 			DefiningClassLoader classLoader) {
-		return ClassBuilder.create(classLoader, StreamMap.MapperProjection.class)
+		return ClassBuilder.create(classLoader, MapperProjection.class)
 				.withMethod("apply", () -> {
 					Expression result1 = let(constructor(resultClass));
 					ExpressionSequence sequence = ExpressionSequence.create();
@@ -163,7 +163,7 @@ public class AggregationUtils {
 		return SerializerBuilder.create(classLoader).build(serializerGenClass);
 	}
 
-	public static <K extends Comparable, I, O, A> StreamReducers.Reducer<K, I, O, A> aggregationReducer(AggregationStructure aggregation, Class<I> inputClass, Class<O> outputClass,
+	public static <K extends Comparable, I, O, A> Reducer<K, I, O, A> aggregationReducer(AggregationStructure aggregation, Class<I> inputClass, Class<O> outputClass,
 			List<String> keys, List<String> fields,
 			DefiningClassLoader classLoader) {
 
@@ -192,7 +192,7 @@ public class AggregationUtils {
 		onFirstItem.add(accumulator);
 		onNextItem.add(arg(3));
 
-		return ClassBuilder.create(classLoader, StreamReducers.Reducer.class)
+		return ClassBuilder.create(classLoader, Reducer.class)
 				.withMethod("onFirstItem", onFirstItem)
 				.withMethod("onNextItem", onNextItem)
 				.withMethod("onComplete", call(arg(0), "accept", arg(2)))

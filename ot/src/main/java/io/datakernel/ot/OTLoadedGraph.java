@@ -32,14 +32,14 @@ final class OTLoadedGraph<K, D> {
 	}
 
 	private int compareNodes(K node1, K node2) {
-		if (node1 instanceof OTLoadedGraph.MergeNode) {
-			if (node2 instanceof OTLoadedGraph.MergeNode) {
+		if (node1 instanceof MergeNode) {
+			if (node2 instanceof MergeNode) {
 				return Long.compare(((MergeNode) node1).n, ((MergeNode) node2).n);
 			} else {
 				return +1;
 			}
 		} else {
-			if (node2 instanceof OTLoadedGraph.MergeNode) {
+			if (node2 instanceof MergeNode) {
 				return -1;
 			} else {
 				Long timestamp1 = timestamps.getOrDefault(node1, 0L);

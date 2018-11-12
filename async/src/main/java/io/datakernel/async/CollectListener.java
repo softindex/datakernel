@@ -1,6 +1,7 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Promises.ReduceTimeouter;
 import io.datakernel.eventloop.Eventloop;
 
 public interface CollectListener<T, A, R> {
@@ -25,7 +26,7 @@ public interface CollectListener<T, A, R> {
 	}
 
 	static <T, A, R> CollectListener<T, A, R> timeout(long timeout) {
-		Promises.ReduceTimeouter<T, A, R> timeouter = new Promises.ReduceTimeouter<>();
+		ReduceTimeouter<T, A, R> timeouter = new ReduceTimeouter<>();
 		timeouter.scheduledRunnable = Eventloop.getCurrentEventloop().delay(timeout, timeouter);
 		return timeouter;
 	}

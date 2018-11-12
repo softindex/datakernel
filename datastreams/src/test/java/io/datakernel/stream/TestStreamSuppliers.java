@@ -2,6 +2,7 @@ package io.datakernel.stream;
 
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.stream.TestStreamSuppliers.Decorator.Context;
 
 import java.util.function.Function;
 
@@ -16,7 +17,7 @@ public class TestStreamSuppliers {
 
 			@Override
 			public void resume(StreamDataAcceptor<T> dataAcceptor) {
-				supplier.resume(decorator.decorate(new Decorator.Context() {
+				supplier.resume(decorator.decorate(new Context() {
 					@Override
 					public void endOfStream() {
 						endOfStream.trySet(null);

@@ -19,6 +19,8 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.eventloop.AsyncTcpSocketImpl.Inspector;
+import io.datakernel.eventloop.AsyncTcpSocketImpl.JmxInspector;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -88,8 +90,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	// jmx
 	private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 	AbstractServer<?> acceptServer = this;
-	private final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
-	private final AsyncTcpSocketImpl.JmxInspector socketStatsSsl = new AsyncTcpSocketImpl.JmxInspector();
+	private final JmxInspector socketStats = new JmxInspector();
+	private final JmxInspector socketStatsSsl = new JmxInspector();
 	private final EventStats accepts = EventStats.create(SMOOTHING_WINDOW);
 	private final EventStats acceptsSsl = EventStats.create(SMOOTHING_WINDOW);
 	private final EventStats filteredAccepts = EventStats.create(SMOOTHING_WINDOW);
@@ -268,7 +270,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return this;
 	}
 
-	protected AsyncTcpSocketImpl.Inspector getSocketInspector(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl) {
+	protected Inspector getSocketInspector(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl) {
 		return ssl ? socketStatsSsl : socketStats;
 	}
 
@@ -362,13 +364,13 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@JmxAttribute
 	@Nullable
-	public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
+	public JmxInspector getSocketStats() {
 		return this instanceof PrimaryServer || acceptServer.listenAddresses.isEmpty() ? null : socketStats;
 	}
 
 	@JmxAttribute
 	@Nullable
-	public AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
+	public JmxInspector getSocketStatsSsl() {
 		return this instanceof PrimaryServer || acceptServer.sslListenAddresses.isEmpty() ? null : socketStatsSsl;
 	}
 }

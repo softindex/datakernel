@@ -20,8 +20,8 @@ import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.*;
 import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.processor.StreamMap;
-import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.stream.processor.StreamMap.MapperFilter;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -45,7 +45,7 @@ public class DatagraphSerializationTest {
 				return o1.compareTo(o2);
 			}
 		});
-		reducer.addInput(new StreamId(), Function.identity(), new StreamReducers.Reducer<Integer, Integer, Integer, Integer>() {
+		reducer.addInput(new StreamId(), Function.identity(), new Reducer<Integer, Integer, Integer, Integer>() {
 			@Override
 			public Integer onFirstItem(StreamDataAcceptor<Integer> stream, Integer key, Integer firstValue) {
 				return null;
@@ -61,7 +61,7 @@ public class DatagraphSerializationTest {
 		});
 		List<Node> nodes = Arrays.asList(
 				reducer,
-				new NodeMap<>(new StreamMap.MapperFilter<String>() {
+				new NodeMap<>(new MapperFilter<String>() {
 					@Override
 					protected boolean apply(String input) {
 						return false;

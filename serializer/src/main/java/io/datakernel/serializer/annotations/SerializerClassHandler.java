@@ -17,7 +17,7 @@
 package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerBuilder.Helper;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenBuilderConst;
@@ -26,7 +26,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public final class SerializerClassHandler implements AnnotationHandler<SerializerClass, SerializerClassEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, SerializerClass annotation, CompatibilityLevel compatibilityLevel) {
+	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializerClass annotation, CompatibilityLevel compatibilityLevel) {
 		try {
 			SerializerGen serializer = annotation.value().newInstance();
 			return new SerializerGenBuilderConst(serializer);

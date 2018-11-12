@@ -20,6 +20,7 @@ import io.datakernel.annotation.NotNull;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
+import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.ParserFunction;
@@ -119,7 +120,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@Override
 	public void setCookies(List<HttpCookie> cookies) {
-		setHeader(COOKIE, new HttpHeaderValue.HttpHeaderValueOfSimpleCookies(cookies));
+		setHeader(COOKIE, new HttpHeaderValueOfSimpleCookies(cookies));
 	}
 
 	public HttpRequest withCookies(List<HttpCookie> cookies) {

@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.util.Comparator;
 import java.util.function.Function;
@@ -61,7 +62,7 @@ public final class StreamReducer<K, O, A> extends AbstractStreamReducer<K, O, A>
 	 * @return new consumer
 	 */
 	@Override
-	public <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
+	public <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, Reducer<K, I, O, A> reducer) {
 		return super.newInput(keyFunction, reducer);
 	}
 }

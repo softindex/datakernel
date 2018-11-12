@@ -27,7 +27,7 @@ public interface AsyncUdpSocket {
 		void onClosedWithError(Exception e);
 	}
 
-	void setEventHandler(AsyncUdpSocket.EventHandler eventHandler);
+	void setEventHandler(EventHandler eventHandler);
 
 	void receive();
 

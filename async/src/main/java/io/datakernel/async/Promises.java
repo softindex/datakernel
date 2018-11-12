@@ -17,6 +17,7 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.CollectListener.CollectCanceller;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.util.*;
@@ -889,7 +890,7 @@ public final class Promises {
 
 	}
 
-	private static final class PromiseCollectEx<T, A, R> extends NextPromise<T, R> implements CollectListener.CollectCanceller {
+	private static final class PromiseCollectEx<T, A, R> extends NextPromise<T, R> implements CollectCanceller {
 		final IndexedCollector<T, A, R> collector;
 		final CollectListener<T, A, R> listener;
 		A accumulator;
