@@ -4,7 +4,6 @@ package io.datakernel.exception;
 public class ToDoException extends RuntimeException {
 
 	public ToDoException() {
-		super();
 	}
 
 	public ToDoException(String message, Throwable cause) {

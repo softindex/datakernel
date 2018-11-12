@@ -363,7 +363,6 @@ public final class EventloopStats implements EventloopInspector {
 		private final ValueStats overdues;
 
 		public ScheduledTaskStats() {
-			super();
 			overdues = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withRate().withUnit("milliseconds");
 		}
 
