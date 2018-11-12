@@ -89,7 +89,7 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 			Map<String, Object> nameToValue = new HashMap<>();
 			nameToValue.put(THROWABLE_TYPE_KEY, type);
 			nameToValue.put(THROWABLE_MESSAGE_KEY, msg);
-			nameToValue.put(THROWABLE_STACK_TRACE_KEY, stackTrace.toArray(new String[stackTrace.size()]));
+			nameToValue.put(THROWABLE_STACK_TRACE_KEY, stackTrace.toArray(new String[0]));
 			compositeData = new CompositeDataSupport(compositeType, nameToValue);
 		}
 		return compositeData;

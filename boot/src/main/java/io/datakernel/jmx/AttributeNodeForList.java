@@ -73,8 +73,8 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 					itemTypes.add(visibleAttrType);
 				}
 
-				String[] itemNamesArr = itemNames.toArray(new String[itemNames.size()]);
-				OpenType<?>[] itemTypesArr = itemTypes.toArray(new OpenType<?>[itemTypes.size()]);
+				String[] itemNamesArr = itemNames.toArray(new String[0]);
+				OpenType<?>[] itemTypesArr = itemTypes.toArray(new OpenType<?>[0]);
 				elementType =
 						new CompositeType("CompositeData", "CompositeData", itemNamesArr, itemNamesArr, itemTypesArr);
 			}

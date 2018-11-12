@@ -43,7 +43,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	}
 
 	public static PrimaryServer create(Eventloop primaryEventloop, List<? extends WorkerServer> workerServers) {
-		return create(primaryEventloop, workerServers.toArray(new WorkerServer[workerServers.size()]));
+		return create(primaryEventloop, workerServers.toArray(new WorkerServer[0]));
 	}
 
 	public static PrimaryServer create(Eventloop primaryEventloop, WorkerServer... workerServer) {

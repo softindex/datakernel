@@ -67,7 +67,7 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 
 		public Sender(List<RpcSender> senders) {
 			checkArgument(senders != null && senders.size() > 0);
-			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
+			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.nextSender = 0;
 		}
 

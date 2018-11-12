@@ -158,7 +158,7 @@ public class StreamJoinTest {
 						new DataItemMasterDetail(25, 15, "masterB+", null),
 						new DataItemMasterDetail(30, 20, "masterC", "detailY"),
 						new DataItemMasterDetail(40, 20, "masterD", "detailY")},
-				result.toArray(new DataItemMasterDetail[result.size()]));
+				result.toArray(new DataItemMasterDetail[0]));
 		assertEndOfStream(source1);
 		assertEndOfStream(source2);
 	}

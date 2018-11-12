@@ -82,7 +82,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		public Sender(List<RpcSender> senders, ResultValidator<?> resultValidator,
 		              Exception noValidResultException) {
 			checkArgument(senders != null && senders.size() > 0);
-			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
+			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.resultValidator = checkNotNull(resultValidator);
 			this.noValidResultException = noValidResultException;
 		}

@@ -83,8 +83,8 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 			columnNames.add(subAttrName);
 			columnTypes.add(subAttrType);
 		}
-		String[] columnNamesArr = columnNames.toArray(new String[columnNames.size()]);
-		OpenType<?>[] columnTypesArr = columnTypes.toArray(new OpenType<?>[columnTypes.size()]);
+		String[] columnNamesArr = columnNames.toArray(new String[0]);
+		OpenType<?>[] columnTypesArr = columnTypes.toArray(new OpenType<?>[0]);
 
 		try {
 			return new TabularType(

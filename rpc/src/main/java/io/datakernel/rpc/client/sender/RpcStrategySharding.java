@@ -80,7 +80,7 @@ public final class RpcStrategySharding implements RpcStrategy {
 			// null values are allowed in senders list
 			checkArgument(senders != null && senders.size() > 0);
 			this.shardingFunction = checkNotNull(shardingFunction);
-			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
+			this.subSenders = senders.toArray(new RpcSender[0]);
 		}
 
 		@SuppressWarnings("unchecked")
