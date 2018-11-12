@@ -35,7 +35,7 @@ public class UdpSocketHandlerTest {
 	private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("127.0.0.1", SERVER_PORT);
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-	private final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
+	private final byte[] bytesToSend = {-127, 100, 0, 5, 11, 13, 17, 99};
 
 	private AsyncUdpSocketImpl getEchoServerUdpSocket(DatagramChannel serverChannel) {
 		AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, serverChannel);

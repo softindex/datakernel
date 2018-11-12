@@ -141,8 +141,8 @@ public final class CryptoUtils {
 				new KDF2BytesGenerator(new SHA1Digest()),
 				new HMac(new SHA1Digest()));
 
-		byte[] d = new byte[]{1, 2, 3, 4, 5, 6, 7, 8};
-		byte[] e = new byte[]{8, 7, 6, 5, 4, 3, 2, 1};
+		byte[] d = {1, 2, 3, 4, 5, 6, 7, 8};
+		byte[] e = {8, 7, 6, 5, 4, 3, 2, 1};
 		CipherParameters p = new IESParameters(d, e, 64);
 
 		i1.init(ecPublicKeyParameters, p, ephKeyGen);
@@ -160,8 +160,8 @@ public final class CryptoUtils {
 				new KDF2BytesGenerator(new SHA1Digest()),
 				new HMac(new SHA1Digest()));
 
-		byte[] d = new byte[]{1, 2, 3, 4, 5, 6, 7, 8};
-		byte[] e = new byte[]{8, 7, 6, 5, 4, 3, 2, 1};
+		byte[] d = {1, 2, 3, 4, 5, 6, 7, 8};
+		byte[] e = {8, 7, 6, 5, 4, 3, 2, 1};
 		CipherParameters p = new IESParameters(d, e, 64);
 
 		i2.init(ecPrivateKeyParameters, p, new ECIESPublicKeyParser(CURVE));

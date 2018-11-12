@@ -37,7 +37,7 @@ import static java.nio.file.StandardOpenOption.*;
 public final class SerialFileWriter extends AbstractSerialConsumer<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(SerialFileWriter.class);
 
-	public static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW, APPEND};
+	public static final OpenOption[] CREATE_OPTIONS = {WRITE, CREATE_NEW, APPEND};
 
 	private final AsyncFile asyncFile;
 

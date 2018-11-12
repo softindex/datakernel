@@ -33,7 +33,7 @@ import java.time.Duration;
 
 public final class SerialLZ4Compressor extends AbstractAsyncProcess
 		implements WithSerialToSerial<SerialLZ4Compressor, ByteBuf, ByteBuf> {
-	static final byte[] MAGIC = new byte[]{'L', 'Z', '4', 'B', 'l', 'o', 'c', 'k'};
+	static final byte[] MAGIC = {'L', 'Z', '4', 'B', 'l', 'o', 'c', 'k'};
 	static final int MAGIC_LENGTH = MAGIC.length;
 
 	public static final int HEADER_LENGTH =

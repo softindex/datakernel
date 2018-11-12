@@ -57,8 +57,8 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 					return Promise.complete();
 				}
 				SettablePromise<Void> result = new SettablePromise<>();
-				int[] successes = new int[]{0};
-				int[] completed = new int[]{0};
+				int[] successes = {0};
+				int[] completed = {0};
 				for (AsyncSupplier<?> callable : list) {
 					callable.get().whenComplete(($, e) -> {
 						if (e == null) {

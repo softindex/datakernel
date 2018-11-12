@@ -34,7 +34,7 @@ public class JmxMBeansAttributesArraysTest {
 		MBeanWithIntArray mBeanWithIntArray = new MBeanWithIntArray();
 		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithIntArray);
 
-		Integer[] expected = new Integer[]{1, 2, 3};
+		Integer[] expected = {1, 2, 3};
 		assertArrayEquals(expected, ((Integer[]) mbean.getAttribute("integerNumbers")));
 	}
 
@@ -43,7 +43,7 @@ public class JmxMBeansAttributesArraysTest {
 		MBeanWithDoubleArray mBeanWithDoubleArray = new MBeanWithDoubleArray();
 		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithDoubleArray);
 
-		Double[] expected = new Double[]{1.1, 2.2, 3.3};
+		Double[] expected = {1.1, 2.2, 3.3};
 		assertArrayEquals(expected, ((Double[]) mbean.getAttribute("doubleNumbers")));
 	}
 
@@ -54,7 +54,7 @@ public class JmxMBeansAttributesArraysTest {
 
 		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithIntArray1, mBeanWithIntArray2);
 
-		Integer[] expected = new Integer[]{1, 2, 3, 1, 2, 3};
+		Integer[] expected = {1, 2, 3, 1, 2, 3};
 		assertArrayEquals(expected, ((Integer[]) mbean.getAttribute("integerNumbers")));
 	}
 

@@ -32,8 +32,8 @@ public final class RecordScheme {
 
 	protected Map<String, Integer> fieldIndices = new HashMap<>();
 	protected Map<String, Integer> fieldRawIndices = new HashMap<>();
-	protected String[] fields = new String[]{};
-	protected int[] rawIndices = new int[]{};
+	protected String[] fields = {};
+	protected int[] rawIndices = {};
 
 	private RecordScheme() {
 	}

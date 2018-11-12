@@ -545,7 +545,7 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testIteratorForArray() {
-		Long[] intsFrom = new Long[]{1L, 1L, 2L, 3L, 5L, 8L};
+		Long[] intsFrom = {1L, 1L, 2L, 3L, 5L, 8L};
 		List<Long> list = new ArrayList<>();
 
 		WriteArrayElements testClass = ClassBuilder.create(DefiningClassLoader.create(), WriteArrayElements.class)
@@ -923,7 +923,7 @@ public class ExpressionTest {
 		TestArraySet instance = ClassBuilder.create(definingClassLoader, TestArraySet.class)
 				.withMethod("ints", sequence(setArrayItem(arg(0), value(0), cast(value(42), Integer.class)), arg(0)))
 				.buildClassAndCreateNewInstance();
-		Integer[] ints = new Integer[]{1, 2, 3, 4};
+		Integer[] ints = {1, 2, 3, 4};
 
 		assertArrayEquals(instance.ints(ints), new Integer[]{42, 2, 3, 4});
 	}

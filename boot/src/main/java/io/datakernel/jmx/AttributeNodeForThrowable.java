@@ -41,7 +41,7 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 
 	private static CompositeType compositeTypeForThrowable() {
 		try {
-			String[] itemNames = new String[]{THROWABLE_TYPE_KEY, THROWABLE_MESSAGE_KEY, THROWABLE_STACK_TRACE_KEY};
+			String[] itemNames = {THROWABLE_TYPE_KEY, THROWABLE_MESSAGE_KEY, THROWABLE_STACK_TRACE_KEY};
 			OpenType<?>[] itemTypes = new OpenType<?>[]{
 					SimpleType.STRING, SimpleType.STRING, new ArrayType<>(1, SimpleType.STRING)};
 			return new CompositeType("CompositeType", "CompositeType", itemNames, itemNames, itemTypes);

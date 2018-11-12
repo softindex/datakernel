@@ -356,7 +356,7 @@ public final class UrlParser {
 		queryPositions = parseQueryParameters(raw, query, queryEnd);
 	}
 
-	private static final int[] NO_PARAMETERS = new int[]{};
+	private static final int[] NO_PARAMETERS = {};
 
 	static int[] parseQueryParameters(String query, int pos, int end) {
 		if (pos == end)

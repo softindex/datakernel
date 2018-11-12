@@ -40,7 +40,7 @@ public class JmxMBeansAttributesBulkGettersTest {
 
 		Map<String, MBeanAttributeInfo> attrs = io.datakernel.jmx.helper.Utils.nameToAttribute(mbean.getMBeanInfo().getAttributes());
 
-		String[] expectedAttrNames = new String[]{"text", "value", "number"};
+		String[] expectedAttrNames = {"text", "value", "number"};
 		assertEquals(new HashSet<>(asList(expectedAttrNames)), attrs.keySet());
 
 		AttributeList fetchedAttrs = mbean.getAttributes(expectedAttrNames);

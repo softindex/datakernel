@@ -30,8 +30,8 @@ final class HttpDate {
 	private static final int YEAR_SECONDS = 365 * DAY_SECONDS;
 	private static final int FOUR_YEAR_SECONDS = (1461 * DAY_SECONDS);
 
-	private static final int[] DAYS_IN_MONTH = new int[]{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-	private static final int[] DAYS_IN_MONTH_LEAP = new int[]{31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	private static final int[] DAYS_IN_MONTH = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	private static final int[] DAYS_IN_MONTH_LEAP = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 	private static final byte[] GMT = encodeAscii("GMT");
 

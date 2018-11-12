@@ -6,7 +6,7 @@ import io.datakernel.http.HttpException;
 import io.datakernel.loader.cache.Cache;
 
 class CachedStaticLoader implements StaticLoader {
-	private static final byte[] BYTES_ERROR = new byte[]{};
+	private static final byte[] BYTES_ERROR = {};
 
 	private final StaticLoader resourceLoader;
 	private final Cache cache;

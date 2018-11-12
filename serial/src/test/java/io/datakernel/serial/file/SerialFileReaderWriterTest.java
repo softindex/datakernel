@@ -132,7 +132,7 @@ public class SerialFileReaderWriterTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
-		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
+		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
 		SerialSupplier<ByteBuf> producer = SerialSupplier.of(ByteBuf.wrapForReading(bytes));
 
@@ -151,7 +151,7 @@ public class SerialFileReaderWriterTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
-		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
+		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 		new Random().nextBytes(bytes);
 
 		SerialSupplier<ByteBuf> producer = SerialSupplier.of(ByteBuf.wrapForReading(bytes));

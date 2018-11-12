@@ -76,7 +76,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 public abstract class Launcher implements ConcurrentJmxMBean {
 	protected final Logger logger = getLogger(this.getClass());
 
-	protected String[] args = new String[]{};
+	protected String[] args = {};
 
 	@Inject(optional = true)
 	@Nullable

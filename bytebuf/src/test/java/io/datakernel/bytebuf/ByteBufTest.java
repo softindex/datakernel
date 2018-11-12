@@ -28,7 +28,7 @@ import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.*;
 
 public class ByteBufTest {
-	private static final byte[] BYTES = new byte[]{'T', 'e', 's', 't', ' ', 'm', 'e', 's', 's', 'a', 'g', 'e'};
+	private static final byte[] BYTES = {'T', 'e', 's', 't', ' ', 'm', 'e', 's', 's', 'a', 'g', 'e'};
 
 	@Before
 	public void clearByteBufPool() {

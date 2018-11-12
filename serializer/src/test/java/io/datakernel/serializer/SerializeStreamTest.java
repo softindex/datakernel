@@ -40,7 +40,7 @@ public class SerializeStreamTest {
 
 	@Test
 	public void test() throws IOException, SerializeException, DeserializeException {
-		String[] strings = new String[]{"test1-string", "test2-int", "test3-t", "test4-str"};
+		String[] strings = {"test1-string", "test2-int", "test3-t", "test4-str"};
 		BufferSerializer<String> bufferSerializer = SerializerBuilder.create(DefiningClassLoader.create())
 			.build(String.class);
 
@@ -65,7 +65,7 @@ public class SerializeStreamTest {
 
 	@Test
 	public void testLittleBuffer() throws IOException, SerializeException, DeserializeException {
-		String[] strings = new String[]{"test1-string", "test2-int", "test3-t", "test4-str"};
+		String[] strings = {"test1-string", "test2-int", "test3-t", "test4-str"};
 
 		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
 		try (DataOutputStreamEx dataOutputStream = DataOutputStreamEx.create(byteOutputStream, 30)) {
@@ -86,7 +86,7 @@ public class SerializeStreamTest {
 
 	@Test
 	public void testInteger() throws IOException, SerializeException, DeserializeException {
-		Integer[] integers = new Integer[]{10, 20, 30, 42};
+		Integer[] integers = {10, 20, 30, 42};
 
 		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
 		try (DataOutputStreamEx dataOutputStream = DataOutputStreamEx.create(byteOutputStream, 30)) {
@@ -106,8 +106,8 @@ public class SerializeStreamTest {
 
 	@Test
 	public void testChangeOutputStream() throws IOException, SerializeException, DeserializeException {
-		Integer[] integers1 = new Integer[]{10, 20, 30, 42};
-		Integer[] integers2 = new Integer[]{100, 200, 300, 420};
+		Integer[] integers1 = {10, 20, 30, 42};
+		Integer[] integers2 = {100, 200, 300, 420};
 
 		ByteArrayOutputStream byteOutputStream1 = new ByteArrayOutputStream();
 		ByteArrayOutputStream byteOutputStream2 = new ByteArrayOutputStream();
@@ -141,8 +141,8 @@ public class SerializeStreamTest {
 
 	@Test
 	public void testChangeInputStream() throws IOException, SerializeException, DeserializeException {
-		Integer[] integers1 = new Integer[]{10, 20, 30, 42};
-		Integer[] integers2 = new Integer[]{10, 20, 30, 42};
+		Integer[] integers1 = {10, 20, 30, 42};
+		Integer[] integers2 = {10, 20, 30, 42};
 
 		ByteArrayOutputStream byteOutputStream1 = new ByteArrayOutputStream();
 		try (DataOutputStreamEx dataOutputStream1 = DataOutputStreamEx.create(byteOutputStream1, 30)) {

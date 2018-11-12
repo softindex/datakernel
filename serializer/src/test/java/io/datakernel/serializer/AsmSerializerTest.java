@@ -1967,7 +1967,7 @@ public class AsmSerializerTest {
 		BufferSerializer<CustomArrayHolder> serializer = SerializerBuilder
 				.create(DefiningClassLoader.create())
 				.build(CustomArrayHolder.class);
-		StringWrapper[] array = new StringWrapper[]{new StringWrapper("str"), new StringWrapper("abc")};
+		StringWrapper[] array = {new StringWrapper("str"), new StringWrapper("abc")};
 		CustomArrayHolder holder = new CustomArrayHolder(array);
 		CustomArrayHolder _holder = doTest(holder, serializer, serializer);
 

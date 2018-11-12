@@ -30,8 +30,8 @@ import java.util.NoSuchElementException;
 @SuppressWarnings("unused, WeakerAccess")
 public final class InetAddressRange implements Comparable<InetAddressRange>, Iterable<InetAddress> {
 	public static final ParseException INVALID_RANGE = new ParseException(InetAddressRange.class, "Invalid inet addresses range. You should specify either ipv4 or ipv6");
-	public static final int[] START = new int[]{0, 0, 0, 0};
-	public static final int[] END = new int[]{-1, -1, -1, -1};
+	public static final int[] START = {0, 0, 0, 0};
+	public static final int[] END = {-1, -1, -1, -1};
 	private static final int[] EMPTY_MASK = {0, 0, 0, 0};
 
 	/*
