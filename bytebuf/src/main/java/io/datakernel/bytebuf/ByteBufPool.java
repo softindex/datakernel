@@ -70,7 +70,7 @@ public final class ByteBufPool {
 		} else {
 			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
 			buf.refs++;
-			assert (long) created[index].incrementAndGet() != Long.MAX_VALUE;
+			assert created[index].incrementAndGet() != Integer.MAX_VALUE;
 		}
 		return buf;
 	}

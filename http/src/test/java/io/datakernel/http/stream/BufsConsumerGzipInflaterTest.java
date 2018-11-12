@@ -90,7 +90,7 @@ public class BufsConsumerGzipInflaterTest {
 
 	@Test
 	public void shouldCorrectlyProcessHeader() {
-		byte flag = (byte) 0b00011111;
+		byte flag = 0b00011111;
 		short fextra = 5;
 		short fextraReversed = Short.reverseBytes(fextra);
 		byte feXtra1 = (byte) (fextraReversed >> 8);

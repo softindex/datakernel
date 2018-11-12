@@ -78,7 +78,7 @@ public class HyperLogLogTest {
 			if (abs(error) > abs(maxError))
 				maxError = error;
 			avgError += abs(error);
-			avgEstimatedItems += (double) estimatedItems;
+			avgEstimatedItems += estimatedItems;
 		}
 		avgError /= TEST_RUNS;
 		avgEstimatedItems /= TEST_RUNS;
