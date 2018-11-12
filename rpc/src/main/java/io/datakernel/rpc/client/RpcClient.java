@@ -353,7 +353,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 							wrapClientSocket(asyncTcpSocketImpl, sslContext, sslExecutor);
 					RpcStream stream = new RpcStream(socket, serializer, defaultPacketSize, maxPacketSize,
 							autoFlushInterval, compression, false); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
-					RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this, address, stream);
+					RpcClientConnection connection = new RpcClientConnection(eventloop, this, address, stream);
 					stream.setListener(connection);
 
 					addConnection(address, connection);

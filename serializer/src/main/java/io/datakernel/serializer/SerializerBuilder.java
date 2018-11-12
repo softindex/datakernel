@@ -68,7 +68,7 @@ public final class SerializerBuilder {
 		SerializerGen createSubclassesSerializer(Class<?> type, SerializeSubclasses serializeSubclasses);
 	}
 
-	private final Helper helper = SerializerBuilder.this::createSubclassesSerializer;
+	private final Helper helper = this::createSubclassesSerializer;
 
 	private SerializerBuilder(DefiningClassLoader definingClassLoader) {
 		this.definingClassLoader = definingClassLoader;
