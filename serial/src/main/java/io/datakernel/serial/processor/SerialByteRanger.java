@@ -24,7 +24,7 @@ public final class SerialByteRanger extends SerialTransformer<SerialByteRanger, 
 	private final long offset;
 	private final long endOffset;
 
-	private long position = 0;
+	private long position;
 
 	private SerialByteRanger(long offset, long length) {
 		this.offset = offset;

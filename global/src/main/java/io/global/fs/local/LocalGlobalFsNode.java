@@ -273,7 +273,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		private final CheckpointStorage checkpointStorage;
 
 		private final AsyncSupplier<Void> doRefreshAnnouncement = reuse(this::doRefreshAnnouncement);
-		private long announceTimestamp = 0L;
+		private long announceTimestamp;
 		private Set<RawServerId> announceServerIds;
 
 		Namespace(PubKey space, FsClient folder, MetadataStorage metadataStorage, CheckpointStorage checkpointStorage) {

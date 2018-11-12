@@ -40,7 +40,7 @@ public final class GlobalFsDriver {
 	private final CheckpointPosStrategy checkpointPosStrategy;
 
 	@Nullable
-	private SimKey currentSimKey = null;
+	private SimKey currentSimKey;
 
 	private GlobalFsDriver(GlobalFsNode node, DiscoveryService discoveryService, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
 		this.node = node;
