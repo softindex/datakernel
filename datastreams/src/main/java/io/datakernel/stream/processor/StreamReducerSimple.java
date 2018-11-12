@@ -66,7 +66,7 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	 * Returns  new input for this stream
 	 */
 	public StreamConsumer<I> newInput() {
-		return super.newInput(keyFunction, reducer);
+		return newInput(keyFunction, reducer);
 	}
 
 }

@@ -71,7 +71,7 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 	 * @return this consumer
 	 */
 	public StreamConsumer<T> newInput() {
-		return super.newInput(keyFunction, reducer);
+		return newInput(keyFunction, reducer);
 	}
 
 }

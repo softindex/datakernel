@@ -56,8 +56,8 @@ public final class StreamStatsDetailed<T> extends StreamStatsBasic<T> implements
 	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	@Nullable
 	public Long getTotalSizeAvg() {
-		return sizeCounter != null && super.getStarted().getTotalCount() != 0 ?
-				totalSize / super.getStarted().getTotalCount() :
+		return sizeCounter != null && getStarted().getTotalCount() != 0 ?
+				totalSize / getStarted().getTotalCount() :
 				null;
 	}
 

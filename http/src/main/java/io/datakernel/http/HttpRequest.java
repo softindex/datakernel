@@ -138,7 +138,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	public HttpRequest withBodyGzipCompression() {
-		super.setBodyGzipCompression();
+		setBodyGzipCompression();
 		return this;
 	}
 

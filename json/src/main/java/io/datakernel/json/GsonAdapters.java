@@ -702,7 +702,7 @@ public final class GsonAdapters {
 
 		public final void setIndentEx(String indent) {
 			this.indentEx = indent;
-			super.setIndent(indent);
+			setIndent(indent);
 		}
 
 		@Override
