@@ -72,6 +72,6 @@ public final class FrameSigner extends ByteBufsToFrames {
 
 	@Override
 	protected Promise<Void> onProcessFinish() {
-		return (lastPostedCheckpoint ? sendEndOfStream() : postCheckpoint().thenCompose($ -> sendEndOfStream()));
+		return lastPostedCheckpoint ? sendEndOfStream() : postCheckpoint().thenCompose($ -> sendEndOfStream());
 	}
 }

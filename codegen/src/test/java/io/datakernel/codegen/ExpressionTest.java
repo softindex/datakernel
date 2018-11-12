@@ -374,13 +374,13 @@ public class ExpressionTest {
 				.withMethod("remD", arithmeticOp(ArithmeticOperation.REM, value(d), value(20)))
 				.buildClassAndCreateNewInstance();
 
-		assertEquals(testClass.remB(), (b % (20)));
-		assertEquals(testClass.remS(), (s % (20)));
-		assertEquals(testClass.remC(), (c % (20)));
-		assertEquals(testClass.remI(), (i % (20)));
-		assertEquals(testClass.remL(), (l % (20)));
-		assertEquals(testClass.remF(), (f % (20)), 0.0);
-		assertEquals(testClass.remD(), (d % (20)), 0.0);
+		assertEquals(testClass.remB(), b % 20);
+		assertEquals(testClass.remS(), s % 20);
+		assertEquals(testClass.remC(), c % 20);
+		assertEquals(testClass.remI(), i % 20);
+		assertEquals(testClass.remL(), l % 20);
+		assertEquals(testClass.remF(), f % 20, 0.0);
+		assertEquals(testClass.remD(), d % 20, 0.0);
 	}
 
 	public interface TestSH {
@@ -409,11 +409,11 @@ public class ExpressionTest {
 				.withMethod("ushrInt", bitOp(BitOperation.USHR, value(b), value(i)))
 				.buildClassAndCreateNewInstance();
 
-		assertEquals(testClass.shlInt(), (b << i));
-		assertEquals(testClass.shlLong(), (l << b));
-		assertEquals(testClass.shrInt(), (b >> i));
-		assertEquals(testClass.shrLong(), (l >> i));
-		assertEquals(testClass.ushrInt(), (b >>> i));
+		assertEquals(testClass.shlInt(), b << i);
+		assertEquals(testClass.shlLong(), l << b);
+		assertEquals(testClass.shrInt(), b >> i);
+		assertEquals(testClass.shrLong(), l >> i);
+		assertEquals(testClass.ushrInt(), b >>> i);
 	}
 
 	public interface TestBitMask {
@@ -441,12 +441,12 @@ public class ExpressionTest {
 				.withMethod("xorLong", bitOp(BitOperation.XOR, value(2L), value(4L)))
 				.buildClassAndCreateNewInstance();
 
-		assertEquals(testClass.andInt(), (2 & 4));
-		assertEquals(testClass.orInt(), (2 | 4));
-		assertEquals(testClass.xorInt(), (2 ^ 4));
-		assertEquals(testClass.andLong(), (2L & 4L));
-		assertEquals(testClass.orLong(), (2L | 4L));
-		assertEquals(testClass.xorLong(), (2L ^ 4L));
+		assertEquals(testClass.andInt(), 2 & 4);
+		assertEquals(testClass.orInt(), 2 | 4);
+		assertEquals(testClass.xorInt(), 2 ^ 4);
+		assertEquals(testClass.andLong(), 2L & 4L);
+		assertEquals(testClass.orLong(), 2L | 4L);
+		assertEquals(testClass.xorLong(), 2L ^ 4L);
 	}
 
 	public interface TestCall {
@@ -472,10 +472,10 @@ public class ExpressionTest {
 				.withStaticMethod("method", long.class, asList(long.class), arg(0))
 				.buildClassAndCreateNewInstance();
 
-		assert (testClass.callOther1(100) == 100);
-		assert (testClass.callOther2() == -1);
-		assert (testClass.callStatic1(1, 2) == 2);
-		assert (testClass.callStatic2(3L) == 3L);
+		assert testClass.callOther1(100) == 100;
+		assert testClass.callOther2() == -1;
+		assert testClass.callStatic1(1, 2) == 2;
+		assert testClass.callStatic2(3L) == 3L;
 	}
 
 	public interface TestArgument {
@@ -530,12 +530,12 @@ public class ExpressionTest {
 
 		assertEquals(listFrom.size(), listTo1.size());
 		for (int i = 0; i < listFrom.size(); i++) {
-			assertEquals(listFrom.get(i), (listTo1.get(i)));
+			assertEquals(listFrom.get(i), listTo1.get(i));
 		}
 
 		assertEquals(listFrom.size(), listTo2.size());
 		for (int i = 0; i < listFrom.size(); i++) {
-			assertEquals(listFrom.get(i), (listTo2.get(i)));
+			assertEquals(listFrom.get(i), listTo2.get(i));
 		}
 	}
 

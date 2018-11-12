@@ -233,7 +233,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 		}
 
 		if (pojo instanceof JmxRefreshable) {
-			return singletonList(((JmxRefreshable) pojo));
+			return singletonList((JmxRefreshable) pojo);
 		}
 		List<JmxRefreshable> allJmxRefreshables = new ArrayList<>();
 		for (AttributeNode attributeNode : subNodes) {

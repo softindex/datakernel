@@ -138,10 +138,10 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 		}
 		logger.trace("Refreshing {}", query);
 		client.resolve(query)
-				.whenComplete(((response, e) -> {
+				.whenComplete((response, e) -> {
 					addToCache(query, response, e);
 					refreshingNow.remove(query);
-				}));
+				});
 	}
 
 	@Override

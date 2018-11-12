@@ -593,7 +593,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	@Nullable
 	@JmxAttribute
 	public Integer getConsolidationLastTimeSeconds() {
-		return consolidationLastTimeMillis == 0 ? null : (int) ((consolidationLastTimeMillis) / 1000);
+		return consolidationLastTimeMillis == 0 ? null : (int) (consolidationLastTimeMillis / 1000);
 	}
 
 	@JmxAttribute

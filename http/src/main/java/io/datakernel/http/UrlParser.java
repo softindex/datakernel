@@ -152,7 +152,7 @@ public final class UrlParser {
 				portValue = toInt(raw, port, hostPortEnd);
 			} else {
 				if (host != -1) {
-					portValue = (https ? 443 : 80);
+					portValue = https ? 443 : 80;
 				}
 			}
 
@@ -486,7 +486,7 @@ public final class UrlParser {
 
 		int result = 0;
 		for (int i = pos; i < end; i++) {
-			int c = (str.charAt(i) - '0');
+			int c = str.charAt(i) - '0';
 			if (c < 0 || c > 9)
 				throw new ParseException(UrlParser.class, "Bad port: " + str.substring(pos, end));
 			result = c + result * 10;

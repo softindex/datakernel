@@ -161,12 +161,7 @@ public class AggregationPredicates {
 			}
 		};
 		register(PredicateHas.class, PredicateEq.class, simplifierHas);
-		register(PredicateHas.class, PredicateNotEq.class, new PredicateSimplifier<PredicateHas, PredicateNotEq>() {
-			@Override
-			public AggregationPredicate simplifyAnd(PredicateHas left, PredicateNotEq right) {
-				return (left.key.equals(right.key)) ? left : null;
-			}
-		});
+		register(PredicateHas.class, PredicateNotEq.class, (left, right) -> left.key.equals(right.key) ? left : null);
 		register(PredicateHas.class, PredicateLe.class, simplifierHas);
 		register(PredicateHas.class, PredicateGe.class, simplifierHas);
 		register(PredicateHas.class, PredicateLt.class, simplifierHas);

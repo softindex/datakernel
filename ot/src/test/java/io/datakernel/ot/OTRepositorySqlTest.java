@@ -62,14 +62,14 @@ public class OTRepositorySqlTest {
 		{
 			TestAdd testAdd = new TestAdd(1);
 			String json = Utils.OP_ADAPTER.toJson(testAdd);
-			TestAdd testAdd2 = ((TestAdd) Utils.OP_ADAPTER.fromJson(json));
+			TestAdd testAdd2 = (TestAdd) Utils.OP_ADAPTER.fromJson(json);
 			assertEquals(testAdd.getDelta(), testAdd2.getDelta());
 		}
 
 		{
 			TestSet testSet = new TestSet(0, 4);
 			String json = Utils.OP_ADAPTER.toJson(testSet);
-			TestSet testSet2 = ((TestSet) Utils.OP_ADAPTER.fromJson(json));
+			TestSet testSet2 = (TestSet) Utils.OP_ADAPTER.fromJson(json);
 			assertEquals(testSet.getPrev(), testSet2.getPrev());
 			assertEquals(testSet.getNext(), testSet2.getNext());
 		}

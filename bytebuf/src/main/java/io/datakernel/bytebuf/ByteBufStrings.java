@@ -218,12 +218,12 @@ public final class ByteBufStrings {
 		if (c <= 0x007F) {
 			array[p++] = (byte) c;
 		} else if (c > 0x07FF) {
-			array[p++] = ((byte) (0xE0 | c >> 12 & 0x0F));
-			array[p++] = ((byte) (0x80 | c >> 6 & 0x3F));
-			array[p++] = ((byte) (0x80 | c & 0x3F));
+			array[p++] = (byte) (0xE0 | c >> 12 & 0x0F);
+			array[p++] = (byte) (0x80 | c >> 6 & 0x3F);
+			array[p++] = (byte) (0x80 | c & 0x3F);
 		} else {
-			array[p++] = ((byte) (0xC0 | c >> 6 & 0x1F));
-			array[p++] = ((byte) (0x80 | c & 0x3F));
+			array[p++] = (byte) (0xC0 | c >> 6 & 0x1F);
+			array[p++] = (byte) (0x80 | c & 0x3F);
 		}
 		return p - pos;
 	}

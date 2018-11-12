@@ -52,7 +52,7 @@ final class ExpressionSet implements Expression {
 
 		ExpressionSet that = (ExpressionSet) o;
 
-		return (from.equals(that.from)) && (to.equals(that.to));
+		return from.equals(that.from) && to.equals(that.to);
 	}
 
 	@Override

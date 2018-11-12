@@ -136,7 +136,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 
 	@Override
 	public int hashCode() {
-		int result = (wrapped ? 1 : 0);
+		int result = wrapped ? 1 : 0;
 		result = 31 * result + (nullable ? 1 : 0);
 		return result;
 	}

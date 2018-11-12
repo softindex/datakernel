@@ -64,7 +64,7 @@ public final class HyperLogLog implements Comparable<HyperLogLog> {
 	}
 
 	public void addLongHash(long longHash) {
-		addToRegister((int) (longHash) & (registers.length - 1), (int) (longHash >>> 32));
+		addToRegister((int) longHash & (registers.length - 1), (int) (longHash >>> 32));
 	}
 
 	public void addObject(Object item) {

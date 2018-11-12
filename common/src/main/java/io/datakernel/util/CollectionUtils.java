@@ -239,7 +239,7 @@ public class CollectionUtils {
 			@Override
 			public T next() {
 				if (!hasNext()) throw new NoSuchElementException();
-				return i == 0 ? head : tail[(i++) - 1];
+				return i == 0 ? head : tail[i++ - 1];
 			}
 		};
 	}

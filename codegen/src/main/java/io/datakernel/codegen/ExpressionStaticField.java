@@ -87,7 +87,7 @@ final class ExpressionStaticField implements Variable {
 			java.lang.reflect.Field javaField = owner.getField(name);
 			if (Modifier.isPublic(javaField.getModifiers()) && Modifier.isStatic(javaField.getModifiers())) {
 				Type fieldType = getType(javaField.getType());
-				g.putStatic(((Type) storeContext), name, fieldType);
+				g.putStatic((Type) storeContext, name, fieldType);
 				return;
 			}
 		} catch (NoSuchFieldException ignored) {

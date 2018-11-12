@@ -172,7 +172,7 @@ public class SerializerGenByteBuf implements SerializerGen, NullableOptimization
 
 	@Override
 	public int hashCode() {
-		int result = (readWithSlice ? 1 : 0);
+		int result = readWithSlice ? 1 : 0;
 		result = 31 * result + (nullable ? 1 : 0);
 		return result;
 	}

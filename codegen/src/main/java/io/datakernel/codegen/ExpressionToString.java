@@ -117,7 +117,7 @@ public final class ExpressionToString implements Expression {
 				g.goTo(afterToString);
 				g.mark(nullLabel);
 				g.pop();
-				g.push(("null"));
+				g.push("null");
 				g.mark(afterToString);
 			}
 			g.invokeVirtual(getType(StringBuilder.class), getMethod("StringBuilder append(String)"));

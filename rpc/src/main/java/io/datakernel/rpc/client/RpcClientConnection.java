@@ -385,7 +385,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		}
 
 		private int timeElapsed() {
-			return (int) (stopwatch.elapsed(TimeUnit.MILLISECONDS));
+			return (int) stopwatch.elapsed(TimeUnit.MILLISECONDS);
 		}
 
 		private void recordOverdue() {

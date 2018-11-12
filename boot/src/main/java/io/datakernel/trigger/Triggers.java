@@ -151,8 +151,8 @@ public final class Triggers implements ConcurrentJmxMBean, Initializable<Trigger
 				TriggerWithResult oldTriggerWithResult = maxSeverityResults.get(trigger);
 				if (oldTriggerWithResult == null ||
 						oldTriggerWithResult.getTrigger().getSeverity().ordinal() < trigger.getSeverity().ordinal() ||
-						(oldTriggerWithResult.getTrigger().getSeverity() == trigger.getSeverity() &&
-								oldTriggerWithResult.getTriggerResult().getTimestamp() > triggerResult.getTimestamp())) {
+						oldTriggerWithResult.getTrigger().getSeverity() == trigger.getSeverity() &&
+								oldTriggerWithResult.getTriggerResult().getTimestamp() > triggerResult.getTimestamp()) {
 					maxSeverityResults.put(trigger, new TriggerWithResult(trigger, triggerResult
 							.withCount(triggerResult.getCount())));
 				} else {

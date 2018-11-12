@@ -42,7 +42,7 @@ public final class SerializationUtils {
 
 	public static int writeShort(byte[] buf, int off, short v) {
 		buf[off] = (byte) (v >>> 8);
-		buf[off + 1] = (byte) (v);
+		buf[off + 1] = (byte) v;
 		return off + 2;
 	}
 
@@ -50,7 +50,7 @@ public final class SerializationUtils {
 		buf[off] = (byte) (v >>> 24);
 		buf[off + 1] = (byte) (v >>> 16);
 		buf[off + 2] = (byte) (v >>> 8);
-		buf[off + 3] = (byte) (v);
+		buf[off + 3] = (byte) v;
 		return off + 4;
 	}
 
@@ -157,7 +157,7 @@ public final class SerializationUtils {
 
 	public static int writeChar(byte[] buf, int off, char v) {
 		writeByte(buf, off, (byte) (v >>> 8));
-		writeByte(buf, off + 1, (byte) (v));
+		writeByte(buf, off + 1, (byte) v);
 		return off + 2;
 	}
 
@@ -261,7 +261,7 @@ public final class SerializationUtils {
 		for (int i = 0; i < length; i++) {
 			char v = s.charAt(i);
 			off = writeByte(buf, off, (byte) (v >>> 8));
-			off = writeByte(buf, off, (byte) (v));
+			off = writeByte(buf, off, (byte) v);
 		}
 		return off;
 	}
@@ -275,7 +275,7 @@ public final class SerializationUtils {
 		for (int i = 0; i < length; i++) {
 			char v = s.charAt(i);
 			off = writeByte(buf, off, (byte) (v >>> 8));
-			off = writeByte(buf, off, (byte) (v));
+			off = writeByte(buf, off, (byte) v);
 		}
 		return off;
 	}

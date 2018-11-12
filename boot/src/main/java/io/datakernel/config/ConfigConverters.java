@@ -430,7 +430,7 @@ public final class ConfigConverters {
 	public static <T> ConfigConverter<List<T>> ofList(ConfigConverter<T> elementConverter, CharSequence separators) {
 		return new SimpleConfigConverter<List<T>>() {
 			private final Pattern pattern = compile(separators.chars()
-					.mapToObj(c -> "\\" + ((char) c))
+					.mapToObj(c -> "\\" + (char) c)
 					.collect(joining("", "[", "]")));
 
 			@Override

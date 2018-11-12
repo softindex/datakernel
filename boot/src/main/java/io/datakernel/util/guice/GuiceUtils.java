@@ -70,7 +70,7 @@ public final class GuiceUtils {
 					Object value = m.invoke(annotation);
 					if (value.equals(m.getDefaultValue()))
 						continue;
-					String valueStr = (value instanceof String ? "\"" + value + "\"" : value.toString());
+					String valueStr = value instanceof String ? "\"" + value + "\"" : value.toString();
 					String methodName = m.getName();
 					if ("value".equals(methodName) && first) {
 						sb.append(valueStr);

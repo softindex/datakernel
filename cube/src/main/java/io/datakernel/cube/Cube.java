@@ -1117,7 +1117,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 			if (comparator != null) {
 				return ((List<Object>) results).stream()
-						.sorted(((Comparator<Object>) comparator))
+						.sorted((Comparator<Object>) comparator)
 						.skip(offset)
 						.limit(limit)
 						.collect(Collectors.toList());

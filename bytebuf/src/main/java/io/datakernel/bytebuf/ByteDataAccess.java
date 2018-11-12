@@ -18,7 +18,7 @@ public interface ByteDataAccess {
 
 	default char readChar() {
 		assert hasRemainingBytes(2);
-		return (char) (((readByte() & 0xFF) << 8) | ((readByte() & 0xFF)));
+		return (char) (((readByte() & 0xFF) << 8) | (readByte() & 0xFF));
 	}
 
 	default short readShort() {
@@ -28,10 +28,10 @@ public interface ByteDataAccess {
 
 	default int readInt() {
 		assert hasRemainingBytes(4);
-		return (readByte() << 24
+		return readByte() << 24
 				| (readByte() & 0xFF) << 16
 				| (readByte() & 0xFF) << 8
-				| (readByte() & 0xFF));
+				| (readByte() & 0xFF);
 	}
 
 	default long readLong() {
@@ -43,7 +43,7 @@ public interface ByteDataAccess {
 				| ((long) (readByte() & 0xFF) << 24)
 				| ((readByte() & 0xFF) << 16)
 				| ((readByte() & 0xFF) << 8)
-				| ((readByte() & 0xFF));
+				| (readByte() & 0xFF);
 	}
 
 	default float readFloat() {
@@ -100,7 +100,7 @@ public interface ByteDataAccess {
 
 	default char peekChar(int offset) {
 		assert hasRemainingBytes(offset + 2);
-		return (char) (((peekByte(offset) & 0xFF) << 8) | ((peekByte(offset + 1) & 0xFF)));
+		return (char) (((peekByte(offset) & 0xFF) << 8) | (peekByte(offset + 1) & 0xFF));
 	}
 
 	default char peekChar() {
@@ -118,10 +118,10 @@ public interface ByteDataAccess {
 
 	default int peekInt(int offset) {
 		assert hasRemainingBytes(offset + 4);
-		return (peekByte(offset) << 24
+		return peekByte(offset) << 24
 				| (peekByte(offset + 1) & 0xFF) << 16
 				| (peekByte(offset + 2) & 0xFF) << 8
-				| (peekByte(offset + 3) & 0xFF));
+				| (peekByte(offset + 3) & 0xFF);
 	}
 
 	default int peekInt() {
@@ -137,7 +137,7 @@ public interface ByteDataAccess {
 				| ((long) (peekByte(offset + 4) & 0xFF) << 24)
 				| ((peekByte(offset + 5) & 0xFF) << 16)
 				| ((peekByte(offset + 6) & 0xFF) << 8)
-				| ((peekByte(offset + 7) & 0xFF));
+				| (peekByte(offset + 7) & 0xFF);
 	}
 
 	default long peekLong() {

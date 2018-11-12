@@ -348,7 +348,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	private Promise<HttpResponse> doSend(HttpRequest request, InetAddress[] inetAddresses) {
-		InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
+		InetAddress inetAddress = inetAddresses[(inetAddressIdx++ & Integer.MAX_VALUE) % inetAddresses.length];
 		InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
 		HttpClientConnection keepAliveConnection = takeKeepAliveConnection(address);
@@ -474,7 +474,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@JmxAttribute(name = "")
 	@Nullable
 	public JmxInspector getStats() {
-		return (inspector instanceof JmxInspector ? (JmxInspector) inspector : null);
+		return inspector instanceof JmxInspector ? (JmxInspector) inspector : null;
 	}
 	// endregion
 }

@@ -94,7 +94,7 @@ public class BufsConsumerGzipInflaterTest {
 		short fextra = 5;
 		short fextraReversed = Short.reverseBytes(fextra);
 		byte feXtra1 = (byte) (fextraReversed >> 8);
-		byte feXtra2 = (byte) (fextraReversed);
+		byte feXtra2 = (byte) fextraReversed;
 
 		byte[] header = {(byte) 0x1f, (byte) 0x8b, Deflater.DEFLATED, flag, 0, 0, 0, 0, 0, 0,
 				// FEXTRA PART

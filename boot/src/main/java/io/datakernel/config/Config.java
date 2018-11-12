@@ -195,7 +195,7 @@ public interface Config {
 	}
 
 	static <T> Consumer<T> ifNotNull(Consumer<T> setter) {
-		return (value) -> {
+		return value -> {
 			if (value != null) {
 				setter.accept(value);
 			}

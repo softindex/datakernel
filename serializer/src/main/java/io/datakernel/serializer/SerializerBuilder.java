@@ -502,7 +502,7 @@ public final class SerializerBuilder {
 
 		SerializeProfiles profiles = Annotations.findAnnotation(SerializeProfiles.class, annotations);
 		if (profiles != null) {
-			if (!Arrays.asList(profiles.value()).contains((profile == null ? "" : profile)))
+			if (!Arrays.asList(profiles.value()).contains(profile == null ? "" : profile))
 				return null;
 			int addedProfile = getProfileVersion(profiles.value(), profiles.added());
 			if (addedProfile != SerializeProfiles.DEFAULT_VERSION) {
@@ -808,7 +808,7 @@ public final class SerializerBuilder {
 		public boolean startSerializeStaticMethod(SerializerGen serializerGen, int version) {
 			boolean b = mapSerialize.containsKey(new Key(serializerGen, version));
 			if (!b) {
-				String methodName = "serialize_" + serializerGen.getRawType().getSimpleName().replace('[', 's').replace(']', '_') + "_V" + version + "_" + (counter.incrementAndGet());
+				String methodName = "serialize_" + serializerGen.getRawType().getSimpleName().replace('[', 's').replace(']', '_') + "_V" + version + "_" + counter.incrementAndGet();
 				mapSerialize.put(new Key(serializerGen, version), new Value(methodName, null));
 			}
 			return b;
@@ -817,7 +817,7 @@ public final class SerializerBuilder {
 		public boolean startDeserializeStaticMethod(SerializerGen serializerGen, int version) {
 			boolean b = mapDeserialize.containsKey(new Key(serializerGen, version));
 			if (!b) {
-				String methodName = "deserialize_" + serializerGen.getRawType().getSimpleName().replace('[', 's').replace(']', '_') + "_V" + version + "_" + (counter.incrementAndGet());
+				String methodName = "deserialize_" + serializerGen.getRawType().getSimpleName().replace('[', 's').replace(']', '_') + "_V" + version + "_" + counter.incrementAndGet();
 				mapDeserialize.put(new Key(serializerGen, version), new Value(methodName, null));
 			}
 			return b;

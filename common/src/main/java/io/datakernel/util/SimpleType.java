@@ -55,10 +55,10 @@ public final class SimpleType {
 
 	public static SimpleType ofType(Type type) {
 		if (type instanceof Class) {
-			return ofClass(((Class<?>) type));
+			return ofClass((Class<?>) type);
 		} else if (type instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType) type;
-			return of(((Class<?>) parameterizedType.getRawType()),
+			return of((Class<?>) parameterizedType.getRawType(),
 					Arrays.stream(parameterizedType.getActualTypeArguments())
 							.map(SimpleType::ofType)
 							.collect(toList())
@@ -156,14 +156,14 @@ public final class SimpleType {
 		return clazz.getSimpleName() + (typeParams.length == 0 ? "" :
 				Arrays.stream(typeParams)
 						.map(SimpleType::getSimpleName)
-						.collect(Collectors.joining(",", "<", ">"))) + (new String(new char[arrayDimension]).replace("\0", "[]"));
+						.collect(Collectors.joining(",", "<", ">"))) + new String(new char[arrayDimension]).replace("\0", "[]");
 	}
 
 	public String getName() {
 		return clazz.getName() + (typeParams.length == 0 ? "" :
 				Arrays.stream(typeParams)
 						.map(SimpleType::getName)
-						.collect(Collectors.joining(",", "<", ">"))) + (new String(new char[arrayDimension]).replace("\0", "[]"));
+						.collect(Collectors.joining(",", "<", ">"))) + new String(new char[arrayDimension]).replace("\0", "[]");
 	}
 
 	@Nullable

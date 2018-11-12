@@ -1140,7 +1140,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@Nullable
 	@JmxAttribute(name = "")
 	public EventloopStats getStats() {
-		return (inspector instanceof EventloopStats ? (EventloopStats) inspector : null);
+		return inspector instanceof EventloopStats ? (EventloopStats) inspector : null;
 	}
 
 	@JmxAttribute
