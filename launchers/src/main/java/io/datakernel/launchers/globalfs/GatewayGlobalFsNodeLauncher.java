@@ -17,6 +17,7 @@
 package io.datakernel.launchers.globalfs;
 
 import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
@@ -202,7 +203,7 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("ROOT");
+		Logger logger = (Logger) LoggerFactory.getLogger("ROOT");
 		logger.setLevel(Level.TRACE);
 		new GatewayGlobalFsNodeLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}

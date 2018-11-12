@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
@@ -64,7 +65,7 @@ public class LogToCubeTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	private static <K, D> java.util.function.Function<D, OTStateManager<K, D>> addFunction(OTStateManager<K, D> stateManager) {
+	private static <K, D> Function<D, OTStateManager<K, D>> addFunction(OTStateManager<K, D> stateManager) {
 		return value -> {
 			stateManager.add(value);
 			return stateManager;

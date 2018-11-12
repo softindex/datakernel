@@ -34,7 +34,7 @@ public final class LoggingRule implements TestRule {
 			return base;
 		}
 		return new LambdaStatement(() -> {
-			ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(info.value());
+			Logger logger = (Logger) LoggerFactory.getLogger(info.value());
 			Level oldLevel = logger.getLevel();
 			logger.setLevel(Level.toLevel(info.level()));
 			try {
