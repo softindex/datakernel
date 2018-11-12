@@ -252,7 +252,7 @@ public final class SerializerBuilder {
 	}
 
 	private static String capitalize(String str) {
-		return String.valueOf(toUpperCase(str.charAt(0))) + str.substring(1);
+		return toUpperCase(str.charAt(0)) + str.substring(1);
 	}
 
 	/**
@@ -922,7 +922,7 @@ public final class SerializerBuilder {
 	private ClassBuilder<BufferSerializer<?>> defineDeserializeVersion(SerializerGen serializerGen,
 			ClassBuilder<BufferSerializer<?>> asmFactory,
 	                                                                int version, StaticMethods staticMethods) {
-		return asmFactory.withMethod("deserializeVersion" + String.valueOf(version),
+		return asmFactory.withMethod("deserializeVersion" + version,
 				serializerGen.getRawType(),
 				asList(ByteBuf.class),
 				sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods, compatibilityLevel)));
@@ -938,7 +938,7 @@ public final class SerializerBuilder {
 			int version = allVersions.get(i);
 			listKey.add(value(version));
 			serializerGen.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-			listValue.add(call(self(), "deserializeVersion" + String.valueOf(version), arg(0)));
+			listValue.add(call(self(), "deserializeVersion" + version, arg(0)));
 		}
 		return asmFactory.withMethod("deserializeEarlierVersions", serializerGen.getRawType(), asList(ByteBuf.class, int.class),
 				switchForKey(arg(1), listKey, listValue));

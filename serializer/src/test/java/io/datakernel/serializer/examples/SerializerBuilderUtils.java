@@ -108,7 +108,7 @@ public class SerializerBuilderUtils {
 	}
 
 	public static String capitalize(String str) {
-		return String.valueOf(toUpperCase(str.charAt(0))) + str.substring(1);
+		return toUpperCase(str.charAt(0)) + str.substring(1);
 	}
 
 	private static SerializerGenBuilder serializerGenMapBuilder(Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType) {

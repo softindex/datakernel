@@ -142,7 +142,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 			last = "; " + exceptionClass.getSimpleName();
 			last += " @" + formatTimestamp(lastExceptionTimestamp);
 		}
-		return Integer.toString(count) + last;
+		return count + last;
 	}
 
 	@Nullable
