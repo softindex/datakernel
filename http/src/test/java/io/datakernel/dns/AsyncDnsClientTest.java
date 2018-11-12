@@ -162,7 +162,7 @@ public class AsyncDnsClientTest {
 
 	@Test
 	public void testAdaptedClientsInMultipleThreads() {
-		final int threadCount = 10;
+		int threadCount = 10;
 
 		InspectorGadget inspector = new InspectorGadget();
 		CachedAsyncDnsClient primaryCachedDnsClient = CachedAsyncDnsClient.create(

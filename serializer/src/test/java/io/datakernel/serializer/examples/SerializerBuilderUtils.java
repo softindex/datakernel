@@ -138,7 +138,7 @@ public class SerializerBuilderUtils {
 		};
 	}
 
-	private static SerializerGenBuilder serializerGenCollectionBuilder(final Class<?> collectionType, final Class<?> collectionImplType, final Class<?> valueType) {
+	private static SerializerGenBuilder serializerGenCollectionBuilder(Class<?> collectionType, Class<?> collectionImplType, Class<?> valueType) {
 		String prefix = capitalize(valueType.getSimpleName());
 		check(collectionType.getSimpleName().startsWith(prefix), "Expected setType '%s', but was begin '%s'", collectionType.getSimpleName(), prefix);
 		return (type, generics, fallback) -> {

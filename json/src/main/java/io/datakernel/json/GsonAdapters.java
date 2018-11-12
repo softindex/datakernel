@@ -620,7 +620,7 @@ public final class GsonAdapters {
 		};
 	}
 
-	public static <T> TypeAdapter<Optional<T>> optional(final TypeAdapter<T> adapter) {
+	public static <T> TypeAdapter<Optional<T>> optional(TypeAdapter<T> adapter) {
 		return new TypeAdapter<Optional<T>>() {
 			@Override
 			public void write(JsonWriter out, Optional<T> value) throws IOException {
