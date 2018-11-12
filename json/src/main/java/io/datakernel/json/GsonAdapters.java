@@ -28,10 +28,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
@@ -449,8 +446,8 @@ public final class GsonAdapters {
 		};
 	}
 
-	public static <T> TypeAdapter<T[]> ofArray(TypeAdapter<T> elementAdapter) {
-		return transform(ofList(elementAdapter), value -> (T[]) value.toArray(), Arrays::asList);
+	public static <T> TypeAdapter<T[]> ofArray(Class<T> cls, TypeAdapter<T> elementAdapter) {
+		return transform(ofList(elementAdapter), value -> value.toArray((T[])Array.newInstance(cls, 0)), Arrays::asList);
 	}
 
 	public static <V> TypeAdapter<Map<String, V>> ofMap(TypeAdapter<V> valueAdapter) {

@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.util;
 
 import java.lang.reflect.Array;
@@ -45,36 +61,54 @@ public class CollectorsEx {
 				a -> a.toArray((T[]) Array.newInstance(type, a.size())));
 	}
 
-	private static final Collector<Boolean, Boolean, Boolean> TO_ALL =
-			Collector.of(() -> true, (a, t) -> a &= t, (a1, a2) -> a1 & a2);
+	private static final Collector<Boolean, boolean[], Boolean> TO_ALL =
+			Collector.of(() -> new boolean[]{true}, (a, t) -> a[0] &= t, (a1, a2) -> {
+				a1[0] &= a2[0];
+				return a1;
+			}, b -> b[0]);
 
-	private static final Collector<Boolean, Boolean, Boolean> TO_ANY =
-			Collector.of(() -> true, (a, t) -> a |= t, (a1, a2) -> a1 || a2);
+	private static final Collector<Boolean, boolean[], Boolean> TO_ANY =
+			Collector.of(() -> new boolean[]{false}, (a, t) -> a[0] |= t, (a1, a2) -> {
+				a1[0] |= a2[0];
+				return a1;
+			}, b -> b[0]);
 
-	private static final Collector<Boolean, Boolean, Boolean> TO_NONE =
-			Collector.of(() -> true, (a, t) -> a &= !t, (a1, a2) -> a1 && a2);
+	private static final Collector<Boolean, boolean[], Boolean> TO_NONE =
+			Collector.of(() -> new boolean[]{true}, (a, t) -> a[0] &= !t, (a1, a2) -> {
+				a1[0] &= a2[0];
+				return a1;
+			}, b -> b[0]);
 
-	public static <T> Collector<T, Boolean, Boolean> toAll(Predicate<? super T> predicate) {
-		return Collector.of(() -> true, (a, t) -> a &= predicate.test(t), (a1, a2) -> a1 && a2);
+	public static <T> Collector<T, boolean[], Boolean> toAll(Predicate<? super T> predicate) {
+		return Collector.of(() -> new boolean[]{true}, (a, t) -> a[0] &= predicate.test(t), (a1, a2) -> {
+			a1[0] &= a2[0];
+			return a1;
+		}, b -> b[0]);
 	}
 
-	public static Collector<Boolean, Boolean, Boolean> toAll() {
+	public static Collector<Boolean, boolean[], Boolean> toAll() {
 		return TO_ALL;
 	}
 
-	public static <T> Collector<T, Boolean, Boolean> toAny(Predicate<T> predicate) {
-		return Collector.of(() -> false, (a, t) -> a |= predicate.test(t), (a1, a2) -> a1 || a2);
+	public static <T> Collector<T, boolean[], Boolean> toAny(Predicate<T> predicate) {
+		return Collector.of(() -> new boolean[]{false}, (a, t) -> a[0] |= predicate.test(t), (a1, a2) -> {
+			a1[0] |= a2[0];
+			return a1;
+		}, b -> b[0]);
 	}
 
-	public static Collector<Boolean, Boolean, Boolean> toAny() {
+	public static Collector<Boolean, boolean[], Boolean> toAny() {
 		return TO_ANY;
 	}
 
-	public static <T> Collector<T, Boolean, Boolean> toNone(Predicate<T> predicate) {
-		return Collector.of(() -> true, (a, t) -> a &= !predicate.test(t), (a1, a2) -> a1 && a2);
+	public static <T> Collector<T, boolean[], Boolean> toNone(Predicate<T> predicate) {
+		return Collector.of(() -> new boolean[]{true}, (a, t) -> a[0] &= !predicate.test(t), (a1, a2) -> {
+			a1[0] &= a2[0];
+			return a1;
+		}, b -> b[0]);
 	}
 
-	public static Collector<Boolean, Boolean, Boolean> toNone() {
+	public static Collector<Boolean, boolean[], Boolean> toNone() {
 		return TO_NONE;
 	}
 

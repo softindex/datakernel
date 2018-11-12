@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.*;
 
 import static io.datakernel.json.GsonAdapters.*;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class GsonAdaptersTest {
@@ -69,7 +70,7 @@ public class GsonAdaptersTest {
 
 	@Test
 	public void primitiveListTest() throws ParseException {
-		List<String> testList = Arrays.asList("one", "two", "strawberry", "five");
+		List<String> testList = asList("one", "two", "strawberry", "five");
 
 		TypeAdapter<List<String>> adapter = PRIMITIVES_MAP.getAdapter(RecursiveType.of(testList.getClass(), RecursiveType.of(String.class)).getType());
 
@@ -150,6 +151,24 @@ public class GsonAdaptersTest {
 
 		assertEquals(classJson, "\"io.datakernel.json.GsonAdaptersTest$PersonPOJO\"");
 		assertEquals(PersonPOJO.class, fromJson(mapping.getAdapter(Class.class), classJson));
+	}
+
+	@Test
+	public void testOfArray() {
+		TypeAdapter<String[]> typeAdapter = GsonAdapters.ofArray(String.class, GsonAdapters.STRING_JSON);
+		String[] array = new String[]{"One", "Two"};
+		String jsonString = GsonAdapters.toJson(typeAdapter, array);
+		System.out.println(jsonString);
+	}
+
+	@Test
+	public void testOfList() throws ParseException {
+		TypeAdapter<List<String>> typeAdapter = GsonAdapters.ofList(GsonAdapters.STRING_JSON);
+		List<String> list = asList("One", "Two");
+		String jsonString = GsonAdapters.toJson(typeAdapter, list);
+		System.out.println(jsonString);
+		List<String> recoveredList = GsonAdapters.fromJson(typeAdapter, jsonString);
+		assertEquals(list, recoveredList);
 	}
 
 	private enum TestEnum1 {
