@@ -22,13 +22,14 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.UnknownHostException;
 
 import static java.lang.ClassLoader.getSystemClassLoader;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class RpcMessageSerializeTest {
 
@@ -83,10 +84,10 @@ public class RpcMessageSerializeTest {
 		RpcMessage message1 = RpcMessage.of(1, messageData1);
 
 		RpcMessage message2 = doTest(RpcMessage.class, message1);
-		Assert.assertEquals(message1.getCookie(), message2.getCookie());
-		Assert.assertTrue(message2.getData() instanceof TestRpcMessageData);
+		assertEquals(message1.getCookie(), message2.getCookie());
+		assertTrue(message2.getData() instanceof TestRpcMessageData);
 		TestRpcMessageData messageData2 = (TestRpcMessageData) message2.getData();
-		Assert.assertEquals(messageData1.getS(), messageData2.getS());
+		assertEquals(messageData1.getS(), messageData2.getS());
 	}
 
 }

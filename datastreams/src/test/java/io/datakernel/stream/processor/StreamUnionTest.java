@@ -141,7 +141,7 @@ public class StreamUnionTest {
 		streamUnion.getOutput().streamTo(consumer.apply(TestStreamConsumers.oneByOne()));
 		eventloop.run();
 
-		assertTrue(list.size() == 3);
+		assertEquals(3, list.size());
 		assertClosedWithError(streamUnion.getOutput());
 		assertConsumersClosedWithError(streamUnion.getInputs());
 	}

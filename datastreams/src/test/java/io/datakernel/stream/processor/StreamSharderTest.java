@@ -116,8 +116,8 @@ public class StreamSharderTest {
 
 		eventloop.run();
 
-		assertTrue(list1.size() == 1);
-		assertTrue(list2.size() == 2);
+		assertEquals(1, list1.size());
+		assertEquals(2, list2.size());
 		assertClosedWithError(source);
 		assertClosedWithError(source);
 		assertClosedWithError(streamSharder.getInput());
@@ -150,8 +150,8 @@ public class StreamSharderTest {
 
 		eventloop.run();
 
-		assertTrue(list1.size() == 1);
-		assertTrue(list2.size() == 2);
+		assertEquals(1, list1.size());
+		assertEquals(2, list2.size());
 
 		assertClosedWithError(streamSharder.getInput());
 		assertSuppliersClosedWithError(streamSharder.getOutputs());

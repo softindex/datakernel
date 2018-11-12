@@ -1030,7 +1030,7 @@ public class AsmSerializerTest {
 		assertEquals(testData1.s, testData2.s);
 		assertEquals(testData1.next.s, testData2.next.s);
 		assertEquals(testData1.next.next.s, testData2.next.next.s);
-		assertEquals(null, testData2.next.next.next);
+		assertNull(testData2.next.next.next);
 	}
 
 	public static class TestDataExtraSubclasses {
@@ -1160,7 +1160,7 @@ public class AsmSerializerTest {
 
 		assertEquals(0, testData3.getIntValue());
 		assertEquals(0.0, testData3.getDoubleValue(), Double.MIN_VALUE);
-		assertEquals(null, testData3.getStringValue());
+		assertNull(testData3.getStringValue());
 	}
 
 	public static class TestDataMaxLength {
@@ -1581,8 +1581,8 @@ public class AsmSerializerTest {
 
 		GenericComplex _gc = doTest(GenericComplex.class, gc);
 
-		assertTrue(gc.holder1.item.equals(_gc.holder1.item));
-		assertTrue(gc.holder2.item.equals(_gc.holder2.item));
+		assertEquals(gc.holder1.item, _gc.holder1.item);
+		assertEquals(gc.holder2.item, _gc.holder2.item);
 	}
 
 	public static class TestObj {

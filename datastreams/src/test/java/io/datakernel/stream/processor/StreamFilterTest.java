@@ -101,7 +101,7 @@ public class StreamFilterTest {
 
 		eventloop.run();
 
-		assertTrue(list.size() == 3);
+		assertEquals(3, list.size());
 		assertClosedWithError(consumer);
 		assertClosedWithError(streamFilter.getInput());
 		assertClosedWithError(streamFilter.getOutput());

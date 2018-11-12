@@ -28,8 +28,7 @@ import java.util.List;
 import static io.datakernel.bytebuf.ByteBufStrings.asAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static java.nio.charset.Charset.forName;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class HttpCharsetTest {
 	@Test
@@ -47,7 +46,7 @@ public class HttpCharsetTest {
 		HttpCharset expected = HttpCharset.US_ASCII;
 		byte[] asciis = "us-ascii".getBytes(forName("ASCII"));
 		HttpCharset actual = HttpCharset.parse(asciis, 0, asciis.length);
-		assertTrue(expected == actual);
+		assertSame(expected, actual);
 	}
 
 	@Test
@@ -55,7 +54,7 @@ public class HttpCharsetTest {
 		HttpCharset expected = HttpCharset.US_ASCII;
 		Charset charset = expected.toJavaCharset();
 		HttpCharset actual = HttpCharset.of(charset);
-		assertTrue(expected == actual);
+		assertSame(expected, actual);
 	}
 
 	@Test
@@ -64,7 +63,7 @@ public class HttpCharsetTest {
 		List<AcceptCharset> chs = new ArrayList<>();
 		AcceptCharset.parse(bytes, 0, bytes.length, chs);
 		assertEquals(2, chs.size());
-		assertTrue(forName("ISO-8859-5") == chs.get(0).getCharset());
+		assertSame(forName("ISO-8859-5"), chs.get(0).getCharset());
 		assertEquals(80, chs.get(1).getQ());
 	}
 

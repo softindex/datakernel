@@ -96,7 +96,7 @@ public class EffectiveConfigTest {
 
 		assertEquals(10, settings.getBacklog());
 		assertEquals(10, settings.getReceiveBufferSize().toInt());
-		assertEquals(true, settings.getReuseAddress());
+		assertTrue(settings.getReuseAddress());
 	}
 
 	@Test

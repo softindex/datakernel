@@ -25,8 +25,7 @@ import java.util.LinkedList;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class StreamSupplierOfValueTest {
 	Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -71,7 +70,7 @@ public class StreamSupplierOfValueTest {
 		supplier3.streamTo(consumer3);
 		eventloop.run();
 
-		assertTrue(consumer3.getList().get(0) == null);
+		assertNull(consumer3.getList().get(0));
 		assertEndOfStream(supplier3);
 	}
 

@@ -47,7 +47,7 @@ public class ByteBufTest {
 
 		ByteBuf slice = buf.slice(7, 5);
 
-		assertFalse(buf == slice);
+		assertNotSame(buf, slice);
 		assertEquals("World", slice.toString());
 
 		buf = createEmptyByteBufOfSize(16);
@@ -55,7 +55,7 @@ public class ByteBufTest {
 
 		slice = buf.slice();
 
-		assertFalse(buf == slice);
+		assertNotSame(buf, slice);
 		assertEquals("Hello, World", slice.toString());
 	}
 

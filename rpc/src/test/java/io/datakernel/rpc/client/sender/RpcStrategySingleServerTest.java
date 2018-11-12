@@ -24,8 +24,7 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class RpcStrategySingleServerTest {
 
@@ -42,7 +41,7 @@ public class RpcStrategySingleServerTest {
 
 		RpcSender sender = strategySingleServer.createSender(pool);
 
-		assertTrue(sender != null);
+		assertNotNull(sender);
 	}
 
 	@Test
@@ -53,7 +52,7 @@ public class RpcStrategySingleServerTest {
 
 		RpcSender sender = strategySingleServer.createSender(pool);
 
-		assertTrue(sender == null);
+		assertNull(sender);
 	}
 
 	@Test

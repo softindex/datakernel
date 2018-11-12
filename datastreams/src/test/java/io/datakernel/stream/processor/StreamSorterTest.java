@@ -161,7 +161,7 @@ public class StreamSorterTest {
 
 		eventloop.run();
 
-		assertTrue(consumerToList.getList().size() == 0);
+		assertEquals(0, consumerToList.getList().size());
 
 		assertClosedWithError(consumerToList);
 //		assertClosedWithError(sorter.getOutput());

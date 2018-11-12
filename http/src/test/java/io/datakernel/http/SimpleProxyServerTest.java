@@ -23,7 +23,6 @@ import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -40,7 +39,7 @@ import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 public class SimpleProxyServerTest {
 	final static int ECHO_SERVER_PORT = 9707;
@@ -71,7 +70,7 @@ public class SimpleProxyServerTest {
 	private void readAndAssert(InputStream is, String expected) throws IOException {
 		byte[] bytes = new byte[expected.length()];
 		readFully(is, bytes);
-		Assert.assertEquals(expected, decodeAscii(bytes));
+		assertEquals(expected, decodeAscii(bytes));
 	}
 
 	@Test
@@ -109,7 +108,7 @@ public class SimpleProxyServerTest {
 
 		proxyServer.closeFuture().get();
 
-		assertTrue(toByteArray(socket.getInputStream()).length == 0);
+		assertEquals(0, toByteArray(socket.getInputStream()).length);
 		socket.close();
 
 		echoServerThread.join();

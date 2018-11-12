@@ -31,8 +31,7 @@ import java.util.Objects;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class StreamJoinTest {
 	private static final class DataItemMaster {
@@ -210,7 +209,7 @@ public class StreamJoinTest {
 						})));
 
 		eventloop.run();
-		assertTrue(list.size() == 1);
+		assertEquals(1, list.size());
 		assertClosedWithError(source1);
 		assertEndOfStream(source2);
 	}
@@ -259,7 +258,7 @@ public class StreamJoinTest {
 		streamJoin.getOutput().streamTo(consumer.apply(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
-		assertTrue(list.size() == 0);
+		assertEquals(0, list.size());
 		assertClosedWithError(source1);
 		assertClosedWithError(source2);
 	}

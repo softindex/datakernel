@@ -201,7 +201,7 @@ public class StreamMergerTest {
 
 		eventloop.run();
 
-		assertTrue(list.size() == 0);
+		assertEquals(0, list.size());
 		assertClosedWithError(consumer);
 		assertClosedWithError(merger.getOutput());
 		assertClosedWithError(merger.getInput(0));

@@ -74,9 +74,7 @@ import static io.datakernel.util.CollectionUtils.entriesToMap;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
-import static junit.framework.TestCase.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("rawtypes")
 public class ReportingTest {
@@ -556,7 +554,7 @@ public class ReportingTest {
 
 		assertEquals(LocalDate.parse("2000-01-02"), records.get(0).get("date"));
 		assertEquals(2, (int) records.get(0).get("advertiser"));
-		assertEquals(null, (String) records.get(0).get("advertiser.name"));
+		assertNull((String) records.get(0).get("advertiser.name"));
 		assertEquals(100, (long) records.get(0).get("impressions"));
 
 		assertEquals(LocalDate.parse("2000-01-02"), records.get(1).get("date"));
@@ -589,7 +587,7 @@ public class ReportingTest {
 		List<Record> records = queryResult.getRecords();
 		assertEquals(3, records.size());
 		assertEquals("first", (String) records.get(0).get("advertiser.name"));
-		assertEquals(null, (String) records.get(1).get("advertiser.name"));
+		assertNull(records.get(1).get("advertiser.name"));
 		assertEquals("third", (String) records.get(2).get("advertiser.name"));
 	}
 
@@ -642,7 +640,7 @@ public class ReportingTest {
 		assertEquals(asList("advertiser.name"), queryResult.getAttributes());
 		assertEquals(asList("clicks"), queryResult.getMeasures());
 		assertEquals("first", records.get(0).get("advertiser.name"));
-		assertEquals(null, records.get(1).get("advertiser.name"));
+		assertNull(records.get(1).get("advertiser.name"));
 	}
 
 	@Test
@@ -886,9 +884,9 @@ public class ReportingTest {
 
 		QueryResult resultByDate = getQueryResult(queryDate);
 
-		assertTrue(resultByDate.getAttributes().size() == 1);
+		assertEquals(1, resultByDate.getAttributes().size());
 		assertEquals("date", resultByDate.getAttributes().get(0));
-		assertTrue(resultByDate.getMeasures().equals(measures));
+		assertEquals(resultByDate.getMeasures(), measures);
 		Record dailyTotals = resultByDate.getTotals();
 		long dailyImpressions = (long) dailyTotals.get("impressions");
 		long dailyClicks = (long) dailyTotals.get("clicks");

@@ -84,7 +84,7 @@ public class RpcStrategyFirstAvailableTest {
 		RpcStrategy firstAvailableStrategy =
 				firstAvailable(servers(ADDRESS_1, ADDRESS_2));
 
-		assertTrue(firstAvailableStrategy.createSender(pool) != null);
+		assertNotNull(firstAvailableStrategy.createSender(pool));
 	}
 
 	@Test
@@ -93,6 +93,6 @@ public class RpcStrategyFirstAvailableTest {
 		// no connections were added to pool
 		RpcStrategy firstAvailableStrategy = firstAvailable(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 
-		assertFalse(firstAvailableStrategy.createSender(pool) != null);
+		assertNull(firstAvailableStrategy.createSender(pool));
 	}
 }

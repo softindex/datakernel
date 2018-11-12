@@ -176,7 +176,7 @@ public class StreamReducerTest {
 		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
-		assertTrue(list.size() == 0);
+		assertEquals(0, list.size());
 		assertClosedWithError(consumer);
 		assertEndOfStream(source1);
 		assertClosedWithError(source2);

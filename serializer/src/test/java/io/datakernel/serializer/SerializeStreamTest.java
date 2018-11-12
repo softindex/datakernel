@@ -285,7 +285,7 @@ public class SerializeStreamTest {
 		ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
 		try (final DataInputStreamEx dataInputStream = DataInputStreamEx.create(byteArrayInputStream)) {
 			assertEquals(42, dataInputStream.readInt());
-			assertEquals(false, dataInputStream.readBoolean());
+			assertFalse(dataInputStream.readBoolean());
 			assertEquals((byte) 43, dataInputStream.readByte());
 			assertEquals((char) 44, dataInputStream.readChar());
 			assertEquals(45.46, dataInputStream.readDouble(), 1e-6);

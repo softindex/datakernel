@@ -32,6 +32,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertNull;
 import static org.junit.Assert.*;
 
 public class HttpUrlTest {
@@ -279,7 +280,7 @@ public class HttpUrlTest {
 		assertEquals("value", url.getQueryParameter("key"));
 		assertEquals("another_value", url.getQueryParameter("key3"));
 		assertEquals("", url.getQueryParameter("k"));
-		assertEquals(null, url.getQueryParameter("missing"));
+		assertNull(url.getQueryParameter("missing"));
 
 		List<String> parameters = url.getQueryParameters("key");
 		assertEquals(asList("value", "", "value2"), parameters);

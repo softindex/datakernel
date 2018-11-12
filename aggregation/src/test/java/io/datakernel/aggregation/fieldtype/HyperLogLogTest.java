@@ -17,10 +17,10 @@
 package io.datakernel.aggregation.fieldtype;
 
 import io.datakernel.aggregation.measure.HyperLogLog;
-import org.junit.Assert;
 import org.junit.Test;
 
 import static java.lang.Math.abs;
+import static org.junit.Assert.assertEquals;
 
 public class HyperLogLogTest {
 	@Test
@@ -84,6 +84,6 @@ public class HyperLogLogTest {
 		avgEstimatedItems /= TEST_RUNS;
 		System.out.println("  estimatedItems: " + avgEstimatedItems + " error: " + avgError + ", maxError: " + maxError);
 
-		Assert.assertEquals(0, avgError, expectedError);
+		assertEquals(0, avgError, expectedError);
 	}
 }

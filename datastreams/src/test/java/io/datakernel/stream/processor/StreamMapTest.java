@@ -78,7 +78,7 @@ public class StreamMapTest {
 						})));
 
 		eventloop.run();
-		assertTrue(list.size() == 2);
+		assertEquals(2, list.size());
 		assertClosedWithError(source);
 		assertClosedWithError(consumer);
 		assertClosedWithError(projection.getInput());
@@ -103,7 +103,7 @@ public class StreamMapTest {
 				consumer.apply(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
-		assertTrue(list.size() == 2);
+		assertEquals(2, list.size());
 		assertClosedWithError(consumer);
 	}
 

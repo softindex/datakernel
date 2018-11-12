@@ -27,8 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("ConstantConditions")
 public class RpcStrategyTypeDispatchingTest {
@@ -152,7 +151,7 @@ public class RpcStrategyTypeDispatchingTest {
 		// we don't put connection 2
 		pool.put(ADDRESS_3, connection3);
 
-		assertTrue(typeDispatchingStrategy.createSender(pool) == null);
+		assertNull(typeDispatchingStrategy.createSender(pool));
 	}
 
 	@Test
@@ -176,7 +175,7 @@ public class RpcStrategyTypeDispatchingTest {
 		pool.put(ADDRESS_3, connection3);
 		// we don't add connection for default server
 
-		assertTrue(typeDispatchingStrategy.createSender(pool) == null);
+		assertNull(typeDispatchingStrategy.createSender(pool));
 	}
 
 	static class RpcMessageDataTypeOne {
