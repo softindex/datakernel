@@ -110,7 +110,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	protected void send(T item) {
-		getLastDataAcceptor().accept(item);
+		lastDataAcceptor.accept(item);
 	}
 
 	@Nullable

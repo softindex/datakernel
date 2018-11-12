@@ -166,7 +166,7 @@ public final class ThrottlingController implements EventloopJmxMBean, EventloopI
 		}
 
 		int throttlingKeys = lastSelectedKeys + concurrentTasksSize;
-		int lastTimePredicted = (int) (throttlingKeys * getAvgTimePerKeyMillis());
+		int lastTimePredicted = (int) (throttlingKeys * smoothedTimePerKeyMillis);
 		if (gcTimeMillis != 0.0 && businessLogicTime > lastTimePredicted + gcTimeMillis) {
 			logger.debug("GC detected {} ms, {} keys", businessLogicTime, throttlingKeys);
 			businessLogicTime = lastTimePredicted + gcTimeMillis;
@@ -196,9 +196,9 @@ public final class ThrottlingController implements EventloopJmxMBean, EventloopI
 	@Override
 	public void onUpdateSelectorSelectTime(long selectorSelectTime) {
 		int throttlingKeys = lastSelectedKeys + concurrentTasksSize;
-		double predictedTime = throttlingKeys * getAvgTimePerKeyMillis();
+		double predictedTime = throttlingKeys * smoothedTimePerKeyMillis;
 
-		double newThrottling = getAvgThrottling() - throttlingDecrease;
+		double newThrottling = smoothedThrottling - throttlingDecrease;
 		if (newThrottling < 0)
 			newThrottling = 0;
 		if (predictedTime > targetTimeMillis) {
@@ -260,7 +260,7 @@ public final class ThrottlingController implements EventloopJmxMBean, EventloopI
 
 	@JmxAttribute
 	public double getAvgKeysPerSecond() {
-		return 1000.0 / getAvgTimePerKeyMillis();
+		return 1000.0 / smoothedTimePerKeyMillis;
 	}
 
 	@JmxAttribute
@@ -372,7 +372,7 @@ public final class ThrottlingController implements EventloopJmxMBean, EventloopI
 		return String.format("{throttling:%2d%% avgKps=%-4d avgThrottling=%2d%% requests=%-4d throttled=%-4d rounds=%-3d zero=%-3d >targetTime=%-3d}",
 				(int) (throttling * 100),
 				(int) getAvgKeysPerSecond(),
-				(int) (getAvgThrottling() * 100),
+				(int) (smoothedThrottling * 100),
 				infoTotalRequests,
 				infoTotalRequestsThrottled,
 				infoRounds,

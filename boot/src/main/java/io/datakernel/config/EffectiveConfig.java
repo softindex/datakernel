@@ -115,7 +115,7 @@ public final class EffectiveConfig implements Config {
 
 	@Override
 	public Config provideNoKeyChild(String key) {
-		checkArgument(!getChildren().containsKey(key));
+		checkArgument(!children.containsKey(key));
 		return new EffectiveConfig(concatPath(path, key), config.provideNoKeyChild(key), callsRegistry);
 	}
 

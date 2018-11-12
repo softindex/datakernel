@@ -509,7 +509,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			AggregationPredicate dataInputFilterPredicate = aggregationToDataInputFilterPredicate.getValue();
 			StreamSupplier<T> output = streamSplitter.newOutput();
 			if (!dataInputFilterPredicate.equals(AggregationPredicates.alwaysTrue())) {
-				Predicate<T> filterPredicate = createFilterPredicate(inputClass, dataInputFilterPredicate, getClassLoader(), fieldTypes);
+				Predicate<T> filterPredicate = createFilterPredicate(inputClass, dataInputFilterPredicate, classLoader, fieldTypes);
 				output = output.apply(StreamFilter.create(filterPredicate));
 			}
 			Promise<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);

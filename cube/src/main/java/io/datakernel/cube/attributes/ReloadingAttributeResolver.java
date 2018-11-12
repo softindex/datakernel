@@ -63,10 +63,10 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	private void doReload() {
 		reloads++;
 		scheduledRunnable.cancel();
-		long reloadTimestamp = getEventloop().currentTimeMillis();
+		long reloadTimestamp = eventloop.currentTimeMillis();
 		reload(timestamp).whenComplete((result, throwable) -> {
 			if (throwable == null) {
-				reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
+				reloadTime.recordValue((int) (eventloop.currentTimeMillis() - reloadTimestamp));
 				cache.putAll(result);
 				timestamp = reloadTimestamp;
 				scheduleReload(reloadPeriod);
@@ -78,7 +78,6 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	}
 
 	private void scheduleReload(long period) {
-		Eventloop eventloop = getEventloop();
 		scheduledRunnable = eventloop.delay(period, this::doReload);
 	}
 
@@ -90,10 +89,10 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	@Override
 	public Promise<Void> start() {
 		if (reloadPeriod == 0) return Promise.complete();
-		long reloadTimestamp = getEventloop().currentTimeMillis();
+		long reloadTimestamp = eventloop.currentTimeMillis();
 		return reload(timestamp)
 				.whenResult(result -> {
-					reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
+					reloadTime.recordValue((int) (eventloop.currentTimeMillis() - reloadTimestamp));
 					cache.putAll(result);
 					timestamp = reloadTimestamp;
 					scheduleReload(reloadPeriod);

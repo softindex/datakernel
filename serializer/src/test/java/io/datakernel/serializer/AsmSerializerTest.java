@@ -1331,8 +1331,8 @@ public class AsmSerializerTest {
 
 		static {
 			for (TestEnum c : TestEnum.values()) {
-				if (CACHE.put(c.getValue(), c) != null)
-					throw new IllegalStateException("Duplicate code " + c.getValue());
+				if (CACHE.put(c.value, c) != null)
+					throw new IllegalStateException("Duplicate code " + c.value);
 			}
 		}
 

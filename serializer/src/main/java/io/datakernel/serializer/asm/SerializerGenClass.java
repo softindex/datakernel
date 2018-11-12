@@ -313,7 +313,7 @@ public class SerializerGenClass implements SerializerGen {
 		}
 
 		if (!implInterface && dataTypeIn.isInterface()) {
-			Expression expression = deserializeInterface(this.getRawType(), version, staticMethods, compatibilityLevel);
+			Expression expression = deserializeInterface(dataTypeIn, version, staticMethods, compatibilityLevel);
 			staticMethods.registerStaticDeserializeMethod(this, version, expression);
 			return;
 		}
@@ -338,7 +338,7 @@ public class SerializerGenClass implements SerializerGen {
 
 		Expression constructor;
 		if (factory == null) {
-			constructor = callConstructor(this.getRawType(), map, version);
+			constructor = callConstructor(dataTypeIn, map, version);
 		} else {
 			constructor = callFactory(map, version);
 		}
@@ -469,7 +469,7 @@ public class SerializerGenClass implements SerializerGen {
 	private Expression deserializeClassSimple(int version,
 	                                          SerializerBuilder.StaticMethods staticMethods,
 	                                          CompatibilityLevel compatibilityLevel) {
-		Expression local = let(constructor(this.getRawType()));
+		Expression local = let(constructor(dataTypeIn));
 
 		List<Expression> list = new ArrayList<>();
 		list.add(local);

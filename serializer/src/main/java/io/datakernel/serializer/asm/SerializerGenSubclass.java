@@ -125,13 +125,13 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods, compatibilityLevel), this.getRawType()));
+			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods, compatibilityLevel), dataType));
 		}
 		if (nullable) list.add(-startIndex, nullRef(getRawType()));
 
 		Variable subClassIndex = let(sub(call(arg(0), "readByte"), value(startIndex)));
 
-		staticMethods.registerStaticDeserializeMethod(this, version, cast(switchForPosition(subClassIndex, list), this.getRawType()));
+		staticMethods.registerStaticDeserializeMethod(this, version, cast(switchForPosition(subClassIndex, list), dataType));
 	}
 
 	@Override

@@ -70,7 +70,7 @@ public class HttpThrottlingServer {
 
 		@Override
 		public String toString() {
-			return "Load business logic : " + getLoadBusinessLogic();
+			return "Load business logic : " + loadBusinessLogic;
 		}
 	}
 
