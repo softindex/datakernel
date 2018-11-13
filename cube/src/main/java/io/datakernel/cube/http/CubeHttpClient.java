@@ -43,7 +43,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class CubeHttpClient implements ICube {
-	protected final Logger logger = LoggerFactory.getLogger(CubeHttpClient.class);
+	private static final Logger logger = LoggerFactory.getLogger(CubeHttpClient.class);
 
 	private final String url;
 	private final IAsyncHttpClient httpClient;

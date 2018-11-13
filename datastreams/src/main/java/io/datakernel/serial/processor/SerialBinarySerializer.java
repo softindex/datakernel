@@ -43,7 +43,7 @@ import static java.lang.Math.max;
  * @param <T> original type of data
  */
 public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToSerial<SerialBinarySerializer<T>, T, ByteBuf> {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private static final Logger logger = LoggerFactory.getLogger(SerialBinarySerializer.class);
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
 

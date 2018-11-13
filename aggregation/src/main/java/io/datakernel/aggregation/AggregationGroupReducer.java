@@ -37,7 +37,7 @@ import java.util.function.Function;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);
 
 	private final AggregationChunkStorage<C> storage;
 	private final AggregationStructure aggregation;

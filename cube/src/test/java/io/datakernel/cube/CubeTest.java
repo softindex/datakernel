@@ -16,8 +16,6 @@
 
 package io.datakernel.cube;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import io.datakernel.aggregation.*;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
@@ -32,9 +30,11 @@ import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.ActivePromisesRule;
+import io.datakernel.test.TestUtils;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
@@ -64,8 +64,7 @@ import static org.junit.Assert.*;
 
 @SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "rawtypes"})
 public class CubeTest {
-	private static Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(CubeTest.class);
+	private static final Logger logger = LoggerFactory.getLogger(CubeTest.class);
 
 	@Rule
 	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
@@ -74,7 +73,7 @@ public class CubeTest {
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	static {
-		root.setLevel(Level.TRACE);
+		TestUtils.enableLogging();
 	}
 
 	public static Cube newCube(Eventloop eventloop, ExecutorService executor, DefiningClassLoader classLoader, AggregationChunkStorage chunkStorage) {

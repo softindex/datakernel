@@ -42,7 +42,7 @@ import static io.datakernel.http.HttpMethod.GET;
 import static java.util.stream.Collectors.toList;
 
 public final class ReportingServiceServlet extends AsyncServletWithStats {
-	protected final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
+	private static final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
 
 	private final ICube cube;
 	private final TypeAdapterMapping mapping;

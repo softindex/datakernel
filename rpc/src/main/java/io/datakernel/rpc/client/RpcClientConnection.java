@@ -45,6 +45,8 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements Listener, RpcSender, JmxRefreshable {
+	private static final Logger logger = getLogger(RpcClientConnection.class);
+
 	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed.");
 	public static final Duration DEFAULT_TIMEOUT_PRECISION = Duration.ofMillis(10);
 
@@ -71,7 +73,6 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 		}
 	}
 
-	private final static Logger logger = getLogger(RpcClientConnection.class);
 	private final Eventloop eventloop;
 	private final RpcClient rpcClient;
 	private final RpcStream stream;

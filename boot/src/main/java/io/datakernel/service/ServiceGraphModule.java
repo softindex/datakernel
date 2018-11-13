@@ -80,7 +80,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * An application terminates if a circular dependency found.
  */
 public final class ServiceGraphModule extends AbstractModule implements Initializable<ServiceGraphModule> {
-	private final Logger logger = getLogger(getClass());
+	private static final Logger logger = getLogger(ServiceGraphModule.class);
 
 	private final Map<Class<?>, ServiceAdapter<?>> registeredServiceAdapters = new LinkedHashMap<>();
 	private final Set<Key<?>> excludedKeys = new LinkedHashSet<>();

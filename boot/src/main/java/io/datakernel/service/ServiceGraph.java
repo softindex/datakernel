@@ -55,8 +55,7 @@ import static java.util.stream.Collectors.toList;
  * {@link ServiceGraphModule}.
  */
 public final class ServiceGraph implements Initializable<ServiceGraph>, ConcurrentJmxMBean {
-
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private static final Logger logger = LoggerFactory.getLogger(ServiceGraph.class);
 
 	private Runnable startCallback;
 

@@ -61,7 +61,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
  */
 @SuppressWarnings("rawtypes")
 public final class DatagraphSerialization {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private static final Logger logger = LoggerFactory.getLogger(DatagraphSerialization.class);
 
 	/**
 	 * Store StreamIds as longs

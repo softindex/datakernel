@@ -53,7 +53,7 @@ import static java.util.Collections.emptyMap;
  */
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private static final Logger logger = LoggerFactory.getLogger(LogOTProcessor.class);
 
 	private final Eventloop eventloop;
 	private final LogManager<T> logManager;

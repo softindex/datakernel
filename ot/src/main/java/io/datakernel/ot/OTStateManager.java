@@ -39,7 +39,7 @@ import static io.datakernel.util.Utils.coalesce;
 import static java.util.Collections.*;
 
 public final class OTStateManager<K, D> implements EventloopService, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(OTStateManager.class);
+	private static final Logger logger = LoggerFactory.getLogger(OTStateManager.class);
 
 	private final Eventloop eventloop;
 

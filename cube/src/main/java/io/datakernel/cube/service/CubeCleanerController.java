@@ -36,7 +36,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
+	private static final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
 
 	public static final Duration DEFAULT_CHUNKS_CLEANUP_DELAY = Duration.ofMinutes(1);
 	public static final int DEFAULT_SNAPSHOTS_COUNT = 1;

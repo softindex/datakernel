@@ -38,7 +38,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 
 public final class JmxRegistry implements JmxRegistryMXBean {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
 
 	private static final String GENERIC_PARAM_NAME_FORMAT = "T%d=%s";
 
