@@ -145,7 +145,7 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		if (other instanceof CompletePromise) {
 			return Promise.of(fn.apply(getResult(), ((CompletePromise<U>) other).getResult()));
 		}
-		return other.thenApply(otherResult -> fn.apply(CompletePromise.this.getResult(), otherResult));
+		return other.thenApply(otherResult -> fn.apply(getResult(), otherResult));
 	}
 
 	@Override

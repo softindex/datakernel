@@ -48,7 +48,7 @@ import java.util.concurrent.Executors;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 class StressClient {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 	private InetSocketAddress address = new InetSocketAddress("localhost", 5560);
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private ExecutorService executor = Executors.newCachedThreadPool();

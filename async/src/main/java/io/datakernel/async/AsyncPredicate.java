@@ -23,7 +23,7 @@ public interface AsyncPredicate<T> {
 	Promise<Boolean> test(T t);
 
 	default AsyncPredicate<T> negate() {
-		return t -> this.test(t).thenApply(b -> !b);
+		return t -> test(t).thenApply(b -> !b);
 	}
 
 	default AsyncPredicate<T> and(AsyncPredicate<? super T> other) {

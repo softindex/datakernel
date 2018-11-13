@@ -28,7 +28,7 @@ public class IdGeneratorSqlTest {
 	@Before
 	public void before() throws IOException, SQLException {
 		dataSource = dataSource("test.properties");
-		executeScript(dataSource, this.getClass());
+		executeScript(dataSource, getClass());
 		sequence = SqlAtomicSequence.ofLastInsertID("sequence", "next");
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}

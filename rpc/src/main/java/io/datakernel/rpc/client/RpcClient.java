@@ -79,7 +79,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public static final MemSize DEFAULT_PACKET_SIZE = SerialBinarySerializer.DEFAULT_INITIAL_BUFFER_SIZE;
 	public static final MemSize MAX_PACKET_SIZE = SerialBinarySerializer.MAX_SIZE;
 
-	private Logger logger = getLogger(this.getClass());
+	private Logger logger = getLogger(getClass());
 
 	private final Eventloop eventloop;
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
@@ -294,12 +294,12 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		} else {
 			if (connectTimeoutMillis != 0) {
 				eventloop.delayBackground(connectTimeoutMillis, () -> {
-					if (running && this.startPromise != null) {
+					if (running && startPromise != null) {
 						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
 								connectTimeoutMillis / 1000.0);
-						this.startPromise.setException(new InterruptedException(errorMsg));
+						startPromise.setException(new InterruptedException(errorMsg));
 						running = false;
-						this.startPromise = null;
+						startPromise = null;
 					}
 				});
 			}
@@ -448,8 +448,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return new IRpcClient() {
 			@Override
 			public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-				RpcClient.this.eventloop.execute(() ->
-						RpcClient.this.requestSender.sendRequest(request, timeout,
+				eventloop.execute(() ->
+						requestSender.sendRequest(request, timeout,
 								new Callback<O>() {
 									@Override
 									public void set(O result) {

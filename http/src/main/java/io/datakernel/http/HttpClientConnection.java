@@ -229,7 +229,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param request request for sending
 	 */
 	public Promise<HttpResponse> send(HttpRequest request) {
-		this.callback = new SettablePromise<>();
+		callback = new SettablePromise<>();
 		switchPool(client.poolReadWrite);
 		HttpHeaderValue connectionHeader = CONNECTION_KEEP_ALIVE_HEADER;
 		if (client.maxKeepAliveRequests != -1) {
@@ -240,7 +240,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		request.setHeader(CONNECTION, connectionHeader);
 		writeHttpMessage(request);
 		readHttpMessage();
-		return this.callback;
+		return callback;
 	}
 
 	/**

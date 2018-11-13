@@ -163,14 +163,14 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert array == byteBuffer.array();
 		assert byteBuffer.limit() == writePosition;
-		this.readPosition = byteBuffer.position();
+		readPosition = byteBuffer.position();
 	}
 
 	public void ofWriteByteBuffer(ByteBuffer byteBuffer) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert array == byteBuffer.array();
 		assert byteBuffer.limit() == array.length;
-		this.writePosition = byteBuffer.position();
+		writePosition = byteBuffer.position();
 	}
 
 	// getters & setters
@@ -196,13 +196,13 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	public void readPosition(int pos) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert pos <= writePosition;
-		this.readPosition = pos;
+		readPosition = pos;
 	}
 
 	public void writePosition(int pos) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert pos >= readPosition && pos <= array.length;
-		this.writePosition = pos;
+		writePosition = pos;
 	}
 
 	public void moveReadPosition(int delta) {
@@ -264,9 +264,9 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	public int drainTo(byte[] array, int offset, int length) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert length >= 0 && (offset + length) <= array.length;
-		assert this.readPosition + length <= this.writePosition;
-		System.arraycopy(this.array, this.readPosition, array, offset, length);
-		this.readPosition += length;
+		assert readPosition + length <= writePosition;
+		System.arraycopy(this.array, readPosition, array, offset, length);
+		readPosition += length;
 		return length;
 	}
 

@@ -48,11 +48,11 @@ public final class ThrottlingController implements EventloopJmxMBean, EventloopI
 
 		@Override
 		protected int next(int nbits) {
-			long x = this.prev;
+			long x = prev;
 			x ^= (x << 21);
 			x ^= (x >>> 35);
 			x ^= (x << 4);
-			this.prev = x;
+			prev = x;
 			x &= ((1L << nbits) - 1);
 			return (int) x;
 		}
@@ -213,7 +213,7 @@ public final class ThrottlingController implements EventloopJmxMBean, EventloopI
 			infoRoundsZeroThrottling++;
 		infoRounds++;
 
-		this.throttling = (float) newThrottling;
+		throttling = (float) newThrottling;
 	}
 
 	// region NOP

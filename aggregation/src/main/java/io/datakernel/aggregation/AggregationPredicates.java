@@ -672,10 +672,10 @@ public class AggregationPredicates {
 				return ((PredicateNot) predicate).predicate.simplify();
 
 			if (predicate instanceof PredicateEq)
-				return new PredicateNotEq(((PredicateEq) this.predicate).key, ((PredicateEq) this.predicate).value);
+				return new PredicateNotEq(((PredicateEq) predicate).key, ((PredicateEq) predicate).value);
 
 			if (predicate instanceof PredicateNotEq)
-				return new PredicateEq(((PredicateNotEq) this.predicate).key, ((PredicateNotEq) this.predicate).value);
+				return new PredicateEq(((PredicateNotEq) predicate).key, ((PredicateNotEq) predicate).value);
 
 			return not(predicate.simplify());
 		}

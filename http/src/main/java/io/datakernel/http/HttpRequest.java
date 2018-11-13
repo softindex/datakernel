@@ -264,7 +264,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		if (method == POST
 				&& contentType != null
 				&& contentType.getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
-				&& this.body.readPosition() != this.body.writePosition()) {
+				&& body.readPosition() != body.writePosition()) {
 			postParameters = UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.readPosition(), body.readRemaining()));
 		} else {
 			postParameters = Collections.emptyMap();

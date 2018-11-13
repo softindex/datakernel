@@ -56,8 +56,8 @@ public final class RpcStream {
 			sender = new AbstractStreamSupplier<RpcMessage>() {
 				@Override
 				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
-					RpcStream.this.downstreamDataAcceptor = dataAcceptor;
-					receiver.getSupplier().resume(RpcStream.this.listener);
+					downstreamDataAcceptor = dataAcceptor;
+					receiver.getSupplier().resume(listener);
 					ready = true;
 				}
 
@@ -69,7 +69,7 @@ public final class RpcStream {
 
 				@Override
 				protected void onError(Throwable t) {
-					RpcStream.this.listener.onClosedWithError(t);
+					listener.onClosedWithError(t);
 					ready = false;
 				}
 			};
@@ -77,7 +77,7 @@ public final class RpcStream {
 			sender = new AbstractStreamSupplier<RpcMessage>() {
 				@Override
 				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
-					RpcStream.this.downstreamDataAcceptor = dataAcceptor;
+					downstreamDataAcceptor = dataAcceptor;
 					ready = true;
 				}
 
@@ -88,7 +88,7 @@ public final class RpcStream {
 
 				@Override
 				protected void onError(Throwable t) {
-					RpcStream.this.listener.onClosedWithError(t);
+					listener.onClosedWithError(t);
 					ready = false;
 				}
 			};
@@ -97,12 +97,12 @@ public final class RpcStream {
 		receiver = new AbstractStreamConsumer<RpcMessage>() {
 			@Override
 			protected void onStarted() {
-				getSupplier().resume(RpcStream.this.listener);
+				getSupplier().resume(listener);
 			}
 
 			@Override
 			protected Promise<Void> onEndOfStream() {
-				RpcStream.this.listener.onReadEndOfStream();
+				listener.onReadEndOfStream();
 				return Promise.complete();
 			}
 

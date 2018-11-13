@@ -75,9 +75,9 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 	@SuppressWarnings("unchecked")
 	public <L extends D, R extends D> OTSystemImpl<D> withTransformFunction(Class<? super L> leftType, Class<? super R> rightType,
 			TransformFunction<D, L, R> transformer) {
-		this.transformers.put(new KeyPair(leftType, rightType), transformer);
+		transformers.put(new KeyPair(leftType, rightType), transformer);
 		if (leftType != rightType) {
-			this.transformers.put(new KeyPair(rightType, leftType), (TransformFunction<D, R, L>) (left, right) -> {
+			transformers.put(new KeyPair(rightType, leftType), (TransformFunction<D, R, L>) (left, right) -> {
 				TransformResult<? extends D> transform = transformer.transform(right, left);
 				if (transform.hasConflict()) {
 					if (transform.resolution == ConflictResolution.LEFT)
@@ -95,19 +95,19 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 	@SuppressWarnings("unchecked")
 	public <O1 extends D, O2 extends D> OTSystemImpl<D> withSquashFunction(Class<? super O1> opType1, Class<? super O2> opType2,
 			SquashFunction<D, O1, O2> squashFunction) {
-		this.squashers.put(new KeyPair(opType1, opType2), squashFunction);
+		squashers.put(new KeyPair(opType1, opType2), squashFunction);
 		return this;
 	}
 
 	@SuppressWarnings("unchecked")
 	public <O extends D> OTSystemImpl<D> withInvertFunction(Class<? super O> opType, InvertFunction<O> inverter) {
-		this.inverters.put((Class<D>) opType, (InvertFunction<D>) inverter);
+		inverters.put((Class<D>) opType, (InvertFunction<D>) inverter);
 		return this;
 	}
 
 	@SuppressWarnings("unchecked")
 	public <O extends D> OTSystemImpl<D> withEmptyPredicate(Class<? super O> opType, EmptyPredicate<O> emptyChecker) {
-		this.emptyPredicates.put((Class<D>) opType, (EmptyPredicate<D>) emptyChecker);
+		emptyPredicates.put((Class<D>) opType, (EmptyPredicate<D>) emptyChecker);
 		return this;
 	}
 
@@ -161,13 +161,13 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 			TransformFunction<D, D, D> transformer = (TransformFunction<D, D, D>) transformers.get(key);
 			TransformResult<D> transform1 = (TransformResult<D>) transformer.transform(left, right);
 			if (transform1.hasConflict()) return transform1;
-			TransformResult<D> transform2 = this.doTransform(transform1.right, rightDiffs.subList(1, rightDiffs.size()));
+			TransformResult<D> transform2 = doTransform(transform1.right, rightDiffs.subList(1, rightDiffs.size()));
 			if (transform2.hasConflict()) return transform2;
 			return TransformResult.of(concat(transform1.left, transform2.left), transform2.right);
 		}
-		TransformResult<D> transform1 = this.doTransform(leftDiffs.subList(0, 1), rightDiffs);
+		TransformResult<D> transform1 = doTransform(leftDiffs.subList(0, 1), rightDiffs);
 		if (transform1.hasConflict()) return transform1;
-		TransformResult<D> transform2 = this.doTransform(leftDiffs.subList(1, leftDiffs.size()), transform1.left);
+		TransformResult<D> transform2 = doTransform(leftDiffs.subList(1, leftDiffs.size()), transform1.left);
 		if (transform2.hasConflict()) return transform2;
 		return TransformResult.of(transform2.left, concat(transform1.right, transform2.right));
 	}

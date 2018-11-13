@@ -150,9 +150,9 @@ public final class GuiceUtils {
 			@Override
 			public void configure(Binder binder) {
 				Map<Key<?>, Key<?>> finalRemappedKeys = remappedKeys;
-				Set<Key<?>> finalExposedKeys = this.exposedKeys;
-				this.remappedKeys = null;
-				this.exposedKeys = null;
+				Set<Key<?>> finalExposedKeys = exposedKeys;
+				remappedKeys = null;
+				exposedKeys = null;
 				binder.install(new PrivateModule() {
 					@Override
 					protected void configure() {

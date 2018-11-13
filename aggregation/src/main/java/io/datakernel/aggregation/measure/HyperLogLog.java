@@ -58,8 +58,8 @@ public final class HyperLogLog implements Comparable<HyperLogLog> {
 
 	public void addToRegister(int register, int valueHash) {
 		int zeros = Integer.numberOfTrailingZeros(valueHash) + 1;
-		if (this.registers[register] < zeros) {
-			this.registers[register] = (byte) zeros;
+		if (registers[register] < zeros) {
+			registers[register] = (byte) zeros;
 		}
 	}
 

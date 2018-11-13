@@ -84,8 +84,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		checkArgument(chunks.put(chunk.getChunkId(), chunk) == null,
 				() -> "" +
 						"Trying to add existing chunk: " + chunk +
-						"\n this: " + this.toString() +
-						"\n chunks: " + toLimitedString(this.chunks.keySet(), 100));
+						"\n this: " + toString() +
+						"\n chunks: " + toLimitedString(chunks.keySet(), 100));
 
 		for (int size = 0; size <= aggregation.getKeys().size(); size++) {
 			RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
@@ -100,8 +100,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		checkArgument(chunks.remove(chunk.getChunkId()) != null,
 				() -> "" +
 						"Trying to remove unknown chunk: " + chunk +
-						"\n this: " + this.toString() +
-						"\n chunks: " + toLimitedString(this.chunks.keySet(), 100));
+						"\n this: " + toString() +
+						"\n chunks: " + toLimitedString(chunks.keySet(), 100));
 
 		for (int size = 0; size <= aggregation.getKeys().size(); size++) {
 			RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
@@ -113,9 +113,9 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	void initIndex() {
-		this.prefixRanges = new RangeTree[aggregation.getKeys().size() + 1];
+		prefixRanges = new RangeTree[aggregation.getKeys().size() + 1];
 		for (int size = 0; size <= aggregation.getKeys().size(); size++) {
-			this.prefixRanges[size] = RangeTree.create();
+			prefixRanges[size] = RangeTree.create();
 		}
 	}
 

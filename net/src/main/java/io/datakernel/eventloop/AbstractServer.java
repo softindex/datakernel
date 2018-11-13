@@ -57,7 +57,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @SuppressWarnings("WeakerAccess, unused")
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializable<S>, EventloopJmxMBeanEx {
-	protected Logger logger = getLogger(this.getClass());
+	protected Logger logger = getLogger(getClass());
 
 	protected final Eventloop eventloop;
 
@@ -207,7 +207,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		for (InetSocketAddress address : addresses) {
 			try {
 				ServerSocketChannel serverSocketChannel = eventloop.listen(address, serverSocketSettings,
-						channel -> AbstractServer.this.doAccept(channel, address, ssl));
+						channel -> doAccept(channel, address, ssl));
 				serverSocketChannels.add(serverSocketChannel);
 			} catch (IOException e) {
 				logger.error("Can't listen on [" + address + "]: " + this, e);
@@ -303,7 +303,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		WorkerServer workerServer = getWorkerServer();
 		Eventloop workerServerEventloop = workerServer.getEventloop();
 
-		if (workerServerEventloop == this.eventloop) {
+		if (workerServerEventloop == eventloop) {
 			workerServer.doAccept(channel, localAddress, remoteAddress, ssl, socketSettings);
 		} else {
 			onAccept(channel, localAddress, remoteAddress, ssl);

@@ -53,7 +53,7 @@ import static java.util.Collections.emptyMap;
  */
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private final Eventloop eventloop;
 	private final LogManager<T> logManager;
@@ -129,7 +129,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	private StreamSupplierWithResult<T, Map<String, LogPositionDiff>> getSupplier() {
 		PromisesAccumulator<Map<String, LogPositionDiff>> result = PromisesAccumulator.create(new HashMap<>());
 		StreamUnion<T> streamUnion = StreamUnion.create();
-		for (String partition : this.partitions) {
+		for (String partition : partitions) {
 			String logName = logName(partition);
 			LogPosition logPosition = state.getPositions().get(logName);
 			if (logPosition == null) {

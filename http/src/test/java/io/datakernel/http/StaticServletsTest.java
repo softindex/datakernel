@@ -189,7 +189,7 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		StaticLoader resourceLoader = StaticLoaders.ofClassPath(executor, this.getClass());
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(executor, getClass());
 		StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
 		HttpRequest request = get("http://test.com:8080/testFile.txt");

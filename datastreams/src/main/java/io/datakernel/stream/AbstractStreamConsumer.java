@@ -39,7 +39,7 @@ import static java.util.Collections.emptySet;
  * @param <T> type of received item
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final long createTick = eventloop.tick();

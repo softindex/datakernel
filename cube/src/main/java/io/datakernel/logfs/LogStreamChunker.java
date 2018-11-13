@@ -105,7 +105,7 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 											newConsumer.cancel();
 											return;
 										}
-										this.currentConsumer = newConsumer;
+										currentConsumer = newConsumer;
 									}))
 							.toVoid();
 				});

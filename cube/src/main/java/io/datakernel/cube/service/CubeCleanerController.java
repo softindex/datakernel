@@ -84,8 +84,8 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 		return this;
 	}
 
-	public CubeCleanerController<K, D, C> withExtraSnapshotCount(int extraSnapshotCount) {
-		this.extraSnapshotsCount = extraSnapshotCount;
+	public CubeCleanerController<K, D, C> withExtraSnapshotsCount(int extraSnapshotsCount) {
+		this.extraSnapshotsCount = extraSnapshotsCount;
 		return this;
 	}
 

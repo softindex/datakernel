@@ -286,7 +286,7 @@ public abstract class HttpMessage {
 	 */
 	protected void writeHeaders(ByteBuf buf) {
 		assert !isRecycled();
-		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : this.headers.entrySet()) {
+		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : headers.entrySet()) {
 			HttpHeader header = entry.getKey();
 
 			buf.put(CR);
@@ -306,7 +306,7 @@ public abstract class HttpMessage {
 	protected int estimateSize(int firstLineSize) {
 		assert !isRecycled();
 		int size = firstLineSize;
-		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : this.headers.entrySet()) {
+		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : headers.entrySet()) {
 			HttpHeader header = entry.getKey();
 			size += 2 + header.size() + 2 + entry.getValue().estimateSize(); // CR,LF,header,": ",value
 		}

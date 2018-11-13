@@ -53,14 +53,14 @@ public final class ScheduledRunnable implements Comparable<ScheduledRunnable> {
 
 	@SuppressWarnings("AssignmentToNull") // runnable has been cancelled
 	public void cancel() {
-		this.cancelled = true;
-		this.runnable = null;
+		cancelled = true;
+		runnable = null;
 	}
 
 	@SuppressWarnings("AssignmentToNull") // runnable has been completed
 	public void complete() {
-		this.complete = true;
-		this.runnable = null;
+		complete = true;
+		runnable = null;
 	}
 
 	public long getTimestamp() {

@@ -90,7 +90,7 @@ public final class Context {
 	}
 
 	public void addStaticConstant(String field, Object value) {
-		this.staticConstants.put(field, value);
+		staticConstants.put(field, value);
 	}
 
 	public Type[] getArgumentTypes() {

@@ -39,7 +39,7 @@ public interface SerializerGen {
 		}
 
 		public void add(int version) {
-			this.versions.add(version);
+			versions.add(version);
 		}
 
 		public void addAll(Collection<Integer> versions) {

@@ -44,7 +44,7 @@ import static java.lang.Math.max;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToSerial<SerialBinarySerializer<T>, T, ByteBuf> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
 
@@ -151,7 +151,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 							flushing = false;
 							doFlush();
 						} else {
-							this.close(e);
+							close(e);
 						}
 					});
 		} else {

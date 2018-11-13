@@ -314,7 +314,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public void breakEventloop() {
-		this.breakEventloop = true;
+		breakEventloop = true;
 		if (breakEventloop && selector != null) {
 			selector.wakeup();
 		}
@@ -1055,14 +1055,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
 			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
 	public void startExtendedMonitoring() {
-		this.monitoring = true;
+		monitoring = true;
 	}
 
 	@JmxOperation(description = "disable monitoring " +
 			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
 			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
 	public void stopExtendedMonitoring() {
-		this.monitoring = false;
+		monitoring = false;
 	}
 
 	@JmxAttribute(description = "when monitoring is enabled more stats are collected, but it causes more overhead " +

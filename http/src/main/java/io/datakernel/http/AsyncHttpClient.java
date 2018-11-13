@@ -426,7 +426,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			assert poolReadWrite.isEmpty();
 			promise.set(null);
 		} else {
-			this.closePromise = promise;
+			closePromise = promise;
 		}
 		return promise;
 	}

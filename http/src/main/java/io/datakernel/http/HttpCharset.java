@@ -78,7 +78,7 @@ public final class HttpCharset extends CaseInsensitiveTokenMap.Token {
 	}
 
 	private HttpCharset addCharset(Charset charset) {
-		this.javaCharset = charset;
+		javaCharset = charset;
 		java2http.put(charset, this);
 		return this;
 	}

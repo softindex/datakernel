@@ -32,7 +32,7 @@ final class TypedModsMap {
 		private Map<Integer, Builder> children = new LinkedHashMap<>();
 
 		public void add(SerializerGenBuilder serializerGenBuilder) {
-			this.mods.add(serializerGenBuilder);
+			mods.add(serializerGenBuilder);
 		}
 
 		private Builder ensureChild(int childKey) {
@@ -54,7 +54,7 @@ final class TypedModsMap {
 		}
 
 		public TypedModsMap build() {
-			if (this.mods.isEmpty() && this.children.isEmpty())
+			if (mods.isEmpty() && children.isEmpty())
 				return empty();
 			return new TypedModsMap(this);
 		}
@@ -109,7 +109,7 @@ final class TypedModsMap {
 
 	@Override
 	public String toString() {
-		StringBuilder sb = new StringBuilder(32).append(simpleName(this.getClass())).append("{");
+		StringBuilder sb = new StringBuilder(32).append(simpleName(getClass())).append("{");
 		sb.append("mods=").append(mods);
 		sb.append("children=").append(children);
 		return sb.append("}").toString();

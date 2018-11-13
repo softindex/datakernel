@@ -37,23 +37,23 @@ public interface SerialInput<T> {
 	}
 
 	default <R> SerialInput<R> apply(SerialSupplierFunction<R, SerialSupplier<T>> fn) {
-		return input -> SerialInput.this.set(fn.apply(input));
+		return input -> set(fn.apply(input));
 	}
 
 	default <R> SerialInput<R> transform(Function<? super R, ? extends T> fn) {
-		return input -> SerialInput.this.set(input.transform(fn));
+		return input -> set(input.transform(fn));
 	}
 
 	default <R> SerialInput<R> transformAsync(Function<? super R, ? extends Promise<T>> fn) {
-		return input -> SerialInput.this.set(input.transformAsync(fn));
+		return input -> set(input.transformAsync(fn));
 	}
 
 	default SerialInput<T> filter(Predicate<? super T> predicate) {
-		return input -> SerialInput.this.set(input.filter(predicate));
+		return input -> set(input.filter(predicate));
 	}
 
 	default SerialInput<T> peek(Consumer<? super T> peek) {
-		return input -> SerialInput.this.set(input.peek(peek));
+		return input -> set(input.peek(peek));
 	}
 
 }

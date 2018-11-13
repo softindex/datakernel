@@ -63,7 +63,7 @@ import static java.util.stream.Collectors.toList;
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class Aggregation implements IAggregation, Initializable<Aggregation>, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;
 	public static final int DEFAULT_REDUCER_BUFFER_SIZE = StreamReducer.DEFAULT_BUFFER_SIZE;
@@ -230,7 +230,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 				keysToMap(getKeys().stream(), structure.getKeyTypes()::get),
 				classLoader);
 		Set<String> measureFieldKeys = measureFields.keySet();
-		List<String> measures = this.getMeasureTypes().keySet().stream().filter(measureFieldKeys::contains).collect(toList());
+		List<String> measures = getMeasureTypes().keySet().stream().filter(measureFieldKeys::contains).collect(toList());
 
 		Class<T> recordClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
@@ -276,7 +276,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> StreamSupplier<T> query(AggregationQuery query, Class<T> outputClass, DefiningClassLoader queryClassLoader) {
-		checkArgument(iterate(queryClassLoader, Objects::nonNull, ClassLoader::getParent).anyMatch(isEqual(this.classLoader)),
+		checkArgument(iterate(queryClassLoader, Objects::nonNull, ClassLoader::getParent).anyMatch(isEqual(classLoader)),
 				"Unrelated queryClassLoader");
 		List<String> fields = getMeasures().stream().filter(query.getMeasures()::contains).collect(toList());
 		List<AggregationChunk> allChunks = state.findChunks(query.getPredicate(), fields);
@@ -372,13 +372,13 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 
 		logger.info("Query plan for {} in aggregation {}: {}", queryKeys, this, plan);
 
-		boolean alreadySorted = this.getKeys().subList(0, min(this.getKeys().size(), queryKeys.size())).equals(queryKeys);
+		boolean alreadySorted = getKeys().subList(0, min(getKeys().size(), queryKeys.size())).equals(queryKeys);
 
 		List<SequenceStream<S>> sequenceStreams = new ArrayList<>();
 
 		for (QueryPlan.Sequence sequence : plan.getSequences()) {
 			Class<S> sequenceClass = createRecordClass(structure,
-					this.getKeys(),
+					getKeys(),
 					sequence.getChunksFields(),
 					classLoader);
 

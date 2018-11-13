@@ -51,7 +51,7 @@ import static java.nio.file.StandardOpenOption.READ;
  */
 @SuppressWarnings("rawtypes") // Jmx doesn't work with generic types
 public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	public static final MemSize DEFAULT_READ_BLOCK_SIZE = MemSize.kilobytes(256);
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);

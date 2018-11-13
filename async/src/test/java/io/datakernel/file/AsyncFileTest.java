@@ -42,7 +42,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertSame;
 
 public class AsyncFileTest {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	@Rule
 	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();

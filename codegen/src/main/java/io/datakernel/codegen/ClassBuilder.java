@@ -48,7 +48,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
  */
 @SuppressWarnings("unchecked")
 public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	public static final String DEFAULT_CLASS_NAME = ClassBuilder.class.getPackage().getName() + ".Class";
 	private static final AtomicInteger COUNTER = new AtomicInteger();

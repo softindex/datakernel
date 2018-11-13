@@ -85,7 +85,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	public MemSize getCacheSizeLimit() {
-		return this.cacheSizeLimit;
+		return cacheSizeLimit;
 	}
 
 	public Promise<MemSize> getTotalCacheSize() {
@@ -182,10 +182,10 @@ public class CachedFsClient implements FsClient, EventloopService {
 		return mainClient.download(fileName, sizeInCache, size)
 				.thenCompose(supplier -> {
 					long toBeCached = sizeInMain - sizeInCache;
-					if (this.downloadingNowSize + toBeCached > cacheSizeLimit.toLong() || toBeCached > cacheSizeLimit.toLong() * (1 - LOAD_FACTOR)) {
+					if (downloadingNowSize + toBeCached > cacheSizeLimit.toLong() || toBeCached > cacheSizeLimit.toLong() * (1 - LOAD_FACTOR)) {
 						return Promise.of(supplier);
 					}
-					this.downloadingNowSize += toBeCached;
+					downloadingNowSize += toBeCached;
 
 					return ensureSpace()
 							.thenApply($ -> {
@@ -200,7 +200,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 										.withEndOfStream(eos -> eos
 												.both(splitter.getProcessResult())
 												.thenCompose($2 -> {
-													this.totalCacheSize += toBeCached;
+													totalCacheSize += toBeCached;
 													return updateCacheStats(fileName);
 												})
 												.whenResult($2 -> downloadingNowSize -= toBeCached));
@@ -250,7 +250,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 						.thenApply(listOfMeta -> listOfMeta.stream().mapToLong(FileMetadata::getSize).sum())
 						.thenCompose(size -> cacheClient.delete(glob)
 								.thenApply($ -> size))
-						.whenResult(size -> this.totalCacheSize -= size),
+						.whenResult(size -> totalCacheSize -= size),
 				mainClient.delete(glob));
 	}
 
@@ -297,7 +297,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 						.map(fullCacheStat -> cacheClient
 								.delete(fullCacheStat.getFileMetadata().getFilename())
 								.whenResult($ -> {
-									this.totalCacheSize -= fullCacheStat.getFileMetadata().getSize();
+									totalCacheSize -= fullCacheStat.getFileMetadata().getSize();
 									cacheStats.remove(fullCacheStat.getFileMetadata().getFilename());
 								}))));
 	}

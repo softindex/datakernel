@@ -29,7 +29,7 @@ import java.net.InetAddress;
 import java.util.Map;
 
 public final class RpcServerConnection implements RpcStream.Listener, JmxRefreshable {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private final RpcServer rpcServer;
 	private final RpcStream stream;

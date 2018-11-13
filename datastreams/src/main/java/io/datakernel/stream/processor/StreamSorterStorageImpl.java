@@ -49,7 +49,7 @@ import static java.nio.file.StandardOpenOption.*;
  * @param <T> type of storing data
  */
 public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	public static final String DEFAULT_FILE_PATTERN = "%d";
 	public static final MemSize DEFAULT_SORTER_BLOCK_SIZE = MemSize.kilobytes(256);

@@ -42,8 +42,8 @@ public final class SerialSuppliers {
 
 			@Override
 			protected Promise<T> doGet() {
-				T item = this.thisItem;
-				this.thisItem = null;
+				T item = thisItem;
+				thisItem = null;
 				return Promise.of(item);
 			}
 		};
@@ -318,8 +318,8 @@ public final class SerialSuppliers {
 			protected Promise<T> doGet() {
 				assert pending == null;
 				if (prefetched != null || endOfStream) {
-					T result = this.prefetched;
-					this.prefetched = null;
+					T result = prefetched;
+					prefetched = null;
 					tryPrefetch();
 					return Promise.of(result);
 				}

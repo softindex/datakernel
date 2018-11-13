@@ -377,7 +377,7 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 
 	@Override
 	public Promise<Void> backup(OTCommit<Long, D> commit, List<D> snapshot) {
-		checkState(this.tableBackup != null);
+		checkState(tableBackup != null);
 		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {

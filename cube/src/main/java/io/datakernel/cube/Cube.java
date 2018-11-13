@@ -169,7 +169,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public Cube withAttribute(String attribute, AttributeResolver resolver) {
-		checkArgument(!this.attributes.containsKey(attribute), "Attribute %s has already been defined", attribute);
+		checkArgument(!attributes.containsKey(attribute), "Attribute %s has already been defined", attribute);
 		int pos = attribute.indexOf('.');
 		if (pos == -1)
 			throw new IllegalArgumentException();
@@ -324,11 +324,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	public void addComputedMeasure(String measureId, ComputedMeasure computedMeasure) {
 		checkState(aggregations.isEmpty());
-		this.computedMeasures.put(measureId, computedMeasure);
+		computedMeasures.put(measureId, computedMeasure);
 	}
 
 	public void addRelation(String child, String parent) {
-		this.childParentRelations.put(child, parent);
+		childParentRelations.put(child, parent);
 	}
 
 	public void addDimension(String dimensionId, FieldType type) {
@@ -464,7 +464,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	public <T> LogDataConsumer<T, CubeDiff> logStreamConsumer(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
 			AggregationPredicate predicate) {
-		return () -> this.consume(inputClass, dimensionFields, measureFields, predicate)
+		return () -> consume(inputClass, dimensionFields, measureFields, predicate)
 				.transformResult(result -> result.thenApply(Collections::singletonList));
 	}
 
@@ -774,7 +774,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	private DefiningClassLoader getQueryClassLoader(CubeClassLoaderCache.Key key) {
 		if (classLoaderCache == null)
-			return this.classLoader;
+			return classLoader;
 		return classLoaderCache.getOrCreate(key);
 	}
 

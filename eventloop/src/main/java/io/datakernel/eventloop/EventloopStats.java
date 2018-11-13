@@ -92,7 +92,7 @@ public final class EventloopStats implements EventloopInspector {
 	@Override
 	public void onUpdateSelectorSelectTimeout(long selectorSelectTimeout) {
 		this.selectorSelectTimeout.recordValue((int) selectorSelectTimeout);
-		if (selectorSelectTimeout < 0) this.selectOverdues.recordEvent();
+		if (selectorSelectTimeout < 0) selectOverdues.recordEvent();
 		if(next != null){
 			next.onUpdateSelectorSelectTimeout(selectorSelectTimeout);
 		}

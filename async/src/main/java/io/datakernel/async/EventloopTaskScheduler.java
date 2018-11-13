@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 
 public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private final Eventloop eventloop;
 	private final AsyncSupplier<?> task;

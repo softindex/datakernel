@@ -61,23 +61,23 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 
 	@Override
 	public void resetStats() {
-		this.count = 0;
-		this.lastExceptionTimestamp = 0;
+		count = 0;
+		lastExceptionTimestamp = 0;
 
-		this.exceptionClass = null;
-		this.throwable = null;
-		this.context = null;
+		exceptionClass = null;
+		throwable = null;
+		context = null;
 	}
 
 	@Override
 	public void add(ExceptionStats another) {
-		this.count += another.count;
-		if (another.lastExceptionTimestamp >= this.lastExceptionTimestamp) {
-			this.lastExceptionTimestamp = another.lastExceptionTimestamp;
+		count += another.count;
+		if (another.lastExceptionTimestamp >= lastExceptionTimestamp) {
+			lastExceptionTimestamp = another.lastExceptionTimestamp;
 
-			this.exceptionClass = another.exceptionClass;
-			this.throwable = another.throwable;
-			this.context = another.context;
+			exceptionClass = another.exceptionClass;
+			throwable = another.throwable;
+			context = another.context;
 		}
 	}
 

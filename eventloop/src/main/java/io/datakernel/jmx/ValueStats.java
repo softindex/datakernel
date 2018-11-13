@@ -494,11 +494,11 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		// histogram
 		if (addedStats == 0) {
 			if (anotherStats.histogramLevels != null) {
-				this.histogramLevels = Arrays.copyOf(anotherStats.histogramLevels, anotherStats.histogramLevels.length);
-				this.histogramValues = Arrays.copyOf(anotherStats.histogramValues, anotherStats.histogramValues.length);
+				histogramLevels = Arrays.copyOf(anotherStats.histogramLevels, anotherStats.histogramLevels.length);
+				histogramValues = Arrays.copyOf(anotherStats.histogramValues, anotherStats.histogramValues.length);
 			}
 		} else {
-			if (this.histogramLevels != null) {
+			if (histogramLevels != null) {
 				for (int i = 0; i < histogramValues.length; i++) {
 					histogramValues[i] += anotherStats.histogramValues[i];
 				}

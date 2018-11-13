@@ -483,7 +483,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 					return Promise.complete();
 				}
 				return Promises.all(updateHeads(), updatePullRequests())
-						.whenResult($ -> this.updateTimestamp = now.currentTimeMillis());
+						.whenResult($ -> updateTimestamp = now.currentTimeMillis());
 			}
 
 			private Promise<Void> doUpdateHeads() {

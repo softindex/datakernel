@@ -92,7 +92,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			next = consumer;
 		} else {
 			assert !isComplete() : "Promise has already been completed";
-			final BiConsumer<? super T, Throwable> finalNext = this.next;
+			final BiConsumer<? super T, Throwable> finalNext = next;
 			next = (BiConsumer<T, Throwable>) (result, error) -> {
 				finalNext.accept(result, error);
 				consumer.accept(result, error);
@@ -261,7 +261,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 				if (otherResult != NO_RESULT) {
 					onBothResults(result, otherResult);
 				} else {
-					this.thisResult = result;
+					thisResult = result;
 				}
 			} else {
 				onAnyException(e);

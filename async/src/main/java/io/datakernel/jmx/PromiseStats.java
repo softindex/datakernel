@@ -76,14 +76,14 @@ public class PromiseStats {
 	}
 
 	public <T> BiConsumer<T, Throwable> recordStats() {
-		this.activePromises++;
+		activePromises++;
 		long before = currentTimeMillis();
-		this.lastStartTimestamp = before;
+		lastStartTimestamp = before;
 		return (value, throwable) -> {
-			this.activePromises--;
+			activePromises--;
 			long now = currentTimeMillis();
 			long durationMillis = now - before;
-			this.lastCompleteTimestamp = now;
+			lastCompleteTimestamp = now;
 			duration.recordValue(durationMillis);
 
 			if (throwable != null) {

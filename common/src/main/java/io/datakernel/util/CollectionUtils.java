@@ -115,8 +115,8 @@ public class CollectionUtils {
 
 					@Override
 					public T next() {
-						T next = this.item;
-						this.item = f.apply(this.item);
+						T next = item;
+						item = f.apply(item);
 						return next;
 					}
 				});

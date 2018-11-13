@@ -128,7 +128,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 						.withInspector(inspector != null ? inspector.socketInspector() : null);
 				s.setEventHandler(this);
 				s.register();
-				this.socket = s;
+				socket = s;
 			} catch (IOException e) {
 				logger.error("UDP socket creation failed.", e);
 				return Promise.ofException(e);
