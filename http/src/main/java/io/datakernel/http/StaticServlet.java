@@ -45,7 +45,7 @@ public final class StaticServlet implements AsyncServlet {
 		return new StaticServlet(eventloop, resourceLoader);
 	}
 
-	protected ContentType getContentType(String path) {
+	private ContentType getContentType(String path) {
 		int pos = path.lastIndexOf(".");
 		if (pos != -1) {
 			path = path.substring(pos + 1);
@@ -63,7 +63,7 @@ public final class StaticServlet implements AsyncServlet {
 		return type;
 	}
 
-	protected HttpResponse createHttpResponse(ByteBuf buf, String path) {
+	private HttpResponse createHttpResponse(ByteBuf buf, String path) {
 		return HttpResponse.ofCode(200)
 				.withBody(buf)
 				.withHeader(CONTENT_TYPE, ofContentType(getContentType(path)));

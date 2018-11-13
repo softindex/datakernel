@@ -47,7 +47,7 @@ public final class RpcServerConnection implements Listener, JmxRefreshable {
 	private EventStats failedRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
 	private boolean monitoring = false;
 
-	protected RpcServerConnection(RpcServer rpcServer, InetAddress remoteAddress,
+	RpcServerConnection(RpcServer rpcServer, InetAddress remoteAddress,
 			Map<Class<?>, RpcRequestHandler<?, ?>> handlers, RpcStream stream) {
 		this.rpcServer = rpcServer;
 		this.stream = stream;

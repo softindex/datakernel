@@ -89,7 +89,7 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 	protected final class Output extends AbstractStreamSupplier<T> {
 		private final int index;
 
-		protected Output(int index) {
+		Output(int index) {
 			this.index = index;
 		}
 

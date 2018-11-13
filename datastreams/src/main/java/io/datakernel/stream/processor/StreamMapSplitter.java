@@ -71,7 +71,7 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 	private final class Output<O> extends AbstractStreamSupplier<O> {
 		private final int index;
 
-		protected Output(int index) {
+		Output(int index) {
 			this.index = index;
 		}
 

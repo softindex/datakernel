@@ -96,7 +96,7 @@ public final class SerialSuppliers {
 		};
 	}
 
-	protected static <T, A, R> Promise<R> toCollector(SerialSupplier<T> supplier, Collector<T, A, R> collector) {
+	static <T, A, R> Promise<R> toCollector(SerialSupplier<T> supplier, Collector<T, A, R> collector) {
 		SettablePromise<R> cb = new SettablePromise<>();
 		toCollectorImpl(supplier, collector.supplier().get(), collector.accumulator(), collector.finisher(), cb);
 		return cb;

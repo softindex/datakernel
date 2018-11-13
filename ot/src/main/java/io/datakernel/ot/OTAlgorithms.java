@@ -385,7 +385,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	private static final class FindAnyCommonParentWalker<K, D> extends AbstractFindCommonParentWalker<K, D, K> {
-		protected FindAnyCommonParentWalker(Set<K> heads) {
+		private FindAnyCommonParentWalker(Set<K> heads) {
 			super(heads);
 		}
 
@@ -400,7 +400,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	private static final class FindAllCommonParentsWalker<K, D> extends AbstractFindCommonParentWalker<K, D, Set<K>> {
-		protected FindAllCommonParentsWalker(Set<K> heads) {
+		private FindAllCommonParentsWalker(Set<K> heads) {
 			super(heads);
 		}
 

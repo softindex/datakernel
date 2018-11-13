@@ -30,9 +30,9 @@ import static java.net.StandardSocketOptions.*;
  * This class used to change settings for socket. It will be applying with creating new socket
  */
 public final class SocketSettings {
-	protected static final byte DEF_BOOL = -1;
-	protected static final byte TRUE = 1;
-	protected static final byte FALSE = 0;
+	private static final byte DEF_BOOL = -1;
+	private static final byte TRUE = 1;
+	private static final byte FALSE = 0;
 
 	private final byte keepAlive;
 	private final byte reuseAddress;

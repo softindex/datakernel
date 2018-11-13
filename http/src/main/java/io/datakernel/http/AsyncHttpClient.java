@@ -72,7 +72,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private SSLContext sslContext;
 	private ExecutorService sslExecutor;
 
-	protected Inspector inspector = new JmxInspector();
+	Inspector inspector = new JmxInspector();
 
 	public interface Inspector {
 		AsyncTcpSocketImpl.Inspector socketInspector(HttpRequest httpRequest, InetSocketAddress address, boolean https);

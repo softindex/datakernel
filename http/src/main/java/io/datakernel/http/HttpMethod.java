@@ -27,8 +27,8 @@ public enum HttpMethod {
 	GET, PUT, POST, HEAD, DELETE, CONNECT, OPTIONS, TRACE, PATCH,
 	SEARCH, COPY, MOVE, LOCK, UNLOCK, MKCOL, PROPFIND, PROPPATCH;
 
-	protected final byte[] bytes;
-	protected final int size;
+	final byte[] bytes;
+	final int size;
 
 	HttpMethod(String string) {
 		this.bytes = encodeAscii(string);

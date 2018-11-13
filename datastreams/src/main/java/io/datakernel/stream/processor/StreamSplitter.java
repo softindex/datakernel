@@ -98,7 +98,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 	protected final class Output extends AbstractStreamSupplier<T> {
 		private final int index;
 
-		protected Output(int index) {
+		Output(int index) {
 			this.index = index;
 		}
 

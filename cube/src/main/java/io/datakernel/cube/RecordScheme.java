@@ -24,16 +24,16 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class RecordScheme {
 	private final LinkedHashMap<String, Type> fieldTypes = new LinkedHashMap<>();
 
-	protected int objects;
-	protected int ints;
-	protected int doubles;
-	protected int longs;
-	protected int floats;
+	int objects;
+	int ints;
+	int doubles;
+	int longs;
+	int floats;
 
-	protected Map<String, Integer> fieldIndices = new HashMap<>();
-	protected Map<String, Integer> fieldRawIndices = new HashMap<>();
-	protected String[] fields = {};
-	protected int[] rawIndices = {};
+	Map<String, Integer> fieldIndices = new HashMap<>();
+	Map<String, Integer> fieldRawIndices = new HashMap<>();
+	String[] fields = {};
+	int[] rawIndices = {};
 
 	private RecordScheme() {
 	}

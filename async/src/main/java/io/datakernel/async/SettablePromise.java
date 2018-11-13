@@ -39,10 +39,10 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	private static final Throwable PROMISE_NOT_SET = new StacklessException(SettablePromise.class, "Promise has not been completed yet");
 
 	@Nullable
-	protected T result;
+	private T result;
 
 	@Nullable
-	protected Throwable exception = PROMISE_NOT_SET;
+	private Throwable exception = PROMISE_NOT_SET;
 
 	public static <T> SettablePromise<T> ofPromise(Promise<T> promise) {
 		SettablePromise<T> result = new SettablePromise<>();

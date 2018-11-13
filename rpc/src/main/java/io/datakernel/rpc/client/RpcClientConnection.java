@@ -93,7 +93,7 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 	private final EventStats totalRequests;
 	private final EventStats connectionRequests;
 
-	protected RpcClientConnection(Eventloop eventloop, RpcClient rpcClient,
+	RpcClientConnection(Eventloop eventloop, RpcClient rpcClient,
 			InetSocketAddress address,
 			RpcStream stream) {
 		this.eventloop = eventloop;

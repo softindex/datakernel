@@ -96,7 +96,7 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 	protected final class Output extends AbstractStreamSupplier<I> {
 		private final int index;
 
-		protected Output(int index) {
+		Output(int index) {
 			this.index = index;
 		}
 

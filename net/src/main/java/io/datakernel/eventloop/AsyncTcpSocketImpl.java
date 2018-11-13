@@ -74,8 +74,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private long readTimeout = NO_TIMEOUT;
 	private long writeTimeout = NO_TIMEOUT;
-	protected int readMaxSize = DEFAULT_READ_BUF_SIZE.toInt();
-	protected int writeMaxSize = MAX_MERGE_SIZE.toInt();
+	private int readMaxSize = DEFAULT_READ_BUF_SIZE.toInt();
+	private int writeMaxSize = MAX_MERGE_SIZE.toInt();
 
 	@Nullable
 	private ScheduledRunnable scheduledReadTimeout;

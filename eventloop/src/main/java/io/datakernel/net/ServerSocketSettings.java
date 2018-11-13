@@ -32,9 +32,9 @@ import static java.net.StandardSocketOptions.SO_REUSEADDR;
 public final class ServerSocketSettings {
 	public static final int DEFAULT_BACKLOG = 16384;
 
-	protected static final byte DEF_BOOL = -1;
-	protected static final byte TRUE = 1;
-	protected static final byte FALSE = 0;
+	private static final byte DEF_BOOL = -1;
+	private static final byte TRUE = 1;
+	private static final byte FALSE = 0;
 
 	private final int backlog;
 	@Nullable
