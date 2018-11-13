@@ -163,6 +163,7 @@ public class RpcBlockingTest {
 							.toCompletableFuture())
 					.get().message;
 		} catch (ExecutionException e) {
+			//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - cause is rethrown
 			throw (Exception) e.getCause();
 		}
 	}

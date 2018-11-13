@@ -111,6 +111,7 @@ public class RpcHelloWorldTest {
 								.toCompletableFuture())
 						.get().message;
 			} catch (ExecutionException e) {
+				//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - cause is rethrown
 				throw (Exception) e.getCause();
 			}
 		}

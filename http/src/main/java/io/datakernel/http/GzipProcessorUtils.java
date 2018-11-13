@@ -70,7 +70,7 @@ public final class GzipProcessorUtils {
 		decompressor.setInput(src.array(), src.readPosition(), src.readRemaining());
 		try {
 			readDecompressedData(decompressor, src, dst, maxMessageSize);
-		} catch (DataFormatException e) {
+		} catch (DataFormatException ignored) {
 			moveDecompressorToPool(decompressor);
 			src.recycle();
 			dst.recycle();

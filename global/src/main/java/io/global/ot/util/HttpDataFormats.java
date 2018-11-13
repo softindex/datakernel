@@ -90,6 +90,7 @@ public class HttpDataFormats {
 									},
 									Map.Entry::getValue));
 				} catch (UncheckedException u) {
+					//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - propagated
 					throw u.propagate(ParseException.class);
 				}
 			},

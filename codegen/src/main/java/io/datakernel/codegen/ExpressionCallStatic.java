@@ -55,7 +55,7 @@ final class ExpressionCallStatic implements Expression {
 			Method method = owner.getMethod(name, arguments);
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
-		} catch (NoSuchMethodException e) {
+		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No static method %s.%s(%s). %s",
 					owner.getName(),
 					name,
@@ -88,7 +88,7 @@ final class ExpressionCallStatic implements Expression {
 			method = ownerJavaType.getMethod(name, arguments);
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
-		} catch (NoSuchMethodException e) {
+		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No static method %s.%s(%s). %s",
 					owner.getName(),
 					name,

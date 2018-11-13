@@ -203,7 +203,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 		Preconditions.check(isSubnet(), "IpRange is not subnet");
 		try {
 			return forInteger(mask);
-		} catch (ParseException e) {
+		} catch (ParseException ignored) {
 			throw new IllegalStateException("Mask is not valid");
 		}
 	}
@@ -212,7 +212,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 		try {
 			Preconditions.check(isSubnet(), "IpRange is not subnet");
 			return forInteger(network);
-		} catch (ParseException e) {
+		} catch (ParseException ignored) {
 			throw new IllegalStateException("network address is not valid");
 		}
 	}
@@ -447,7 +447,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 			}
 			try {
 				return InetAddress.getByAddress(toByteArray(current));
-			} catch (UnknownHostException e) {
+			} catch (UnknownHostException ignored) {
 				throw new AssertionError("Should not ever get here");
 			}
 		}

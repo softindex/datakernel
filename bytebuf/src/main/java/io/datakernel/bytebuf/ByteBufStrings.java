@@ -271,7 +271,7 @@ public final class ByteBufStrings {
 				}
 			}
 			if (pos > end) throw READ_PAST_LIMIT;
-		} catch (ArrayIndexOutOfBoundsException e) {
+		} catch (ArrayIndexOutOfBoundsException ignored) {
 			throw READ_PAST_ARRAY_LENGTH;
 		}
 		return to;

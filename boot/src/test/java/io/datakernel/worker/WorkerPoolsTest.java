@@ -93,6 +93,7 @@ public class WorkerPoolsTest {
 			Throwable cause = e.getCause();
 			expectedException.expect(IllegalStateException.class);
 			expectedException.expectMessage("Trying to start async operations prior eventloop.run()");
+			//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - cause is rethrown
 			throw cause;
 		}
 	}
@@ -117,6 +118,7 @@ public class WorkerPoolsTest {
 			Throwable cause = e.getCause();
 			expectedException.expect(IllegalStateException.class);
 			expectedException.expectMessage("No WorkerPool is associated with current thread");
+			//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - cause is rethrown
 			throw cause;
 		}
 	}

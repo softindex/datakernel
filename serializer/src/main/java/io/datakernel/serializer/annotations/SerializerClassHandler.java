@@ -34,7 +34,7 @@ public final class SerializerClassHandler implements AnnotationHandler<Serialize
 			try {
 				SerializerGen serializer = (SerializerGen) annotation.value().getMethod("instance").invoke(null);
 				return new SerializerGenBuilderConst(serializer);
-			} catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException e1) {
+			} catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException ignored) {
 				throw new RuntimeException(e);
 			}
 		}

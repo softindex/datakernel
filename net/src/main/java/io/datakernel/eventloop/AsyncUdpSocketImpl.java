@@ -281,7 +281,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	private InetSocketAddress getRemoteSocketAddress() {
 		try {
 			return (InetSocketAddress) channel.getRemoteAddress();
-		} catch (ClosedChannelException e) {
+		} catch (ClosedChannelException ignored) {
 			throw new AssertionError("Channel is closed");
 		} catch (IOException e) {
 			throw new AssertionError(e);

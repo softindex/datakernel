@@ -150,6 +150,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			try {
 				rootNode.applyModifier(attrName, modifier, monitorables);
 			} catch (ClassCastException cce) {
+				//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - doesn't ignore
 				throw new IllegalArgumentException("Cannot apply modifier \"" + modifier.getClass().getName() +
 						"\" for attribute \"" + attrName + "\": " + cce.toString());
 			}

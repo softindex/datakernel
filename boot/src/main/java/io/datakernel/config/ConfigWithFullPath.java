@@ -33,7 +33,7 @@ public class ConfigWithFullPath implements Config {
 	public String getValue() throws NoSuchElementException {
 		try {
 			return config.getValue();
-		} catch (NoSuchElementException e) {
+		} catch (NoSuchElementException ignored) {
 			throw new NoSuchElementException(path);
 		}
 	}

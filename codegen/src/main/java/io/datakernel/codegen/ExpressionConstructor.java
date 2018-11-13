@@ -65,7 +65,7 @@ final class ExpressionConstructor implements Expression {
 			}
 			g.invokeConstructor(getType(type), getMethod(constructor));
 			return getType(type);
-		} catch (NoSuchMethodException e) {
+		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No constructor %s.<init>(%s). %s",
 					type.getName(),
 					(fieldTypes.length != 0 ? argsToString(fieldTypes) : ""),
