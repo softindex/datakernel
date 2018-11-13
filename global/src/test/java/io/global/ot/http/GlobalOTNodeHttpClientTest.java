@@ -39,8 +39,10 @@ import java.util.concurrent.ExecutionException;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.CollectionUtils.set;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.ot.util.BinaryDataFormats2.encode;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -57,14 +59,14 @@ public class GlobalOTNodeHttpClientTest {
 
 		RepoID repository = RepoID.of(pubKey, "test");
 
-		RawCommit rootCommit = RawCommit.of(emptyList(),
+		RawCommit rootCommit = RawCommit.of(emptySet(),
 				EncryptedData.encrypt(new byte[0], simKey),
-				Hash.of(simKey),
+				Hash.sha1(simKey.getBytes()),
 				0, 0L);
-		CommitId rootCommitId = CommitId.ofCommit(rootCommit);
+		CommitId rootCommitId = CommitId.ofCommitData(encode(REGISTRY.get(RawCommit.class), rootCommit).asArray());
 
 		RawCommitHead rawCommitHead = RawCommitHead.of(repository, rootCommitId, 123L);
-		SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(rawCommitHead, privKey);
+		SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(REGISTRY.get(RawCommitHead.class), rawCommitHead, privKey);
 
 		LinkedList<Object> parameters = new LinkedList<>();
 
@@ -114,8 +116,12 @@ public class GlobalOTNodeHttpClientTest {
 			public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
 				return resultOf(Optional.of(
 						SignedData.sign(
-								RawSnapshot.of(repositoryId, rootCommitId,
-										EncryptedData.encrypt(new byte[100], simKey), Hash.of(simKey)),
+								REGISTRY.get(RawSnapshot.class),
+								RawSnapshot.of(
+										repositoryId,
+										rootCommitId,
+										EncryptedData.encrypt(new byte[100], simKey),
+										Hash.sha1(simKey.getBytes())),
 								privKey)),
 						repositoryId, commitId);
 			}
@@ -134,7 +140,7 @@ public class GlobalOTNodeHttpClientTest {
 			@Override
 			public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey receiver, Hash simKeyHash) {
 				SharedSimKey sharedSimKey = SharedSimKey.of(simKey, receiver);
-				return resultOf(Optional.of(SignedData.sign(sharedSimKey, privKey)), receiver, simKeyHash);
+				return resultOf(Optional.of(SignedData.sign(REGISTRY.get(SharedSimKey.class), sharedSimKey, privKey)), receiver, simKeyHash);
 			}
 
 			@Override
@@ -146,6 +152,7 @@ public class GlobalOTNodeHttpClientTest {
 			@Override
 			public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
 				return resultOf(set(SignedData.sign(
+						REGISTRY.get(RawPullRequest.class),
 						RawPullRequest.of(repositoryId, RepoID.of(pubKey, "fork")), privKey)),
 						repositoryId);
 			}
@@ -195,9 +202,14 @@ public class GlobalOTNodeHttpClientTest {
 		assertTrue(parameters.isEmpty());
 
 		SignedData<RawSnapshot> signedSnapshot = SignedData.sign(
-				RawSnapshot.of(repository, rootCommitId,
-						EncryptedData.encrypt(new byte[100], simKey), Hash.of(simKey)),
+				REGISTRY.get(RawSnapshot.class),
+				RawSnapshot.of(
+						repository,
+						rootCommitId,
+						EncryptedData.encrypt(new byte[100], simKey),
+						Hash.sha1(simKey.getBytes())),
 				privKey);
+
 		CompletableFuture<Void> saveSnapshotFuture = client.saveSnapshot(
 				repository,
 				signedSnapshot)
@@ -229,7 +241,10 @@ public class GlobalOTNodeHttpClientTest {
 		assertTrue(parameters.isEmpty());
 
 		SharedSimKey sharedSimKey = SharedSimKey.of(simKey, pubKey);
-		SignedData<SharedSimKey> signedSharedSimKey = SignedData.sign(sharedSimKey, privKey);
+		SignedData<SharedSimKey> signedSharedSimKey = SignedData.sign(
+				REGISTRY.get(SharedSimKey.class),
+				sharedSimKey,
+				privKey);
 
 		CompletableFuture<Void> shareKeyFuture = client.shareKey(pubKey, signedSharedSimKey)
 				.toCompletableFuture();

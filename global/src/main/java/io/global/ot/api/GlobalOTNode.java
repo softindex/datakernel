@@ -18,6 +18,7 @@ package io.global.ot.api;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
+import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.global.common.Hash;
@@ -37,7 +38,7 @@ public interface GlobalOTNode {
 	Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads);
 
 	default Promise<Void> save(RepoID repositoryId, RawCommit rawCommit, SignedData<RawCommitHead> rawHead) {
-		return save(repositoryId, singletonMap(rawHead.getData().commitId, rawCommit), singleton(rawHead));
+		return save(repositoryId, singletonMap(rawHead.getValue().commitId, rawCommit), singleton(rawHead));
 	}
 
 	Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id);
@@ -141,6 +142,10 @@ public interface GlobalOTNode {
 			this.commitId = commitId;
 			this.commit = commit;
 			this.head = head;
+		}
+
+		public static CommitEntry parse(CommitId commitId, RawCommit commit, @Nullable SignedData<RawCommitHead> head) throws ParseException {
+			return new CommitEntry(commitId, commit, head); // TODO
 		}
 
 		public CommitId getCommitId() {

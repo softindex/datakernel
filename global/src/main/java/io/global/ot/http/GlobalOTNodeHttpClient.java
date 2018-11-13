@@ -20,6 +20,7 @@ import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.ToDoException;
 import io.datakernel.http.*;
@@ -47,11 +48,14 @@ import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.json.GsonAdapters.fromJson;
 import static io.datakernel.json.GsonAdapters.toJson;
 import static io.datakernel.util.CollectionUtils.map;
+import static io.global.ot.util.BinaryDataFormats2.*;
 import static io.global.ot.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 
 public class GlobalOTNodeHttpClient implements GlobalOTNode {
+	private static final StructuredCodec<SignedData<RawSnapshot>> SIGNED_SNAPSHOT_CODEC = REGISTRY.get(SignedData.class, RawSnapshot.class);
+
 	private final IAsyncHttpClient httpClient;
 	private final String url;
 
@@ -135,7 +139,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	@Override
 	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return httpClient.request(request(POST, SAVE_SNAPSHOT, apiQuery(repositoryId))
-				.withBody(encryptedSnapshot.toBytes()))
+				.withBody(encode(SIGNED_SNAPSHOT_CODEC, encryptedSnapshot)))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, null));
 	}
@@ -154,7 +158,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 						}
 						try {
 							return Promise.of(Optional.of(
-									SignedData.ofBytes(body.getArray(), RawSnapshot::ofBytes)));
+									decode(SIGNED_SNAPSHOT_CODEC, body.getArray())));
 						} catch (ParseException e) {
 							return Promise.ofException(e);
 						}

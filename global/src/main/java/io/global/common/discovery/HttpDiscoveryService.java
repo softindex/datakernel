@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.global.fs.http;
+package io.global.common.discovery;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
@@ -35,7 +35,7 @@ import java.util.List;
 
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
-import static io.global.fs.http.DiscoveryServlet.*;
+import static io.global.common.discovery.DiscoveryServlet.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class HttpDiscoveryService implements DiscoveryService {

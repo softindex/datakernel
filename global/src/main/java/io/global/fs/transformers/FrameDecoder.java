@@ -18,6 +18,7 @@ package io.global.fs.transformers;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
@@ -26,12 +27,16 @@ import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
 
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.ot.util.BinaryDataFormats2.decode;
+
 /**
  * Decodes a stream of byte bufs back into a stream of frames.
  * <p>
  * It's counterpart is the {@link FrameEncoder}.
  */
 public final class FrameDecoder extends SerialTransformer<FrameDecoder, ByteBuf, DataFrame> {
+	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(SignedData.class, GlobalFsCheckpoint.class);
 
 	@Override
 	protected Promise<Void> onItem(ByteBuf item) {
@@ -53,6 +58,6 @@ public final class FrameDecoder extends SerialTransformer<FrameDecoder, ByteBuf,
 		if (type == 0) {
 			return DataFrame.of(buf);
 		}
-		return DataFrame.of(SignedData.ofBytes(buf.asArray(), GlobalFsCheckpoint::ofBytes));
+		return DataFrame.of(decode(SIGNED_CHECKPOINT_CODEC, buf));
 	}
 }

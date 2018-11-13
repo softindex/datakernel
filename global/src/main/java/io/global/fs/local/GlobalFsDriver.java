@@ -69,14 +69,14 @@ public final class GlobalFsDriver {
 		}
 		return discoveryService.getSharedKey(receiver, simKeyHash)
 				.thenCompose(signedSharedSimKey -> {
-					SharedSimKey sharedSimKey = signedSharedSimKey.getData();
+					SharedSimKey sharedSimKey = signedSharedSimKey.getValue();
 					PrivKey privKey = keys.get(receiver);
 					if (privKey == null) {
 						return Promise.ofException(new StacklessException(GlobalFsDriver.class, "No private key stored for " + receiver));
 					}
 					try {
 						SimKey newKey = sharedSimKey.decryptSimKey(privKey);
-						keyMap.put(Hash.of(sharedSimKey), newKey);
+						keyMap.put(sharedSimKey.getHash(), newKey);
 						return Promise.of(newKey);
 					} catch (CryptoException e) {
 						return Promise.ofException(e);
@@ -100,7 +100,7 @@ public final class GlobalFsDriver {
 	public void changeCurrentSimKey(@Nullable SimKey currentSimKey) {
 		this.currentSimKey = currentSimKey;
 		if (currentSimKey != null) {
-			keyMap.put(Hash.of(currentSimKey), currentSimKey);
+			keyMap.put(Hash.of(currentSimKey.getBytes()), currentSimKey);
 		}
 	}
 

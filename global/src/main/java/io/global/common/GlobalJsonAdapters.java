@@ -19,6 +19,8 @@ package io.global.common;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.json.GsonAdapters;
 import io.global.common.api.AnnounceData;
 import io.global.fs.api.GlobalFsMetadata;
 
@@ -42,19 +44,19 @@ public final class GlobalJsonAdapters {
 	public static final TypeAdapter<PrivKey> PRIV_KEY = transform(STRING_JSON, PrivKey::fromString, PrivKey::asString);
 	public static final TypeAdapter<PubKey> PUB_KEY = transform(STRING_JSON, PubKey::fromString, PubKey::asString);
 	public static final TypeAdapter<Signature> SIGNATURE = transform(STRING_JSON, Signature::fromString, Signature::asString);
-	public static final TypeAdapter<Hash> HASH = transform(STRING_JSON, Hash::fromString, Hash::asString);
+	public static final TypeAdapter<Hash> HASH = transform(STRING_JSON, Hash::parseString, Hash::asString);
 
 	@SuppressWarnings("unchecked")
-	public static <T extends ByteArrayIdentity> TypeAdapter<SignedData<T>> withSignarure(TypeAdapter<T> adapter) {
+	public static <T> TypeAdapter<SignedData<T>> withSignature(StructuredCodec<T> binaryCodec) {
 		Map<String, TypeAdapter<?>> props = new HashMap<>();
-		props.put("data", adapter);
+		props.put("data", GsonAdapters.BYTES_JSON);
 		props.put("signature", SIGNATURE);
 
 		return transform(ofHeterogeneousMap(props),
-				data -> SignedData.of((T) data.get("data"), (Signature) data.get("signature")),
+				data -> SignedData.parse(binaryCodec, (byte[]) data.get("data"), (Signature) data.get("signature")),
 				signedData -> {
 					Map<String, Object> map = new HashMap<>();
-					map.put("data", signedData.getData());
+					map.put("data", signedData.getValue());
 					map.put("signature", signedData.getSignature());
 					return map;
 				});
@@ -72,7 +74,11 @@ public final class GlobalJsonAdapters {
 
 	public static final TypeAdapter<GlobalFsMetadata> GLOBAL_FS_METADATA =
 			transform(ofHeterogeneousMap(GLOBAL_FS_METADATA_PROPS),
-					data -> GlobalFsMetadata.of((String) data.get("filename"), (Long) data.get("size"), (Long) data.get("revision"), (Hash) data.get("simKeyHash")),
+					data -> GlobalFsMetadata.parse(
+							(String) data.get("filename"),
+							(Long) data.get("size"),
+							(Long) data.get("revision"),
+							(Hash) data.get("simKeyHash")),
 					meta -> {
 						Map<String, Object> map = new HashMap<>();
 						map.put("filename", meta.getFilename());

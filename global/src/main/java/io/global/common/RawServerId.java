@@ -1,5 +1,7 @@
 package io.global.common;
 
+import io.datakernel.exception.ParseException;
+
 import java.net.InetSocketAddress;
 
 public final class RawServerId {
@@ -7,6 +9,10 @@ public final class RawServerId {
 
 	public RawServerId(InetSocketAddress inetSocketAddress) {
 		this.inetSocketAddress = inetSocketAddress;
+	}
+
+	public static RawServerId parse(InetSocketAddress inetSocketAddress) throws ParseException {
+		return new RawServerId(inetSocketAddress); // TODO
 	}
 
 	public InetSocketAddress getInetSocketAddress() {

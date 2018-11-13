@@ -17,12 +17,13 @@
 package io.global.common;
 
 import io.datakernel.exception.ParseException;
+import io.global.ot.util.BinaryDataFormats2;
 import org.spongycastle.crypto.CryptoException;
 import org.spongycastle.crypto.params.ECPrivateKeyParameters;
 
 import java.math.BigInteger;
 
-public final class PrivKey implements StringIdentity {
+public final class PrivKey {
 	private final ECPrivateKeyParameters ecPrivateKey;
 
 	// region creators
@@ -32,6 +33,14 @@ public final class PrivKey implements StringIdentity {
 
 	public static PrivKey of(BigInteger d) {
 		return new PrivKey(new ECPrivateKeyParameters(d, CryptoUtils.CURVE));
+	}
+
+	public static PrivKey parse(BigInteger d) throws ParseException {
+		try {
+			return PrivKey.of(d);
+		} catch (IllegalArgumentException | ArithmeticException e) {
+			throw new ParseException(BinaryDataFormats2.class, "Failed to read private key", e);
+		}
 	}
 
 	public static PrivKey fromString(String repr) throws ParseException {
@@ -59,7 +68,6 @@ public final class PrivKey implements StringIdentity {
 		return CryptoUtils.decryptECIES(encrypted, ecPrivateKey);
 	}
 
-	@Override
 	public String asString() {
 		return ecPrivateKey.getD().toString(16);
 	}

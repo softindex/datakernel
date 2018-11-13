@@ -6,20 +6,19 @@ import org.junit.Test;
 import java.util.List;
 
 import static io.datakernel.util.SimpleType.of;
-import static io.datakernel.util.SimpleType.ofClass;
 import static org.junit.Assert.assertEquals;
 
 public class SimpleTypeTest {
 
 	@Test
 	public void testClass() {
-		assertEquals(Integer.class, ofClass(Integer.class).getType());
+		assertEquals(Integer.class, of(Integer.class).getType());
 	}
 
 	@Test
 	public void testListString() throws NoSuchFieldException {
 		assertEquals(ListStringPojo.class.getField("list").getGenericType(),
-				of(List.class, ofClass(String.class)).getType());
+				of(List.class, of(String.class)).getType());
 	}
 
 	private static class ListStringPojo {

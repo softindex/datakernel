@@ -19,6 +19,7 @@ package io.global.fs.http;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
@@ -45,9 +46,13 @@ import java.util.function.Function;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.serial.ByteBufsParser.ofVarIntSizePrefixedBytes;
 import static io.global.fs.http.GlobalFsNodeServlet.*;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.ot.util.BinaryDataFormats2.decode;
 import static java.util.stream.Collectors.toList;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {
+	private static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(SignedData.class, GlobalFsMetadata.class);
+
 	private final InetSocketAddress address;
 	private final IAsyncHttpClient client;
 
@@ -105,11 +110,12 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 							.parseStream(ofVarIntSizePrefixedBytes())
 							.transform(buf -> {
 								try {
-									return SignedData.ofBytes(buf.asArray(), GlobalFsMetadata::fromBytes);
+									return decode(SIGNED_METADATA_CODEC, buf);
 								} catch (ParseException e) {
 									throw new UncheckedException(e);
 								}
-							}).toCollector(toList());
+							})
+							.toCollector(toList());
 
 	@Override
 	public Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob) {
@@ -146,7 +152,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(PUSH)
 						.appendPathPart(pubKey.asString())
 						.build())
-				.withBody(ByteBuf.wrapForReading(signedMetadata.toBytes())))
+				.withBody(ByteBuf.wrapForReading(signedMetadata.getBytes())))
 				.toVoid();
 	}
 

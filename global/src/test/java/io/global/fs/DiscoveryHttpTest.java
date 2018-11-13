@@ -22,8 +22,8 @@ import io.datakernel.stream.processor.DatakernelRunner;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
-import io.global.fs.http.DiscoveryServlet;
-import io.global.fs.http.HttpDiscoveryService;
+import io.global.common.discovery.DiscoveryServlet;
+import io.global.common.discovery.HttpDiscoveryService;
 import io.global.fs.local.RuntimeDiscoveryService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -35,6 +35,7 @@ import java.net.InetSocketAddress;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.set;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -56,14 +57,14 @@ public final class DiscoveryHttpTest {
 		KeyPair bob = KeyPair.generate();
 
 		SimKey bobSimKey = SimKey.generate();
-		Hash bobSimKeyHash = Hash.of(bobSimKey);
+		Hash bobSimKeyHash = Hash.sha1(bobSimKey.getBytes());
 
 		InetAddress localhost = InetAddress.getLocalHost();
 
 		AnnounceData testAnnounce = AnnounceData.of(123, set(new RawServerId(new InetSocketAddress(localhost, 123))));
 
-		clientService.announce(alice.getPubKey(), SignedData.sign(testAnnounce, alice.getPrivKey()))
-				.thenCompose($ -> clientService.announce(bob.getPubKey(), SignedData.sign(testAnnounce, bob.getPrivKey())))
+		clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), testAnnounce, alice.getPrivKey()))
+				.thenCompose($ -> clientService.announce(bob.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), testAnnounce, bob.getPrivKey())))
 
 				.thenCompose($ -> clientService.find(alice.getPubKey()))
 				.whenComplete(assertComplete(data -> assertTrue(data.verify(alice.getPubKey()))))
@@ -71,15 +72,15 @@ public final class DiscoveryHttpTest {
 				.thenCompose($ -> clientService.find(bob.getPubKey()))
 				.whenComplete(assertComplete(data -> assertTrue(data.verify(bob.getPubKey()))))
 
-				.thenCompose($ -> clientService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(90, set()), alice.getPrivKey())))
+				.thenCompose($ -> clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(90, set()), alice.getPrivKey())))
 				.whenComplete(assertFailure(StacklessException.class, "Rejected announce data as outdated"))
 				.thenComposeEx(($, e) -> clientService.find(alice.getPubKey()))
 				.whenComplete(assertComplete(data -> {
 					assertTrue(data.verify(alice.getPubKey()));
-					assertEquals(123, data.getData().getTimestamp());
+					assertEquals(123, data.getValue().getTimestamp());
 				}))
 
-				.thenCompose($ -> clientService.shareKey(alice.getPubKey(), SignedData.sign(SharedSimKey.of(bobSimKey, alice.getPubKey()), bob.getPrivKey())))
+				.thenCompose($ -> clientService.shareKey(alice.getPubKey(), SignedData.sign(REGISTRY.get(SharedSimKey.class), SharedSimKey.of(bobSimKey, alice.getPubKey()), bob.getPrivKey())))
 				.thenCompose($ -> clientService.getSharedKey(alice.getPubKey(), bobSimKeyHash))
 				.whenComplete(assertComplete(signedSharedSimKey -> {
 					assertTrue(signedSharedSimKey.verify(bob.getPubKey()));

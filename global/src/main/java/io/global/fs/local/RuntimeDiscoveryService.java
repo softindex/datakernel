@@ -52,7 +52,7 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 			return Promise.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
 		}
 		SignedData<AnnounceData> signedAnnounceData = announced.get(space);
-		if (signedAnnounceData != null && signedAnnounceData.getData().getTimestamp() >= announceData.getData().getTimestamp()) {
+		if (signedAnnounceData != null && signedAnnounceData.getValue().getTimestamp() >= announceData.getValue().getTimestamp()) {
 			logger.info("rejected as outdated: {}", announceData);
 			return Promise.ofException(REJECTED_OUTDATED_ANNOUNCE_DATA);
 		}
@@ -71,7 +71,7 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 	@Override
 	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
 		logger.info("received {}", simKey);
-		sharedKeys.computeIfAbsent(receiver, $ -> new HashMap<>()).put(simKey.getData().getHash(), simKey);
+		sharedKeys.computeIfAbsent(receiver, $ -> new HashMap<>()).put(simKey.getValue().getHash(), simKey);
 		return Promise.complete();
 	}
 

@@ -18,8 +18,8 @@ package io.global.fs.local;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
@@ -27,14 +27,17 @@ import io.datakernel.serial.SerialSupplier;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
-import io.global.ot.util.BinaryDataFormats;
+import io.global.ot.util.BinaryDataFormats2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
+import static io.global.ot.util.BinaryDataFormats2.*;
+
 public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsCheckpointStorage.class);
+	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(SignedData.class, GlobalFsCheckpoint.class);
 
 	private final FsClient fsClient;
 
@@ -66,12 +69,12 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					int size = 0;
 					while (buf.canRead()) {
 						try {
-							byte[] bytes = BinaryDataFormats.readBytes(buf);
-							SignedData<GlobalFsCheckpoint> checkpoint = SignedData.ofBytes(bytes, GlobalFsCheckpoint::ofBytes);
+							byte[] bytes = readBytes(buf);
+							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, bytes);
 							if (array.length == size) {
 								array = Arrays.copyOf(array, size * 2);
 							}
-							array[size++] = checkpoint.getData().getPosition();
+							array[size++] = checkpoint.getValue().getPosition();
 						} catch (ParseException e) {
 							buf.recycle();
 							return Promise.ofException(e);
@@ -91,9 +94,9 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					}
 					while (buf.canRead()) {
 						try {
-							byte[] bytes = BinaryDataFormats.readBytes(buf);
-							SignedData<GlobalFsCheckpoint> checkpoint = SignedData.ofBytes(bytes, GlobalFsCheckpoint::ofBytes);
-							if (checkpoint.getData().getPosition() == position) {
+							byte[] bytes = readBytes(buf);
+							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, bytes);
+							if (checkpoint.getValue().getPosition() == position) {
 								buf.recycle();
 								return Promise.of(checkpoint);
 							}
@@ -109,7 +112,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 
 	@Override
 	public Promise<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
-		long pos = checkpoint.getData().getPosition();
+		long pos = checkpoint.getValue().getPosition();
 		return loadCheckpoint(filename, pos)
 				.thenComposeEx((existing, e) -> {
 					if (e == null) {
@@ -120,12 +123,12 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					return fsClient.getMetadata(filename)
 							.thenCompose(m -> fsClient.upload(filename, m != null ? m.getSize() : 0))
 							.thenCompose(consumer -> {
-								byte[] bytes = checkpoint.toBytes();
-								ByteBuf buf = ByteBufPool.allocate(bytes.length + 5);
-								BinaryDataFormats.writeBytes(buf, bytes);
+								byte[] bytes = checkpoint.getBytes();
+								ByteBuf buf = BinaryDataFormats2.writeBytes(bytes);
 								return SerialSupplier.of(buf).streamTo(consumer);
 							});
 				});
 	}
+
 }
 

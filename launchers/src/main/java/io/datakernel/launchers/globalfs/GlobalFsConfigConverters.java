@@ -26,6 +26,8 @@ import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.ot.api.RepoID;
 
+import java.util.function.Function;
+
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofMemSizeAsLong;
 import static io.global.fs.api.CheckpointPosStrategy.*;
@@ -39,7 +41,7 @@ public final class GlobalFsConfigConverters {
 		return ofInetSocketAddress().transform(RawServerId::new, RawServerId::getInetSocketAddress);
 	}
 
-	private static <T extends StringIdentity> ConfigConverter<T> ofStringIdentity(ParserFunction<String, T> from) {
+	private static <T> ConfigConverter<T> ofStringIdentity(ParserFunction<String, T> from, Function<T, String> to) {
 		return new SimpleConfigConverter<T>() {
 			@Override
 			protected T fromString(String string) {
@@ -52,30 +54,30 @@ public final class GlobalFsConfigConverters {
 
 			@Override
 			protected String toString(T value) {
-				return value.asString();
+				return to.apply(value);
 			}
 		};
 
 	}
 
 	public static ConfigConverter<RepoID> ofRepoID() {
-		return ofStringIdentity(RepoID::fromString);
+		return ofStringIdentity(RepoID::fromString, RepoID::asString);
 	}
 
 	public static ConfigConverter<PubKey> ofPubKey() {
-		return ofStringIdentity(PubKey::fromString);
+		return ofStringIdentity(PubKey::fromString, PubKey::asString);
 	}
 
 	public static ConfigConverter<PrivKey> ofPrivKey() {
-		return ofStringIdentity(PrivKey::fromString);
+		return ofStringIdentity(PrivKey::fromString, PrivKey::asString);
 	}
 
 	public static ConfigConverter<SimKey> ofSimKey() {
-		return ofStringIdentity(SimKey::fromString);
+		return ofStringIdentity(SimKey::fromString, SimKey::asString);
 	}
 
 	public static ConfigConverter<Hash> ofHash() {
-		return ofStringIdentity(Hash::fromString);
+		return ofStringIdentity(Hash::parseString, Hash::asString);
 	}
 
 	public static ConfigConverter<CheckpointPosStrategy> ofCheckpointPositionStrategy() {

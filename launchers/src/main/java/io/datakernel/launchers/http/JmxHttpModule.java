@@ -51,6 +51,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 public class JmxHttpModule extends AbstractModule {
 	private Set<Key<?>> singletons = new HashSet<>();
@@ -371,12 +372,17 @@ public class JmxHttpModule extends AbstractModule {
 
 			return Promises.toTuple(
 					JmxHttpModule.getClass(clsName),
-					generics != null ?
-							Promises.toList(Arrays.stream(generics.split(", ")).map(JmxHttpModule::getClass)) :
-							Promise.of(Collections.<Class<?>>emptyList()))
+					Promises.toList(
+							Arrays.stream(generics != null ? generics.split(", ") : new String[0])
+									.map(JmxHttpModule::getClass)))
 					.thenCompose(tuple -> {
-						@SuppressWarnings("SuspiciousToArrayCall") // what.?
-								Type type = SimpleType.ofClass(tuple.getValue1(), tuple.getValue2().toArray(new Class[0])).getType();
+						Type type = SimpleType.of(
+								tuple.getValue1(),
+								tuple.getValue2()
+										.stream()
+										.map(SimpleType::of)
+										.collect(toList()))
+								.getType();
 						if (annotation == null) {
 							return Promise.of(Key.get(type));
 						}

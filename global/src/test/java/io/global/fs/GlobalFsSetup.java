@@ -30,8 +30,8 @@ import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import io.global.common.discovery.HttpDiscoveryService;
 import io.global.fs.api.GlobalFsNode;
-import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import org.junit.Before;
@@ -54,6 +54,7 @@ import static io.global.common.api.AnnounceData.of;
 import static io.global.fs.api.CheckpointPosStrategy.fixed;
 import static java.lang.Integer.parseInt;
 import static java.lang.System.getProperty;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
@@ -91,7 +92,7 @@ public final class GlobalFsSetup {
 
 		SerialSupplier<ByteBuf> supplier = SerialSupplier.of(ByteBuf.wrapForReading(text1.getBytes(UTF_8)), ByteBuf.wrapForReading(text2.getBytes(UTF_8)));
 
-		discoveryService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
+		discoveryService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
 				.whenResult($ -> System.out.println("Servers announced"))
 				.thenCompose($ -> firstAdapter.upload("test.txt"))
 				.thenCompose(supplier::streamTo)

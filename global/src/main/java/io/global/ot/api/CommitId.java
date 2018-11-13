@@ -16,6 +16,8 @@
 
 package io.global.ot.api;
 
+import io.datakernel.exception.ParseException;
+
 import java.util.Arrays;
 
 import static io.global.common.CryptoUtils.sha256;
@@ -31,12 +33,12 @@ public final class CommitId {
 		return new CommitId(bytes);
 	}
 
-	public static CommitId ofCommitData(byte[] bytes) {
-		return new CommitId(sha256(bytes));
+	public static CommitId parse(byte[] bytes) throws ParseException {
+		return new CommitId(bytes);
 	}
 
-	public static CommitId ofCommit(RawCommit rawCommit) {
-		return ofCommitData(rawCommit.toBytes());
+	public static CommitId ofCommitData(byte[] bytes) {
+		return new CommitId(sha256(bytes));
 	}
 
 	public byte[] toBytes() {

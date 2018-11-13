@@ -17,6 +17,7 @@
 package io.global.ot.util;
 
 import com.google.gson.TypeAdapter;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpRequest;
@@ -42,6 +43,7 @@ import java.util.Set;
 import static io.datakernel.http.HttpUtils.urlEncode;
 import static io.datakernel.json.GsonAdapters.BYTES_JSON;
 import static io.datakernel.json.GsonAdapters.STRING_JSON;
+import static io.global.ot.util.BinaryDataFormats2.*;
 import static java.util.stream.Collectors.toMap;
 
 public class HttpDataFormats {
@@ -60,21 +62,26 @@ public class HttpDataFormats {
 
 	public static final TypeAdapter<Set<String>> SET_OF_STRINGS = GsonAdapters.ofSet(STRING_JSON);
 
+	private static final StructuredCodec<SignedData<RawCommitHead>> SIGNED_COMMIT_HEAD_CODEC = REGISTRY.get(SignedData.class, RawCommitHead.class);
+	private static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_KEY_CODEC = REGISTRY.get(SignedData.class, SharedSimKey.class);
+	private static final StructuredCodec<RawCommit> COMMIT_CODEC = REGISTRY.get(RawCommit.class);
+	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
+
 	public static final TypeAdapter<SignedData<RawCommitHead>> COMMIT_HEAD_JSON = GsonAdapters.transform(BYTES_JSON,
-			bytes -> SignedData.ofBytes(bytes, RawCommitHead::ofBytes),
-			SignedData::toBytes);
+			bytes -> decode(SIGNED_COMMIT_HEAD_CODEC, bytes),
+			item -> encode(SIGNED_COMMIT_HEAD_CODEC, item).asArray());
 
 	public static final TypeAdapter<SignedData<SharedSimKey>> SHARED_SIM_KEY_JSON = GsonAdapters.transform(BYTES_JSON,
-			bytes -> SignedData.ofBytes(bytes, SharedSimKey::ofBytes),
-			SignedData::toBytes);
+			bytes -> decode(SIGNED_SHARED_KEY_CODEC, bytes),
+			item -> encode(SIGNED_SHARED_KEY_CODEC, item).asArray());
 
 	public static final TypeAdapter<RawCommit> COMMIT_JSON = GsonAdapters.transform(BYTES_JSON,
-			RawCommit::ofBytes,
-			RawCommit::toBytes);
+			bytes -> decode(COMMIT_CODEC, bytes),
+			item -> encode(COMMIT_CODEC, item).asArray());
 
 	public static final TypeAdapter<CommitId> COMMIT_ID_JSON = GsonAdapters.transform(BYTES_JSON,
-			CommitId::ofBytes,
-			CommitId::toBytes);
+			bytes -> decode(COMMIT_ID_CODEC, bytes),
+			item -> encode(COMMIT_ID_CODEC, item).asArray());
 
 	public static final TypeAdapter<Map<CommitId, RawCommit>> COMMIT_MAP_JSON = GsonAdapters.transform(GsonAdapters.ofMap(COMMIT_JSON),
 			map -> {
@@ -134,7 +141,7 @@ public class HttpDataFormats {
 
 	public static CommitId urlDecodeCommitId(String str) throws ParseException {
 		try {
-			return CommitId.ofBytes(Base64.getUrlDecoder().decode(str));
+			return CommitId.parse(Base64.getUrlDecoder().decode(str));
 		} catch (IllegalArgumentException e) {
 			throw new ParseException(HttpDataFormats.class, "Failed to decode CommitId from string: " + str, e);
 		}

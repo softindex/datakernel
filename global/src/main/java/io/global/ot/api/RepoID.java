@@ -19,9 +19,8 @@ package io.global.ot.api;
 import io.datakernel.exception.ParseException;
 import io.global.common.KeyPair;
 import io.global.common.PubKey;
-import io.global.common.StringIdentity;
 
-public final class RepoID implements StringIdentity {
+public final class RepoID {
 	private final PubKey owner;
 	private final String name;
 
@@ -54,7 +53,6 @@ public final class RepoID implements StringIdentity {
 		return name;
 	}
 
-	@Override
 	public String asString() {
 		return owner.asString() + '/' + name;
 	}
@@ -63,10 +61,8 @@ public final class RepoID implements StringIdentity {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
-		RepoID repoID = (RepoID) o;
-
-		return owner.equals(repoID.owner) && name.equals(repoID.name);
+		RepoID that = (RepoID) o;
+		return owner.equals(that.owner) && name.equals(that.name);
 	}
 
 	@Override

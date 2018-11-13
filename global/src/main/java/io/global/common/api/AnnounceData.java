@@ -16,53 +16,29 @@
 
 package io.global.common.api;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
-import io.global.common.ByteArrayIdentity;
 import io.global.common.RawServerId;
-import io.global.ot.util.BinaryDataFormats;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
-import static io.global.ot.util.BinaryDataFormats.sizeof;
-
-public final class AnnounceData implements ByteArrayIdentity {
-	private final byte[] bytes;
-
+public final class AnnounceData {
 	private final long timestamp;
 	private final Set<RawServerId> serverIds;
 
 	// region creators
-	public AnnounceData(byte[] bytes, long timestamp, Set<RawServerId> serverIds) {
-		this.bytes = bytes;
+	public AnnounceData(long timestamp, Set<RawServerId> serverIds) {
 		this.timestamp = timestamp;
 		this.serverIds = serverIds;
 	}
 
 	public static AnnounceData of(long timestamp, Set<RawServerId> serverIds) {
-		List<RawServerId> ids = new ArrayList<>(serverIds);
-		ByteBuf buf = ByteBufPool.allocate(8 + sizeof(ids, BinaryDataFormats::sizeof));
-		buf.writeLong(timestamp);
-		BinaryDataFormats.writeCollection(buf, ids, BinaryDataFormats::writeRawServerId);
-		return new AnnounceData(buf.asArray(), timestamp, serverIds);
+		return new AnnounceData(timestamp, serverIds);
+	}
+
+	public static AnnounceData parse(long timestamp, Set<RawServerId> serverIds) throws ParseException {
+		return new AnnounceData(timestamp, serverIds);
 	}
 	// endregion
-
-	public static AnnounceData fromBytes(byte[] bytes) throws ParseException {
-		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		long timestamp = buf.readLong();
-		List<RawServerId> rawServerIds = BinaryDataFormats.readList(buf, BinaryDataFormats::readRawServerId);
-		return new AnnounceData(bytes, timestamp, new HashSet<>(rawServerIds));
-	}
-
-	@Override
-	public byte[] toBytes() {
-		return bytes;
-	}
 
 	public long getTimestamp() {
 		return timestamp;
@@ -76,9 +52,7 @@ public final class AnnounceData implements ByteArrayIdentity {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
 		AnnounceData that = (AnnounceData) o;
-
 		return timestamp == that.timestamp && serverIds.equals(that.serverIds);
 	}
 

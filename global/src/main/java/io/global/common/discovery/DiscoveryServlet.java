@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.global.fs.http;
+package io.global.common.discovery;
 
 import com.google.gson.TypeAdapter;
 import com.google.inject.Inject;
@@ -33,7 +33,8 @@ import java.io.IOException;
 import java.util.List;
 
 import static io.datakernel.json.GsonAdapters.ofList;
-import static io.global.common.GlobalJsonAdapters.*;
+import static io.global.common.GlobalJsonAdapters.withSignature;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class DiscoveryServlet implements AsyncServlet {
@@ -47,8 +48,8 @@ public final class DiscoveryServlet implements AsyncServlet {
 
 	private final AsyncServlet servlet;
 
-	static final TypeAdapter<SignedData<AnnounceData>> SIGNED_ANNOUNCE = withSignarure(ANNOUNCE_DATA);
-	static final TypeAdapter<SignedData<SharedSimKey>> SIGNED_SHARED_SIM_KEY = withSignarure(SHARED_SIM_KEY);
+	static final TypeAdapter<SignedData<AnnounceData>> SIGNED_ANNOUNCE = withSignature(REGISTRY.get(SignedData.class, AnnounceData.class));
+	static final TypeAdapter<SignedData<SharedSimKey>> SIGNED_SHARED_SIM_KEY = withSignature(REGISTRY.get(SignedData.class, SharedSimKey.class));
 	static final TypeAdapter<List<SignedData<SharedSimKey>>> LIST_OF_SIGNED_SHARED_SIM_KEYS = ofList(SIGNED_SHARED_SIM_KEY);
 
 	@Inject
@@ -88,7 +89,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 				})
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEY + "/:receiver/:hash", request -> {
 					PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
-					Hash simKeyHash = Hash.fromString(request.getPathParameter("hash"));
+					Hash simKeyHash = Hash.parseString(request.getPathParameter("hash"));
 					return discoveryService.getSharedKey(receiver, simKeyHash)
 							.thenComposeEx((signedSharedKey, e) ->
 									e == null ?

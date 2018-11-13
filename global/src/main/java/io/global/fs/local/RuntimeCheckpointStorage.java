@@ -45,7 +45,7 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 	@Override
 	public Promise<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> fileCheckpoints = storage.computeIfAbsent(filename, $ -> new HashMap<>());
-		long pos = checkpoint.getData().getPosition();
+		long pos = checkpoint.getValue().getPosition();
 		SignedData<GlobalFsCheckpoint> existing = fileCheckpoints.get(pos);
 		if (existing == null) {
 			fileCheckpoints.put(pos, checkpoint);

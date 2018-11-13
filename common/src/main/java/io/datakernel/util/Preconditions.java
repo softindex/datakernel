@@ -16,6 +16,7 @@
 
 package io.datakernel.util;
 
+import io.datakernel.annotation.NotNull;
 import io.datakernel.annotation.Nullable;
 
 import java.util.function.Function;
@@ -50,6 +51,7 @@ public final class Preconditions {
 		}
 	}
 
+	@NotNull
 	public static <T> T checkNotNull(@Nullable T reference) {
 		if (reference != null) {
 			return reference;
@@ -57,6 +59,7 @@ public final class Preconditions {
 		throw new NullPointerException();
 	}
 
+	@NotNull
 	public static <T> T checkNotNull(@Nullable T reference, Object message) {
 		if (reference != null) {
 			return reference;
@@ -64,6 +67,7 @@ public final class Preconditions {
 		throw new NullPointerException(String.valueOf(message));
 	}
 
+	@NotNull
 	public static <T> T checkNotNull(@Nullable T reference, Supplier<String> message) {
 		if (reference != null) {
 			return reference;
@@ -71,6 +75,7 @@ public final class Preconditions {
 		throw new NullPointerException(message.get());
 	}
 
+	@NotNull
 	public static <T> T checkNotNull(@Nullable T reference, String template, Object... args) {
 		if (reference != null) {
 			return reference;

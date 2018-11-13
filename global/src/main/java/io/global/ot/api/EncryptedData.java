@@ -16,7 +16,7 @@
 
 package io.global.ot.api;
 
-import io.global.common.ByteArrayIdentity;
+import io.datakernel.exception.ParseException;
 import io.global.common.CryptoUtils;
 import io.global.common.SimKey;
 
@@ -31,8 +31,8 @@ public final class EncryptedData {
 		this.encryptedBytes = encryptedBytes;
 	}
 
-	public static EncryptedData encrypt(ByteArrayIdentity item, SimKey simKey) {
-		return CryptoUtils.encryptAES(item.toBytes(), simKey.getAesKey());
+	public static EncryptedData parse(byte[] nonce, byte[] encryptedBytes) throws ParseException {
+		return new EncryptedData(nonce, encryptedBytes); // TODO
 	}
 
 	public static EncryptedData encrypt(byte[] bytes, SimKey simKey) {
@@ -55,5 +55,13 @@ public final class EncryptedData {
 	@Override
 	public int hashCode() {
 		return 31 * Arrays.hashCode(nonce) + Arrays.hashCode(encryptedBytes);
+	}
+
+	public byte[] getNonce() {
+		return nonce;
+	}
+
+	public byte[] getEncryptedBytes() {
+		return encryptedBytes;
 	}
 }

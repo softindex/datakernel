@@ -16,11 +16,16 @@
 
 package io.global.common;
 
+import io.datakernel.exception.ParseException;
 import org.spongycastle.crypto.params.KeyParameter;
 
 import java.util.Arrays;
+import java.util.Base64;
 
-public final class SimKey implements Base64Identity {
+public final class SimKey {
+	private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
+	private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
+
 	private final byte[] key;
 	private final KeyParameter keyParameter;
 
@@ -42,16 +47,23 @@ public final class SimKey implements Base64Identity {
 		return new SimKey(keyParameter);
 	}
 
-	public static SimKey ofBytes(byte[] bytes) {
+	public static SimKey of(byte[] bytes) {
+		return new SimKey(bytes);
+	}
+
+	public static SimKey parse(byte[] bytes) throws ParseException {
 		return new SimKey(bytes);
 	}
 
 	public static SimKey fromString(String string) {
-		return new SimKey(decoder.decode(string));
+		return new SimKey(DECODER.decode(string));
 	}
 
-	@Override
-	public byte[] toBytes() {
+	public String asString() {
+		return ENCODER.encodeToString(key);
+	}
+
+	public byte[] getBytes() {
 		return key;
 	}
 
@@ -68,19 +80,12 @@ public final class SimKey implements Base64Identity {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
-		SimKey simKey = (SimKey) o;
-
-		return Arrays.equals(key, simKey.key);
+		SimKey that = (SimKey) o;
+		return Arrays.equals(key, that.key);
 	}
 
 	@Override
 	public String toString() {
 		return "SimKey@" + Integer.toHexString(Arrays.hashCode(key));
-	}
-
-	@SuppressWarnings("UseOfSystemOutOrSystemErr")
-	public static void main(String[] args) {
-		System.out.println(SimKey.generate().asString());
 	}
 }

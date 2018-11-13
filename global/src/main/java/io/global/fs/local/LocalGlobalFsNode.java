@@ -203,7 +203,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 				.thenCompose(nodes -> Promises.toList(nodes.stream().map(node -> node.listLocal(space, glob))))
 				.thenApply(listOfLists -> new ArrayList<>(listOfLists.stream()
 						.flatMap(Collection::stream)
-						.collect(groupingBy(signedMetadata -> signedMetadata.getData().getFilename(), toFirst()))
+						.collect(groupingBy(signedMetadata -> signedMetadata.getValue().getFilename(), toFirst()))
 						.values()));
 	}
 
@@ -293,9 +293,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 			return discoveryService.find(space)
 					.thenComposeEx((announcement, e) -> {
 						if (e == null) {
-							if (announcement.getData().getTimestamp() > announceTimestamp) {
-								announceTimestamp = announcement.getData().getTimestamp();
-								announceServerIds = new HashSet<>(announcement.getData().getServerIds());
+							if (announcement.getValue().getTimestamp() > announceTimestamp) {
+								announceTimestamp = announcement.getValue().getTimestamp();
+								announceServerIds = new HashSet<>(announcement.getValue().getServerIds());
 								announceServerIds.remove(id);
 							}
 						} else {
@@ -337,10 +337,10 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 							Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), files.stream()
 									.map(signedMetadata -> {
 										if (!signedMetadata.verify(space)) {
-											logger.warn("received metadata with unverified signature, skipping {}", signedMetadata.getData());
+											logger.warn("received metadata with unverified signature, skipping {}", signedMetadata.getValue());
 											return Promise.of(false).toTry();
 										}
-										GlobalFsMetadata metadata = signedMetadata.getData();
+										GlobalFsMetadata metadata = signedMetadata.getValue();
 										String filename = metadata.getFilename();
 										return getMetadata(filename)
 												.thenCompose(signedLocalMetadata -> {
@@ -348,7 +348,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 													// skip conditions
 													if (signedLocalMetadata != null) {
-														localMetadata = signedLocalMetadata.getData();
+														localMetadata = signedLocalMetadata.getValue();
 														if (!signedLocalMetadata.verify(space)) {
 															logger.warn("received metadata with unverified signature, skipping {}", localMetadata);
 															return Promise.of(false);
@@ -437,14 +437,14 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 									DataFrame ourLastFrame = frames2.get(0);
 
-									GlobalFsCheckpoint before = firstFrame.getCheckpoint().getData();
+									GlobalFsCheckpoint before = firstFrame.getCheckpoint().getValue();
 
 									ByteBuf buf = secondFrame.getBuf();
 									int delta = (int) (ourSize - before.getPosition());
 
 									buf.moveReadPosition(delta);
 
-									return node.download(space, fileName, thirdFrame.getCheckpoint().getData().getPosition(), partSize - buf.readRemaining())
+									return node.download(space, fileName, thirdFrame.getCheckpoint().getValue().getPosition(), partSize - buf.readRemaining())
 											.thenCompose(supplier ->
 													save(filename, ourSize)
 															.thenCompose(SerialSuppliers.concat(

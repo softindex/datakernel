@@ -34,6 +34,10 @@ public final class Signature {
 		return new Signature(r, s);
 	}
 
+	public static Signature parse(BigInteger r, BigInteger s) throws ParseException {
+		return new Signature(r, s); // TODO
+	}
+
 	public static Signature fromString(String string) throws ParseException {
 		String[] parts = string.split(":");
 		if (parts.length != 2) {

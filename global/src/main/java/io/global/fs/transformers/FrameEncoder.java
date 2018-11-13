@@ -19,8 +19,14 @@ package io.global.fs.transformers;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.serial.processor.SerialTransformer;
+import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
+import io.global.fs.api.GlobalFsCheckpoint;
+
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.ot.util.BinaryDataFormats2.encode;
 
 /**
  * Encodes stream of frames into a stream of bytebufs to transmit or store those frames.
@@ -28,10 +34,11 @@ import io.global.fs.api.DataFrame;
  * It's counterpart is the {@link FrameDecoder}.
  */
 public final class FrameEncoder extends SerialTransformer<FrameEncoder, DataFrame, ByteBuf> {
+	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(SignedData.class, GlobalFsCheckpoint.class);
 
 	@Override
 	protected Promise<Void> onItem(DataFrame item) {
-		ByteBuf data = item.isBuf() ? item.getBuf() : ByteBuf.wrapForReading(item.getCheckpoint().toBytes());
+		ByteBuf data = item.isBuf() ? item.getBuf() : encode(SIGNED_CHECKPOINT_CODEC, item.getCheckpoint());
 		ByteBuf header = ByteBufPool.allocate(5 + 1);
 		header.writeVarInt(data.readRemaining() + 1); // + 1 is for that tag byte below
 		header.writeByte((byte) (item.isBuf() ? 0 : 1));

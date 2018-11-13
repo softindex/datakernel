@@ -7,11 +7,14 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 
 public final class SimpleType {
+	private static final SimpleType[] NO_TYPE_PARAMS = new SimpleType[0];
+
 	private final Class clazz;
 	private final SimpleType[] typeParams;
 	private final int arrayDimension;
@@ -22,24 +25,34 @@ public final class SimpleType {
 		this.arrayDimension = arrayDimension;
 	}
 
+	public static SimpleType of(Class clazz) {
+		return new SimpleType(clazz, NO_TYPE_PARAMS, clazz.isArray() ? 1 : 0);
+	}
+
 	public static SimpleType of(Class clazz, SimpleType... typeParams) {
-		return new SimpleType(clazz, typeParams, 0);
+		return new SimpleType(clazz, typeParams, clazz.isArray() ? 1 : 0);
 	}
 
-	public static SimpleType ofClass(Class clazz) {
-		return new SimpleType(clazz, new SimpleType[]{}, clazz.isArray() ? 1 : 0);
+	public static SimpleType of(Class clazz, List<SimpleType> typeParams) {
+		return new SimpleType(clazz, typeParams.toArray(new SimpleType[0]), clazz.isArray() ? 1 : 0);
 	}
 
-	public static SimpleType ofClass(Class clazz, Class... typeParams) {
-		return new SimpleType(clazz, Arrays.stream(typeParams)
-				.map(SimpleType::ofClass)
-				.collect(toList())
-				.toArray(new SimpleType[]{}), clazz.isArray() ? 1 : 0);
+	public static SimpleType of(Class clazz, Class subtype1, Class... subtypes) {
+		return new SimpleType(clazz, simpleTypes(subtype1, subtypes), clazz.isArray() ? 1 : 0);
+	}
+
+	private static SimpleType[] simpleTypes(Class subtype1, Class[] subtypes) {
+		SimpleType[] simpleTypes = new SimpleType[subtypes.length + 1];
+		simpleTypes[0] = SimpleType.of(subtype1);
+		for (int i = 0; i < subtypes.length; i++) {
+			simpleTypes[i + 1] = SimpleType.of(subtypes[i]);
+		}
+		return simpleTypes;
 	}
 
 	public static SimpleType ofType(Type type) {
 		if (type instanceof Class) {
-			return ofClass(((Class) type));
+			return of(((Class) type));
 		} else if (type instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType) type;
 			return of(((Class) parameterizedType.getRawType()),
@@ -59,7 +72,7 @@ public final class SimpleType {
 		}
 	}
 
-	public Class getClazz() {
+	public Class getRawType() {
 		return clazz;
 	}
 
@@ -120,12 +133,10 @@ public final class SimpleType {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
 		SimpleType that = (SimpleType) o;
-
 		if (!clazz.equals(that.clazz)) return false;
-		// Probably incorrect - comparing Object[] arrays with Arrays.equals
-		return Arrays.equals(typeParams, that.typeParams);
+		if (!Arrays.equals(typeParams, that.typeParams)) return false;
+		return true;
 	}
 
 	@Override

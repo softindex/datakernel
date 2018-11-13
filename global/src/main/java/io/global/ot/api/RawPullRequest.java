@@ -16,52 +16,31 @@
 
 package io.global.ot.api;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
-import io.global.common.ByteArrayIdentity;
 
-import java.util.Arrays;
-
-import static io.global.ot.util.BinaryDataFormats.*;
-
-public final class RawPullRequest implements ByteArrayIdentity {
-	public final byte[] bytes;
-
+public final class RawPullRequest {
 	public final RepoID repository;
 	public final RepoID forkRepository;
 
-	private RawPullRequest(byte[] bytes,
-			RepoID repository, RepoID forkRepository) {
-		this.bytes = bytes;
+	private RawPullRequest(RepoID repository, RepoID forkRepository) {
 		this.repository = repository;
 		this.forkRepository = forkRepository;
 	}
 
-	public static RawPullRequest ofBytes(byte[] bytes) throws ParseException {
-		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-
-		RepoID repository = readRepoID(buf);
-		RepoID forkRepository = readRepoID(buf);
-
-		return new RawPullRequest(bytes,
-				repository,
-				forkRepository);
-	}
-
 	public static RawPullRequest of(RepoID repository, RepoID forkRepository) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(repository) + sizeof(forkRepository));
-
-		writeRepoID(buf, repository);
-		writeRepoID(buf, forkRepository);
-
-		return new RawPullRequest(buf.asArray(),
-				repository, forkRepository);
+		return new RawPullRequest(repository, forkRepository);
 	}
 
-	@Override
-	public byte[] toBytes() {
-		return bytes;
+	public static RawPullRequest parse(RepoID repository, RepoID forkRepository) throws ParseException {
+		return new RawPullRequest(repository, forkRepository);
+	}
+
+	public RepoID getRepository() {
+		return repository;
+	}
+
+	public RepoID getForkRepository() {
+		return forkRepository;
 	}
 
 	@Override
@@ -69,11 +48,14 @@ public final class RawPullRequest implements ByteArrayIdentity {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		RawPullRequest that = (RawPullRequest) o;
-		return Arrays.equals(bytes, that.bytes);
+		if (!repository.equals(that.repository)) return false;
+		return forkRepository.equals(that.forkRepository);
 	}
 
 	@Override
 	public int hashCode() {
-		return Arrays.hashCode(bytes);
+		int result = repository.hashCode();
+		result = 31 * result + forkRepository.hashCode();
+		return result;
 	}
 }

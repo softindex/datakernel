@@ -34,7 +34,7 @@ import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.api.DiscoveryService;
-import io.global.fs.http.HttpDiscoveryService;
+import io.global.common.discovery.HttpDiscoveryService;
 import io.global.fs.http.HttpFsClient;
 
 import java.util.Collection;
