@@ -18,7 +18,7 @@ public final class LogOTState<D> implements OTState<LogDiff<D>> {
 	}
 
 	public static <D> LogOTState<D> create(OTState<D> dataState) {
-		return new LogOTState<D>(dataState);
+		return new LogOTState<>(dataState);
 	}
 
 	public Map<String, LogPosition> getPositions() {

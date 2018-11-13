@@ -559,7 +559,7 @@ public class AsmSerializerTest {
 		testData1.list = asList(
 				null,
 				new TestDataGenericNested<>(10, "a"),
-				new TestDataGenericNested<Integer, String>(null, null));
+				new TestDataGenericNested<>(null, null));
 		TestDataGenericParameters testData2 = doTest(TestDataGenericParameters.class, testData1);
 		assertEquals(testData1.list.size(), testData2.list.size());
 		for (int i = 0; i < testData1.list.size(); i++) {

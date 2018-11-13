@@ -38,7 +38,7 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 	}
 
 	public static <T> StreamUnion<T> create() {
-		return new StreamUnion<T>();
+		return new StreamUnion<>();
 	}
 
 	@Override

@@ -70,7 +70,7 @@ public final class LogDiffJson<D> extends TypeAdapter<LogDiff<D>> {
 	}
 
 	public static <D> LogDiffJson<D> create(TypeAdapter<D> opAdapter) {
-		return new LogDiffJson<D>(GsonAdapters.ofList(opAdapter));
+		return new LogDiffJson<>(GsonAdapters.ofList(opAdapter));
 	}
 
 	@Override
