@@ -133,7 +133,6 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		 */
 		@Override
 		public void accept(I item) {
-			//noinspection AssertWithSideEffects
 			if (headItem == null) {
 				headItem = item;
 				headKey = keyFunction.apply(headItem);

@@ -291,7 +291,6 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 					SerialConsumer<ByteBuf> consumer = splitter.getInput().getConsumer();
 
-					//noinspection RedundantTypeArguments - that <Void> 3 lines below is needed badly for Java, uughh
 					// check number of uploads only here, so even if there were less connections
 					// than replicationCount, they will still upload
 					return Promise.of(consumer.withAcknowledgement(ack -> ack

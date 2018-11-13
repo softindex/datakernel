@@ -27,7 +27,6 @@ import static org.junit.Assert.assertTrue;
 
 public class RangeTreeTest {
 
-	@SuppressWarnings("AssertEqualsBetweenInconvertibleTypes")
 	@Test
 	public void testPut() throws Exception {
 		RangeTree<Integer, String> rangeTree = RangeTree.create();

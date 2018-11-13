@@ -469,7 +469,6 @@ public final class SerializerBuilder {
 			throw new AssertionError();
 		}
 
-		@SuppressWarnings("NullableProblems")
 		@Override
 		public int compareTo(FoundSerializer o) {
 			int result = Integer.compare(this.order, o.order);

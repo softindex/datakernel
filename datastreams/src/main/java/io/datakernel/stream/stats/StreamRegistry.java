@@ -79,7 +79,6 @@ public final class StreamRegistry<V> implements Iterable<V> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	public <T> RegisterFunction<T> register(V value) {
 		return new RegisterFunction<>(value);
 	}

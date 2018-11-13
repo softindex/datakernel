@@ -153,7 +153,6 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				});
 	}
 
-	@SuppressWarnings("unchecked")
 	private void doRead(MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
 		CommandHandler handler = handlers.get(command.getClass());
 		if (handler == null) {

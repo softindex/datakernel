@@ -276,7 +276,6 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	 * @param outputClass class of output records
 	 * @return supplier that streams query results
 	 */
-	@SuppressWarnings("unchecked")
 	@Override
 	public <T> StreamSupplier<T> query(AggregationQuery query, Class<T> outputClass, DefiningClassLoader queryClassLoader) {
 		checkArgument(iterate(queryClassLoader, Objects::nonNull, ClassLoader::getParent).anyMatch(isEqual(classLoader)),

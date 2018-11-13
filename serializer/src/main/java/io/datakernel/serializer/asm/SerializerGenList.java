@@ -19,7 +19,6 @@ package io.datakernel.serializer.asm;
 import java.util.ArrayList;
 import java.util.List;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenList extends AbstractSerializerGenCollection {
 
 	// region creators

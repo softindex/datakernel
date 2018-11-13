@@ -162,7 +162,6 @@ public final class ReflectionUtils {
 		return getConstructorOrFactory(cls, factoryMethodNames) != null;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Nullable
 	public static <T> T tryToCreateInstanceWithFactoryMethods(Class<T> cls, String... factoryMethodNames) {
 		try {

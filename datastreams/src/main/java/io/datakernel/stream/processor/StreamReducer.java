@@ -31,7 +31,6 @@ import java.util.function.Function;
  * @param <O> type of output data
  * @param <A> type of accumulator
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamReducer<K, O, A> extends AbstractStreamReducer<K, O, A> {
 	// region creators
 	private StreamReducer(Comparator<K> keyComparator) {

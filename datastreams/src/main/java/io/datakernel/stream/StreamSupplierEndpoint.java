@@ -31,7 +31,6 @@ public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 		return buffer.put(item);
 	}
 
-	@SuppressWarnings({"unchecked", "ConstantConditions"})
 	@Override
 	protected void produce(AsyncProduceController async) {
 		try {
@@ -50,7 +49,6 @@ public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	protected void onError(Throwable e) {
 		buffer.close(e);

@@ -46,7 +46,6 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public Promise<Void> put(@Nullable T value) {
 		assert put == null;
 		if (exception == null) {
@@ -66,7 +65,6 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Promise<T> take() {
 		assert take == null;
@@ -87,7 +85,6 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public void close(Throwable e) {
 		if (exception != null) return;

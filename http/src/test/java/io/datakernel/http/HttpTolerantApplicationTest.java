@@ -37,7 +37,6 @@ import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class HttpTolerantApplicationTest {
 	@Rule
@@ -109,7 +108,6 @@ public class HttpTolerantApplicationTest {
 			}
 
 			public void readHttpMessage(DataInputStream in) throws IOException {
-				//noinspection StatementWithEmptyBody
 				int eofCounter = 0;
 				while (eofCounter < 2) {
 					int i = in.read();

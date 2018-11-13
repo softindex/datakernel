@@ -77,7 +77,6 @@ public final class FatalErrorHandlers {
 		Runtime.getRuntime().halt(1);
 	}
 
-	@SuppressWarnings("unchecked")
 	private static boolean matchesAny(Class<?> c, List<Class<?>> list) {
 		return list.stream().anyMatch(cl -> cl.isAssignableFrom(c));
 	}

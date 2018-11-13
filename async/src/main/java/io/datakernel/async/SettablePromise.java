@@ -38,7 +38,6 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 public final class SettablePromise<T> extends AbstractPromise<T> implements MaterializedPromise<T> {
 	private static final Throwable PROMISE_NOT_SET = new StacklessException(SettablePromise.class, "Promise has not been completed yet");
 
-	@SuppressWarnings("unchecked")
 	@Nullable
 	protected T result;
 

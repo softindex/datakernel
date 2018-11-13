@@ -111,7 +111,7 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 		return this;
 	}
 
-	@SuppressWarnings({"unchecked", "SuspiciousMethodCalls", "SimplifiableIfStatement"})
+	@SuppressWarnings({"SuspiciousMethodCalls", "SimplifiableIfStatement"})
 	@Override
 	public boolean isEmpty(D op) {
 		if (emptyPredicates.isEmpty())
@@ -202,7 +202,7 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 		return result;
 	}
 
-	@SuppressWarnings({"unchecked", "SuspiciousMethodCalls"})
+	@SuppressWarnings("SuspiciousMethodCalls")
 	@Override
 	public List<D> invert(List<? extends D> ops) {
 		int size = ops.size();

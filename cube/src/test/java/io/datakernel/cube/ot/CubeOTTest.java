@@ -27,7 +27,6 @@ import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
 
-@SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeOTTest {
 	private OTSystem<CubeDiff> cubeSystem;
 	private OTSystem<LogDiff<CubeDiff>> logSystem;

@@ -139,7 +139,6 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 		return this;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Promise<T> thenException(Function<? super T, Throwable> fn) {
 		return this;

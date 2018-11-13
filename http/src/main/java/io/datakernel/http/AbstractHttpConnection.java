@@ -42,7 +42,6 @@ import static io.datakernel.http.HttpHeaderValue.ofDecimal;
 import static io.datakernel.http.HttpHeaders.*;
 import static java.lang.Math.max;
 
-@SuppressWarnings("ThrowableInstanceNeverThrown")
 public abstract class AbstractHttpConnection {
 	public static final AsyncTimeoutException READ_TIMEOUT_ERROR = new AsyncTimeoutException(AbstractHttpConnection.class, "Read timeout");
 	public static final AsyncTimeoutException WRITE_TIMEOUT_ERROR = new AsyncTimeoutException(AbstractHttpConnection.class, "Write timeout");

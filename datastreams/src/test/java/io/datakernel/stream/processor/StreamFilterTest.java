@@ -34,7 +34,6 @@ import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamFilterTest {
 	@Test
@@ -82,7 +81,6 @@ public class StreamFilterTest {
 		assertClosedWithError(streamFilter.getOutput());
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void testSupplierDisconnectWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();

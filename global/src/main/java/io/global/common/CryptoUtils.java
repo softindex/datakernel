@@ -115,7 +115,6 @@ public final class CryptoUtils {
 		return hash;
 	}
 
-	@SuppressWarnings("deprecation")
 	public static EncryptedData encryptAES(byte[] plainBytes, CipherParameters aesKey) {
 		byte[] newBytes = Arrays.copyOf(plainBytes, plainBytes.length);
 		byte[] nonce = generateNonce();
@@ -123,7 +122,6 @@ public final class CryptoUtils {
 		return new EncryptedData(nonce, newBytes);
 	}
 
-	@SuppressWarnings("deprecation")
 	public static byte[] decryptAES(EncryptedData dataToDecrypt, CipherParameters aesKey) {
 		byte[] newBytes = Arrays.copyOf(dataToDecrypt.encryptedBytes, dataToDecrypt.encryptedBytes.length);
 		CTRAESCipher.create(aesKey, dataToDecrypt.nonce).apply(newBytes);

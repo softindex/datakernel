@@ -137,7 +137,6 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		this.eventloop = eventloop;
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	public static RpcClient create(Eventloop eventloop) {
 		return new RpcClient(eventloop);
 	}

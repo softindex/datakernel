@@ -989,7 +989,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 					.buildClassAndCreateNewInstance();
 		}
 
-		@SuppressWarnings("unchecked")
 		Promise<QueryResult> processResults(List<R> results) {
 			R totals;
 			try {

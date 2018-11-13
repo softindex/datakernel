@@ -25,7 +25,6 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public StreamStatsDetailedEx<T> withBasicSmoothingWindow(Duration smoothingWindow) {
 		return (StreamStatsDetailedEx<T>) super.withBasicSmoothingWindow(smoothingWindow);
 	}

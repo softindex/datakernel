@@ -163,7 +163,6 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 		return GsonAdapters.toJson(diffsAdapter, diffs);
 	}
 
-	@SuppressWarnings("unchecked")
 	private List<D> fromJson(String json) throws ParseException {
 		return GsonAdapters.fromJson(diffsAdapter, json);
 	}

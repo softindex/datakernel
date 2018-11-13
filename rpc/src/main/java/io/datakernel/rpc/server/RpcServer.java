@@ -176,7 +176,6 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	 * @param <O>           class of response
 	 * @return server instance capable for handling requests of concrete types
 	 */
-	@SuppressWarnings("unchecked")
 	public <I, O> RpcServer withHandler(Class<I> requestClass, Class<O> responseClass, RpcRequestHandler<I, O> handler) {
 		handlers.put(requestClass, handler);
 		return this;

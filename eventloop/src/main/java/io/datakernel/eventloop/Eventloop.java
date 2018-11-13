@@ -672,7 +672,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param key key of this action.
 	 */
-	@SuppressWarnings("unchecked")
 	private void onConnect(SelectionKey key) {
 		assert inEventloopThread();
 		ConnectCallback callback = (ConnectCallback) key.attachment();

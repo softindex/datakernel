@@ -21,6 +21,5 @@ package io.datakernel.stream;
  *
  * @param <I> type of receiving items
  */
-@SuppressWarnings("unchecked")
 public abstract class AbstractStreamTransformer_1_N<I> implements StreamInput<I>, StreamOutputs {
 }

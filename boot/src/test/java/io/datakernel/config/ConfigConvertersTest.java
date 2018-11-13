@@ -266,7 +266,7 @@ public class ConfigConvertersTest {
 		assertEquals(expected, actual);
 	}
 
-	@Test()
+	@Test
 	public void testPeriod() {
 		Period expected = Period.of(1998, -12, 23);
 

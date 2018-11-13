@@ -830,7 +830,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			this.opkeyToMethod = opkeyToMethod;
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public Object getAttribute(String attribute) throws MBeanException {
 			Object value = rootNode.aggregateAttributes(singleton(attribute), mbeans).get(attribute);

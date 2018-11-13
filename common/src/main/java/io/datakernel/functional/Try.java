@@ -106,7 +106,6 @@ public final class Try<T> {
 
 	public T get() throws Exception {
 		if (throwable == null) {
-			//noinspection ConstantConditions - nullability of this method is equal to the nullability of T
 			return result;
 		}
 		throw throwable instanceof Exception ? (Exception) throwable : new RuntimeException(throwable);
@@ -114,7 +113,6 @@ public final class Try<T> {
 
 	public T getOr(T defaultValue) {
 		if (throwable == null) {
-			//noinspection ConstantConditions - nullability of this method is equal to the nullability of T
 			return result;
 		}
 		return defaultValue;
@@ -134,13 +132,11 @@ public final class Try<T> {
 
 	public T getResult() {
 		assert isSuccess();
-		//noinspection ConstantConditions - nullability of this method is equal to the nullability of T
 		return result;
 	}
 
 	public Throwable getException() {
 		assert !isSuccess();
-		//noinspection ConstantConditions - isSuccess check
 		return throwable;
 	}
 

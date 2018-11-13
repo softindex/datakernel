@@ -49,7 +49,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
 
-@SuppressWarnings("ThrowableResultOfMethodCallIgnored")
 public class StaticServletsTest {
 	public static final String EXPECTED_CONTENT = "Test";
 

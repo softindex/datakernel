@@ -27,7 +27,6 @@ import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenArray implements SerializerGen, NullableOptimization {
 	private final SerializerGen valueSerializer;
 	private final int fixedSize;

@@ -52,7 +52,6 @@ public final class NodeDownload<T> implements Node {
 		return singletonList(streamId);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		DatagraphClient client = taskContext.environment().getInstance(DatagraphClient.class);

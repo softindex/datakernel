@@ -25,7 +25,6 @@ import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenNullable implements SerializerGen {
 	private final SerializerGen serializer;
 

@@ -92,7 +92,7 @@ public class JmxMBeansAttributesSelectionTest {
 	public static class MBeanWithExtraSubAttributes implements EventloopJmxMBean {
 		private final JmxStatsWithOptionalAttributes stats = new JmxStatsWithOptionalAttributes();
 
-		@JmxAttribute(extraSubAttributes = {"count"})
+		@JmxAttribute(extraSubAttributes = "count")
 		public JmxStatsWithOptionalAttributes getStats() {
 			return stats;
 		}
@@ -106,7 +106,7 @@ public class JmxMBeansAttributesSelectionTest {
 	public static class MBeansStubWithInvalidExtraAttrName implements EventloopJmxMBean {
 		private final JmxStatsWithOptionalAttributes stats = new JmxStatsWithOptionalAttributes();
 
-		@JmxAttribute(extraSubAttributes = {"QWERTY"}) // QWERTY subAttribute doesn't exist
+		@JmxAttribute(extraSubAttributes = "QWERTY") // QWERTY subAttribute doesn't exist
 		public JmxStatsWithOptionalAttributes getStats() {
 			return stats;
 		}

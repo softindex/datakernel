@@ -26,7 +26,6 @@ import static java.lang.Integer.numberOfLeadingZeros;
 public final class SerialBuffer<T> implements SerialQueue<T> {
 	private Exception exception;
 
-	@SuppressWarnings("unchecked")
 	private Object[] elements;
 	private int tail;
 	private int head;
@@ -81,7 +80,6 @@ public final class SerialBuffer<T> implements SerialQueue<T> {
 		return tail == head;
 	}
 
-	@SuppressWarnings("unchecked")
 	public void add(@Nullable T item) throws Exception {
 		if (exception == null) {
 			if (take != null) {
@@ -120,7 +118,6 @@ public final class SerialBuffer<T> implements SerialQueue<T> {
 	}
 
 	@Nullable
-	@SuppressWarnings("unchecked")
 	public T poll() throws Exception {
 		if (exception != null) throw exception;
 
@@ -145,7 +142,6 @@ public final class SerialBuffer<T> implements SerialQueue<T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public Promise<Void> put(@Nullable T value) {
 		assert put == null;
 		if (exception == null) {
@@ -172,7 +168,6 @@ public final class SerialBuffer<T> implements SerialQueue<T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public Promise<T> take() {
 		assert take == null;
 		if (exception == null) {

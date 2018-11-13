@@ -38,7 +38,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.EMPTY_LIST;
 import static org.junit.Assert.assertEquals;
 
-@SuppressWarnings("unchecked")
 public class StreamReducerTest {
 	@Test
 	public void testEmpty() {

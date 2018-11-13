@@ -117,7 +117,6 @@ public final class StreamConsumers {
 			produce();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public void accept(T item) {
 			assert item != null;

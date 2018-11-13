@@ -95,7 +95,6 @@ public class CubeMeasureRemovalTest {
 		serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void test() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
@@ -288,7 +287,6 @@ public class CubeMeasureRemovalTest {
 		}
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void testNewUnknownMeasureInAggregationDiffOnDeserialization() throws Throwable {
 		{

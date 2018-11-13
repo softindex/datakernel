@@ -72,7 +72,6 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 	}
 
 	private final static Logger logger = getLogger(RpcClientConnection.class);
-	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	private final Eventloop eventloop;
 	private final RpcClient rpcClient;
 	private final RpcStream stream;

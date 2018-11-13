@@ -32,7 +32,6 @@ import static org.objectweb.asm.commons.Method.getMethod;
 /**
  * Defines methods for hashing some fields
  */
-@SuppressWarnings("PointlessArithmeticExpression")
 final class ExpressionHash implements Expression {
 	private final List<Expression> arguments;
 

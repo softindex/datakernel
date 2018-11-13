@@ -37,7 +37,6 @@ import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 import static org.objectweb.asm.Type.*;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenClass implements SerializerGen {
 
 	private static final class FieldGen {

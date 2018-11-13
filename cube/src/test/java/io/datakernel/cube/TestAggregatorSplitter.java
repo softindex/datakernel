@@ -31,7 +31,6 @@ import static java.util.Collections.singleton;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toSet;
 
-@SuppressWarnings("unchecked")
 public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubRequest, CubeDiff> {
 	private final Cube cube;
 

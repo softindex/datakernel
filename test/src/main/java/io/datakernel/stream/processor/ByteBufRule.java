@@ -51,7 +51,7 @@ public final class ByteBufRule implements TestRule {
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.METHOD})
+	@Target(ElementType.METHOD)
 	public @interface IgnoreLeaks {
 
 		/**

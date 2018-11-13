@@ -42,11 +42,10 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static io.datakernel.util.Recyclable.deepRecycle;
 
-@SuppressWarnings({"WeakerAccess", "AssertWithSideEffects"})
+@SuppressWarnings("WeakerAccess")
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
 	public static final MemSize DEFAULT_READ_BUF_SIZE = MemSize.kilobytes(16);
 
-	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(AsyncTcpSocketImpl.class, "timed out");
 	public static final int NO_TIMEOUT = -1;
 
@@ -442,7 +441,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				}
 			}
 
-			@SuppressWarnings("ConstantConditions")
 			ByteBuffer bufferToSend = bufToSend.toReadByteBuffer();
 
 			try {

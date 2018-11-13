@@ -162,7 +162,7 @@ public class ReportingTest {
 		}
 	}
 
-	@Measures({"eventCount"})
+	@Measures("eventCount")
 	public static class LogItem {
 		static final int EXCLUDE_AFFILIATE = 0;
 		static final String EXCLUDE_SITE = "--";

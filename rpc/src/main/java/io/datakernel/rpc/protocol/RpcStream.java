@@ -32,7 +32,6 @@ import io.datakernel.util.MemSize;
 
 import java.time.Duration;
 
-@SuppressWarnings("unchecked")
 public final class RpcStream {
 	public interface Listener extends StreamDataAcceptor<RpcMessage> {
 		void onClosedWithError(Throwable exception);

@@ -85,11 +85,9 @@ public final class DatagraphSerialization {
 					addr.getAddress().getHostAddress() + ':' + addr.getPort())
 			.nullSafe();
 
-	@SuppressWarnings("unchecked")
 	public static final TypeAdapter<Predicate<Object>> PREDICATE_JSON = stateless();
 	@SuppressWarnings("unchecked")
 	public static final TypeAdapter<Function<Object, Object>> FUNCTION_JSON = stateless(Function.identity());
-	@SuppressWarnings("unchecked")
 	public static final TypeAdapter<Comparator<Object>> COMPARATOR_JSON = stateless();
 
 	public static final TypeAdapterObjectSubtype<Sharder> SHARDER_JSON = TypeAdapterObjectSubtype.<Sharder>create()

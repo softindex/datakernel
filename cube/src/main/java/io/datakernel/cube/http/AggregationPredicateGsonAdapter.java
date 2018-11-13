@@ -132,27 +132,23 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 		typeAdapter.write(writer, predicate.getTo());
 	}
 
-	@SuppressWarnings("unchecked")
 	private void writeRegexp(JsonWriter writer, PredicateRegexp predicate) throws IOException {
 		writer.value(predicate.getKey());
 		writer.value(predicate.getRegexp());
 	}
 
-	@SuppressWarnings("unchecked")
 	private void writeAnd(JsonWriter writer, PredicateAnd predicate) throws IOException {
 		for (AggregationPredicate p : predicate.getPredicates()) {
 			write(writer, p);
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	private void writeOr(JsonWriter writer, PredicateOr predicate) throws IOException {
 		for (AggregationPredicate p : predicate.getPredicates()) {
 			write(writer, p);
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	private void writeNot(JsonWriter writer, PredicateNot predicate) throws IOException {
 		write(writer, predicate.getPredicate());
 	}
@@ -293,7 +289,6 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 		return lt(field, value);
 	}
 
-	@SuppressWarnings("unchecked")
 	private AggregationPredicate readIn(JsonReader reader) throws IOException {
 		String field = reader.nextString();
 		TypeAdapter<?> typeAdapter = attributeAdapters.get(field);

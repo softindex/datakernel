@@ -95,7 +95,6 @@ public final class AsyncSuppliers {
 		};
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> AsyncSupplier<T> prefetch(int count, AsyncSupplier<? extends T> actual) {
 		return prefetch(count, actual, actual);
 	}

@@ -349,11 +349,11 @@ public class AsmSerializerTest {
 		public List<String> listOfNullableStrings;
 
 		@Serialize(order = 3)
-		@SerializeNullableEx({@SerializeNullable, @SerializeNullable(path = {0}), @SerializeNullable(path = {0, 0})})
+		@SerializeNullableEx({@SerializeNullable, @SerializeNullable(path = 0), @SerializeNullable(path = {0, 0})})
 		public String[][] nullableArrayOfNullableArrayOfNullableStrings;
 
 		@Serialize(order = 4)
-		@SerializeNullableEx({@SerializeNullable(path = {0}), @SerializeNullable(path = {1})})
+		@SerializeNullableEx({@SerializeNullable(path = 0), @SerializeNullable(path = 1)})
 		public Map<Integer, String> mapOfNullableInt2NullableString;
 	}
 
@@ -467,7 +467,6 @@ public class AsmSerializerTest {
 
 		private V value;
 
-		@SuppressWarnings("UnusedDeclaration")
 		public TestDataGenericNested() {
 		}
 
@@ -547,7 +546,7 @@ public class AsmSerializerTest {
 
 	public static class TestDataGenericParameters {
 		@Serialize(order = 0)
-		@SerializeNullableEx({@SerializeNullable(path = {0}), @SerializeNullable(path = {0, 0}), @SerializeNullable(path = {0, 1})})
+		@SerializeNullableEx({@SerializeNullable(path = 0), @SerializeNullable(path = {0, 0}), @SerializeNullable(path = {0, 1})})
 		@SerializeVarLength(path = {0, 0})
 		@SerializeStringFormat(value = StringFormat.UTF16, path = {0, 1})
 		public List<TestDataGenericNested<Integer, String>> list;
@@ -716,23 +715,23 @@ public class AsmSerializerTest {
 
 	public static class TestDataSerializerFormat {
 		@Serialize(order = 0)
-		@SerializeStringFormat(value = StringFormat.UTF16, path = {0})
-		@SerializeNullable(path = {0})
+		@SerializeStringFormat(value = StringFormat.UTF16, path = 0)
+		@SerializeNullable(path = 0)
 		public List<String> stringsUtf16;
 
 		@Serialize(order = 1)
-		@SerializeStringFormat(value = StringFormat.UTF8, path = {0})
-		@SerializeNullable(path = {0})
+		@SerializeStringFormat(value = StringFormat.UTF8, path = 0)
+		@SerializeNullable(path = 0)
 		public List<String> stringsUtf8;
 
 		@Serialize(order = 2)
-		@SerializeStringFormat(value = StringFormat.UTF8_CUSTOM, path = {0})
-		@SerializeNullable(path = {0})
+		@SerializeStringFormat(value = StringFormat.UTF8_CUSTOM, path = 0)
+		@SerializeNullable(path = 0)
 		public List<String> stringsUtf8Custom;
 
 		@Serialize(order = 3)
-		@SerializeStringFormat(value = StringFormat.ISO_8859_1, path = {0})
-		@SerializeNullable(path = {0})
+		@SerializeStringFormat(value = StringFormat.ISO_8859_1, path = 0)
+		@SerializeNullable(path = 0)
 		public List<String> stringsIso88591;
 
 	}
@@ -756,7 +755,7 @@ public class AsmSerializerTest {
 	public static class TestDataFixedSize {
 		@Serialize(order = 0)
 		@SerializeFixedSize(3)
-		@SerializeNullable(path = {0})
+		@SerializeNullable(path = 0)
 		public String[] strings;
 
 		@Serialize(order = 1)
@@ -892,10 +891,10 @@ public class AsmSerializerTest {
 		public int a;
 
 		@Serialize(order = 1, added = 1)
-		@SerializeProfiles(value = "profile", added = {2})
+		@SerializeProfiles(value = "profile", added = 2)
 		public int b;
 
-		@SerializeProfiles(value = {"profile", SerializeProfiles.COMMON_PROFILE}, added = {1}, removed = {2})
+		@SerializeProfiles(value = {"profile", SerializeProfiles.COMMON_PROFILE}, added = 1, removed = 2)
 		@Serialize(order = 2, added = 2)
 		public int c;
 
@@ -903,7 +902,7 @@ public class AsmSerializerTest {
 		public int d;
 
 		@Serialize(order = 4, added = 1)
-		@SerializeProfiles(value = "profile")
+		@SerializeProfiles("profile")
 		public int e;
 
 		public int f;
@@ -1011,7 +1010,6 @@ public class AsmSerializerTest {
 		@SerializeNullable
 		public TestDataRecursive next;
 
-		@SuppressWarnings("UnusedDeclaration")
 		public TestDataRecursive() {
 		}
 
@@ -1035,11 +1033,11 @@ public class AsmSerializerTest {
 
 	public static class TestDataExtraSubclasses {
 		@Serialize(order = 0)
-		@SerializeSubclasses(value = {String.class}, extraSubclassesId = "extraSubclasses1")
+		@SerializeSubclasses(value = String.class, extraSubclassesId = "extraSubclasses1")
 		public Object object1;
 
 		@Serialize(order = 1)
-		@SerializeSubclasses(value = {String.class}, extraSubclassesId = "extraSubclasses2")
+		@SerializeSubclasses(value = String.class, extraSubclassesId = "extraSubclasses2")
 		public Object object2;
 	}
 
@@ -1059,7 +1057,7 @@ public class AsmSerializerTest {
 		assertEquals(testData1.object2, testData2.object2);
 	}
 
-	@SerializeSubclasses(value = {TestDataExtraSubclasses1.class}, extraSubclassesId = "extraSubclasses")
+	@SerializeSubclasses(value = TestDataExtraSubclasses1.class, extraSubclassesId = "extraSubclasses")
 	public interface TestDataExtraSubclassesInterface {
 	}
 
@@ -1468,7 +1466,7 @@ public class AsmSerializerTest {
 
 	public static class ListEnumHolder2 {
 		@Serialize(order = 0)
-		@SerializeNullable(path = {0})
+		@SerializeNullable(path = 0)
 		public List<TestEnum2> list;
 	}
 
@@ -1750,7 +1748,7 @@ public class AsmSerializerTest {
 		public Object address2;
 
 		@Serialize(order = 12)
-		@SerializerClass(path = {0}, value = SerializerGenInt.class)
+		@SerializerClass(path = 0, value = SerializerGenInt.class)
 		public List<Object> list;
 	}
 

@@ -42,7 +42,6 @@ import static java.lang.Math.max;
  *
  * @param <T> original type of data
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
 public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToSerial<SerialBinarySerializer<T>, T, ByteBuf> {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();

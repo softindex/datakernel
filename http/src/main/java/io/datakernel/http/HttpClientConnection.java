@@ -76,7 +76,6 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
  * }
  * </pre>
  */
-@SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	public static final ParseException INVALID_RESPONSE = new UnknownFormatException(HttpClientConnection.class, "Invalid response");
 	private SettablePromise<HttpResponse> callback;

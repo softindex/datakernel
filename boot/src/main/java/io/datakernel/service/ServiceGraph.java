@@ -261,7 +261,6 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		return this;
 	}
 
-	@SuppressWarnings("unchecked")
 	public ServiceGraph add(Key<?> key, Key<?> first, Key<?>... rest) {
 		add(key, concat(singletonList(first), asList(rest)));
 		return this;

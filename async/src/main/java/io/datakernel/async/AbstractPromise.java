@@ -44,7 +44,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		}
 	}
 
-	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
 	protected void complete(@Nullable T value) {
 		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
 		if (next != null) {
@@ -53,7 +52,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		}
 	}
 
-	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
 	protected void completeExceptionally(@Nullable Throwable error) {
 		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
 		if (next != null) {
@@ -86,7 +84,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		return promise;
 	}
 
-	@SuppressWarnings("unchecked")
 	protected void subscribe(BiConsumer<? super T, Throwable> consumer) {
 		if (next == null) {
 			next = consumer;
@@ -306,7 +303,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		return then(resultPromise);
 	}
 
-	@SuppressWarnings("unchecked")
 	private static class PromiseBoth<T> extends NextPromise<T, Void> {
 		int counter = 2;
 
@@ -387,7 +383,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		});
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Promise<Void> toVoid() {
 		return thenApply($ -> null);

@@ -71,7 +71,6 @@ public interface StreamSupplier<T> extends Cancellable {
 
 	Set<StreamCapability> getCapabilities();
 
-	@SuppressWarnings("unchecked")
 	default Promise<Void> streamTo(StreamConsumer<T> consumer) {
 		StreamSupplier<T> supplier = this;
 		supplier.setConsumer(consumer);
@@ -175,7 +174,6 @@ public interface StreamSupplier<T> extends Cancellable {
 		return getCapabilities().contains(LATE_BINDING) ? this : apply(StreamLateBinder.create());
 	}
 
-	@SuppressWarnings("unchecked")
 	default SerialSupplier<T> asSerialSupplier() {
 		StreamConsumerEndpoint<T> endpoint = new StreamConsumerEndpoint<>();
 		this.streamTo(endpoint);

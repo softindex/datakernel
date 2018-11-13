@@ -65,7 +65,6 @@ public final class WorkerPools {
 		return threadLocalWorkerPool.get();
 	}
 
-	@SuppressWarnings("unchecked")
 	public <T> T getCurrentInstance(Key<T> key) {
 		return getCurrentWorkerPool().getCurrentInstance(key);
 	}
@@ -98,7 +97,6 @@ public final class WorkerPools {
 	}
 	// endregion
 
-	@SuppressWarnings("unchecked")
 	public <T> List<T> getInstances(Key<T> key) {
 		return getCurrentWorkerPool().getInstances(key);
 	}

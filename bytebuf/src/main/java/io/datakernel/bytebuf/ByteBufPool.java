@@ -40,7 +40,6 @@ public final class ByteBufPool {
 	static {
 		//noinspection unchecked
 		slabs = new ConcurrentStack[NUMBER_OF_SLABS];
-		//noinspection unchecked
 		created = new AtomicInteger[NUMBER_OF_SLABS];
 		for (int i = 0; i < NUMBER_OF_SLABS; i++) {
 			slabs[i] = new ConcurrentStack<>();

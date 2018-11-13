@@ -44,7 +44,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
-@SuppressWarnings("SimplifiableConditionalExpression")
 public abstract class RpcServerLauncher extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "rpc-server.properties";

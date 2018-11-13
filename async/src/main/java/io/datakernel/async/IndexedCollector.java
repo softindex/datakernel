@@ -85,7 +85,6 @@ public interface IndexedCollector<T, A, R> {
 			accumulator[promiseIndex] = promiseResult;
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public List<Object> finish(Object[] accumulator) {
 			return Arrays.asList(accumulator);
@@ -132,7 +131,6 @@ public interface IndexedCollector<T, A, R> {
 				accumulator[promiseIndex] = promiseResult;
 			}
 
-			@SuppressWarnings("unchecked")
 			@Override
 			public T[] finish(T[] accumulator) {
 				return (T[]) accumulator;

@@ -209,7 +209,7 @@ public class Utils {
 	 * @throws AssertionError when called from an application that was not
 	 *                        launched by the IntelliJ Idea IDE
 	 */
-	@SuppressWarnings({"UseOfSystemOutOrSystemErr", "ConstantConditions", "AssertWithSideEffects"})
+	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	public static void DEBUG(Object message) {
 		if (!launchedByIntellij) {
 			throw new AssertionError("Debug message call when not launched in an IDE!");

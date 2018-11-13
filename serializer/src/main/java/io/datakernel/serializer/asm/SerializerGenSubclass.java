@@ -31,7 +31,6 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenSubclass implements SerializerGen, NullableOptimization {
 	@Override
 	public SerializerGen asNullable() {

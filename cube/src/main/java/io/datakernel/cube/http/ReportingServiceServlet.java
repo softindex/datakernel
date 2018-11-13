@@ -141,7 +141,6 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 				.collect(toList());
 	}
 
-	@SuppressWarnings("unchecked")
 	public CubeQuery parseQuery(HttpRequest request) throws Exception {
 		CubeQuery query = CubeQuery.create();
 

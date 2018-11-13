@@ -266,7 +266,6 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	public Promise<K> mergeHeadsAndPush() {
 		return repository.getHeads()
 				.thenCompose(heads -> {
@@ -336,7 +335,6 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			long minLevel;
 			Set<K> nodes = new HashSet<>(startNodes);
 
-			@SuppressWarnings("ConstantConditions")
 			@Override
 			public void onStart(List<OTCommit<K, D>> otCommits) {
 				minLevel = otCommits.stream().mapToLong(OTCommit::getLevel).min().getAsLong();
@@ -476,7 +474,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
-	@SuppressWarnings({"SimplifiableConditionalExpression", "ConstantConditions", "OptionalIsPresent", "unchecked"})
+	@SuppressWarnings("unchecked")
 	public Promise<List<D>> checkout(K commitId) {
 		List<D>[] cachedSnapshot = new List[1];
 		return findParent(singleton(commitId), DiffsReducer.toList(),

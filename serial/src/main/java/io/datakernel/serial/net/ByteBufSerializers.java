@@ -30,7 +30,7 @@ import static io.datakernel.json.GsonAdapters.fromJson;
 import static io.datakernel.json.GsonAdapters.toJson;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-@SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
+@SuppressWarnings("WeakerAccess")
 public final class ByteBufSerializers {
 	private ByteBufSerializers() {
 	}

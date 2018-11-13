@@ -59,7 +59,6 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 	}
 
 	private class Output extends AbstractStreamSupplier<T> {
-		@SuppressWarnings("unchecked")
 		@Override
 		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			stats.onProduce();

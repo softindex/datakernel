@@ -42,7 +42,6 @@ import static java.time.ZoneOffset.UTC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@SuppressWarnings("ConstantConditions")
 public class HttpApiTest {
 	public static final int PORT = 5568;
 

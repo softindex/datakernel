@@ -16,7 +16,6 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 	private final List<Output<?>> outputs = new ArrayList<>();
 	private final BiConsumer<I, StreamDataAcceptor<?>[]> action;
 
-	@SuppressWarnings("unchecked")
 	private StreamDataAcceptor<?>[] dataAcceptors = new StreamDataAcceptor[0];
 	private int suspended = 0;
 
@@ -29,7 +28,6 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 		return new StreamMapSplitter<>(action);
 	}
 
-	@SuppressWarnings("unchecked")
 	public <O> StreamSupplier<O> newOutput() {
 		Output<O> output = new Output<>(outputs.size());
 		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
@@ -43,7 +41,6 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 		return input;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public List<? extends StreamSupplier<?>> getOutputs() {
 		return outputs;

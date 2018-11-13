@@ -18,7 +18,6 @@ public interface SqlAtomicSequence {
 		return ofLastInsertID(table, field, null);
 	}
 
-	@SuppressWarnings("unchecked")
 	static SqlAtomicSequence ofLastInsertID(String table, String field, String where) {
 		String sql = "UPDATE {table} SET {field} = LAST_INSERT_ID({table}.{field}) + :stride"
 				.replace("{table}", "`" + table + "`")

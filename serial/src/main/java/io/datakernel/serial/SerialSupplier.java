@@ -231,7 +231,6 @@ public interface SerialSupplier<T> extends Cancellable {
 		};
 	}
 
-	@SuppressWarnings("unchecked")
 	default <V> SerialSupplier<V> transformAsync(Function<? super T, ? extends Promise<V>> fn) {
 		return new AbstractSerialSupplier<V>(this) {
 			@Override

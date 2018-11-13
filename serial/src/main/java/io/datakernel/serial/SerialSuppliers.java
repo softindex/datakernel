@@ -240,7 +240,6 @@ public final class SerialSuppliers {
 								});
 					}
 
-					@SuppressWarnings("unchecked")
 					@Override
 					protected Promise<T> doGet() {
 						assert pending == null;
@@ -267,7 +266,6 @@ public final class SerialSuppliers {
 				};
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> SerialSupplier<T> prefetch(SerialSupplier<? extends T> actual) {
 		return new AbstractSerialSupplier<T>() {
 			@Nullable
@@ -313,7 +311,6 @@ public final class SerialSuppliers {
 						});
 			}
 
-			@SuppressWarnings("unchecked")
 			@Override
 			protected Promise<T> doGet() {
 				assert pending == null;

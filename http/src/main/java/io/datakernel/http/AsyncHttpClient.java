@@ -45,7 +45,6 @@ import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 
-@SuppressWarnings("ThrowableInstanceNeverThrown")
 public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBeanEx {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
 	public static final Duration DEFAULT_KEEP_ALIVE_MILLIS = Duration.ofSeconds(30);

@@ -31,7 +31,6 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamMergerTest {
 
@@ -170,7 +169,6 @@ public class StreamMergerTest {
 		assertClosedWithError(merger.getInput(1));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void testSupplierDeduplicateWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();

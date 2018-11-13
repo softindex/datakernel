@@ -32,12 +32,10 @@ public class PrimaryKey implements Comparable<PrimaryKey> {
 		this.values = values;
 	}
 
-	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	public static PrimaryKey ofList(List<Object> values) {
 		return new PrimaryKey(values.toArray(new Object[]{}));
 	}
 
-	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	public static PrimaryKey ofObject(Object object, List<String> keys) {
 		List<Object> values = new ArrayList<>();
 		for (String key : keys) {
@@ -82,7 +80,7 @@ public class PrimaryKey implements Comparable<PrimaryKey> {
 		return size() == 0;
 	}
 
-	@SuppressWarnings({"EqualsWhichDoesntCheckParameterClass", "RedundantIfStatement"})
+	@SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
 	@Override
 	public boolean equals(Object o) {
 		PrimaryKey that = (PrimaryKey) o;
@@ -103,7 +101,7 @@ public class PrimaryKey implements Comparable<PrimaryKey> {
 		return Arrays.hashCode(values);
 	}
 
-	@SuppressWarnings({"unchecked", "NullableProblems"})
+	@SuppressWarnings("unchecked")
 	@Override
 	public int compareTo(PrimaryKey o) {
 		assert values.length == o.values.length;

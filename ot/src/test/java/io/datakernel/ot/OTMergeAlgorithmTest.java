@@ -21,7 +21,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Utils.coalesce;
 import static org.junit.Assert.assertEquals;
 
-@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "CodeBlock2Expr"})
+@SuppressWarnings("CodeBlock2Expr")
 public class OTMergeAlgorithmTest {
 	Eventloop eventloop;
 	OTSystem<TestOp> system = createTestOp();

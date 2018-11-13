@@ -28,7 +28,6 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-@SuppressWarnings("StatementWithEmptyBody")
 public final class StreamSuppliers {
 	private StreamSuppliers() {
 	}

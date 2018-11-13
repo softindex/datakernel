@@ -176,7 +176,7 @@ final class OTLoadedGraph<K, D> {
 				.collect(toMap(Map.Entry::getKey, ops -> otSystem.squash(ops.getValue())));
 	}
 
-	@SuppressWarnings({"unchecked", "ConstantConditions"})
+	@SuppressWarnings("unchecked")
 	private K doMerge(Set<K> nodes) throws OTException {
 		if (nodes.size() == 1) return first(nodes);
 

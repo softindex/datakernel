@@ -26,7 +26,6 @@ import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.*;
 
-@SuppressWarnings("StatementWithEmptyBody")
 public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	private final Class<?> enumType;
 	private final boolean nullable;
