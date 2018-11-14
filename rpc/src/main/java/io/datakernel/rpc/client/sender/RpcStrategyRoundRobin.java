@@ -72,10 +72,10 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 		}
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 			RpcSender sender = subSenders[nextSender];
 			nextSender = (nextSender + 1) % subSenders.length;
-			sender.sendRequest(request, timeout, callback);
+			sender.sendRequest(request, timeout, cb);
 		}
 
 	}

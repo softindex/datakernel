@@ -247,15 +247,15 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		return catchUpImpl.get();
 	}
 
-	private void catchUpIteration(SettablePromise<Void> callback) {
+	private void catchUpIteration(SettablePromise<Void> cb) {
 		long started = now.currentTimeMillis();
 		fetch()
 				.whenResult(didAnything -> {
 					long timestampEnd = now.currentTimeMillis();
 					if (!didAnything || timestampEnd - started > latencyMargin.toMillis()) {
-						callback.set(null);
+						cb.set(null);
 					} else {
-						catchUpIteration(callback);
+						catchUpIteration(cb);
 					}
 				});
 	}

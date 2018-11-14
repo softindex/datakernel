@@ -115,7 +115,7 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 	}
 
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
+	public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 		assert eventloop.inEventloopThread();
 
 		// jmx
@@ -129,23 +129,23 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 
 			if (logger.isTraceEnabled()) logger.trace("RPC client uplink is overloaded");
 
-			returnProtocolError(callback, RPC_OVERLOAD_EXCEPTION);
+			returnProtocolError(cb, RPC_OVERLOAD_EXCEPTION);
 			return;
 		}
 
-		sendMessageData(request, timeout, callback);
+		sendMessageData(request, timeout, cb);
 	}
 
-	private void sendMessageData(Object request, int timeout, Callback<?> callback) {
+	private void sendMessageData(Object request, int timeout, Callback<?> cb) {
 		cookie++;
 
-		Callback<?> requestCallback = callback;
+		Callback<?> requestCallback = cb;
 
 		// jmx
 		if (isMonitoring()) {
 			RpcRequestStats requestStatsPerClass = rpcClient.ensureRequestStatsPerClass(request.getClass());
 			requestStatsPerClass.getTotalRequests().recordEvent();
-			requestCallback = new JmxConnectionMonitoringResultCallback<>(requestStatsPerClass, callback, timeout);
+			requestCallback = new JmxConnectionMonitoringResultCallback<>(requestStatsPerClass, cb, timeout);
 		}
 		TimeoutCookie timeoutCookie = new TimeoutCookie(cookie, timeout);
 		addTimeoutCookie(timeoutCookie);
@@ -191,8 +191,8 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 	}
 
 	private void doTimeout(TimeoutCookie timeoutCookie) {
-		Callback<?> callback = activeRequests.remove(timeoutCookie.getCookie());
-		if (callback == null)
+		Callback<?> cb = activeRequests.remove(timeoutCookie.getCookie());
+		if (cb == null)
 			return;
 
 		if (serverClosing && activeRequests.size() == 0) close();
@@ -201,20 +201,20 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 		connectionStats.getExpiredRequests().recordEvent();
 		rpcClient.getGeneralRequestsStats().getExpiredRequests().recordEvent();
 
-		returnTimeout(callback, RPC_TIMEOUT_EXCEPTION);
+		returnTimeout(cb, RPC_TIMEOUT_EXCEPTION);
 	}
 
-	private void returnTimeout(Callback<?> callback, Exception exception) {
-		returnError(callback, exception);
+	private void returnTimeout(Callback<?> cb, Exception exception) {
+		returnError(cb, exception);
 	}
 
-	private void returnProtocolError(Callback<?> callback, Exception exception) {
-		returnError(callback, exception);
+	private void returnProtocolError(Callback<?> cb, Exception exception) {
+		returnError(cb, exception);
 	}
 
-	private void returnError(Callback<?> callback, Exception exception) {
-		if (callback != null) {
-			callback.setException(exception);
+	private void returnError(Callback<?> cb, Exception exception) {
+		if (cb != null) {
+			cb.setException(exception);
 		}
 	}
 
@@ -253,18 +253,18 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 		connectionStats.getServerExceptions().recordException(remoteException, null);
 		rpcClient.getGeneralRequestsStats().getServerExceptions().recordException(remoteException, null);
 
-		Callback<?> callback = activeRequests.remove(message.getCookie());
-		if (callback == null) return;
+		Callback<?> cb = activeRequests.remove(message.getCookie());
+		if (cb == null) return;
 
-		returnError(callback, remoteException);
+		returnError(cb, remoteException);
 	}
 
 	private void processResponse(RpcMessage message) {
 		@SuppressWarnings("unchecked")
-		Callback<Object> callback = (Callback<Object>) activeRequests.remove(message.getCookie());
-		if (callback == null) return;
+		Callback<Object> cb = (Callback<Object>) activeRequests.remove(message.getCookie());
+		if (cb == null) return;
 
-		callback.set(message.getData());
+		cb.set(message.getData());
 		if (serverClosing && activeRequests.size() == 0) {
 			close();
 		}
@@ -345,10 +345,10 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 		private final RpcRequestStats requestStatsPerClass;
 		private final long dueTimestamp;
 
-		public JmxConnectionMonitoringResultCallback(RpcRequestStats requestStatsPerClass, Callback<T> callback,
+		public JmxConnectionMonitoringResultCallback(RpcRequestStats requestStatsPerClass, Callback<T> cb,
 				long timeout) {
 			this.stopwatch = Stopwatch.createStarted();
-			this.callback = callback;
+			this.callback = cb;
 			this.requestStatsPerClass = requestStatsPerClass;
 			this.dueTimestamp = eventloop.currentTimeMillis() + timeout;
 		}

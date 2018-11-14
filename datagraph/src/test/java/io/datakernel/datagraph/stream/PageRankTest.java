@@ -68,10 +68,10 @@ public class PageRankTest {
 			this.links = links;
 		}
 
-		public void disperse(Rank rank, StreamDataAcceptor<Rank> callback) {
+		public void disperse(Rank rank, StreamDataAcceptor<Rank> cb) {
 			for (long link : links) {
 				Rank newRank = new Rank(link, rank.value / links.length);
-				callback.accept(newRank);
+				cb.accept(newRank);
 			}
 		}
 

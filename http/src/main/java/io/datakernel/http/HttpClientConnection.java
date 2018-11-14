@@ -99,9 +99,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	public void onClosedWithError(Throwable e) {
 		if (inspector != null) inspector.onHttpError(this, callback == null, e);
 		if (callback != null) {
-			SettablePromise<HttpResponse> callback = this.callback;
+			SettablePromise<HttpResponse> cb = this.callback;
 			this.callback = null;
-			callback.setException(e);
+			cb.setException(e);
 		}
 	}
 
@@ -170,9 +170,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		response.bodySupplier = bodySupplier;
 		if (inspector != null) inspector.onHttpResponse(this, response);
 
-		SettablePromise<HttpResponse> callback = this.callback;
+		SettablePromise<HttpResponse> cb = this.callback;
 		this.callback = null;
-		callback.set(response);
+		cb.set(response);
 
 		if (response.body != null) {
 			response.body.recycle();

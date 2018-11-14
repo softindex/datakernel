@@ -436,8 +436,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	 * @param request request for server
 	 */
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
-		requestSender.sendRequest(request, timeout, callback);
+	public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		requestSender.sendRequest(request, timeout, cb);
 	}
 
 	public IRpcClient adaptToAnotherEventloop(Eventloop anotherEventloop) {

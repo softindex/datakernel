@@ -27,7 +27,7 @@ public final class RpcSenderStub implements RpcSender {
 	}
 
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
+	public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 		requests++;
 	}
 }
