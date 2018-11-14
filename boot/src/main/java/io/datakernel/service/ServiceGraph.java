@@ -327,7 +327,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		}
 		CompletableFuture<Void> result = new CompletableFuture<>();
 		AtomicInteger atomicInteger = new AtomicInteger(stages.size());
-		List<Throwable> exceptions = new ArrayList<>();
+		Set<Throwable> exceptions = new LinkedHashSet<>();
 		for (CompletionStage<?> future : stages) {
 			future.whenCompleteAsync(($, throwable) -> {
 				if (throwable != null) {
@@ -339,7 +339,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 					if (exceptions.isEmpty()) {
 						result.complete(null);
 					} else {
-						Throwable e = exceptions.get(0);
+						Throwable e = first(exceptions);
 						exceptions.stream().skip(1).forEach(e::addSuppressed);
 						result.completeExceptionally(e);
 					}
