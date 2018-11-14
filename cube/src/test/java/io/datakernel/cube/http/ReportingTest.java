@@ -86,7 +86,6 @@ public class ReportingTest {
 	private AsyncHttpClient httpClient;
 	private CubeHttpClient cubeHttpClient;
 	private Cube cube;
-	private DefiningClassLoader classLoader;
 	private DataSource dataSource;
 
 	@Rule
@@ -374,7 +373,7 @@ public class ReportingTest {
 
 		httpClient = AsyncHttpClient.create(eventloop)
 			.withNoKeepAlive();
-		cubeHttpClient = CubeHttpClient.create(eventloop, httpClient, "http://127.0.0.1:" + SERVER_PORT)
+		cubeHttpClient = CubeHttpClient.create(httpClient, "http://127.0.0.1:" + SERVER_PORT)
 			.withAttribute("date", LocalDate.class)
 			.withAttribute("advertiser", int.class)
 			.withAttribute("campaign", int.class)

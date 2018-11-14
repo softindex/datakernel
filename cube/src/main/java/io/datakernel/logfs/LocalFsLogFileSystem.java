@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.serial.file.SerialFileWriter.CREATE_OPTIONS;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.nio.file.StandardOpenOption.READ;
@@ -105,7 +104,6 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 
 	@Override
 	public Promise<List<LogFile>> list(String logPartition) {
-		Eventloop eventloop = getCurrentEventloop();
 		return Promise.ofCallable(executorService,
 				() -> {
 					List<LogFile> entries = new ArrayList<>();

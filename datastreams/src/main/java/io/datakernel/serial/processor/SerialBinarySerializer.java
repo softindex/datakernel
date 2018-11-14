@@ -208,10 +208,10 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 				try {
 					serializer.serialize(buf, item);
 				} catch (ArrayIndexOutOfBoundsException e) {
-					onUnderEstimate(item, positionBegin);
+					onUnderEstimate(positionBegin);
 					continue;
 				} catch (Exception e) {
-					onSerializationError(item, positionBegin, e);
+					onSerializationError(positionBegin, e);
 					return;
 				}
 				break;
@@ -222,7 +222,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 				if (messageSize < maxMessageSize) {
 					estimatedMessageSize = messageSize;
 				} else {
-					onMessageOverflow(item, positionBegin, messageSize);
+					onMessageOverflow(positionBegin);
 					return;
 				}
 			}
@@ -260,19 +260,19 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 			}
 		}
 
-		private void onUnderEstimate(T value, int positionBegin) {
+		private void onUnderEstimate(int positionBegin) {
 			buf.writePosition(positionBegin);
 			int writeRemaining = buf.writeRemaining();
 			flush();
 			buf = ByteBufPool.allocate(max(initialBufferSize, writeRemaining + (writeRemaining >>> 1) + 1));
 		}
 
-		private void onMessageOverflow(T value, int positionBegin, int messageSize) {
+		private void onMessageOverflow(int positionBegin) {
 			buf.writePosition(positionBegin);
 			handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
 		}
 
-		private void onSerializationError(T value, int positionBegin, Exception e) {
+		private void onSerializationError(int positionBegin, Exception e) {
 			buf.writePosition(positionBegin);
 			handleSerializationError(e);
 		}

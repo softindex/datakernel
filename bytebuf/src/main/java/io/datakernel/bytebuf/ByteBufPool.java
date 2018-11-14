@@ -36,8 +36,6 @@ public final class ByteBufPool {
 	private static final ConcurrentStack<ByteBuf>[] slabs;
 	private static final AtomicInteger[] created;
 
-	private static final Object EMPTY_VALUE = new Object();
-
 	static {
 		//noinspection unchecked
 		slabs = new ConcurrentStack[NUMBER_OF_SLABS];

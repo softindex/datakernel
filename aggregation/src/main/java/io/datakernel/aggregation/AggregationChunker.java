@@ -80,7 +80,6 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 
 	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
 		private final SettablePromise<AggregationChunk> result = new SettablePromise<>();
-		private final C chunkId;
 		private final int chunkSize;
 		private final PartitionPredicate<T> partitionPredicate;
 		private StreamDataAcceptor<T> dataAcceptor;
@@ -94,7 +93,6 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		public ChunkWriter(StreamConsumer<T> actualConsumer,
 				C chunkId, int chunkSize, PartitionPredicate<T> partitionPredicate) {
 			super(actualConsumer);
-			this.chunkId = chunkId;
 			this.chunkSize = chunkSize;
 			this.partitionPredicate = partitionPredicate;
 			actualConsumer.getAcknowledgement()

@@ -845,7 +845,7 @@ public final class SerializerBuilder {
 	synchronized private Object createSerializer(SerializerGen serializerGen, int serializeVersion) {
 		ClassBuilder<BufferSerializer> asmFactory = ClassBuilder.create(definingClassLoader, BufferSerializer.class);
 		if (saveBytecodePath != null) {
-			asmFactory = asmFactory.withBytecodeSaveDir(saveBytecodePath);
+			asmFactory.withBytecodeSaveDir(saveBytecodePath);
 		}
 
 		Preconditions.check(serializeVersion >= 0, "serializerVersion is negative");

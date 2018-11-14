@@ -364,7 +364,6 @@ public interface Config {
 	default Config with(String path, Config config) {
 		checkPath(path);
 		checkNotNull(config);
-		String value = config.getValue(null);
 		String[] keys = path.split(Pattern.quote(DELIMITER));
 		for (int i = keys.length - 1; i >= 0; i--) {
 			String key = keys[i];

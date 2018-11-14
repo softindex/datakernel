@@ -25,8 +25,6 @@ import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialSuppliers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 
@@ -35,8 +33,6 @@ import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_END_OF_STREAM_EXC
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
 public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O> {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
-
 	private final AsyncTcpSocket socket;
 
 	private final ByteBufSerializer<I, O> serializer;

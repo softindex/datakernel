@@ -245,8 +245,6 @@ public class MessagingWithBinaryStreamingTest {
 			source.add(i);
 		}
 
-		boolean[] ack = new boolean[]{false};
-
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();

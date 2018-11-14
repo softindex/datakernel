@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -237,7 +237,6 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		}
 
 		Method foundMethod = null;
-		LinkedHashSet<java.lang.reflect.Method> methods = new LinkedHashSet<>();
 		List<List<java.lang.reflect.Method>> listOfMethods = new ArrayList<>();
 		listOfMethods.add(asList(Object.class.getMethods()));
 		listOfMethods.add(asList(mainClass.getMethods()));

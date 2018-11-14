@@ -22,7 +22,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.ICube;
 import io.datakernel.cube.QueryResult;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
@@ -46,7 +45,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public final class CubeHttpClient implements ICube {
 	protected final Logger logger = LoggerFactory.getLogger(CubeHttpClient.class);
 
-	private final Eventloop eventloop;
 	private final String url;
 	private final IAsyncHttpClient httpClient;
 	private final TypeAdapterMapping mapping;
@@ -55,19 +53,18 @@ public final class CubeHttpClient implements ICube {
 	private final Map<String, Type> attributeTypes = new LinkedHashMap<>();
 	private final Map<String, Type> measureTypes = new LinkedHashMap<>();
 
-	private CubeHttpClient(Eventloop eventloop, IAsyncHttpClient httpClient, String url, TypeAdapterMapping mapping) {
-		this.eventloop = eventloop;
+	private CubeHttpClient(IAsyncHttpClient httpClient, String url, TypeAdapterMapping mapping) {
 		this.url = url.replaceAll("/$", "");
 		this.httpClient = httpClient;
 		this.mapping = mapping;
 	}
 
-	public static CubeHttpClient create(Eventloop eventloop, AsyncHttpClient httpClient, String cubeServletUrl) {
-		return new CubeHttpClient(eventloop, httpClient, cubeServletUrl, CUBE_TYPES);
+	public static CubeHttpClient create(AsyncHttpClient httpClient, String cubeServletUrl) {
+		return new CubeHttpClient(httpClient, cubeServletUrl, CUBE_TYPES);
 	}
 
-	public static CubeHttpClient create(Eventloop eventloop, AsyncHttpClient httpClient, URI cubeServletUrl) {
-		return create(eventloop, httpClient, cubeServletUrl.toString());
+	public static CubeHttpClient create(AsyncHttpClient httpClient, URI cubeServletUrl) {
+		return create(httpClient, cubeServletUrl.toString());
 	}
 
 	public CubeHttpClient withAttribute(String attribute, Type type) {

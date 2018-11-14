@@ -42,7 +42,6 @@ public class SerializerGenClass implements SerializerGen {
 	private static final class FieldGen {
 		private Field field;
 		private Method method;
-		private int offset;
 		private int versionAdded = -1;
 		private int versionDeleted = -1;
 		private SerializerGen serializer;
@@ -84,7 +83,6 @@ public class SerializerGenClass implements SerializerGen {
 	private List<SerializerGenBuilder.SerializerForType> generics;
 
 	private final Map<String, FieldGen> fields = new LinkedHashMap<>();
-	private int lastOffset;
 
 	private Constructor<?> constructor;
 	private List<String> constructorParams;
@@ -162,8 +160,6 @@ public class SerializerGenClass implements SerializerGen {
 		fieldGen.serializer = serializer;
 		fieldGen.versionAdded = added;
 		fieldGen.versionDeleted = removed;
-		fieldGen.offset = lastOffset;
-		lastOffset += getType(field.getType()).getSize();
 		fields.put(fieldName, fieldGen);
 	}
 
@@ -177,8 +173,6 @@ public class SerializerGenClass implements SerializerGen {
 		fieldGen.serializer = serializer;
 		fieldGen.versionAdded = added;
 		fieldGen.versionDeleted = removed;
-		fieldGen.offset = lastOffset;
-		lastOffset += getType(method.getReturnType()).getSize();
 		fields.put(fieldName, fieldGen);
 	}
 

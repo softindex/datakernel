@@ -29,8 +29,6 @@ import io.datakernel.serial.net.ByteBufSerializer;
 import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.stream.StreamSupplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -43,7 +41,6 @@ import static io.datakernel.serial.net.ByteBufSerializers.ofJson;
  * Sends JSON commands for performing certain actions on server.
  */
 public final class DatagraphClient {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final DatagraphSerialization serialization;
 	private final ByteBufSerializer<DatagraphResponse, DatagraphCommand> serializer;

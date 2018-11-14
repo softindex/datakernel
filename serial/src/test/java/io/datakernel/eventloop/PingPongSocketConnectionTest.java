@@ -24,8 +24,6 @@ import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -36,8 +34,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 public class PingPongSocketConnectionTest {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
 	private final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 9022);
 	private final int ITERATIONS = 3;
 	private static final String REQUEST_MSG = "PING";
@@ -71,7 +67,7 @@ public class PingPongSocketConnectionTest {
 		AsyncTcpSocketImpl.connect(ADDRESS)
 				.whenResult(socket -> {
 					ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(socket));
-					loop(3, i -> i != 0,
+					loop(ITERATIONS, i -> i != 0,
 							i -> socket.write(wrapAscii(REQUEST_MSG))
 									.thenCompose($ -> PARSER.parse(bufsSupplier)
 											.whenResult(System.out::println)

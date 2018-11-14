@@ -30,8 +30,6 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
 import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -54,8 +52,6 @@ import static io.datakernel.util.ReflectionUtils.extractFieldNameFromGetter;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class AggregationUtils {
-	private final static Logger logger = LoggerFactory.getLogger(AggregationUtils.class);
-
 	private AggregationUtils() {
 	}
 

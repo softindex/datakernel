@@ -169,7 +169,7 @@ public class MiddlewareServletTest {
 		expectedException.expect(IllegalArgumentException.class);
 		expectedException.expectMessage("Can't map. Servlet already exists");
 
-		MiddlewareServlet s1 = MiddlewareServlet.create()
+		MiddlewareServlet.create()
 				.with(GET, "/", request -> null)
 				.with(GET, "/", request -> null);
 	}

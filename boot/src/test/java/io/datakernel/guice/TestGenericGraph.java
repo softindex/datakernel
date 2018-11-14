@@ -96,7 +96,6 @@ public class TestGenericGraph {
 		try {
 			serviceGraph.startFuture().get();
 		} finally {
-			Pojo root = injector.getInstance(Pojo.class);
 			serviceGraph.stopFuture().get();
 		}
 	}

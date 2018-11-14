@@ -48,7 +48,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
 	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
 	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
-	private static final byte[] GZIP_BYTES = encodeAscii("gzip");
 	private final HttpMethod method;
 	private UrlParser url;
 	private InetAddress remoteAddress;

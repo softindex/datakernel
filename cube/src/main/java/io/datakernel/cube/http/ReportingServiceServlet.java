@@ -60,14 +60,13 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 	}
 
 	public static MiddlewareServlet createRootServlet(Eventloop eventloop, ICube cube) {
-		return createRootServlet(eventloop,
+		return createRootServlet(
 				ReportingServiceServlet.create(eventloop, cube),
 				(cube instanceof Cube) ? ConsolidationDebugServlet.create(eventloop, (Cube) cube) : null);
 	}
 
-	public static MiddlewareServlet createRootServlet(Eventloop eventloop,
-	                                                  ReportingServiceServlet reportingServiceServlet,
-	                                                  @Nullable ConsolidationDebugServlet consolidationDebugServlet) {
+	public static MiddlewareServlet createRootServlet(ReportingServiceServlet reportingServiceServlet,
+			@Nullable ConsolidationDebugServlet consolidationDebugServlet) {
 		return MiddlewareServlet.create()
 				.with(GET, "/", reportingServiceServlet)
 				.with(GET, "/consolidation-debug", consolidationDebugServlet != null ?

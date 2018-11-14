@@ -43,10 +43,6 @@ public final class RpcStream {
 	private Listener listener;
 	private final AbstractStreamSupplier<RpcMessage> sender;
 	private final AbstractStreamConsumer<RpcMessage> receiver;
-	private final AsyncTcpSocket socket;
-
-	private boolean readDone;
-	private boolean writeDone;
 
 	private boolean ready;
 	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;
@@ -55,7 +51,6 @@ public final class RpcStream {
 			BufferSerializer<RpcMessage> messageSerializer,
 			MemSize initialBufferSize, MemSize maxMessageSize,
 			Duration autoFlushInterval, boolean compression, boolean server) {
-		this.socket = socket;
 
 		if (server) {
 			sender = new AbstractStreamSupplier<RpcMessage>() {

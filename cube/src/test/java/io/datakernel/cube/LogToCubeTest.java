@@ -146,16 +146,6 @@ public class LogToCubeTest {
 		assertEquals(expected, consumerToList.getList());
 	}
 
-	public static final class TestPubResult {
-		public int pub;
-		public long pubRequests;
-
-		@Override
-		public String toString() {
-			return "TestResult{pub=" + pub + ", pubRequests=" + pubRequests + '}';
-		}
-	}
-
 	public static final class TestAdvResult {
 		public int adv;
 		public long advRequests;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package io.datakernel.cube.attributes;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -57,13 +56,13 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		return result;
 	}
 
-	protected abstract Promise<Map<K, A>> reload(@Nullable long lastTimestamp);
+	protected abstract Promise<Map<K, A>> reload(long lastTimestamp);
 
 	private void doReload() {
 		reloads++;
 		scheduledRunnable.cancel();
 		long reloadTimestamp = getEventloop().currentTimeMillis();
-		Promise<Map<K, A>> reload = reload(timestamp).whenComplete((result, throwable) -> {
+		reload(timestamp).whenComplete((result, throwable) -> {
 			if (throwable == null) {
 				reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
 				cache.putAll(result);

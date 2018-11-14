@@ -46,7 +46,6 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	private final Map<Object, AggregationChunk> chunks = new LinkedHashMap<>();
 	private RangeTree<PrimaryKey, AggregationChunk>[] prefixRanges;
 
-	private static final int EQUALS_QUERIES_THRESHOLD = 1_000;
 	private static final Comparator<AggregationChunk> MIN_KEY_ASCENDING_COMPARATOR = new Comparator<AggregationChunk>() {
 		@Override
 		public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {

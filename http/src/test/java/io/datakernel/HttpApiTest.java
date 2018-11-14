@@ -26,7 +26,6 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -46,7 +45,6 @@ import static org.junit.Assert.fail;
 @SuppressWarnings("ConstantConditions")
 public class HttpApiTest {
 	public static final int PORT = 5568;
-	private static final InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
 
 	private Eventloop eventloop;
 	private AsyncHttpServer server;

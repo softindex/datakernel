@@ -362,7 +362,7 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client, eventloop);
+		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client);
 		StreamSupplier<TestItem> resultSupplier = collector.compile(graph);
 
 		System.out.println("Graph: ");
