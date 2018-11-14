@@ -217,8 +217,8 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		apply(transformed.left);
 		workingDiffs = new ArrayList<>(transformed.right);
 
-		revision = checkNotNull(fetchedRevision);
-		revisionLevel = checkNotNull(fetchedRevisionLevel);
+		revision = checkNotNull(fetchedRevision, "Cannot rebase onto fetched revision that is null");
+		revisionLevel = checkNotNull(fetchedRevisionLevel, "Cannot rebase when fetched revision level is null");
 
 		fetchedRevision = null;
 		fetchedRevisionLevel = null;
@@ -330,9 +330,9 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	}
 
 	private boolean isInternalStateValid() {
-		checkState(state == null || (revision != null && pendingCommits != null));
-		checkState(revision == null || (revisionLevel != null && workingDiffs != null));
-		checkState(fetchedRevision == null || (fetchedRevisionLevel != null && fetchedDiffs != null));
+		checkState(state == null || (revision != null && pendingCommits != null), "Internal state invalid");
+		checkState(revision == null || (revisionLevel != null && workingDiffs != null), "Internal state invalid");
+		checkState(fetchedRevision == null || (fetchedRevisionLevel != null && fetchedDiffs != null), "Internal state invalid");
 		return state != null;
 	}
 
@@ -341,11 +341,11 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	}
 
 	public OTState<D> getState() {
-		return checkNotNull(state);
+		return checkNotNull(state, "Internal state has been invalidated");
 	}
 
 	public K getRevision() {
-		return checkNotNull(revision);
+		return checkNotNull(revision, "Internal state has been invalidated");
 	}
 
 	List<D> getWorkingDiffs() {

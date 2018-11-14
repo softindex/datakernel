@@ -87,13 +87,13 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 	public QueryResult read(JsonReader reader) throws JsonParseException, IOException {
 		reader.beginObject();
 
-		checkArgument(METADATA_FIELD.equals(reader.nextName()));
+		checkArgument(METADATA_FIELD.equals(reader.nextName()),"Malformed json object, should have name 'metadata'");
 		reader.beginObject();
 
-		checkArgument(ATTRIBUTES_FIELD.equals(reader.nextName()));
+		checkArgument(ATTRIBUTES_FIELD.equals(reader.nextName()), "Malformed json object, should have name 'attributes'");
 		List<String> attributes = stringListAdapter.read(reader);
 
-		checkArgument(MEASURES_FIELD.equals(reader.nextName()));
+		checkArgument(MEASURES_FIELD.equals(reader.nextName()), "Malformed json object, should have name 'measures'");
 		List<String> measures = stringListAdapter.read(reader);
 
 		reader.endObject();
@@ -112,10 +112,10 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 		if (reader.hasNext() && RECORDS_FIELD.equals(reader.nextName())) {
 			records = readRecords(reader, recordScheme);
 
-			checkArgument(COUNT_FIELD.equals(reader.nextName()));
+			checkArgument(COUNT_FIELD.equals(reader.nextName()), "Malformed json object, should have name 'count'");
 			count = reader.nextInt();
 
-			checkArgument(FILTER_ATTRIBUTES_FIELD.equals(reader.nextName()));
+			checkArgument(FILTER_ATTRIBUTES_FIELD.equals(reader.nextName()), "Malformed json object, should have name 'filterAttributes'");
 			filterAttributes = readFilterAttributes(reader);
 
 			reportType = ReportType.DATA;

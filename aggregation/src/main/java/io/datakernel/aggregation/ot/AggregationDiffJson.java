@@ -67,12 +67,12 @@ public class AggregationDiffJson extends TypeAdapter<AggregationDiff> {
 	public AggregationDiff read(JsonReader reader) throws IOException {
 		reader.beginObject();
 
-		checkArgument(ADDED.equals(reader.nextName()));
+		checkArgument(ADDED.equals(reader.nextName()), "Malformed json object, should have name 'added'");
 		Set<AggregationChunk> added = aggregationChunksJson.read(reader);
 
 		Set<AggregationChunk> removed = Collections.emptySet();
 		if (reader.hasNext()) {
-			checkArgument(REMOVED.equals(reader.nextName()));
+			checkArgument(REMOVED.equals(reader.nextName()), "Malformed json object, should have name 'removed'");
 			removed = aggregationChunksJson.read(reader);
 		}
 

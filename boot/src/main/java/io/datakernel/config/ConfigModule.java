@@ -84,7 +84,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 		@Override
 		public Config provideNoKeyChild(String key) {
-			checkArgument(!children.keySet().contains(key));
+			checkArgument(!children.keySet().contains(key), "Children already contain key '%s'", key);
 			return new ProtectedConfig(config.provideNoKeyChild(key));
 		}
 	}

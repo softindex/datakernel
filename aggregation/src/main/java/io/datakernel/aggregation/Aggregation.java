@@ -330,7 +330,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 			AggregationChunk chunk, List<String> queryFields) {
 		queryFields = new ArrayList<>(queryFields);
 		queryFields.retainAll(chunk.getMeasures());
-		checkArgument(!queryFields.isEmpty());
+		checkArgument(!queryFields.isEmpty(), "All of query fields are contained in measures of a chunk");
 		TreeMap<PrimaryKey, List<Sequence>> map = planIndex.computeIfAbsent(queryFields, k -> new TreeMap<>());
 
 		Map.Entry<PrimaryKey, List<Sequence>> entry = map.lowerEntry(chunk.getMinPrimaryKey());

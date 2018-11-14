@@ -74,7 +74,7 @@ public abstract class HttpMessage {
 	public void setHeader(HttpHeader header, HttpHeaderValue value) {
 		assert !isRecycled();
 		HttpHeaderValue prev = headers.put(header, value);
-		checkArgument(prev == null);
+		checkArgument(prev == null, "Header '%s' has already been set", header);
 	}
 
 	@NotNull
@@ -195,7 +195,7 @@ public abstract class HttpMessage {
 	}
 
 	public Promise<ByteBuf> getBodyPromise(int maxBodySize) {
-		checkState(body != null ^ bodySupplier != null);
+		checkState(body != null ^ bodySupplier != null, "Either body or body supplier should be present, but not both");
 		if (body != null) {
 			ByteBuf body = this.body;
 			this.body = null;
@@ -229,7 +229,7 @@ public abstract class HttpMessage {
 	}
 
 	public SerialSupplier<ByteBuf> getBodyStream() {
-		checkState(body != null || bodySupplier != null);
+		checkState(body != null || bodySupplier != null, "Either body or body supplier should be present");
 		if (body != null) {
 			ByteBuf body = this.body;
 			this.body = null;

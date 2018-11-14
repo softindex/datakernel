@@ -189,7 +189,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@Override
 	public final void listen() throws IOException {
-		check(eventloop.inEventloopThread());
+		check(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (running)
 			return;
 		running = true;

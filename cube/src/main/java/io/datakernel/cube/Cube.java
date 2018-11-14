@@ -323,13 +323,13 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public void addMeasure(String measureId, Measure measure) {
-		checkState(aggregations.isEmpty());
+		checkState(aggregations.isEmpty(), "Cannot add measure while aggregations are present");
 		measures.put(measureId, measure);
 		fieldTypes.put(measureId, measure.getFieldType());
 	}
 
 	public void addComputedMeasure(String measureId, ComputedMeasure computedMeasure) {
-		checkState(aggregations.isEmpty());
+		checkState(aggregations.isEmpty(), "Cannot add computed measure while aggregations are present");
 		computedMeasures.put(measureId, computedMeasure);
 	}
 
@@ -338,7 +338,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public void addDimension(String dimensionId, FieldType type) {
-		checkState(aggregations.isEmpty());
+		checkState(aggregations.isEmpty(), "Cannot add dimension while aggregations are present");
 		dimensionTypes.put(dimensionId, type);
 		fieldTypes.put(dimensionId, type);
 	}

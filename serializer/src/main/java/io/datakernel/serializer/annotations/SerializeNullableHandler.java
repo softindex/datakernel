@@ -19,17 +19,17 @@ package io.datakernel.serializer.annotations;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.Helper;
-import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenNullable;
 import io.datakernel.serializer.asm.SerializerGenString;
-import io.datakernel.util.Preconditions;
+
+import static io.datakernel.util.Preconditions.check;
 
 public final class SerializeNullableHandler implements AnnotationHandler<SerializeNullable, SerializeNullableEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeNullable annotation, CompatibilityLevel compatibilityLevel) {
 		return (type, generics, fallback) -> {
-			Preconditions.check(!type.isPrimitive());
+			check(!type.isPrimitive(), "Type must not represent a primitive type");
 			if (fallback instanceof SerializerGenString)
 				return ((SerializerGenString) fallback).nullable(true);
 			if (compatibilityLevel == CompatibilityLevel.LEVEL_3 && fallback instanceof NullableOptimization) {

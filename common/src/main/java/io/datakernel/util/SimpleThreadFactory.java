@@ -57,7 +57,8 @@ public final class SimpleThreadFactory implements ThreadFactory, Initializable<S
 	}
 
 	public SimpleThreadFactory withPriority(int priority) {
-		checkArgument(priority == 0 || (priority >= Thread.MIN_PRIORITY && priority <= Thread.MAX_PRIORITY));
+		checkArgument(priority == 0 || (priority >= Thread.MIN_PRIORITY && priority <= Thread.MAX_PRIORITY),
+				"Thread priority should either be 0 or in bounds [" + Thread.MIN_PRIORITY +'-' + Thread.MAX_PRIORITY + ']');
 		this.priority = priority;
 		return this;
 	}

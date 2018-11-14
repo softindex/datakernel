@@ -81,7 +81,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 
 		public Sender(List<RpcSender> senders, ResultValidator<?> resultValidator,
 		              Exception noValidResultException) {
-			checkArgument(senders != null && senders.size() > 0);
+			checkArgument(senders != null && senders.size() > 0, "List of senders should not be null and should contain at least one sender");
 			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.resultValidator = checkNotNull(resultValidator);
 			this.noValidResultException = noValidResultException;
@@ -111,7 +111,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 
 		public FirstResultCallback(Callback<T> resultCallback, ResultValidator<T> resultValidator, int expectedCalls,
 		                           Exception noValidResultException) {
-			checkArgument(expectedCalls > 0);
+			checkArgument(expectedCalls > 0, "Number of expected calls should be greater than 0");
 			this.expectedCalls = expectedCalls;
 			this.resultCallback = checkNotNull(resultCallback);
 			this.resultValidator = checkNotNull(resultValidator);

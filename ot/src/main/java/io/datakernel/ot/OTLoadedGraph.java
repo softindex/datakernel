@@ -145,7 +145,7 @@ final class OTLoadedGraph<K, D> {
 	}
 
 	public Map<K, List<D>> merge(Set<K> nodes) throws OTException {
-		checkArgument(nodes.size() >= 2);
+		checkArgument(nodes.size() >= 2, "Cannot merge less than 2 commits");
 		K mergeNode = doMerge(excludeParents(nodes));
 		assert mergeNode != null;
 		PriorityQueue<K> queue = new PriorityQueue<>(this::compareNodes);

@@ -113,9 +113,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	@Override
 	public DynamicMBean createFor(List<?> monitorables, MBeanSettings setting, boolean enableRefresh) {
 		checkNotNull(monitorables);
-		checkArgument(monitorables.size() > 0);
-		checkArgument(monitorables.stream().noneMatch(Objects::isNull), "monitorable can not be null");
-		checkArgument(CollectionUtils.allItemsHaveSameType(monitorables));
+		checkArgument(monitorables.size() > 0, "Size of list of monitorables should be greater than 0");
+		checkArgument(monitorables.stream().noneMatch(Objects::isNull), "Monitorable can not be null");
+		checkArgument(CollectionUtils.allItemsHaveSameType(monitorables), "Monitorables should be of the same type");
 
 		Object firstMBean = monitorables.get(0);
 		Class<?> mbeanClass = firstMBean.getClass();
@@ -881,7 +881,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 		@Override
 		public AttributeList getAttributes(String[] attributes) {
-			checkArgument(attributes != null);
+			checkNotNull(attributes);
 
 			AttributeList attrList = new AttributeList();
 			Set<String> attrNames = new HashSet<>(Arrays.asList(attributes));

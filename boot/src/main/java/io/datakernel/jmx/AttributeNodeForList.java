@@ -131,7 +131,7 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 	private static Object jmxCompatibleObjectOf(OpenType<?> openType, Map<String, Object> attributes)
 			throws OpenDataException {
 		if (openType instanceof SimpleType || openType instanceof TabularType) {
-			checkArgument(attributes.size() == 1);
+			checkArgument(attributes.size() == 1, "Only one attribute should be present");
 			return first(attributes.values());
 		} else if (openType instanceof CompositeType) {
 			CompositeType compositeType = (CompositeType) openType;

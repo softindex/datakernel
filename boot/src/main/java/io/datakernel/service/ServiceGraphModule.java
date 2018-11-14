@@ -453,7 +453,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		@Override
 		synchronized public CompletableFuture<Void> start() {
-			checkState(stopFuture == null);
+			checkState(stopFuture == null, "Already stopped");
 			if (startFuture == null) {
 				startFuture = service.start();
 			}
@@ -462,7 +462,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		@Override
 		synchronized public CompletableFuture<Void> stop() {
-			checkState(startFuture != null);
+			checkState(startFuture != null, "Has not been started yet");
 			if (stopFuture == null) {
 				stopFuture = service.stop();
 			}

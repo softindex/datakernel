@@ -88,7 +88,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public MemSize getReceiveBufferSize() {
-		check(hasReceiveBufferSize());
+		check(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
 		return receiveBufferSize;
 	}
 
@@ -97,7 +97,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		check(hasReuseAddress());
+		check(hasReuseAddress(), "No 'reuse address' setting is present");
 		return reuseAddress != FALSE;
 	}
 
@@ -106,7 +106,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public MemSize getSendBufferSize() {
-		check(hasSendBufferSize());
+		check(hasSendBufferSize(), "No 'send buffer size' setting is present");
 		return sendBufferSize;
 	}
 
@@ -115,7 +115,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public boolean getBroadcast() {
-		check(hasBroadcast());
+		check(hasBroadcast(), "No 'broadcast' setting is present");
 		return broadcast != FALSE;
 	}
 }

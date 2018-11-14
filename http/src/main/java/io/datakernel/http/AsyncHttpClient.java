@@ -399,7 +399,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@Override
 	public Promise<Void> start() {
-		checkState(eventloop.inEventloopThread());
+		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		return Promise.complete();
 	}
 
@@ -415,7 +415,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@Override
 	public Promise<Void> stop() {
-		checkState(eventloop.inEventloopThread());
+		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		SettablePromise<Void> promise = new SettablePromise<>();
 
 		poolKeepAlive.closeAllConnections();

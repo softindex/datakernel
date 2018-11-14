@@ -18,16 +18,16 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
-import io.datakernel.util.Preconditions;
 
 import static io.datakernel.codegen.utils.Primitives.wrap;
+import static io.datakernel.util.Preconditions.check;
 
 public abstract class SerializerGenPrimitive implements SerializerGen {
 
 	private final Class<?> primitiveType;
 
 	protected SerializerGenPrimitive(Class<?> primitiveType) {
-		Preconditions.check(primitiveType.isPrimitive());
+		check(primitiveType.isPrimitive(), "Not a primitive type");
 		this.primitiveType = primitiveType;
 	}
 

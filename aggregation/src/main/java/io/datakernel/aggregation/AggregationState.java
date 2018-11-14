@@ -454,8 +454,10 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	@SuppressWarnings("unchecked")
 	private static boolean chunkMightContainQueryValues(List<Object> queryMinValues, List<Object> queryMaxValues,
 			List<Object> chunkMinValues, List<Object> chunkMaxValues) {
-		checkArgument(queryMinValues.size() == queryMaxValues.size());
-		checkArgument(chunkMinValues.size() == chunkMaxValues.size());
+		checkArgument(queryMinValues.size() == queryMaxValues.size(),
+				"Sizes of lists of query minimum and maximum values should match");
+		checkArgument(chunkMinValues.size() == chunkMaxValues.size(),
+				"Sizes of lists of chunk minimum and maximum values should match");
 
 		for (int i = 0; i < queryMinValues.size(); ++i) {
 			Comparable<Object> queryMinValue = (Comparable<Object>) queryMinValues.get(i);
@@ -493,7 +495,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	private List<AggregationChunk> rangeQuery(PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey) {
-		checkArgument(minPrimaryKey.size() == maxPrimaryKey.size());
+		checkArgument(minPrimaryKey.size() == maxPrimaryKey.size(), "Sizes of min primary key and max primary key should match");
 		int size = minPrimaryKey.size();
 		RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
 		return new ArrayList<>(index.getRange(minPrimaryKey, maxPrimaryKey));

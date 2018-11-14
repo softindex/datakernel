@@ -28,7 +28,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.round;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
@@ -37,7 +36,6 @@ public final class StringFormatUtils {
 
 	public static String formatMemSize(MemSize memSize) {
 		long bytes = memSize.toLong();
-		checkArgument(bytes >= 0);
 
 		if (bytes == 0) {
 			return "0";

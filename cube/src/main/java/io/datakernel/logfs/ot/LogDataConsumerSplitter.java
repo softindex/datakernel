@@ -109,7 +109,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 					if (inputAcceptor == null) {
 						receivers = outputs.stream().map(output -> output.dataAcceptor).iterator();
 						inputAcceptor = createSplitter();
-						checkState(!receivers.hasNext());
+						checkState(!receivers.hasNext(), "Receivers must correspond to outputs");
 						receivers = null;
 					}
 					input.getSupplier().resume(inputAcceptor);

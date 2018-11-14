@@ -284,7 +284,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public void closeChannel(@Nullable SelectableChannel channel, @Nullable SelectionKey key) {
-		checkArgument(channel != null || key == null);
+		checkArgument(channel != null || key == null, "Either channel or key should be not null");
 		if (channel == null || !channel.isOpen()) return;
 		if (key != null && key.isValid()) {
 			cancelledKeys++;

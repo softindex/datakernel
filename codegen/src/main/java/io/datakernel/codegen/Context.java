@@ -115,10 +115,10 @@ public final class Context {
 
 	public void addParameter(String name, Expression expression) {
 		Expression prev = parameters.put(name, checkNotNull(expression));
-		checkState(prev == null);
+		checkState(prev == null, "Cannot overwrite an existing parameter");
 	}
 
 	public Expression removeParameter(String key) {
-		return checkNotNull(parameters.remove(key));
+		return checkNotNull(parameters.remove(key), "No parameter '%s' is present", key);
 	}
 }

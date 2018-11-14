@@ -147,32 +147,32 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		public K getCommit() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return commit;
 		}
 
 		public K getChild() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return child;
 		}
 
 		public Long getChildLevel() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return checkNotNull(childLevel);
 		}
 
 		public Set<K> getCommitParents() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return commitParents;
 		}
 
 		public long getCommitLevel() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return checkNotNull(commitLevel);
 		}
 
 		public A getAccumulatedDiffs() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return accumulatedDiffs;
 		}
 
@@ -329,7 +329,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public Promise<Set<K>> excludeParents(Set<K> startNodes) {
-		checkArgument(!startNodes.isEmpty());
+		checkArgument(!startNodes.isEmpty(), "Start nodes are empty");
 		if (startNodes.size() == 1) return Promise.of(startNodes);
 		return walkGraph(startNodes, new GraphWalker<K, D, Set<K>>() {
 			long minLevel;
@@ -369,7 +369,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		@Override
 		protected R handleCommit(OTCommit<K, D> commit) {
 			if (heads.size() == 1) {
-				return checkNotNull(tryGetResult());
+				return checkNotNull(tryGetResult(), "No result has been found");
 			}
 
 			K commitId = commit.getId();
@@ -498,7 +498,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	private Promise<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
-		checkArgument(heads.size() >= 2);
+		checkArgument(heads.size() >= 2, "Cannot merge less than 2 heads");
 		return loadGraph(heads)
 				.thenCompose(graph -> {
 					try {

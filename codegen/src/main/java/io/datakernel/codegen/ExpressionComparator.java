@@ -118,7 +118,7 @@ public final class ExpressionComparator implements Expression {
 			Type leftPropertyType = pair.left.load(ctx);
 			Type rightPropertyType = pair.right.load(ctx);
 
-			check(leftPropertyType.equals(rightPropertyType));
+			check(leftPropertyType.equals(rightPropertyType), "Types of compared values should match");
 			if (isPrimitiveType(leftPropertyType)) {
 				g.invokeStatic(wrap(leftPropertyType), new Method("compare", INT_TYPE, new Type[]{leftPropertyType, leftPropertyType}));
 				g.dup();

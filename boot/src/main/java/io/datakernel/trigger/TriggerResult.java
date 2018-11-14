@@ -184,30 +184,30 @@ public final class TriggerResult {
 	}
 
 	public long getTimestamp() {
-		checkState(isPresent());
+		checkState(isPresent(), "Trigger is not present");
 		return timestamp;
 	}
 
 	@Nullable
 	public Instant getInstant() {
-		checkState(isPresent());
+		checkState(isPresent(), "Trigger is not present");
 		return hasTimestamp() ? Instant.ofEpochMilli(timestamp) : null;
 	}
 
 	@Nullable
 	public Throwable getThrowable() {
-		checkState(isPresent());
+		checkState(isPresent(), "Trigger is not present");
 		return throwable;
 	}
 
 	@Nullable
 	public Object getValue() {
-		checkState(isPresent());
+		checkState(isPresent(), "Trigger is not present");
 		return value;
 	}
 
 	public int getCount() {
-		checkState(isPresent());
+		checkState(isPresent(), "Trigger is not present");
 		return count;
 	}
 

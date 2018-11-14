@@ -128,7 +128,7 @@ public final class SocketSettings {
 	}
 
 	public MemSize getSendBufferSize() {
-		check(hasSendBufferSize());
+		check(hasSendBufferSize(), "No 'send buffer size' setting is present");
 		return sendBufferSize;
 	}
 
@@ -137,7 +137,7 @@ public final class SocketSettings {
 	}
 
 	public MemSize getReceiveBufferSize() {
-		check(hasReceiveBufferSize());
+		check(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
 		return receiveBufferSize;
 	}
 
@@ -146,7 +146,7 @@ public final class SocketSettings {
 	}
 
 	public boolean getKeepAlive() {
-		check(hasKeepAlive());
+		check(hasKeepAlive(), "No 'keep alive' setting is present");
 		return keepAlive != FALSE;
 	}
 
@@ -155,7 +155,7 @@ public final class SocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		check(hasReuseAddress());
+		check(hasReuseAddress(), "No 'reuse address' setting is present");
 		return reuseAddress != FALSE;
 	}
 
@@ -164,7 +164,7 @@ public final class SocketSettings {
 	}
 
 	public boolean getTcpNoDelay() {
-		check(hasTcpNoDelay());
+		check(hasTcpNoDelay(), "No 'TCP no delay' setting is present");
 		return tcpNoDelay != FALSE;
 	}
 

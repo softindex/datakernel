@@ -45,7 +45,7 @@ public class ConfigWithFullPath implements Config {
 
 	@Override
 	public Config provideNoKeyChild(String key) {
-		checkArgument(!children.keySet().contains(key));
+		checkArgument(!children.keySet().contains(key), "Children already contain key '%s'", key);
 		return new ConfigWithFullPath(concatPath(path, key), config.provideNoKeyChild(key));
 	}
 

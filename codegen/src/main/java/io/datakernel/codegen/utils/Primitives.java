@@ -16,12 +16,12 @@
 
 package io.datakernel.codegen.utils;
 
-import io.datakernel.util.Preconditions;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class Primitives {
 	private static final Map<Class<?>, Class<?>> PRIMITIVE;
@@ -61,19 +61,19 @@ public final class Primitives {
 	}
 
 	public static boolean isWrapperType(Class<?> type) {
-		return WRAPPER.containsKey(Preconditions.checkNotNull(type));
+		return WRAPPER.containsKey(checkNotNull(type));
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> Class<T> wrap(Class<T> type) {
-		Preconditions.checkNotNull(type);
+		checkNotNull(type);
 		Class<T> wrapped = (Class<T>) PRIMITIVE.get(type);
 		return wrapped == null ? type : wrapped;
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> Class<T> unwrap(Class<T> type) {
-		Preconditions.checkNotNull(type);
+		checkNotNull(type);
 		Class<T> unwrapped = (Class<T>) WRAPPER.get(type);
 		return unwrapped == null ? type : unwrapped;
 	}

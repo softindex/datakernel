@@ -95,7 +95,7 @@ public final class RpcStrategies {
 	public static RpcStrategySharding sharding(ShardingFunction<?> hashFunction,
 	                                           List<RpcStrategy> senders) {
 		checkNotNull(senders);
-		checkArgument(senders.size() > 0, "at least one sender must be present");
+		checkArgument(senders.size() > 0, "At least one sender must be present");
 		checkNotNull(hashFunction);
 		return RpcStrategySharding.create(hashFunction, RpcStrategyList.ofStrategies(senders));
 	}

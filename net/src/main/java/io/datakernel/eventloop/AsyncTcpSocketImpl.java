@@ -375,7 +375,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	@Override
 	public Promise<Void> write(@Nullable ByteBuf buf) {
 		assert eventloop.inEventloopThread();
-		checkState(!writeEndOfStream);
+		checkState(!writeEndOfStream, "End of stream has already been sent");
 		if (!isOpen()) {
 			if (buf != null) buf.recycle();
 			return Promise.ofException(CLOSE_EXCEPTION);

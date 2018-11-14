@@ -74,7 +74,7 @@ public final class DatagraphSerialization {
 	public static final TypeAdapter<InetSocketAddress> ADDRESS_JSON = transform(STRING_JSON,
 			str -> {
 				String[] split = str.split(":");
-				checkArgument(split.length == 2);
+				checkArgument(split.length == 2, "Address should be splitted with a single ':'");
 				try {
 					return new InetSocketAddress(InetAddress.getByName(split[0]), Integer.parseInt(split[1]));
 				} catch (UnknownHostException e) {

@@ -64,7 +64,7 @@ public final class GsonAdapters {
 		@Override
 		public Character read(JsonReader in) throws IOException {
 			String v = in.nextString();
-			checkArgument(v.length() == 1);
+			checkArgument(v.length() == 1, "Not a character");
 			return v.charAt(0);
 		}
 	};
@@ -78,7 +78,7 @@ public final class GsonAdapters {
 		@Override
 		public Byte read(JsonReader in) throws IOException {
 			int v = in.nextInt();
-			checkArgument(v >= 0 && v <= 0xFF);
+			checkArgument(v >= 0 && v <= 0xFF, "Not a byte");
 			return (byte) v;
 		}
 	};
@@ -92,7 +92,7 @@ public final class GsonAdapters {
 		@Override
 		public Short read(JsonReader in) throws IOException {
 			int v = in.nextInt();
-			checkArgument(v >= 0 && v <= 0xFFFF);
+			checkArgument(v >= 0 && v <= 0xFFFF, "Not a short");
 			return (short) in.nextInt();
 		}
 	};
@@ -274,15 +274,15 @@ public final class GsonAdapters {
 			.withAdapter(String.class, STRING_JSON)
 			.withAdapter(Enum.class, (cls, $) -> ofEnum((Class<Enum>) cls))
 			.withAdapter(List.class, ($, paramAdapters) -> {
-				checkArgument(paramAdapters.length == 1);
+				checkArgument(paramAdapters.length == 1, "List must have 1 generic type parameter");
 				return ofList(paramAdapters[0]);
 			})
 			.withAdapter(Set.class, ($, paramAdapters) -> {
-				checkArgument(paramAdapters.length == 1);
+				checkArgument(paramAdapters.length == 1, "Set must have 1 generic type parameter");
 				return ofSet(paramAdapters[0]);
 			})
 			.withAdapter(Map.class, ($, paramAdapters) -> {
-				checkArgument(paramAdapters.length == 2);
+				checkArgument(paramAdapters.length == 2, "Map must have 2 generic type parameter");
 				checkArgument(paramAdapters[0] == STRING_JSON, "Map key type should be string!");
 				return ofMap(paramAdapters[1]);
 			});

@@ -139,12 +139,12 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 //		}
 
 		long getStartTime() {
-			checkState(startBegin != 0L && startEnd != 0L);
+			checkState(startBegin != 0L && startEnd != 0L, "Start() has not been called or has not finished yet");
 			return startEnd - startBegin;
 		}
 
 		long getStopTime() {
-			checkState(stopBegin != 0L && stopEnd != 0L);
+			checkState(stopBegin != 0L && stopEnd != 0L, "Stop() has not been called or has not finished yet");
 			return stopEnd - stopBegin;
 		}
 	}
@@ -243,7 +243,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	public ServiceGraph add(Key<?> key, @Nullable Service service, Key<?>... dependencies) {
-		checkArgument(!services.containsKey(key));
+		checkArgument(!services.containsKey(key), "Key has already been added");
 		if (service != null) {
 			services.put(key, service);
 		}

@@ -18,17 +18,17 @@ package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.Helper;
-import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenInt;
 import io.datakernel.serializer.asm.SerializerGenLong;
-import io.datakernel.util.Preconditions;
+
+import static io.datakernel.util.Preconditions.check;
 
 public final class SerializeVarLengthHandler implements AnnotationHandler<SerializeVarLength, SerializeVarLengthEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeVarLength annotation, CompatibilityLevel compatibilityLevel) {
 		return (type, generics, fallback) -> {
-			Preconditions.check(generics.length == 0);
+			check(generics.length == 0, "Type should have no generics");
 			if (type == Integer.TYPE) {
 				return new SerializerGenInt(true);
 			}

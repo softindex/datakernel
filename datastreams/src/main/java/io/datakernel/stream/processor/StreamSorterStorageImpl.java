@@ -82,7 +82,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 */
 	public static <T> StreamSorterStorageImpl<T> create(ExecutorService executorService,
 			BufferSerializer<T> serializer, Path path) {
-		checkArgument(!path.getFileName().toString().contains("%d"));
+		checkArgument(!path.getFileName().toString().contains("%d"), "Filename should not contain '%d'");
 		try {
 			Files.createDirectories(path);
 		} catch (IOException e) {
@@ -92,7 +92,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	}
 
 	public StreamSorterStorageImpl<T> withFilePattern(String filePattern) {
-		checkArgument(!filePattern.contains("%d"));
+		checkArgument(!filePattern.contains("%d"), "File pattern should not contain '%d'");
 		this.filePattern = filePattern;
 		return this;
 	}

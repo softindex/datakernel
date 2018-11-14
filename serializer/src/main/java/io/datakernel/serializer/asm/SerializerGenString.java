@@ -22,12 +22,12 @@ import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.StringFormat;
-import io.datakernel.util.Preconditions;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.util.Preconditions.check;
 
 public class SerializerGenString implements SerializerGen {
 	private final StringFormat format;
@@ -35,7 +35,7 @@ public class SerializerGenString implements SerializerGen {
 	private final int maxLength;
 
 	public SerializerGenString(int maxLength, boolean nullable, StringFormat format) {
-		Preconditions.check(maxLength == -1 || maxLength > 0);
+		check(maxLength == -1 || maxLength > 0, "Max length should be either -1 or greater than 0");
 		this.maxLength = maxLength;
 		this.format = format;
 		this.nullable = nullable;

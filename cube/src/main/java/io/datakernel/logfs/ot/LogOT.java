@@ -5,7 +5,6 @@ import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.ot.TransformResult.ConflictResolution;
-import io.datakernel.util.Preconditions;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +13,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.singletonList;
 
@@ -36,7 +36,8 @@ public class LogOT {
 					for (String log : intersection) {
 						LogPositionDiff leftPosition = left.getPositions().get(log);
 						LogPositionDiff rightPosition = right.getPositions().get(log);
-						Preconditions.check(leftPosition.from.equals(rightPosition.from));
+						check(leftPosition.from.equals(rightPosition.from),
+								"'From' values should be equal for left and right log positions");
 						comparison += leftPosition.compareTo(rightPosition);
 					}
 
@@ -50,7 +51,8 @@ public class LogOT {
 						LogPositionDiff positionDiff1 = positions.get(log);
 						LogPositionDiff positionDiff2 = entry.getValue();
 						if (positionDiff1 != null) {
-							checkState(positionDiff1.to.equals(positionDiff2.from));
+							checkState(positionDiff1.to.equals(positionDiff2.from),
+									"'To' value of the first log position should be equal to 'From' value of the second log position");
 							positionDiff2 = new LogPositionDiff(positionDiff1.from, positionDiff2.to);
 						}
 						if (!positionDiff2.isEmpty()) {

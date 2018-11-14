@@ -42,7 +42,7 @@ import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.stream.Collectors.*;
 
 public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
@@ -376,7 +376,7 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 
 	@Override
 	public Promise<Void> backup(OTCommit<Long, D> commit, List<D> snapshot) {
-		checkState(tableBackup != null);
+		checkNotNull(tableBackup, "Cannot backup when backup table is null");
 		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {

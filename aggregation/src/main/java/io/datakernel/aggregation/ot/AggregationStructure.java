@@ -26,20 +26,20 @@ public final class AggregationStructure implements Initializable<AggregationStru
 	}
 
 	public AggregationStructure withKey(String keyId, FieldType type) {
-		checkArgument(!keyTypes.containsKey(keyId));
+		checkArgument(!keyTypes.containsKey(keyId), "Key '%s' has already been added", keyId);
 		keyTypes.put(keyId, type);
 		return this;
 	}
 
 	public AggregationStructure withMeasure(String measureId, Measure aggregateFunction) {
-		checkArgument(!measureTypes.containsKey(measureId));
+		checkArgument(!measureTypes.containsKey(measureId), "Measure '%s' has already been added", measureId);
 		measureTypes.put(measureId, aggregateFunction.getFieldType());
 		measures.put(measureId, aggregateFunction);
 		return this;
 	}
 
 	public AggregationStructure withIgnoredMeasure(String measureId, FieldType measureType) {
-		checkArgument(!measureTypes.containsKey(measureId));
+		checkArgument(!measureTypes.containsKey(measureId), "Measure '%s' has already been added", measureId);
 		measureTypes.put(measureId, measureType);
 		return this;
 	}

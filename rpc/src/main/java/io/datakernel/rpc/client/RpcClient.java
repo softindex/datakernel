@@ -277,9 +277,9 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	@Override
 	public Promise<Void> start() {
-		checkState(eventloop.inEventloopThread());
-		checkState(messageTypes != null, "Message types must be specified");
-		checkState(!running);
+		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
+		checkNotNull(messageTypes, "Message types must be specified");
+		checkState(!running, "Already running");
 
 		SettablePromise<Void> promise = new SettablePromise<>();
 		running = true;
@@ -315,7 +315,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	@Override
 	public Promise<Void> stop() {
 		if (!running) return Promise.complete();
-		checkState(eventloop.inEventloopThread());
+		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 
 		SettablePromise<Void> promise = new SettablePromise<>();
 

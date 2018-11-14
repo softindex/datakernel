@@ -84,19 +84,19 @@ public class AggregationChunkJson extends TypeAdapter<AggregationChunk> {
 	public AggregationChunk read(JsonReader reader) throws IOException {
 		reader.beginObject();
 
-		checkArgument(ID.equals(reader.nextName()));
+		checkArgument(ID.equals(reader.nextName()), "Malformed json object, should have name 'id'");
 		Object id = chunkIdScheme.fromJson(reader);
 
-		checkArgument(MIN.equals(reader.nextName()));
+		checkArgument(MIN.equals(reader.nextName()), "Malformed json object, should have name 'min'");
 		PrimaryKey from = primaryKeyTypeAdapter.read(reader);
 
-		checkArgument(MAX.equals(reader.nextName()));
+		checkArgument(MAX.equals(reader.nextName()), "Malformed json object, should have name 'max'");
 		PrimaryKey to = primaryKeyTypeAdapter.read(reader);
 
-		checkArgument(COUNT.equals(reader.nextName()));
+		checkArgument(COUNT.equals(reader.nextName()), "Malformed json object, should have name 'count'");
 		int count = reader.nextInt();
 
-		checkArgument(MEASURES.equals(reader.nextName()));
+		checkArgument(MEASURES.equals(reader.nextName()), "Malformed json object, should have name 'measures'");
 		List<String> measures = stringListAdapter.read(reader);
 
 		List<String> invalidMeasures = getInvalidMeasures(measures);

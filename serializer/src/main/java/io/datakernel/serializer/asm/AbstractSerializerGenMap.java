@@ -23,11 +23,11 @@ import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
-import io.datakernel.util.Preconditions;
 
 import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public abstract class AbstractSerializerGenMap implements SerializerGen, NullableOptimization {
@@ -95,7 +95,7 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 
 	@Override
 	public final Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		Preconditions.check(targetType.isAssignableFrom(mapImplType));
+		check(targetType.isAssignableFrom(mapImplType), "Target(%s) should be assignable from map implementation type(%s)", targetType, mapImplType);
 		Expression length = let(call(arg(0), "readVarInt"));
 		Expression container = createConstructor(length);
 		Expression forEach = expressionFor(value(0), (!nullable ? length : dec(length)),

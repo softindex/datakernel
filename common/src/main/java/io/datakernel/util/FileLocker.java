@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.nio.channels.FileLock;
 
 import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class FileLocker {
 	private static final Logger logger = LoggerFactory.getLogger(FileLocker.class);
@@ -52,7 +51,6 @@ public final class FileLocker {
 	}
 
 	private FileLocker(File lockFile) {
-		checkNotNull(lockFile);
 		this.lockFile = lockFile.getAbsoluteFile();
 	}
 

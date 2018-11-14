@@ -97,22 +97,22 @@ public final class LogDiffJson<D> extends TypeAdapter<LogDiff<D>> {
 	@Override
 	public LogDiff<D> read(JsonReader in) throws IOException {
 		in.beginObject();
-		checkArgument(POSITIONS.equals(in.nextName()));
+		checkArgument(POSITIONS.equals(in.nextName()), "Malformed json object, should have name 'positions'");
 		in.beginArray();
 		Map<String, LogPositionDiff> positions = new LinkedHashMap<>();
 		while (in.hasNext()) {
 			in.beginObject();
-			checkArgument(LOG.equals(in.nextName()));
+			checkArgument(LOG.equals(in.nextName()), "Malformed json object, should have name 'log'");
 			String log = in.nextString();
-			checkArgument(FROM.equals(in.nextName()));
+			checkArgument(FROM.equals(in.nextName()), "Malformed json object, should have name 'from'");
 			LogPosition from = LOG_POSITION_JSON.read(in);
-			checkArgument(TO.equals(in.nextName()));
+			checkArgument(TO.equals(in.nextName()), "Malformed json object, should have name 'to'");
 			LogPosition to = LOG_POSITION_JSON.read(in);
 			positions.put(log, new LogPositionDiff(from, to));
 			in.endObject();
 		}
 		in.endArray();
-		checkArgument(OPS.equals(in.nextName()));
+		checkArgument(OPS.equals(in.nextName()),"Malformed json object, should have name 'ops'");
 		List<D> ops = opsAdapter.read(in);
 		in.endObject();
 		return LogDiff.of(positions, ops);

@@ -156,7 +156,7 @@ public interface Config {
 	}
 
 	default Config provideNoKeyChild(String key) {
-		checkArgument(!getChildren().containsKey(key));
+		checkArgument(!getChildren().containsKey(key), "Children already contain key '%s'", key);
 		return EMPTY;
 	}
 

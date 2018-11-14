@@ -16,7 +16,6 @@
 
 package io.datakernel.codegen;
 
-import io.datakernel.util.Preconditions;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -24,6 +23,7 @@ import org.objectweb.asm.commons.Method;
 
 import static io.datakernel.codegen.CompareOperation.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
+import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.INT_TYPE;
@@ -56,7 +56,7 @@ final class PredicateDefCmp implements PredicateDef {
 		Label labelExit = new Label();
 
 		Type leftFieldType = left.type(ctx);
-		Preconditions.check(leftFieldType.equals(right.type(ctx)));
+		check(leftFieldType.equals(right.type(ctx)), "Types of compared values should match");
 		left.load(ctx);
 		right.load(ctx);
 

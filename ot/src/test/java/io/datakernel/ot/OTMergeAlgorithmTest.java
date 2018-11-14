@@ -34,7 +34,7 @@ public class OTMergeAlgorithmTest {
 	static <K, D> OTLoadedGraph<K, D> buildGraph(Consumer<OTGraphBuilder<K, D>> consumer, OTSystem<D> system) {
 		OTLoadedGraph<K, D> graph = new OTLoadedGraph<>(system);
 		consumer.accept((parent, child, diffs) -> {
-			checkArgument(graph.getParents(child) == null || graph.getParents(child).get(parent) == null);
+			checkArgument(graph.getParents(child) == null || graph.getParents(child).get(parent) == null, "Invalid graph");
 			graph.addEdge(parent, child, diffs);
 		});
 		HashMap<K, Long> levels = new HashMap<>();

@@ -93,8 +93,8 @@ public final class SerializerBuilder {
 		SerializerBuilder builder = new SerializerBuilder(definingClassLoader);
 
 		builder.setSerializer(Object.class, (type, generics, fallback) -> {
-			check(type.getTypeParameters().length == generics.length);
-			check(fallback == null);
+			check(type.getTypeParameters().length == generics.length, "Number of type parameters should be equal to number of generics");
+			check(fallback == null, "Fallback must be null");
 			SerializerGenClass serializer;
 			SerializeInterface annotation = Annotations.findAnnotation(SerializeInterface.class, type.getAnnotations());
 			if (annotation != null && annotation.impl() != void.class) {
@@ -106,19 +106,19 @@ public final class SerializerBuilder {
 			return serializer;
 		});
 		builder.setSerializer(List.class, (type, generics, fallback) -> {
-			check(generics.length == 1);
+			check(generics.length == 1, "List must have 1 generic type parameter");
 			return new SerializerGenList(generics[0].serializer);
 		});
 		builder.setSerializer(Collection.class, (type, generics, fallback) -> {
-			check(generics.length == 1);
+			check(generics.length == 1, "Collection must have 1 generic type parameter");
 			return new SerializerGenList(generics[0].serializer);
 		});
 		builder.setSerializer(Set.class, (type, generics, fallback) -> {
-			check(generics.length == 1);
+			check(generics.length == 1, "Set must have 1 generic type parameter");
 			return new SerializerGenSet(generics[0].serializer);
 		});
 		builder.setSerializer(Map.class, (type, generics, fallback) -> {
-			check(generics.length == 2);
+			check(generics.length == 2, "Map must have 2 generic type parameter");
 			return new SerializerGenMap(generics[0].serializer, generics[1].serializer);
 		});
 		builder.setSerializer(Enum.class, (type, generics, fallback) -> {
@@ -235,7 +235,7 @@ public final class SerializerBuilder {
 
 	public <T> void setSubclasses(Class<T> type, List<Class<? extends T>> subclasses) {
 		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>(subclasses);
-		check(subclassesSet.size() == subclasses.size());
+		check(subclassesSet.size() == subclasses.size(), "Subclasses should be unique");
 		SerializerGen subclassesSerializer = createSubclassesSerializer(type, subclassesSet, 0);
 		setSerializer(type, subclassesSerializer);
 	}
@@ -297,7 +297,7 @@ public final class SerializerBuilder {
 		}
 
 		if (type.isArray()) {
-			check(generics.length == 1);
+			check(generics.length == 1, "Number of generics should be equal to 1");
 			SerializerGen itemSerializer = generics[0].serializer;
 			return new SerializerGenArray(itemSerializer, type);
 		}
@@ -318,7 +318,7 @@ public final class SerializerBuilder {
 
 	private SerializerGen createSubclassesSerializer(Class<?> type, SerializeSubclasses serializeSubclasses) {
 		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>(Arrays.asList(serializeSubclasses.value()));
-		check(subclassesSet.size() == serializeSubclasses.value().length);
+		check(subclassesSet.size() == serializeSubclasses.value().length, "Subclasses should be unique");
 
 		if (!serializeSubclasses.extraSubclassesId().isEmpty()) {
 			Collection<Class<?>> registeredSubclasses = extraSubclassesMap.get(serializeSubclasses.extraSubclassesId());
@@ -331,10 +331,10 @@ public final class SerializerBuilder {
 	private SerializerGen createSubclassesSerializer(Class<?> type, LinkedHashSet<Class<?>> subclassesSet,
 	                                                 int startIndex) {
 		checkNotNull(subclassesSet);
-		check(!subclassesSet.isEmpty());
+		check(!subclassesSet.isEmpty(), "Set of subclasses should not be empty");
 		LinkedHashMap<Class<?>, SerializerGen> subclasses = new LinkedHashMap<>();
 		for (Class<?> subclass : subclassesSet) {
-			check(subclass.getTypeParameters().length == 0);
+			check(subclass.getTypeParameters().length == 0, "Subclass should have no type parameters");
 			check(type.isAssignableFrom(subclass), "Unrelated subclass '%s' for '%s'", subclass, type);
 
 			SerializerGen serializer = createSerializerGen(
@@ -400,7 +400,7 @@ public final class SerializerBuilder {
 					break;
 				}
 			}
-			check(i < classType.getTypeParameters().length);
+			check(i < classType.getTypeParameters().length, "No type variable '%s' is found in type parameters of %s", typeVariableName, classType);
 
 			SerializerGen serializer = typedModsMap.rewrite(classGenerics[i].rawType, new SerializerForType[]{}, classGenerics[i].serializer);
 			return new SerializerForType(classGenerics[i].rawType, serializer);
@@ -582,8 +582,8 @@ public final class SerializerBuilder {
 			}
 			return;
 		}
-		check(!classType.isAnonymousClass());
-		check(!classType.isLocalClass());
+		check(!classType.isAnonymousClass(), "Class should not be anonymous");
+		check(!classType.isLocalClass(), "Class should not be local");
 		scanClass(classType, classGenerics, serializerGenClass);
 		scanFactories(classType, serializerGenClass);
 		scanConstructors(classType, serializerGenClass);
@@ -689,7 +689,7 @@ public final class SerializerBuilder {
 				if (fields.size() == method.getParameterTypes().length) {
 					serializerGenClass.addSetter(method, fields);
 				} else {
-					check(fields.isEmpty());
+					check(fields.isEmpty(), "Fields should not be empty");
 				}
 			}
 		}

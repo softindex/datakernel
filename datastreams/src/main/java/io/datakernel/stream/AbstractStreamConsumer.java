@@ -58,7 +58,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	@Override
 	public final void setSupplier(StreamSupplier<T> supplier) {
 		checkNotNull(supplier);
-		checkState(this.supplier == null);
+		checkState(this.supplier == null, "Supplier has already been set");
 		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
 				LATE_BINDING_ERROR_MESSAGE, this);
 		this.supplier = supplier;

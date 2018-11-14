@@ -38,7 +38,7 @@ public class HttpThrottlingServer {
 		private int loadBusinessLogic;
 
 		public ServerOptions(int loadBusinessLogic) {
-			checkArgument(loadBusinessLogic >= 0);
+			checkArgument(loadBusinessLogic >= 0, "Load business logic should be a non-negative value");
 			this.loadBusinessLogic = loadBusinessLogic;
 		}
 

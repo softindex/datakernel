@@ -75,11 +75,11 @@ public class AggregationPredicates {
 
 	private static <L extends AggregationPredicate, R extends AggregationPredicate> void register(Class<L> leftType, Class<R> rightType, PredicateSimplifier<L, R> operation) {
 		PredicateSimplifierKey keyLeftRight = new PredicateSimplifierKey<>(leftType, rightType);
-		checkState(!simplifiers.containsKey(keyLeftRight));
+		checkState(!simplifiers.containsKey(keyLeftRight), "Key '%s has already been registered", keyLeftRight);
 		simplifiers.put(keyLeftRight, operation);
 		if (!rightType.equals(leftType)) {
 			PredicateSimplifierKey keyRightLeft = new PredicateSimplifierKey<>(rightType, leftType);
-			checkState(!simplifiers.containsKey(keyRightLeft));
+			checkState(!simplifiers.containsKey(keyRightLeft), "Key '%s has already been registered",keyRightLeft);
 			simplifiers.put(keyRightLeft, (PredicateSimplifier<R, L>) (right, left) -> operation.simplifyAnd(left, right));
 		}
 	}
@@ -1514,12 +1514,12 @@ public class AggregationPredicates {
 		}
 
 		public PrimaryKey getFrom() {
-			checkState(!isNoScan());
+			checkState(!isNoScan(), "Cannot return 'from' in 'No Scan' mode");
 			return from;
 		}
 
 		public PrimaryKey getTo() {
-			checkState(!isNoScan());
+			checkState(!isNoScan(), "Cannot return 'to' in 'No Scan' mode");
 			return to;
 		}
 	}

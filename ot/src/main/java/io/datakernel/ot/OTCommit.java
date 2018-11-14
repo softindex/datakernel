@@ -47,7 +47,7 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 	@SuppressWarnings("unchecked")
 	public static <K, D> OTCommit<K, D> of(K id, Map<K, ? extends List<? extends D>> parents, long level) {
 		checkNotNull(id);
-		checkArgument(level, v -> v > 0);
+		checkArgument(level, v -> v > 0, "Level should be greater than 0");
 		checkArgument(parents != null, "Cannot create OTCommit with parents that is null");
 		return new OTCommit<>(id, (Map<K, List<D>>) parents, level);
 	}
@@ -61,7 +61,7 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 	public static <K, D> OTCommit<K, D> ofCommit(K id, K parent, List<? extends D> diffs, long parentLevel) {
 		checkNotNull(id);
 		checkNotNull(parent);
-		checkArgument(parentLevel, v -> v > 0);
+		checkArgument(parentLevel, v -> v > 0, "Level should be greater than 0");
 		Map<K, ? extends List<? extends D>> parentMap = singletonMap(parent, diffs);
 		return new OTCommit<>(id, (Map<K, List<D>>) parentMap, parentLevel + 1L);
 	}
@@ -69,7 +69,7 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 	@SuppressWarnings("unchecked")
 	public static <K, D> OTCommit<K, D> ofMerge(K id, Map<K, ? extends List<? extends D>> parents, long maxParentLevel) {
 		checkNotNull(id);
-		checkArgument(maxParentLevel, v -> v > 0);
+		checkArgument(maxParentLevel, v -> v > 0, "Level should be greater than 0");
 		return new OTCommit<>(id, (Map<K, List<D>>) parents, maxParentLevel + 1L);
 	}
 
@@ -126,7 +126,7 @@ public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 	}
 
 	public Instant getInstant() {
-		checkState(timestamp != 0L);
+		checkState(timestamp != 0L, "Timestamp has not been set");
 		return Instant.ofEpochMilli(timestamp);
 	}
 
