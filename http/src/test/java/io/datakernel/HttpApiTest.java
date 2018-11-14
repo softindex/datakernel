@@ -75,16 +75,13 @@ public class HttpApiTest {
 	@Before
 	public void setUp() {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				try {
-					testRequest(request);
-					HttpResponse response = createResponse();
-					return Promise.of(response);
-				} catch (ParseException e) {
-					return Promise.ofException(e);
-				}
+		AsyncServlet servlet = request -> {
+			try {
+				testRequest(request);
+				HttpResponse response = createResponse();
+				return Promise.of(response);
+			} catch (ParseException e) {
+				return Promise.ofException(e);
 			}
 		};
 

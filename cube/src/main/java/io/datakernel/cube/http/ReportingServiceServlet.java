@@ -71,12 +71,7 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 				.with(GET, "/", reportingServiceServlet)
 				.with(GET, "/consolidation-debug", consolidationDebugServlet != null ?
 						consolidationDebugServlet :
-						new AsyncServlet() {
-							@Override
-							public Promise<HttpResponse> serve(HttpRequest request) {
-								return Promise.of(HttpResponse.ofCode(404));
-							}
-						});
+						(AsyncServlet) request -> Promise.of(HttpResponse.ofCode(404)));
 	}
 
 	private TypeAdapter<AggregationPredicate> getAggregationPredicateJson() {

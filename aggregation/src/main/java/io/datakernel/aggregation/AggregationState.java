@@ -48,12 +48,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	private final Map<Object, AggregationChunk> chunks = new LinkedHashMap<>();
 	private RangeTree<PrimaryKey, AggregationChunk>[] prefixRanges;
 
-	private static final Comparator<AggregationChunk> MIN_KEY_ASCENDING_COMPARATOR = new Comparator<AggregationChunk>() {
-		@Override
-		public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {
-			return chunk1.getMinPrimaryKey().compareTo(chunk2.getMinPrimaryKey());
-		}
-	};
+	private static final Comparator<AggregationChunk> MIN_KEY_ASCENDING_COMPARATOR = (chunk1, chunk2) -> chunk1.getMinPrimaryKey().compareTo(chunk2.getMinPrimaryKey());
 
 	@SuppressWarnings("unchecked")
 	AggregationState(AggregationStructure aggregation) {

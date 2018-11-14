@@ -28,17 +28,14 @@ import io.datakernel.util.Preconditions;
 public final class SerializeNullableHandler implements AnnotationHandler<SerializeNullable, SerializeNullableEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeNullable annotation, CompatibilityLevel compatibilityLevel) {
-		return new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				Preconditions.check(!type.isPrimitive());
-				if (fallback instanceof SerializerGenString)
-					return ((SerializerGenString) fallback).nullable(true);
-				if (compatibilityLevel == CompatibilityLevel.LEVEL_3 && fallback instanceof NullableOptimization) {
-					return ((NullableOptimization) fallback).asNullable();
-				}
-				return new SerializerGenNullable(fallback);
+		return (type, generics, fallback) -> {
+			Preconditions.check(!type.isPrimitive());
+			if (fallback instanceof SerializerGenString)
+				return ((SerializerGenString) fallback).nullable(true);
+			if (compatibilityLevel == CompatibilityLevel.LEVEL_3 && fallback instanceof NullableOptimization) {
+				return ((NullableOptimization) fallback).asNullable();
 			}
+			return new SerializerGenNullable(fallback);
 		};
 	}
 

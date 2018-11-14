@@ -26,16 +26,13 @@ import io.datakernel.serializer.asm.SerializerGenString;
 public class SerializeStringFormatHandler implements AnnotationHandler<SerializeStringFormat, SerializeStringFormatEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeStringFormat annotation, CompatibilityLevel compatibilityLevel) {
-		return new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				if (compatibilityLevel == CompatibilityLevel.LEVEL_1) {
-					if (annotation.value() == StringFormat.ISO_8859_1 || annotation.value() == StringFormat.UTF8) {
-						return ((SerializerGenString) fallback).encoding(StringFormat.UTF8_CUSTOM);
-					}
+		return (type, generics, fallback) -> {
+			if (compatibilityLevel == CompatibilityLevel.LEVEL_1) {
+				if (annotation.value() == StringFormat.ISO_8859_1 || annotation.value() == StringFormat.UTF8) {
+					return ((SerializerGenString) fallback).encoding(StringFormat.UTF8_CUSTOM);
 				}
-				return ((SerializerGenString) fallback).encoding(annotation.value());
 			}
+			return ((SerializerGenString) fallback).encoding(annotation.value());
 		};
 	}
 

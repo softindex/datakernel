@@ -25,12 +25,9 @@ import io.datakernel.serializer.asm.SerializerGenString;
 public final class SerializeMaxLengthHandler implements AnnotationHandler<SerializeMaxLength, SerializeMaxLengthEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeMaxLength annotation, CompatibilityLevel compatibilityLevel) {
-		return new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				SerializerGenString gen = (SerializerGenString) fallback;
-				return gen.maxLength(annotation.value());
-			}
+		return (type, generics, fallback) -> {
+			SerializerGenString gen = (SerializerGenString) fallback;
+			return gen.maxLength(annotation.value());
 		};
 	}
 

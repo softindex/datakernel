@@ -106,23 +106,20 @@ public class UdpSocketHandlerTest {
 
 	@Test
 	public void testEchoUdpServer() {
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					//  server
-					DatagramChannel serverChannel = createDatagramChannel(DatagramSocketSettings.create(), SERVER_ADDRESS, null);
-					AsyncUdpSocketImpl serverConnection = getEchoServerUdpSocket(serverChannel);
-					serverConnection.register();
+		eventloop.post(() -> {
+			try {
+				//  server
+				DatagramChannel serverChannel = createDatagramChannel(DatagramSocketSettings.create(), SERVER_ADDRESS, null);
+				AsyncUdpSocketImpl serverConnection = getEchoServerUdpSocket(serverChannel);
+				serverConnection.register();
 
-					// client
-					DatagramChannel clientChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
-					AsyncUdpSocketImpl clientConnection = getClientUdpSocket(clientChannel);
-					clientConnection.register();
+				// client
+				DatagramChannel clientChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
+				AsyncUdpSocketImpl clientConnection = getClientUdpSocket(clientChannel);
+				clientConnection.register();
 
-				} catch (IOException e) {
-					throw new AssertionError(e);
-				}
+			} catch (IOException e) {
+				throw new AssertionError(e);
 			}
 		});
 

@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -223,7 +224,7 @@ public interface Config {
 	 */
 	static Config ofProperties(Properties properties) {
 		return ofMap(properties.stringPropertyNames().stream()
-				.collect(Collectors.toMap(k -> k, properties::getProperty,
+				.collect(Collectors.toMap(Function.identity(), properties::getProperty,
 						(u, v) -> {throw new AssertionError();}, LinkedHashMap::new)));
 	}
 

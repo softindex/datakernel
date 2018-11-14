@@ -148,12 +148,9 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 		}
 
 		List<JmxRefreshable> listRef = (List<JmxRefreshable>) fetcher.fetchFrom(source);
-		return Collections.singletonList(new JmxRefreshable() {
-			@Override
-			public void refresh(long timestamp) {
-				for (JmxRefreshable jmxRefreshableElement : listRef) {
-					jmxRefreshableElement.refresh(timestamp);
-				}
+		return Collections.singletonList(timestamp -> {
+			for (JmxRefreshable jmxRefreshableElement : listRef) {
+				jmxRefreshableElement.refresh(timestamp);
 			}
 		});
 	}

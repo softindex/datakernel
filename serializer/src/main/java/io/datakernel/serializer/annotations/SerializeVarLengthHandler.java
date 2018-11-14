@@ -27,24 +27,21 @@ import io.datakernel.util.Preconditions;
 public final class SerializeVarLengthHandler implements AnnotationHandler<SerializeVarLength, SerializeVarLengthEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeVarLength annotation, CompatibilityLevel compatibilityLevel) {
-		return new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				Preconditions.check(generics.length == 0);
-				if (type == Integer.TYPE) {
-					return new SerializerGenInt(true);
-				}
-				if (type == Integer.class) {
-					return new SerializerGenInt(true);
-				}
-				if (type == Long.TYPE) {
-					return new SerializerGenLong(true);
-				}
-				if (type == Long.class) {
-					return new SerializerGenLong(true);
-				}
-				throw new IllegalArgumentException();
+		return (type, generics, fallback) -> {
+			Preconditions.check(generics.length == 0);
+			if (type == Integer.TYPE) {
+				return new SerializerGenInt(true);
 			}
+			if (type == Integer.class) {
+				return new SerializerGenInt(true);
+			}
+			if (type == Long.TYPE) {
+				return new SerializerGenLong(true);
+			}
+			if (type == Long.class) {
+				return new SerializerGenLong(true);
+			}
+			throw new IllegalArgumentException();
 		};
 	}
 

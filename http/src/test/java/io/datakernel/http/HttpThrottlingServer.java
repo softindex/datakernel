@@ -82,12 +82,7 @@ public class HttpThrottlingServer {
 
 	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, int loadBusinessLogic) {
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				return Promise.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
-			}
-		};
+		AsyncServlet servlet = request -> Promise.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
 		return AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", SERVER_PORT));
 	}
 

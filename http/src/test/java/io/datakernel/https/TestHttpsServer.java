@@ -51,12 +51,7 @@ public class TestHttpsServer {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 
-		AsyncServlet bobServlet = new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				return Promise.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
-			}
-		};
+		AsyncServlet bobServlet = request -> Promise.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
 
 		KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 		TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");

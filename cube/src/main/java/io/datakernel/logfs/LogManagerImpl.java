@@ -168,12 +168,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 										sw.reset().start();
 										return fileStream
 												.apply(SerialLZ4Decompressor.create()
-														.withInspector(new SerialLZ4Decompressor.Inspector() {
-															@Override
-															public void onBlock(SerialLZ4Decompressor self, SerialLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
-																inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
-															}
-														}))
+														.withInspector((self, header, inputBuf, outputBuf) -> inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen))
 												.apply(supplier ->
 														supplier.withEndOfStream(eos ->
 																eos.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?

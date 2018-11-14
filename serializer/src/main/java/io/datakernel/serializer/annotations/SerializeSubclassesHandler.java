@@ -25,14 +25,11 @@ import io.datakernel.util.Preconditions;
 public final class SerializeSubclassesHandler implements AnnotationHandler<SerializeSubclasses, SerializeSubclassesEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeSubclasses annotation, CompatibilityLevel compatibilityLevel) {
-		return new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> superclass, SerializerForType[] superclassGenerics, SerializerGen fallback) {
-				Preconditions.check(superclass.getTypeParameters().length == 0);
-				Preconditions.check(superclassGenerics.length == 0);
+		return (superclass, superclassGenerics, fallback) -> {
+			Preconditions.check(superclass.getTypeParameters().length == 0);
+			Preconditions.check(superclassGenerics.length == 0);
 
-				return serializerBuilder.createSubclassesSerializer(superclass, annotation);
-			}
+			return serializerBuilder.createSubclassesSerializer(superclass, annotation);
 		};
 	}
 

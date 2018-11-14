@@ -95,15 +95,12 @@ public class RpcBlockingTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_2);
 		InetSocketAddress address3 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_3);
 
-		ShardingFunction<HelloRequest> shardingFunction = new ShardingFunction<HelloRequest>() {
-			@Override
-			public int getShard(HelloRequest item) {
-				int shard = 0;
-				if (item.name.startsWith("S")) {
-					shard = 1;
-				}
-				return shard;
+		ShardingFunction<HelloRequest> shardingFunction = item -> {
+			int shard = 0;
+			if (item.name.startsWith("S")) {
+				shard = 1;
 			}
+			return shard;
 		};
 
 		RpcClient client = RpcClient.create(eventloop)
@@ -221,17 +218,14 @@ public class RpcBlockingTest {
 	}
 
 	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(HelloService helloService) {
-		return new RpcRequestHandler<HelloRequest, HelloResponse>() {
-			@Override
-			public Promise<HelloResponse> run(HelloRequest request) {
-				String result;
-				try {
-					result = helloService.hello(request.name);
-				} catch (Exception e) {
-					return Promise.ofException(e);
-				}
-				return Promise.of(new HelloResponse(result));
+		return request -> {
+			String result;
+			try {
+				result = helloService.hello(request.name);
+			} catch (Exception e) {
+				return Promise.ofException(e);
 			}
+			return Promise.of(new HelloResponse(result));
 		};
 	}
 

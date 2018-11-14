@@ -87,14 +87,11 @@ public final class BlockingSocketServer {
 
 	private void serveClient(Socket socket) throws IOException {
 		socketSettings.applySettings(socket.getChannel());
-		executor.execute(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					acceptHandler.onAccept(socket);
-				} catch (Exception e) {
-					logger.error("Failed to serve socket " + socket, e);
-				}
+		executor.execute(() -> {
+			try {
+				acceptHandler.onAccept(socket);
+			} catch (Exception e) {
+				logger.error("Failed to serve socket " + socket, e);
 			}
 		});
 	}
@@ -104,17 +101,14 @@ public final class BlockingSocketServer {
 			ServerSocket serverSocket = new ServerSocket(address.getPort(), serverSocketSettings.getBacklog(), address.getAddress());
 			serverSocketSettings.applySettings(serverSocket.getChannel());
 			serverSockets.add(serverSocket);
-			Runnable runnable = new Runnable() {
-				@Override
-				public void run() {
-					while (!Thread.interrupted()) {
-						try {
-							serveClient(serverSocket.accept());
-						} catch (Exception e) {
-							if (Thread.currentThread().isInterrupted())
-								break;
-							logger.error("Socket error for " + serverSocket, e);
-						}
+			Runnable runnable = () -> {
+				while (!Thread.interrupted()) {
+					try {
+						serveClient(serverSocket.accept());
+					} catch (Exception e) {
+						if (Thread.currentThread().isInterrupted())
+							break;
+						logger.error("Socket error for " + serverSocket, e);
 					}
 				}
 			};

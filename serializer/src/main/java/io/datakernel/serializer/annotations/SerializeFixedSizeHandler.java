@@ -26,17 +26,14 @@ import io.datakernel.serializer.asm.SerializerGenList;
 public final class SerializeFixedSizeHandler implements AnnotationHandler<SerializeFixedSize, SerializeFixedSizeEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeFixedSize annotation, CompatibilityLevel compatibilityLevel) {
-		return new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				if (fallback instanceof SerializerGenArray) {
-					return ((SerializerGenArray) fallback).fixedSize(annotation.value(), type);
-				}
-				if (fallback instanceof SerializerGenList) {
-					throw new UnsupportedOperationException();
-				}
-				throw new IllegalArgumentException();
+		return (type, generics, fallback) -> {
+			if (fallback instanceof SerializerGenArray) {
+				return ((SerializerGenArray) fallback).fixedSize(annotation.value(), type);
 			}
+			if (fallback instanceof SerializerGenList) {
+				throw new UnsupportedOperationException();
+			}
+			throw new IllegalArgumentException();
 		};
 	}
 

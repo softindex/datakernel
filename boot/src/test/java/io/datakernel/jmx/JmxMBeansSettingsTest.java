@@ -98,12 +98,7 @@ public class JmxMBeansSettingsTest {
 	@Test
 	public void modifiesDynamicMBeanComponentsAccordingToSettings() throws Exception {
 		Map<String, AttributeModifier<?>> nameToModifier = new HashMap<>();
-		nameToModifier.put("stats", new AttributeModifier<ConfigurableStats>() {
-			@Override
-			public void apply(ConfigurableStats attribute) {
-				attribute.setConfigurableText("configurated");
-			}
-		});
+		nameToModifier.put("stats", (AttributeModifier<ConfigurableStats>) attribute -> attribute.setConfigurableText("configurated"));
 		MBeanSettings settings = MBeanSettings.of(NO_MONITORABLES, nameToModifier, NO_CUSTOM_TYPES);
 		MBeanStubTwo mBeanStubTwo = new MBeanStubTwo();
 		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mBeanStubTwo), settings, false);

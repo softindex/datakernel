@@ -46,13 +46,10 @@ public class TestClientMultilineHeaders {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				HttpResponse response = HttpResponse.ok200();
-				response.setHeader(ALLOW, "GET,\r\n HEAD");
-				return Promise.of(response);
-			}
+		AsyncServlet servlet = request -> {
+			HttpResponse response = HttpResponse.ok200();
+			response.setHeader(ALLOW, "GET,\r\n HEAD");
+			return Promise.of(response);
 		};
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PORT));

@@ -176,12 +176,9 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 		}
 
 		Map<?, JmxRefreshable> mapRef = (Map<?, JmxRefreshable>) fetcher.fetchFrom(source);
-		return Collections.singletonList(new JmxRefreshable() {
-			@Override
-			public void refresh(long timestamp) {
-				for (JmxRefreshable jmxRefreshableValue : mapRef.values()) {
-					jmxRefreshableValue.refresh(timestamp);
-				}
+		return Collections.singletonList(timestamp -> {
+			for (JmxRefreshable jmxRefreshableValue : mapRef.values()) {
+				jmxRefreshableValue.refresh(timestamp);
 			}
 		});
 	}
