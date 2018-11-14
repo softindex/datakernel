@@ -166,7 +166,7 @@ public final class BinaryDataFormats2 {
 							GlobalFsMetadata::getFilename, registry.get(String.class),
 							GlobalFsMetadata::getSize, registry.get(long.class),
 							GlobalFsMetadata::getRevision, registry.get(long.class),
-							GlobalFsMetadata::getSimKeyHash, registry.get(Hash.class)).nullable());
+							GlobalFsMetadata::getSimKeyHash, registry.get(Hash.class).nullable()));
 
 	private static ECPoint parseECPoint(BigInteger x, BigInteger y) throws ParseException {
 		try {
@@ -249,9 +249,22 @@ public final class BinaryDataFormats2 {
 		} catch (Exception e) {
 			throw new ParseException(e);
 		}
-		if (size <= 0 || size > buf.readRemaining()) throw new ParseException();
+		if (size <= 0 || size > buf.readRemaining()) throw new ParseException("Invalid chunk size");
 		byte[] bytes = new byte[size];
 		buf.read(bytes);
 		return bytes;
+	}
+
+	public static ByteBuf readBuf(ByteBuf buf) throws ParseException {
+		int size;
+		try {
+			size = buf.readVarInt();
+		} catch (Exception e) {
+			throw new ParseException(e);
+		}
+		if (size <= 0 || size > buf.readRemaining()) throw new ParseException("Invalid chunk size");
+		ByteBuf slice = buf.slice(size);
+		buf.moveReadPosition(size);
+		return slice;
 	}
 }

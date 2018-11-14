@@ -87,7 +87,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 								.withAcknowledgement(ack -> ack
 										.thenCompose($ -> {
 											GlobalFsMetadata updatedMetadata =
-													GlobalFsMetadata.of(filename, size[0], now.currentTimeMillis(), key != null ? Hash.of(key.getBytes()) : null);
+													GlobalFsMetadata.of(filename, size[0], now.currentTimeMillis(), key != null ? Hash.sha1(key.getBytes()) : null);
 											return node.pushMetadata(pubKey, SignedData.sign(METADATA_CODEC, updatedMetadata, privKey));
 										}))));
 	}

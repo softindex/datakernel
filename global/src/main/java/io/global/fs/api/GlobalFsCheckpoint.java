@@ -16,7 +16,6 @@
 
 package io.global.fs.api;
 
-import io.datakernel.exception.ParseException;
 import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -35,7 +34,7 @@ public final class GlobalFsCheckpoint {
 		this.digest = digest;
 	}
 
-	public static GlobalFsCheckpoint parse(String filename, long position, byte[] digestState) throws ParseException {
+	public static GlobalFsCheckpoint parse(String filename, long position, byte[] digestState) {
 		return new GlobalFsCheckpoint(filename, position, CryptoUtils.ofSha256PackedState(digestState, position));
 	}
 
@@ -128,14 +127,14 @@ public final class GlobalFsCheckpoint {
 		GlobalFsCheckpoint that = (GlobalFsCheckpoint) o;
 		if (position != that.position) return false;
 		if (!filename.equals(that.filename)) return false;
-		return digest.equals(that.digest);
+		return Arrays.equals(digest.getEncodedState(), that.digest.getEncodedState());
 	}
 
 	@Override
 	public int hashCode() {
 		int result = filename.hashCode();
 		result = 31 * result + (int) (position ^ (position >>> 32));
-		result = 31 * result + digest.hashCode();
+		result = 31 * result + Arrays.hashCode(digest.getEncodedState());
 		return result;
 	}
 

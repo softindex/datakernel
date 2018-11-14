@@ -18,7 +18,6 @@ package io.global.fs.local;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
@@ -33,8 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 import static io.datakernel.file.FileUtils.escapeGlob;
-import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
-import static io.global.ot.util.BinaryDataFormats2.decode;
+import static io.global.ot.util.BinaryDataFormats2.*;
 import static java.util.stream.Collectors.toList;
 
 public class RemoteFsMetadataStorage implements MetadataStorage {
@@ -53,7 +51,7 @@ public class RemoteFsMetadataStorage implements MetadataStorage {
 		String path = signedMetadata.getValue().getFilename();
 		return fsClient.delete(escapeGlob(path))
 				.thenCompose($ -> fsClient.upload(path, 0)) // offset 0 because atst this same file could be fetched from another node too
-				.thenCompose(SerialSupplier.of(ByteBuf.wrapForReading(signedMetadata.getBytes()))::streamTo);
+				.thenCompose(SerialSupplier.of(encode(SIGNED_METADATA_CODEC, signedMetadata))::streamTo);
 	}
 
 	@Override

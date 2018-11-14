@@ -67,9 +67,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 					String path = request.getPathParameter("path");
 					long offset = parseOffset(request);
 					SerialSupplier<ByteBuf> body = request.getBodyStream();
-					return node.getMetadata(
-							PubKey.fromString(request.getPathParameter("owner")),
-							request.getPathParameter("path"))
+					return node.getMetadata(PubKey.fromString(request.getPathParameter("owner")), request.getPathParameter("path"))
 							.thenCompose(meta ->
 									node.upload(pubKey, path, offset)
 											.thenCompose(consumer -> body.streamTo(consumer.apply(new FrameDecoder())))
@@ -90,7 +88,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 									.withBodyStream(
 											SerialSupplier.ofStream(
 													list.stream()
-															.map(meta -> encode(SIGNED_METADATA_CODEC, meta)))));
+															.map(meta -> encodeWithSizePrefix(SIGNED_METADATA_CODEC, meta)))));
 				});
 		// .with(POST, "/" + COPY + "/:owner/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
 		// 		node.copy(parseNamespace(request), request.getPostParameters())

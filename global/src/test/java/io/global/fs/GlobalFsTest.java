@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serial.SerialSupplier;
@@ -308,7 +309,7 @@ public final class GlobalFsTest {
 				})
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertFailure(e -> assertSame(DiscoveryService.NO_KEY, e)))
+				.whenComplete(assertFailure(StacklessException.class, e -> assertSame(DiscoveryService.NO_KEY, e)))
 				.thenComposeEx(($, e) -> discoveryService.shareKey(alice.getPubKey(),
 						SignedData.sign(REGISTRY.get(SharedSimKey.class), SharedSimKey.of(key1, alice.getPubKey()), alice.getPrivKey())))
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))

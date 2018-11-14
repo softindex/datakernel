@@ -27,7 +27,6 @@ import io.datakernel.serial.SerialSupplier;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
-import io.global.ot.util.BinaryDataFormats2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,8 +68,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					int size = 0;
 					while (buf.canRead()) {
 						try {
-							byte[] bytes = readBytes(buf);
-							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, bytes);
+							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
 							if (array.length == size) {
 								array = Arrays.copyOf(array, size * 2);
 							}
@@ -94,8 +92,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					}
 					while (buf.canRead()) {
 						try {
-							byte[] bytes = readBytes(buf);
-							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, bytes);
+							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
 							if (checkpoint.getValue().getPosition() == position) {
 								buf.recycle();
 								return Promise.of(checkpoint);
@@ -106,7 +103,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						}
 					}
 					buf.recycle();
-					return Promise.ofException(new StacklessException(CheckpointStorage.class, "No checkpoint found on position " + position));
+					return Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "No checkpoint found on position " + position));
 				});
 	}
 
@@ -118,15 +115,11 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					if (e == null) {
 						return checkpoint.equals(existing) ?
 								Promise.complete() :
-								Promise.ofException(new StacklessException(CheckpointStorage.class, "Trying to override existing checkpoint at " + pos));
+								Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Trying to override existing checkpoint at " + pos));
 					}
 					return fsClient.getMetadata(filename)
 							.thenCompose(m -> fsClient.upload(filename, m != null ? m.getSize() : 0))
-							.thenCompose(consumer -> {
-								byte[] bytes = checkpoint.getBytes();
-								ByteBuf buf = BinaryDataFormats2.writeBytes(bytes);
-								return SerialSupplier.of(buf).streamTo(consumer);
-							});
+							.thenCompose(SerialSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, checkpoint))::streamTo);
 				});
 	}
 

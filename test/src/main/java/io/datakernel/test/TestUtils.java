@@ -112,7 +112,7 @@ public class TestUtils {
 		return (t, error) -> {
 			activePromises--;
 			if (error != null) {
-				if (error.getClass() == AssertionError.class) {
+				if (error instanceof AssertionError) {
 					throw (AssertionError) error;
 				}
 				throw new AssertionError(error);
@@ -193,8 +193,10 @@ public class TestUtils {
 		return () -> {
 			try {
 				return supplier.get();
-			} catch (Throwable throwable) {
-				throw new AssertionError(throwable);
+			} catch (AssertionError e) {
+				throw e;
+			} catch (Throwable e) {
+				throw new AssertionError(e);
 			}
 		};
 	}
@@ -209,8 +211,10 @@ public class TestUtils {
 		return x -> {
 			try {
 				consumer.accept(x);
-			} catch (Throwable throwable) {
-				throw new AssertionError(throwable);
+			} catch (AssertionError e) {
+				throw e;
+			} catch (Throwable e) {
+				throw new AssertionError(e);
 			}
 		};
 	}
@@ -243,8 +247,10 @@ public class TestUtils {
 		return x -> {
 			try {
 				return function.apply(x);
-			} catch (Throwable throwable) {
-				throw new AssertionError(throwable);
+			} catch (AssertionError e) {
+				throw e;
+			} catch (Throwable e) {
+				throw new AssertionError(e);
 			}
 		};
 	}
@@ -259,8 +265,10 @@ public class TestUtils {
 		return (x, y) -> {
 			try {
 				return function.apply(x, y);
-			} catch (Throwable throwable) {
-				throw new AssertionError(throwable);
+			} catch (AssertionError e) {
+				throw e;
+			} catch (Throwable e) {
+				throw new AssertionError(e);
 			}
 		};
 	}
