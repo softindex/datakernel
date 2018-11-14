@@ -29,6 +29,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.LF;
 import static io.datakernel.serial.Utils.parseUntilTerminatorByte;
 import static java.lang.Math.min;
 
+@FunctionalInterface
 public interface ByteBufsParser<T> {
 	ParseException SIZE_EXCEEDS_MAX_SIZE = new InvalidSizeException(ByteBufsParser.class, "Size exceeds max size");
 	ParseException NEGATIVE_SIZE = new InvalidSizeException(ByteBufsParser.class, "Invalid size of bytes to be read, should be greater than 0");

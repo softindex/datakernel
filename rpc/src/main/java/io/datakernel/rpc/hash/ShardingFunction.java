@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package io.datakernel.rpc.hash;
 /**
  * Sharder interface determines to which shard item will be sent
  */
+@FunctionalInterface
 public interface ShardingFunction<T> {
 	/**
 	 * Determines to which shard {@code item} will be sent

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import io.datakernel.async.Promise;
  * @param <I>	class of request
  * @param <O>	class of response
  */
+@FunctionalInterface
 public interface RpcRequestHandler<I, O> {
 	Promise<O> run(I request);
 }

@@ -108,6 +108,7 @@ public class TestStreamConsumers {
 		return randomlySuspending(0.5);
 	}
 
+	@FunctionalInterface
 	public interface Decorator<T> {
 		interface Context {
 			void suspend();

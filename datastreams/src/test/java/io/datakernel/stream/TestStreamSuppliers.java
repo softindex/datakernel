@@ -48,6 +48,7 @@ public class TestStreamSuppliers {
 				});
 	}
 
+	@FunctionalInterface
 	public interface Decorator<T> {
 		interface Context {
 			void endOfStream();

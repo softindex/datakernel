@@ -62,6 +62,7 @@ public final class SerializerBuilder {
 	private final Map<Key, SerializerGen> cachedSerializers = new HashMap<>();
 	private final List<Runnable> initTasks = new ArrayList<>();
 
+	@FunctionalInterface
 	public interface Helper {
 		SerializerGen createSubclassesSerializer(Class<?> type, SerializeSubclasses serializeSubclasses);
 	}

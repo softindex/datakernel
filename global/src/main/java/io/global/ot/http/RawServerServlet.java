@@ -57,6 +57,7 @@ public final class RawServerServlet implements AsyncServlet {
 	private final GlobalOTNode node;
 	private final MiddlewareServlet middlewareServlet;
 
+	@FunctionalInterface
 	private interface ServletFunction {
 		Promise<HttpResponse> convert(HttpRequest in) throws ParseException;
 	}

@@ -47,6 +47,7 @@ public class OTMergeAlgorithmTest {
 		return graph;
 	}
 
+	@FunctionalInterface
 	private interface TestAcceptor {
 		void accept(OTLoadedGraph<String, TestOp> graph, Map<String, List<TestOp>> merge) throws Exception;
 	}

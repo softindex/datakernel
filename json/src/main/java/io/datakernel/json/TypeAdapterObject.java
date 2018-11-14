@@ -27,10 +27,12 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public final class TypeAdapterObject<T> extends TypeAdapter<T> implements Initializable<TypeAdapterObject<T>> {
+	@FunctionalInterface
 	public interface Getter<T, F> {
 		F get(T object);
 	}
 
+	@FunctionalInterface
 	public interface Setter<T, F> {
 		void set(T object, F value);
 	}

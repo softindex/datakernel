@@ -12,19 +12,23 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.concat;
 
 public final class OTSystemImpl<D> implements OTSystem<D> {
+	@FunctionalInterface
 	public interface TransformFunction<OP, L extends OP, R extends OP> {
 		TransformResult<? extends OP> transform(L left, R right) throws OTTransformException;
 	}
 
+	@FunctionalInterface
 	public interface SquashFunction<OP, OP1 extends OP, OP2 extends OP> {
 		@Nullable
 		OP trySquash(OP1 op1, OP2 op2);
 	}
 
+	@FunctionalInterface
 	public interface InvertFunction<OP> {
 		List<? extends OP> invert(OP op);
 	}
 
+	@FunctionalInterface
 	public interface EmptyPredicate<OP> {
 		@Nullable
 		boolean isEmpty(OP op);

@@ -64,6 +64,7 @@ public class AggregationPredicates {
 		}
 	}
 
+	@FunctionalInterface
 	private interface PredicateSimplifier<L extends AggregationPredicate, R extends AggregationPredicate> {
 		AggregationPredicate simplifyAnd(L left, R right);
 	}
