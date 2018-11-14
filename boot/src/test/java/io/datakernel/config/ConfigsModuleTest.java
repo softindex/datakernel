@@ -18,7 +18,6 @@ package io.datakernel.config;
 
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.Properties;
 
 import static io.datakernel.config.ConfigConverters.*;
@@ -50,7 +49,7 @@ public class ConfigsModuleTest {
 	}
 
 	@Test
-	public void testConfigs() throws IOException {
+	public void testConfigs() {
 		Properties properties1 = new Properties();
 		properties1.put("port", "1234");
 		properties1.put("msg", "Test phrase");

@@ -395,9 +395,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 													}
 
 													if (ourSize == 0) {
-														return node.download(space, filename, ourSize, partSize)
+														return node.download(space, filename, 0, partSize)
 																.thenCompose(supplier ->
-																		save(filename, ourSize)
+																		save(filename, 0)
 																				.thenCompose(supplier::streamTo))
 																.thenApply($ -> true);
 													}

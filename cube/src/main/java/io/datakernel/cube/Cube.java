@@ -586,7 +586,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	private <T, K extends Comparable, S, A> StreamSupplier<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
 			Class<T> resultClass, DefiningClassLoader queryClassLoader,
-			List<AggregationContainer> compatibleAggregations) throws QueryException {
+			List<AggregationContainer> compatibleAggregations) {
 		List<AggregationContainerWithScore> containerWithScores = new ArrayList<>();
 		for (AggregationContainer compatibleAggregation : compatibleAggregations) {
 			AggregationQuery aggregationQuery = AggregationQuery.create(dimensions, storedMeasures, where);
@@ -863,7 +863,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			}
 		}
 
-		void prepareMeasures() throws QueryException {
+		void prepareMeasures() {
 			Set<String> queryStoredMeasures = new HashSet<>();
 			for (String measure : query.getMeasures()) {
 				if (computedMeasures.containsKey(measure)) {

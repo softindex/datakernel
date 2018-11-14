@@ -25,7 +25,7 @@ import static org.junit.Assert.assertTrue;
 
 public class ChunkFilteringTest {
 	@Test
-	public void testChunkMightContainQueryValues1() throws Exception {
+	public void testChunkMightContainQueryValues1() {
 		PrimaryKey minQueryKey = PrimaryKey.ofArray(0, 3, 78, 10);
 		PrimaryKey maxQueryKey = PrimaryKey.ofArray(10, 8, 79, 12);
 
@@ -36,7 +36,7 @@ public class ChunkFilteringTest {
 	}
 
 	@Test
-	public void testChunkMightContainQueryValues2() throws Exception {
+	public void testChunkMightContainQueryValues2() {
 		PrimaryKey minQueryKey = PrimaryKey.ofArray(3, 5, 81, 10);
 		PrimaryKey maxQueryKey = PrimaryKey.ofArray(3, 5, 85, 12);
 
@@ -47,7 +47,7 @@ public class ChunkFilteringTest {
 	}
 
 	@Test
-	public void testChunkMightContainQueryValues3() throws Exception {
+	public void testChunkMightContainQueryValues3() {
 		PrimaryKey minQueryKey = PrimaryKey.ofArray(14, 5, 78, 10);
 		PrimaryKey maxQueryKey = PrimaryKey.ofArray(20, 5, 79, 12);
 
@@ -58,7 +58,7 @@ public class ChunkFilteringTest {
 	}
 
 	@Test
-	public void testChunkMightContainQueryValues4() throws Exception {
+	public void testChunkMightContainQueryValues4() {
 		PrimaryKey minQueryKey = PrimaryKey.ofArray(3, 5, 80, 90);
 		PrimaryKey maxQueryKey = PrimaryKey.ofArray(3, 5, 80, 90);
 

@@ -41,7 +41,6 @@ import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamSorterTest {
 	@Rule
@@ -51,7 +50,7 @@ public class StreamSorterTest {
 	public TemporaryFolder tempFolder = new TemporaryFolder();
 
 	@Test
-	public void testStreamStorage() throws Exception {
+	public void testStreamStorage() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 

@@ -52,7 +52,7 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 
 	@Override
 	public Map<String, OpenType<?>> getOpenTypes() {
-		return Collections.<String, OpenType<?>>singletonMap(name, compositeType);
+		return Collections.singletonMap(name, compositeType);
 	}
 
 	@Nullable

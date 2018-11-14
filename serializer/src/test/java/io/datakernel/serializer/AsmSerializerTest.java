@@ -1769,7 +1769,7 @@ public class AsmSerializerTest {
 		testData1.address = InetAddress.getByName("127.0.0.1");
 		testData1.address2 = InetAddress.getByName("2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d");
 
-		testData1.list = Arrays.<Object>asList(Integer.MIN_VALUE, Integer.MAX_VALUE);
+		testData1.list = Arrays.asList(Integer.MIN_VALUE, Integer.MAX_VALUE);
 
 		TestObject testData2 = doTest(TestObject.class, testData1);
 
@@ -1892,7 +1892,7 @@ public class AsmSerializerTest {
 	}
 
 	@Test
-	public void testVersionGetter() throws Exception {
+	public void testVersionGetter() {
 		TestGetterVersion test = TestGetterVersion.of("test", asList("a", "b"));
 		BufferSerializer<TestGetterVersion> serializerV1 = SerializerBuilder
 				.create(DefiningClassLoader.create())
@@ -1961,7 +1961,7 @@ public class AsmSerializerTest {
 	}
 
 	@Test
-	public void testArrayOfCustomClasses() throws Exception {
+	public void testArrayOfCustomClasses() {
 		BufferSerializer<CustomArrayHolder> serializer = SerializerBuilder
 				.create(DefiningClassLoader.create())
 				.build(CustomArrayHolder.class);

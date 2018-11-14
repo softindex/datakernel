@@ -26,7 +26,6 @@ import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -67,7 +66,7 @@ public class SimpleProxyServerTest {
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", ECHO_SERVER_PORT));
 	}
 
-	private void readAndAssert(InputStream is, String expected) throws IOException {
+	private void readAndAssert(InputStream is, String expected) {
 		byte[] bytes = new byte[expected.length()];
 		readFully(is, bytes);
 		assertEquals(expected, decodeAscii(bytes));

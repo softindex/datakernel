@@ -555,7 +555,7 @@ public class ReportingTest {
 
 		assertEquals(LocalDate.parse("2000-01-02"), records.get(0).get("date"));
 		assertEquals(2, (int) records.get(0).get("advertiser"));
-		assertNull((String) records.get(0).get("advertiser.name"));
+		assertNull(records.get(0).get("advertiser.name"));
 		assertEquals(100, (long) records.get(0).get("impressions"));
 
 		assertEquals(LocalDate.parse("2000-01-02"), records.get(1).get("date"));

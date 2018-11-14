@@ -334,7 +334,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		}
 
 		if (strategy == PickingStrategy.SIZE_FIX) {
-			logChunksAndStrategy(chunks, strategy);
+			logChunksAndStrategy(chunks, PickingStrategy.SIZE_FIX);
 			return chunks;
 		}
 

@@ -100,7 +100,7 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 
 	@Override
 	public Map<String, OpenType<?>> getOpenTypes() {
-		return Collections.<String, OpenType<?>>singletonMap(name, tabularType);
+		return Collections.singletonMap(name, tabularType);
 	}
 
 	@Nullable
@@ -176,7 +176,7 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 		}
 
 		Map<?, JmxRefreshable> mapRef = (Map<?, JmxRefreshable>) fetcher.fetchFrom(source);
-		return Collections.<JmxRefreshable>singletonList(new JmxRefreshable() {
+		return Collections.singletonList(new JmxRefreshable() {
 			@Override
 			public void refresh(long timestamp) {
 				for (JmxRefreshable jmxRefreshableValue : mapRef.values()) {

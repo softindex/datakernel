@@ -83,7 +83,7 @@ public class HttpApiTest {
 					HttpResponse response = createResponse();
 					return Promise.of(response);
 				} catch (ParseException e) {
-					return Promise.ofException((Throwable) e);
+					return Promise.ofException(e);
 				}
 			}
 		};

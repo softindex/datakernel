@@ -30,7 +30,7 @@ import static org.junit.Assert.assertNull;
 
 public class ConsolidationChunkSelectionTest {
 	@Test
-	public void testRangeExpansion() throws Exception {
+	public void testRangeExpansion() {
 		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
@@ -63,7 +63,7 @@ public class ConsolidationChunkSelectionTest {
 	}
 
 	@Test
-	public void testMinKeyStrategy() throws Exception {
+	public void testMinKeyStrategy() {
 		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
@@ -87,7 +87,7 @@ public class ConsolidationChunkSelectionTest {
 	}
 
 	@Test
-	public void testSizeFixStrategy() throws Exception {
+	public void testSizeFixStrategy() {
 		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
@@ -116,7 +116,7 @@ public class ConsolidationChunkSelectionTest {
 	}
 
 	@Test
-	public void testGroupingByPartition() throws Exception {
+	public void testGroupingByPartition() {
 		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 

@@ -28,7 +28,7 @@ import static org.junit.Assert.assertTrue;
 public class RangeTreeTest {
 
 	@Test
-	public void testPut() throws Exception {
+	public void testPut() {
 		RangeTree<Integer, String> rangeTree = RangeTree.create();
 		rangeTree.put(1, 10, "a");
 		rangeTree.put(3, 8, "b");
@@ -75,7 +75,7 @@ public class RangeTreeTest {
 	}
 
 	@Test
-	public void testRemove() throws Exception {
+	public void testRemove() {
 		RangeTree<Integer, String> rangeTree = RangeTree.create();
 
 		rangeTree.put(1, 20, "a");

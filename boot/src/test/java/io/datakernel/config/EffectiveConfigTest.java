@@ -100,7 +100,7 @@ public class EffectiveConfigTest {
 	}
 
 	@Test
-	public void testWorksWithDefaultNulls() throws IOException {
+	public void testWorksWithDefaultNulls() {
 		String expected
 				= "# a.a.a = \n"
 				+ "## a.a.b = value1\n"

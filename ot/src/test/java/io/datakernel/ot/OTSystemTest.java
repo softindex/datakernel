@@ -59,7 +59,7 @@ public class OTSystemTest {
 	}
 
 	@Test
-	public void testSimplify() throws Exception {
+	public void testSimplify() {
 		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> arg = asList(add(2), set(2, 1), add(2), add(10));
 		List<TestOp> result = opSystem.squash(arg);

@@ -465,7 +465,7 @@ public class ExpressionTest {
 				.withMethod("callOther1", call(self(), "method", arg(0)))
 				.withMethod("callOther2", call(self(), "method"))
 				.withMethod("method", int.class, asList(int.class), arg(0))
-				.withMethod("method", long.class, Collections.<Class<?>>emptyList(), value(-1L))
+				.withMethod("method", long.class, Collections.emptyList(), value(-1L))
 				.withMethod("callStatic1", int.class, asList(int.class, int.class), callStaticSelf("method", arg(0), arg(1)))
 				.withMethod("callStatic2", long.class, asList(long.class), callStaticSelf("method", arg(0)))
 				.withStaticMethod("method", int.class, asList(int.class, int.class), arg(1))
@@ -581,7 +581,7 @@ public class ExpressionTest {
 	}
 
 	@org.junit.Test
-	public void testGetter() throws Exception {
+	public void testGetter() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Initializable intHolder = ClassBuilder.create(classLoader, Initializable.class)
 				.withField("x", int.class)
@@ -598,7 +598,7 @@ public class ExpressionTest {
 	}
 
 	@org.junit.Test
-	public void testBuildedInstance() throws IllegalAccessException, InstantiationException {
+	public void testBuildedInstance() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 		Expression local = let(constructor(TestPojo.class, value(1)));
 		Class<Test> testClass1 = ClassBuilder.create(definingClassLoader, Test.class)
@@ -826,7 +826,7 @@ public class ExpressionTest {
 	}
 
 	@org.junit.Test
-	public void testAbstractClassWithInterface() throws Exception {
+	public void testAbstractClassWithInterface() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		TestAbstract testObj = ClassBuilder.create(classLoader, TestAbstract.class)
 				.withMethod("returnInt", value(42))
@@ -870,7 +870,7 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testMultipleInterfaces() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		B instance = ClassBuilder.create(definingClassLoader, B.class, Collections.<Class<?>>singletonList(C.class))
+		B instance = ClassBuilder.create(definingClassLoader, B.class, Collections.singletonList(C.class))
 				.withMethod("b", value(43))
 				.withMethod("c", value("44"))
 				.buildClassAndCreateNewInstance();

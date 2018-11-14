@@ -82,7 +82,7 @@ public class JmxMBeansAttributesArraysTest {
 	// endregion
 
 	// region helper methods
-	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
+	public static DynamicMBean createDynamicMBeanFor(Object... objects) {
 		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), false);
 	}
 	// endregion

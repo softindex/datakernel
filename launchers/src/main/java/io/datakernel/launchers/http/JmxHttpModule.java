@@ -7,7 +7,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.jmx.KeyWithWorkerData;
@@ -309,7 +308,7 @@ public class JmxHttpModule extends AbstractModule {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public Promise<HttpResponse> serve(HttpRequest request) throws ParseException {
+		public Promise<HttpResponse> serve(HttpRequest request) {
 			String keyParam = request.getQueryParameterOrNull("key");
 
 			if ("/favicon.ico".equals(request.getPath())) { // if somehow it got to this servlet

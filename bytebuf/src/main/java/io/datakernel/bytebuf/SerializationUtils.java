@@ -16,7 +16,7 @@
 
 package io.datakernel.bytebuf;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 
 public final class SerializationUtils {
 	private SerializationUtils() {
@@ -185,13 +185,9 @@ public final class SerializationUtils {
 	}
 
 	public static int writeJavaUTF8(byte[] buf, int off, String s) {
-		try {
-			byte[] bytes = s.getBytes("UTF-8");
-			off = writeVarInt(buf, off, bytes.length);
-			return write(buf, off, bytes);
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException();
-		}
+		byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+		off = writeVarInt(buf, off, bytes.length);
+		return write(buf, off, bytes);
 
 	}
 
@@ -199,13 +195,9 @@ public final class SerializationUtils {
 		if (s == null) {
 			return writeByte(buf, off, (byte) 0);
 		}
-		try {
-			byte[] bytes = s.getBytes("UTF-8");
-			off = writeVarInt(buf, off, bytes.length + 1);
-			return write(buf, off, bytes);
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException();
-		}
+		byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+		off = writeVarInt(buf, off, bytes.length + 1);
+		return write(buf, off, bytes);
 	}
 
 	@Deprecated

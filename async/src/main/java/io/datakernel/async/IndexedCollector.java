@@ -133,7 +133,7 @@ public interface IndexedCollector<T, A, R> {
 
 			@Override
 			public T[] finish(T[] accumulator) {
-				return (T[]) accumulator;
+				return accumulator;
 			}
 
 			@Override
@@ -144,15 +144,15 @@ public interface IndexedCollector<T, A, R> {
 			@Override
 			public T[] resultOf(T value1) {
 				T[] array = (T[]) Array.newInstance(type, 1);
-				array[0] = (T) value1;
+				array[0] = value1;
 				return array;
 			}
 
 			@Override
 			public T[] resultOf(T value1, T value2) {
 				T[] array = (T[]) Array.newInstance(type, 2);
-				array[0] = (T) value1;
-				array[1] = (T) value2;
+				array[0] = value1;
+				array[1] = value2;
 				return array;
 			}
 

@@ -212,10 +212,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 		if (startPosition.getLogFile() != null && logFile.compareTo(startPosition.getLogFile()) < 0)
 			return false;
 
-		if (endFile != null && logFile.compareTo(endFile) > 0)
-			return false;
-
-		return true;
+		return endFile == null || logFile.compareTo(endFile) <= 0;
 	}
 
 	public DateTimeFormatter getDateTimeFormatter() {

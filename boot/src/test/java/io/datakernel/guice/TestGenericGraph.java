@@ -47,12 +47,12 @@ public class TestGenericGraph {
 			install(ServiceGraphModule.defaultInstance()
 					.register(Pojo.class, new SimpleServiceAdapter<Pojo>(false, false) {
 						@Override
-						protected void start(Pojo instance) throws Exception {
+						protected void start(Pojo instance) {
 							System.out.println("...starting " + instance + " : " + instance.object);
 						}
 
 						@Override
-						protected void stop(Pojo instance) throws Exception {
+						protected void stop(Pojo instance) {
 							System.out.println("...stopping " + instance + " : " + instance.object);
 						}
 					}));

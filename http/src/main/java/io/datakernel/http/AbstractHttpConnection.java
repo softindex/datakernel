@@ -387,7 +387,7 @@ public abstract class AbstractHttpConnection {
 								return Promise.complete();
 							} else {
 								closeWithError(e);
-								return Promise.<Void>ofException(e);
+								return Promise.ofException(e);
 							}
 						}),
 				Promise::complete,

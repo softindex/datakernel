@@ -69,7 +69,7 @@ public class DatasetUtils {
 
 	public static <K, T> List<StreamId> repartitionAndSort(DataGraph graph, LocallySortedDataset<K, T> input,
 	                                                       List<Partition> partitions) {
-		return repartitionAndReduce(graph, input, StreamReducers.<K, T>mergeSortReducer(), partitions);
+		return repartitionAndReduce(graph, input, StreamReducers.mergeSortReducer(), partitions);
 	}
 
 	public static <T> StreamId forwardChannel(DataGraph graph, Class<T> type,

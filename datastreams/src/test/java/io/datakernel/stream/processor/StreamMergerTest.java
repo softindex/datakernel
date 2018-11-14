@@ -37,7 +37,7 @@ public class StreamMergerTest {
 	@Test
 	public void testDeduplicate() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamSupplier<Integer> source0 = StreamSupplier.ofIterable(Collections.<Integer>emptyList());
+		StreamSupplier<Integer> source0 = StreamSupplier.ofIterable(Collections.emptyList());
 		StreamSupplier<Integer> source1 = StreamSupplier.of(3, 7);
 		StreamSupplier<Integer> source2 = StreamSupplier.of(3, 4, 6);
 
@@ -65,7 +65,7 @@ public class StreamMergerTest {
 	@Test
 	public void testDuplicate() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamSupplier<Integer> source0 = StreamSupplier.ofIterable(Collections.<Integer>emptyList());
+		StreamSupplier<Integer> source0 = StreamSupplier.ofIterable(Collections.emptyList());
 		StreamSupplier<Integer> source1 = StreamSupplier.of(3, 7);
 		StreamSupplier<Integer> source2 = StreamSupplier.of(3, 4, 6);
 

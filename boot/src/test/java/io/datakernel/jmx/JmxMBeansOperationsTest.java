@@ -35,7 +35,7 @@ import static org.junit.Assert.*;
 public class JmxMBeansOperationsTest {
 
 	@Test
-	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() throws Exception {
+	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
 		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), MBeanSettings.defaultSettings(), false);
 

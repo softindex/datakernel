@@ -23,7 +23,7 @@ import io.datakernel.util.MemSize;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 
 import static java.lang.Math.max;
 
@@ -271,11 +271,7 @@ public final class DataInputStreamEx implements Closeable {
 		ensureRead(length);
 		buf.moveReadPosition(length);
 
-		try {
-			return new String(buf.array(), buf.readPosition() - length, length, "UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException();
-		}
+		return new String(buf.array(), buf.readPosition() - length, length, StandardCharsets.UTF_8);
 	}
 
 	public String readIso88591() throws IOException, DeserializeException {

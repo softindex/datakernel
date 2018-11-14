@@ -41,7 +41,7 @@ public final class ReadResponse<K, R extends AbstractRecord<K>> {
 	}
 
 	public static <K, R extends AbstractRecord<K>> ReadResponse<K, R> of(List<R> records, int count) {
-		return new ReadResponse<>(records, count, Collections.<R>emptyList(), null);
+		return new ReadResponse<>(records, count, Collections.emptyList(), null);
 	}
 
 	public static <K, R extends AbstractRecord<K>> ReadResponse<K, R> of(List<R> records, int count, List<R> extra) {

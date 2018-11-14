@@ -53,7 +53,7 @@ public class ComputedMeasuresTest {
 			keysToMap(Stream.of("a", "b", "c", "d"), k -> sum(ofDouble()));
 
 	@Test
-	public void test() throws Exception {
+	public void test() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ComputedMeasure d = div(mul(div(measure("a"), measure("b")), ComputedMeasures.value(100)), measure("c"));
 		TestQueryResultPlaceholder resultPlaceholder = ClassBuilder.create(classLoader, TestQueryResultPlaceholder.class)
@@ -76,7 +76,7 @@ public class ComputedMeasuresTest {
 	}
 
 	@Test
-	public void testNullDivision() throws Exception {
+	public void testNullDivision() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ComputedMeasure d = div(mul(div(measure("a"), measure("b")), ComputedMeasures.value(100)), measure("c"));
 		TestQueryResultPlaceholder resultPlaceholder = ClassBuilder.create(classLoader, TestQueryResultPlaceholder.class)
@@ -98,7 +98,7 @@ public class ComputedMeasuresTest {
 	}
 
 	@Test
-	public void testSqrt() throws Exception {
+	public void testSqrt() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ComputedMeasure c = sqrt(add(measure("a"), measure("b")));
 		TestQueryResultPlaceholder resultPlaceholder = ClassBuilder.create(classLoader, TestQueryResultPlaceholder.class)
@@ -118,7 +118,7 @@ public class ComputedMeasuresTest {
 	}
 
 	@Test
-	public void testSqrtOfNegativeArgument() throws Exception {
+	public void testSqrtOfNegativeArgument() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ComputedMeasure c = sqrt(sub(measure("a"), measure("b")));
 		TestQueryResultPlaceholder resultPlaceholder = ClassBuilder.create(classLoader, TestQueryResultPlaceholder.class)

@@ -25,8 +25,6 @@ import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.net.UnknownHostException;
-
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -79,7 +77,7 @@ public class RpcMessageSerializeTest {
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
-	public void testRpcMessage() throws UnknownHostException {
+	public void testRpcMessage() {
 		TestRpcMessageData messageData1 = new TestRpcMessageData("TestMessageData");
 		RpcMessage message1 = RpcMessage.of(1, messageData1);
 

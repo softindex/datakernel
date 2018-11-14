@@ -58,8 +58,8 @@ public final class QueryResult {
 
 	public static QueryResult createForMetadata(RecordScheme recordScheme, List<String> attributes,
 	                                            List<String> measures) {
-		return create(recordScheme, Collections.<Record>emptyList(), Record.create(recordScheme), 0, attributes,
-				measures, Collections.<String>emptyList(), Collections.<String, Object>emptyMap(), ReportType.METADATA);
+		return create(recordScheme, Collections.emptyList(), Record.create(recordScheme), 0, attributes,
+				measures, Collections.emptyList(), Collections.emptyMap(), ReportType.METADATA);
 	}
 
 	public static QueryResult createForData(RecordScheme recordScheme, List<Record> records, List<String> attributes,

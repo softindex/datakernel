@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 
 public class PredicatesTest {
 	@Test
-	public void testSimplify() throws Exception {
+	public void testSimplify() {
 		assertEquals(alwaysFalse(), and(eq("publisher", 10), eq("publisher", 20)).simplify());
 		assertEquals(eq("publisher", 10), and(eq("publisher", 10), not(not(eq("publisher", 10)))).simplify());
 		assertEquals(eq("publisher", 20), and(alwaysTrue(), eq("publisher", 20)).simplify());

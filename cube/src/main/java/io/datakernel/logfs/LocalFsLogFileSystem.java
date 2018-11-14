@@ -112,12 +112,12 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 					Files.createDirectories(dir);
 					Files.walkFileTree(dir, new FileVisitor<Path>() {
 						@Override
-						public FileVisitResult preVisitDirectory(Path dir1, BasicFileAttributes attrs) throws IOException {
+						public FileVisitResult preVisitDirectory(Path dir1, BasicFileAttributes attrs) {
 							return FileVisitResult.CONTINUE;
 						}
 
 						@Override
-						public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+						public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
 							PartitionAndFile partitionAndFile = parse(file.getFileName().toString());
 							if (partitionAndFile != null && partitionAndFile.logPartition.equals(logPartition)) {
 								entries.add(partitionAndFile.logFile);
@@ -126,7 +126,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 						}
 
 						@Override
-						public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+						public FileVisitResult visitFileFailed(Path file, IOException exc) {
 							if (exc != null) {
 								logger.error("visitFileFailed error", exc);
 							}
@@ -134,7 +134,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 						}
 
 						@Override
-						public FileVisitResult postVisitDirectory(Path dir1, IOException exc) throws IOException {
+						public FileVisitResult postVisitDirectory(Path dir1, IOException exc) {
 							if (exc != null) {
 								logger.error("postVisitDirectory error", exc);
 							}

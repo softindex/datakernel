@@ -38,7 +38,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void test() throws Exception {
+	public void test() {
 		byte[] array = new byte[100];
 		for (int i = 0; i < array.length; i++)
 			array[i] = (byte) i;
@@ -55,7 +55,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void testWrap() throws Exception {
+	public void testWrap() {
 		byte[] array = new byte[100];
 		for (int i = 0; i < array.length; i++)
 			array[i] = (byte) i;
@@ -74,7 +74,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void test2() throws Exception {
+	public void test2() {
 
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
@@ -107,7 +107,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void testWrap2() throws Exception {
+	public void testWrap2() {
 
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
@@ -159,7 +159,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void test3() throws Exception {
+	public void test3() {
 
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
@@ -194,7 +194,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void testWrap3() throws Exception {
+	public void testWrap3() {
 
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)

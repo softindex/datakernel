@@ -203,9 +203,9 @@ final class AttributeNodeForPojo implements AttributeNode {
 		if (name.isEmpty()) {
 			adjustedName = attrName;
 		} else {
-			adjustedName = attrName.substring(name.length(), attrName.length());
+			adjustedName = attrName.substring(name.length());
 			if (adjustedName.length() > 0) {
-				adjustedName = adjustedName.substring(1, adjustedName.length()); // remove ATTRIBUTE_NAME_SEPARATOR
+				adjustedName = adjustedName.substring(1); // remove ATTRIBUTE_NAME_SEPARATOR
 			}
 		}
 		return adjustedName;

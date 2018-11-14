@@ -50,7 +50,7 @@ public class ExceptionStatsTest {
 	}
 
 	@Test
-	public void itShouldProperlyCollectAttributes() throws OpenDataException {
+	public void itShouldProperlyCollectAttributes() {
 		ExceptionStats stats = ExceptionStats.create();
 		Exception exception = new RuntimeException("msg");
 		Object causedObject = "cause";
@@ -61,7 +61,7 @@ public class ExceptionStatsTest {
 	}
 
 	@Test
-	public void itShouldProperlyAggregateAttributes() throws OpenDataException {
+	public void itShouldProperlyAggregateAttributes() {
 		// init and record
 		ExceptionStats stats_1 = ExceptionStats.create();
 		Exception exception_1 = new RuntimeException("msg-1");

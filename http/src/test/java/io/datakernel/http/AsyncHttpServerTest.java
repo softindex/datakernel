@@ -81,7 +81,7 @@ public class AsyncHttpServerTest {
 		}
 	}
 
-	public static void readAndAssert(InputStream is, String expected) throws IOException {
+	public static void readAndAssert(InputStream is, String expected) {
 		byte[] bytes = new byte[expected.length()];
 		readFully(is, bytes);
 		assertEquals(expected, decodeAscii(bytes));

@@ -60,7 +60,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 		this.storage = checkNotNull(storage, "Cannot create AggregationGroupReducer with AggregationChunkStorage that is null");
 		this.measures = checkNotNull(measures, "Cannot create AggregationGroupReducer with measures that is null");
 		this.partitionPredicate = checkNotNull(partitionPredicate, "Cannot create AggregationGroupReducer with PartitionPredicate that is null");
-		this.recordClass = (Class<T>) checkNotNull(recordClass, "Cannot create AggregationGroupReducer with recordClass that is null");
+		this.recordClass = checkNotNull(recordClass, "Cannot create AggregationGroupReducer with recordClass that is null");
 		this.keyFunction = checkNotNull(keyFunction, "Cannot create AggregationGroupReducer with keyFunction that is null");
 		this.aggregate = checkNotNull(aggregate, "Cannot create AggregationGroupReducer with Aggregate that is null");
 		this.chunkSize = chunkSize;

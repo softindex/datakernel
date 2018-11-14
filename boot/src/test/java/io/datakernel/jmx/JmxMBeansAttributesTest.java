@@ -264,7 +264,7 @@ public class JmxMBeansAttributesTest {
 	}
 
 	@Test
-	public void throwsErrorForUnsupportedTypesInJmxAttributes() throws Exception {
+	public void throwsErrorForUnsupportedTypesInJmxAttributes() {
 
 		ArbitraryType arbitraryType = new ArbitraryType("String representation");
 		Date date = new Date();

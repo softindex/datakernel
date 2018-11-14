@@ -110,8 +110,8 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testIdentity() {
-		Function<String, String> function1 = Function.<String>identity();
-		Function<Integer, Integer> function2 = Function.<Integer>identity();
+		Function<String, String> function1 = Function.identity();
+		Function<Integer, Integer> function2 = Function.identity();
 		assertSame(function1, function2);
 	}
 

@@ -22,7 +22,7 @@ public class AggregationKeyRelationsTest {
 	private Cube cube;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		cube = new Cube(null, null, null, null)
 				.withRelation("campaign", "advertiser")
 				.withRelation("offer", "campaign")
