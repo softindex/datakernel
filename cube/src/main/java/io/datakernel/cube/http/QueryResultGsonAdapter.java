@@ -25,7 +25,7 @@ import io.datakernel.cube.Record;
 import io.datakernel.cube.RecordScheme;
 import io.datakernel.cube.ReportType;
 import io.datakernel.json.GsonAdapters.TypeAdapterMapping;
-import io.datakernel.util.SimpleType;
+import io.datakernel.util.RecursiveType;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -71,12 +71,12 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 		Map<String, Class<?>> attributeRawTypes = new LinkedHashMap<>();
 		Map<String, Class<?>> measureRawTypes = new LinkedHashMap<>();
 		for(String attribute : attributeTypes.keySet()) {
-			SimpleType token = SimpleType.of(attributeTypes.get(attribute));
+			RecursiveType token = RecursiveType.of(attributeTypes.get(attribute));
 			attributeAdapters.put(attribute, mapping.getAdapter(token.getType()).nullSafe());
 			attributeRawTypes.put(attribute, token.getRawType());
 		}
 		for(String measure : measureTypes.keySet()) {
-			SimpleType token = SimpleType.of(measureTypes.get(measure));
+			RecursiveType token = RecursiveType.of(measureTypes.get(measure));
 			measureAdapters.put(measure, mapping.getAdapter(token.getType()));
 			measureRawTypes.put(measure, token.getRawType());
 		}

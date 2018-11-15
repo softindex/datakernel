@@ -14,8 +14,8 @@ import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.RecursiveType;
 import io.datakernel.util.ReflectionUtils;
-import io.datakernel.util.SimpleType;
 import io.datakernel.util.StringFormatUtils;
 import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.util.guice.OptionalDependency;
@@ -330,7 +330,7 @@ public class JmxHttpModule extends AbstractModule {
 							Key<?> key = desc.getKey();
 							TypeLiteral<?> literal = key.getTypeLiteral();
 							String name = prettyPrintSimpleKeyName(key);
-							String pkg = SimpleType.of(key.getTypeLiteral().getType()).getPackage();
+							String pkg = RecursiveType.of(key.getTypeLiteral().getType()).getPackage();
 							String[] path = pkg != null ? pkg.split("\\.") : new String[]{"unknown_package"};
 
 							Node<String, String> subtree = tree;
@@ -372,11 +372,11 @@ public class JmxHttpModule extends AbstractModule {
 							Arrays.stream(generics != null ? generics.split(", ") : new String[0])
 									.map(JmxHttpModule::getClass)))
 					.thenCompose(tuple -> {
-						Type type = SimpleType.of(
+						Type type = RecursiveType.of(
 								tuple.getValue1(),
 								tuple.getValue2()
 										.stream()
-										.map(SimpleType::of)
+										.map(RecursiveType::of)
 										.collect(toList()))
 								.getType();
 						if (annotation == null) {

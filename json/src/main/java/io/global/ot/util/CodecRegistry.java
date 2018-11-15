@@ -2,7 +2,7 @@ package io.global.ot.util;
 
 import io.datakernel.codec.Codecs;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.util.SimpleType;
+import io.datakernel.util.RecursiveType;
 
 import java.lang.reflect.Type;
 import java.util.*;
@@ -68,17 +68,17 @@ public final class CodecRegistry implements CodecFactory {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> StructuredCodec<T> get(Type type) {
-		return doGet(SimpleType.of(type));
+		return doGet(RecursiveType.of(type));
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T> StructuredCodec<T> doGet(SimpleType type) {
+	private <T> StructuredCodec<T> doGet(RecursiveType type) {
 		Class clazz = type.getRawType();
 		BiFunction<CodecFactory, StructuredCodec<?>[], StructuredCodec<?>> fn = checkNotNull(map.get(clazz));
 
 		StructuredCodec<?>[] subCodecs = new StructuredCodec[type.getTypeParams().length];
 
-		SimpleType[] typeParams = type.getTypeParams();
+		RecursiveType[] typeParams = type.getTypeParams();
 		for (int i = 0; i < typeParams.length; i++) {
 			subCodecs[i] = doGet(typeParams[i]);
 		}

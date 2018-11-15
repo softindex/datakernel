@@ -84,7 +84,7 @@ public final class DiscoveryHttpTest {
 				.thenCompose($ -> clientService.getSharedKey(alice.getPubKey(), bobSimKeyHash))
 				.whenComplete(assertComplete(signedSharedSimKey -> {
 					assertTrue(signedSharedSimKey.verify(bob.getPubKey()));
-					assertEquals(bobSimKey, signedSharedSimKey.getData().decryptSimKey(alice.getPrivKey()));
+					assertEquals(bobSimKey, signedSharedSimKey.getValue().decryptSimKey(alice.getPrivKey()));
 				}));
 	}
 }

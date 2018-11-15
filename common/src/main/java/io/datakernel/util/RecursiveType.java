@@ -12,52 +12,52 @@ import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 
-public final class SimpleType {
-	private static final SimpleType[] NO_TYPE_PARAMS = new SimpleType[0];
+public final class RecursiveType {
+	private static final RecursiveType[] NO_TYPE_PARAMS = new RecursiveType[0];
 
 	private final Class clazz;
-	private final SimpleType[] typeParams;
+	private final RecursiveType[] typeParams;
 	private final int arrayDimension;
 
-	private SimpleType(Class clazz, SimpleType[] typeParams, int arrayDimension) {
+	private RecursiveType(Class clazz, RecursiveType[] typeParams, int arrayDimension) {
 		this.clazz = clazz;
 		this.typeParams = typeParams;
 		this.arrayDimension = arrayDimension;
 	}
 
-	public static SimpleType of(Class clazz) {
-		return new SimpleType(clazz, NO_TYPE_PARAMS, clazz.isArray() ? 1 : 0);
+	public static RecursiveType of(Class clazz) {
+		return new RecursiveType(clazz, NO_TYPE_PARAMS, clazz.isArray() ? 1 : 0);
 	}
 
-	public static SimpleType of(Class clazz, SimpleType... typeParams) {
-		return new SimpleType(clazz, typeParams, clazz.isArray() ? 1 : 0);
+	public static RecursiveType of(Class clazz, RecursiveType... typeParams) {
+		return new RecursiveType(clazz, typeParams, clazz.isArray() ? 1 : 0);
 	}
 
-	public static SimpleType of(Class clazz, List<SimpleType> typeParams) {
-		return new SimpleType(clazz, typeParams.toArray(new SimpleType[0]), clazz.isArray() ? 1 : 0);
+	public static RecursiveType of(Class clazz, List<RecursiveType> typeParams) {
+		return new RecursiveType(clazz, typeParams.toArray(new RecursiveType[0]), clazz.isArray() ? 1 : 0);
 	}
 
-	public static SimpleType of(TypeT<?> type) {
+	public static RecursiveType of(TypeT<?> type) {
 		return of(type.getType());
 	}
 
-	public static SimpleType of(Type type) {
+	public static RecursiveType of(Type type) {
 		if (type instanceof Class) {
 			return of(((Class) type));
 		} else if (type instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType) type;
 			return of(((Class) parameterizedType.getRawType()),
 					Arrays.stream(parameterizedType.getActualTypeArguments())
-							.map(SimpleType::of)
+							.map(RecursiveType::of)
 							.collect(toList())
-							.toArray(new SimpleType[0]));
+							.toArray(new RecursiveType[0]));
 		} else if (type instanceof WildcardType) {
 			Type[] upperBounds = ((WildcardType) type).getUpperBounds();
 			Preconditions.check(upperBounds.length == 1, type);
 			return of(upperBounds[0]);
 		} else if (type instanceof GenericArrayType) {
-			SimpleType component = of(((GenericArrayType) type).getGenericComponentType());
-			return new SimpleType(component.clazz, component.typeParams, component.arrayDimension + 1);
+			RecursiveType component = of(((GenericArrayType) type).getGenericComponentType());
+			return new RecursiveType(component.clazz, component.typeParams, component.arrayDimension + 1);
 		} else {
 			throw new IllegalArgumentException(type.getTypeName());
 		}
@@ -67,7 +67,7 @@ public final class SimpleType {
 		return clazz;
 	}
 
-	public SimpleType[] getTypeParams() {
+	public RecursiveType[] getTypeParams() {
 		return typeParams;
 	}
 
@@ -92,7 +92,7 @@ public final class SimpleType {
 		}
 
 		Type[] types = Arrays.stream(typeParams)
-				.map(SimpleType::getType)
+				.map(RecursiveType::getType)
 				.collect(toList())
 				.toArray(new Type[]{});
 
@@ -114,7 +114,7 @@ public final class SimpleType {
 
 			@Override
 			public String toString() {
-				return SimpleType.this.toString();
+				return RecursiveType.this.toString();
 			}
 		};
 		return getArrayType(parameterized, arrayDimension);
@@ -124,7 +124,7 @@ public final class SimpleType {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		SimpleType that = (SimpleType) o;
+		RecursiveType that = (RecursiveType) o;
 		if (!clazz.equals(that.clazz)) return false;
 		if (!Arrays.equals(typeParams, that.typeParams)) return false;
 		return true;
@@ -140,14 +140,14 @@ public final class SimpleType {
 	public String getSimpleName() {
 		return clazz.getSimpleName() + (typeParams.length == 0 ? "" :
 				Arrays.stream(typeParams)
-						.map(SimpleType::getSimpleName)
+						.map(RecursiveType::getSimpleName)
 						.collect(Collectors.joining(",", "<", ">"))) + (new String(new char[arrayDimension]).replace("\0", "[]"));
 	}
 
 	public String getName() {
 		return clazz.getName() + (typeParams.length == 0 ? "" :
 				Arrays.stream(typeParams)
-						.map(SimpleType::getName)
+						.map(RecursiveType::getName)
 						.collect(Collectors.joining(",", "<", ">"))) + (new String(new char[arrayDimension]).replace("\0", "[]"));
 	}
 

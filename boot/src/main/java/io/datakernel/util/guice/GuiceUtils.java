@@ -4,7 +4,7 @@ import com.google.inject.*;
 import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.DefaultBindingScopingVisitor;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.util.SimpleType;
+import io.datakernel.util.RecursiveType;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolScope;
 
@@ -76,14 +76,14 @@ public final class GuiceUtils {
 		return (key.getAnnotation() != null ?
 				prettyPrintAnnotation(key.getAnnotation()) + " " :
 				key.getAnnotationType() != null ?
-						"@" + SimpleType.of(key.getAnnotationType()).getSimpleName() + " " :
-						"") + SimpleType.of(type).getSimpleName();
+						"@" + RecursiveType.of(key.getAnnotationType()).getSimpleName() + " " :
+						"") + RecursiveType.of(type).getSimpleName();
 	}
 
 	public static String prettyPrintKeyName(Key<?> key) {
 		Type type = key.getTypeLiteral().getType();
 		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "") +
-				SimpleType.of(type).getName();
+				RecursiveType.of(type).getName();
 	}
 
 	@Nullable
