@@ -32,6 +32,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 
+@SuppressWarnings("rawtypes")
 final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 	private final Method setter;
 	private final Class<?> type;

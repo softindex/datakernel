@@ -61,7 +61,7 @@ import static java.util.stream.Collectors.toList;
  * Represents an aggregation, which aggregates data using custom reducer and preaggregator.
  * Provides methods for loading and querying data.
  */
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "rawtypes"})
 public class Aggregation implements IAggregation, Initializable<Aggregation>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 

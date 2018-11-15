@@ -17,7 +17,7 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 	private final EventStats endOfStream = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
 	private final ExceptionStats error = ExceptionStats.create();
 
-	public StreamStatsBasic withBasicSmoothingWindow(Duration smoothingWindow) {
+	public StreamStatsBasic<T> withBasicSmoothingWindow(Duration smoothingWindow) {
 		started.setSmoothingWindow(smoothingWindow);
 		produce.setSmoothingWindow(smoothingWindow);
 		suspend.setSmoothingWindow(smoothingWindow);

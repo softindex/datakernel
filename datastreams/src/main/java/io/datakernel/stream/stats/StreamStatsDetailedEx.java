@@ -26,8 +26,8 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public StreamStatsDetailedEx withBasicSmoothingWindow(Duration smoothingWindow) {
-		return (StreamStatsDetailedEx) super.withBasicSmoothingWindow(smoothingWindow);
+	public StreamStatsDetailedEx<T> withBasicSmoothingWindow(Duration smoothingWindow) {
+		return (StreamStatsDetailedEx<T>) super.withBasicSmoothingWindow(smoothingWindow);
 	}
 
 	@Override
@@ -57,7 +57,7 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 				};
 	}
 
-	public StreamStatsDetailedEx withSizeHistogram(int[] levels) {
+	public StreamStatsDetailedEx<T> withSizeHistogram(int[] levels) {
 		itemSize.setHistogramLevels(levels);
 		return this;
 	}

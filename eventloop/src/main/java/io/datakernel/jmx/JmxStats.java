@@ -16,6 +16,6 @@
 
 package io.datakernel.jmx;
 
-public interface JmxStats<T extends JmxStats> {
+public interface JmxStats<T extends JmxStats<?>> {
 	void add(T another);
 }

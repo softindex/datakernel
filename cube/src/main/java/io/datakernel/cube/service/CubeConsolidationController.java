@@ -68,7 +68,7 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 		this.strategy = strategy;
 	}
 
-	public static <K, D, C> CubeConsolidationController create(Eventloop eventloop,
+	public static <K, D, C> CubeConsolidationController<K, D, C> create(Eventloop eventloop,
 			CubeDiffScheme<D> cubeDiffScheme,
 			Cube cube,
 			OTStateManager<K, D> stateManager,

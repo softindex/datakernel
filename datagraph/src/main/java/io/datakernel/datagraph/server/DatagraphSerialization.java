@@ -59,6 +59,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
  * Provides specific complex adapters for datagraph objects.
  * Maintains the cache of BufferSerializer's.
  */
+@SuppressWarnings("rawtypes")
 public final class DatagraphSerialization {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 

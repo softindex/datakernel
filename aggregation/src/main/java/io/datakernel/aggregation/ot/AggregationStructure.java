@@ -9,6 +9,7 @@ import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
+@SuppressWarnings("rawtypes")
 public final class AggregationStructure implements Initializable<AggregationStructure> {
 	private final ChunkIdScheme<?> chunkIdScheme;
 	private final Map<String, FieldType> keyTypes = new LinkedHashMap<>();

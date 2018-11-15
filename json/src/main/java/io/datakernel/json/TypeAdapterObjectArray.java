@@ -58,7 +58,7 @@ public final class TypeAdapterObjectArray<T> extends TypeAdapter<T> implements I
 		return this;
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Override
 	public void write(JsonWriter out, T object) throws IOException {
 		out.beginArray();
@@ -69,7 +69,7 @@ public final class TypeAdapterObjectArray<T> extends TypeAdapter<T> implements I
 		out.endArray();
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Override
 	public T read(JsonReader in) throws IOException {
 		T result = constructor.get();

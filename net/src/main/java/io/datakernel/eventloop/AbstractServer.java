@@ -87,7 +87,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	// jmx
 	private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
-	AbstractServer acceptServer = this;
+	AbstractServer<?> acceptServer = this;
 	private final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
 	private final AsyncTcpSocketImpl.JmxInspector socketStatsSsl = new AsyncTcpSocketImpl.JmxInspector();
 	private final EventStats accepts = EventStats.create(SMOOTHING_WINDOW);

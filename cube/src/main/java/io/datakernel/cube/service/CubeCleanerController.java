@@ -79,17 +79,17 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 		return new CubeCleanerController<>(eventloop, cubeDiffScheme, algorithms, (OTRepositoryEx<K, D>) algorithms.getRepository(), storage);
 	}
 
-	public CubeCleanerController withChunksCleanupDelay(Duration chunksCleanupDelay) {
+	public CubeCleanerController<K, D, C> withChunksCleanupDelay(Duration chunksCleanupDelay) {
 		this.chunksCleanupDelay = chunksCleanupDelay;
 		return this;
 	}
 
-	public CubeCleanerController withExtraSnapshotCount(int extraSnapshotCount) {
+	public CubeCleanerController<K, D, C> withExtraSnapshotCount(int extraSnapshotCount) {
 		this.extraSnapshotsCount = extraSnapshotCount;
 		return this;
 	}
 
-	public CubeCleanerController withFreezeTimeout(Duration freezeTimeout) {
+	public CubeCleanerController<K, D, C> withFreezeTimeout(Duration freezeTimeout) {
 		this.freezeTimeout = freezeTimeout;
 		return this;
 	}

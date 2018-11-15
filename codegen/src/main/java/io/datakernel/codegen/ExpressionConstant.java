@@ -77,7 +77,7 @@ final class ExpressionConstant implements Expression {
 		} else if (value instanceof Type) {
 			g.push((Type) value);
 		} else if (value instanceof Enum) {
-			g.getStatic(type, ((Enum) value).name(), type);
+			g.getStatic(type, ((Enum<?>) value).name(), type);
 		} else {
 			if (staticConstantField == null) {
 				staticConstantField = "$STATIC_CONSTANT_" + (ctx.getStaticConstants().size() + 1);

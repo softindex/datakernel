@@ -28,7 +28,7 @@ import static io.datakernel.json.GsonAdapters.*;
 
 public final class RemoteFsResponses {
 	public static final TypeAdapter<FileMetadata> FILE_META_JSON = transform(
-			ofHeterogeneousArray(new TypeAdapter[]{STRING_JSON, LONG_JSON, LONG_JSON}),
+			ofHeterogeneousArray(new TypeAdapter<?>[]{STRING_JSON, LONG_JSON, LONG_JSON}),
 			data -> new FileMetadata((String) data[0], (long) data[1], (long) data[2]),
 			meta -> new Object[]{meta.getFilename(), meta.getSize(), meta.getTimestamp()}
 	);

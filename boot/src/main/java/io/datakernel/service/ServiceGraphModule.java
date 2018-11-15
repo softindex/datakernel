@@ -296,7 +296,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			}
 		}
 		if (serviceAdapter != null) {
-			ServiceAdapter finalServiceAdapter = serviceAdapter;
+			ServiceAdapter<Object> finalServiceAdapter = (ServiceAdapter<Object>) serviceAdapter;
 			Service asyncService = new Service() {
 				@Override
 				public CompletableFuture<Void> start() {

@@ -376,7 +376,7 @@ public class JmxHttpModule extends AbstractModule {
 							Promise.of(Collections.<Class<?>>emptyList()))
 					.thenCompose(tuple -> {
 						@SuppressWarnings("SuspiciousToArrayCall") // what.?
-								Type type = SimpleType.ofClass(tuple.getValue1(), tuple.getValue2().toArray(new Class[0])).getType();
+								Type type = SimpleType.ofClass(tuple.getValue1(), tuple.getValue2().toArray(new Class<?>[0])).getType();
 						if (annotation == null) {
 							return Promise.of(Key.get(type));
 						}
@@ -425,7 +425,7 @@ public class JmxHttpModule extends AbstractModule {
 
 	private static class Node<K, V> {
 		@Nullable
-		final Node parent;
+		final Node<K, V> parent;
 
 		@Nullable
 		final K key;
@@ -435,7 +435,7 @@ public class JmxHttpModule extends AbstractModule {
 
 		final Map<K, Node<K, V>> children = new LinkedHashMap<>();
 
-		public Node(@Nullable Node parent, @Nullable K key, @Nullable V value) {
+		public Node(@Nullable Node<K, V> parent, @Nullable K key, @Nullable V value) {
 			this.parent = parent;
 			this.key = key;
 			this.value = value;

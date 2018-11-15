@@ -66,7 +66,7 @@ public class CubeIntegrationTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	@SuppressWarnings({"ConstantConditions", "unchecked"})
+	@SuppressWarnings({"ConstantConditions", "unchecked", "rawtypes"})
 	@Test
 	public void test() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();

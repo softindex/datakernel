@@ -136,7 +136,7 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 	private List<Record> readRecords(JsonReader reader, RecordScheme recordScheme) throws JsonParseException, IOException {
 		List<Record> records = new ArrayList<>();
 
-		TypeAdapter[] fieldTypeAdapters = getTypeAdapters(recordScheme);
+		TypeAdapter<?>[] fieldTypeAdapters = getTypeAdapters(recordScheme);
 
 		reader.beginArray();
 		while (reader.hasNext()) {
@@ -224,7 +224,7 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 	private void writeRecords(JsonWriter writer, RecordScheme recordScheme, List<Record> records) throws IOException {
 		writer.beginArray();
 
-		TypeAdapter[] fieldTypeAdapters = getTypeAdapters(recordScheme);
+		TypeAdapter<Object>[] fieldTypeAdapters = (TypeAdapter<Object>[]) getTypeAdapters(recordScheme);
 
 		for (Record record : records) {
 			writer.beginArray();
@@ -241,7 +241,7 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 		writer.beginArray();
 		for (int i = 0; i < recordScheme.getFields().size(); i++) {
 			String field = recordScheme.getField(i);
-			TypeAdapter fieldTypeAdapter = measureAdapters.get(field);
+			TypeAdapter<Object> fieldTypeAdapter = (TypeAdapter<Object>) measureAdapters.get(field);
 			if (fieldTypeAdapter == null)
 				continue;
 			fieldTypeAdapter.write(writer, totals.get(i));
@@ -255,7 +255,7 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 		for (String attribute : filterAttributes.keySet()) {
 			Object value = filterAttributes.get(attribute);
 			writer.name(attribute);
-			TypeAdapter typeAdapter = attributeAdapters.get(attribute);
+			TypeAdapter<Object> typeAdapter = (TypeAdapter<Object>) attributeAdapters.get(attribute);
 			typeAdapter.write(writer, value);
 		}
 		writer.endObject();
@@ -272,8 +272,8 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 		return recordScheme;
 	}
 
-	private TypeAdapter[] getTypeAdapters(RecordScheme recordScheme) {
-		TypeAdapter[] fieldTypeAdapters = new TypeAdapter[recordScheme.getFields().size()];
+	private TypeAdapter<?>[] getTypeAdapters(RecordScheme recordScheme) {
+		TypeAdapter<?>[] fieldTypeAdapters = new TypeAdapter<?>[recordScheme.getFields().size()];
 		for (int i = 0; i < recordScheme.getFields().size(); i++) {
 			String field = recordScheme.getField(i);
 			fieldTypeAdapters[i] = firstNonNull(attributeAdapters.get(field), measureAdapters.get(field));

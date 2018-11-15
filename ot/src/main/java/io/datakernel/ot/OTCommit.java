@@ -27,7 +27,7 @@ import static io.datakernel.util.Preconditions.*;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
 
-public final class OTCommit<K, D> implements Comparable<OTCommit> {
+public final class OTCommit<K, D> implements Comparable<OTCommit<?, ?>> {
 	private final K id;
 	private final Map<K, List<D>> parents;
 	private final long level;
@@ -49,7 +49,7 @@ public final class OTCommit<K, D> implements Comparable<OTCommit> {
 		checkNotNull(id);
 		checkArgument(level, v -> v > 0);
 		checkArgument(parents != null, "Cannot create OTCommit with parents that is null");
-		return new OTCommit<K, D>(id, (Map) parents, level);
+		return new OTCommit<>(id, (Map<K, List<D>>) parents, level);
 	}
 
 	public static <K, D> OTCommit<K, D> ofRoot(K id) {
@@ -62,14 +62,15 @@ public final class OTCommit<K, D> implements Comparable<OTCommit> {
 		checkNotNull(id);
 		checkNotNull(parent);
 		checkArgument(parentLevel, v -> v > 0);
-		return new OTCommit<K, D>(id, (Map) singletonMap(parent, diffs), parentLevel + 1L);
+		Map<K, ? extends List<? extends D>> parentMap = singletonMap(parent, diffs);
+		return new OTCommit<>(id, (Map<K, List<D>>) parentMap, parentLevel + 1L);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <K, D> OTCommit<K, D> ofMerge(K id, Map<K, ? extends List<? extends D>> parents, long maxParentLevel) {
 		checkNotNull(id);
 		checkArgument(maxParentLevel, v -> v > 0);
-		return new OTCommit<K, D>(id, (Map) parents, maxParentLevel + 1L);
+		return new OTCommit<>(id, (Map<K, List<D>>) parents, maxParentLevel + 1L);
 	}
 
 	public OTCommit<K, D> withTimestamp(long timestamp) {
@@ -144,7 +145,7 @@ public final class OTCommit<K, D> implements Comparable<OTCommit> {
 	}
 
 	@Override
-	public int compareTo(OTCommit o) {
+	public int compareTo(OTCommit<?, ?> o) {
 		return Long.compare(this.level, o.level);
 	}
 }

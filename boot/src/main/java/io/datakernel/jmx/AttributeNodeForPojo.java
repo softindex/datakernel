@@ -25,6 +25,7 @@ import static io.datakernel.util.JmxUtils.filterNulls;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.singletonList;
 
+@SuppressWarnings("rawtypes")
 final class AttributeNodeForPojo implements AttributeNode {
 	private static final char ATTRIBUTE_NAME_SEPARATOR = '_';
 
@@ -302,14 +303,14 @@ final class AttributeNodeForPojo implements AttributeNode {
 		}
 	}
 
-	@SuppressWarnings({"unchecked", "UnnecessaryLocalVariable"})
+	@SuppressWarnings("unchecked")
 	@Override
 	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
 		if (attrName.equals(name)) {
-			AttributeModifier attrModifierRaw = modifier;
+			AttributeModifier<Object> attrModifierObject = (AttributeModifier<Object>) modifier;
 			List<Object> attributes = fetchInnerPojos(target);
 			for (Object attribute : attributes) {
-				attrModifierRaw.apply(attribute);
+				attrModifierObject.apply(attribute);
 			}
 			return;
 		}

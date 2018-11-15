@@ -235,7 +235,7 @@ public class DatagraphServerTest {
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
 				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(eventloop));
 		DatagraphEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(6),
@@ -317,7 +317,7 @@ public class DatagraphServerTest {
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
 				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(eventloop));
 		DatagraphEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(1),

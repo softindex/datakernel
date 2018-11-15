@@ -36,6 +36,7 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Stream.of;
 import static org.junit.Assert.*;
 
+@SuppressWarnings("rawtypes")
 public class TestCompatibleAggregations {
 	private static final Map<String, String> DATA_ITEM_DIMENSIONS = entriesToMap(of(
 			new AbstractMap.SimpleEntry<>("date", "date"),

@@ -32,6 +32,7 @@ import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 
+@SuppressWarnings("rawtypes")
 public class AggregationPredicates {
 	private AggregationPredicates() {
 	}

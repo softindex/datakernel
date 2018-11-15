@@ -405,7 +405,7 @@ public final class Expressions {
 	}
 
 	public static Class<?> unifyArithmeticTypes(List<Class<?>> types) {
-		return ExpressionArithmeticOp.unifyArithmeticTypes(types.toArray(new Class[0]));
+		return ExpressionArithmeticOp.unifyArithmeticTypes(types.toArray(new Class<?>[0]));
 	}
 
 	public static ExpressionArithmeticOp arithmeticOp(ArithmeticOperation op, Expression left, Expression right) {

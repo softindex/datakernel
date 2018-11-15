@@ -28,25 +28,25 @@ import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toList;
 
 public final class SimpleType {
-	private final Class clazz;
+	private final Class<?> clazz;
 	private final SimpleType[] typeParams;
 	private final int arrayDimension;
 
-	private SimpleType(Class clazz, SimpleType[] typeParams, int arrayDimension) {
+	private SimpleType(Class<?> clazz, SimpleType[] typeParams, int arrayDimension) {
 		this.clazz = clazz;
 		this.typeParams = typeParams;
 		this.arrayDimension = arrayDimension;
 	}
 
-	public static SimpleType of(Class clazz, SimpleType... typeParams) {
+	public static SimpleType of(Class<?> clazz, SimpleType... typeParams) {
 		return new SimpleType(clazz, typeParams, 0);
 	}
 
-	public static SimpleType ofClass(Class clazz) {
+	public static SimpleType ofClass(Class<?> clazz) {
 		return new SimpleType(clazz, new SimpleType[]{}, clazz.isArray() ? 1 : 0);
 	}
 
-	public static SimpleType ofClass(Class clazz, Class... typeParams) {
+	public static SimpleType ofClass(Class<?> clazz, Class<?>... typeParams) {
 		return new SimpleType(clazz, Arrays.stream(typeParams)
 				.map(SimpleType::ofClass)
 				.collect(toList())
@@ -55,10 +55,10 @@ public final class SimpleType {
 
 	public static SimpleType ofType(Type type) {
 		if (type instanceof Class) {
-			return ofClass(((Class) type));
+			return ofClass(((Class<?>) type));
 		} else if (type instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType) type;
-			return of(((Class) parameterizedType.getRawType()),
+			return of(((Class<?>) parameterizedType.getRawType()),
 					Arrays.stream(parameterizedType.getActualTypeArguments())
 							.map(SimpleType::ofType)
 							.collect(toList())
@@ -75,7 +75,7 @@ public final class SimpleType {
 		}
 	}
 
-	public Class getClazz() {
+	public Class<?> getClazz() {
 		return clazz;
 	}
 

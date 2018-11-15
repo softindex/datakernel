@@ -849,7 +849,7 @@ public final class SerializerBuilder {
 	}
 
 	synchronized private Object createSerializer(SerializerGen serializerGen, int serializeVersion) {
-		ClassBuilder<BufferSerializer> asmFactory = ClassBuilder.create(definingClassLoader, BufferSerializer.class);
+		ClassBuilder<BufferSerializer<?>> asmFactory = ClassBuilder.create(definingClassLoader, BufferSerializer.class);
 		if (saveBytecodePath != null) {
 			asmFactory.withBytecodeSaveDir(saveBytecodePath);
 		}
@@ -907,8 +907,8 @@ public final class SerializerBuilder {
 		return asmFactory.buildClassAndCreateNewInstance();
 	}
 
-	private ClassBuilder<BufferSerializer> defineDeserialize(SerializerGen serializerGen,
-	                                                         ClassBuilder<BufferSerializer> asmFactory,
+	private ClassBuilder<BufferSerializer<?>> defineDeserialize(SerializerGen serializerGen,
+			ClassBuilder<BufferSerializer<?>> asmFactory,
 	                                                         List<Integer> allVersions,
 	                                                         StaticMethods staticMethods) {
 		asmFactory = defineDeserializeLatest(serializerGen, asmFactory, getLatestVersion(allVersions), staticMethods);
@@ -921,8 +921,8 @@ public final class SerializerBuilder {
 		return asmFactory;
 	}
 
-	private ClassBuilder<BufferSerializer> defineDeserializeVersion(SerializerGen serializerGen,
-	                                                                ClassBuilder<BufferSerializer> asmFactory,
+	private ClassBuilder<BufferSerializer<?>> defineDeserializeVersion(SerializerGen serializerGen,
+			ClassBuilder<BufferSerializer<?>> asmFactory,
 	                                                                int version, StaticMethods staticMethods) {
 		return asmFactory.withMethod("deserializeVersion" + String.valueOf(version),
 				serializerGen.getRawType(),
@@ -930,8 +930,8 @@ public final class SerializerBuilder {
 				sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods, compatibilityLevel)));
 	}
 
-	private ClassBuilder<BufferSerializer> defineDeserializeEarlierVersion(SerializerGen serializerGen,
-	                                                                       ClassBuilder<BufferSerializer> asmFactory,
+	private ClassBuilder<BufferSerializer<?>> defineDeserializeEarlierVersion(SerializerGen serializerGen,
+			ClassBuilder<BufferSerializer<?>> asmFactory,
 	                                                                       List<Integer> allVersions,
 	                                                                       StaticMethods staticMethods) {
 		List<Expression> listKey = new ArrayList<>();
@@ -946,8 +946,8 @@ public final class SerializerBuilder {
 				switchForKey(arg(1), listKey, listValue));
 	}
 
-	private ClassBuilder<BufferSerializer> defineDeserializeLatest(SerializerGen serializerGen,
-	                                                               ClassBuilder<BufferSerializer> asmFactory,
+	private ClassBuilder<BufferSerializer<?>> defineDeserializeLatest(SerializerGen serializerGen,
+			ClassBuilder<BufferSerializer<?>> asmFactory,
 	                                                               Integer latestVersion,
 	                                                               StaticMethods staticMethods) {
 		if (latestVersion == null) {

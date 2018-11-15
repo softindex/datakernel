@@ -124,7 +124,7 @@ public final class StreamRegistry<V> implements Iterable<V> {
 
 	@JmxAttribute(name = "")
 	public String getString() {
-		List<Entry> entries = new ArrayList<>();
+		List<Entry<V>> entries = new ArrayList<>();
 		list.forEach(entries::add);
 		return CollectionUtils.toLimitedString(entries, limit);
 	}

@@ -23,8 +23,8 @@ public final class StreamStatsDetailed<T> extends StreamStatsBasic<T> implements
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public StreamStatsDetailed withBasicSmoothingWindow(Duration smoothingWindow) {
-		return (StreamStatsDetailed) super.withBasicSmoothingWindow(smoothingWindow);
+	public StreamStatsDetailed<T> withBasicSmoothingWindow(Duration smoothingWindow) {
+		return (StreamStatsDetailed<T>) super.withBasicSmoothingWindow(smoothingWindow);
 	}
 
 	@Override

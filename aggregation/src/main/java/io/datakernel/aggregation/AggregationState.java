@@ -125,7 +125,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		chunks.clear();
 	}
 
-	private static int getNumberOfOverlaps(RangeTree.Segment segment) {
+	private static int getNumberOfOverlaps(RangeTree.Segment<?> segment) {
 		return segment.getSet().size() + segment.getClosingSet().size();
 	}
 

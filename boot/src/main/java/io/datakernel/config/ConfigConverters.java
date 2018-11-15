@@ -298,10 +298,10 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverter<Class> ofClass() {
-		return new SimpleConfigConverter<Class>() {
+	public static ConfigConverter<Class<?>> ofClass() {
+		return new SimpleConfigConverter<Class<?>>() {
 			@Override
-			public Class fromString(String string) {
+			public Class<?> fromString(String string) {
 				try {
 					return Class.forName(string);
 				} catch (ClassNotFoundException e) {
@@ -310,7 +310,7 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Class value) {
+			public String toString(Class<?> value) {
 				return value.getName();
 			}
 		};
@@ -555,7 +555,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static final ConfigConverter<List<Class>> OF_CLASSES = ofList(ofClass());
+	public static final ConfigConverter<List<Class<?>>> OF_CLASSES = ofList(ofClass());
 
 	public static ConfigConverter<FatalErrorHandler> ofFatalErrorHandler() {
 		return new ConfigConverter<FatalErrorHandler>() {

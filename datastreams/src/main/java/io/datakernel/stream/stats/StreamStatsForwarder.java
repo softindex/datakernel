@@ -12,15 +12,15 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 	private final Input input;
 	private final Output output;
 
-	private final StreamStats stats;
+	private final StreamStats<T> stats;
 
-	private StreamStatsForwarder(StreamStats stats) {
+	private StreamStatsForwarder(StreamStats<T> stats) {
 		this.stats = stats;
 		this.input = new Input();
 		this.output = new Output();
 	}
 
-	public static <T> StreamStatsForwarder<T> create(StreamStats stats) {
+	public static <T> StreamStatsForwarder<T> create(StreamStats<T> stats) {
 		return new StreamStatsForwarder<>(stats);
 	}
 

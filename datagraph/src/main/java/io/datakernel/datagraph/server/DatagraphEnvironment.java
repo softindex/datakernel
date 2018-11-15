@@ -65,7 +65,7 @@ public final class DatagraphEnvironment {
 	 */
 	@SuppressWarnings("unchecked")
 	public DatagraphEnvironment with(Object key, Object value) {
-		((Map) instances).put(key, value);
+		((Map<Object, Object>) instances).put(key, value);
 		return this;
 	}
 
@@ -79,7 +79,7 @@ public final class DatagraphEnvironment {
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> DatagraphEnvironment setInstance(Class<T> type, T value) {
-		((Map) instances).put(type, value);
+		((Map<Class<T>, T>) instances).put(type, value);
 		return this;
 	}
 

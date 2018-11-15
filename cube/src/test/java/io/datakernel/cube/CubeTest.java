@@ -62,7 +62,7 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.function.Function.identity;
 import static org.junit.Assert.*;
 
-@SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
+@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "rawtypes"})
 public class CubeTest {
 	private static Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(CubeTest.class);

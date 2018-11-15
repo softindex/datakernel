@@ -57,7 +57,7 @@ public interface StreamStats<T> extends
 		return new StreamStatsDetailedEx<>(null);
 	}
 
-	static <T> StreamStatsDetailedEx detailedEx(StreamStatsSizeCounter<T> sizeCounter) {
+	static <T> StreamStatsDetailedEx<T> detailedEx(StreamStatsSizeCounter<T> sizeCounter) {
 		return new StreamStatsDetailedEx<>(sizeCounter);
 	}
 

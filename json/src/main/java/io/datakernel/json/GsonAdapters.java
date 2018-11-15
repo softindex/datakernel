@@ -237,7 +237,7 @@ public final class GsonAdapters {
 				}
 			} else {
 				cls = (Class<T>) type;
-				paramAdapters = new TypeAdapter[0];
+				paramAdapters = new TypeAdapter<?>[0];
 			}
 			AdapterSupplier func = mapping.get(cls);
 			if (func != null) {
@@ -272,7 +272,7 @@ public final class GsonAdapters {
 			.withAdapter(float.class, FLOAT_JSON).withAdapter(Float.class, FLOAT_JSON)
 			.withAdapter(double.class, DOUBLE_JSON).withAdapter(Double.class, DOUBLE_JSON)
 			.withAdapter(String.class, STRING_JSON)
-			.withAdapter(Enum.class, (cls, $) -> ofEnum((Class) cls))
+			.withAdapter(Enum.class, (cls, $) -> ofEnum((Class<Enum>) cls))
 			.withAdapter(List.class, ($, paramAdapters) -> {
 				checkArgument(paramAdapters.length == 1);
 				return ofList(paramAdapters[0]);
@@ -514,7 +514,7 @@ public final class GsonAdapters {
 				out.beginObject();
 				for (Map.Entry<String, ?> entry : map.entrySet()) {
 					String key = entry.getKey();
-					TypeAdapter valueAdapter = valueAdapters.get(key);
+					TypeAdapter<Object> valueAdapter = (TypeAdapter<Object>) valueAdapters.get(key);
 					out.name(key);
 					valueAdapter.write(out, entry.getValue());
 				}
@@ -527,7 +527,7 @@ public final class GsonAdapters {
 				in.beginObject();
 				while (in.hasNext()) {
 					String key = in.nextName();
-					TypeAdapter valueAdapter = valueAdapters.get(key);
+					TypeAdapter<Object> valueAdapter = (TypeAdapter<Object>) valueAdapters.get(key);
 					Object value = valueAdapter.read(in);
 					map.put(key, value);
 				}

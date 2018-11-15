@@ -49,6 +49,7 @@ import static java.nio.file.StandardOpenOption.READ;
 /**
  * Represents a file system for persisting logs. Stores files in a local file system.
  */
+@SuppressWarnings("rawtypes") // Jmx doesn't work with generic types
 public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 

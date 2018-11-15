@@ -79,7 +79,7 @@ import static java.util.stream.Collectors.toList;
  * Represents an OLAP cube. Provides methods for loading and querying data.
  * Also provides functionality for managing aggregations.
  */
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "rawtypes"})
 public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
@@ -778,6 +778,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return classLoaderCache.getOrCreate(key);
 	}
 
+	@SuppressWarnings("rawtypes")
 	private class RequestContext<R> {
 		DefiningClassLoader queryClassLoader;
 		CubeQuery query;
@@ -1100,7 +1101,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				start = 0;
 				offset = 0;
 			} else if (offset >= results.size()) {
-				return new ArrayList();
+				return new ArrayList<>();
 			} else {
 				start = offset;
 			}

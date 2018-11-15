@@ -157,9 +157,9 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 		if (leftDiffs.size() == 1) {
 			D left = leftDiffs.get(0);
 			D right = rightDiffs.get(0);
-			KeyPair key = new KeyPair(left.getClass(), right.getClass());
-			TransformFunction transformer = transformers.get(key);
-			TransformResult<D> transform1 = transformer.transform(left, right);
+			KeyPair<D> key = new KeyPair(left.getClass(), right.getClass());
+			TransformFunction<D, D, D> transformer = (TransformFunction<D, D, D>) transformers.get(key);
+			TransformResult<D> transform1 = (TransformResult<D>) transformer.transform(left, right);
 			if (transform1.hasConflict()) return transform1;
 			TransformResult<D> transform2 = this.doTransform(transform1.right, rightDiffs.subList(1, rightDiffs.size()));
 			if (transform2.hasConflict()) return transform2;
@@ -176,17 +176,17 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 	@Override
 	public List<D> squash(List<? extends D> ops) {
 		if (squashers.isEmpty())
-			return (List) ops;
+			return (List<D>) ops;
 		List<D> result = new ArrayList<>();
-		Iterator<D> it = ((List) ops).iterator();
+		Iterator<D> it = ((List<D>) ops).iterator();
 		if (!it.hasNext())
 			return emptyList();
 		D cur = it.next();
 		while (it.hasNext()) {
 			D next = it.next();
-			KeyPair key = new KeyPair(cur.getClass(), next.getClass());
-			SquashFunction squashFunction = squashers.get(key);
-			D squashed = squashFunction == null ? null : (D) squashFunction.trySquash(cur, next);
+			KeyPair<D> key = new KeyPair(cur.getClass(), next.getClass());
+			SquashFunction<D, D, D> squashFunction = (SquashFunction<D, D, D>) squashers.get(key);
+			D squashed = squashFunction == null ? null : squashFunction.trySquash(cur, next);
 			if (squashed != null) {
 				cur = squashed;
 			} else {

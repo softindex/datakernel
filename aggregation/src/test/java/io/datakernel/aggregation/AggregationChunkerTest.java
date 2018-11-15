@@ -44,7 +44,7 @@ import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "rawtypes"})
 public class AggregationChunkerTest {
 
 	@Rule

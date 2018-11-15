@@ -44,6 +44,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 
+@SuppressWarnings("rawtypes")
 public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final Logger logger = LoggerFactory.getLogger(JmxMBeans.class);
 

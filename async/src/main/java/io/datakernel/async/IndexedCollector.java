@@ -113,7 +113,7 @@ public interface IndexedCollector<T, A, R> {
 		}
 	};
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	static <T> IndexedCollector<T, Object[], List<T>> toList() {
 		return (IndexedCollector) TO_LIST;
 	}

@@ -39,7 +39,7 @@ public final class FatalErrorHandlers {
 		return (error, context) -> shutdownForcibly();
 	}
 
-	public static FatalErrorHandler exitOnMatchedError(List<Class> whiteList, List<Class> blackList) {
+	public static FatalErrorHandler exitOnMatchedError(List<Class<?>> whiteList, List<Class<?>> blackList) {
 		return (error, context) -> {
 			if (matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList)) {
 				shutdownForcibly();
@@ -55,7 +55,7 @@ public final class FatalErrorHandlers {
 		return (error, context) -> propagate(error);
 	}
 
-	public static FatalErrorHandler rethrowOnMatchedError(List<Class> whiteList, List<Class> blackList) {
+	public static FatalErrorHandler rethrowOnMatchedError(List<Class<?>> whiteList, List<Class<?>> blackList) {
 		return (error, context) -> {
 			if (matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList)) {
 				propagate(error);
@@ -78,7 +78,7 @@ public final class FatalErrorHandlers {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static boolean matchesAny(Class c, List<Class> list) {
+	private static boolean matchesAny(Class<?> c, List<Class<?>> list) {
 		return list.stream().anyMatch(cl -> cl.isAssignableFrom(c));
 	}
 }

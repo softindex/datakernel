@@ -23,7 +23,7 @@ import io.datakernel.codegen.Property;
 import static io.datakernel.codegen.Expressions.*;
 
 public final class MeasureSum extends Measure {
-
+	@SuppressWarnings("rawtypes")
 	MeasureSum(FieldType fieldType) {
 		super(fieldType);
 	}

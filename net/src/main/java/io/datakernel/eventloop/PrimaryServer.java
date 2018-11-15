@@ -39,7 +39,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> implement
 		this.workerServers = workerServers;
 		for (WorkerServer workerServer : workerServers) {
 			if (workerServer instanceof AbstractServer) {
-				((AbstractServer) workerServer).acceptServer = this;
+				((AbstractServer<?>) workerServer).acceptServer = this;
 			}
 		}
 	}

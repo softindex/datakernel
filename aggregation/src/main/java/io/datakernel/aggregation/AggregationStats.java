@@ -4,6 +4,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 
+@SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public class AggregationStats {
 	final StreamStatsBasic<?> mergeMapInput = StreamStats.basic();
 	final StreamStatsBasic<?> mergeMapOutput = StreamStats.basic();

@@ -28,6 +28,7 @@ public final class InitializerModule extends AbstractModule {
 		return new InitializerModule();
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	protected void configure() {
 		Provider<Injector> injectorProvider = getProvider(Injector.class);

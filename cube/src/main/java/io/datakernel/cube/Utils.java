@@ -84,7 +84,7 @@ public final class Utils {
 				})
 				.buildClassAndCreateNewInstance();
 
-		ArrayList<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
+		List<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
 		AttributeResolver.AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributeResolver.AttributesFunction.class)
 				.withMethod("applyAttributes", () -> {
 					ExpressionSequence applyAttributes = ExpressionSequence.create();
@@ -99,7 +99,7 @@ public final class Utils {
 				})
 				.buildClassAndCreateNewInstance();
 
-		return attributeResolver.resolveAttributes((List) results, keyFunction, attributesFunction);
+		return attributeResolver.resolveAttributes((List<Object>) results, keyFunction, attributesFunction);
 	}
 
 	@SuppressWarnings("unchecked")

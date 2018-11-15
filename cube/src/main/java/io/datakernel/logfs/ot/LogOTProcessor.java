@@ -51,6 +51,7 @@ import static java.util.Collections.emptyMap;
 /**
  * Processes logs. Creates new aggregation chunks and persists them using logic defined in supplied {@code AggregatorSplitter}.
  */
+@SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 

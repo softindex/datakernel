@@ -47,6 +47,7 @@ import static io.datakernel.serial.net.ByteBufSerializers.ofJson;
 /**
  * Server for processing JSON commands.
  */
+@SuppressWarnings("rawtypes")
 public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	private final DatagraphEnvironment environment;
 	private final Map<StreamId, SerialQueue<ByteBuf>> pendingStreams = new HashMap<>();
@@ -152,6 +153,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				});
 	}
 
+	@SuppressWarnings("unchecked")
 	private void doRead(MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
 		CommandHandler handler = handlers.get(command.getClass());
 		if (handler == null) {

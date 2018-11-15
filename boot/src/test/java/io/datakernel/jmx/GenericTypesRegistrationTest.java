@@ -40,7 +40,7 @@ public class GenericTypesRegistrationTest {
 
 	@Test
 	public void itShouldFormProperNameForTypeWithSingleGenericParameter() throws Exception {
-		ServiceStubOne service = new ServiceStubOne();
+		ServiceStubOne<?> service = new ServiceStubOne();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(with(service),

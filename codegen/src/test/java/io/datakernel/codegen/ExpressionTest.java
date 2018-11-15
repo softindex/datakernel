@@ -507,9 +507,9 @@ public class ExpressionTest {
 	}
 
 	public interface WriteAllListElement {
-		void write(List listFrom, List listTo);
+		void write(List<?> listFrom, List<?> listTo);
 
-		void writeIter(Iterator iteratorFrom, List listTo);
+		void writeIter(Iterator<?> iteratorFrom, List<?> listTo);
 	}
 
 	@org.junit.Test
@@ -796,10 +796,11 @@ public class ExpressionTest {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@org.junit.Test
 	public void testComparatorNullable() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Comparator generatedComparator = ClassBuilder.create(classLoader, Comparator.class)
+		Comparator<ExpressionTest.StringHolder> generatedComparator = ClassBuilder.create(classLoader, Comparator.class)
 				.withMethod("compare", ExpressionComparator.create()
 						.with(leftProperty(StringHolder.class, "string1"), rightProperty(StringHolder.class, "string1"), true)
 						.with(leftProperty(StringHolder.class, "string2"), rightProperty(StringHolder.class, "string2"), true))

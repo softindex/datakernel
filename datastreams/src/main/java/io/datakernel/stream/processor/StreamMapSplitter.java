@@ -14,24 +14,24 @@ import static io.datakernel.util.Preconditions.checkState;
 public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs, StreamDataAcceptor<I> {
 	private final Input input;
 	private final List<Output<?>> outputs = new ArrayList<>();
-	private final BiConsumer<I, StreamDataAcceptor[]> action;
+	private final BiConsumer<I, StreamDataAcceptor<?>[]> action;
 
 	@SuppressWarnings("unchecked")
-	private StreamDataAcceptor[] dataAcceptors = new StreamDataAcceptor[0];
+	private StreamDataAcceptor<?>[] dataAcceptors = new StreamDataAcceptor[0];
 	private int suspended = 0;
 
-	private StreamMapSplitter(BiConsumer<I, StreamDataAcceptor[]> action) {
+	private StreamMapSplitter(BiConsumer<I, StreamDataAcceptor<?>[]> action) {
 		this.action = action;
 		this.input = new Input();
 	}
 
-	public static <I> StreamMapSplitter<I> create(BiConsumer<I, StreamDataAcceptor[]> action) {
+	public static <I> StreamMapSplitter<I> create(BiConsumer<I, StreamDataAcceptor<?>[]> action) {
 		return new StreamMapSplitter<>(action);
 	}
 
 	@SuppressWarnings("unchecked")
 	public <O> StreamSupplier<O> newOutput() {
-		Output output = new Output(outputs.size());
+		Output<O> output = new Output<>(outputs.size());
 		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
 		suspended++;
 		outputs.add(output);

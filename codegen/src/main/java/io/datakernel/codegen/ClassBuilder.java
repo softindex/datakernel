@@ -106,7 +106,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		public boolean equals(Object o) {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
-			AsmClassKey that = (AsmClassKey) o;
+			AsmClassKey<?> that = (AsmClassKey<?>) o;
 			return Objects.equals(mainClass, that.mainClass) &&
 				Objects.equals(otherClasses, that.otherClasses) &&
 				Objects.equals(fields, that.fields) &&
@@ -267,7 +267,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	// endregion
 	public Class<T> build() {
 		synchronized (classLoader) {
-			AsmClassKey key = new AsmClassKey(mainClass, otherClasses, fields, methods, staticMethods);
+			AsmClassKey<?> key = new AsmClassKey<>(mainClass, otherClasses, fields, methods, staticMethods);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
@@ -289,7 +289,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		}
 	}
 
-	private Class<T> defineNewClass(AsmClassKey key) {
+	private Class<T> defineNewClass(AsmClassKey<?> key) {
 		DefiningClassWriter cw = DefiningClassWriter.create(classLoader);
 
 		String actualClassName;
@@ -406,14 +406,14 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	}
 
 	public T buildClassAndCreateNewInstance(Object... constructorParameters) {
-		Class[] constructorParameterTypes = new Class[constructorParameters.length];
+		Class<?>[] constructorParameterTypes = new Class<?>[constructorParameters.length];
 		for (int i = 0; i < constructorParameters.length; i++) {
 			constructorParameterTypes[i] = constructorParameters[i].getClass();
 		}
 		return buildClassAndCreateNewInstance(constructorParameterTypes, constructorParameters);
 	}
 
-	public T buildClassAndCreateNewInstance(Class[] constructorParameterTypes, Object[] constructorParameters) {
+	public T buildClassAndCreateNewInstance(Class<?>[] constructorParameterTypes, Object[] constructorParameters) {
 		try {
 			return build().getConstructor(constructorParameterTypes).newInstance(constructorParameters);
 		} catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {

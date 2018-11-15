@@ -46,7 +46,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 import static org.junit.Assert.assertEquals;
 
-@SuppressWarnings({"Duplicates", "unchecked", "ArraysAsListWithZeroOrOneArgument"})
+@SuppressWarnings({"Duplicates", "unchecked", "ArraysAsListWithZeroOrOneArgument", "rawtypes"})
 public class AggregationGroupReducerTest {
 
 	@Rule

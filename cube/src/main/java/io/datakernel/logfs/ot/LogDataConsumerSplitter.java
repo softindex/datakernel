@@ -45,9 +45,9 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		for (LogDataConsumer<?, D> logDataConsumer : logDataConsumers) {
 			StreamConsumerWithResult<?, List<D>> consumer = logDataConsumer.consume();
 			resultsReducer.addPromise(consumer.getResult(), List::addAll);
-			Splitter.Output<?> output = splitter.new Output<>();
+			Splitter.Output<Object> output = splitter.new Output<>();
 			splitter.outputs.add(output);
-			output.streamTo((StreamConsumer) consumer.getConsumer());
+			output.streamTo((StreamConsumer<Object>) consumer.getConsumer());
 		}
 		return StreamConsumerWithResult.of(splitter.getInput(), resultsReducer.get());
 	}

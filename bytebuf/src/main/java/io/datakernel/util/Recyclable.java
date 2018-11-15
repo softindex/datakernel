@@ -38,18 +38,18 @@ public interface Recyclable {
 			Recyclable recyclable = (Recyclable) object;
 			recyclable.recycle();
 		} else if (object instanceof Iterator) {
-			Iterator it = (Iterator) object;
+			Iterator<?> it = (Iterator<?>) object;
 			while (it.hasNext()) {
 				deepRecycle(it.next());
 			}
 		} else if (object instanceof Collection) {
-			deepRecycle(((Collection) object).iterator());
-			((Collection) object).clear();
+			deepRecycle(((Collection<?>) object).iterator());
+			((Collection<?>) object).clear();
 		} else if (object instanceof Iterable) {
-			deepRecycle(((Iterable) object).iterator());
+			deepRecycle(((Iterable<?>) object).iterator());
 		} else if (object instanceof Map) {
-			deepRecycle(((Map) object).values());
-			((Map) object).clear();
+			deepRecycle(((Map<?, ?>) object).values());
+			((Map<?, ?>) object).clear();
 		} else if (object instanceof Object[]) {
 			Object[] objects = (Object[]) object;
 			for (Object element : objects) {
