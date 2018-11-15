@@ -39,7 +39,7 @@ import static java.nio.file.StandardOpenOption.READ;
 public final class SerialFileReader extends AbstractSerialSupplier<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(SerialFileReader.class);
 
-	public static final OpenOption[] READ_OPTIONS = new OpenOption[]{READ};
+	public static final OpenOption[] READ_OPTIONS = {READ};
 
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(8);
 

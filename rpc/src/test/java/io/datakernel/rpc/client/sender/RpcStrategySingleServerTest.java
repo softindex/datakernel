@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,7 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class RpcStrategySingleServerTest {
 
@@ -42,7 +41,7 @@ public class RpcStrategySingleServerTest {
 
 		RpcSender sender = strategySingleServer.createSender(pool);
 
-		assertTrue(sender != null);
+		assertNotNull(sender);
 	}
 
 	@Test
@@ -53,7 +52,7 @@ public class RpcStrategySingleServerTest {
 
 		RpcSender sender = strategySingleServer.createSender(pool);
 
-		assertTrue(sender == null);
+		assertNull(sender);
 	}
 
 	@Test
@@ -67,6 +66,7 @@ public class RpcStrategySingleServerTest {
 		int timeout = 50;
 		RpcMessageDataStub data = new RpcMessageDataStub();
 
+		assert sender != null;
 		for (int i = 0; i < calls; i++) {
 			sender.sendRequest(data, timeout, Callback.assertNoCalls());
 		}

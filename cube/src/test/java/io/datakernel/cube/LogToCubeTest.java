@@ -21,6 +21,7 @@ import io.datakernel.aggregation.ChunkIdScheme;
 import io.datakernel.aggregation.RemoteFsChunkStorage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
+import io.datakernel.cube.bean.TestPubRequest.TestAdvRequest;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffJson;
 import io.datakernel.cube.ot.CubeOT;
@@ -45,6 +46,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
@@ -63,7 +65,7 @@ public final class LogToCubeTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	private static <K, D> java.util.function.Function<D, OTStateManager<K, D>> addFunction(OTStateManager<K, D> stateManager) {
+	private static <K, D> Function<D, OTStateManager<K, D>> addFunction(OTStateManager<K, D> stateManager) {
 		return value -> {
 			stateManager.add(value);
 			return stateManager;
@@ -92,58 +94,52 @@ public final class LogToCubeTest {
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 		OTRepositorySql<LogDiff<CubeDiff>> repository = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
 		repository.truncateTables();
-		repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
-
-		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
-		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
-
-		LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop,
-				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
-				SerializerBuilder.create(classLoader).build(TestPubRequest.class));
-
-		LogOTProcessor<TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
-				logManager,
-				new TestAggregatorSplitter(cube), // TestAggregatorSplitter.create(eventloop, cube),
-				"testlog",
-				asList("partitionA"),
-				cubeDiffLogOTState);
 
 		List<TestAdvResult> expected = asList(new TestAdvResult(10, 2), new TestAdvResult(20, 1), new TestAdvResult(30, 1));
 
-		StreamSupplier.of(
-				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
-				new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
-				new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),
-				new TestPubRequest(1002, 2, Arrays.asList()))
-				.streamTo(logManager.consumerStream("partitionA"))
-				.whenComplete(assertComplete())
-				.thenCompose($ -> logCubeStateManager.checkout())
-				.thenCompose($ -> logOTProcessor.processLog())
-				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::<Long>addedChunks).collect(toSet()))
-						.thenApply($ -> logDiff))
-				.thenApply(addFunction(logCubeStateManager))
-				.thenCompose(OTStateManager::commitAndPush)
-				.thenCompose(asserting($ -> {
-					return cube.queryRawStream(
-							asList("adv"),
-							asList("advRequests"),
-							alwaysTrue(),
-							TestAdvResult.class, DefiningClassLoader.create(classLoader))
-							.toList();
-				}))
+		repository.createCommitId()
+				.thenCompose(id -> repository.push(OTCommit.ofRoot(id))
+						.thenCompose($ -> repository.saveSnapshot(id, emptyList())))
+				.thenCompose($ -> {
+					LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
+					OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
+					OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
+
+					LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop,
+							LocalFsLogFileSystem.create(eventloop, executor, logsDir),
+							SerializerBuilder.create(classLoader).build(TestPubRequest.class));
+
+					LogOTProcessor<TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
+							logManager,
+							new TestAggregatorSplitter(cube), // TestAggregatorSplitter.create(eventloop, cube),
+							"testlog",
+							asList("partitionA"),
+							cubeDiffLogOTState);
+
+					return StreamSupplier.of(
+							new TestPubRequest(1000, 1, asList(new TestAdvRequest(10))),
+							new TestPubRequest(1001, 2, asList(new TestAdvRequest(10), new TestAdvRequest(20))),
+							new TestPubRequest(1002, 1, asList(new TestAdvRequest(30))),
+							new TestPubRequest(1002, 2, Arrays.asList()))
+							.streamTo(logManager.consumerStream("partitionA"))
+							.whenComplete(assertComplete())
+							.thenCompose($2 -> logCubeStateManager.checkout())
+							.thenCompose($2 -> logOTProcessor.processLog())
+							.thenCompose(logDiff -> aggregationChunkStorage
+									.finish(logDiff.diffs().flatMap(CubeDiff::<Long>addedChunks).collect(toSet()))
+									.thenApply($2 -> logDiff))
+							.thenApply(addFunction(logCubeStateManager))
+							.thenCompose(OTStateManager::commitAndPush)
+							.thenCompose(asserting($2 -> {
+								return cube.queryRawStream(
+										asList("adv"),
+										asList("advRequests"),
+										alwaysTrue(),
+										TestAdvResult.class, classLoader)
+										.toList();
+							}));
+				})
 				.whenComplete(assertComplete(list -> assertEquals(expected, list)));
-	}
-
-	public static final class TestPubResult {
-		public int pub;
-		public long pubRequests;
-
-		@Override
-		public String toString() {
-			return "TestResult{pub=" + pub + ", pubRequests=" + pubRequests + '}';
-		}
 	}
 
 	public static final class TestAdvResult {

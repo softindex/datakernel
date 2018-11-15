@@ -125,7 +125,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		private final long childLevel;
 		private final A accumulatedDiffs;
 
-		private FindResult(K commit, K child, Set<K> commitParents, long commitLevel, long childLevel, A accumulatedDiffs) {
+		private FindResult(@Nullable K commit, K child, Set<K> commitParents, long commitLevel, long childLevel, A accumulatedDiffs) {
 			this.child = child;
 			this.commit = commit;
 			this.commitParents = commitParents;
@@ -147,32 +147,32 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		public K getCommit() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return commit;
 		}
 
 		public K getChild() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return child;
 		}
 
 		public Long getChildLevel() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return checkNotNull(childLevel);
 		}
 
 		public Set<K> getCommitParents() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return commitParents;
 		}
 
 		public long getCommitLevel() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return checkNotNull(commitLevel);
 		}
 
 		public A getAccumulatedDiffs() {
-			checkState(isFound());
+			checkState(isFound(), "Commit has not been found");
 			return accumulatedDiffs;
 		}
 
@@ -199,9 +199,10 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			final K parent;
 			final K child;
 			final A accumulator;
+			@Nullable
 			Long childLevel;
 
-			private FindEntry(K parent, K child, A accumulator, Long childLevel) {
+			private FindEntry(K parent, K child, A accumulator, @Nullable Long childLevel) {
 				this.parent = parent;
 				this.child = child;
 				this.accumulator = accumulator;
@@ -265,7 +266,6 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	public Promise<K> mergeHeadsAndPush() {
 		return repository.getHeads()
 				.thenCompose(heads -> {
@@ -329,13 +329,12 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public Promise<Set<K>> excludeParents(Set<K> startNodes) {
-		checkArgument(!startNodes.isEmpty());
+		checkArgument(!startNodes.isEmpty(), "Start nodes are empty");
 		if (startNodes.size() == 1) return Promise.of(startNodes);
 		return walkGraph(startNodes, new GraphWalker<K, D, Set<K>>() {
 			long minLevel;
 			Set<K> nodes = new HashSet<>(startNodes);
 
-			@SuppressWarnings("ConstantConditions")
 			@Override
 			public void onStart(List<OTCommit<K, D>> otCommits) {
 				minLevel = otCommits.stream().mapToLong(OTCommit::getLevel).min().getAsLong();
@@ -370,7 +369,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		@Override
 		protected R handleCommit(OTCommit<K, D> commit) {
 			if (heads.size() == 1) {
-				return checkNotNull(tryGetResult());
+				return checkNotNull(tryGetResult(), "No result has been found");
 			}
 
 			K commitId = commit.getId();
@@ -386,7 +385,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	private static final class FindAnyCommonParentWalker<K, D> extends AbstractFindCommonParentWalker<K, D, K> {
-		protected FindAnyCommonParentWalker(Set<K> heads) {
+		private FindAnyCommonParentWalker(Set<K> heads) {
 			super(heads);
 		}
 
@@ -401,10 +400,11 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	private static final class FindAllCommonParentsWalker<K, D> extends AbstractFindCommonParentWalker<K, D, Set<K>> {
-		protected FindAllCommonParentsWalker(Set<K> heads) {
+		private FindAllCommonParentsWalker(Set<K> heads) {
 			super(heads);
 		}
 
+		@Nullable
 		@Override
 		protected Set<K> tryGetResult() {
 			return nodeToHeads.values().stream().allMatch(heads::equals) ?
@@ -445,6 +445,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		public void onStart(List<OTCommit<K, D>> otCommits) {
 		}
 
+		@Nullable
 		@Override
 		protected Map<K, A> handleCommit(OTCommit<K, D> commit) {
 			ReduceEntry<K, A> polledEntry = queueMap.remove(commit.getId());
@@ -473,7 +474,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
-	@SuppressWarnings({"SimplifiableConditionalExpression", "ConstantConditions", "OptionalIsPresent", "unchecked"})
+	@SuppressWarnings("unchecked")
 	public Promise<List<D>> checkout(K commitId) {
 		List<D>[] cachedSnapshot = new List[1];
 		return findParent(singleton(commitId), DiffsReducer.toList(),
@@ -497,7 +498,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	private Promise<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
-		checkArgument(heads.size() >= 2);
+		checkArgument(heads.size() >= 2, "Cannot merge less than 2 heads");
 		return loadGraph(heads)
 				.thenCompose(graph -> {
 					try {
@@ -565,9 +566,9 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	public Promise<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {
 		return walkGraph(heads, new LoadGraphWalker(heads))
-//				.whenException(throwable -> {
+				//				.whenException(e -> {
 //					if (logger.isTraceEnabled()) {
-//						logger.error(graph.toGraphViz() + "\n", throwable);
+				//						logger.error(graph.toGraphViz() + "\n", e);
 //					}
 //				})
 				.whenComplete(toLogger(logger, thisMethod(), heads));

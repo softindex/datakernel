@@ -24,6 +24,7 @@ import io.datakernel.codegen.Property;
 import static io.datakernel.codegen.Expressions.*;
 
 public final class MeasureCount extends Measure {
+	@SuppressWarnings("rawtypes")
 	MeasureCount(FieldType fieldType) {
 		super(fieldType);
 	}

@@ -155,7 +155,6 @@ public class InvertedIndexTest {
 		assertEquals(expectedResult, actualResult);
 	}
 
-	@SuppressWarnings("unchecked")
 	private Set<Long> getAddedChunks(AggregationDiff aggregationDiff) {
 		return aggregationDiff.getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(toSet());
 	}

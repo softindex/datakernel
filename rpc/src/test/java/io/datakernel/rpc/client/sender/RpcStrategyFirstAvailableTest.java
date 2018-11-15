@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ public class RpcStrategyFirstAvailableTest {
 	private static final InetSocketAddress ADDRESS_2 = new InetSocketAddress(HOST, PORT_2);
 	private static final InetSocketAddress ADDRESS_3 = new InetSocketAddress(HOST, PORT_3);
 
+	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void itShouldSendRequestToFirstAvailableSubSender() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
@@ -83,7 +84,7 @@ public class RpcStrategyFirstAvailableTest {
 		RpcStrategy firstAvailableStrategy =
 				firstAvailable(servers(ADDRESS_1, ADDRESS_2));
 
-		assertTrue(firstAvailableStrategy.createSender(pool) != null);
+		assertNotNull(firstAvailableStrategy.createSender(pool));
 	}
 
 	@Test
@@ -92,6 +93,6 @@ public class RpcStrategyFirstAvailableTest {
 		// no connections were added to pool
 		RpcStrategy firstAvailableStrategy = firstAvailable(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 
-		assertFalse(firstAvailableStrategy.createSender(pool) != null);
+		assertNull(firstAvailableStrategy.createSender(pool));
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
@@ -57,7 +58,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	protected final void onError(Throwable t) {
+	protected final void onError(Throwable e) {
 		switchTo(StreamConsumer.idle());
 	}
 
@@ -94,6 +95,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 		private StreamDataAcceptor<T> lastDataAcceptor;
 		private boolean suspended;
+		@Nullable
 		private ArrayList<T> pendingItems;
 		private boolean pendingEndOfStream;
 
@@ -111,7 +113,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 					.post()
 					.whenResult($ -> {
 						if (--pendingConsumers == 0) {
-							StreamConsumerSwitcher.this.acknowledge();
+							acknowledge();
 						}
 					});
 		}
@@ -163,8 +165,8 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public void close(Throwable t) {
-			StreamConsumerSwitcher.this.close(t);
+		public void close(Throwable e) {
+			StreamConsumerSwitcher.this.close(e);
 		}
 
 		@Override
@@ -189,9 +191,9 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 			}
 		}
 
-		public void sendError(Throwable exception) {
+		public void sendError(Throwable e) {
 			lastDataAcceptor = item -> {};
-			endOfStream.trySetException(exception);
+			endOfStream.trySetException(e);
 		}
 
 		public void sendEndOfStream() {

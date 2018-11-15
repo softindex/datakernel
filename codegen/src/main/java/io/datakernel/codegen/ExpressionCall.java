@@ -80,7 +80,7 @@ final class ExpressionCall implements Expression {
 				returnType = getType(returnClass);
 			}
 
-		} catch (NoSuchMethodException e) {
+		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No method %s.%s(%s). %s",
 					owner.type(ctx).getClassName(),
 					methodName,
@@ -140,7 +140,7 @@ final class ExpressionCall implements Expression {
 			invokeVirtualOrInterface(g, ownerJavaType, new org.objectweb.asm.commons.Method(methodName,
 					returnType, argumentTypes.toArray(new Type[]{})));
 
-		} catch (NoSuchMethodException e) {
+		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No method %s.%s(%s). %s",
 					owner.type(ctx).getClassName(),
 					methodName,

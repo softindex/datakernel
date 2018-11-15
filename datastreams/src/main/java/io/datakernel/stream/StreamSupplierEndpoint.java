@@ -1,5 +1,6 @@
 package io.datakernel.stream;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.serial.SerialBuffer;
 
@@ -25,12 +26,11 @@ public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 		buffer.add(item);
 	}
 
-	public Promise<Void> put(T item) {
+	public Promise<Void> put(@Nullable T item) {
 		postProduce();
 		return buffer.put(item);
 	}
 
-	@SuppressWarnings({"unchecked", "ConstantConditions"})
 	@Override
 	protected void produce(AsyncProduceController async) {
 		try {
@@ -49,7 +49,6 @@ public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	protected void onError(Throwable e) {
 		buffer.close(e);

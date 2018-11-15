@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
@@ -47,6 +48,7 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 		return list.getAddresses();
 	}
 
+	@Nullable
 	@Override
 	public RpcSender createSender(RpcClientConnectionPool pool) {
 		List<RpcSender> subSenders = list.listOfSenders(pool);
@@ -64,16 +66,16 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 		private RpcSender[] subSenders;
 
 		public Sender(List<RpcSender> senders) {
-			checkArgument(senders != null && senders.size() > 0);
-			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
+			checkArgument(senders != null && senders.size() > 0, "List of senders should not be null and should contain at least one sender");
+			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.nextSender = 0;
 		}
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 			RpcSender sender = subSenders[nextSender];
 			nextSender = (nextSender + 1) % subSenders.length;
-			sender.sendRequest(request, timeout, callback);
+			sender.sendRequest(request, timeout, cb);
 		}
 
 	}

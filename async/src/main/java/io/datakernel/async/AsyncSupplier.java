@@ -76,7 +76,6 @@ public interface AsyncSupplier<T> {
 	 * @param <V>
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
 	default <V> AsyncSupplier<V> transformAsync(Function<? super T, ? extends Promise<V>> fn) {
 		return () -> get().thenCompose(fn::apply);
 	}

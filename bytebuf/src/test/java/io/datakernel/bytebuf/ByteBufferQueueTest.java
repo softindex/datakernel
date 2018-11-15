@@ -16,10 +16,12 @@
 
 package io.datakernel.bytebuf;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Random;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class ByteBufferQueueTest {
 
@@ -44,7 +46,7 @@ public class ByteBufferQueueTest {
 			pos += bufSize;
 		}
 
-		Assert.assertEquals(test.length, queue.remainingBytes());
+		assertEquals(test.length, queue.remainingBytes());
 
 		left = test.length;
 		pos = 0;
@@ -53,17 +55,17 @@ public class ByteBufferQueueTest {
 			byte[] dest = new byte[100];
 			int drained = queue.drainTo(dest, 10, requested);
 
-			Assert.assertTrue(drained <= requested);
+			assertTrue(drained <= requested);
 
 			for (int i = 0; i < drained; i++) {
-				Assert.assertEquals(test[i + pos], dest[i + 10]);
+				assertEquals(test[i + pos], dest[i + 10]);
 			}
 
 			left -= drained;
 			pos += drained;
 		}
 
-		Assert.assertEquals(0, queue.remainingBytes());
+		assertEquals(0, queue.remainingBytes());
 	}
 
 }

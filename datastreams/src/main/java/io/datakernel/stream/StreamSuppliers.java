@@ -28,7 +28,6 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-@SuppressWarnings("StatementWithEmptyBody")
 public final class StreamSuppliers {
 	private StreamSuppliers() {
 	}
@@ -43,8 +42,8 @@ public final class StreamSuppliers {
 
 		private final Throwable exception;
 
-		ClosingWithErrorImpl(Throwable exception) {
-			this.exception = exception;
+		ClosingWithErrorImpl(Throwable e) {
+			this.exception = e;
 		}
 
 		@Override
@@ -181,7 +180,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
+		protected void onError(Throwable e) {
 		}
 
 		@Override
@@ -216,8 +215,8 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			supplier.close(t);
+		protected void onError(Throwable e) {
+			supplier.close(e);
 		}
 
 		@Override

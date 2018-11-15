@@ -20,14 +20,14 @@ import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.StringFormat;
-import io.datakernel.util.Preconditions;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.util.Preconditions.check;
 
 public class SerializerGenString implements SerializerGen {
 	private final StringFormat format;
@@ -35,7 +35,7 @@ public class SerializerGenString implements SerializerGen {
 	private final int maxLength;
 
 	public SerializerGenString(int maxLength, boolean nullable, StringFormat format) {
-		Preconditions.check(maxLength == -1 || maxLength > 0);
+		check(maxLength == -1 || maxLength > 0, "Max length should be either -1 or greater than 0");
 		this.maxLength = maxLength;
 		this.format = format;
 		this.nullable = nullable;
@@ -76,12 +76,12 @@ public class SerializerGenString implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		List<Expression> list = new ArrayList<>();
 
 		Expression maxLen = value(maxLength);
@@ -121,12 +121,12 @@ public class SerializerGenString implements SerializerGen {
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (format == StringFormat.UTF16) {
 			if (nullable)
 				return call(arg(0), "readUTF16Nullable");

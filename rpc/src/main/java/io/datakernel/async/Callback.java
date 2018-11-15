@@ -7,7 +7,7 @@ import java.util.concurrent.CompletableFuture;
 public interface Callback<T> {
 	void set(@Nullable T result);
 
-	void setException(Throwable t);
+	void setException(Throwable e);
 
 	Callback<Object> IGNORE_CALLBACK = new Callback<Object>() {
 		@Override
@@ -15,7 +15,7 @@ public interface Callback<T> {
 		}
 
 		@Override
-		public void setException(Throwable t) {
+		public void setException(Throwable e) {
 		}
 	};
 
@@ -32,8 +32,8 @@ public interface Callback<T> {
 			}
 
 			@Override
-			public void setException(Throwable t) {
-				future.completeExceptionally(t);
+			public void setException(Throwable e) {
+				future.completeExceptionally(e);
 			}
 		};
 	}
@@ -46,8 +46,8 @@ public interface Callback<T> {
 			}
 
 			@Override
-			public void setException(Throwable t) {
-				throw new AssertionError(t);
+			public void setException(Throwable e) {
+				throw new AssertionError(e);
 			}
 		};
 	}

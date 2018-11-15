@@ -88,8 +88,8 @@ public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstra
 		for (Object target : targets) {
 			try {
 				setter.invoke(target, result);
-			} catch (Exception exception) {
-				logger.error("Can't set attribute " + attrName, exception);
+			} catch (Exception e) {
+				logger.error("Can't set attribute " + attrName, e);
 			}
 		}
 	}

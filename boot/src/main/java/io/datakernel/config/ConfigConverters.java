@@ -16,7 +16,7 @@
 
 package io.datakernel.config;
 
-import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.async.EventloopTaskScheduler.Schedule;
 import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.FatalErrorHandler;
 import io.datakernel.eventloop.InetAddressRange;
@@ -298,10 +298,10 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverter<Class> ofClass() {
-		return new SimpleConfigConverter<Class>() {
+	public static ConfigConverter<Class<?>> ofClass() {
+		return new SimpleConfigConverter<Class<?>>() {
 			@Override
-			public Class fromString(String string) {
+			public Class<?> fromString(String string) {
 				try {
 					return Class.forName(string);
 				} catch (ClassNotFoundException e) {
@@ -310,7 +310,7 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Class value) {
+			public String toString(Class<?> value) {
 				return value.getName();
 			}
 		};
@@ -430,7 +430,7 @@ public final class ConfigConverters {
 	public static <T> ConfigConverter<List<T>> ofList(ConfigConverter<T> elementConverter, CharSequence separators) {
 		return new SimpleConfigConverter<List<T>>() {
 			private final Pattern pattern = compile(separators.chars()
-					.mapToObj(c -> "\\" + ((char) c))
+					.mapToObj(c -> "\\" + (char) c)
 					.collect(joining("", "[", "]")));
 
 			@Override
@@ -555,7 +555,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static final ConfigConverter<List<Class>> OF_CLASSES = ofList(ofClass());
+	public static final ConfigConverter<List<Class<?>>> OF_CLASSES = ofList(ofClass());
 
 	public static ConfigConverter<FatalErrorHandler> ofFatalErrorHandler() {
 		return new ConfigConverter<FatalErrorHandler>() {
@@ -593,26 +593,26 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverter<EventloopTaskScheduler.Schedule> ofEventloopTaskSchedule() {
-		return new ConfigConverter<EventloopTaskScheduler.Schedule>() {
+	public static ConfigConverter<Schedule> ofEventloopTaskSchedule() {
+		return new ConfigConverter<Schedule>() {
 			@Override
-			public EventloopTaskScheduler.Schedule get(Config config) {
+			public Schedule get(Config config) {
 				switch (config.get("type")) {
 					case "immediate":
-						return EventloopTaskScheduler.Schedule.immediate();
+						return Schedule.immediate();
 					case "delay":
-						return EventloopTaskScheduler.Schedule.ofDelay(config.get(ofDuration(), "value"));
+						return Schedule.ofDelay(config.get(ofDuration(), "value"));
 					case "interval":
-						return EventloopTaskScheduler.Schedule.ofInterval(config.get(ofDuration(), "value"));
+						return Schedule.ofInterval(config.get(ofDuration(), "value"));
 					case "period":
-						return EventloopTaskScheduler.Schedule.ofPeriod(config.get(ofDuration(), "value"));
+						return Schedule.ofPeriod(config.get(ofDuration(), "value"));
 					default:
 						throw new IllegalArgumentException("No eventloop task schedule type named " + config.getValue() + " exists!");
 				}
 			}
 
 			@Override
-			public EventloopTaskScheduler.Schedule get(Config config, EventloopTaskScheduler.Schedule defaultValue) {
+			public Schedule get(Config config, Schedule defaultValue) {
 				if (config.isEmpty()) {
 					return defaultValue;
 				}
@@ -687,7 +687,7 @@ public final class ConfigConverters {
 				SimpleThreadFactory result = SimpleThreadFactory.create();
 				String threadGroupName = config.get(ofNullableString(), "threadGroup", Utils.transform(defaultValue.getThreadGroup(), ThreadGroup::getName));
 				if (threadGroupName != null) {
-					result = result.withThreadGroup(new ThreadGroup(threadGroupName));
+					result.withThreadGroup(new ThreadGroup(threadGroupName));
 				}
 				return result
 						.withName(config.get(ofNullableString(), "name", defaultValue.getName()))

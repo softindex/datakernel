@@ -38,6 +38,7 @@ import static java.util.Collections.singletonList;
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
  */
+@SuppressWarnings("unused")
 public abstract class HttpMessage {
 	protected Map<HttpHeader, HttpHeaderValue> headers = new LinkedHashMap<>();
 	protected Map<String, HttpCookie> cookies;
@@ -73,7 +74,7 @@ public abstract class HttpMessage {
 	public void setHeader(HttpHeader header, HttpHeaderValue value) {
 		assert !isRecycled();
 		HttpHeaderValue prev = headers.put(header, value);
-		checkArgument(prev == null);
+		checkArgument(prev == null, "Header '%s' has already been set", header);
 	}
 
 	@NotNull
@@ -194,7 +195,7 @@ public abstract class HttpMessage {
 	}
 
 	public Promise<ByteBuf> getBodyPromise(int maxBodySize) {
-		checkState(body != null ^ bodySupplier != null);
+		checkState(body != null ^ bodySupplier != null, "Either body or body supplier should be present, but not both");
 		if (body != null) {
 			ByteBuf body = this.body;
 			this.body = null;
@@ -228,7 +229,7 @@ public abstract class HttpMessage {
 	}
 
 	public SerialSupplier<ByteBuf> getBodyStream() {
-		checkState(body != null || bodySupplier != null);
+		checkState(body != null || bodySupplier != null, "Either body or body supplier should be present");
 		if (body != null) {
 			ByteBuf body = this.body;
 			this.body = null;
@@ -285,7 +286,7 @@ public abstract class HttpMessage {
 	 */
 	protected void writeHeaders(ByteBuf buf) {
 		assert !isRecycled();
-		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : this.headers.entrySet()) {
+		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : headers.entrySet()) {
 			HttpHeader header = entry.getKey();
 
 			buf.put(CR);
@@ -305,7 +306,7 @@ public abstract class HttpMessage {
 	protected int estimateSize(int firstLineSize) {
 		assert !isRecycled();
 		int size = firstLineSize;
-		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : this.headers.entrySet()) {
+		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : headers.entrySet()) {
 			HttpHeader header = entry.getKey();
 			size += 2 + header.size() + 2 + entry.getValue().estimateSize(); // CR,LF,header,": ",value
 		}

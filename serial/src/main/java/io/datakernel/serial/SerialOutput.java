@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+@FunctionalInterface
 public interface SerialOutput<T> {
 	void set(SerialConsumer<T> output);
 
@@ -36,23 +37,23 @@ public interface SerialOutput<T> {
 	}
 
 	default <R> SerialOutput<R> apply(SerialConsumerFunction<R, SerialConsumer<T>> fn) {
-		return output -> SerialOutput.this.set(output.apply(fn));
+		return output -> set(output.apply(fn));
 	}
 
 	default <R> SerialOutput<R> transform(Function<? super T, ? extends R> fn) {
-		return output -> SerialOutput.this.set(output.transform(fn));
+		return output -> set(output.transform(fn));
 	}
 
 	default <R> SerialOutput<R> transformAsync(Function<? super T, ? extends Promise<R>> fn) {
-		return output -> SerialOutput.this.set(output.transformAsync(fn));
+		return output -> set(output.transformAsync(fn));
 	}
 
 	default SerialOutput<T> filter(Predicate<? super T> predicate) {
-		return output -> SerialOutput.this.set(output.filter(predicate));
+		return output -> set(output.filter(predicate));
 	}
 
 	default SerialOutput<T> peek(Consumer<? super T> peek) {
-		return output -> SerialOutput.this.set(output.peek(peek));
+		return output -> set(output.peek(peek));
 	}
 
 	default MaterializedPromise<Void> bindTo(SerialInput<T> to) {
@@ -61,7 +62,7 @@ public interface SerialOutput<T> {
 
 	default MaterializedPromise<Void> bindTo(SerialInput<T> to, SerialQueue<T> queue) {
 		MaterializedPromise<Void> extraAcknowledgement = to.set(queue.getSupplier());
-		this.set(queue.getConsumer(extraAcknowledgement));
+		set(queue.getConsumer(extraAcknowledgement));
 		return extraAcknowledgement;
 	}
 

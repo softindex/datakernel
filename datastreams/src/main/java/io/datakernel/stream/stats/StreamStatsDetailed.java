@@ -2,7 +2,7 @@ package io.datakernel.stream.stats;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.JmxStatsWithReset;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.ReflectionUtils;
@@ -17,14 +17,13 @@ public final class StreamStatsDetailed<T> extends StreamStatsBasic<T> implements
 	private long totalSize;
 
 	@SuppressWarnings("unchecked")
-	StreamStatsDetailed(StreamStatsSizeCounter<?> sizeCounter) {
+	StreamStatsDetailed(@Nullable StreamStatsSizeCounter<?> sizeCounter) {
 		this.sizeCounter = (StreamStatsSizeCounter<Object>) sizeCounter;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public StreamStatsDetailed withBasicSmoothingWindow(Duration smoothingWindow) {
-		return (StreamStatsDetailed) super.withBasicSmoothingWindow(smoothingWindow);
+	public StreamStatsDetailed<T> withBasicSmoothingWindow(Duration smoothingWindow) {
+		return (StreamStatsDetailed<T>) super.withBasicSmoothingWindow(smoothingWindow);
 	}
 
 	@Override
@@ -42,22 +41,22 @@ public final class StreamStatsDetailed<T> extends StreamStatsBasic<T> implements
 				};
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public long getCount() {
 		return count;
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	@Nullable
 	public Long getTotalSize() {
 		return sizeCounter != null ? totalSize : null;
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	@Nullable
 	public Long getTotalSizeAvg() {
-		return sizeCounter != null && super.getStarted().getTotalCount() != 0 ?
-				totalSize / super.getStarted().getTotalCount() :
+		return sizeCounter != null && getStarted().getTotalCount() != 0 ?
+				totalSize / getStarted().getTotalCount() :
 				null;
 	}
 

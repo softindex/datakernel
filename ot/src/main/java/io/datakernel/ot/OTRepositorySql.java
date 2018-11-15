@@ -42,7 +42,7 @@ import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.stream.Collectors.*;
 
 public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
@@ -64,6 +64,7 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 
 	private String tableRevision = DEFAULT_REVISION_TABLE;
 	private String tableDiffs = DEFAULT_DIFFS_TABLE;
+	@Nullable
 	private String tableBackup = DEFAULT_BACKUP_TABLE;
 
 	private String createdBy = null;
@@ -162,7 +163,6 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 		return GsonAdapters.toJson(diffsAdapter, diffs);
 	}
 
-	@SuppressWarnings("unchecked")
 	private List<D> fromJson(String json) throws ParseException {
 		return GsonAdapters.fromJson(diffsAdapter, json);
 	}
@@ -376,7 +376,7 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 
 	@Override
 	public Promise<Void> backup(OTCommit<Long, D> commit, List<D> snapshot) {
-		checkState(this.tableBackup != null);
+		checkNotNull(tableBackup, "Cannot backup when backup table is null");
 		return Promise.ofCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {

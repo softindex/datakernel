@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -305,6 +305,7 @@ public class EventStatsTest {
 
 	private void assertNumberOfDigitsAfterDot(EventStats stats, int number) {
 		String statsString = stats.toString();
+		assert statsString != null;
 		String formattedRate = statsString.substring(statsString.indexOf('@') + 2, statsString.indexOf("/"));
 		String[] splitRate = formattedRate.split("\\.");
 		if (splitRate.length == 1) {

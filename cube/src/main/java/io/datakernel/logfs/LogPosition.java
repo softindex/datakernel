@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,14 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.annotation.Nullable;
+
 public final class LogPosition implements Comparable<LogPosition> {
+	@Nullable
 	private final LogFile logFile;
 	private final long position;
 
-	private LogPosition(LogFile logFile, long position) {
+	private LogPosition(@Nullable LogFile logFile, long position) {
 		this.logFile = logFile;
 		this.position = position;
 	}
@@ -42,6 +45,7 @@ public final class LogPosition implements Comparable<LogPosition> {
 		return position == 0L;
 	}
 
+	@Nullable
 	public LogFile getLogFile() {
 		return logFile;
 	}
@@ -58,12 +62,12 @@ public final class LogPosition implements Comparable<LogPosition> {
 		LogPosition that = (LogPosition) o;
 
 		if (position != that.position) return false;
-		return logFile.equals(that.logFile);
+		return logFile != null ? logFile.equals(that.logFile) : that.logFile == null;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = logFile.hashCode();
+		int result = logFile != null ? logFile.hashCode() : 0;
 		result = 31 * result + (int) (position ^ (position >>> 32));
 		return result;
 	}
@@ -75,7 +79,10 @@ public final class LogPosition implements Comparable<LogPosition> {
 
 	@Override
 	public int compareTo(LogPosition o) {
-		int result = this.logFile.compareTo(o.logFile);
+		int result = 0;
+		if (this.logFile != null && o.logFile != null) {
+			result = this.logFile.compareTo(o.logFile);
+		}
 		if (result != 0)
 			return result;
 		return Long.compare(this.position, o.position);

@@ -29,12 +29,12 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.Sharder;
 import io.datakernel.stream.processor.Sharders.HashSharder;
-import io.datakernel.stream.processor.StreamJoin;
-import io.datakernel.stream.processor.StreamMap;
-import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.stream.processor.StreamJoin.Joiner;
+import io.datakernel.stream.processor.StreamMap.Mapper;
 import io.datakernel.stream.processor.StreamReducers.MergeDistinctReducer;
 import io.datakernel.stream.processor.StreamReducers.MergeSortReducer;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.stream.processor.StreamReducers.ReducerToResult;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.AccumulatorToAccumulator;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.AccumulatorToOutput;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.InputToAccumulator;
@@ -59,8 +59,9 @@ import static io.datakernel.util.Preconditions.checkArgument;
  * Provides specific complex adapters for datagraph objects.
  * Maintains the cache of BufferSerializer's.
  */
+@SuppressWarnings("rawtypes")
 public final class DatagraphSerialization {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private static final Logger logger = LoggerFactory.getLogger(DatagraphSerialization.class);
 
 	/**
 	 * Store StreamIds as longs
@@ -73,7 +74,7 @@ public final class DatagraphSerialization {
 	public static final TypeAdapter<InetSocketAddress> ADDRESS_JSON = transform(STRING_JSON,
 			str -> {
 				String[] split = str.split(":");
-				checkArgument(split.length == 2);
+				checkArgument(split.length == 2, "Address should be splitted with a single ':'");
 				try {
 					return new InetSocketAddress(InetAddress.getByName(split[0]), Integer.parseInt(split[1]));
 				} catch (UnknownHostException e) {
@@ -84,11 +85,9 @@ public final class DatagraphSerialization {
 					addr.getAddress().getHostAddress() + ':' + addr.getPort())
 			.nullSafe();
 
-	@SuppressWarnings("unchecked")
 	public static final TypeAdapter<Predicate<Object>> PREDICATE_JSON = stateless();
 	@SuppressWarnings("unchecked")
 	public static final TypeAdapter<Function<Object, Object>> FUNCTION_JSON = stateless(Function.identity());
-	@SuppressWarnings("unchecked")
 	public static final TypeAdapter<Comparator<Object>> COMPARATOR_JSON = stateless();
 
 	public static final TypeAdapterObjectSubtype<Sharder> SHARDER_JSON = TypeAdapterObjectSubtype.<Sharder>create()
@@ -96,10 +95,10 @@ public final class DatagraphSerialization {
 					.with("partitions", INTEGER_JSON, HashSharder::getPartitions, HashSharder::setPartitions))
 			.allOtherAreStateless();
 
-	public static final TypeAdapter<StreamMap.Mapper<Object, Object>> MAPPER_JSON = stateless();
-	public static final TypeAdapter<StreamJoin.Joiner<Object, Object, Object, Object>> JOINER_JSON = stateless();
+	public static final TypeAdapter<Mapper<Object, Object>> MAPPER_JSON = stateless();
+	public static final TypeAdapter<Joiner<Object, Object, Object, Object>> JOINER_JSON = stateless();
 
-	public static final TypeAdapter<StreamReducers.ReducerToResult> REDUCER_TO_RESULT_JSON = stateless();
+	public static final TypeAdapter<ReducerToResult> REDUCER_TO_RESULT_JSON = stateless();
 
 	public static final TypeAdapterObjectSubtype<Reducer> REDUCER_JSON = TypeAdapterObjectSubtype.<Reducer>create()
 			.withSubtype(InputToAccumulator.class, "InputToAccumulator", TypeAdapterObject.create(InputToAccumulator::new)

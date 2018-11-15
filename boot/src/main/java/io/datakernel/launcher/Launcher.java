@@ -74,9 +74,9 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @see ConfigModule
  */
 public abstract class Launcher implements ConcurrentJmxMBean {
-	protected final Logger logger = getLogger(this.getClass());
+	protected final Logger logger = getLogger(getClass());
 
-	protected String[] args = new String[]{};
+	protected String[] args = {};
 
 	@Inject(optional = true)
 	@Nullable
@@ -133,14 +133,14 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				instantOfRun = Instant.now();
 				run();
 			} catch (Throwable e) {
-				this.applicationError = e;
+				applicationError = e;
 				throw e;
 			} finally {
 				instantOfStop = Instant.now();
 				doStop();
 			}
 		} catch (Exception e) {
-			if (this.applicationError == null) this.applicationError = e;
+			if (applicationError == null) applicationError = e;
 			logger.error("Application failure", e);
 			throw e;
 		} finally {

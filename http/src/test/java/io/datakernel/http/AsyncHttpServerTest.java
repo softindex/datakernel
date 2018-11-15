@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -84,7 +83,7 @@ public final class AsyncHttpServerTest {
 	public static void readAndAssert(InputStream is, String expected) {
 		byte[] bytes = new byte[expected.length()];
 		readFully(is, bytes);
-		Assert.assertEquals(expected, decodeAscii(bytes));
+		assertEquals(expected, decodeAscii(bytes));
 	}
 
 	@Test

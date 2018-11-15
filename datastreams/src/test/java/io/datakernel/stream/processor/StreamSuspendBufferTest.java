@@ -7,8 +7,6 @@ import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.StreamSupplierFunction;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -21,8 +19,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 public class StreamSuspendBufferTest {
-	private static final Logger logger = LoggerFactory.getLogger(StreamSuspendBufferTest.class);
-
 	private void testImmediateSuspend(StreamSupplierFunction<String, StreamSupplier<String>> suspendingModifier) {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 

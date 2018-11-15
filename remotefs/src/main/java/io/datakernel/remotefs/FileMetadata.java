@@ -78,12 +78,12 @@ public class FileMetadata {
 		if (second == null) {
 			return first;
 		}
-		if (first.getSize() > second.getSize()) {
+		if (first.size > second.size) {
 			return first;
 		}
-		if (second.getSize() > first.getSize()) {
+		if (second.size > first.size) {
 			return second;
 		}
-		return second.getTimestamp() > first.getTimestamp() ? second : first;
+		return second.timestamp > first.timestamp ? second : first;
 	}
 }

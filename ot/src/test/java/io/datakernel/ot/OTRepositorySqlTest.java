@@ -1,6 +1,7 @@
 package io.datakernel.ot;
 
 import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.utils.*;
 import org.junit.Before;
@@ -34,7 +35,7 @@ public class OTRepositorySqlTest {
 	private OTSystem<TestOp> otSystem;
 
 	static {
-		ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+		Logger rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 		rootLogger.setLevel(Level.toLevel("TRACE"));
 	}
 
@@ -62,14 +63,14 @@ public class OTRepositorySqlTest {
 		{
 			TestAdd testAdd = new TestAdd(1);
 			String json = Utils.OP_ADAPTER.toJson(testAdd);
-			TestAdd testAdd2 = ((TestAdd) Utils.OP_ADAPTER.fromJson(json));
+			TestAdd testAdd2 = (TestAdd) Utils.OP_ADAPTER.fromJson(json);
 			assertEquals(testAdd.getDelta(), testAdd2.getDelta());
 		}
 
 		{
 			TestSet testSet = new TestSet(0, 4);
 			String json = Utils.OP_ADAPTER.toJson(testSet);
-			TestSet testSet2 = ((TestSet) Utils.OP_ADAPTER.fromJson(json));
+			TestSet testSet2 = (TestSet) Utils.OP_ADAPTER.fromJson(json);
 			assertEquals(testSet.getPrev(), testSet2.getPrev());
 			assertEquals(testSet.getNext(), testSet2.getNext());
 		}

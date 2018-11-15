@@ -20,7 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class SteppingCurrentTimeProvider implements CurrentTimeProvider {
-	private final static Logger logger = LoggerFactory.getLogger(SteppingCurrentTimeProvider.class);
+	private static final Logger logger = LoggerFactory.getLogger(SteppingCurrentTimeProvider.class);
 
 	private long timeMillis;
 	private long step;

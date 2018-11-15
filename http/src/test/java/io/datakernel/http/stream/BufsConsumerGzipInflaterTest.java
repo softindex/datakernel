@@ -101,11 +101,11 @@ public final class BufsConsumerGzipInflaterTest {
 
 	@Test
 	public void shouldCorrectlyProcessHeader() {
-		byte flag = (byte) 0b00011111;
+		byte flag = 0b00011111;
 		short fextra = 5;
 		short fextraReversed = Short.reverseBytes(fextra);
 		byte feXtra1 = (byte) (fextraReversed >> 8);
-		byte feXtra2 = (byte) (fextraReversed);
+		byte feXtra2 = (byte) fextraReversed;
 
 		byte[] header = {(byte) 0x1f, (byte) 0x8b, Deflater.DEFLATED, flag, 0, 0, 0, 0, 0, 0,
 				// FEXTRA PART
@@ -215,14 +215,14 @@ public final class BufsConsumerGzipInflaterTest {
 		doTest(null);
 	}
 
-	private void doTest(@Nullable Exception exception) {
+	private void doTest(@Nullable Exception expectedException) {
 		gunzip.getInput().set(SerialSupplier.ofIterable(list));
 		gunzip.getProcessResult()
 				.whenComplete(($, e) -> {
-					if (exception == null) {
+					if (expectedException == null) {
 						assertNull(e);
 					} else {
-						assertEquals(exception, e);
+						assertEquals(expectedException, e);
 					}
 				});
 	}

@@ -16,8 +16,10 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.util.*;
 import java.util.function.Function;
@@ -43,8 +45,11 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 
 	private int bufferSize = DEFAULT_BUFFER_SIZE;
 
+	@Nullable
 	private Input<?> lastInput;
+	@Nullable
 	private K key = null;
+	@Nullable
 	private A accumulator;
 
 	private final PriorityQueue<Input> priorityQueue;
@@ -72,7 +77,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		return this;
 	}
 
-	protected <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
+	protected <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, Reducer<K, I, O, A> reducer) {
 		Input<I> input = new Input<I>(inputs.size(), priorityQueue, keyFunction, reducer, bufferSize);
 		inputs.add(input);
 		streamsAwaiting++;
@@ -99,10 +104,10 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		private final int bufferSize;
 
 		private final Function<I, K> keyFunction;
-		private final StreamReducers.Reducer<K, I, O, A> reducer;
+		private final Reducer<K, I, O, A> reducer;
 
 		private Input(int index,
-				PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer, int bufferSize) {
+				PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, Reducer<K, I, O, A> reducer, int bufferSize) {
 			this.index = index;
 			this.priorityQueue = priorityQueue;
 			this.keyFunction = keyFunction;
@@ -128,7 +133,6 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		 */
 		@Override
 		public void accept(I item) {
-			//noinspection AssertWithSideEffects
 			if (headItem == null) {
 				headItem = item;
 				headKey = keyFunction.apply(headItem);
@@ -150,19 +154,20 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 				streamsAwaiting--;
 			}
 			produce();
+			assert output.getConsumer() != null;
 			return output.getConsumer().getAcknowledgement();
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			output.close(t);
+		protected void onError(Throwable e) {
+			output.close(e);
 		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<O> {
 		@Override
-		protected void onError(Throwable t) {
-			inputs.forEach(input -> input.close(t));
+		protected void onError(Throwable e) {
+			inputs.forEach(input -> input.close(e));
 		}
 
 		@Override
@@ -179,6 +184,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 			Input<Object> input = priorityQueue.poll();
 			if (input == null)
 				break;
+			//noinspection PointlessNullCheck intellij doesn't know
 			if (key != null && input.headKey.equals(key)) {
 				accumulator = input.reducer.onNextItem(dataAcceptor, key, input.headItem, accumulator);
 			} else {

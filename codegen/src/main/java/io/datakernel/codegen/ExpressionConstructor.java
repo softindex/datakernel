@@ -48,10 +48,10 @@ final class ExpressionConstructor implements Expression {
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Class<?>[] fieldTypes = new Class<?>[this.fields.size()];
-		Expression[] fieldVars = new Expression[this.fields.size()];
-		for (int i = 0; i < this.fields.size(); i++) {
-			Expression field = this.fields.get(i);
+		Class<?>[] fieldTypes = new Class<?>[fields.size()];
+		Expression[] fieldVars = new Expression[fields.size()];
+		for (int i = 0; i < fields.size(); i++) {
+			Expression field = fields.get(i);
 			Type fieldType = field.type(ctx);
 			fieldTypes[i] = getJavaType(ctx.getClassLoader(), fieldType);
 			fieldVars[i] = field;
@@ -65,7 +65,7 @@ final class ExpressionConstructor implements Expression {
 			}
 			g.invokeConstructor(getType(type), getMethod(constructor));
 			return getType(type);
-		} catch (NoSuchMethodException e) {
+		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No constructor %s.<init>(%s). %s",
 					type.getName(),
 					(fieldTypes.length != 0 ? argsToString(fieldTypes) : ""),

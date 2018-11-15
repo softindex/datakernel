@@ -44,7 +44,7 @@ public final class BufferReader extends Reader {
 	// endregion
 
 	@Override
-	public void close() throws IOException {
+	public void close() {
 	}
 
 	public void set(byte[] array, int position, int len) {

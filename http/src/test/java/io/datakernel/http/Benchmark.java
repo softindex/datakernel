@@ -40,39 +40,39 @@ abstract public class Benchmark implements Runnable {
 	@Override
 	public void run() {
 		try {
-			this.out.println("Benchmark: " + this.name);
+			out.println("Benchmark: " + name);
 			setUp();
-			if (this.warmUpRounds > 0) {
-				this.out.println("warming up...");
+			if (warmUpRounds > 0) {
+				out.println("warming up...");
 			}
-			for (int i = 0; i < this.warmUpRounds; i++) {
+			for (int i = 0; i < warmUpRounds; i++) {
 				beforeRound();
 				round();
 				afterRound();
 			}
 			long time = 0;
-			this.bestTime = -1;
-			this.worstTime = -1;
-			for (int i = 0; i < this.benchmarkRounds; i++) {
+			bestTime = -1;
+			worstTime = -1;
+			for (int i = 0; i < benchmarkRounds; i++) {
 				beforeRound();
 				long roundTime = System.currentTimeMillis();
 				round();
 				roundTime = System.currentTimeMillis() - roundTime;
 				time += roundTime;
 				afterRound();
-				if (this.bestTime == -1 || roundTime < this.bestTime) {
-					this.bestTime = roundTime;
+				if (bestTime == -1 || roundTime < bestTime) {
+					bestTime = roundTime;
 				}
-				if (this.worstTime == -1 || roundTime > this.worstTime) {
-					this.worstTime = roundTime;
+				if (worstTime == -1 || roundTime > worstTime) {
+					worstTime = roundTime;
 				}
-				this.out.println("round:" + i + ", time:" + roundTime + ", ops/sec:" + (int) (1000.0 * this.operations / roundTime));
+				out.println("round:" + i + ", time:" + roundTime + ", ops/sec:" + (int) (1000.0 * operations / roundTime));
 			}
-			this.avgTime = time / this.benchmarkRounds;
-			this.out.println("round time (best/avg/worst): " + getBestTime() + "/" + getAvgTime() + "/" + getWorstTime() + ", ops/sec (best/avg/worst): " + getBestOps() + "/" + getAvgOps() + "/" + getWorstOps());
+			avgTime = time / benchmarkRounds;
+			out.println("round time (best/avg/worst): " + bestTime + "/" + avgTime + "/" + worstTime + ", ops/sec (best/avg/worst): " + getBestOps() + "/" + getAvgOps() + "/" + getWorstOps());
 			tearDown();
 		} catch (Exception e) {
-			e.printStackTrace(this.out);
+			e.printStackTrace(out);
 		}
 	}
 
@@ -91,31 +91,31 @@ abstract public class Benchmark implements Runnable {
 	}
 
 	public int getOperations() {
-		return this.operations;
+		return operations;
 	}
 
 	public long getAvgTime() {
-		return this.avgTime;
+		return avgTime;
 	}
 
 	public long getBestTime() {
-		return this.bestTime;
+		return bestTime;
 	}
 
 	public long getWorstTime() {
-		return this.worstTime;
+		return worstTime;
 	}
 
 	public int getAvgOps() {
-		return (int) (1000.0 * this.operations / getAvgTime());
+		return (int) (1000.0 * operations / avgTime);
 	}
 
 	public int getBestOps() {
-		return (int) (1000.0 * this.operations / getBestTime());
+		return (int) (1000.0 * operations / bestTime);
 	}
 
 	public int getWorstOps() {
-		return (int) (1000.0 * this.operations / getWorstTime());
+		return (int) (1000.0 * operations / worstTime);
 	}
 
 	public void setOut(PrintStream out) {

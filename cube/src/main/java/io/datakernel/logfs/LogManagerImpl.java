@@ -19,7 +19,6 @@ package io.datakernel.logfs;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -47,10 +46,11 @@ import java.util.stream.Collectors;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
+	private static final Logger logger = LoggerFactory.getLogger(LogManagerImpl.class);
+
 	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH").withZone(ZoneOffset.UTC);
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 
-	private final Logger logger = LoggerFactory.getLogger(LogManagerImpl.class);
 	private final Eventloop eventloop;
 	private final LogFileSystem fileSystem;
 	private final BufferSerializer<T> serializer;
@@ -167,12 +167,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 										sw.reset().start();
 										return fileStream
 												.apply(SerialLZ4Decompressor.create()
-														.withInspector(new SerialLZ4Decompressor.Inspector() {
-															@Override
-															public void onBlock(SerialLZ4Decompressor self, SerialLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
-																inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
-															}
-														}))
+														.withInspector((self, header, inputBuf, outputBuf) -> inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen))
 												.apply(supplier ->
 														supplier.withEndOfStream(eos ->
 																eos.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
@@ -185,13 +180,13 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 									}));
 						}
 
-						private void log(Throwable throwable) {
-							if (throwable == null && logger.isTraceEnabled()) {
+						private void log(Throwable e) {
+							if (e == null && logger.isTraceEnabled()) {
 								logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
 										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
-							} else if (throwable != null && logger.isErrorEnabled()) {
+							} else if (e != null && logger.isErrorEnabled()) {
 								logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
-										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), throwable);
+										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), e);
 							}
 						}
 					};
@@ -211,10 +206,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 		if (startPosition.getLogFile() != null && logFile.compareTo(startPosition.getLogFile()) < 0)
 			return false;
 
-		if (endFile != null && logFile.compareTo(endFile) > 0)
-			return false;
-
-		return true;
+		return endFile == null || logFile.compareTo(endFile) <= 0;
 	}
 
 	public DateTimeFormatter getDateTimeFormatter() {

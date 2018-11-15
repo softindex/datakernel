@@ -40,7 +40,7 @@ public abstract class AbstractCancellable implements Cancellable {
 	@Override
 	public final void close(Throwable e) {
 		if (isClosed()) return;
-		this.exception = e;
+		exception = e;
 		onClosed(e);
 		if (cancellable != null) {
 			cancellable.close(e);

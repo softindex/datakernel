@@ -23,7 +23,7 @@ import io.datakernel.codegen.Property;
 import static io.datakernel.codegen.Expressions.*;
 
 public final class MeasureMin extends Measure {
-
+	@SuppressWarnings("rawtypes")
 	MeasureMin(FieldType fieldType) {
 		super(fieldType);
 	}

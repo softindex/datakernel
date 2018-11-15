@@ -21,7 +21,6 @@ import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.NodeUpload;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamSupplier;
 
 import java.util.ArrayList;
@@ -31,13 +30,11 @@ public final class Collector<T> {
 	private final Dataset<T> input;
 	private final Class<T> type;
 	private final DatagraphClient client;
-	private final Eventloop eventloop;
 
-	public Collector(Dataset<T> input, Class<T> type, DatagraphClient client, Eventloop eventloop) {
+	public Collector(Dataset<T> input, Class<T> type, DatagraphClient client) {
 		this.input = input;
 		this.type = type;
 		this.client = client;
-		this.eventloop = eventloop;
 	}
 
 	public StreamSupplier<T> compile(DataGraph dataGraph) {

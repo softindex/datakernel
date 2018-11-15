@@ -25,7 +25,7 @@ public final class DatagraphCommandDownload extends DatagraphCommand {
 	}
 
 	public DatagraphCommandDownload(StreamId streamId) {
-		this.setStreamId(streamId);
+		setStreamId(streamId);
 	}
 
 	public StreamId getStreamId() {

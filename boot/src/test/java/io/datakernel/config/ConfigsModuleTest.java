@@ -16,13 +16,12 @@
 
 package io.datakernel.config;
 
-import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.Properties;
 
 import static io.datakernel.config.ConfigConverters.*;
+import static org.junit.Assert.assertEquals;
 
 public class ConfigsModuleTest {
 	private static class TestClass {
@@ -50,7 +49,7 @@ public class ConfigsModuleTest {
 	}
 
 	@Test
-	public void testConfigs() throws IOException {
+	public void testConfigs() {
 		Properties properties1 = new Properties();
 		properties1.put("port", "1234");
 		properties1.put("msg", "Test phrase");
@@ -84,8 +83,8 @@ public class ConfigsModuleTest {
 				.printEffectiveConfig()
 				.provideConfig();
 
-		Assert.assertEquals(1234, (int) config.get(ofInteger(), "port"));
-		Assert.assertEquals("Test phrase", config.get("msg"));
-		Assert.assertEquals(new TestClass(2, 3.5, true), config.get(configConverter, "innerClass"));
+		assertEquals(1234, (int) config.get(ofInteger(), "port"));
+		assertEquals("Test phrase", config.get("msg"));
+		assertEquals(new TestClass(2, 3.5, true), config.get(configConverter, "innerClass"));
 	}
 }

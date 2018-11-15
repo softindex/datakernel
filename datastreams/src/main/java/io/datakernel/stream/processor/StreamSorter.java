@@ -187,7 +187,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
+		protected void onError(Throwable e) {
 			// do nothing
 		}
 	}

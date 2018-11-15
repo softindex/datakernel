@@ -17,6 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncUdpSocket.EventHandler;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
@@ -33,13 +34,13 @@ import static org.junit.Assert.assertArrayEquals;
 public final class UdpSocketHandlerTest {
 	private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("localhost", 45555);
 
-	private final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
+	private final byte[] bytesToSend = {-127, 100, 0, 5, 11, 13, 17, 99};
 
 	@Test
 	public void testEchoUdpServer() throws IOException {
 		DatagramChannel serverDatagramChannel = createDatagramChannel(DatagramSocketSettings.create(), SERVER_ADDRESS, null);
 		AsyncUdpSocketImpl serverSocket = AsyncUdpSocketImpl.create(Eventloop.getCurrentEventloop(), serverDatagramChannel);
-		serverSocket.setEventHandler(new AsyncUdpSocket.EventHandler() {
+		serverSocket.setEventHandler(new EventHandler() {
 			@Override
 			public void onRegistered() {
 				serverSocket.receive();
@@ -64,7 +65,7 @@ public final class UdpSocketHandlerTest {
 
 		DatagramChannel clientDatagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
 		AsyncUdpSocketImpl clientSocket = AsyncUdpSocketImpl.create(Eventloop.getCurrentEventloop(), clientDatagramChannel);
-		clientSocket.setEventHandler(new AsyncUdpSocket.EventHandler() {
+		clientSocket.setEventHandler(new EventHandler() {
 			@Override
 			public void onRegistered() {
 				clientSocket.send(UdpPacket.of(ByteBuf.wrapForReading(bytesToSend), SERVER_ADDRESS));

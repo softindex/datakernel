@@ -95,16 +95,16 @@ public class LogUtils {
 	                                                    @Nullable Level errorLevel, Function<Throwable, String> errorMsg) {
 		if (!logger.isErrorEnabled()) return ($, e) -> {};
 		callLevel.log(logger, callMsg);
-		return (result, throwable) -> {
-			if (throwable == null) {
+		return (result, e) -> {
+			if (e == null) {
 				resultLevel.log(logger, () -> resultMsg.apply(result));
 			} else {
 				if (errorLevel == null) {
 					if (logger.isErrorEnabled()) {
-						logger.error(errorMsg.apply(throwable), throwable);
+						logger.error(errorMsg.apply(e), e);
 					}
 				} else {
-					errorLevel.log(logger, () -> errorMsg.apply(throwable));
+					errorLevel.log(logger, () -> errorMsg.apply(e));
 				}
 			}
 		};
@@ -114,20 +114,20 @@ public class LogUtils {
 	                                                    Level callLevel, Supplier<String> callMsg,
 	                                                    Level resultLevel, Function<T, String> resultMsg) {
 		return toLogger(logger,
-			callLevel, callMsg,
-			resultLevel, resultMsg,
-			null, throwable -> callMsg.get());
+				callLevel, callMsg,
+				resultLevel, resultMsg,
+				null, e -> callMsg.get());
 	}
 
 	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,
 	                                                    Level callLevel, Level resultLevel, Level errorLevel,
 	                                                    String methodName, Object... parameters) {
 		return toLogger(logger,
-			callLevel, () -> formatCall(methodName, parameters),
-			resultLevel, result -> formatResult(methodName, result, parameters),
-			errorLevel, errorLevel == null ?
-				throwable -> formatCall(methodName, parameters) :
-				throwable -> formatResult(methodName, throwable, parameters));
+				callLevel, () -> formatCall(methodName, parameters),
+				resultLevel, result -> formatResult(methodName, result, parameters),
+				errorLevel, errorLevel == null ?
+						e -> formatCall(methodName, parameters) :
+						e -> formatResult(methodName, e, parameters));
 	}
 
 	public static <T> BiConsumer<T, Throwable> toLogger(Logger logger,

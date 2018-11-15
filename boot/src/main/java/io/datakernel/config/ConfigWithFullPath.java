@@ -33,8 +33,8 @@ public class ConfigWithFullPath implements Config {
 	public String getValue() throws NoSuchElementException {
 		try {
 			return config.getValue();
-		} catch (NoSuchElementException e) {
-			throw new NoSuchElementException(this.path);
+		} catch (NoSuchElementException ignored) {
+			throw new NoSuchElementException(path);
 		}
 	}
 
@@ -45,8 +45,8 @@ public class ConfigWithFullPath implements Config {
 
 	@Override
 	public Config provideNoKeyChild(String key) {
-		checkArgument(!children.keySet().contains(key));
-		return new ConfigWithFullPath(concatPath(this.path, key), config.provideNoKeyChild(key));
+		checkArgument(!children.keySet().contains(key), "Children already contain key '%s'", key);
+		return new ConfigWithFullPath(concatPath(path, key), config.provideNoKeyChild(key));
 	}
 
 }

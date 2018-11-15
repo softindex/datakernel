@@ -19,6 +19,8 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.eventloop.AsyncTcpSocketImpl.Inspector;
+import io.datakernel.eventloop.AsyncTcpSocketImpl.JmxInspector;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -57,7 +59,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @SuppressWarnings("WeakerAccess, unused")
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializable<S>, EventloopJmxMBeanEx {
-	protected Logger logger = getLogger(this.getClass());
+	protected Logger logger = getLogger(getClass());
 
 	protected final Eventloop eventloop;
 
@@ -87,9 +89,9 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	// jmx
 	private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
-	AbstractServer acceptServer = this;
-	private final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
-	private final AsyncTcpSocketImpl.JmxInspector socketStatsSsl = new AsyncTcpSocketImpl.JmxInspector();
+	AbstractServer<?> acceptServer = this;
+	private final JmxInspector socketStats = new JmxInspector();
+	private final JmxInspector socketStatsSsl = new JmxInspector();
 	private final EventStats accepts = EventStats.create(SMOOTHING_WINDOW);
 	private final EventStats acceptsSsl = EventStats.create(SMOOTHING_WINDOW);
 	private final EventStats filteredAccepts = EventStats.create(SMOOTHING_WINDOW);
@@ -187,7 +189,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@Override
 	public final void listen() throws IOException {
-		check(eventloop.inEventloopThread());
+		check(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (running)
 			return;
 		running = true;
@@ -207,7 +209,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		for (InetSocketAddress address : addresses) {
 			try {
 				ServerSocketChannel serverSocketChannel = eventloop.listen(address, serverSocketSettings,
-						channel -> AbstractServer.this.doAccept(channel, address, ssl));
+						channel -> doAccept(channel, address, ssl));
 				serverSocketChannels.add(serverSocketChannel);
 			} catch (IOException e) {
 				logger.error("Can't listen on [" + address + "]: " + this, e);
@@ -268,7 +270,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return this;
 	}
 
-	protected AsyncTcpSocketImpl.Inspector getSocketInspector(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl) {
+	protected Inspector getSocketInspector(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl) {
 		return ssl ? socketStatsSsl : socketStats;
 	}
 
@@ -303,7 +305,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		WorkerServer workerServer = getWorkerServer();
 		Eventloop workerServerEventloop = workerServer.getEventloop();
 
-		if (workerServerEventloop == this.eventloop) {
+		if (workerServerEventloop == eventloop) {
 			workerServer.doAccept(channel, localAddress, remoteAddress, ssl, socketSettings);
 		} else {
 			onAccept(channel, localAddress, remoteAddress, ssl);
@@ -362,13 +364,13 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@JmxAttribute
 	@Nullable
-	public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
+	public JmxInspector getSocketStats() {
 		return this instanceof PrimaryServer || acceptServer.listenAddresses.isEmpty() ? null : socketStats;
 	}
 
 	@JmxAttribute
 	@Nullable
-	public AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
+	public JmxInspector getSocketStatsSsl() {
 		return this instanceof PrimaryServer || acceptServer.sslListenAddresses.isEmpty() ? null : socketStatsSsl;
 	}
 }

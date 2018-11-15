@@ -115,7 +115,7 @@ public final class EffectiveConfig implements Config {
 
 	@Override
 	public Config provideNoKeyChild(String key) {
-		checkArgument(!getChildren().containsKey(key));
+		checkArgument(!children.containsKey(key), "Children already contain key '%s'", key);
 		return new EffectiveConfig(concatPath(path, key), config.provideNoKeyChild(key), callsRegistry);
 	}
 
@@ -138,7 +138,7 @@ public final class EffectiveConfig implements Config {
 	// rendering
 	public void saveEffectiveConfigTo(Path outputPath) {
 		try {
-			String renderedConfig = this.renderEffectiveConfig();
+			String renderedConfig = renderEffectiveConfig();
 			Files.write(outputPath, renderedConfig.getBytes(UTF_8), new StandardOpenOption[]{CREATE, WRITE, TRUNCATE_EXISTING});
 		} catch (IOException e) {
 			throw new RuntimeException("Failed to serialize effective config as properties file", e);
@@ -146,7 +146,7 @@ public final class EffectiveConfig implements Config {
 	}
 
 	synchronized public String renderEffectiveConfig() {
-		CallsRegistry register = this.callsRegistry;
+		CallsRegistry register = callsRegistry;
 		StringBuilder sb = new StringBuilder();
 
 		TreeSet<String> keys = new TreeSet<>();

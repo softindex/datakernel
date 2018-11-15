@@ -53,12 +53,12 @@ public final class TaskContext {
 	}
 
 	public <T> void bindChannel(StreamId streamId, StreamConsumer<T> consumer) {
-		checkState(!consumers.containsKey(streamId));
+		checkState(!consumers.containsKey(streamId), "Already bound");
 		consumers.put(streamId, consumer);
 	}
 
 	public <T> void export(StreamId streamId, StreamSupplier<T> supplier) {
-		checkState(!suppliers.containsKey(streamId));
+		checkState(!suppliers.containsKey(streamId), "Already exported");
 		suppliers.put(streamId, supplier);
 	}
 
@@ -67,7 +67,7 @@ public final class TaskContext {
 		for (StreamId streamId : suppliers.keySet()) {
 			StreamSupplier<Object> supplier = (StreamSupplier<Object>) suppliers.get(streamId);
 			StreamConsumer<Object> consumer = (StreamConsumer<Object>) consumers.get(streamId);
-			checkNotNull(supplier);
+			checkNotNull(supplier, "Supplier not found for %s , consumer %s", streamId, consumer);
 			checkNotNull(consumer, "Consumer not found for %s , supplier %s", streamId, supplier);
 			supplier.streamTo(consumer);
 		}

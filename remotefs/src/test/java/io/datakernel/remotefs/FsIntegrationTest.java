@@ -89,7 +89,7 @@ public final class FsIntegrationTest {
 		String resultFile = "file_uploaded.txt";
 
 		upload(resultFile, CONTENT)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)))));
 	}
 
@@ -99,7 +99,7 @@ public final class FsIntegrationTest {
 
 		Promises.all(IntStream.range(0, 10)
 				.mapToObj(i -> SerialSupplier.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploadSerial("file" + i))))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> {
 					for (int i = 0; i < files; i++) {
 						assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
@@ -112,7 +112,7 @@ public final class FsIntegrationTest {
 		String resultFile = "big file_uploaded.txt";
 
 		upload(resultFile, BIG_FILE)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> assertArrayEquals(BIG_FILE, Files.readAllBytes(storage.resolve(resultFile)))));
 	}
 
@@ -121,7 +121,7 @@ public final class FsIntegrationTest {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
 		upload(resultFile, CONTENT)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)))));
 	}
 
@@ -131,7 +131,7 @@ public final class FsIntegrationTest {
 
 		upload(resultFile, CONTENT)
 				.thenCompose($ -> upload(resultFile, CONTENT))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "FileAlreadyExistsException"))
 				.whenComplete(asserting(($, e) -> {
 					assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
@@ -141,7 +141,7 @@ public final class FsIntegrationTest {
 	@Test
 	public void testUploadServerFail() {
 		upload("../../nonlocal/../file.txt", CONTENT)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "File .*? goes outside of the storage directory"));
 	}
 
@@ -158,7 +158,7 @@ public final class FsIntegrationTest {
 				SerialSupplier.ofException(new StacklessException(FsIntegrationTest.class, "Test exception")),
 				SerialSupplier.of(test4))
 				.streamTo(client.uploadSerial(resultFile))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(StacklessException.class, "Test exception"));
 
 		Eventloop.getCurrentEventloop().run(); // because for some reason file does not exist until eventloop ends
@@ -172,7 +172,7 @@ public final class FsIntegrationTest {
 	private Promise<ByteBuf> download(String file) {
 		return client.download(file)
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(($, err) -> server.close());
+				.whenComplete(($, e) -> server.close());
 	}
 
 	@Test
@@ -212,7 +212,7 @@ public final class FsIntegrationTest {
 		}
 
 		Promises.all(tasks)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> {
 					for (int i = 0; i < tasks.size(); i++) {
 						assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
@@ -226,7 +226,7 @@ public final class FsIntegrationTest {
 		Files.write(storage.resolve(file), CONTENT);
 
 		client.delete(file)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> assertFalse(Files.exists(storage.resolve(file)))));
 	}
 
@@ -235,7 +235,7 @@ public final class FsIntegrationTest {
 		String file = "no_file.txt";
 
 		client.delete(file)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 	}
 

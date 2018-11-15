@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.SerializationUtils;
@@ -23,7 +24,7 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 
 import static io.datakernel.codegen.Expressions.*;
 
@@ -59,22 +60,22 @@ public class SerializerGenByteBuf implements SerializerGen, NullableOptimization
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return callStatic(SerializerGenByteBuf.class,
 				"write" + (writeWithRecycle ? "Recycle" : "") + (nullable ? "Nullable" : ""),
 				byteArray, off, cast(value, ByteBuf.class));
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return callStatic(SerializerGenByteBuf.class,
 				"read" + (readWithSlice ? "Slice" : "") + (nullable ? "Nullable" : ""),
 				arg(0));
@@ -124,6 +125,7 @@ public class SerializerGenByteBuf implements SerializerGen, NullableOptimization
 		return byteBuf;
 	}
 
+	@Nullable
 	public static ByteBuf readNullable(ByteBuf input) {
 		int length = input.readVarInt();
 		if (length == 0) return null;
@@ -141,6 +143,7 @@ public class SerializerGenByteBuf implements SerializerGen, NullableOptimization
 		return result;
 	}
 
+	@Nullable
 	public static ByteBuf readSliceNullable(ByteBuf input) {
 		int length = input.readVarInt();
 		if (length == 0) return null;
@@ -169,7 +172,7 @@ public class SerializerGenByteBuf implements SerializerGen, NullableOptimization
 
 	@Override
 	public int hashCode() {
-		int result = (readWithSlice ? 1 : 0);
+		int result = readWithSlice ? 1 : 0;
 		result = 31 * result + (nullable ? 1 : 0);
 		return result;
 	}

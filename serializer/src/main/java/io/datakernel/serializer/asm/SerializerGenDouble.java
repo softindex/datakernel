@@ -20,7 +20,7 @@ import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 
 import static io.datakernel.codegen.Expressions.*;
 
@@ -31,12 +31,12 @@ public final class SerializerGenDouble extends SerializerGenPrimitive {
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return callStatic(SerializationUtils.class, "writeDouble", byteArray, off, cast(value, double.class));
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (targetType.isPrimitive())
 			return call(arg(0), "readDouble");
 		else

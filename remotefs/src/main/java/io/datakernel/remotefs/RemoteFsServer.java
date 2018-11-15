@@ -47,7 +47,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private static final ByteBufSerializer<FsCommand, FsResponse> SERIALIZER =
 			ByteBufSerializers.ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
 
-	private final Map<Class, MessagingHandler<FsCommand>> handlers = new HashMap<>();
+	private final Map<Class<?>, MessagingHandler<FsCommand>> handlers = new HashMap<>();
 	private final FsClient client;
 
 	// region JMX

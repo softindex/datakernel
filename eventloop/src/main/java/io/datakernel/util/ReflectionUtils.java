@@ -162,7 +162,6 @@ public final class ReflectionUtils {
 		return getConstructorOrFactory(cls, factoryMethodNames) != null;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Nullable
 	public static <T> T tryToCreateInstanceWithFactoryMethods(Class<T> cls, String... factoryMethodNames) {
 		try {
@@ -199,7 +198,7 @@ public final class ReflectionUtils {
 					visitFields(item, action);
 				}
 			} else if (Collection.class.isAssignableFrom(returnType)) {
-				for (Object item : ((Collection<?>) fieldValue)) {
+				for (Object item : (Collection<?>) fieldValue) {
 					visitFields(item, action);
 				}
 			} else {

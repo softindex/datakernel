@@ -22,12 +22,11 @@ import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenArray implements SerializerGen, NullableOptimization {
 	private final SerializerGen valueSerializer;
 	private final int fixedSize;
@@ -72,13 +71,13 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		valueSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version,
-			SerializerBuilder.StaticMethods staticMethods,
+			StaticMethods staticMethods,
 			CompatibilityLevel compatibilityLevel) {
 		Expression castedValue = cast(value, type);
 		Expression length = fixedSize != -1 ?
@@ -112,12 +111,12 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression len = let(call(arg(0), "readVarInt"));
 		Expression array = let(Expressions.newArray(type, !nullable ? len : dec(len)));
 		Expression expressionFor = expressionFor(value(0), !nullable ? len : dec(len),

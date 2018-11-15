@@ -59,6 +59,7 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
+@SuppressWarnings("rawtypes")
 @RunWith(DatakernelRunner.class)
 public final class CubeTest {
 	private static final int LISTEN_PORT = 45578;

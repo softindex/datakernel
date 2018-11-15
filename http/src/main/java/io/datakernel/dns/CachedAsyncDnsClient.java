@@ -22,6 +22,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
+import io.datakernel.dns.RemoteAsyncDnsClient.Inspector;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventStats;
@@ -138,10 +139,10 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 		}
 		logger.trace("Refreshing {}", query);
 		client.resolve(query)
-				.whenComplete(((response, e) -> {
+				.whenComplete((response, e) -> {
 					addToCache(query, response, e);
 					refreshingNow.remove(query);
-				}));
+				});
 	}
 
 	@Override
@@ -189,7 +190,7 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 	}
 
 	// region JMX
-	public static class JmxInspector implements RemoteAsyncDnsClient.Inspector {
+	public static class JmxInspector implements Inspector {
 		private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 		private final AsyncUdpSocketImpl.JmxInspector socketInspector =

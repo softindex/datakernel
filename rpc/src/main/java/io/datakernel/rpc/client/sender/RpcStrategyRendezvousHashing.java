@@ -144,11 +144,10 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 			this.hashBuckets = checkNotNull(hashBuckets);
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 			RpcSender sender = chooseBucket(request);
-			sender.sendRequest(request, timeout, callback);
+			sender.sendRequest(request, timeout, cb);
 		}
 
 		@SuppressWarnings("unchecked")

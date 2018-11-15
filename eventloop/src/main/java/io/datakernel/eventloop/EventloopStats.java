@@ -92,7 +92,7 @@ public final class EventloopStats implements EventloopInspector {
 	@Override
 	public void onUpdateSelectorSelectTimeout(long selectorSelectTimeout) {
 		this.selectorSelectTimeout.recordValue((int) selectorSelectTimeout);
-		if (selectorSelectTimeout < 0) this.selectOverdues.recordEvent();
+		if (selectorSelectTimeout < 0) selectOverdues.recordEvent();
 		if(next != null){
 			next.onUpdateSelectorSelectTimeout(selectorSelectTimeout);
 		}
@@ -194,18 +194,18 @@ public final class EventloopStats implements EventloopInspector {
 	}
 
 	@Override
-	public void onFatalError(Throwable throwable, Object causedObject) {
-		fatalErrors.recordException(throwable, causedObject);
+	public void onFatalError(Throwable e, Object causedObject) {
+		fatalErrors.recordException(e, causedObject);
 
-		Class<? extends Throwable> type = throwable.getClass();
+		Class<? extends Throwable> type = e.getClass();
 		ExceptionStats stats = fatalErrorsMap.get(type);
 		if (stats == null) {
 			stats = ExceptionStats.create();
 			fatalErrorsMap.put(type, stats);
 		}
-		stats.recordException(throwable, causedObject);
+		stats.recordException(e, causedObject);
 		if(next != null){
-			next.onFatalError(throwable, causedObject);
+			next.onFatalError(e, causedObject);
 		}
 	}
 
@@ -328,8 +328,8 @@ public final class EventloopStats implements EventloopInspector {
 
 		public TaskStats() {
 			this.tasksPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
-			this.loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");;
-			this.oneTaskTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("microseconds");;
+			this.loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("milliseconds");
+			this.oneTaskTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withUnit("microseconds");
 			this.longestTask = new DurationRunnable();
 		}
 
@@ -363,7 +363,6 @@ public final class EventloopStats implements EventloopInspector {
 		private final ValueStats overdues;
 
 		public ScheduledTaskStats() {
-			super();
 			overdues = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO).withRate().withUnit("milliseconds");
 		}
 
@@ -460,6 +459,7 @@ public final class EventloopStats implements EventloopInspector {
 
 	public static final class DurationRunnable implements JmxStats<DurationRunnable>, JmxStatsWithReset {
 		private long duration;
+		@Nullable
 		private Runnable runnable;
 
 		@Override

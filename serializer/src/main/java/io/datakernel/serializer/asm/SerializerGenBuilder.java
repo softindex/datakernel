@@ -18,9 +18,10 @@ package io.datakernel.serializer.asm;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
+@FunctionalInterface
 public interface SerializerGenBuilder {
 
-	public final class SerializerForType {
+	final class SerializerForType {
 		public final Class<?> rawType;
 		public final SerializerGen serializer;
 

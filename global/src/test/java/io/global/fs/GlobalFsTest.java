@@ -24,9 +24,9 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.ByteBufRule.IgnoreLeaks;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.LoggingRule;
+import io.datakernel.stream.processor.LoggingRule.Enable;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -287,7 +287,7 @@ public final class GlobalFsTest {
 	}
 
 	@Test
-	@ByteBufRule.IgnoreLeaks("TODO") // TODO anton: fix this
+	@IgnoreLeaks("TODO") // TODO anton: fix this
 	public void encryptionAndDriver() {
 		SimKey key1 = SimKey.generate();
 		SimKey key2 = SimKey.generate();
@@ -317,7 +317,7 @@ public final class GlobalFsTest {
 
 	@Test
 	@Ignore("does not work yet for some reason")
-	@LoggingRule.Enable("io.global")
+	@Enable("io.global")
 	public void uploadWhenOldCache() {
 		announce(alice, set(secondId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))

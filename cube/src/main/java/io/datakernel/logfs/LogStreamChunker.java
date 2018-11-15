@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -105,7 +105,7 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 											newConsumer.cancel();
 											return;
 										}
-										this.currentConsumer = newConsumer;
+										currentConsumer = newConsumer;
 									}))
 							.toVoid();
 				});
@@ -113,6 +113,7 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 
 	private Promise<Void> flush() {
 		if (currentConsumer == null) return Promise.complete();
+		//noinspection AssignmentToNull - consumer is ensured to be not null, later on
 		return currentConsumer.accept(null)
 				.whenResult($ -> currentConsumer = null);
 	}

@@ -26,6 +26,8 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeConsolidationController<K, D, C> implements EventloopJmxMBeanEx {
+	private static final Logger logger = LoggerFactory.getLogger(CubeConsolidationController.class);
+
 	public static final Supplier<Function<Aggregation, Promise<AggregationDiff>>> DEFAULT_STRATEGY = new Supplier<Function<Aggregation, Promise<AggregationDiff>>>() {
 		private boolean hotSegment = false;
 
@@ -38,7 +40,6 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 	};
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
-	private final Logger logger = LoggerFactory.getLogger(CubeConsolidationController.class);
 	private final Eventloop eventloop;
 	private final CubeDiffScheme<D> cubeDiffScheme;
 	private final Cube cube;
@@ -68,7 +69,7 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 		this.strategy = strategy;
 	}
 
-	public static <K, D, C> CubeConsolidationController create(Eventloop eventloop,
+	public static <K, D, C> CubeConsolidationController<K, D, C> create(Eventloop eventloop,
 			CubeDiffScheme<D> cubeDiffScheme,
 			Cube cube,
 			OTStateManager<K, D> stateManager,
@@ -143,8 +144,8 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 		return cubeDiff.addedChunks().map(id -> (C) id).collect(toSet());
 	}
 
-	private void logCubeDiff(CubeDiff cubeDiff, Throwable throwable) {
-		if (throwable != null) logger.warn("Consolidation failed", throwable);
+	private void logCubeDiff(CubeDiff cubeDiff, Throwable e) {
+		if (e != null) logger.warn("Consolidation failed", e);
 		else if (cubeDiff.isEmpty()) logger.info("Previous consolidation did not merge any chunks");
 		else logger.info("Consolidation finished. Launching consolidation task again.");
 	}

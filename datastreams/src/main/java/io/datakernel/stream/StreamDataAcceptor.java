@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ package io.datakernel.stream;
  *
  * @param <T> type of received item
  */
+@FunctionalInterface
 public interface StreamDataAcceptor<T> {
 	/**
 	 * Method which calling after each receiving result

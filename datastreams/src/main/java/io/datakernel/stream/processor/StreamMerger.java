@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.util.Comparator;
 import java.util.function.Function;
@@ -34,7 +35,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> {
 
 	private final Function<T, K> keyFunction;
-	private final StreamReducers.Reducer<K, T, T, Void> reducer;
+	private final Reducer<K, T, T, Void> reducer;
 
 	// region creators
 	private StreamMerger(Function<T, K> keyFunction, Comparator<K> keyComparator,
@@ -71,7 +72,7 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 	 * @return this consumer
 	 */
 	public StreamConsumer<T> newInput() {
-		return super.newInput(keyFunction, reducer);
+		return newInput(keyFunction, reducer);
 	}
 
 }

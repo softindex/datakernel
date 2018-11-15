@@ -44,15 +44,15 @@ public class HttpCookieTest {
 		HttpCookie cookie1 = httpCookies.get(0);
 		HttpCookie cookie2 = httpCookies.get(1);
 
-		assertTrue(cookie1.getName().equals("name1"));
-		assertTrue(cookie1.getValue().equals("value1"));
+		assertEquals("name1", cookie1.getName());
+		assertEquals("value1", cookie1.getValue());
 		assertEquals(cookie1.getExpirationDate(), LocalDate.of(2015, JANUARY, 1).atStartOfDay().toInstant(UTC));
 		assertEquals(-1, cookie1.getMaxAge());
 		assertTrue(cookie1.isSecure());
 		assertFalse(cookie1.isHttpOnly());
 
-		assertTrue(cookie2.getName().equals("name2"));
-		assertTrue(cookie2.getValue().equals("value2"));
+		assertEquals("name2", cookie2.getName());
+		assertEquals("value2", cookie2.getValue());
 		assertFalse(cookie2.isSecure());
 		assertTrue(cookie2.isHttpOnly());
 	}

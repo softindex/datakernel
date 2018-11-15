@@ -90,15 +90,15 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			outputs.forEach(output -> output.close(t));
+		protected void onError(Throwable e) {
+			outputs.forEach(output -> output.close(e));
 		}
 	}
 
 	protected final class Output extends AbstractStreamSupplier<T> {
 		private final int index;
 
-		protected Output(int index) {
+		Output(int index) {
 			this.index = index;
 		}
 
@@ -124,8 +124,8 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			input.close(t);
+		protected void onError(Throwable e) {
+			input.close(e);
 		}
 	}
 }

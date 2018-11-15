@@ -145,7 +145,7 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		if (other instanceof CompletePromise) {
 			return Promise.of(fn.apply(getResult(), ((CompletePromise<U>) other).getResult()));
 		}
-		return other.thenApply(otherResult -> fn.apply(CompletePromise.this.getResult(), otherResult));
+		return other.thenApply(otherResult -> fn.apply(getResult(), otherResult));
 	}
 
 	@Override
@@ -156,7 +156,6 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		return other.toVoid();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public final Promise<T> either(Promise<? extends T> other) {
 		return this;
@@ -174,7 +173,6 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		return Promise.of(Try.of(getResult()));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public final Promise<Void> toVoid() {
 		return Promise.complete();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import com.google.inject.spi.Dependency;
 import com.google.inject.spi.DependencyAndSource;
 import com.google.inject.spi.HasDependencies;
 import com.google.inject.spi.ProvisionListener;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
@@ -79,7 +80,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * An application terminates if a circular dependency found.
  */
 public final class ServiceGraphModule extends AbstractModule implements Initializable<ServiceGraphModule> {
-	private final Logger logger = getLogger(this.getClass());
+	private static final Logger logger = getLogger(ServiceGraphModule.class);
 
 	private final Map<Class<?>, ServiceAdapter<?>> registeredServiceAdapters = new LinkedHashMap<>();
 	private final Set<Key<?>> excludedKeys = new LinkedHashSet<>();
@@ -192,6 +193,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		return this;
 	}
 
+	@Nullable
 	private Service getWorkersServiceOrNull(Key<?> key, List<?> instances) {
 		List<Service> services = new ArrayList<>();
 		boolean found = false;
@@ -225,12 +227,12 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		};
 	}
 
-	private static Throwable getRootCause(Throwable throwable) {
+	private static Throwable getRootCause(Throwable e) {
 		Throwable cause;
-		while ((cause = throwable.getCause()) != null) {
-			throwable = cause;
+		while ((cause = e.getCause()) != null) {
+			e = cause;
 		}
-		return throwable;
+		return e;
 	}
 
 	private static CompletableFuture<Void> combineFutures(List<CompletableFuture<Void>> futures, Executor executor) {
@@ -239,9 +241,9 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		AtomicReference<Throwable> exception = new AtomicReference<>();
 		for (CompletableFuture<Void> future : futures) {
 			CompletableFuture<Void> finalFuture = future != null ? future : completedFuture(null);
-			finalFuture.whenCompleteAsync((o, throwable) -> {
-				if (throwable != null) {
-					exception.set(getRootCause(throwable));
+			finalFuture.whenCompleteAsync((o, e) -> {
+				if (e != null) {
+					exception.set(getRootCause(e));
 				}
 				if (count.decrementAndGet() == 0) {
 					if (exception.get() != null) {
@@ -255,6 +257,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		return resultFuture;
 	}
 
+	@Nullable
 	@SuppressWarnings("unchecked")
 	private Service getServiceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);
@@ -293,7 +296,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			}
 		}
 		if (serviceAdapter != null) {
-			ServiceAdapter finalServiceAdapter = serviceAdapter;
+			ServiceAdapter<Object> finalServiceAdapter = (ServiceAdapter<Object>) serviceAdapter;
 			Service asyncService = new Service() {
 				@Override
 				public CompletableFuture<Void> start() {
@@ -450,7 +453,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		@Override
 		synchronized public CompletableFuture<Void> start() {
-			checkState(stopFuture == null);
+			checkState(stopFuture == null, "Already stopped");
 			if (startFuture == null) {
 				startFuture = service.start();
 			}
@@ -459,7 +462,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 		@Override
 		synchronized public CompletableFuture<Void> stop() {
-			checkState(startFuture != null);
+			checkState(startFuture != null, "Has not been started yet");
 			if (stopFuture == null) {
 				stopFuture = service.stop();
 			}

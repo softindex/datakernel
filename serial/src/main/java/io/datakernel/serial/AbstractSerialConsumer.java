@@ -44,14 +44,4 @@ public abstract class AbstractSerialConsumer<T> extends AbstractCancellable impl
 		}
 		return doAccept(value);
 	}
-
-	@Override
-	public final void cancel() {
-		SerialConsumer.super.cancel();
-	}
-
-	@Override
-	public final void close() {
-		SerialConsumer.super.close();
-	}
 }

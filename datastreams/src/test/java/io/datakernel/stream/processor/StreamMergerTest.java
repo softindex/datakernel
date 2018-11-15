@@ -31,14 +31,13 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicate() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamSupplier<Integer> source0 = StreamSupplier.ofIterable(Collections.<Integer>emptyList());
+		StreamSupplier<Integer> source0 = StreamSupplier.ofIterable(Collections.emptyList());
 		StreamSupplier<Integer> source1 = StreamSupplier.of(3, 7);
 		StreamSupplier<Integer> source2 = StreamSupplier.of(3, 4, 6);
 
@@ -66,7 +65,7 @@ public class StreamMergerTest {
 	@Test
 	public void testDuplicate() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamSupplier<Integer> source0 = StreamSupplier.ofIterable(Collections.<Integer>emptyList());
+		StreamSupplier<Integer> source0 = StreamSupplier.ofIterable(Collections.emptyList());
 		StreamSupplier<Integer> source1 = StreamSupplier.of(3, 7);
 		StreamSupplier<Integer> source2 = StreamSupplier.of(3, 4, 6);
 
@@ -170,7 +169,6 @@ public class StreamMergerTest {
 		assertClosedWithError(merger.getInput(1));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void testSupplierDeduplicateWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -201,7 +199,7 @@ public class StreamMergerTest {
 
 		eventloop.run();
 
-		assertTrue(list.size() == 0);
+		assertEquals(0, list.size());
 		assertClosedWithError(consumer);
 		assertClosedWithError(merger.getOutput());
 		assertClosedWithError(merger.getInput(0));

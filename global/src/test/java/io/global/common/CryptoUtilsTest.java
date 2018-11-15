@@ -17,7 +17,6 @@
 package io.global.common;
 
 import io.global.ot.api.EncryptedData;
-import org.junit.Assert;
 import org.junit.Test;
 import org.spongycastle.crypto.CryptoException;
 import org.spongycastle.crypto.digests.SHA256Digest;
@@ -79,7 +78,7 @@ public class CryptoUtilsTest {
 			byte[] hash2 = new byte[SHA256_LENGTH];
 			digest1.doFinal(hash1, 0);
 			digest2.doFinal(hash2, 0);
-			Assert.assertArrayEquals(hash1, hash2);
+			assertArrayEquals(hash1, hash2);
 		}
 	}
 }

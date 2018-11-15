@@ -27,7 +27,6 @@ import static io.datakernel.json.GsonAdapters.*;
 /**
  * Represents a graph of partitions, nodes and streams in datagraph system.
  */
-@SuppressWarnings("unchecked")
 public class DataGraph {
 	private final DatagraphSerialization serialization;
 	private final List<Partition> availablePartitions;

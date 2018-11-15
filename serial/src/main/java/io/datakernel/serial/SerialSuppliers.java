@@ -42,8 +42,8 @@ public final class SerialSuppliers {
 
 			@Override
 			protected Promise<T> doGet() {
-				T item = this.thisItem;
-				this.thisItem = null;
+				T item = thisItem;
+				thisItem = null;
 				return Promise.of(item);
 			}
 		};
@@ -96,7 +96,7 @@ public final class SerialSuppliers {
 		};
 	}
 
-	protected static <T, A, R> Promise<R> toCollector(SerialSupplier<T> supplier, Collector<T, A, R> collector) {
+	static <T, A, R> Promise<R> toCollector(SerialSupplier<T> supplier, Collector<T, A, R> collector) {
 		SettablePromise<R> cb = new SettablePromise<>();
 		toCollectorImpl(supplier, collector.supplier().get(), collector.accumulator(), collector.finisher(), cb);
 		return cb;
@@ -240,7 +240,6 @@ public final class SerialSuppliers {
 								});
 					}
 
-					@SuppressWarnings("unchecked")
 					@Override
 					protected Promise<T> doGet() {
 						assert pending == null;
@@ -267,9 +266,9 @@ public final class SerialSuppliers {
 				};
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> SerialSupplier<T> prefetch(SerialSupplier<? extends T> actual) {
 		return new AbstractSerialSupplier<T>() {
+			@Nullable
 			private T prefetched;
 			private boolean endOfStream;
 			private boolean prefetching;
@@ -312,13 +311,12 @@ public final class SerialSuppliers {
 						});
 			}
 
-			@SuppressWarnings("unchecked")
 			@Override
 			protected Promise<T> doGet() {
 				assert pending == null;
 				if (prefetched != null || endOfStream) {
-					T result = this.prefetched;
-					this.prefetched = null;
+					T result = prefetched;
+					prefetched = null;
 					tryPrefetch();
 					return Promise.of(result);
 				}

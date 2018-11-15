@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 		@Override
 		public Config provideNoKeyChild(String key) {
-			checkArgument(!children.keySet().contains(key));
+			checkArgument(!children.keySet().contains(key), "Children already contain key '%s'", key);
 			return new ProtectedConfig(config.provideNoKeyChild(key));
 		}
 	}
@@ -132,6 +132,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		return withEffectiveConfigConsumer(writer::print);
 	}
 
+	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	public ConfigModule printEffectiveConfig() {
 		return withEffectiveConfigConsumer(effectiveConfig -> {
 			System.out.println("# Effective config:\n");
@@ -156,8 +157,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 	@Provides
 	@Singleton
-	ConfigModuleService service(EffectiveConfig config,
-	                            OptionalInitializer<ConfigModule> optionalInitializer) {
+	ConfigModuleService service(EffectiveConfig config, OptionalInitializer<ConfigModule> optionalInitializer) {
 		optionalInitializer.accept(this);
 		return new ConfigModuleService() {
 			@Override

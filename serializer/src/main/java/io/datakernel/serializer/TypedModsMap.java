@@ -18,6 +18,7 @@ package io.datakernel.serializer;
 
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
+import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 
 import java.util.*;
 
@@ -32,7 +33,7 @@ final class TypedModsMap {
 		private Map<Integer, Builder> children = new LinkedHashMap<>();
 
 		public void add(SerializerGenBuilder serializerGenBuilder) {
-			this.mods.add(serializerGenBuilder);
+			mods.add(serializerGenBuilder);
 		}
 
 		private Builder ensureChild(int childKey) {
@@ -54,7 +55,7 @@ final class TypedModsMap {
 		}
 
 		public TypedModsMap build() {
-			if (this.mods.isEmpty() && this.children.isEmpty())
+			if (mods.isEmpty() && children.isEmpty())
 				return empty();
 			return new TypedModsMap(this);
 		}
@@ -99,7 +100,7 @@ final class TypedModsMap {
 		return result == null ? empty() : result;
 	}
 
-	public SerializerGen rewrite(Class<?> type, SerializerGenBuilder.SerializerForType[] generics, SerializerGen serializer) {
+	public SerializerGen rewrite(Class<?> type, SerializerForType[] generics, SerializerGen serializer) {
 		SerializerGen result = serializer;
 		for (SerializerGenBuilder mod : mods) {
 			result = mod.serializer(type, generics, result);
@@ -109,7 +110,7 @@ final class TypedModsMap {
 
 	@Override
 	public String toString() {
-		StringBuilder sb = new StringBuilder(32).append(simpleName(this.getClass())).append("{");
+		StringBuilder sb = new StringBuilder(32).append(simpleName(getClass())).append("{");
 		sb.append("mods=").append(mods);
 		sb.append("children=").append(children);
 		return sb.append("}").toString();

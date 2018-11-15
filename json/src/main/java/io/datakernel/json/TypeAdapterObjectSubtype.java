@@ -62,7 +62,6 @@ public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> implements Initi
 		return withSubtype(type, name, adapter);
 	}
 
-	@SuppressWarnings("unchecked")
 	public TypeAdapterObjectSubtype<T> withStatelessSubtype(Supplier<? extends T> constructor, String name) {
 		statelessSubtypesToNames.put(constructor.get().getClass(), name);
 		namesToStatelessSubtypes.put(name, constructor);
@@ -74,7 +73,7 @@ public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> implements Initi
 		return this;
 	}
 
-	@SuppressWarnings({"SuspiciousMethodCalls", "unchecked"})
+	@SuppressWarnings("unchecked")
 	@Override
 	public void write(JsonWriter out, T value) throws IOException {
 		String stateless = statelessSubtypesToNames.get(value.getClass());
@@ -94,7 +93,6 @@ public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> implements Initi
 		out.endObject();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public T read(JsonReader in) throws IOException {
 		switch (in.peek()) {

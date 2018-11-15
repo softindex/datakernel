@@ -31,7 +31,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * {@link TestRule} that fails if not all byte buffers requested from the {@link ByteBufPool} were recycled properly.
  * <p>
- * Annotation {@link ByteBufRule.IgnoreLeaks} can be put on a test that wants this rule disabled.
+ * Annotation {@link IgnoreLeaks} can be put on a test that wants this rule disabled.
  */
 public final class ByteBufRule implements TestRule {
 	static {
@@ -51,7 +51,7 @@ public final class ByteBufRule implements TestRule {
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.METHOD})
+	@Target(ElementType.METHOD)
 	public @interface IgnoreLeaks {
 
 		/**

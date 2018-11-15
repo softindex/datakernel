@@ -19,6 +19,7 @@ package io.global.ot.server;
 import io.global.common.RawServerId;
 import io.global.ot.api.GlobalOTNode;
 
+@FunctionalInterface
 public interface RawServerFactory {
 	GlobalOTNode create(RawServerId rawServerId);
 }

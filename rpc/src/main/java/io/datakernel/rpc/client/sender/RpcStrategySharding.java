@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.ShardingFunction;
@@ -52,6 +53,7 @@ public final class RpcStrategySharding implements RpcStrategy {
 		return list.getAddresses();
 	}
 
+	@Nullable
 	@Override
 	public final RpcSender createSender(RpcClientConnectionPool pool) {
 		List<RpcSender> subSenders = list.listOfNullableSenders(pool);
@@ -76,9 +78,10 @@ public final class RpcStrategySharding implements RpcStrategy {
 
 		public Sender(ShardingFunction<?> shardingFunction, List<RpcSender> senders) {
 			// null values are allowed in senders list
-			checkArgument(senders != null && senders.size() > 0);
+			checkArgument(senders != null && senders.size() > 0,
+					"List of senders should not be null and should contain at least one sender");
 			this.shardingFunction = checkNotNull(shardingFunction);
-			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
+			this.subSenders = senders.toArray(new RpcSender[0]);
 		}
 
 		@SuppressWarnings("unchecked")

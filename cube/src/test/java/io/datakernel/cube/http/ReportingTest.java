@@ -50,6 +50,7 @@ import org.junit.rules.TemporaryFolder;
 import javax.sql.DataSource;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -75,6 +76,7 @@ import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
+@SuppressWarnings("rawtypes")
 public final class ReportingTest {
 	public static final double DELTA = 1E-3;
 
@@ -89,37 +91,37 @@ public final class ReportingTest {
 	private static final int SERVER_PORT = 50001;
 
 	private static final Map<String, FieldType> DIMENSIONS_CUBE = entriesToMap(Stream.of(
-			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
-			new AbstractMap.SimpleEntry<>("advertiser", ofInt()),
-			new AbstractMap.SimpleEntry<>("campaign", ofInt()),
-			new AbstractMap.SimpleEntry<>("banner", ofInt()),
-			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
-			new AbstractMap.SimpleEntry<>("site", ofString())));
+			new SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new SimpleEntry<>("advertiser", ofInt()),
+			new SimpleEntry<>("campaign", ofInt()),
+			new SimpleEntry<>("banner", ofInt()),
+			new SimpleEntry<>("affiliate", ofInt()),
+			new SimpleEntry<>("site", ofString())));
 
 	private static final Map<String, FieldType> DIMENSIONS_DATE_AGGREGATION =
 			singletonMap("date", ofLocalDate(LocalDate.parse("2000-01-01")));
 
 	private static final Map<String, FieldType> DIMENSIONS_ADVERTISERS_AGGREGATION = entriesToMap(Stream.of(
-			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
-			new AbstractMap.SimpleEntry<>("advertiser", ofInt()),
-			new AbstractMap.SimpleEntry<>("campaign", ofInt()),
-			new AbstractMap.SimpleEntry<>("banner", ofInt())));
+			new SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new SimpleEntry<>("advertiser", ofInt()),
+			new SimpleEntry<>("campaign", ofInt()),
+			new SimpleEntry<>("banner", ofInt())));
 
 	private static final Map<String, FieldType> DIMENSIONS_AFFILIATES_AGGREGATION = entriesToMap(Stream.of(
-			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
-			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
-			new AbstractMap.SimpleEntry<>("site", ofString())));
+			new SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new SimpleEntry<>("affiliate", ofInt()),
+			new SimpleEntry<>("site", ofString())));
 
 	private static final Map<String, Measure> MEASURES = entriesToMap(Stream.of(
-			new AbstractMap.SimpleEntry<>("impressions", sum(ofLong())),
-			new AbstractMap.SimpleEntry<>("clicks", sum(ofLong())),
-			new AbstractMap.SimpleEntry<>("conversions", sum(ofLong())),
-			new AbstractMap.SimpleEntry<>("revenue", sum(ofDouble())),
-			new AbstractMap.SimpleEntry<>("eventCount", count(ofInt())),
-			new AbstractMap.SimpleEntry<>("minRevenue", min(ofDouble())),
-			new AbstractMap.SimpleEntry<>("maxRevenue", max(ofDouble())),
-			new AbstractMap.SimpleEntry<>("uniqueUserIdsCount", hyperLogLog(1024)),
-			new AbstractMap.SimpleEntry<>("errors", sum(ofLong()))));
+			new SimpleEntry<>("impressions", sum(ofLong())),
+			new SimpleEntry<>("clicks", sum(ofLong())),
+			new SimpleEntry<>("conversions", sum(ofLong())),
+			new SimpleEntry<>("revenue", sum(ofDouble())),
+			new SimpleEntry<>("eventCount", count(ofInt())),
+			new SimpleEntry<>("minRevenue", min(ofDouble())),
+			new SimpleEntry<>("maxRevenue", max(ofDouble())),
+			new SimpleEntry<>("uniqueUserIdsCount", hyperLogLog(1024)),
+			new SimpleEntry<>("errors", sum(ofLong()))));
 
 	private static class AdvertiserResolver extends AbstractAttributeResolver<Integer, String> {
 		@Override
@@ -158,7 +160,7 @@ public final class ReportingTest {
 		}
 	}
 
-	@Measures({"eventCount"})
+	@Measures("eventCount")
 	public static class LogItem {
 		static final int EXCLUDE_AFFILIATE = 0;
 		static final String EXCLUDE_SITE = "--";
@@ -252,6 +254,7 @@ public final class ReportingTest {
 						LogItem.class,
 						and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE))));
 
+				@SuppressWarnings("ConstantConditions")
 				@Override
 				public void accept(LogItem item) {
 					if (item.advertiser != EXCLUDE_ADVERTISER && item.campaign != EXCLUDE_CAMPAIGN && item.banner != EXCLUDE_BANNER) {
@@ -371,7 +374,7 @@ public final class ReportingTest {
 
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop)
 				.withNoKeepAlive();
-		cubeHttpClient = CubeHttpClient.create(eventloop, httpClient, "http://127.0.0.1:" + SERVER_PORT)
+		cubeHttpClient = CubeHttpClient.create(httpClient, "http://127.0.0.1:" + SERVER_PORT)
 				.withAttribute("date", LocalDate.class)
 				.withAttribute("advertiser", int.class)
 				.withAttribute("campaign", int.class)
@@ -543,7 +546,7 @@ public final class ReportingTest {
 
 		assertEquals(LocalDate.parse("2000-01-02"), records.get(0).get("date"));
 		assertEquals(2, (int) records.get(0).get("advertiser"));
-		assertNull(null, records.get(0).get("advertiser.name"));
+		assertNull(records.get(0).get("advertiser.name"));
 		assertEquals(100, (long) records.get(0).get("impressions"));
 
 		assertEquals(LocalDate.parse("2000-01-02"), records.get(1).get("date"));
@@ -876,7 +879,7 @@ public final class ReportingTest {
 
 		QueryResult resultByDate = getQueryResult(queryDate);
 
-		assertEquals(resultByDate.getAttributes().size(), 1);
+		assertEquals(1, resultByDate.getAttributes().size());
 		assertEquals("date", resultByDate.getAttributes().get(0));
 		assertEquals(resultByDate.getMeasures(), measures);
 		Record dailyTotals = resultByDate.getTotals();

@@ -23,7 +23,7 @@ import io.datakernel.util.MemSize;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 
 import static java.lang.Math.max;
 
@@ -199,7 +199,7 @@ public final class DataInputStreamEx implements Closeable {
 				| ((long) (buf.peek(4) & 0xFF) << 24)
 				| ((buf.peek(5) & 0xFF) << 16)
 				| ((buf.peek(6) & 0xFF) << 8)
-				| ((buf.peek(7) & 0xFF));
+				| (buf.peek(7) & 0xFF);
 
 		buf.moveReadPosition(8);
 		return result;
@@ -259,7 +259,7 @@ public final class DataInputStreamEx implements Closeable {
 
 	public char readChar() throws IOException {
 		ensureRead(2);
-		char c = (char) (((buf.peek(0) & 0xFF) << 8) | ((buf.peek(1) & 0xFF)));
+		char c = (char) (((buf.peek(0) & 0xFF) << 8) | (buf.peek(1) & 0xFF));
 		buf.moveReadPosition(2);
 		return c;
 	}
@@ -271,11 +271,7 @@ public final class DataInputStreamEx implements Closeable {
 		ensureRead(length);
 		buf.moveReadPosition(length);
 
-		try {
-			return new String(buf.array(), buf.readPosition() - length, length, "UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException();
-		}
+		return new String(buf.array(), buf.readPosition() - length, length, StandardCharsets.UTF_8);
 	}
 
 	public String readIso88591() throws IOException, DeserializeException {

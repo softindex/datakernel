@@ -56,6 +56,7 @@ import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toMap;
 import static org.slf4j.LoggerFactory.getLogger;
 
+@SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>, EventloopService, Initializable<RemoteFsChunkStorage<C>>, EventloopJmxMBeanEx {
 	private static final Logger logger = getLogger(RemoteFsChunkStorage.class);
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);

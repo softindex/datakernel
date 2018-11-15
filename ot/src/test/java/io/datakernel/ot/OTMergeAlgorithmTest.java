@@ -21,7 +21,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Utils.coalesce;
 import static org.junit.Assert.assertEquals;
 
-@SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "CodeBlock2Expr"})
+@SuppressWarnings("CodeBlock2Expr")
 public class OTMergeAlgorithmTest {
 	Eventloop eventloop;
 	OTSystem<TestOp> system = createTestOp();
@@ -34,7 +34,7 @@ public class OTMergeAlgorithmTest {
 	static <K, D> OTLoadedGraph<K, D> buildGraph(Consumer<OTGraphBuilder<K, D>> consumer, OTSystem<D> system) {
 		OTLoadedGraph<K, D> graph = new OTLoadedGraph<>(system);
 		consumer.accept((parent, child, diffs) -> {
-			checkArgument(graph.getParents(child) == null || graph.getParents(child).get(parent) == null);
+			checkArgument(graph.getParents(child) == null || graph.getParents(child).get(parent) == null, "Invalid graph");
 			graph.addEdge(parent, child, diffs);
 		});
 		HashMap<K, Long> levels = new HashMap<>();
@@ -47,6 +47,7 @@ public class OTMergeAlgorithmTest {
 		return graph;
 	}
 
+	@FunctionalInterface
 	private interface TestAcceptor {
 		void accept(OTLoadedGraph<String, TestOp> graph, Map<String, List<TestOp>> merge) throws Exception;
 	}

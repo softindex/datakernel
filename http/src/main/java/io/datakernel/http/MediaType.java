@@ -16,13 +16,15 @@
 
 package io.datakernel.http;
 
+import io.datakernel.http.CaseInsensitiveTokenMap.Token;
+
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.util.Utils.arraysEquals;
 
 // All media type values, subtype values, and parameter names as defined are case-insensitive RFC2045 section 2
-public final class MediaType extends CaseInsensitiveTokenMap.Token {
+public final class MediaType extends Token {
 	final byte[] bytes;
 	final int offset;
 	final int length;

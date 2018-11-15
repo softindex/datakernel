@@ -23,6 +23,7 @@ import io.datakernel.codegen.Property;
 import static io.datakernel.codegen.Expressions.*;
 
 public final class MeasureMax extends Measure {
+	@SuppressWarnings("rawtypes")
 	MeasureMax(FieldType fieldType) {
 		super(fieldType);
 	}

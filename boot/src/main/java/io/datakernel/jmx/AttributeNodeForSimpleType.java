@@ -32,6 +32,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 
+@SuppressWarnings("rawtypes")
 final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 	private final Method setter;
 	private final Class<?> type;
@@ -70,18 +71,17 @@ final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 
 	@Override
 	public boolean isSettable(String attrName) {
-		checkArgument(attrName.equals(name));
-
+		checkArgument(attrName.equals(name), "Attribute names do not match");
 		return setter != null;
 	}
 
 	@Override
 	public void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
-		checkArgument(attrName.equals(name));
+		checkArgument(attrName.equals(name), "Attribute names do not match");
 		checkNotNull(targets);
 		List<?> notNullTargets = filterNulls(targets);
 		if (notNullTargets.size() == 0) {
-			singletonMap(attrName, null);
+			return;
 		}
 
 		for (Object target : notNullTargets) {

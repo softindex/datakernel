@@ -12,8 +12,8 @@ import java.util.function.Consumer;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 
-public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
-	protected final List<T> list;
+public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
+	private final List<T> list;
 	private final SettablePromise<List<T>> resultPromise = new SettablePromise<>();
 
 	private StreamConsumerToList() {
@@ -54,8 +54,8 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 	}
 
 	@Override
-	protected void onError(Throwable t) {
-		resultPromise.setException(t);
+	protected void onError(Throwable e) {
+		resultPromise.setException(e);
 	}
 
 	public MaterializedPromise<List<T>> getResult() {

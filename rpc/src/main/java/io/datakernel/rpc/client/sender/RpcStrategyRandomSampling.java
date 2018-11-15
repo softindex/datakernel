@@ -98,8 +98,8 @@ public class RpcStrategyRandomSampling implements RpcStrategy {
 		}
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
-			chooseSender().sendRequest(request, timeout, callback);
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+			chooseSender().sendRequest(request, timeout, cb);
 		}
 
 		private RpcSender chooseSender() {

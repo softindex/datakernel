@@ -68,7 +68,7 @@ import static java.util.Collections.emptyIterator;
  * eventloop will be ended, when it has not selected keys and its queues with
  * tasks are empty.
  */
-public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, Initializable<Eventloop>, EventloopJmxMBeanEx {
+public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, Initializable<Eventloop>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
 	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
@@ -254,9 +254,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		if (selector == null) {
 			try {
 				selector = (selectorProvider != null ? selectorProvider : SelectorProvider.provider()).openSelector();
-			} catch (Exception exception) {
-				logger.error("Could not open selector", exception);
-				throw new RuntimeException(exception);
+			} catch (Exception e) {
+				logger.error("Could not open selector", e);
+				throw new RuntimeException(e);
 			}
 		}
 	}
@@ -270,8 +270,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				selector.close();
 				selector = null;
 				cancelledKeys = 0;
-			} catch (IOException exception) {
-				logger.error("Could not close selector", exception);
+			} catch (IOException e) {
+				logger.error("Could not close selector", e);
 			}
 		}
 	}
@@ -284,7 +284,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public void closeChannel(@Nullable SelectableChannel channel, @Nullable SelectionKey key) {
-		checkArgument(channel != null || key == null);
+		checkArgument(channel != null || key == null, "Either channel or key should be not null");
 		if (channel == null || !channel.isOpen()) return;
 		if (key != null && key.isValid()) {
 			cancelledKeys++;
@@ -314,7 +314,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public void breakEventloop() {
-		this.breakEventloop = true;
+		breakEventloop = true;
 		if (breakEventloop && selector != null) {
 			selector.wakeup();
 		}
@@ -595,10 +595,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			if (peeked.getTimestamp() > currentTimeMillis()) {
 				break;
 			}
-			ScheduledRunnable polled = taskQueue.poll();
-			assert polled == peeked;
+			taskQueue.poll();
 
-			Runnable runnable = polled.getRunnable();
+			Runnable runnable = peeked.getRunnable();
 			if (sw != null) {
 				sw.reset();
 				sw.start();
@@ -612,7 +611,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			try {
 				runnable.run();
 				tick++;
-				polled.complete();
+				peeked.complete();
 				if (sw != null && inspector != null)
 					inspector.onUpdateScheduledTaskDuration(runnable, sw, background);
 			} catch (Throwable e) {
@@ -673,7 +672,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param key key of this action.
 	 */
-	@SuppressWarnings("unchecked")
 	private void onConnect(SelectionKey key) {
 		assert inEventloopThread();
 		ConnectCallback callback = (ConnectCallback) key.attachment();
@@ -1056,14 +1054,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
 			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
 	public void startExtendedMonitoring() {
-		this.monitoring = true;
+		monitoring = true;
 	}
 
 	@JmxOperation(description = "disable monitoring " +
 			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
 			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
 	public void stopExtendedMonitoring() {
-		this.monitoring = false;
+		monitoring = false;
 	}
 
 	@JmxAttribute(description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
@@ -1138,9 +1136,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return keepAlive;
 	}
 
+	@Nullable
 	@JmxAttribute(name = "")
 	public EventloopStats getStats() {
-		return (inspector instanceof EventloopStats ? (EventloopStats) inspector : null);
+		return inspector instanceof EventloopStats ? (EventloopStats) inspector : null;
 	}
 
 	@JmxAttribute

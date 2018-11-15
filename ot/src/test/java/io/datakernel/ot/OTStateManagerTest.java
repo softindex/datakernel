@@ -28,12 +28,10 @@ import static org.junit.Assert.assertEquals;
 public class OTStateManagerTest {
 	private Eventloop eventloop;
 	private OTSystem<TestOp> system;
-	private Comparator<Integer> comparator;
 
 	@Before
 	public void before() {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		comparator = Integer::compareTo;
 		system = createTestOp();
 	}
 

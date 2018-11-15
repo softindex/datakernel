@@ -43,41 +43,41 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 		return new ExceptionStats();
 	}
 
-	public void recordException(Throwable throwable, @Nullable Object context) {
+	public void recordException(Throwable e, @Nullable Object context) {
 		this.count++;
 		long now = currentTimeMillis();
 
 		if (now >= lastExceptionTimestamp + DETAILS_REFRESH_TIMEOUT) {
-			this.exceptionClass = throwable != null ? throwable.getClass() : null;
-			this.throwable = throwable;
+			this.exceptionClass = e != null ? e.getClass() : null;
+			this.throwable = e;
 			this.context = context;
 			this.lastExceptionTimestamp = now;
 		}
 	}
 
-	public void recordException(Throwable throwable) {
-		recordException(throwable, null);
+	public void recordException(Throwable e) {
+		recordException(e, null);
 	}
 
 	@Override
 	public void resetStats() {
-		this.count = 0;
-		this.lastExceptionTimestamp = 0;
+		count = 0;
+		lastExceptionTimestamp = 0;
 
-		this.exceptionClass = null;
-		this.throwable = null;
-		this.context = null;
+		exceptionClass = null;
+		throwable = null;
+		context = null;
 	}
 
 	@Override
 	public void add(ExceptionStats another) {
-		this.count += another.count;
-		if (another.lastExceptionTimestamp >= this.lastExceptionTimestamp) {
-			this.lastExceptionTimestamp = another.lastExceptionTimestamp;
+		count += another.count;
+		if (another.lastExceptionTimestamp >= lastExceptionTimestamp) {
+			lastExceptionTimestamp = another.lastExceptionTimestamp;
 
-			this.exceptionClass = another.exceptionClass;
-			this.throwable = another.throwable;
-			this.context = another.context;
+			exceptionClass = another.exceptionClass;
+			throwable = another.throwable;
+			context = another.context;
 		}
 	}
 
@@ -142,7 +142,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 			last = "; " + exceptionClass.getSimpleName();
 			last += " @" + formatTimestamp(lastExceptionTimestamp);
 		}
-		return Integer.toString(count) + last;
+		return count + last;
 	}
 
 	@Nullable

@@ -20,6 +20,7 @@ import io.datakernel.annotation.NotNull;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
+import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.ParserFunction;
@@ -48,7 +49,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
 	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
 	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
-	private static final byte[] GZIP_BYTES = encodeAscii("gzip");
 	private final HttpMethod method;
 	private UrlParser url;
 	private InetAddress remoteAddress;
@@ -120,7 +120,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@Override
 	public void setCookies(List<HttpCookie> cookies) {
-		setHeader(COOKIE, new HttpHeaderValue.HttpHeaderValueOfSimpleCookies(cookies));
+		setHeader(COOKIE, new HttpHeaderValueOfSimpleCookies(cookies));
 	}
 
 	public HttpRequest withCookies(List<HttpCookie> cookies) {
@@ -139,7 +139,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	public HttpRequest withBodyGzipCompression() {
-		super.setBodyGzipCompression();
+		setBodyGzipCompression();
 		return this;
 	}
 
@@ -265,7 +265,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		if (method == POST
 				&& contentType != null
 				&& contentType.getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
-				&& this.body.readPosition() != this.body.writePosition()) {
+				&& body.readPosition() != body.writePosition()) {
 			postParameters = UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.readPosition(), body.readRemaining()));
 		} else {
 			postParameters = Collections.emptyMap();

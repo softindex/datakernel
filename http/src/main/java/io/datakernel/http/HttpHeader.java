@@ -17,10 +17,11 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.http.CaseInsensitiveTokenMap.Token;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 
-public class HttpHeader extends CaseInsensitiveTokenMap.Token {
+public class HttpHeader extends Token {
 	protected final byte[] bytes;
 	protected final int offset;
 	protected final int length;

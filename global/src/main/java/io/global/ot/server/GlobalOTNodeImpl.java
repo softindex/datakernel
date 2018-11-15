@@ -132,7 +132,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 
 	@Override
 	public Promise<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
-		checkArgument(!hasIntersection(bases, heads));
+		checkArgument(!hasIntersection(bases, heads), "Bases and heads cannot have intersections");
 		Set<CommitId> skipCommits = new HashSet<>(heads);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
@@ -150,7 +150,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 	}
 
 	public Promise<SerialSupplier<CommitEntry>> getCommitsSupplier(RepoID repositoryId, Set<CommitId> thatBases, Set<CommitId> thatHeads) {
-		checkArgument(!hasIntersection(thatBases, thatHeads));
+		checkArgument(!hasIntersection(thatBases, thatHeads), "Bases and heads cannot have intersections");
 		Set<CommitId> skipCommits = new HashSet<>(thatHeads);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
@@ -483,7 +483,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 					return Promise.complete();
 				}
 				return Promises.all(updateHeads(), updatePullRequests())
-						.whenResult($ -> this.updateTimestamp = now.currentTimeMillis());
+						.whenResult($ -> updateTimestamp = now.currentTimeMillis());
 			}
 
 			private Promise<Void> doUpdateHeads() {

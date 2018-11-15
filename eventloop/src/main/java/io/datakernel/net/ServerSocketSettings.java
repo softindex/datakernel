@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@ import static java.net.StandardSocketOptions.SO_REUSEADDR;
 public final class ServerSocketSettings {
 	public static final int DEFAULT_BACKLOG = 16384;
 
-	protected static final byte DEF_BOOL = -1;
-	protected static final byte TRUE = 1;
-	protected static final byte FALSE = 0;
+	private static final byte DEF_BOOL = -1;
+	private static final byte TRUE = 1;
+	private static final byte FALSE = 0;
 
 	private final int backlog;
 	@Nullable
@@ -82,9 +82,8 @@ public final class ServerSocketSettings {
 		return receiveBufferSize != null;
 	}
 
-	@Nullable
 	public MemSize getReceiveBufferSize() {
-		check(hasReceiveBufferSize());
+		check(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
 		return receiveBufferSize;
 	}
 
@@ -93,7 +92,7 @@ public final class ServerSocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		check(hasReuseAddress());
+		check(hasReuseAddress(), "No 'reuse address' setting is present");
 		return reuseAddress != FALSE;
 	}
 }

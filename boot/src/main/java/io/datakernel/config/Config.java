@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -30,6 +31,7 @@ public interface Config {
 	 * Empty config with no values, children, etc...
 	 */
 	Config EMPTY = new Config() {
+		@Nullable
 		@Override
 		public String getValue(@Nullable String defaultValue) {
 			return defaultValue;
@@ -154,7 +156,7 @@ public interface Config {
 	}
 
 	default Config provideNoKeyChild(String key) {
-		checkArgument(!getChildren().containsKey(key));
+		checkArgument(!getChildren().containsKey(key), "Children already contain key '%s'", key);
 		return EMPTY;
 	}
 
@@ -194,7 +196,7 @@ public interface Config {
 	}
 
 	static <T> Consumer<T> ifNotNull(Consumer<T> setter) {
-		return (value) -> {
+		return value -> {
 			if (value != null) {
 				setter.accept(value);
 			}
@@ -222,7 +224,7 @@ public interface Config {
 	 */
 	static Config ofProperties(Properties properties) {
 		return ofMap(properties.stringPropertyNames().stream()
-				.collect(Collectors.toMap(k -> k, properties::getProperty,
+				.collect(Collectors.toMap(Function.identity(), properties::getProperty,
 						(u, v) -> {throw new AssertionError();}, LinkedHashMap::new)));
 	}
 
@@ -364,13 +366,13 @@ public interface Config {
 	default Config with(String path, Config config) {
 		checkPath(path);
 		checkNotNull(config);
-		String value = config.getValue(null);
 		String[] keys = path.split(Pattern.quote(DELIMITER));
 		for (int i = keys.length - 1; i >= 0; i--) {
 			String key = keys[i];
 			if (key.isEmpty()) continue;
 			Map<String, Config> map = singletonMap(key, config);
 			config = new Config() {
+				@Nullable
 				@Override
 				public String getValue(@Nullable String defaultValue) {
 					return defaultValue;
@@ -406,6 +408,7 @@ public interface Config {
 		otherChildren.forEach((key, otherChild) -> children.merge(key, otherChild, Config::override));
 		Map<String, Config> finalChildren = unmodifiableMap(children);
 		return new Config() {
+			@Nullable
 			@Override
 			public String getValue(@Nullable String defaultValue) {
 				return value != null ? value : defaultValue;

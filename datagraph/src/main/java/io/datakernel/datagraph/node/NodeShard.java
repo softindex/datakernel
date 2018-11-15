@@ -19,7 +19,7 @@ package io.datakernel.datagraph.node;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.Sharders;
+import io.datakernel.stream.processor.Sharders.HashSharder;
 import io.datakernel.stream.processor.StreamSharder;
 
 import java.util.ArrayList;
@@ -90,7 +90,7 @@ public final class NodeShard<K, T> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		Sharders.HashSharder<K> hashSharder = new Sharders.HashSharder<>(outputs.size());
+		HashSharder<K> hashSharder = new HashSharder<>(outputs.size());
 		StreamSharder<T> streamSharder = StreamSharder.create(
 				object -> hashSharder.shard(keyFunction.apply(object)));
 		taskContext.bindChannel(input, streamSharder.getInput());

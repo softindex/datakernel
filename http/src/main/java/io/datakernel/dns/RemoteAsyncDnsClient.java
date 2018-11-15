@@ -22,6 +22,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncUdpSocket;
+import io.datakernel.eventloop.AsyncUdpSocket.EventHandler;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.UdpPacket;
@@ -43,7 +44,7 @@ import static io.datakernel.async.Promises.TIMEOUT_EXCEPTION;
 import static io.datakernel.async.Promises.timeout;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.TIMED_OUT;
 
-public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.EventHandler, EventloopJmxMBeanEx {
+public class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(RemoteAsyncDnsClient.class);
 
 	private static final int DNS_SERVER_PORT = 53;
@@ -128,7 +129,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 						.withInspector(inspector != null ? inspector.socketInspector() : null);
 				s.setEventHandler(this);
 				s.register();
-				this.socket = s;
+				socket = s;
 			} catch (IOException e) {
 				logger.error("UDP socket creation failed.", e);
 				return Promise.ofException(e);
@@ -218,7 +219,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, AsyncUdpSocket.Even
 
 		void onDnsQueryResult(DnsQuery query, DnsResponse result);
 
-		void onDnsQueryError(DnsQuery query, Throwable t);
+		void onDnsQueryError(DnsQuery query, Throwable e);
 
 		@Nullable
 		AsyncUdpSocketImpl.Inspector socketInspector();

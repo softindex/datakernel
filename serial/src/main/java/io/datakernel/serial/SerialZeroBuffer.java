@@ -17,19 +17,20 @@
 package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 
-public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
+public final class SerialZeroBuffer<T> implements SerialQueue<T> {
 	private Exception exception;
 
 	@Nullable
 	private T value;
 
+	@Nullable
 	private SettablePromise<Void> put;
+	@Nullable
 	private SettablePromise<T> take;
 
 	public boolean isWaiting() {
@@ -45,7 +46,6 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public Promise<Void> put(@Nullable T value) {
 		assert put == null;
 		if (exception == null) {
@@ -65,7 +65,6 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Promise<T> take() {
 		assert take == null;
@@ -86,7 +85,6 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public void close(Throwable e) {
 		if (exception != null) return;

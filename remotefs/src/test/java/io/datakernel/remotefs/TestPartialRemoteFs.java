@@ -76,7 +76,7 @@ public final class TestPartialRemoteFs {
 	public void justDownload() throws IOException {
 		client.downloadSerial(FILE)
 				.streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> assertArrayEquals(CONTENT, Files.readAllBytes(clientStorage.resolve(FILE)))));
 	}
 
@@ -89,7 +89,7 @@ public final class TestPartialRemoteFs {
 		SerialConsumer<ByteBuf> consumer = client.uploadSerial("test_big_file.bin", ".upload");
 
 		supplier.streamTo(consumer)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ ->
 						assertArrayEquals(data, Files.readAllBytes(serverStorage.resolve("test_big_file.bin")))));
 	}
@@ -97,7 +97,7 @@ public final class TestPartialRemoteFs {
 	@Test
 	public void downloadPrefix() throws IOException {
 		client.downloadSerial(FILE, 0, 12).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ ->
 						assertArrayEquals("test content".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)))));
 	}
@@ -105,7 +105,7 @@ public final class TestPartialRemoteFs {
 	@Test
 	public void downloadSuffix() throws IOException {
 		client.downloadSerial(FILE, 13).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ ->
 						assertArrayEquals("of the file".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)))));
 	}
@@ -113,7 +113,7 @@ public final class TestPartialRemoteFs {
 	@Test
 	public void downloadPart() throws IOException {
 		client.downloadSerial(FILE, 5, 10).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ ->
 						assertArrayEquals("content of".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)))));
 	}
@@ -121,14 +121,14 @@ public final class TestPartialRemoteFs {
 	@Test
 	public void downloadOverSuffix() throws IOException {
 		client.downloadSerial(FILE, 13, 123).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "Boundaries exceed file size"));
 	}
 
 	@Test
 	public void downloadOver() throws IOException {
 		client.downloadSerial(FILE, 123, 123).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "Offset exceeds file size"));
 	}
 
@@ -143,7 +143,7 @@ public final class TestPartialRemoteFs {
 
 		SerialSupplier.of(ByteBuf.wrapForReading(override.getBytes(UTF_8)))
 				.streamTo(client.uploadSerial(path.getFileName().toString(), 35))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ ->
 						assertArrayEquals(updated.getBytes(UTF_8), Files.readAllBytes(path))));
 	}

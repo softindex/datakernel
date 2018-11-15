@@ -30,6 +30,7 @@ public final class ByteBufsParserTest {
 	public ByteBufRule byteBufRule = new ByteBufRule();
 	public final ByteBufQueue queue = new ByteBufQueue();
 
+	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void testOfNullTerminatedBytes() throws ParseException {
 		ByteBufsParser<ByteBuf> parser = ByteBufsParser.ofNullTerminatedBytes();

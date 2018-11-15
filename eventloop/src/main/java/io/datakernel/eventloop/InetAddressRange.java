@@ -30,8 +30,8 @@ import java.util.NoSuchElementException;
 @SuppressWarnings("unused, WeakerAccess")
 public final class InetAddressRange implements Comparable<InetAddressRange>, Iterable<InetAddress> {
 	public static final ParseException INVALID_RANGE = new ParseException(InetAddressRange.class, "Invalid inet addresses range. You should specify either ipv4 or ipv6");
-	public static final int[] START = new int[]{0, 0, 0, 0};
-	public static final int[] END = new int[]{-1, -1, -1, -1};
+	public static final int[] START = {0, 0, 0, 0};
+	public static final int[] END = {-1, -1, -1, -1};
 	private static final int[] EMPTY_MASK = {0, 0, 0, 0};
 
 	/*
@@ -203,7 +203,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 		Preconditions.check(isSubnet(), "IpRange is not subnet");
 		try {
 			return forInteger(mask);
-		} catch (ParseException e) {
+		} catch (ParseException ignored) {
 			throw new IllegalStateException("Mask is not valid");
 		}
 	}
@@ -212,7 +212,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 		try {
 			Preconditions.check(isSubnet(), "IpRange is not subnet");
 			return forInteger(network);
-		} catch (ParseException e) {
+		} catch (ParseException ignored) {
 			throw new IllegalStateException("network address is not valid");
 		}
 	}
@@ -447,7 +447,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 			}
 			try {
 				return InetAddress.getByAddress(toByteArray(current));
-			} catch (UnknownHostException e) {
+			} catch (UnknownHostException ignored) {
 				throw new AssertionError("Should not ever get here");
 			}
 		}

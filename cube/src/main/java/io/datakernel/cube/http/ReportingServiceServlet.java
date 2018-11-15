@@ -42,7 +42,7 @@ import static io.datakernel.http.HttpMethod.GET;
 import static java.util.stream.Collectors.toList;
 
 public final class ReportingServiceServlet extends AsyncServletWithStats {
-	protected final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
+	private static final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
 
 	private final ICube cube;
 	private final TypeAdapterMapping mapping;
@@ -60,24 +60,18 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 	}
 
 	public static MiddlewareServlet createRootServlet(Eventloop eventloop, ICube cube) {
-		return createRootServlet(eventloop,
+		return createRootServlet(
 				ReportingServiceServlet.create(eventloop, cube),
 				(cube instanceof Cube) ? ConsolidationDebugServlet.create(eventloop, (Cube) cube) : null);
 	}
 
-	public static MiddlewareServlet createRootServlet(Eventloop eventloop,
-	                                                  ReportingServiceServlet reportingServiceServlet,
-	                                                  @Nullable ConsolidationDebugServlet consolidationDebugServlet) {
+	public static MiddlewareServlet createRootServlet(ReportingServiceServlet reportingServiceServlet,
+			@Nullable ConsolidationDebugServlet consolidationDebugServlet) {
 		return MiddlewareServlet.create()
 				.with(GET, "/", reportingServiceServlet)
 				.with(GET, "/consolidation-debug", consolidationDebugServlet != null ?
 						consolidationDebugServlet :
-						new AsyncServlet() {
-							@Override
-							public Promise<HttpResponse> serve(HttpRequest request) {
-								return Promise.of(HttpResponse.ofCode(404));
-							}
-						});
+						(AsyncServlet) request -> Promise.of(HttpResponse.ofCode(404)));
 	}
 
 	private TypeAdapter<AggregationPredicate> getAggregationPredicateJson() {
@@ -142,42 +136,41 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 				.collect(toList());
 	}
 
-	@SuppressWarnings("unchecked")
 	public CubeQuery parseQuery(HttpRequest request) throws Exception {
 		CubeQuery query = CubeQuery.create();
 
 		String parameter;
 		parameter = request.getQueryParameterOrNull(ATTRIBUTES_PARAM);
 		if (parameter != null)
-			query = query.withAttributes(split(parameter));
+			query.withAttributes(split(parameter));
 
 		parameter = request.getQueryParameterOrNull(MEASURES_PARAM);
 		if (parameter != null)
-			query = query.withMeasures(split(parameter));
+			query.withMeasures(split(parameter));
 
 		parameter = request.getQueryParameterOrNull(WHERE_PARAM);
 		if (parameter != null)
-			query = query.withWhere(getAggregationPredicateJson().fromJson(parameter));
+			query.withWhere(getAggregationPredicateJson().fromJson(parameter));
 
 		parameter = request.getQueryParameterOrNull(SORT_PARAM);
 		if (parameter != null)
-			query = query.withOrderings(parseOrderings(parameter));
+			query.withOrderings(parseOrderings(parameter));
 
 		parameter = request.getQueryParameterOrNull(HAVING_PARAM);
 		if (parameter != null)
-			query = query.withHaving(getAggregationPredicateJson().fromJson(parameter));
+			query.withHaving(getAggregationPredicateJson().fromJson(parameter));
 
 		parameter = request.getQueryParameterOrNull(LIMIT_PARAM);
 		if (parameter != null)
-			query = query.withLimit(Integer.valueOf(parameter)); // TODO throws ParseException
+			query.withLimit(Integer.valueOf(parameter));// TODO throws ParseException
 
 		parameter = request.getQueryParameterOrNull(OFFSET_PARAM);
 		if (parameter != null)
-			query = query.withOffset(Integer.valueOf(parameter));
+			query.withOffset(Integer.valueOf(parameter));
 
 		parameter = request.getQueryParameterOrNull(REPORT_TYPE_PARAM);
 		if (parameter != null)
-			query = query.withReportType(ReportType.valueOf(parameter.toUpperCase()));
+			query.withReportType(ReportType.valueOf(parameter.toUpperCase()));
 
 		return query;
 	}

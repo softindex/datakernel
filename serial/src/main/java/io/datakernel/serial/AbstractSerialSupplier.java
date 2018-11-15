@@ -39,14 +39,4 @@ public abstract class AbstractSerialSupplier<T> extends AbstractCancellable impl
 		if (isClosed()) return Promise.ofException(getException());
 		return doGet();
 	}
-
-	@Override
-	public final void cancel() {
-		SerialSupplier.super.cancel();
-	}
-
-	@Override
-	public final void close() {
-		SerialSupplier.super.close();
-	}
 }

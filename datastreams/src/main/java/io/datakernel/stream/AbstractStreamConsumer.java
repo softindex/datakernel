@@ -39,7 +39,7 @@ import static java.util.Collections.emptySet;
  * @param <T> type of received item
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final long createTick = eventloop.tick();
@@ -58,7 +58,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	@Override
 	public final void setSupplier(StreamSupplier<T> supplier) {
 		checkNotNull(supplier);
-		checkState(this.supplier == null);
+		checkState(this.supplier == null, "Supplier has already been set");
 		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
 				LATE_BINDING_ERROR_MESSAGE, this);
 		this.supplier = supplier;
@@ -109,7 +109,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		eventloop.post(this::cleanup);
 	}
 
-	protected abstract void onError(Throwable t);
+	protected abstract void onError(Throwable e);
 
 	protected void cleanup() {
 	}

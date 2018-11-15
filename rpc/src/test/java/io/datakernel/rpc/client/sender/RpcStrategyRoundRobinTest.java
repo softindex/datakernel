@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,9 +25,9 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
+@SuppressWarnings("ConstantConditions")
 public class RpcStrategyRoundRobinTest {
 
 	private static final String HOST = "localhost";
@@ -104,7 +104,7 @@ public class RpcStrategyRoundRobinTest {
 		pool.put(ADDRESS_2, connection);
 		RpcStrategy roundRobin = RpcStrategyRoundRobin.create(servers(ADDRESS_1, ADDRESS_2));
 
-		assertTrue(roundRobin.createSender(pool) != null);
+		assertNotNull(roundRobin.createSender(pool));
 	}
 
 	@Test
@@ -113,7 +113,7 @@ public class RpcStrategyRoundRobinTest {
 		// no connections were added to pool
 		RpcStrategy roundRobin = roundRobin(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 
-		assertTrue(roundRobin.createSender(pool) == null);
+		assertNull(roundRobin.createSender(pool));
 	}
 
 	@Test
@@ -129,7 +129,7 @@ public class RpcStrategyRoundRobinTest {
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
 
-		assertTrue(roundRobin.createSender(pool) == null);
+		assertNull(roundRobin.createSender(pool));
 	}
 
 	@Test
@@ -144,7 +144,7 @@ public class RpcStrategyRoundRobinTest {
 		pool.put(ADDRESS_2, connection2);
 		// we don't add connection3
 
-		assertTrue(roundRobin.createSender(pool) == null);
+		assertNull(roundRobin.createSender(pool));
 	}
 
 }

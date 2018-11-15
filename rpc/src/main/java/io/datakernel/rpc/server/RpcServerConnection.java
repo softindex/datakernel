@@ -22,14 +22,15 @@ import io.datakernel.jmx.*;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.protocol.RpcStream;
+import io.datakernel.rpc.protocol.RpcStream.Listener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.Map;
 
-public final class RpcServerConnection implements RpcStream.Listener, JmxRefreshable {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+public final class RpcServerConnection implements Listener, JmxRefreshable {
+	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
 
 	private final RpcServer rpcServer;
 	private final RpcStream stream;
@@ -46,7 +47,7 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	private EventStats failedRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
 	private boolean monitoring = false;
 
-	protected RpcServerConnection(RpcServer rpcServer, InetAddress remoteAddress,
+	RpcServerConnection(RpcServer rpcServer, InetAddress remoteAddress,
 			Map<Class<?>, RpcRequestHandler<?, ?>> handlers, RpcStream stream) {
 		this.rpcServer = rpcServer;
 		this.stream = stream;
@@ -59,7 +60,7 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 
 	@SuppressWarnings("unchecked")
 	private Promise<Object> apply(Object request) {
-		RpcRequestHandler requestHandler = handlers.get(request.getClass());
+		RpcRequestHandler<Object, Object> requestHandler = (RpcRequestHandler<Object, Object>) handlers.get(request.getClass());
 		if (requestHandler == null) {
 			return Promise.ofException(new ParseException(RpcServerConnection.class, "Failed to process request " + request));
 		}
@@ -74,27 +75,27 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 		long startTime = monitoring ? System.currentTimeMillis() : 0;
 
 		Object messageData = message.getData();
-		apply(messageData).whenComplete((result, throwable) -> {
+		apply(messageData).whenComplete((result, e) -> {
 			if (startTime != 0) {
 				int value = (int) (System.currentTimeMillis() - startTime);
 				requestHandlingTime.recordValue(value);
 				rpcServer.getRequestHandlingTime().recordValue(value);
 			}
-			if (throwable == null) {
+			if (e == null) {
 				successfulRequests.recordEvent();
 				rpcServer.getSuccessfulRequests().recordEvent();
 
 				stream.sendMessage(RpcMessage.of(cookie, result));
 				decrementActiveRequest();
 			} else {
-				lastRequestHandlingException.recordException(throwable, messageData);
-				rpcServer.getLastRequestHandlingException().recordException(throwable, messageData);
+				lastRequestHandlingException.recordException(e, messageData);
+				rpcServer.getLastRequestHandlingException().recordException(e, messageData);
 				failedRequests.recordEvent();
 				rpcServer.getFailedRequests().recordEvent();
 
-				stream.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(throwable)));
+				stream.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(e)));
 				decrementActiveRequest();
-				logger.warn("Exception while processing request ID {}", cookie, throwable);
+				logger.warn("Exception while processing request ID {}", cookie, e);
 			}
 		});
 	}
@@ -116,13 +117,13 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	}
 
 	@Override
-	public void onClosedWithError(Throwable exception) {
+	public void onClosedWithError(Throwable e) {
 		onClosed();
 
 		// jmx
 		String causedAddress = "Remote address: " + remoteAddress.getAddress().toString();
-		logger.error("Protocol error. " + causedAddress, exception);
-		rpcServer.getLastProtocolError().recordException(exception, causedAddress);
+		logger.error("Protocol error. " + causedAddress, e);
+		rpcServer.getLastProtocolError().recordException(e, causedAddress);
 	}
 
 	@Override

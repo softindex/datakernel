@@ -42,9 +42,7 @@ final class ExpressionCallStatic implements Expression {
 	@Override
 	public Type type(Context ctx) {
 		List<Class<?>> argumentClasses = new ArrayList<>();
-		List<Type> argumentTypes = new ArrayList<>();
 		for (Expression argument : arguments) {
-			argumentTypes.add(argument.type(ctx));
 			argumentClasses.add(getJavaType(ctx.getClassLoader(), argument.type(ctx)));
 		}
 
@@ -55,7 +53,7 @@ final class ExpressionCallStatic implements Expression {
 			Method method = owner.getMethod(name, arguments);
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
-		} catch (NoSuchMethodException e) {
+		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No static method %s.%s(%s). %s",
 					owner.getName(),
 					name,
@@ -69,10 +67,8 @@ final class ExpressionCallStatic implements Expression {
 	@Override
 	public Type load(Context ctx) {
 		List<Class<?>> argumentClasses = new ArrayList<>();
-		List<Type> argumentTypes = new ArrayList<>();
 		for (Expression argument : arguments) {
 			argument.load(ctx);
-			argumentTypes.add(argument.type(ctx));
 			if (argument.type(ctx).equals(getType(Object[].class))) {
 				argumentClasses.add(Object[].class);
 			} else {
@@ -88,7 +84,7 @@ final class ExpressionCallStatic implements Expression {
 			method = ownerJavaType.getMethod(name, arguments);
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
-		} catch (NoSuchMethodException e) {
+		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No static method %s.%s(%s). %s",
 					owner.getName(),
 					name,

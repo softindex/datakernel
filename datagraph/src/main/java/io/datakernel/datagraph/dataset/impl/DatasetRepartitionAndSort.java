@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package io.datakernel.datagraph.dataset.impl;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.graph.DataGraph;
@@ -28,13 +29,14 @@ import static io.datakernel.datagraph.dataset.impl.DatasetUtils.repartitionAndSo
 
 public final class DatasetRepartitionAndSort<K, T> extends SortedDataset<K, T> {
 	private final LocallySortedDataset<K, T> input;
+	@Nullable
 	private final List<Partition> partitions;
 
 	public DatasetRepartitionAndSort(LocallySortedDataset<K, T> input) {
 		this(input, null);
 	}
 
-	public DatasetRepartitionAndSort(LocallySortedDataset<K, T> input, List<Partition> partitions) {
+	public DatasetRepartitionAndSort(LocallySortedDataset<K, T> input, @Nullable List<Partition> partitions) {
 		super(input.valueType(), input.keyComparator(), input.keyType(), input.keyFunction());
 		this.input = input;
 		this.partitions = partitions;

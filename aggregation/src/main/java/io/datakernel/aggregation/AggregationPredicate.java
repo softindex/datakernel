@@ -31,5 +31,6 @@ public interface AggregationPredicate {
 
 	Map<String, Object> getFullySpecifiedDimensions();
 
+	@SuppressWarnings("rawtypes")
 	PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields);
 }

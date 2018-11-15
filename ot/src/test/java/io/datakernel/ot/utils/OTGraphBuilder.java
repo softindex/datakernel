@@ -4,6 +4,7 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 
+@FunctionalInterface
 public interface OTGraphBuilder<K, D> {
 	void add(K parent, K child, List<D> diffs);
 

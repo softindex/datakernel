@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.jmx;
 
 import io.datakernel.annotation.Nullable;
@@ -13,6 +29,7 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
 
 public class PromiseStats {
+	@Nullable
 	private Eventloop eventloop;
 
 	private int activePromises = 0;
@@ -21,7 +38,7 @@ public class PromiseStats {
 	private final ValueStats duration;
 	private final ExceptionStats exceptions = ExceptionStats.create();
 
-	protected PromiseStats(Eventloop eventloop, ValueStats duration) {
+	protected PromiseStats(@Nullable Eventloop eventloop, ValueStats duration) {
 		this.eventloop = eventloop;
 		this.duration = duration;
 	}
@@ -59,18 +76,18 @@ public class PromiseStats {
 	}
 
 	public <T> BiConsumer<T, Throwable> recordStats() {
-		this.activePromises++;
+		activePromises++;
 		long before = currentTimeMillis();
-		this.lastStartTimestamp = before;
-		return (value, throwable) -> {
-			this.activePromises--;
+		lastStartTimestamp = before;
+		return (value, e) -> {
+			activePromises--;
 			long now = currentTimeMillis();
 			long durationMillis = now - before;
-			this.lastCompleteTimestamp = now;
+			lastCompleteTimestamp = now;
 			duration.recordValue(durationMillis);
 
-			if (throwable != null) {
-				exceptions.recordException(throwable);
+			if (e != null) {
+				exceptions.recordException(e);
 			}
 		};
 	}

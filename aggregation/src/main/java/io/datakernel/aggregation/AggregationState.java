@@ -17,8 +17,10 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.AggregationPredicates.RangeScan;
+import io.datakernel.aggregation.RangeTree.Segment;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.ot.OTState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,13 +48,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	private final Map<Object, AggregationChunk> chunks = new LinkedHashMap<>();
 	private RangeTree<PrimaryKey, AggregationChunk>[] prefixRanges;
 
-	private static final int EQUALS_QUERIES_THRESHOLD = 1_000;
-	private static final Comparator<AggregationChunk> MIN_KEY_ASCENDING_COMPARATOR = new Comparator<AggregationChunk>() {
-		@Override
-		public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {
-			return chunk1.getMinPrimaryKey().compareTo(chunk2.getMinPrimaryKey());
-		}
-	};
+	private static final Comparator<AggregationChunk> MIN_KEY_ASCENDING_COMPARATOR = (chunk1, chunk2) -> chunk1.getMinPrimaryKey().compareTo(chunk2.getMinPrimaryKey());
 
 	@SuppressWarnings("unchecked")
 	AggregationState(AggregationStructure aggregation) {
@@ -84,8 +80,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		checkArgument(chunks.put(chunk.getChunkId(), chunk) == null,
 				() -> "" +
 						"Trying to add existing chunk: " + chunk +
-						"\n this: " + this.toString() +
-						"\n chunks: " + toLimitedString(this.chunks.keySet(), 100));
+						"\n this: " + toString() +
+						"\n chunks: " + toLimitedString(chunks.keySet(), 100));
 
 		for (int size = 0; size <= aggregation.getKeys().size(); size++) {
 			RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
@@ -100,8 +96,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		checkArgument(chunks.remove(chunk.getChunkId()) != null,
 				() -> "" +
 						"Trying to remove unknown chunk: " + chunk +
-						"\n this: " + this.toString() +
-						"\n chunks: " + toLimitedString(this.chunks.keySet(), 100));
+						"\n this: " + toString() +
+						"\n chunks: " + toLimitedString(chunks.keySet(), 100));
 
 		for (int size = 0; size <= aggregation.getKeys().size(); size++) {
 			RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
@@ -113,9 +109,9 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	void initIndex() {
-		this.prefixRanges = new RangeTree[aggregation.getKeys().size() + 1];
+		prefixRanges = new RangeTree[aggregation.getKeys().size() + 1];
 		for (int size = 0; size <= aggregation.getKeys().size(); size++) {
-			this.prefixRanges[size] = RangeTree.create();
+			prefixRanges[size] = RangeTree.create();
 		}
 	}
 
@@ -125,7 +121,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		chunks.clear();
 	}
 
-	private static int getNumberOfOverlaps(RangeTree.Segment segment) {
+	private static int getNumberOfOverlaps(Segment<?> segment) {
 		return segment.getSet().size() + segment.getClosingSet().size();
 	}
 
@@ -133,8 +129,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		int minOverlaps = 2;
 		Set<AggregationChunk> result = new HashSet<>();
 		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[aggregation.getKeys().size()];
-		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
-			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+		for (Map.Entry<PrimaryKey, Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+			Segment<AggregationChunk> segment = segmentEntry.getValue();
 			int overlaps = getNumberOfOverlaps(segment);
 			if (overlaps >= minOverlaps) {
 				result.addAll(segment.getSet());
@@ -151,8 +147,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	private static List<AggregationChunk> findChunksGroupWithMostOverlaps(RangeTree<PrimaryKey, AggregationChunk> tree) {
 		int maxOverlaps = 2;
 		List<AggregationChunk> result = new ArrayList<>();
-		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
-			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+		for (Map.Entry<PrimaryKey, Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+			Segment<AggregationChunk> segment = segmentEntry.getValue();
 			int overlaps = getNumberOfOverlaps(segment);
 			if (overlaps >= maxOverlaps) {
 				maxOverlaps = overlaps;
@@ -179,9 +175,9 @@ public final class AggregationState implements OTState<AggregationDiff> {
 			int maxChunks, int optimalChunkSize) {
 		int minOverlaps = 2;
 		List<AggregationChunk> result = new ArrayList<>();
-		SortedMap<PrimaryKey, RangeTree.Segment<AggregationChunk>> tailMap = null;
-		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
-			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+		SortedMap<PrimaryKey, Segment<AggregationChunk>> tailMap = null;
+		for (Map.Entry<PrimaryKey, Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+			Segment<AggregationChunk> segment = segmentEntry.getValue();
 			int overlaps = getNumberOfOverlaps(segment);
 
 			// "min key" strategy
@@ -206,11 +202,11 @@ public final class AggregationState implements OTState<AggregationDiff> {
 			return new ChunksAndStrategy(PickingStrategy.SIZE_FIX, emptyList());
 
 		Set<AggregationChunk> chunks = new HashSet<>();
-		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tailMap.entrySet()) {
+		for (Map.Entry<PrimaryKey, Segment<AggregationChunk>> segmentEntry : tailMap.entrySet()) {
 			if (chunks.size() >= maxChunks)
 				break;
 
-			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+			Segment<AggregationChunk> segment = segmentEntry.getValue();
 			chunks.addAll(segment.getSet());
 			chunks.addAll(segment.getClosingSet());
 		}
@@ -235,10 +231,11 @@ public final class AggregationState implements OTState<AggregationDiff> {
 
 	private static class PickedChunks {
 		private final PickingStrategy strategy;
+		@Nullable
 		private final RangeTree<PrimaryKey, AggregationChunk> partitionTree;
 		private final List<AggregationChunk> chunks;
 
-		public PickedChunks(PickingStrategy strategy, RangeTree<PrimaryKey, AggregationChunk> partitionTree,
+		public PickedChunks(PickingStrategy strategy, @Nullable RangeTree<PrimaryKey, AggregationChunk> partitionTree,
 				List<AggregationChunk> chunks) {
 			this.strategy = strategy;
 			this.partitionTree = partitionTree;
@@ -332,7 +329,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		}
 
 		if (strategy == PickingStrategy.SIZE_FIX) {
-			logChunksAndStrategy(chunks, strategy);
+			logChunksAndStrategy(chunks, PickingStrategy.SIZE_FIX);
 			return chunks;
 		}
 
@@ -408,9 +405,9 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		List<ConsolidationDebugInfo> infos = new ArrayList<>();
 		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[aggregation.getKeys().size()];
 
-		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+		for (Map.Entry<PrimaryKey, Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
 			PrimaryKey key = segmentEntry.getKey();
-			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+			Segment<AggregationChunk> segment = segmentEntry.getValue();
 			int overlaps = segment.getSet().size() + segment.getClosingSet().size();
 			Set<AggregationChunk> segmentSet = segment.getSet();
 			Set<AggregationChunk> segmentClosingSet = segment.getClosingSet();
@@ -457,8 +454,10 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	@SuppressWarnings("unchecked")
 	private static boolean chunkMightContainQueryValues(List<Object> queryMinValues, List<Object> queryMaxValues,
 			List<Object> chunkMinValues, List<Object> chunkMaxValues) {
-		checkArgument(queryMinValues.size() == queryMaxValues.size());
-		checkArgument(chunkMinValues.size() == chunkMaxValues.size());
+		checkArgument(queryMinValues.size() == queryMaxValues.size(),
+				"Sizes of lists of query minimum and maximum values should match");
+		checkArgument(chunkMinValues.size() == chunkMaxValues.size(),
+				"Sizes of lists of chunk minimum and maximum values should match");
 
 		for (int i = 0; i < queryMinValues.size(); ++i) {
 			Comparable<Object> queryMinValue = (Comparable<Object>) queryMinValues.get(i);
@@ -496,7 +495,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	private List<AggregationChunk> rangeQuery(PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey) {
-		checkArgument(minPrimaryKey.size() == maxPrimaryKey.size());
+		checkArgument(minPrimaryKey.size() == maxPrimaryKey.size(), "Sizes of min primary key and max primary key should match");
 		int size = minPrimaryKey.size();
 		RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
 		return new ArrayList<>(index.getRange(minPrimaryKey, maxPrimaryKey));

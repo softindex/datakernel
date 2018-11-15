@@ -23,7 +23,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.StreamSupplier;
 import org.slf4j.Logger;
@@ -37,8 +36,8 @@ import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
+	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);
 
 	private final AggregationChunkStorage<C> storage;
 	private final AggregationStructure aggregation;
@@ -61,7 +60,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 		this.storage = checkNotNull(storage, "Cannot create AggregationGroupReducer with AggregationChunkStorage that is null");
 		this.measures = checkNotNull(measures, "Cannot create AggregationGroupReducer with measures that is null");
 		this.partitionPredicate = checkNotNull(partitionPredicate, "Cannot create AggregationGroupReducer with PartitionPredicate that is null");
-		this.recordClass = (Class<T>) checkNotNull(recordClass, "Cannot create AggregationGroupReducer with recordClass that is null");
+		this.recordClass = checkNotNull(recordClass, "Cannot create AggregationGroupReducer with recordClass that is null");
 		this.keyFunction = checkNotNull(keyFunction, "Cannot create AggregationGroupReducer with keyFunction that is null");
 		this.aggregate = checkNotNull(aggregate, "Cannot create AggregationGroupReducer with Aggregate that is null");
 		this.chunkSize = chunkSize;
@@ -145,7 +144,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 	}
 
 	@Override
-	protected void onError(Throwable t) {
+	protected void onError(Throwable e) {
 	}
 
 	// jmx

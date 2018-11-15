@@ -34,7 +34,7 @@ import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertSame;
 
 public class StreamFunctionTest {
 
@@ -110,9 +110,9 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testIdentity() {
-		Function<String, String> function1 = Function.<String>identity();
-		Function<Integer, Integer> function2 = Function.<Integer>identity();
-		assertTrue((Function) function1 == (Function) function2);
+		Function<String, String> function1 = Function.identity();
+		Function<Integer, Integer> function2 = Function.identity();
+		assertSame(function1, function2);
 	}
 
 }

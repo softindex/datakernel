@@ -45,6 +45,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final long createTick = eventloop.tick();
 
+	@Nullable
 	private StreamConsumer<T> consumer;
 
 	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
@@ -77,7 +78,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	@Override
 	public final void setConsumer(StreamConsumer<T> consumer) {
 		checkNotNull(consumer);
-		checkState(this.consumer == null);
+		checkState(this.consumer == null, "Consumer has already been set");
 
 		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
 				LATE_BINDING_ERROR_MESSAGE, this);
@@ -109,7 +110,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	protected void send(T item) {
-		getLastDataAcceptor().accept(item);
+		lastDataAcceptor.accept(item);
 	}
 
 	@Nullable
@@ -200,6 +201,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	public Promise<Void> sendEndOfStream() {
+		assert consumer != null;
 		if (endOfStream.isComplete()) return endOfStream;
 		currentDataAcceptor = null;
 		lastDataAcceptor = Recyclable::tryRecycle;
@@ -223,7 +225,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		onError(e);
 	}
 
-	protected abstract void onError(Throwable t);
+	protected abstract void onError(Throwable e);
 
 	protected void cleanup() {
 	}

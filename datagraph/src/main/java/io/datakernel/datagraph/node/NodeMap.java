@@ -19,6 +19,7 @@ package io.datakernel.datagraph.node;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.processor.StreamMap;
+import io.datakernel.stream.processor.StreamMap.Mapper;
 
 import java.util.Collection;
 
@@ -31,14 +32,14 @@ import static java.util.Collections.singletonList;
  * @param <O> output items data type
  */
 public final class NodeMap<I, O> implements Node {
-	private StreamMap.Mapper<I, O> mapper;
+	private Mapper<I, O> mapper;
 	private StreamId input;
 	private StreamId output;
 
 	public NodeMap() {
 	}
 
-	public NodeMap(StreamMap.Mapper<I, O> mapper, StreamId input) {
+	public NodeMap(Mapper<I, O> mapper, StreamId input) {
 		this.mapper = mapper;
 		this.input = input;
 		this.output = new StreamId();
@@ -56,11 +57,11 @@ public final class NodeMap<I, O> implements Node {
 		taskContext.export(output, streamMap.getOutput());
 	}
 
-	public StreamMap.Mapper<I, O> getMapper() {
+	public Mapper<I, O> getMapper() {
 		return mapper;
 	}
 
-	public void setMapper(StreamMap.Mapper<I, O> mapper) {
+	public void setMapper(Mapper<I, O> mapper) {
 		this.mapper = mapper;
 	}
 

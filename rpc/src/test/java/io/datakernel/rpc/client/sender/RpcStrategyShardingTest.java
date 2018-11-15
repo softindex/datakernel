@@ -31,6 +31,7 @@ import static io.datakernel.rpc.client.sender.RpcStrategies.servers;
 import static io.datakernel.rpc.client.sender.RpcStrategies.sharding;
 import static org.junit.Assert.assertEquals;
 
+@SuppressWarnings("ConstantConditions")
 public class RpcStrategyShardingTest {
 
 	private static final String HOST = "localhost";

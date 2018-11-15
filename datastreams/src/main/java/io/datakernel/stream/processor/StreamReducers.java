@@ -21,7 +21,7 @@ import io.datakernel.stream.StreamDataAcceptor;
 import java.util.function.BinaryOperator;
 
 /**
- * Static utility methods pertaining to {@link StreamReducers.Reducer}.
+ * Static utility methods pertaining to {@link Reducer}.
  * Contains primary ready for use reducers.
  */
 public final class StreamReducers {

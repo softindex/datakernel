@@ -12,6 +12,7 @@ import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.StreamSupplierFunction;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.IntrusiveLinkedList;
+import io.datakernel.util.IntrusiveLinkedList.Node;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -78,7 +79,6 @@ public final class StreamRegistry<V> implements Iterable<V> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	public <T> RegisterFunction<T> register(V value) {
 		return new RegisterFunction<>(value);
 	}
@@ -101,7 +101,7 @@ public final class StreamRegistry<V> implements Iterable<V> {
 
 	private Function<Promise<Void>, Promise<Void>> subscribe(V value) {
 		Entry<V> entry = new Entry<>(value);
-		IntrusiveLinkedList.Node<Entry<V>> node = list.addFirstValue(entry);
+		Node<Entry<V>> node = list.addFirstValue(entry);
 		return promise -> promise
 				.whenComplete(($, e) -> list.removeNode(node));
 	}
@@ -124,7 +124,7 @@ public final class StreamRegistry<V> implements Iterable<V> {
 
 	@JmxAttribute(name = "")
 	public String getString() {
-		List<Entry> entries = new ArrayList<>();
+		List<Entry<V>> entries = new ArrayList<>();
 		list.forEach(entries::add);
 		return CollectionUtils.toLimitedString(entries, limit);
 	}

@@ -20,7 +20,8 @@ import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerBuilder.StaticMethods;
+import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 import io.datakernel.util.Preconditions;
 import org.objectweb.asm.Type;
 
@@ -36,13 +37,11 @@ import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 import static org.objectweb.asm.Type.*;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenClass implements SerializerGen {
 
 	private static final class FieldGen {
 		private Field field;
 		private Method method;
-		private int offset;
 		private int versionAdded = -1;
 		private int versionDeleted = -1;
 		private SerializerGen serializer;
@@ -50,19 +49,20 @@ public class SerializerGenClass implements SerializerGen {
 		public boolean hasVersion(int version) {
 			if (versionAdded == -1 && versionDeleted == -1) {
 				return true;
-			} else if (versionAdded != -1 && versionDeleted == -1) {
-				return version >= versionAdded;
-			} else if (versionAdded == -1) {
-				return version < versionDeleted;
-			} else {
-				if (versionAdded > versionDeleted) {
-					return version < versionDeleted || version >= versionAdded;
-				} else if (versionAdded < versionDeleted) {
-					return version >= versionAdded && version < versionDeleted;
-				} else {
-					throw new IllegalArgumentException();
-				}
 			}
+			if (versionAdded != -1 && versionDeleted == -1) {
+				return version >= versionAdded;
+			}
+			if (versionAdded == -1) {
+				return version < versionDeleted;
+			}
+			if (versionAdded > versionDeleted) {
+				return version < versionDeleted || version >= versionAdded;
+			}
+			if (versionAdded < versionDeleted) {
+				return version >= versionAdded && version < versionDeleted;
+			}
+			throw new IllegalArgumentException();
 		}
 
 		public Class<?> getRawType() {
@@ -81,10 +81,9 @@ public class SerializerGenClass implements SerializerGen {
 	private boolean implInterface;
 	private Class<?> dataTypeIn;
 	private Class<?> dataTypeOut;
-	private List<SerializerGenBuilder.SerializerForType> generics;
+	private List<SerializerForType> generics;
 
 	private final Map<String, FieldGen> fields = new LinkedHashMap<>();
-	private int lastOffset;
 
 	private Constructor<?> constructor;
 	private List<String> constructorParams;
@@ -100,61 +99,59 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	public SerializerGenClass(Class<?> type, Class<?> typeImpl) {
-		checkNotNull(type);
-		checkNotNull(typeImpl);
-		check(type.isInterface());
-		check(type.isAssignableFrom(typeImpl));
-		this.dataTypeIn = type;
-		this.dataTypeOut = typeImpl;
+		check(type.isInterface(), "Class should be an interface");
+		check(type.isAssignableFrom(typeImpl), "Class should be assignable from %s", typeImpl);
+		this.dataTypeIn = checkNotNull(type);
+		this.dataTypeOut = checkNotNull(typeImpl);
 		this.implInterface = true;
 	}
 
-	public SerializerGenClass(Class<?> type, SerializerGenBuilder.SerializerForType[] generics) {
+	public SerializerGenClass(Class<?> type, SerializerForType[] generics) {
 		this(type);
 		this.generics = asList(generics);
 	}
 
-	public SerializerGenClass(Class<?> type, SerializerGenBuilder.SerializerForType[] generics, Class<?> typeImpl) {
+	public SerializerGenClass(Class<?> type, SerializerForType[] generics, Class<?> typeImpl) {
 		this(type, typeImpl);
 		this.generics = asList(generics);
 	}
 
 	public void addSetter(Method method, List<String> fields) {
-		check(implInterface || !dataTypeIn.isInterface());
+		check(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
 		checkNotNull(method);
 		checkNotNull(fields);
 		check(!isPrivate(method.getModifiers()), "Setter cannot be private: %s", method);
-		check(method.getGenericParameterTypes().length == fields.size());
-		check(!setters.containsKey(method));
+		check(method.getGenericParameterTypes().length == fields.size(), "Number of arguments of a method should match a size of list of fields");
+		check(!setters.containsKey(method), "Setter has already been added");
 		setters.put(method, fields);
 	}
 
 	public void setFactory(Method methodFactory, List<String> fields) {
-		check(implInterface || !dataTypeIn.isInterface());
+		check(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
 		checkNotNull(methodFactory);
 		checkNotNull(fields);
 		check(this.factory == null, "Factory is already set: %s", this.factory);
 		check(!isPrivate(methodFactory.getModifiers()), "Factory cannot be private: %s", methodFactory);
 		check(isStatic(methodFactory.getModifiers()), "Factory must be static: %s", methodFactory);
-		check(methodFactory.getGenericParameterTypes().length == fields.size());
+		check(methodFactory.getGenericParameterTypes().length == fields.size(), "Number of arguments of a method should match a size of list of fields");
 		this.factory = methodFactory;
 		this.factoryParams = fields;
 	}
 
 	public void setConstructor(Constructor<?> constructor, List<String> fields) {
-		check(implInterface || !dataTypeIn.isInterface());
+		check(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
 		checkNotNull(constructor);
 		checkNotNull(fields);
 		check(this.constructor == null, "Constructor is already set: %s", this.constructor);
 		check(!isPrivate(constructor.getModifiers()), "Constructor cannot be private: %s", constructor);
-		check(constructor.getGenericParameterTypes().length == fields.size());
+		check(constructor.getGenericParameterTypes().length == fields.size(), "Number of arguments of a constructor should match a size of list of fields");
 		this.constructor = constructor;
 		this.constructorParams = fields;
 	}
 
 	public void addField(Field field, SerializerGen serializer, int added, int removed) {
-		check(implInterface || !dataTypeIn.isInterface());
-		check(isPublic(field.getModifiers()));
+		check(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
+		check(isPublic(field.getModifiers()), "Method should be public");
 		String fieldName = field.getName();
 		check(!fields.containsKey(fieldName), "Duplicate field '%s'", field);
 		FieldGen fieldGen = new FieldGen();
@@ -162,14 +159,12 @@ public class SerializerGenClass implements SerializerGen {
 		fieldGen.serializer = serializer;
 		fieldGen.versionAdded = added;
 		fieldGen.versionDeleted = removed;
-		fieldGen.offset = lastOffset;
-		lastOffset += getType(field.getType()).getSize();
 		fields.put(fieldName, fieldGen);
 	}
 
 	public void addGetter(Method method, SerializerGen serializer, int added, int removed) {
-		check(method.getGenericParameterTypes().length == 0);
-		check(isPublic(method.getModifiers()));
+		check(method.getGenericParameterTypes().length == 0, "Method should have 0 generic parameter types");
+		check(isPublic(method.getModifiers()), "Method should be public");
 		String fieldName = stripGet(method.getName(), method.getReturnType());
 		check(!fields.containsKey(fieldName), "Duplicate field '%s'", method);
 		FieldGen fieldGen = new FieldGen();
@@ -177,13 +172,11 @@ public class SerializerGenClass implements SerializerGen {
 		fieldGen.serializer = serializer;
 		fieldGen.versionAdded = added;
 		fieldGen.versionDeleted = removed;
-		fieldGen.offset = lastOffset;
-		lastOffset += getType(method.getReturnType()).getSize();
 		fields.put(fieldName, fieldGen);
 	}
 
 	public void addMatchingSetters() {
-		check(implInterface || !dataTypeIn.isInterface());
+		check(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
 		Set<String> usedFields = new HashSet<>();
 		if (constructorParams != null) {
 			usedFields.addAll(constructorParams);
@@ -277,7 +270,7 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (staticMethods.startSerializeStaticMethod(this, version)) {
 			return;
 		}
@@ -307,18 +300,18 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression field, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression field, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return staticMethods.callStaticSerializeMethod(this, version, byteArray, off, field);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (staticMethods.startDeserializeStaticMethod(this, version)) {
 			return;
 		}
 
 		if (!implInterface && dataTypeIn.isInterface()) {
-			Expression expression = deserializeInterface(this.getRawType(), version, staticMethods, compatibilityLevel);
+			Expression expression = deserializeInterface(dataTypeIn, version, staticMethods, compatibilityLevel);
 			staticMethods.registerStaticDeserializeMethod(this, version, expression);
 			return;
 		}
@@ -343,7 +336,7 @@ public class SerializerGenClass implements SerializerGen {
 
 		Expression constructor;
 		if (factory == null) {
-			constructor = callConstructor(this.getRawType(), map, version);
+			constructor = callConstructor(dataTypeIn, map, version);
 		} else {
 			constructor = callFactory(map, version);
 		}
@@ -392,7 +385,7 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
 	}
 
@@ -436,7 +429,7 @@ public class SerializerGenClass implements SerializerGen {
 	@SuppressWarnings("unchecked")
 	private Expression deserializeInterface(Class<?> targetType,
 	                                        int version,
-	                                        SerializerBuilder.StaticMethods staticMethods,
+	                                        StaticMethods staticMethods,
 	                                        CompatibilityLevel compatibilityLevel) {
 		ClassBuilder<?> asmFactory = ClassBuilder.create(staticMethods.getDefiningClassLoader(), (Class<Object>) targetType);
 		for (String fieldName : fields.keySet()) {
@@ -472,9 +465,9 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	private Expression deserializeClassSimple(int version,
-	                                          SerializerBuilder.StaticMethods staticMethods,
+	                                          StaticMethods staticMethods,
 	                                          CompatibilityLevel compatibilityLevel) {
-		Expression local = let(constructor(this.getRawType()));
+		Expression local = let(constructor(dataTypeIn));
 
 		List<Expression> list = new ArrayList<>();
 		list.add(local);

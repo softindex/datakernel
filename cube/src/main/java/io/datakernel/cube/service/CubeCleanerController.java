@@ -36,7 +36,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
+	private static final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
 
 	public static final Duration DEFAULT_CHUNKS_CLEANUP_DELAY = Duration.ofMinutes(1);
 	public static final int DEFAULT_SNAPSHOTS_COUNT = 1;
@@ -79,17 +79,17 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 		return new CubeCleanerController<>(eventloop, cubeDiffScheme, algorithms, (OTRepositoryEx<K, D>) algorithms.getRepository(), storage);
 	}
 
-	public CubeCleanerController withChunksCleanupDelay(Duration chunksCleanupDelay) {
+	public CubeCleanerController<K, D, C> withChunksCleanupDelay(Duration chunksCleanupDelay) {
 		this.chunksCleanupDelay = chunksCleanupDelay;
 		return this;
 	}
 
-	public CubeCleanerController withExtraSnapshotCount(int extraSnapshotCount) {
-		this.extraSnapshotsCount = extraSnapshotCount;
+	public CubeCleanerController<K, D, C> withExtraSnapshotsCount(int extraSnapshotsCount) {
+		this.extraSnapshotsCount = extraSnapshotsCount;
 		return this;
 	}
 
-	public CubeCleanerController withFreezeTimeout(Duration freezeTimeout) {
+	public CubeCleanerController<K, D, C> withFreezeTimeout(Duration freezeTimeout) {
 		this.freezeTimeout = freezeTimeout;
 		return this;
 	}
@@ -261,6 +261,6 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	}
 
 	private static <T, R> BiConsumer<R, Throwable> transform(Function<? super R, ? extends T> fn, BiConsumer<? super T, Throwable> toConsumer) {
-		return (value, throwable) -> toConsumer.accept(value != null ? fn.apply(value) : null, throwable);
+		return (value, e) -> toConsumer.accept(value != null ? fn.apply(value) : null, e);
 	}
 }

@@ -83,8 +83,8 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 			columnNames.add(subAttrName);
 			columnTypes.add(subAttrType);
 		}
-		String[] columnNamesArr = columnNames.toArray(new String[columnNames.size()]);
-		OpenType<?>[] columnTypesArr = columnTypes.toArray(new OpenType<?>[columnTypes.size()]);
+		String[] columnNamesArr = columnNames.toArray(new String[0]);
+		OpenType<?>[] columnTypesArr = columnTypes.toArray(new OpenType<?>[0]);
 
 		try {
 			return new TabularType(
@@ -100,9 +100,10 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 
 	@Override
 	public Map<String, OpenType<?>> getOpenTypes() {
-		return Collections.<String, OpenType<?>>singletonMap(name, tabularType);
+		return Collections.singletonMap(name, tabularType);
 	}
 
+	@Nullable
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
 		Map<Object, List<Object>> groupedByKey = fetchMapsAndGroupEntriesByKey(sources);
@@ -174,13 +175,10 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 			return emptyList();
 		}
 
-		Map<?, JmxRefreshable> mapRef = ((Map<?, JmxRefreshable>) fetcher.fetchFrom(source));
-		return Collections.<JmxRefreshable>singletonList(new JmxRefreshable() {
-			@Override
-			public void refresh(long timestamp) {
-				for (JmxRefreshable jmxRefreshableValue : mapRef.values()) {
-					jmxRefreshableValue.refresh(timestamp);
-				}
+		Map<?, JmxRefreshable> mapRef = (Map<?, JmxRefreshable>) fetcher.fetchFrom(source);
+		return Collections.singletonList(timestamp -> {
+			for (JmxRefreshable jmxRefreshableValue : mapRef.values()) {
+				jmxRefreshableValue.refresh(timestamp);
 			}
 		});
 	}

@@ -349,11 +349,11 @@ public class AsmSerializerTest {
 		public List<String> listOfNullableStrings;
 
 		@Serialize(order = 3)
-		@SerializeNullableEx({@SerializeNullable, @SerializeNullable(path = {0}), @SerializeNullable(path = {0, 0})})
+		@SerializeNullableEx({@SerializeNullable, @SerializeNullable(path = 0), @SerializeNullable(path = {0, 0})})
 		public String[][] nullableArrayOfNullableArrayOfNullableStrings;
 
 		@Serialize(order = 4)
-		@SerializeNullableEx({@SerializeNullable(path = {0}), @SerializeNullable(path = {1})})
+		@SerializeNullableEx({@SerializeNullable(path = 0), @SerializeNullable(path = 1)})
 		public Map<Integer, String> mapOfNullableInt2NullableString;
 	}
 
@@ -467,7 +467,6 @@ public class AsmSerializerTest {
 
 		private V value;
 
-		@SuppressWarnings("UnusedDeclaration")
 		public TestDataGenericNested() {
 		}
 
@@ -547,7 +546,7 @@ public class AsmSerializerTest {
 
 	public static class TestDataGenericParameters {
 		@Serialize(order = 0)
-		@SerializeNullableEx({@SerializeNullable(path = {0}), @SerializeNullable(path = {0, 0}), @SerializeNullable(path = {0, 1})})
+		@SerializeNullableEx({@SerializeNullable(path = 0), @SerializeNullable(path = {0, 0}), @SerializeNullable(path = {0, 1})})
 		@SerializeVarLength(path = {0, 0})
 		@SerializeStringFormat(value = StringFormat.UTF16, path = {0, 1})
 		public List<TestDataGenericNested<Integer, String>> list;
@@ -559,7 +558,7 @@ public class AsmSerializerTest {
 		testData1.list = asList(
 				null,
 				new TestDataGenericNested<>(10, "a"),
-				new TestDataGenericNested<Integer, String>(null, null));
+				new TestDataGenericNested<>(null, null));
 		TestDataGenericParameters testData2 = doTest(TestDataGenericParameters.class, testData1);
 		assertEquals(testData1.list.size(), testData2.list.size());
 		for (int i = 0; i < testData1.list.size(); i++) {
@@ -716,23 +715,23 @@ public class AsmSerializerTest {
 
 	public static class TestDataSerializerFormat {
 		@Serialize(order = 0)
-		@SerializeStringFormat(value = StringFormat.UTF16, path = {0})
-		@SerializeNullable(path = {0})
+		@SerializeStringFormat(value = StringFormat.UTF16, path = 0)
+		@SerializeNullable(path = 0)
 		public List<String> stringsUtf16;
 
 		@Serialize(order = 1)
-		@SerializeStringFormat(value = StringFormat.UTF8, path = {0})
-		@SerializeNullable(path = {0})
+		@SerializeStringFormat(value = StringFormat.UTF8, path = 0)
+		@SerializeNullable(path = 0)
 		public List<String> stringsUtf8;
 
 		@Serialize(order = 2)
-		@SerializeStringFormat(value = StringFormat.UTF8_CUSTOM, path = {0})
-		@SerializeNullable(path = {0})
+		@SerializeStringFormat(value = StringFormat.UTF8_CUSTOM, path = 0)
+		@SerializeNullable(path = 0)
 		public List<String> stringsUtf8Custom;
 
 		@Serialize(order = 3)
-		@SerializeStringFormat(value = StringFormat.ISO_8859_1, path = {0})
-		@SerializeNullable(path = {0})
+		@SerializeStringFormat(value = StringFormat.ISO_8859_1, path = 0)
+		@SerializeNullable(path = 0)
 		public List<String> stringsIso88591;
 
 	}
@@ -756,7 +755,7 @@ public class AsmSerializerTest {
 	public static class TestDataFixedSize {
 		@Serialize(order = 0)
 		@SerializeFixedSize(3)
-		@SerializeNullable(path = {0})
+		@SerializeNullable(path = 0)
 		public String[] strings;
 
 		@Serialize(order = 1)
@@ -892,10 +891,10 @@ public class AsmSerializerTest {
 		public int a;
 
 		@Serialize(order = 1, added = 1)
-		@SerializeProfiles(value = "profile", added = {2})
+		@SerializeProfiles(value = "profile", added = 2)
 		public int b;
 
-		@SerializeProfiles(value = {"profile", SerializeProfiles.COMMON_PROFILE}, added = {1}, removed = {2})
+		@SerializeProfiles(value = {"profile", SerializeProfiles.COMMON_PROFILE}, added = 1, removed = 2)
 		@Serialize(order = 2, added = 2)
 		public int c;
 
@@ -903,7 +902,7 @@ public class AsmSerializerTest {
 		public int d;
 
 		@Serialize(order = 4, added = 1)
-		@SerializeProfiles(value = "profile")
+		@SerializeProfiles("profile")
 		public int e;
 
 		public int f;
@@ -1011,7 +1010,6 @@ public class AsmSerializerTest {
 		@SerializeNullable
 		public TestDataRecursive next;
 
-		@SuppressWarnings("UnusedDeclaration")
 		public TestDataRecursive() {
 		}
 
@@ -1030,16 +1028,16 @@ public class AsmSerializerTest {
 		assertEquals(testData1.s, testData2.s);
 		assertEquals(testData1.next.s, testData2.next.s);
 		assertEquals(testData1.next.next.s, testData2.next.next.s);
-		assertEquals(null, testData2.next.next.next);
+		assertNull(testData2.next.next.next);
 	}
 
 	public static class TestDataExtraSubclasses {
 		@Serialize(order = 0)
-		@SerializeSubclasses(value = {String.class}, extraSubclassesId = "extraSubclasses1")
+		@SerializeSubclasses(value = String.class, extraSubclassesId = "extraSubclasses1")
 		public Object object1;
 
 		@Serialize(order = 1)
-		@SerializeSubclasses(value = {String.class}, extraSubclassesId = "extraSubclasses2")
+		@SerializeSubclasses(value = String.class, extraSubclassesId = "extraSubclasses2")
 		public Object object2;
 	}
 
@@ -1059,7 +1057,7 @@ public class AsmSerializerTest {
 		assertEquals(testData1.object2, testData2.object2);
 	}
 
-	@SerializeSubclasses(value = {TestDataExtraSubclasses1.class}, extraSubclassesId = "extraSubclasses")
+	@SerializeSubclasses(value = TestDataExtraSubclasses1.class, extraSubclassesId = "extraSubclasses")
 	public interface TestDataExtraSubclassesInterface {
 	}
 
@@ -1160,7 +1158,7 @@ public class AsmSerializerTest {
 
 		assertEquals(0, testData3.getIntValue());
 		assertEquals(0.0, testData3.getDoubleValue(), Double.MIN_VALUE);
-		assertEquals(null, testData3.getStringValue());
+		assertNull(testData3.getStringValue());
 	}
 
 	public static class TestDataMaxLength {
@@ -1331,8 +1329,8 @@ public class AsmSerializerTest {
 
 		static {
 			for (TestEnum c : TestEnum.values()) {
-				if (CACHE.put(c.getValue(), c) != null)
-					throw new IllegalStateException("Duplicate code " + c.getValue());
+				if (CACHE.put(c.value, c) != null)
+					throw new IllegalStateException("Duplicate code " + c.value);
 			}
 		}
 
@@ -1468,7 +1466,7 @@ public class AsmSerializerTest {
 
 	public static class ListEnumHolder2 {
 		@Serialize(order = 0)
-		@SerializeNullable(path = {0})
+		@SerializeNullable(path = 0)
 		public List<TestEnum2> list;
 	}
 
@@ -1581,8 +1579,8 @@ public class AsmSerializerTest {
 
 		GenericComplex _gc = doTest(GenericComplex.class, gc);
 
-		assertTrue(gc.holder1.item.equals(_gc.holder1.item));
-		assertTrue(gc.holder2.item.equals(_gc.holder2.item));
+		assertEquals(gc.holder1.item, _gc.holder1.item);
+		assertEquals(gc.holder2.item, _gc.holder2.item);
 	}
 
 	public static class TestObj {
@@ -1750,7 +1748,7 @@ public class AsmSerializerTest {
 		public Object address2;
 
 		@Serialize(order = 12)
-		@SerializerClass(path = {0}, value = SerializerGenInt.class)
+		@SerializerClass(path = 0, value = SerializerGenInt.class)
 		public List<Object> list;
 	}
 
@@ -1771,7 +1769,7 @@ public class AsmSerializerTest {
 		testData1.address = InetAddress.getByName("127.0.0.1");
 		testData1.address2 = InetAddress.getByName("2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d");
 
-		testData1.list = Arrays.<Object>asList(Integer.MIN_VALUE, Integer.MAX_VALUE);
+		testData1.list = Arrays.asList(Integer.MIN_VALUE, Integer.MAX_VALUE);
 
 		TestObject testData2 = doTest(TestObject.class, testData1);
 
@@ -1894,7 +1892,7 @@ public class AsmSerializerTest {
 	}
 
 	@Test
-	public void testVersionGetter() throws Exception {
+	public void testVersionGetter() {
 		TestGetterVersion test = TestGetterVersion.of("test", asList("a", "b"));
 		BufferSerializer<TestGetterVersion> serializerV1 = SerializerBuilder
 				.create(DefiningClassLoader.create())
@@ -1963,11 +1961,11 @@ public class AsmSerializerTest {
 	}
 
 	@Test
-	public void testArrayOfCustomClasses() throws Exception {
+	public void testArrayOfCustomClasses() {
 		BufferSerializer<CustomArrayHolder> serializer = SerializerBuilder
 				.create(DefiningClassLoader.create())
 				.build(CustomArrayHolder.class);
-		StringWrapper[] array = new StringWrapper[]{new StringWrapper("str"), new StringWrapper("abc")};
+		StringWrapper[] array = {new StringWrapper("str"), new StringWrapper("abc")};
 		CustomArrayHolder holder = new CustomArrayHolder(array);
 		CustomArrayHolder _holder = doTest(holder, serializer, serializer);
 

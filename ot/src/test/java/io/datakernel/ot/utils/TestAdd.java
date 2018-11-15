@@ -19,7 +19,7 @@ public class TestAdd implements TestOp {
 
 	@Override
 	public String toString() {
-		return (delta > 0 ? "+" : "") + String.valueOf(delta);
+		return (delta > 0 ? "+" : "") + delta;
 	}
 
 	@Override

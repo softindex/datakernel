@@ -239,7 +239,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		if (getConnectionsCount() == 0) {
 			promise.set(null);
 		} else {
-			this.closePromise = promise;
+			closePromise = promise;
 		}
 	}
 

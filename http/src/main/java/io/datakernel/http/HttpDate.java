@@ -25,13 +25,13 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
  Can't parse dates earlier than 1970*/
 final class HttpDate {
 	public static final ParseException FAILED_TO_PARSE_DATE = new ParseException(HttpDate.class, "Failed to parse date");
-	private static final int HOUR_SECONDS = (60 * 60);
+	private static final int HOUR_SECONDS = 60 * 60;
 	private static final int DAY_SECONDS = 24 * HOUR_SECONDS;
 	private static final int YEAR_SECONDS = 365 * DAY_SECONDS;
-	private static final int FOUR_YEAR_SECONDS = (1461 * DAY_SECONDS);
+	private static final int FOUR_YEAR_SECONDS = 1461 * DAY_SECONDS;
 
-	private static final int[] DAYS_IN_MONTH = new int[]{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-	private static final int[] DAYS_IN_MONTH_LEAP = new int[]{31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	private static final int[] DAYS_IN_MONTH = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	private static final int[] DAYS_IN_MONTH_LEAP = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 	private static final byte[] GMT = encodeAscii("GMT");
 
@@ -105,7 +105,7 @@ final class HttpDate {
 			}
 
 			for (int i = 0; i < month; i++) {
-				timestamp += (DAY_SECONDS * days[i]);
+				timestamp += DAY_SECONDS * days[i];
 			}
 
 			for (int i = 1; i < day; i++) {
@@ -139,7 +139,7 @@ final class HttpDate {
 				seconds -= YEAR_SECONDS;
 				if (seconds >= (YEAR_SECONDS + DAY_SECONDS)) {
 					year++;
-					seconds -= (YEAR_SECONDS + DAY_SECONDS);
+					seconds -= YEAR_SECONDS + DAY_SECONDS;
 				} else {
 					isLeapYear = true;
 				}

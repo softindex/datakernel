@@ -86,8 +86,8 @@ public final class SerializerGenHppc7Example {
 		assertNotNull(test2);
 		assertEquals(test1, test2);
 
-		test1.add((byte) 10);
-		test1.add((byte) 11);
+		test1.add(10);
+		test1.add(11);
 
 		IntArrayList test3 = doTest(test1, serializer);
 		assertNotNull(test3);

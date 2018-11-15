@@ -50,18 +50,18 @@ public class ExceptionStatsTest {
 	}
 
 	@Test
-	public void itShouldProperlyCollectAttributes() throws OpenDataException {
+	public void itShouldProperlyCollectAttributes() {
 		ExceptionStats stats = ExceptionStats.create();
-		Exception exception = new RuntimeException("msg");
+		Exception e = new RuntimeException("msg");
 		Object causedObject = "cause";
-		stats.recordException(exception, causedObject);
+		stats.recordException(e, causedObject);
 
 		assertEquals("msg", stats.getLastMessage());
 		assertEquals(1, stats.getTotal());
 	}
 
 	@Test
-	public void itShouldProperlyAggregateAttributes() throws OpenDataException {
+	public void itShouldProperlyAggregateAttributes() {
 		// init and record
 		ExceptionStats stats_1 = ExceptionStats.create();
 		Exception exception_1 = new RuntimeException("msg-1");

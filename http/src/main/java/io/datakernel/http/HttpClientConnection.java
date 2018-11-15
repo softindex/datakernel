@@ -23,6 +23,7 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UnknownFormatException;
+import io.datakernel.http.AsyncHttpClient.Inspector;
 import io.datakernel.serial.SerialSupplier;
 
 import java.net.InetSocketAddress;
@@ -75,13 +76,12 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
  * }
  * </pre>
  */
-@SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	public static final ParseException INVALID_RESPONSE = new UnknownFormatException(HttpClientConnection.class, "Invalid response");
 	private SettablePromise<HttpResponse> callback;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
-	private final AsyncHttpClient.Inspector inspector;
+	private final Inspector inspector;
 
 	final InetSocketAddress remoteAddress;
 	HttpClientConnection addressPrev;
@@ -99,9 +99,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	public void onClosedWithError(Throwable e) {
 		if (inspector != null) inspector.onHttpError(this, callback == null, e);
 		if (callback != null) {
-			SettablePromise<HttpResponse> callback = this.callback;
+			SettablePromise<HttpResponse> cb = this.callback;
 			this.callback = null;
-			callback.setException(e);
+			cb.setException(e);
 		}
 	}
 
@@ -170,9 +170,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		response.bodySupplier = bodySupplier;
 		if (inspector != null) inspector.onHttpResponse(this, response);
 
-		SettablePromise<HttpResponse> callback = this.callback;
+		SettablePromise<HttpResponse> cb = this.callback;
 		this.callback = null;
-		callback.set(response);
+		cb.set(response);
 
 		if (response.body != null) {
 			response.body.recycle();
@@ -229,7 +229,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param request request for sending
 	 */
 	public Promise<HttpResponse> send(HttpRequest request) {
-		this.callback = new SettablePromise<>();
+		callback = new SettablePromise<>();
 		switchPool(client.poolReadWrite);
 		HttpHeaderValue connectionHeader = CONNECTION_KEEP_ALIVE_HEADER;
 		if (client.maxKeepAliveRequests != -1) {
@@ -240,7 +240,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		request.setHeader(CONNECTION, connectionHeader);
 		writeHttpMessage(request);
 		readHttpMessage();
-		return this.callback;
+		return callback;
 	}
 
 	/**

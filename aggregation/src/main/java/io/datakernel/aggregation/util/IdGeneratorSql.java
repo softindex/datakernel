@@ -54,9 +54,9 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	private Promise<Void> doReserveId() {
 		int finalStride = stride;
 		return Promise.ofCallable(executor, () -> getAndAdd(finalStride))
-				.whenResult(next -> {
-					this.next = next;
-					this.limit = next + finalStride;
+				.whenResult(id -> {
+					next = id;
+					limit = id + finalStride;
 				})
 				.toVoid();
 	}
@@ -70,7 +70,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 
 	@Override
 	public Promise<Long> createId() {
-		checkState(next <= limit);
+		checkState(next <= limit, "Cannot create id larger than the limit of " + limit);
 		if (next < limit) {
 			return Promise.of(next++);
 		}

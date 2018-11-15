@@ -55,7 +55,7 @@ public final class NodeSupplierOfIterable<T> implements Node {
 		if(object instanceof Iterator) {
 			supplier = StreamSupplier.ofIterator((Iterator<T>) object);
 		} else if(object instanceof Iterable) {
-			supplier = StreamSupplier.ofIterable(((Iterable<T>) object));
+			supplier = StreamSupplier.ofIterable((Iterable<T>) object);
 		} else
 			throw new IllegalArgumentException();
 		taskContext.export(output, supplier);

@@ -42,11 +42,10 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static io.datakernel.util.Recyclable.deepRecycle;
 
-@SuppressWarnings({"WeakerAccess", "AssertWithSideEffects"})
+@SuppressWarnings("WeakerAccess")
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
 	public static final MemSize DEFAULT_READ_BUF_SIZE = MemSize.kilobytes(16);
 
-	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(AsyncTcpSocketImpl.class, "timed out");
 	public static final int NO_TIMEOUT = -1;
 
@@ -60,7 +59,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
 	private boolean writeEndOfStream;
 
+	@Nullable
 	private SettablePromise<Void> write;
+	@Nullable
 	private SettablePromise<ByteBuf> read;
 
 	@Nullable
@@ -73,8 +74,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private long readTimeout = NO_TIMEOUT;
 	private long writeTimeout = NO_TIMEOUT;
-	protected int readMaxSize = DEFAULT_READ_BUF_SIZE.toInt();
-	protected int writeMaxSize = MAX_MERGE_SIZE.toInt();
+	private int readMaxSize = DEFAULT_READ_BUF_SIZE.toInt();
+	private int writeMaxSize = MAX_MERGE_SIZE.toInt();
 
 	@Nullable
 	private ScheduledRunnable scheduledReadTimeout;
@@ -374,7 +375,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	@Override
 	public Promise<Void> write(@Nullable ByteBuf buf) {
 		assert eventloop.inEventloopThread();
-		checkState(!writeEndOfStream);
+		checkState(!writeEndOfStream, "End of stream has already been sent");
 		if (!isOpen()) {
 			if (buf != null) buf.recycle();
 			return Promise.ofException(CLOSE_EXCEPTION);
@@ -440,7 +441,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				}
 			}
 
-			@SuppressWarnings("ConstantConditions")
 			ByteBuffer bufferToSend = bufToSend.toReadByteBuffer();
 
 			try {
@@ -508,6 +508,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void doClose() {
 		eventloop.closeChannel(channel, key);
+		//noinspection AssignmentToNull - null only after close
 		channel = null;
 		key = null;
 		connectionCount.decrementAndGet();

@@ -37,6 +37,7 @@ import java.util.List;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.stream.Collectors.toList;
 
+@SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public final class RemoteLogFileSystem extends AbstractLogFileSystem implements EventloopJmxMBeanEx {
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 	private static final String LOG_NAME_DELIMITER = "/";

@@ -41,7 +41,7 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 
 	private static CompositeType compositeTypeForThrowable() {
 		try {
-			String[] itemNames = new String[]{THROWABLE_TYPE_KEY, THROWABLE_MESSAGE_KEY, THROWABLE_STACK_TRACE_KEY};
+			String[] itemNames = {THROWABLE_TYPE_KEY, THROWABLE_MESSAGE_KEY, THROWABLE_STACK_TRACE_KEY};
 			OpenType<?>[] itemTypes = new OpenType<?>[]{
 					SimpleType.STRING, SimpleType.STRING, new ArrayType<>(1, SimpleType.STRING)};
 			return new CompositeType("CompositeType", "CompositeType", itemNames, itemNames, itemTypes);
@@ -52,9 +52,10 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 
 	@Override
 	public Map<String, OpenType<?>> getOpenTypes() {
-		return Collections.<String, OpenType<?>>singletonMap(name, compositeType);
+		return Collections.singletonMap(name, compositeType);
 	}
 
+	@Nullable
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
 		Object firstPojo = sources.get(0);
@@ -78,16 +79,17 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 		return compositeData;
 	}
 
-	private CompositeData createCompositeDataFor(Throwable throwable) throws OpenDataException {
+	@Nullable
+	private CompositeData createCompositeDataFor(Throwable e) throws OpenDataException {
 		CompositeData compositeData = null;
-		if (throwable != null) {
-			String type = throwable.getClass().getName();
-			String msg = throwable.getMessage();
-			List<String> stackTrace = asList(MBeanFormat.formatException(throwable));
+		if (e != null) {
+			String type = e.getClass().getName();
+			String msg = e.getMessage();
+			List<String> stackTrace = asList(MBeanFormat.formatException(e));
 			Map<String, Object> nameToValue = new HashMap<>();
 			nameToValue.put(THROWABLE_TYPE_KEY, type);
 			nameToValue.put(THROWABLE_MESSAGE_KEY, msg);
-			nameToValue.put(THROWABLE_STACK_TRACE_KEY, stackTrace.toArray(new String[stackTrace.size()]));
+			nameToValue.put(THROWABLE_STACK_TRACE_KEY, stackTrace.toArray(new String[0]));
 			compositeData = new CompositeDataSupport(compositeType, nameToValue);
 		}
 		return compositeData;

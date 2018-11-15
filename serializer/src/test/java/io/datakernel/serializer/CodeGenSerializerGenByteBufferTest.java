@@ -38,7 +38,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void test() throws Exception {
+	public void test() {
 		byte[] array = new byte[100];
 		for (int i = 0; i < array.length; i++)
 			array[i] = (byte) i;
@@ -55,17 +55,16 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void testWrap() throws Exception {
+	public void testWrap() {
 		byte[] array = new byte[100];
 		for (int i = 0; i < array.length; i++)
 			array[i] = (byte) i;
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array);
 
-		boolean wrapped = true;
 		BufferSerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withSerializer(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(wrapped)))
+				.withSerializer(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(true)))
 				.build(ByteBuffer.class);
 
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
@@ -75,7 +74,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void test2() throws Exception {
+	public void test2() {
 
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
@@ -108,7 +107,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void testWrap2() throws Exception {
+	public void testWrap2() {
 
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
@@ -117,10 +116,9 @@ public class CodeGenSerializerGenByteBufferTest {
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array, 10, 100);
 		ByteBuffer testBuffer2 = ByteBuffer.wrap(array, 110, 100);
 
-		boolean wrapped = true;
 		BufferSerializer<ByteBuffer> serializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withSerializer(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(wrapped)))
+				.withSerializer(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(true)))
 				.build(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
@@ -161,7 +159,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void test3() throws Exception {
+	public void test3() {
 
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
@@ -196,7 +194,7 @@ public class CodeGenSerializerGenByteBufferTest {
 	}
 
 	@Test
-	public void testWrap3() throws Exception {
+	public void testWrap3() {
 
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
@@ -206,10 +204,9 @@ public class CodeGenSerializerGenByteBufferTest {
 		TestByteBufferData testBuffer0 = new TestByteBufferData(null);
 		TestByteBufferData testBuffer2 = new TestByteBufferData(ByteBuffer.wrap(array, 110, 100));
 
-		boolean wrapped = true;
 		BufferSerializer<TestByteBufferData> serializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withSerializer(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(wrapped)))
+				.withSerializer(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(true)))
 				.build(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];

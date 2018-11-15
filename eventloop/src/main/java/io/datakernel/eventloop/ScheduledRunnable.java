@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,14 +51,16 @@ public final class ScheduledRunnable implements Comparable<ScheduledRunnable> {
 		return Long.compare(timestamp, o.timestamp);
 	}
 
+	@SuppressWarnings("AssignmentToNull") // runnable has been cancelled
 	public void cancel() {
-		this.cancelled = true;
-		this.runnable = null;
+		cancelled = true;
+		runnable = null;
 	}
 
+	@SuppressWarnings("AssignmentToNull") // runnable has been completed
 	public void complete() {
-		this.complete = true;
-		this.runnable = null;
+		complete = true;
+		runnable = null;
 	}
 
 	public long getTimestamp() {
@@ -79,12 +81,7 @@ public final class ScheduledRunnable implements Comparable<ScheduledRunnable> {
 
 	@Override
 	public String toString() {
-		return this.getClass().getSimpleName()
-				+ "{"
-				+ "timestamp=" + timestamp + ", "
-				+ "cancelled=" + cancelled + ", "
-				+ "complete=" + complete + ", "
-				+ "runnable=" + runnable
-				+ "}";
+		return "ScheduledRunnable{timestamp=" + timestamp + ", cancelled="
+				+ cancelled + ", complete=" + complete + ", runnable=" + runnable + '}';
 	}
 }

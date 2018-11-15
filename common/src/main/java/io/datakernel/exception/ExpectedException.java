@@ -16,11 +16,9 @@
 
 package io.datakernel.exception;
 
-@SuppressWarnings("ThrowableInstanceNeverThrown")
 public class ExpectedException extends Exception {
 
 	public ExpectedException() {
-		super();
 	}
 
 	public ExpectedException(String message, Throwable cause) {

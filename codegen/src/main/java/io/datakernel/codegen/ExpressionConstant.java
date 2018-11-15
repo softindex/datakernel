@@ -45,11 +45,11 @@ final class ExpressionConstant implements Expression {
 	public Type type(Context ctx) {
 		if (value instanceof String) {
 			return getType(String.class);
-		} else if (value instanceof Type) {
-			return (Type) value;
-		} else {
-			return getType(Primitives.unwrap(value.getClass()));
 		}
+		if (value instanceof Type) {
+			return (Type) value;
+		}
+		return getType(Primitives.unwrap(value.getClass()));
 	}
 
 	@Override
@@ -77,7 +77,7 @@ final class ExpressionConstant implements Expression {
 		} else if (value instanceof Type) {
 			g.push((Type) value);
 		} else if (value instanceof Enum) {
-			g.getStatic(type, ((Enum) value).name(), type);
+			g.getStatic(type, ((Enum<?>) value).name(), type);
 		} else {
 			if (staticConstantField == null) {
 				staticConstantField = "$STATIC_CONSTANT_" + (ctx.getStaticConstants().size() + 1);

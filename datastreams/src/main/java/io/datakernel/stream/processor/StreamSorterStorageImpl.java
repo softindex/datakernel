@@ -49,7 +49,7 @@ import static java.nio.file.StandardOpenOption.*;
  * @param <T> type of storing data
  */
 public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(StreamSorterStorageImpl.class);
 
 	public static final String DEFAULT_FILE_PATTERN = "%d";
 	public static final MemSize DEFAULT_SORTER_BLOCK_SIZE = MemSize.kilobytes(256);
@@ -82,7 +82,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 */
 	public static <T> StreamSorterStorageImpl<T> create(ExecutorService executorService,
 			BufferSerializer<T> serializer, Path path) {
-		checkArgument(!path.getFileName().toString().contains("%d"));
+		checkArgument(!path.getFileName().toString().contains("%d"), "Filename should not contain '%d'");
 		try {
 			Files.createDirectories(path);
 		} catch (IOException e) {
@@ -92,7 +92,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	}
 
 	public StreamSorterStorageImpl<T> withFilePattern(String filePattern) {
-		checkArgument(!filePattern.contains("%d"));
+		checkArgument(!filePattern.contains("%d"), "File pattern should not contain '%d'");
 		this.filePattern = filePattern;
 		return this;
 	}

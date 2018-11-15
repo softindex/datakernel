@@ -16,8 +16,8 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.codegen.utils.Primitives;
-import io.datakernel.util.Preconditions;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -127,12 +129,12 @@ final class Utils {
 	}
 
 	public static Type unwrap(Type type) {
-		Preconditions.check(type.getSort() == Type.OBJECT);
+		check(type.getSort() == Type.OBJECT, "Cannot unwrap type that is not an object reference");
 		Type result = wrapperToPrimitive.get(type.getClassName());
-		Preconditions.check(result != null);
-		return result;
+		return checkNotNull(result);
 	}
 
+	@Nullable
 	public static Type complementTypeOrNull(Type type) {
 		if (isPrimitiveType(type))
 			return wrap(type);

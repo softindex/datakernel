@@ -16,6 +16,8 @@
 
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
+
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,7 +28,7 @@ import java.util.stream.Collector;
 public interface IndexedCollector<T, A, R> {
 	A accumulator(int promises);
 
-	void accumulate(A accumulator, int promiseIndex, T promiseResult);
+	void accumulate(A accumulator, int promiseIndex, @Nullable T promiseResult);
 
 	R finish(A accumulator);
 
@@ -83,7 +85,6 @@ public interface IndexedCollector<T, A, R> {
 			accumulator[promiseIndex] = promiseResult;
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public List<Object> finish(Object[] accumulator) {
 			return Arrays.asList(accumulator);
@@ -111,7 +112,7 @@ public interface IndexedCollector<T, A, R> {
 		}
 	};
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	static <T> IndexedCollector<T, Object[], List<T>> toList() {
 		return (IndexedCollector) TO_LIST;
 	}
@@ -130,10 +131,9 @@ public interface IndexedCollector<T, A, R> {
 				accumulator[promiseIndex] = promiseResult;
 			}
 
-			@SuppressWarnings("unchecked")
 			@Override
 			public T[] finish(T[] accumulator) {
-				return (T[]) accumulator;
+				return accumulator;
 			}
 
 			@Override
@@ -144,15 +144,15 @@ public interface IndexedCollector<T, A, R> {
 			@Override
 			public T[] resultOf(T value1) {
 				T[] array = (T[]) Array.newInstance(type, 1);
-				array[0] = (T) value1;
+				array[0] = value1;
 				return array;
 			}
 
 			@Override
 			public T[] resultOf(T value1, T value2) {
 				T[] array = (T[]) Array.newInstance(type, 2);
-				array[0] = (T) value1;
-				array[1] = (T) value2;
+				array[0] = value1;
+				array[1] = value2;
 				return array;
 			}
 

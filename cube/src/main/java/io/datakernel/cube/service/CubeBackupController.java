@@ -29,7 +29,7 @@ import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 
 public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(CubeBackupController.class);
+	private static final Logger logger = LoggerFactory.getLogger(CubeBackupController.class);
 
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 

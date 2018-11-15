@@ -91,15 +91,13 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	public JmxModule withRefreshPeriod(Duration refreshPeriod) {
-		checkArgument(refreshPeriod.toMillis() > 0);
-
+		checkArgument(refreshPeriod.toMillis() > 0, "Duration of refresh period should be a positive value");
 		this.refreshPeriod = refreshPeriod;
 		return this;
 	}
 
 	public JmxModule withMaxJmxRefreshesPerOneCycle(int max) {
-		checkArgument(max > 0);
-
+		checkArgument(max > 0, "Number of JMX refreshes should be a positive value");
 		this.maxJmxRefreshesPerOneCycle = max;
 		return this;
 	}
@@ -129,8 +127,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	public JmxModule withHistogram(Key<?> key, String attrName, int[] histogramLevels) {
-		return this
-				.withOptional(key, attrName + "_histogram")
+		return withOptional(key, attrName + "_histogram")
 				.withModifier(key, attrName, (ValueStats attribute) ->
 						attribute.setHistogramLevels(histogramLevels));
 	}

@@ -16,6 +16,7 @@
 
 package io.datakernel.bytebuf;
 
+import io.datakernel.bytebuf.ByteBuf.ByteBufSlice;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.ConcurrentStack;
 import io.datakernel.util.MemSize;
@@ -36,12 +37,9 @@ public final class ByteBufPool {
 	private static final ConcurrentStack<ByteBuf>[] slabs;
 	private static final AtomicInteger[] created;
 
-	private static final Object EMPTY_VALUE = new Object();
-
 	static {
 		//noinspection unchecked
 		slabs = new ConcurrentStack[NUMBER_OF_SLABS];
-		//noinspection unchecked
 		created = new AtomicInteger[NUMBER_OF_SLABS];
 		for (int i = 0; i < NUMBER_OF_SLABS; i++) {
 			slabs[i] = new ConcurrentStack<>();
@@ -72,7 +70,7 @@ public final class ByteBufPool {
 		} else {
 			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
 			buf.refs++;
-			assert (long) created[index].incrementAndGet() != Long.MAX_VALUE;
+			assert created[index].incrementAndGet() != Integer.MAX_VALUE;
 		}
 		return buf;
 	}
@@ -133,14 +131,13 @@ public final class ByteBufPool {
 
 	public static ByteBuf ensureWriteRemaining(ByteBuf buf, int minSize, int newWriteRemaining) {
 		if (newWriteRemaining == 0) return buf;
-		if (buf.writeRemaining() < newWriteRemaining || buf instanceof ByteBuf.ByteBufSlice) {
+		if (buf.writeRemaining() < newWriteRemaining || buf instanceof ByteBufSlice) {
 			ByteBuf newBuf = allocate(max(minSize, newWriteRemaining + buf.readRemaining()));
 			newBuf.put(buf);
 			buf.recycle();
 			return newBuf;
-		} else {
-			return buf;
 		}
+		return buf;
 	}
 
 	public static ByteBuf append(ByteBuf to, ByteBuf from) {

@@ -18,6 +18,7 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
+import io.datakernel.rpc.client.sender.RpcStrategyFirstValidResult.ResultValidator;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import org.junit.Test;
@@ -29,8 +30,7 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.rpc.client.sender.RpcStrategies.firstValidResult;
 import static io.datakernel.rpc.client.sender.RpcStrategies.servers;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("ConstantConditions")
 public class RpcStrategyFirstValidResultTest {
@@ -86,7 +86,7 @@ public class RpcStrategyFirstValidResultTest {
 
 		// despite there are several sender, sendResult should be called only once after all senders returned null
 
-		assertEquals(null, future.get());
+		assertNull(future.get());
 	}
 
 	@Test(expected = Exception.class)
@@ -113,12 +113,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcStrategy strategy2 = new RequestSenderOnResultWithValueStrategy(validKey);
 		RpcStrategy strategy3 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategyFirstValidResult firstValidResult = firstValidResult(strategy1, strategy2, strategy3)
-				.withResultValidator(new RpcStrategyFirstValidResult.ResultValidator<Integer>() {
-					@Override
-					public boolean isValidResult(Integer input) {
-						return input == validKey;
-					}
-				})
+				.withResultValidator((ResultValidator<Integer>) input -> input == validKey)
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 		CompletableFuture<Object> future = new CompletableFuture<>();
@@ -136,12 +131,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcStrategy strategy2 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategy strategy3 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategyFirstValidResult firstValidResult = firstValidResult(strategy1, strategy2, strategy3)
-				.withResultValidator(new RpcStrategyFirstValidResult.ResultValidator<Integer>() {
-					@Override
-					public boolean isValidResult(Integer input) {
-						return input == validKey;
-					}
-				})
+				.withResultValidator((ResultValidator<Integer>) input -> input == validKey)
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 		CompletableFuture<Object> future = new CompletableFuture<>();
@@ -156,7 +146,7 @@ public class RpcStrategyFirstValidResultTest {
 		// one connection is added
 		pool.put(ADDRESS_2, connection);
 		RpcStrategy firstValidResult = firstValidResult(servers(ADDRESS_1, ADDRESS_2));
-		assertTrue(firstValidResult.createSender(pool) != null);
+		assertNotNull(firstValidResult.createSender(pool));
 	}
 
 	@Test
@@ -164,13 +154,13 @@ public class RpcStrategyFirstValidResultTest {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		// no connections were added to pool
 		RpcStrategy firstValidResult = firstValidResult(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-		assertTrue(firstValidResult.createSender(pool) == null);
+		assertNull(firstValidResult.createSender(pool));
 	}
 
 	private static final class SenderOnResultWithNullCaller implements RpcSender {
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
-			callback.set(null);
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+			cb.set(null);
 		}
 	}
 
@@ -183,8 +173,8 @@ public class RpcStrategyFirstValidResultTest {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
-			callback.set((O) data);
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+			cb.set((O) data);
 		}
 	}
 

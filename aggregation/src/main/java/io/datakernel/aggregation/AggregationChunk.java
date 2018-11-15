@@ -90,7 +90,7 @@ public class AggregationChunk {
 			if (from.equals(to)) {
 				predicates.add(eq(key, from));
 			} else {
-				predicates.add(between(key, (Comparable) from, (Comparable) to));
+				predicates.add(between(key, (Comparable<?>) from, (Comparable<?>) to));
 			}
 		}
 		return and(predicates);

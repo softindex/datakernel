@@ -20,7 +20,7 @@ import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.processor.StreamReducer;
-import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -40,22 +40,22 @@ import static java.util.Collections.singletonList;
 public final class NodeReduce<K, O, A> implements Node {
 	public static class Input<K, O, A> {
 
-		private StreamReducers.Reducer<K, ?, O, A> reducer;
+		private Reducer<K, ?, O, A> reducer;
 		private Function<?, K> keyFunction;
 
 		public Input() {
 		}
 
-		public Input(StreamReducers.Reducer<K, ?, O, A> reducer, Function<?, K> keyFunction) {
+		public Input(Reducer<K, ?, O, A> reducer, Function<?, K> keyFunction) {
 			this.reducer = reducer;
 			this.keyFunction = keyFunction;
 		}
 
-		public StreamReducers.Reducer<K, ?, O, A> getReducer() {
+		public Reducer<K, ?, O, A> getReducer() {
 			return reducer;
 		}
 
-		public void setReducer(StreamReducers.Reducer<K, ?, O, A> reducer) {
+		public void setReducer(Reducer<K, ?, O, A> reducer) {
 			this.reducer = reducer;
 		}
 
@@ -81,7 +81,7 @@ public final class NodeReduce<K, O, A> implements Node {
 		this.output = new StreamId();
 	}
 
-	public <I> void addInput(StreamId streamId, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
+	public <I> void addInput(StreamId streamId, Function<I, K> keyFunction, Reducer<K, I, O, A> reducer) {
 		inputs.put(streamId, new Input<>(reducer, keyFunction));
 	}
 
@@ -98,7 +98,7 @@ public final class NodeReduce<K, O, A> implements Node {
 			Input<K, O, A> koaInput = inputs.get(streamId);
 			StreamConsumer<Object> input = streamReducer.newInput(
 					((Function<Object, K>) koaInput.keyFunction)::apply,
-					(StreamReducers.Reducer<K, Object, O, A>) koaInput.reducer);
+					(Reducer<K, Object, O, A>) koaInput.reducer);
 			taskContext.bindChannel(streamId, input);
 		}
 		taskContext.export(output, streamReducer.getOutput());

@@ -16,14 +16,18 @@
 
 package io.datakernel.serializer;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.asm.Annotations;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.TypedModsMap.Builder;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
+import io.datakernel.serializer.asm.SerializerGen.VersionsCollector;
+import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 import io.datakernel.util.Preconditions;
 
 import java.lang.annotation.Annotation;
@@ -62,11 +66,12 @@ public final class SerializerBuilder {
 	private final Map<Key, SerializerGen> cachedSerializers = new HashMap<>();
 	private final List<Runnable> initTasks = new ArrayList<>();
 
+	@FunctionalInterface
 	public interface Helper {
 		SerializerGen createSubclassesSerializer(Class<?> type, SerializeSubclasses serializeSubclasses);
 	}
 
-	private final Helper helper = SerializerBuilder.this::createSubclassesSerializer;
+	private final Helper helper = this::createSubclassesSerializer;
 
 	private SerializerBuilder(DefiningClassLoader definingClassLoader) {
 		this.definingClassLoader = definingClassLoader;
@@ -88,8 +93,8 @@ public final class SerializerBuilder {
 		SerializerBuilder builder = new SerializerBuilder(definingClassLoader);
 
 		builder.setSerializer(Object.class, (type, generics, fallback) -> {
-			check(type.getTypeParameters().length == generics.length);
-			check(fallback == null);
+			check(type.getTypeParameters().length == generics.length, "Number of type parameters should be equal to number of generics");
+			check(fallback == null, "Fallback must be null");
 			SerializerGenClass serializer;
 			SerializeInterface annotation = Annotations.findAnnotation(SerializeInterface.class, type.getAnnotations());
 			if (annotation != null && annotation.impl() != void.class) {
@@ -101,19 +106,19 @@ public final class SerializerBuilder {
 			return serializer;
 		});
 		builder.setSerializer(List.class, (type, generics, fallback) -> {
-			check(generics.length == 1);
+			check(generics.length == 1, "List must have 1 generic type parameter");
 			return new SerializerGenList(generics[0].serializer);
 		});
 		builder.setSerializer(Collection.class, (type, generics, fallback) -> {
-			check(generics.length == 1);
+			check(generics.length == 1, "Collection must have 1 generic type parameter");
 			return new SerializerGenList(generics[0].serializer);
 		});
 		builder.setSerializer(Set.class, (type, generics, fallback) -> {
-			check(generics.length == 1);
+			check(generics.length == 1, "Set must have 1 generic type parameter");
 			return new SerializerGenSet(generics[0].serializer);
 		});
 		builder.setSerializer(Map.class, (type, generics, fallback) -> {
-			check(generics.length == 2);
+			check(generics.length == 2, "Map must have 2 generic type parameter");
 			return new SerializerGenMap(generics[0].serializer, generics[1].serializer);
 		});
 		builder.setSerializer(Enum.class, (type, generics, fallback) -> {
@@ -229,9 +234,8 @@ public final class SerializerBuilder {
 	}
 
 	public <T> void setSubclasses(Class<T> type, List<Class<? extends T>> subclasses) {
-		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>();
-		subclassesSet.addAll(subclasses);
-		check(subclassesSet.size() == subclasses.size());
+		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>(subclasses);
+		check(subclassesSet.size() == subclasses.size(), "Subclasses should be unique");
 		SerializerGen subclassesSerializer = createSubclassesSerializer(type, subclassesSet, 0);
 		setSerializer(type, subclassesSerializer);
 	}
@@ -251,7 +255,7 @@ public final class SerializerBuilder {
 	}
 
 	private static String capitalize(String str) {
-		return String.valueOf(toUpperCase(str.charAt(0))) + str.substring(1);
+		return toUpperCase(str.charAt(0)) + str.substring(1);
 	}
 
 	/**
@@ -260,7 +264,7 @@ public final class SerializerBuilder {
 	 * @return {@code SerializerGen} for the given type token
 	 */
 	public <T> BufferSerializer<T> build(Class<T> type) {
-		SerializerGenBuilder.SerializerForType[] serializerForTypes = new SerializerGenBuilder.SerializerForType[0];
+		SerializerForType[] serializerForTypes = new SerializerForType[0];
 		return build(type, serializerForTypes);
 	}
 
@@ -268,11 +272,11 @@ public final class SerializerBuilder {
 		return buildBufferSerializer(serializerGen, version);
 	}
 
-	public <T> BufferSerializer<T> build(Class<?> type, SerializerGenBuilder.SerializerForType[] generics) {
+	public <T> BufferSerializer<T> build(Class<?> type, SerializerForType[] generics) {
 		return buildBufferSerializer(createSerializerGen(type, generics, Collections.emptyList()), version);
 	}
 
-	private SerializerGen createSerializerGen(Class<?> type, SerializerGenBuilder.SerializerForType[] generics, List<SerializerGenBuilder> mods) {
+	private SerializerGen createSerializerGen(Class<?> type, SerializerForType[] generics, List<SerializerGenBuilder> mods) {
 		Key key = new Key(type, generics, mods);
 		SerializerGen serializer = cachedSerializers.get(key);
 		if (serializer == null) {
@@ -285,7 +289,7 @@ public final class SerializerBuilder {
 		return serializer;
 	}
 
-	private SerializerGen createNewSerializer(Class<?> type, SerializerGenBuilder.SerializerForType[] generics, List<SerializerGenBuilder> mods) {
+	private SerializerGen createNewSerializer(Class<?> type, SerializerForType[] generics, List<SerializerGenBuilder> mods) {
 		if (!mods.isEmpty()) {
 			SerializerGen serializer = createSerializerGen(type, generics, mods.subList(0, mods.size() - 1));
 			SerializerGenBuilder last = mods.get(mods.size() - 1);
@@ -293,7 +297,7 @@ public final class SerializerBuilder {
 		}
 
 		if (type.isArray()) {
-			check(generics.length == 1);
+			check(generics.length == 1, "Number of generics should be equal to 1");
 			SerializerGen itemSerializer = generics[0].serializer;
 			return new SerializerGenArray(itemSerializer, type);
 		}
@@ -313,9 +317,8 @@ public final class SerializerBuilder {
 	}
 
 	private SerializerGen createSubclassesSerializer(Class<?> type, SerializeSubclasses serializeSubclasses) {
-		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>();
-		subclassesSet.addAll(Arrays.asList(serializeSubclasses.value()));
-		check(subclassesSet.size() == serializeSubclasses.value().length);
+		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>(Arrays.asList(serializeSubclasses.value()));
+		check(subclassesSet.size() == serializeSubclasses.value().length, "Subclasses should be unique");
 
 		if (!serializeSubclasses.extraSubclassesId().isEmpty()) {
 			Collection<Class<?>> registeredSubclasses = extraSubclassesMap.get(serializeSubclasses.extraSubclassesId());
@@ -328,15 +331,15 @@ public final class SerializerBuilder {
 	private SerializerGen createSubclassesSerializer(Class<?> type, LinkedHashSet<Class<?>> subclassesSet,
 	                                                 int startIndex) {
 		checkNotNull(subclassesSet);
-		check(!subclassesSet.isEmpty());
+		check(!subclassesSet.isEmpty(), "Set of subclasses should not be empty");
 		LinkedHashMap<Class<?>, SerializerGen> subclasses = new LinkedHashMap<>();
 		for (Class<?> subclass : subclassesSet) {
-			check(subclass.getTypeParameters().length == 0);
+			check(subclass.getTypeParameters().length == 0, "Subclass should have no type parameters");
 			check(type.isAssignableFrom(subclass), "Unrelated subclass '%s' for '%s'", subclass, type);
 
 			SerializerGen serializer = createSerializerGen(
 					subclass,
-					new SerializerGenBuilder.SerializerForType[]{},
+					new SerializerForType[]{},
 					Collections.emptyList()
 			);
 			subclasses.put(subclass, serializer);
@@ -344,6 +347,7 @@ public final class SerializerBuilder {
 		return new SerializerGenSubclass(type, subclasses, startIndex);
 	}
 
+	@Nullable
 	private static Class<?> findKey(Class<?> classType, Set<Class<?>> classes) {
 		Class<?> foundKey = null;
 		for (Class<?> key : classes) {
@@ -358,7 +362,7 @@ public final class SerializerBuilder {
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private TypedModsMap extractMods(Annotation[] annotations) {
-		TypedModsMap.Builder rootBuilder = TypedModsMap.builder();
+		Builder rootBuilder = TypedModsMap.builder();
 		if (annotations.length == 0)
 			return rootBuilder.build();
 		for (Class<? extends Annotation> annotationType : annotationsMap.keySet()) {
@@ -367,7 +371,7 @@ public final class SerializerBuilder {
 			for (Annotation annotation : annotations) {
 				if (annotation.annotationType() == annotationType) {
 					SerializerGenBuilder serializerGenBuilder = annotationHandler.createBuilder(helper, annotation, compatibilityLevel);
-					TypedModsMap.Builder child = rootBuilder.ensureChild(annotationHandler.extractPath(annotation));
+					Builder child = rootBuilder.ensureChild(annotationHandler.extractPath(annotation));
 					child.add(serializerGenBuilder);
 				}
 			}
@@ -375,7 +379,7 @@ public final class SerializerBuilder {
 				if (annotationEx.annotationType() == annotationExType) {
 					for (Annotation annotation : annotationHandler.extractList(annotationEx)) {
 						SerializerGenBuilder serializerGenBuilder = annotationHandler.createBuilder(helper, annotation, compatibilityLevel);
-						TypedModsMap.Builder child = rootBuilder.ensureChild(annotationHandler.extractPath(annotation));
+						Builder child = rootBuilder.ensureChild(annotationHandler.extractPath(annotation));
 						child.add(serializerGenBuilder);
 					}
 				}
@@ -385,7 +389,7 @@ public final class SerializerBuilder {
 	}
 
 	@SuppressWarnings("rawtypes")
-	public SerializerGenBuilder.SerializerForType resolveSerializer(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, Type genericType, TypedModsMap typedModsMap) {
+	public SerializerForType resolveSerializer(Class<?> classType, SerializerForType[] classGenerics, Type genericType, TypedModsMap typedModsMap) {
 		if (genericType instanceof TypeVariable) {
 			String typeVariableName = ((TypeVariable) genericType).getName();
 
@@ -396,14 +400,14 @@ public final class SerializerBuilder {
 					break;
 				}
 			}
-			check(i < classType.getTypeParameters().length);
+			check(i < classType.getTypeParameters().length, "No type variable '%s' is found in type parameters of %s", typeVariableName, classType);
 
-			SerializerGen serializer = typedModsMap.rewrite(classGenerics[i].rawType, new SerializerGenBuilder.SerializerForType[]{}, classGenerics[i].serializer);
-			return new SerializerGenBuilder.SerializerForType(classGenerics[i].rawType, serializer);
+			SerializerGen serializer = typedModsMap.rewrite(classGenerics[i].rawType, new SerializerForType[]{}, classGenerics[i].serializer);
+			return new SerializerForType(classGenerics[i].rawType, serializer);
 		} else if (genericType instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType) genericType;
 
-			SerializerGenBuilder.SerializerForType[] typeArguments = new SerializerGenBuilder.SerializerForType[parameterizedType.getActualTypeArguments().length];
+			SerializerForType[] typeArguments = new SerializerForType[parameterizedType.getActualTypeArguments().length];
 			for (int i = 0; i < parameterizedType.getActualTypeArguments().length; i++) {
 				Type typeArgument = parameterizedType.getActualTypeArguments()[i];
 				if (typeArgument instanceof WildcardType) {
@@ -414,19 +418,19 @@ public final class SerializerBuilder {
 
 			Class<?> rawType = (Class<?>) parameterizedType.getRawType();
 			SerializerGen serializer = createSerializerGen(rawType, typeArguments, typedModsMap.getMods());
-			return new SerializerGenBuilder.SerializerForType(rawType, serializer);
+			return new SerializerForType(rawType, serializer);
 		} else if (genericType instanceof GenericArrayType) {
 			throw new UnsupportedOperationException();
 		} else if (genericType instanceof Class<?>) {
 			Class<?> rawType = (Class<?>) genericType;
-			SerializerGenBuilder.SerializerForType[] generics = {};
+			SerializerForType[] generics = {};
 			if (rawType.isArray()) {
 				Class<?> componentType = rawType.getComponentType();
-				SerializerGenBuilder.SerializerForType forType = resolveSerializer(classType, classGenerics, componentType, typedModsMap.get(0));
-				generics = new SerializerGenBuilder.SerializerForType[]{forType};
+				SerializerForType forType = resolveSerializer(classType, classGenerics, componentType, typedModsMap.get(0));
+				generics = new SerializerForType[]{forType};
 			}
 			SerializerGen serializer = createSerializerGen(rawType, generics, typedModsMap.getMods());
-			return new SerializerGenBuilder.SerializerForType(rawType, serializer);
+			return new SerializerForType(rawType, serializer);
 		} else {
 			throw new IllegalArgumentException();
 		}
@@ -465,7 +469,6 @@ public final class SerializerBuilder {
 			throw new AssertionError();
 		}
 
-		@SuppressWarnings("NullableProblems")
 		@Override
 		public int compareTo(FoundSerializer o) {
 			int result = Integer.compare(this.order, o.order);
@@ -486,6 +489,7 @@ public final class SerializerBuilder {
 		}
 	}
 
+	@Nullable
 	private FoundSerializer findAnnotations(Object methodOrField, Annotation[] annotations) {
 		TypedModsMap mods = extractMods(annotations);
 
@@ -500,7 +504,7 @@ public final class SerializerBuilder {
 
 		SerializeProfiles profiles = Annotations.findAnnotation(SerializeProfiles.class, annotations);
 		if (profiles != null) {
-			if (!Arrays.asList(profiles.value()).contains((profile == null ? "" : profile)))
+			if (!Arrays.asList(profiles.value()).contains(profile == null ? "" : profile))
 				return null;
 			int addedProfile = getProfileVersion(profiles.value(), profiles.added());
 			if (addedProfile != SerializeProfiles.DEFAULT_VERSION) {
@@ -534,7 +538,8 @@ public final class SerializerBuilder {
 		return SerializeProfiles.DEFAULT_VERSION;
 	}
 
-	private FoundSerializer tryAddField(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, Field field) {
+	@Nullable
+	private FoundSerializer tryAddField(Class<?> classType, SerializerForType[] classGenerics, Field field) {
 		FoundSerializer result = findAnnotations(field, field.getAnnotations());
 		if (result == null)
 			return null;
@@ -545,7 +550,8 @@ public final class SerializerBuilder {
 		return result;
 	}
 
-	private FoundSerializer tryAddGetter(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, Method getter) {
+	@Nullable
+	private FoundSerializer tryAddGetter(Class<?> classType, SerializerForType[] classGenerics, Method getter) {
 		if (getter.isBridge()) {
 			return null;
 		}
@@ -561,7 +567,7 @@ public final class SerializerBuilder {
 		return result;
 	}
 
-	private void scanAnnotations(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, SerializerGenClass serializerGenClass) {
+	private void scanAnnotations(Class<?> classType, SerializerForType[] classGenerics, SerializerGenClass serializerGenClass) {
 		if (classType.isInterface()) {
 			SerializeInterface annotation = Annotations.findAnnotation(SerializeInterface.class, classType.getAnnotations());
 			scanInterface(classType, classGenerics, serializerGenClass, (annotation != null) && annotation.inherit());
@@ -576,15 +582,15 @@ public final class SerializerBuilder {
 			}
 			return;
 		}
-		check(!classType.isAnonymousClass());
-		check(!classType.isLocalClass());
+		check(!classType.isAnonymousClass(), "Class should not be anonymous");
+		check(!classType.isLocalClass(), "Class should not be local");
 		scanClass(classType, classGenerics, serializerGenClass);
 		scanFactories(classType, serializerGenClass);
 		scanConstructors(classType, serializerGenClass);
 		serializerGenClass.addMatchingSetters();
 	}
 
-	private void scanInterface(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, SerializerGenClass serializerGenClass, boolean inheritSerializers) {
+	private void scanInterface(Class<?> classType, SerializerForType[] classGenerics, SerializerGenClass serializerGenClass, boolean inheritSerializers) {
 		List<FoundSerializer> foundSerializers = new ArrayList<>();
 		scanGetters(classType, classGenerics, foundSerializers);
 		addMethodsAndGettersToClass(serializerGenClass, foundSerializers);
@@ -619,21 +625,21 @@ public final class SerializerBuilder {
 		}
 	}
 
-	private void scanClass(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, SerializerGenClass serializerGenClass) {
+	private void scanClass(Class<?> classType, SerializerForType[] classGenerics, SerializerGenClass serializerGenClass) {
 		if (classType == Object.class)
 			return;
 
 		Type genericSuperclass = classType.getGenericSuperclass();
 		if (genericSuperclass instanceof ParameterizedType) {
 			ParameterizedType parameterizedSuperclass = (ParameterizedType) genericSuperclass;
-			SerializerGenBuilder.SerializerForType[] superclassGenerics = new SerializerGenBuilder.SerializerForType[parameterizedSuperclass.getActualTypeArguments().length];
+			SerializerForType[] superclassGenerics = new SerializerForType[parameterizedSuperclass.getActualTypeArguments().length];
 			for (int i = 0; i < parameterizedSuperclass.getActualTypeArguments().length; i++) {
 				superclassGenerics[i] = resolveSerializer(classType, classGenerics,
 						parameterizedSuperclass.getActualTypeArguments()[i], TypedModsMap.empty());
 			}
 			scanClass(classType.getSuperclass(), superclassGenerics, serializerGenClass);
 		} else if (genericSuperclass instanceof Class) {
-			scanClass(classType.getSuperclass(), new SerializerGenBuilder.SerializerForType[]{}, serializerGenClass);
+			scanClass(classType.getSuperclass(), new SerializerForType[]{}, serializerGenClass);
 		} else
 			throw new IllegalArgumentException();
 
@@ -642,14 +648,14 @@ public final class SerializerBuilder {
 		scanSetters(classType, serializerGenClass);
 	}
 
-	private List<FoundSerializer> scanSerializers(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics) {
+	private List<FoundSerializer> scanSerializers(Class<?> classType, SerializerForType[] classGenerics) {
 		List<FoundSerializer> foundSerializers = new ArrayList<>();
 		scanFields(classType, classGenerics, foundSerializers);
 		scanGetters(classType, classGenerics, foundSerializers);
 		return foundSerializers;
 	}
 
-	private void scanFields(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, List<FoundSerializer> foundSerializers) {
+	private void scanFields(Class<?> classType, SerializerForType[] classGenerics, List<FoundSerializer> foundSerializers) {
 		for (Field field : classType.getDeclaredFields()) {
 			FoundSerializer foundSerializer = tryAddField(classType, classGenerics, field);
 			if (foundSerializer != null)
@@ -657,7 +663,7 @@ public final class SerializerBuilder {
 		}
 	}
 
-	private void scanGetters(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, List<FoundSerializer> foundSerializers) {
+	private void scanGetters(Class<?> classType, SerializerForType[] classGenerics, List<FoundSerializer> foundSerializers) {
 		Method[] methods = classType.getDeclaredMethods();
 		for (Method method : methods) {
 			FoundSerializer foundSerializer = tryAddGetter(classType, classGenerics, method);
@@ -683,7 +689,7 @@ public final class SerializerBuilder {
 				if (fields.size() == method.getParameterTypes().length) {
 					serializerGenClass.addSetter(method, fields);
 				} else {
-					check(fields.isEmpty());
+					check(fields.isEmpty(), "Fields should not be empty");
 				}
 			}
 		}
@@ -789,9 +795,10 @@ public final class SerializerBuilder {
 
 		private final class Value {
 			public String method;
+			@Nullable
 			public Expression expression;
 
-			public Value(String method, Expression expression) {
+			public Value(String method, @Nullable Expression expression) {
 				this.method = method;
 				this.expression = expression;
 			}
@@ -803,7 +810,7 @@ public final class SerializerBuilder {
 		public boolean startSerializeStaticMethod(SerializerGen serializerGen, int version) {
 			boolean b = mapSerialize.containsKey(new Key(serializerGen, version));
 			if (!b) {
-				String methodName = "serialize_" + serializerGen.getRawType().getSimpleName().replace('[', 's').replace(']', '_') + "_V" + version + "_" + (counter.incrementAndGet());
+				String methodName = "serialize_" + serializerGen.getRawType().getSimpleName().replace('[', 's').replace(']', '_') + "_V" + version + "_" + counter.incrementAndGet();
 				mapSerialize.put(new Key(serializerGen, version), new Value(methodName, null));
 			}
 			return b;
@@ -812,7 +819,7 @@ public final class SerializerBuilder {
 		public boolean startDeserializeStaticMethod(SerializerGen serializerGen, int version) {
 			boolean b = mapDeserialize.containsKey(new Key(serializerGen, version));
 			if (!b) {
-				String methodName = "deserialize_" + serializerGen.getRawType().getSimpleName().replace('[', 's').replace(']', '_') + "_V" + version + "_" + (counter.incrementAndGet());
+				String methodName = "deserialize_" + serializerGen.getRawType().getSimpleName().replace('[', 's').replace(']', '_') + "_V" + version + "_" + counter.incrementAndGet();
 				mapDeserialize.put(new Key(serializerGen, version), new Value(methodName, null));
 			}
 			return b;
@@ -842,9 +849,9 @@ public final class SerializerBuilder {
 	}
 
 	synchronized private Object createSerializer(SerializerGen serializerGen, int serializeVersion) {
-		ClassBuilder<BufferSerializer> asmFactory = ClassBuilder.create(definingClassLoader, BufferSerializer.class);
+		ClassBuilder<BufferSerializer<?>> asmFactory = ClassBuilder.create(definingClassLoader, BufferSerializer.class);
 		if (saveBytecodePath != null) {
-			asmFactory = asmFactory.withBytecodeSaveDir(saveBytecodePath);
+			asmFactory.withBytecodeSaveDir(saveBytecodePath);
 		}
 
 		Preconditions.check(serializeVersion >= 0, "serializerVersion is negative");
@@ -852,7 +859,7 @@ public final class SerializerBuilder {
 
 		List<Integer> versions = new ArrayList<>();
 		List<Integer> allVersions = new ArrayList<>();
-		for (int v : SerializerGen.VersionsCollector.versions(serializerGen)) {
+		for (int v : VersionsCollector.versions(serializerGen)) {
 			if (v <= serializeVersion)
 				versions.add(v);
 			allVersions.add(v);
@@ -900,8 +907,8 @@ public final class SerializerBuilder {
 		return asmFactory.buildClassAndCreateNewInstance();
 	}
 
-	private ClassBuilder<BufferSerializer> defineDeserialize(SerializerGen serializerGen,
-	                                                         ClassBuilder<BufferSerializer> asmFactory,
+	private ClassBuilder<BufferSerializer<?>> defineDeserialize(SerializerGen serializerGen,
+			ClassBuilder<BufferSerializer<?>> asmFactory,
 	                                                         List<Integer> allVersions,
 	                                                         StaticMethods staticMethods) {
 		asmFactory = defineDeserializeLatest(serializerGen, asmFactory, getLatestVersion(allVersions), staticMethods);
@@ -914,17 +921,17 @@ public final class SerializerBuilder {
 		return asmFactory;
 	}
 
-	private ClassBuilder<BufferSerializer> defineDeserializeVersion(SerializerGen serializerGen,
-	                                                                ClassBuilder<BufferSerializer> asmFactory,
+	private ClassBuilder<BufferSerializer<?>> defineDeserializeVersion(SerializerGen serializerGen,
+			ClassBuilder<BufferSerializer<?>> asmFactory,
 	                                                                int version, StaticMethods staticMethods) {
-		return asmFactory.withMethod("deserializeVersion" + String.valueOf(version),
+		return asmFactory.withMethod("deserializeVersion" + version,
 				serializerGen.getRawType(),
 				asList(ByteBuf.class),
 				sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods, compatibilityLevel)));
 	}
 
-	private ClassBuilder<BufferSerializer> defineDeserializeEarlierVersion(SerializerGen serializerGen,
-	                                                                       ClassBuilder<BufferSerializer> asmFactory,
+	private ClassBuilder<BufferSerializer<?>> defineDeserializeEarlierVersion(SerializerGen serializerGen,
+			ClassBuilder<BufferSerializer<?>> asmFactory,
 	                                                                       List<Integer> allVersions,
 	                                                                       StaticMethods staticMethods) {
 		List<Expression> listKey = new ArrayList<>();
@@ -933,14 +940,14 @@ public final class SerializerBuilder {
 			int version = allVersions.get(i);
 			listKey.add(value(version));
 			serializerGen.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-			listValue.add(call(self(), "deserializeVersion" + String.valueOf(version), arg(0)));
+			listValue.add(call(self(), "deserializeVersion" + version, arg(0)));
 		}
 		return asmFactory.withMethod("deserializeEarlierVersions", serializerGen.getRawType(), asList(ByteBuf.class, int.class),
 				switchForKey(arg(1), listKey, listValue));
 	}
 
-	private ClassBuilder<BufferSerializer> defineDeserializeLatest(SerializerGen serializerGen,
-	                                                               ClassBuilder<BufferSerializer> asmFactory,
+	private ClassBuilder<BufferSerializer<?>> defineDeserializeLatest(SerializerGen serializerGen,
+			ClassBuilder<BufferSerializer<?>> asmFactory,
 	                                                               Integer latestVersion,
 	                                                               StaticMethods staticMethods) {
 		if (latestVersion == null) {
@@ -957,16 +964,17 @@ public final class SerializerBuilder {
 		}
 	}
 
+	@Nullable
 	private Integer getLatestVersion(List<Integer> versions) {
 		return versions.isEmpty() ? null : versions.get(versions.size() - 1);
 	}
 
 	private static final class Key {
 		final Class<?> type;
-		final SerializerGenBuilder.SerializerForType[] generics;
+		final SerializerForType[] generics;
 		final List<SerializerGenBuilder> mods;
 
-		private Key(Class<?> type, SerializerGenBuilder.SerializerForType[] generics, List<SerializerGenBuilder> mods) {
+		private Key(Class<?> type, SerializerForType[] generics, List<SerializerGenBuilder> mods) {
 			this.type = checkNotNull(type);
 			this.generics = checkNotNull(generics);
 			this.mods = checkNotNull(mods);

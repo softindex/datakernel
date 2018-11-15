@@ -83,6 +83,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractAsyncProcess
 		};
 	}
 
+	@SuppressWarnings("ConstantConditions") //check output for clarity
 	@Override
 	public SerialOutput<ByteBuf> getOutput() {
 		return output -> {

@@ -44,8 +44,8 @@ public class RpcRemoteException extends RpcException implements RpcMandatoryData
 	}
 
 	@SuppressWarnings("unused")
-	public RpcRemoteException(@Deserialize(value = "message") String message, @Deserialize(value = "causeClassName") String causeClassName,
-			@Deserialize(value = "causeMessage") String causeMessage) {
+	public RpcRemoteException(@Deserialize("message") String message, @Deserialize("causeClassName") String causeClassName,
+			@Deserialize("causeMessage") String causeMessage) {
 		super(RpcServerConnection.class, message);
 		this.causeClassName = causeClassName;
 		this.causeMessage = causeMessage;

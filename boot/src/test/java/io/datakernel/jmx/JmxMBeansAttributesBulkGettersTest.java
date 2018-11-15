@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.helper.Utils;
 import org.junit.Test;
 
 import javax.management.*;
@@ -38,9 +39,9 @@ public class JmxMBeansAttributesBulkGettersTest {
 	public void bulkGetOmitsAttributesWithExceptionButReturnsValidAttributes() {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(new MBeanStub()), defaultSettings(), false);
 
-		Map<String, MBeanAttributeInfo> attrs = io.datakernel.jmx.helper.Utils.nameToAttribute(mbean.getMBeanInfo().getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbean.getMBeanInfo().getAttributes());
 
-		String[] expectedAttrNames = new String[]{"text", "value", "number"};
+		String[] expectedAttrNames = {"text", "value", "number"};
 		assertEquals(new HashSet<>(asList(expectedAttrNames)), attrs.keySet());
 
 		AttributeList fetchedAttrs = mbean.getAttributes(expectedAttrNames);

@@ -36,7 +36,7 @@ public final class UpdateResponse<K, R extends AbstractRecord<K>> {
 	}
 
 	public static <K, R extends AbstractRecord<K>> UpdateResponse<K, R> of(List<R> changes) {
-		return new UpdateResponse<>(changes, Collections.<K, Map<String, List<String>>>emptyMap());
+		return new UpdateResponse<>(changes, Collections.emptyMap());
 	}
 
 	public static <K, R extends AbstractRecord<K>> UpdateResponse<K, R> of(List<R> changes, Map<K, Map<String, List<String>>> errors) {

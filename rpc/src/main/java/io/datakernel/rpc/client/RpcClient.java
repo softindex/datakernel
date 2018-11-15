@@ -16,11 +16,13 @@
 
 package io.datakernel.rpc.client;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
+import io.datakernel.eventloop.AsyncTcpSocketImpl.JmxInspector;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -78,7 +80,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public static final MemSize DEFAULT_PACKET_SIZE = SerialBinarySerializer.DEFAULT_INITIAL_BUFFER_SIZE;
 	public static final MemSize MAX_PACKET_SIZE = SerialBinarySerializer.MAX_SIZE;
 
-	private Logger logger = getLogger(this.getClass());
+	private Logger logger = getLogger(getClass());
 
 	private final Eventloop eventloop;
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
@@ -107,7 +109,9 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	private RpcSender requestSender;
 
+	@Nullable
 	private SettablePromise<Void> startPromise;
+	@Nullable
 	private SettablePromise<Void> stopPromise;
 	private boolean running;
 
@@ -122,7 +126,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
 	private final ExceptionStats lastProtocolError = ExceptionStats.create();
 
-	private final AsyncTcpSocketImpl.JmxInspector statsSocket = new AsyncTcpSocketImpl.JmxInspector();
+	private final JmxInspector statsSocket = new JmxInspector();
 //	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
 //	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
 //	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
@@ -133,7 +137,6 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		this.eventloop = eventloop;
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	public static RpcClient create(Eventloop eventloop) {
 		return new RpcClient(eventloop);
 	}
@@ -274,9 +277,9 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	@Override
 	public Promise<Void> start() {
-		checkState(eventloop.inEventloopThread());
-		checkState(messageTypes != null, "Message types must be specified");
-		checkState(!running);
+		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
+		checkNotNull(messageTypes, "Message types must be specified");
+		checkState(!running, "Already running");
 
 		SettablePromise<Void> promise = new SettablePromise<>();
 		running = true;
@@ -291,12 +294,12 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		} else {
 			if (connectTimeoutMillis != 0) {
 				eventloop.delayBackground(connectTimeoutMillis, () -> {
-					if (running && this.startPromise != null) {
+					if (running && startPromise != null) {
 						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
 								connectTimeoutMillis / 1000.0);
-						this.startPromise.setException(new InterruptedException(errorMsg));
+						startPromise.setException(new InterruptedException(errorMsg));
 						running = false;
-						this.startPromise = null;
+						startPromise = null;
 					}
 				});
 			}
@@ -312,7 +315,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	@Override
 	public Promise<Void> stop() {
 		if (!running) return Promise.complete();
-		checkState(eventloop.inEventloopThread());
+		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 
 		SettablePromise<Void> promise = new SettablePromise<>();
 
@@ -350,7 +353,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 							wrapClientSocket(asyncTcpSocketImpl, sslContext, sslExecutor);
 					RpcStream stream = new RpcStream(socket, serializer, defaultPacketSize, maxPacketSize,
 							autoFlushInterval, compression, false); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
-					RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this, address, stream);
+					RpcClientConnection connection = new RpcClientConnection(eventloop, this, address, stream);
 					stream.setListener(connection);
 
 					addConnection(address, connection);
@@ -433,8 +436,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	 * @param request request for server
 	 */
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
-		requestSender.sendRequest(request, timeout, callback);
+	public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		requestSender.sendRequest(request, timeout, cb);
 	}
 
 	public IRpcClient adaptToAnotherEventloop(Eventloop anotherEventloop) {
@@ -445,8 +448,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return new IRpcClient() {
 			@Override
 			public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-				RpcClient.this.eventloop.execute(() ->
-						RpcClient.this.requestSender.sendRequest(request, timeout,
+				eventloop.execute(() ->
+						requestSender.sendRequest(request, timeout,
 								new Callback<O>() {
 									@Override
 									public void set(O result) {
@@ -454,8 +457,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 									}
 
 									@Override
-									public void setException(Throwable throwable) {
-										anotherEventloop.execute(() -> cb.setException(throwable));
+									public void setException(Throwable e) {
+										anotherEventloop.execute(() -> cb.setException(e));
 									}
 								}));
 			}
@@ -573,7 +576,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	}
 
 	@JmxAttribute
-	public AsyncTcpSocketImpl.JmxInspector getStatsSocket() {
+	public JmxInspector getStatsSocket() {
 		return statsSocket;
 	}
 

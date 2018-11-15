@@ -26,6 +26,7 @@ import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.UnknownFormatException;
+import io.datakernel.http.AsyncHttpClient.JmxInspector;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
@@ -126,7 +127,7 @@ public final class AsyncHttpClientTest {
 
 		server.listen();
 
-		AsyncHttpClient.JmxInspector inspector = new AsyncHttpClient.JmxInspector();
+		JmxInspector inspector = new JmxInspector();
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop)
 				.withNoKeepAlive()
 				.withConnectTimeout(Duration.ofMillis(20))

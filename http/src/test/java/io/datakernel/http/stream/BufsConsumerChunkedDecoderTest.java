@@ -225,13 +225,13 @@ public final class BufsConsumerChunkedDecoderTest {
 		decodeThreeStrings(message1, message2, message3);
 	}
 
-	private void decodeOneString(String message, @Nullable Exception exception) {
+	private void decodeOneString(String message, @Nullable Exception e) {
 		byte[] bytes = message.getBytes();
 		ByteBuf buf = ByteBufPool.allocate(bytes.length);
 		buf.put(bytes);
 		list.add(buf);
 
-		doTest(exception);
+		doTest(e);
 	}
 
 	private void decodeTwoStrings(String message1, String message2) {
@@ -264,14 +264,14 @@ public final class BufsConsumerChunkedDecoderTest {
 		doTest(null);
 	}
 
-	private void doTest(@Nullable Exception exception) {
+	private void doTest(@Nullable Exception expectedException) {
 		chunkedDecoder.getInput().set(ByteBufsSupplier.of(SerialSupplier.ofIterable(list)));
 		chunkedDecoder.getProcessResult()
 				.whenComplete(($, e) -> {
-					if (exception == null) {
+					if (expectedException == null) {
 						assertNull(e);
 					} else {
-						assertEquals(exception, e);
+						assertEquals(expectedException, e);
 					}
 				});
 	}

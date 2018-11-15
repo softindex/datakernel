@@ -35,7 +35,7 @@ public final class CreateResponse<K> {
 	}
 
 	public static <K> CreateResponse<K> of(K id) {
-		return new CreateResponse<>(id, Collections.<String, List<String>>emptyMap());
+		return new CreateResponse<>(id, Collections.emptyMap());
 	}
 
 	public static <K> CreateResponse<K> of(K id, Map<String, List<String>> errors) {

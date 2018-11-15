@@ -20,6 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
+import io.datakernel.stream.processor.StreamMap.MapperProjection;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -30,11 +31,10 @@ import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamMapTest {
 
-	private static final StreamMap.MapperProjection<Integer, Integer> FUNCTION = new StreamMap.MapperProjection<Integer, Integer>() {
+	private static final MapperProjection<Integer, Integer> FUNCTION = new MapperProjection<Integer, Integer>() {
 		@Override
 		protected Integer apply(Integer input) {
 			return input + 10;
@@ -78,7 +78,7 @@ public class StreamMapTest {
 						})));
 
 		eventloop.run();
-		assertTrue(list.size() == 2);
+		assertEquals(2, list.size());
 		assertClosedWithError(source);
 		assertClosedWithError(consumer);
 		assertClosedWithError(projection.getInput());
@@ -103,7 +103,7 @@ public class StreamMapTest {
 				consumer.apply(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
-		assertTrue(list.size() == 2);
+		assertEquals(2, list.size());
 		assertClosedWithError(consumer);
 	}
 

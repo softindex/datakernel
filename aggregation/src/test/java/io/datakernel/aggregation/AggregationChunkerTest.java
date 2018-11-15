@@ -45,7 +45,7 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static org.junit.Assert.assertEquals;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "rawtypes"})
 @RunWith(DatakernelRunner.class)
 public final class AggregationChunkerTest {
 

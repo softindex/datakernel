@@ -38,7 +38,7 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 	}
 
 	public static <T> StreamUnion<T> create() {
-		return new StreamUnion<T>();
+		return new StreamUnion<>();
 	}
 
 	@Override
@@ -65,12 +65,13 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 			if (inputs.stream().allMatch(input -> input.getEndOfStream().isResult())) {
 				output.sendEndOfStream();
 			}
+			assert output.getConsumer() != null;
 			return output.getConsumer().getAcknowledgement();
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			output.close(t);
+		protected void onError(Throwable e) {
+			output.close(e);
 		}
 	}
 
@@ -94,8 +95,8 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			inputs.forEach(input -> input.close(t));
+		protected void onError(Throwable e) {
+			inputs.forEach(input -> input.close(e));
 		}
 	}
 

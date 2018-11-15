@@ -7,7 +7,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.jmx.KeyWithWorkerData;
@@ -309,7 +308,7 @@ public class JmxHttpModule extends AbstractModule {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public Promise<HttpResponse> serve(HttpRequest request) throws ParseException {
+		public Promise<HttpResponse> serve(HttpRequest request) {
 			String keyParam = request.getQueryParameterOrNull("key");
 
 			if ("/favicon.ico".equals(request.getPath())) { // if somehow it got to this servlet
@@ -376,7 +375,7 @@ public class JmxHttpModule extends AbstractModule {
 							Promise.of(Collections.<Class<?>>emptyList()))
 					.thenCompose(tuple -> {
 						@SuppressWarnings("SuspiciousToArrayCall") // what.?
-								Type type = SimpleType.ofClass(tuple.getValue1(), tuple.getValue2().toArray(new Class[0])).getType();
+								Type type = SimpleType.ofClass(tuple.getValue1(), tuple.getValue2().toArray(new Class<?>[0])).getType();
 						if (annotation == null) {
 							return Promise.of(Key.get(type));
 						}
@@ -425,7 +424,7 @@ public class JmxHttpModule extends AbstractModule {
 
 	private static class Node<K, V> {
 		@Nullable
-		final Node parent;
+		final Node<K, V> parent;
 
 		@Nullable
 		final K key;
@@ -435,7 +434,7 @@ public class JmxHttpModule extends AbstractModule {
 
 		final Map<K, Node<K, V>> children = new LinkedHashMap<>();
 
-		public Node(@Nullable Node parent, @Nullable K key, @Nullable V value) {
+		public Node(@Nullable Node<K, V> parent, @Nullable K key, @Nullable V value) {
 			this.parent = parent;
 			this.key = key;
 			this.value = value;

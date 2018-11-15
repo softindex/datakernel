@@ -12,21 +12,24 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.concat;
 
 public final class OTSystemImpl<D> implements OTSystem<D> {
+	@FunctionalInterface
 	public interface TransformFunction<OP, L extends OP, R extends OP> {
 		TransformResult<? extends OP> transform(L left, R right) throws OTTransformException;
 	}
 
+	@FunctionalInterface
 	public interface SquashFunction<OP, OP1 extends OP, OP2 extends OP> {
 		@Nullable
 		OP trySquash(OP1 op1, OP2 op2);
 	}
 
+	@FunctionalInterface
 	public interface InvertFunction<OP> {
 		List<? extends OP> invert(OP op);
 	}
 
+	@FunctionalInterface
 	public interface EmptyPredicate<OP> {
-		@Nullable
 		boolean isEmpty(OP op);
 	}
 
@@ -72,9 +75,9 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 	@SuppressWarnings("unchecked")
 	public <L extends D, R extends D> OTSystemImpl<D> withTransformFunction(Class<? super L> leftType, Class<? super R> rightType,
 			TransformFunction<D, L, R> transformer) {
-		this.transformers.put(new KeyPair(leftType, rightType), transformer);
+		transformers.put(new KeyPair(leftType, rightType), transformer);
 		if (leftType != rightType) {
-			this.transformers.put(new KeyPair(rightType, leftType), (TransformFunction<D, R, L>) (left, right) -> {
+			transformers.put(new KeyPair(rightType, leftType), (TransformFunction<D, R, L>) (left, right) -> {
 				TransformResult<? extends D> transform = transformer.transform(right, left);
 				if (transform.hasConflict()) {
 					if (transform.resolution == ConflictResolution.LEFT)
@@ -92,23 +95,23 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 	@SuppressWarnings("unchecked")
 	public <O1 extends D, O2 extends D> OTSystemImpl<D> withSquashFunction(Class<? super O1> opType1, Class<? super O2> opType2,
 			SquashFunction<D, O1, O2> squashFunction) {
-		this.squashers.put(new KeyPair(opType1, opType2), squashFunction);
+		squashers.put(new KeyPair(opType1, opType2), squashFunction);
 		return this;
 	}
 
 	@SuppressWarnings("unchecked")
 	public <O extends D> OTSystemImpl<D> withInvertFunction(Class<? super O> opType, InvertFunction<O> inverter) {
-		this.inverters.put((Class<D>) opType, (InvertFunction<D>) inverter);
+		inverters.put((Class<D>) opType, (InvertFunction<D>) inverter);
 		return this;
 	}
 
 	@SuppressWarnings("unchecked")
 	public <O extends D> OTSystemImpl<D> withEmptyPredicate(Class<? super O> opType, EmptyPredicate<O> emptyChecker) {
-		this.emptyPredicates.put((Class<D>) opType, (EmptyPredicate<D>) emptyChecker);
+		emptyPredicates.put((Class<D>) opType, (EmptyPredicate<D>) emptyChecker);
 		return this;
 	}
 
-	@SuppressWarnings({"unchecked", "SuspiciousMethodCalls", "SimplifiableIfStatement"})
+	@SuppressWarnings({"SuspiciousMethodCalls", "SimplifiableIfStatement"})
 	@Override
 	public boolean isEmpty(D op) {
 		if (emptyPredicates.isEmpty())
@@ -154,17 +157,17 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 		if (leftDiffs.size() == 1) {
 			D left = leftDiffs.get(0);
 			D right = rightDiffs.get(0);
-			KeyPair key = new KeyPair(left.getClass(), right.getClass());
-			TransformFunction transformer = transformers.get(key);
-			TransformResult<D> transform1 = transformer.transform(left, right);
+			KeyPair<D> key = new KeyPair(left.getClass(), right.getClass());
+			TransformFunction<D, D, D> transformer = (TransformFunction<D, D, D>) transformers.get(key);
+			TransformResult<D> transform1 = (TransformResult<D>) transformer.transform(left, right);
 			if (transform1.hasConflict()) return transform1;
-			TransformResult<D> transform2 = this.doTransform(transform1.right, rightDiffs.subList(1, rightDiffs.size()));
+			TransformResult<D> transform2 = doTransform(transform1.right, rightDiffs.subList(1, rightDiffs.size()));
 			if (transform2.hasConflict()) return transform2;
 			return TransformResult.of(concat(transform1.left, transform2.left), transform2.right);
 		}
-		TransformResult<D> transform1 = this.doTransform(leftDiffs.subList(0, 1), rightDiffs);
+		TransformResult<D> transform1 = doTransform(leftDiffs.subList(0, 1), rightDiffs);
 		if (transform1.hasConflict()) return transform1;
-		TransformResult<D> transform2 = this.doTransform(leftDiffs.subList(1, leftDiffs.size()), transform1.left);
+		TransformResult<D> transform2 = doTransform(leftDiffs.subList(1, leftDiffs.size()), transform1.left);
 		if (transform2.hasConflict()) return transform2;
 		return TransformResult.of(transform2.left, concat(transform1.right, transform2.right));
 	}
@@ -173,17 +176,17 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 	@Override
 	public List<D> squash(List<? extends D> ops) {
 		if (squashers.isEmpty())
-			return (List) ops;
+			return (List<D>) ops;
 		List<D> result = new ArrayList<>();
-		Iterator<D> it = ((List) ops).iterator();
+		Iterator<D> it = ((List<D>) ops).iterator();
 		if (!it.hasNext())
 			return emptyList();
 		D cur = it.next();
 		while (it.hasNext()) {
 			D next = it.next();
-			KeyPair key = new KeyPair(cur.getClass(), next.getClass());
-			SquashFunction squashFunction = squashers.get(key);
-			D squashed = squashFunction == null ? null : (D) squashFunction.trySquash(cur, next);
+			KeyPair<D> key = new KeyPair(cur.getClass(), next.getClass());
+			SquashFunction<D, D, D> squashFunction = (SquashFunction<D, D, D>) squashers.get(key);
+			D squashed = squashFunction == null ? null : squashFunction.trySquash(cur, next);
 			if (squashed != null) {
 				cur = squashed;
 			} else {
@@ -199,7 +202,7 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 		return result;
 	}
 
-	@SuppressWarnings({"unchecked", "SuspiciousMethodCalls"})
+	@SuppressWarnings("SuspiciousMethodCalls")
 	@Override
 	public List<D> invert(List<? extends D> ops) {
 		int size = ops.size();

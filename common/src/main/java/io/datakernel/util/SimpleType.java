@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.util;
 
 import io.datakernel.annotation.Nullable;
@@ -12,25 +28,25 @@ import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toList;
 
 public final class SimpleType {
-	private final Class clazz;
+	private final Class<?> clazz;
 	private final SimpleType[] typeParams;
 	private final int arrayDimension;
 
-	private SimpleType(Class clazz, SimpleType[] typeParams, int arrayDimension) {
+	private SimpleType(Class<?> clazz, SimpleType[] typeParams, int arrayDimension) {
 		this.clazz = clazz;
 		this.typeParams = typeParams;
 		this.arrayDimension = arrayDimension;
 	}
 
-	public static SimpleType of(Class clazz, SimpleType... typeParams) {
+	public static SimpleType of(Class<?> clazz, SimpleType... typeParams) {
 		return new SimpleType(clazz, typeParams, 0);
 	}
 
-	public static SimpleType ofClass(Class clazz) {
+	public static SimpleType ofClass(Class<?> clazz) {
 		return new SimpleType(clazz, new SimpleType[]{}, clazz.isArray() ? 1 : 0);
 	}
 
-	public static SimpleType ofClass(Class clazz, Class... typeParams) {
+	public static SimpleType ofClass(Class<?> clazz, Class<?>... typeParams) {
 		return new SimpleType(clazz, Arrays.stream(typeParams)
 				.map(SimpleType::ofClass)
 				.collect(toList())
@@ -39,10 +55,10 @@ public final class SimpleType {
 
 	public static SimpleType ofType(Type type) {
 		if (type instanceof Class) {
-			return ofClass(((Class) type));
+			return ofClass((Class<?>) type);
 		} else if (type instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType) type;
-			return of(((Class) parameterizedType.getRawType()),
+			return of((Class<?>) parameterizedType.getRawType(),
 					Arrays.stream(parameterizedType.getActualTypeArguments())
 							.map(SimpleType::ofType)
 							.collect(toList())
@@ -59,7 +75,7 @@ public final class SimpleType {
 		}
 	}
 
-	public Class getClazz() {
+	public Class<?> getClazz() {
 		return clazz;
 	}
 
@@ -103,6 +119,7 @@ public final class SimpleType {
 				return clazz;
 			}
 
+			@Nullable
 			@Override
 			public Type getOwnerType() {
 				return null;
@@ -139,14 +156,14 @@ public final class SimpleType {
 		return clazz.getSimpleName() + (typeParams.length == 0 ? "" :
 				Arrays.stream(typeParams)
 						.map(SimpleType::getSimpleName)
-						.collect(Collectors.joining(",", "<", ">"))) + (new String(new char[arrayDimension]).replace("\0", "[]"));
+						.collect(Collectors.joining(",", "<", ">"))) + new String(new char[arrayDimension]).replace("\0", "[]");
 	}
 
 	public String getName() {
 		return clazz.getName() + (typeParams.length == 0 ? "" :
 				Arrays.stream(typeParams)
 						.map(SimpleType::getName)
-						.collect(Collectors.joining(",", "<", ">"))) + (new String(new char[arrayDimension]).replace("\0", "[]"));
+						.collect(Collectors.joining(",", "<", ">"))) + new String(new char[arrayDimension]).replace("\0", "[]");
 	}
 
 	@Nullable

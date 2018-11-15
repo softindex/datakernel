@@ -17,17 +17,17 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.util.Preconditions;
+import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 
 import static io.datakernel.codegen.utils.Primitives.wrap;
+import static io.datakernel.util.Preconditions.check;
 
 public abstract class SerializerGenPrimitive implements SerializerGen {
 
 	private final Class<?> primitiveType;
 
 	protected SerializerGenPrimitive(Class<?> primitiveType) {
-		Preconditions.check(primitiveType.isPrimitive());
+		check(primitiveType.isPrimitive(), "Not a primitive type");
 		this.primitiveType = primitiveType;
 	}
 
@@ -56,9 +56,7 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		return true;
+		return o != null && getClass() == o.getClass();
 	}
 
 	@Override
@@ -67,12 +65,12 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 }

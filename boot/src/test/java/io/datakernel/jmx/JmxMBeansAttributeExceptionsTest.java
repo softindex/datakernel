@@ -17,7 +17,6 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.helper.JmxStatsStub;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -76,14 +75,6 @@ public class JmxMBeansAttributeExceptionsTest {
 				"or public no-arg constructor");
 
 		JmxMBeans.factory().createFor(asList(new MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor()), defaultSettings(), false);
-	}
-
-	public static final class ConcurrentJmxMBeanWithJmxStats implements ConcurrentJmxMBean {
-
-		@JmxAttribute
-		public JmxStatsStub getStats() {
-			return new JmxStatsStub();
-		}
 	}
 
 	public static final class ConcurrentJmxMBeanWithSingleIntAttr implements ConcurrentJmxMBean {

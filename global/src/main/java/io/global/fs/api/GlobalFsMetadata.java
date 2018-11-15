@@ -135,7 +135,6 @@ public final class GlobalFsMetadata implements Comparable<GlobalFsMetadata>, Byt
 
 		GlobalFsMetadata metadata = (GlobalFsMetadata) o;
 
-		//noinspection ConstantConditions
 		return size == metadata.size &&
 				revision == metadata.revision &&
 				filename.equals(metadata.filename) &&

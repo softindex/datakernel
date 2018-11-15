@@ -3,7 +3,7 @@ package io.datakernel.stream.stats;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.stream.StreamDataAcceptor;
 
 import java.time.Duration;
@@ -17,7 +17,7 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 	private final EventStats endOfStream = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
 	private final ExceptionStats error = ExceptionStats.create();
 
-	public StreamStatsBasic withBasicSmoothingWindow(Duration smoothingWindow) {
+	public StreamStatsBasic<T> withBasicSmoothingWindow(Duration smoothingWindow) {
 		started.setSmoothingWindow(smoothingWindow);
 		produce.setSmoothingWindow(smoothingWindow);
 		suspend.setSmoothingWindow(smoothingWindow);
@@ -51,8 +51,8 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 	}
 
 	@Override
-	public void onError(Throwable throwable) {
-		error.recordException(throwable);
+	public void onError(Throwable e) {
+		error.recordException(e);
 	}
 
 	@JmxAttribute
@@ -80,7 +80,7 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 		return error;
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getActive() {
 		return (int) (started.getTotalCount() - (endOfStream.getTotalCount() + error.getTotal()));
 	}

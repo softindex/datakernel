@@ -30,9 +30,9 @@ import static java.net.StandardSocketOptions.*;
  * This class used to change settings for socket. It will be applying with creating new socket
  */
 public final class SocketSettings {
-	protected static final byte DEF_BOOL = -1;
-	protected static final byte TRUE = 1;
-	protected static final byte FALSE = 0;
+	private static final byte DEF_BOOL = -1;
+	private static final byte TRUE = 1;
+	private static final byte FALSE = 0;
 
 	private final byte keepAlive;
 	private final byte reuseAddress;
@@ -52,7 +52,7 @@ public final class SocketSettings {
 	private final MemSize implWriteSize;
 
 	// region builders
-	private SocketSettings(@Nullable MemSize sendBufferSize, @Nullable MemSize receiveBufferSize, byte keepAlive, byte reuseAddress, byte tcpNoDelay, @Nullable Duration implReadTimeout, @Nullable Duration implWriteTimeout, MemSize implReadSize, MemSize implWriteSize) {
+	private SocketSettings(@Nullable MemSize sendBufferSize, @Nullable MemSize receiveBufferSize, byte keepAlive, byte reuseAddress, byte tcpNoDelay, @Nullable Duration implReadTimeout, @Nullable Duration implWriteTimeout, @Nullable MemSize implReadSize, @Nullable MemSize implWriteSize) {
 		this.sendBufferSize = sendBufferSize;
 		this.receiveBufferSize = receiveBufferSize;
 		this.keepAlive = keepAlive;
@@ -128,7 +128,7 @@ public final class SocketSettings {
 	}
 
 	public MemSize getSendBufferSize() {
-		check(hasSendBufferSize());
+		check(hasSendBufferSize(), "No 'send buffer size' setting is present");
 		return sendBufferSize;
 	}
 
@@ -137,7 +137,7 @@ public final class SocketSettings {
 	}
 
 	public MemSize getReceiveBufferSize() {
-		check(hasReceiveBufferSize());
+		check(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
 		return receiveBufferSize;
 	}
 
@@ -146,7 +146,7 @@ public final class SocketSettings {
 	}
 
 	public boolean getKeepAlive() {
-		check(hasKeepAlive());
+		check(hasKeepAlive(), "No 'keep alive' setting is present");
 		return keepAlive != FALSE;
 	}
 
@@ -155,7 +155,7 @@ public final class SocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		check(hasReuseAddress());
+		check(hasReuseAddress(), "No 'reuse address' setting is present");
 		return reuseAddress != FALSE;
 	}
 
@@ -164,7 +164,7 @@ public final class SocketSettings {
 	}
 
 	public boolean getTcpNoDelay() {
-		check(hasTcpNoDelay());
+		check(hasTcpNoDelay(), "No 'TCP no delay' setting is present");
 		return tcpNoDelay != FALSE;
 	}
 

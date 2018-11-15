@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package io.datakernel.util;
 
+import io.datakernel.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +26,6 @@ import java.io.IOException;
 import java.nio.channels.FileLock;
 
 import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class FileLocker {
 	private static final Logger logger = LoggerFactory.getLogger(FileLocker.class);
@@ -40,8 +40,10 @@ public final class FileLocker {
 	}
 
 	private final File lockFile;
+	@Nullable
 	private FileOutputStream lockStream;
 
+	@Nullable
 	private FileLock fileLock;
 
 	private FileLocker(String lockFile) {
@@ -49,7 +51,6 @@ public final class FileLocker {
 	}
 
 	private FileLocker(File lockFile) {
-		checkNotNull(lockFile);
 		this.lockFile = lockFile.getAbsoluteFile();
 	}
 

@@ -115,7 +115,6 @@ public final class CryptoUtils {
 		return hash;
 	}
 
-	@SuppressWarnings("deprecation")
 	public static EncryptedData encryptAES(byte[] plainBytes, CipherParameters aesKey) {
 		byte[] newBytes = Arrays.copyOf(plainBytes, plainBytes.length);
 		byte[] nonce = generateNonce();
@@ -123,7 +122,6 @@ public final class CryptoUtils {
 		return new EncryptedData(nonce, newBytes);
 	}
 
-	@SuppressWarnings("deprecation")
 	public static byte[] decryptAES(EncryptedData dataToDecrypt, CipherParameters aesKey) {
 		byte[] newBytes = Arrays.copyOf(dataToDecrypt.encryptedBytes, dataToDecrypt.encryptedBytes.length);
 		CTRAESCipher.create(aesKey, dataToDecrypt.nonce).apply(newBytes);
@@ -141,8 +139,8 @@ public final class CryptoUtils {
 				new KDF2BytesGenerator(new SHA1Digest()),
 				new HMac(new SHA1Digest()));
 
-		byte[] d = new byte[]{1, 2, 3, 4, 5, 6, 7, 8};
-		byte[] e = new byte[]{8, 7, 6, 5, 4, 3, 2, 1};
+		byte[] d = {1, 2, 3, 4, 5, 6, 7, 8};
+		byte[] e = {8, 7, 6, 5, 4, 3, 2, 1};
 		CipherParameters p = new IESParameters(d, e, 64);
 
 		i1.init(ecPublicKeyParameters, p, ephKeyGen);
@@ -160,8 +158,8 @@ public final class CryptoUtils {
 				new KDF2BytesGenerator(new SHA1Digest()),
 				new HMac(new SHA1Digest()));
 
-		byte[] d = new byte[]{1, 2, 3, 4, 5, 6, 7, 8};
-		byte[] e = new byte[]{8, 7, 6, 5, 4, 3, 2, 1};
+		byte[] d = {1, 2, 3, 4, 5, 6, 7, 8};
+		byte[] e = {8, 7, 6, 5, 4, 3, 2, 1};
 		CipherParameters p = new IESParameters(d, e, 64);
 
 		i2.init(ecPrivateKeyParameters, p, new ECIESPublicKeyParser(CURVE));

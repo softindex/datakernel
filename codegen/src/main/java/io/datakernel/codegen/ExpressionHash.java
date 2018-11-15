@@ -32,7 +32,6 @@ import static org.objectweb.asm.commons.Method.getMethod;
 /**
  * Defines methods for hashing some fields
  */
-@SuppressWarnings("PointlessArithmeticExpression")
 final class ExpressionHash implements Expression {
 	private final List<Expression> arguments;
 
@@ -53,7 +52,7 @@ final class ExpressionHash implements Expression {
 
 		boolean firstIteration = true;
 
-		for (Expression argument : this.arguments) {
+		for (Expression argument : arguments) {
 			if (firstIteration) {
 				g.push(0);
 				firstIteration = false;

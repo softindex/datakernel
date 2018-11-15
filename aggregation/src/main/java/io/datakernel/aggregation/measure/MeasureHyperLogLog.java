@@ -45,7 +45,7 @@ public final class MeasureHyperLogLog extends Measure {
 						new SerializerGenArray(new SerializerGenByte(), byte[].class), -1, -1);
 				serializerGenClass.setConstructor(HyperLogLog.class.getConstructor(byte[].class),
 						singletonList("registers"));
-			} catch (NoSuchMethodException e) {
+			} catch (NoSuchMethodException ignored) {
 				throw new RuntimeException("Unable to construct SerializerGen for HyperLogLog");
 			}
 			return serializerGenClass;

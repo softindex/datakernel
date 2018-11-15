@@ -21,7 +21,7 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -31,7 +31,6 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenSubclass implements SerializerGen, NullableOptimization {
 	@Override
 	public SerializerGen asNullable() {
@@ -75,7 +74,7 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (staticMethods.startSerializeStaticMethod(this, version)) {
 			return;
 		}
@@ -112,12 +111,12 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return staticMethods.callStaticSerializeMethod(this, version, byteArray, off, value);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (staticMethods.startDeserializeStaticMethod(this, version)) {
 			return;
 		}
@@ -125,17 +124,17 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods, compatibilityLevel), this.getRawType()));
+			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods, compatibilityLevel), dataType));
 		}
 		if (nullable) list.add(-startIndex, nullRef(getRawType()));
 
 		Variable subClassIndex = let(sub(call(arg(0), "readByte"), value(startIndex)));
 
-		staticMethods.registerStaticDeserializeMethod(this, version, cast(switchForPosition(subClassIndex, list), this.getRawType()));
+		staticMethods.registerStaticDeserializeMethod(this, version, cast(switchForPosition(subClassIndex, list), dataType));
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
 	}
 

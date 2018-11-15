@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.util.guice;
 
 import com.google.inject.*;
@@ -54,7 +70,7 @@ public final class GuiceUtils {
 					Object value = m.invoke(annotation);
 					if (value.equals(m.getDefaultValue()))
 						continue;
-					String valueStr = (value instanceof String ? "\"" + value + "\"" : value.toString());
+					String valueStr = value instanceof String ? "\"" + value + "\"" : value.toString();
 					String methodName = m.getName();
 					if ("value".equals(methodName) && first) {
 						sb.append(valueStr);
@@ -130,12 +146,13 @@ public final class GuiceUtils {
 				return this;
 			}
 
+			@SuppressWarnings("AssignmentToNull") // resource release
 			@Override
 			public void configure(Binder binder) {
 				Map<Key<?>, Key<?>> finalRemappedKeys = remappedKeys;
-				Set<Key<?>> finalExposedKeys = this.exposedKeys;
-				this.remappedKeys = null;
-				this.exposedKeys = null;
+				Set<Key<?>> finalExposedKeys = exposedKeys;
+				remappedKeys = null;
+				exposedKeys = null;
 				binder.install(new PrivateModule() {
 					@Override
 					protected void configure() {

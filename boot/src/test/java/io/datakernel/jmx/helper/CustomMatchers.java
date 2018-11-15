@@ -32,7 +32,7 @@ public final class CustomMatchers {
 			@Override
 			public boolean matches(Object item) {
 				try {
-					return new ObjectName(name).equals((ObjectName) item);
+					return new ObjectName(name).equals(item);
 				} catch (MalformedObjectNameException e) {
 					throw new RuntimeException(e);
 				}

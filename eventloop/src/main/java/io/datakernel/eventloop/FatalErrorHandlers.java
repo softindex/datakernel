@@ -32,16 +32,16 @@ public final class FatalErrorHandlers {
 	}
 
 	public static FatalErrorHandler ignoreAllErrors() {
-		return (error, context) -> {};
+		return (e, context) -> {};
 	}
 
 	public static FatalErrorHandler exitOnAnyError() {
-		return (error, context) -> shutdownForcibly();
+		return (e, context) -> shutdownForcibly();
 	}
 
-	public static FatalErrorHandler exitOnMatchedError(List<Class> whiteList, List<Class> blackList) {
-		return (error, context) -> {
-			if (matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList)) {
+	public static FatalErrorHandler exitOnMatchedError(List<Class<?>> whiteList, List<Class<?>> blackList) {
+		return (e, context) -> {
+			if (matchesAny(e.getClass(), whiteList) && !matchesAny(e.getClass(), blackList)) {
 				shutdownForcibly();
 			}
 		};
@@ -52,24 +52,24 @@ public final class FatalErrorHandlers {
 	}
 
 	public static FatalErrorHandler rethrowOnAnyError() {
-		return (error, context) -> propagate(error);
+		return (e, context) -> propagate(e);
 	}
 
-	public static FatalErrorHandler rethrowOnMatchedError(List<Class> whiteList, List<Class> blackList) {
-		return (error, context) -> {
-			if (matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList)) {
-				propagate(error);
+	public static FatalErrorHandler rethrowOnMatchedError(List<Class<?>> whiteList, List<Class<?>> blackList) {
+		return (e, context) -> {
+			if (matchesAny(e.getClass(), whiteList) && !matchesAny(e.getClass(), blackList)) {
+				propagate(e);
 			}
 		};
 	}
 
-	public static void propagate(Throwable error) {
-		if (error instanceof Error) {
-			throw (Error) error;
-		} else if (error instanceof RuntimeException) {
-			throw (RuntimeException) error;
+	public static void propagate(Throwable e) {
+		if (e instanceof Error) {
+			throw (Error) e;
+		} else if (e instanceof RuntimeException) {
+			throw (RuntimeException) e;
 		} else {
-			throw new RuntimeException(error);
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -77,8 +77,7 @@ public final class FatalErrorHandlers {
 		Runtime.getRuntime().halt(1);
 	}
 
-	@SuppressWarnings("unchecked")
-	private static boolean matchesAny(Class c, List<Class> list) {
+	private static boolean matchesAny(Class<?> c, List<Class<?>> list) {
 		return list.stream().anyMatch(cl -> cl.isAssignableFrom(c));
 	}
 }

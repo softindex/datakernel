@@ -28,6 +28,7 @@ public class Utils {
 	private Utils() {
 	}
 
+	@Nullable
 	@SafeVarargs
 	public static <T> T coalesce(T... values) {
 		for (T value : values) {
@@ -46,6 +47,7 @@ public class Utils {
 		return a != null ? a : (b != null ? b : c);
 	}
 
+	@Nullable
 	public static <T, R> R apply(@Nullable T value, Function<? super T, ? extends R> fn) {
 		return value == null ? null : fn.apply(value);
 	}
@@ -54,18 +56,21 @@ public class Utils {
 		return value != null && predicate.test(value);
 	}
 
+	@Nullable
 	public static <T> T accept(@Nullable T value, Consumer<? super T> consumer) {
 		if (value == null) return null;
 		consumer.accept(value);
 		return value;
 	}
 
+	@Nullable
 	public static <T, R> R transform(@Nullable T seed, Function<T, R> fn) {
 		if (seed == null) return null;
 		R r = fn.apply(seed);
 		return r;
 	}
 
+	@Nullable
 	public static <T, R1, R2> R2 transform(@Nullable T seed, Function<T, R1> fn1, Function<R1, R2> fn2) {
 		if (seed == null) return null;
 		R1 r1 = fn1.apply(seed);
@@ -74,6 +79,7 @@ public class Utils {
 		return r2;
 	}
 
+	@Nullable
 	public static <T, R1, R2, R3> R3 transform(@Nullable T seed, Function<T, R1> fn1, Function<R1, R2> fn2, Function<R2, R3> fn3) {
 		if (seed == null) return null;
 		R1 r1 = fn1.apply(seed);
@@ -84,6 +90,7 @@ public class Utils {
 		return r3;
 	}
 
+	@Nullable
 	public static <T, R1, R2, R3, R4> R4 transform(@Nullable T seed, Function<T, R1> fn1, Function<R1, R2> fn2, Function<R2, R3> fn3, Function<R3, R4> fn4) {
 		if (seed == null) return null;
 		R1 r1 = fn1.apply(seed);
@@ -96,6 +103,7 @@ public class Utils {
 		return r4;
 	}
 
+	@Nullable
 	public static <T> T transform(@Nullable T seed, List<? extends Function<? super T, ? extends T>> fns) {
 		for (Function<? super T, ? extends T> fn : fns) {
 			seed = fn.apply(seed);
@@ -201,7 +209,7 @@ public class Utils {
 	 * @throws AssertionError when called from an application that was not
 	 *                        launched by the IntelliJ Idea IDE
 	 */
-	@SuppressWarnings({"UseOfSystemOutOrSystemErr", "ConstantConditions", "AssertWithSideEffects"})
+	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	public static void DEBUG(Object message) {
 		if (!launchedByIntellij) {
 			throw new AssertionError("Debug message call when not launched in an IDE!");

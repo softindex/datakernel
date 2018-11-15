@@ -16,7 +16,7 @@
 
 package io.datakernel.bytebuf;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 
 public final class SerializationUtils {
 	private SerializationUtils() {
@@ -42,7 +42,7 @@ public final class SerializationUtils {
 
 	public static int writeShort(byte[] buf, int off, short v) {
 		buf[off] = (byte) (v >>> 8);
-		buf[off + 1] = (byte) (v);
+		buf[off + 1] = (byte) v;
 		return off + 2;
 	}
 
@@ -50,7 +50,7 @@ public final class SerializationUtils {
 		buf[off] = (byte) (v >>> 24);
 		buf[off + 1] = (byte) (v >>> 16);
 		buf[off + 2] = (byte) (v >>> 8);
-		buf[off + 3] = (byte) (v);
+		buf[off + 3] = (byte) v;
 		return off + 4;
 	}
 
@@ -157,7 +157,7 @@ public final class SerializationUtils {
 
 	public static int writeChar(byte[] buf, int off, char v) {
 		writeByte(buf, off, (byte) (v >>> 8));
-		writeByte(buf, off + 1, (byte) (v));
+		writeByte(buf, off + 1, (byte) v);
 		return off + 2;
 	}
 
@@ -185,13 +185,9 @@ public final class SerializationUtils {
 	}
 
 	public static int writeJavaUTF8(byte[] buf, int off, String s) {
-		try {
-			byte[] bytes = s.getBytes("UTF-8");
-			off = writeVarInt(buf, off, bytes.length);
-			return write(buf, off, bytes);
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException();
-		}
+		byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+		off = writeVarInt(buf, off, bytes.length);
+		return write(buf, off, bytes);
 
 	}
 
@@ -199,13 +195,9 @@ public final class SerializationUtils {
 		if (s == null) {
 			return writeByte(buf, off, (byte) 0);
 		}
-		try {
-			byte[] bytes = s.getBytes("UTF-8");
-			off = writeVarInt(buf, off, bytes.length + 1);
-			return write(buf, off, bytes);
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException();
-		}
+		byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+		off = writeVarInt(buf, off, bytes.length + 1);
+		return write(buf, off, bytes);
 	}
 
 	@Deprecated
@@ -261,7 +253,7 @@ public final class SerializationUtils {
 		for (int i = 0; i < length; i++) {
 			char v = s.charAt(i);
 			off = writeByte(buf, off, (byte) (v >>> 8));
-			off = writeByte(buf, off, (byte) (v));
+			off = writeByte(buf, off, (byte) v);
 		}
 		return off;
 	}
@@ -275,7 +267,7 @@ public final class SerializationUtils {
 		for (int i = 0; i < length; i++) {
 			char v = s.charAt(i);
 			off = writeByte(buf, off, (byte) (v >>> 8));
-			off = writeByte(buf, off, (byte) (v));
+			off = writeByte(buf, off, (byte) v);
 		}
 		return off;
 	}

@@ -92,9 +92,9 @@ public class StreamSplitterTest {
 
 		eventloop.run();
 
-		assertTrue(toList1.size() == 3);
-		assertTrue(toList2.size() == 3);
-		assertTrue(toBadList.size() == 3);
+		assertEquals(3, toList1.size());
+		assertEquals(3, toList2.size());
+		assertEquals(3, toBadList.size());
 
 		assertClosedWithError(source);
 		assertClosedWithError(streamConcat.getInput());
@@ -126,9 +126,9 @@ public class StreamSplitterTest {
 
 		eventloop.run();
 
-		assertTrue(list1.size() == 3);
-		assertTrue(list2.size() == 3);
-		assertTrue(list3.size() == 3);
+		assertEquals(3, list1.size());
+		assertEquals(3, list2.size());
+		assertEquals(3, list3.size());
 
 		assertClosedWithError(splitter.getInput());
 		assertSuppliersClosedWithError(splitter.getOutputs());

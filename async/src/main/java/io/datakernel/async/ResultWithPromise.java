@@ -10,7 +10,7 @@ public final class ResultWithPromise<T, V> {
 	}
 
 	public static <T, V> ResultWithPromise<T, V> of(T result, Promise<V> promise) {
-		return new ResultWithPromise<T, V>(result, promise);
+		return new ResultWithPromise<>(result, promise);
 	}
 
 	public T getResult() {

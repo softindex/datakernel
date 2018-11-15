@@ -29,9 +29,9 @@ import static java.net.StandardSocketOptions.*;
  * This class used to change settings for socket. It will be applying with creating new socket
  */
 public final class DatagramSocketSettings {
-	protected static final byte DEF_BOOL = -1;
-	protected static final byte TRUE = 1;
-	protected static final byte FALSE = 0;
+	private static final byte DEF_BOOL = -1;
+	private static final byte TRUE = 1;
+	private static final byte FALSE = 0;
 
 	private final MemSize receiveBufferSize;
 	private final byte reuseAddress;
@@ -88,7 +88,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public MemSize getReceiveBufferSize() {
-		check(hasReceiveBufferSize());
+		check(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
 		return receiveBufferSize;
 	}
 
@@ -97,7 +97,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		check(hasReuseAddress());
+		check(hasReuseAddress(), "No 'reuse address' setting is present");
 		return reuseAddress != FALSE;
 	}
 
@@ -106,7 +106,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public MemSize getSendBufferSize() {
-		check(hasSendBufferSize());
+		check(hasSendBufferSize(), "No 'send buffer size' setting is present");
 		return sendBufferSize;
 	}
 
@@ -115,7 +115,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public boolean getBroadcast() {
-		check(hasBroadcast());
+		check(hasBroadcast(), "No 'broadcast' setting is present");
 		return broadcast != FALSE;
 	}
 }

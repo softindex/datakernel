@@ -49,7 +49,7 @@ public class CustomFieldsTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	@Measures({"eventCount"})
+	@Measures("eventCount")
 	public static class EventRecord {
 		// dimensions
 		@Key

@@ -28,8 +28,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.MediaTypes.*;
 import static java.nio.charset.Charset.forName;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class ContentTypeTest {
 	@Test
@@ -37,15 +36,15 @@ public class ContentTypeTest {
 		byte[] mediaType = encodeAscii("application/json");
 		int hash = hashCodeLowerCaseAscii(mediaType);
 		MediaType actual = MediaTypes.of(mediaType, 0, mediaType.length, hash);
-		assertTrue(JSON == actual);
+		assertSame(JSON, actual);
 	}
 
 	@Test
 	public void testContentTypeParse() throws ParseException {
 		byte[] contentType = encodeAscii("text/plain;param=value; url-form=www;CHARSET=UTF-8; a=v");
 		ContentType actual = ContentType.parse(contentType, 0, contentType.length);
-		assertTrue(MediaTypes.PLAIN_TEXT == actual.getMediaType());
-		assertTrue(forName("UTF-8") == actual.getCharset());
+		assertSame(MediaTypes.PLAIN_TEXT, actual.getMediaType());
+		assertSame(forName("UTF-8"), actual.getCharset());
 	}
 
 	@Test

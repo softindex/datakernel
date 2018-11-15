@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.util.Comparator;
 import java.util.function.Function;
@@ -35,10 +36,10 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer<K, O, A> {
 
 	private final Function<I, K> keyFunction;
-	private final StreamReducers.Reducer<K, I, O, A> reducer;
+	private final Reducer<K, I, O, A> reducer;
 
 	// region creators
-	private StreamReducerSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, StreamReducers.Reducer<K, I, O, A> reducer) {
+	private StreamReducerSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, Reducer<K, I, O, A> reducer) {
 		super(keyComparator);
 		this.reducer = checkNotNull(reducer);
 		this.keyFunction = checkNotNull(keyFunction);
@@ -52,7 +53,7 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	 */
 	public static <K, I, O, A> StreamReducerSimple<K, I, O, A> create(Function<I, K> keyFunction,
 			Comparator<K> keyComparator,
-			StreamReducers.Reducer<K, I, O, A> reducer) {
+			Reducer<K, I, O, A> reducer) {
 		return new StreamReducerSimple<>(keyFunction, keyComparator, reducer);
 	}
 
@@ -66,7 +67,7 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	 * Returns  new input for this stream
 	 */
 	public StreamConsumer<I> newInput() {
-		return super.newInput(keyFunction, reducer);
+		return newInput(keyFunction, reducer);
 	}
 
 }

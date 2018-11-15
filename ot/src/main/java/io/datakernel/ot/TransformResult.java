@@ -44,7 +44,6 @@ public class TransformResult<D> {
 		return of(singletonList(left), emptyList());
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <D> TransformResult<D> left(List<? extends D> left) {
 		return of(left, emptyList());
 	}
@@ -53,7 +52,6 @@ public class TransformResult<D> {
 		return of(emptyList(), singletonList(right));
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <D> TransformResult<D> right(List<? extends D> right) {
 		return of(emptyList(), right);
 	}

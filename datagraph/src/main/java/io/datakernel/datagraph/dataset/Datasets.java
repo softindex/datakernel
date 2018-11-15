@@ -20,9 +20,11 @@ import io.datakernel.datagraph.dataset.impl.*;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.StreamId;
-import io.datakernel.stream.processor.StreamJoin;
-import io.datakernel.stream.processor.StreamMap;
-import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.stream.processor.StreamJoin.Joiner;
+import io.datakernel.stream.processor.StreamMap.Mapper;
+import io.datakernel.stream.processor.StreamMap.MapperProjection;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.stream.processor.StreamReducers.ReducerToResult;
 
 import java.util.Comparator;
 import java.util.List;
@@ -54,18 +56,18 @@ public final class Datasets {
 	}
 
 	public static <K, L, R, V> SortedDataset<K, V> join(SortedDataset<K, L> left, SortedDataset<K, R> right,
-	                                                    StreamJoin.Joiner<K, L, R, V> joiner,
+	                                                    Joiner<K, L, R, V> joiner,
 	                                                    Class<V> resultType, Function<V, K> keyFunction) {
 		return new DatasetJoin<>(left, right, joiner, resultType, keyFunction);
 	}
 
-	public static <I, O> Dataset<O> map(Dataset<I> dataset, StreamMap.Mapper<I, O> mapper, Class<O> resultType) {
+	public static <I, O> Dataset<O> map(Dataset<I> dataset, Mapper<I, O> mapper, Class<O> resultType) {
 		return new DatasetMap<>(dataset, mapper, resultType);
 	}
 
 	public static <I, O> Dataset<O> map(Dataset<I> dataset, Function<I, O> function, Class<O> resultType) {
 		return map(dataset,
-				new StreamMap.MapperProjection<I, O>() {
+				new MapperProjection<I, O>() {
 					@Override
 					protected O apply(I input) {
 						return function.apply(input);
@@ -74,7 +76,7 @@ public final class Datasets {
 				resultType);
 	}
 
-	public static <T> Dataset<T> map(Dataset<T> dataset, StreamMap.Mapper<T, T> mapper) {
+	public static <T> Dataset<T> map(Dataset<T> dataset, Mapper<T, T> mapper) {
 		return map(dataset, mapper, dataset.valueType());
 	}
 
@@ -92,20 +94,20 @@ public final class Datasets {
 	}
 
 	public static <K, I, O> LocallySortedDataset<K, O> localReduce(LocallySortedDataset<K, I> stream,
-	                                                               StreamReducers.Reducer<K, I, O, ?> reducer,
+	                                                               Reducer<K, I, O, ?> reducer,
 	                                                               Class<O> resultType,
 	                                                               Function<O, K> resultKeyFunction) {
 		return new DatasetLocalSortReduce<>(stream, reducer, resultType, resultKeyFunction);
 	}
 
 	public static <K, I, O> Dataset<O> repartition_Reduce(LocallySortedDataset<K, I> dataset,
-	                                                      StreamReducers.Reducer<K, I, O, ?> reducer,
+	                                                      Reducer<K, I, O, ?> reducer,
 	                                                      Class<O> resultType) {
 		return new DatasetRepartitionReduce<>(dataset, reducer, resultType);
 	}
 
 	public static <K, I, O> Dataset<O> repartition_Reduce(LocallySortedDataset<K, I> dataset,
-	                                                      StreamReducers.Reducer<K, I, O, ?> reducer,
+	                                                      Reducer<K, I, O, ?> reducer,
 	                                                      Class<O> resultType, List<Partition> partitions) {
 		return new DatasetRepartitionReduce<>(dataset, reducer, resultType, partitions);
 	}
@@ -120,7 +122,7 @@ public final class Datasets {
 	}
 
 	public static <K, I, O, A> Dataset<O> sort_Reduce_Repartition_Reduce(Dataset<I> dataset,
-	                                                                     StreamReducers.ReducerToResult<K, I, O, A> reducer,
+	                                                                     ReducerToResult<K, I, O, A> reducer,
 	                                                                     Class<K> keyType,
 	                                                                     Function<I, K> inputKeyFunction,
 	                                                                     Comparator<K> keyComparator,
@@ -134,7 +136,7 @@ public final class Datasets {
 	}
 
 	public static <K, I, A> Dataset<A> sort_Reduce_Repartition_Reduce(Dataset<I> dataset,
-	                                                                  StreamReducers.ReducerToResult<K, I, A, A> reducer,
+	                                                                  ReducerToResult<K, I, A, A> reducer,
 	                                                                  Class<K> keyType,
 	                                                                  Function<I, K> inputKeyFunction,
 	                                                                  Comparator<K> keyComparator,
@@ -147,7 +149,7 @@ public final class Datasets {
 	}
 
 	public static <K, T> Dataset<T> sort_Reduce_Repartition_Reduce(Dataset<T> dataset,
-	                                                               StreamReducers.ReducerToResult<K, T, T, T> reducer,
+	                                                               ReducerToResult<K, T, T, T> reducer,
 	                                                               Class<K> keyType, Function<T, K> keyFunction,
 	                                                               Comparator<K> keyComparator) {
 		return sort_Reduce_Repartition_Reduce(dataset, reducer,

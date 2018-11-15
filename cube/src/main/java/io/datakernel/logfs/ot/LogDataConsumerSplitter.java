@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package io.datakernel.logfs.ot;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.PromisesAccumulator;
@@ -30,6 +31,7 @@ import static io.datakernel.util.Preconditions.checkState;
 @SuppressWarnings("unchecked")
 public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T, D> {
 	private final List<LogDataConsumer<?, D>> logDataConsumers = new ArrayList<>();
+	@Nullable
 	private Iterator<? extends StreamDataAcceptor<?>> receivers;
 
 	@Override
@@ -43,15 +45,16 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		for (LogDataConsumer<?, D> logDataConsumer : logDataConsumers) {
 			StreamConsumerWithResult<?, List<D>> consumer = logDataConsumer.consume();
 			resultsReducer.addPromise(consumer.getResult(), List::addAll);
-			Splitter.Output<?> output = splitter.new Output<>();
+			Splitter.Output<Object> output = splitter.new Output<>();
 			splitter.outputs.add(output);
-			output.streamTo((StreamConsumer) consumer.getConsumer());
+			output.streamTo((StreamConsumer<Object>) consumer.getConsumer());
 		}
 		return StreamConsumerWithResult.of(splitter.getInput(), resultsReducer.get());
 	}
 
 	protected abstract StreamDataAcceptor<T> createSplitter();
 
+	@Nullable
 	protected final <X> StreamDataAcceptor<X> addOutput(LogDataConsumer<X, D> logDataConsumer) {
 		if (receivers == null) {
 			// initial run, recording scheme
@@ -70,7 +73,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 
 		private int ready = 0;
 
-		protected Splitter() {
+		Splitter() {
 			this.input = new Input();
 		}
 
@@ -91,8 +94,8 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			}
 
 			@Override
-			protected void onError(Throwable t) {
-				outputs.forEach(output -> output.close(t));
+			protected void onError(Throwable e) {
+				outputs.forEach(output -> output.close(e));
 			}
 		}
 
@@ -106,7 +109,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 					if (inputAcceptor == null) {
 						receivers = outputs.stream().map(output -> output.dataAcceptor).iterator();
 						inputAcceptor = createSplitter();
-						checkState(!receivers.hasNext());
+						checkState(!receivers.hasNext(), "Receivers must correspond to outputs");
 						receivers = null;
 					}
 					input.getSupplier().resume(inputAcceptor);
@@ -120,8 +123,8 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			}
 
 			@Override
-			protected void onError(Throwable t) {
-				input.close(t);
+			protected void onError(Throwable e) {
+				input.close(e);
 			}
 		}
 	}

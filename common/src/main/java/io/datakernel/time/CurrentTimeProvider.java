@@ -40,7 +40,7 @@ public interface CurrentTimeProvider {
 	ThreadLocal<CurrentTimeProvider> THREAD_LOCAL_TIME_PROVIDER = new ThreadLocal<>();
 
 	static CurrentTimeProvider ofThreadLocal() {
-		return checkNotNull(THREAD_LOCAL_TIME_PROVIDER.get());
+		return checkNotNull(THREAD_LOCAL_TIME_PROVIDER.get(), "ThreadLocal has no instance of CurrentTimeProvider associated with current thread");
 	}
 
 	static CurrentTimeProvider ofTimeSequence(long start, long increment) {

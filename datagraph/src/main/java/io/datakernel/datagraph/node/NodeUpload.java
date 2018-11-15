@@ -45,7 +45,6 @@ public final class NodeUpload<T> implements Node {
 		return Collections.emptyList();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		DatagraphServer server = taskContext.environment().getInstance(DatagraphServer.class);

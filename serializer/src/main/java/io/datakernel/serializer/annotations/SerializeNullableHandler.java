@@ -18,27 +18,24 @@ package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.SerializerBuilder.Helper;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenNullable;
 import io.datakernel.serializer.asm.SerializerGenString;
-import io.datakernel.util.Preconditions;
+
+import static io.datakernel.util.Preconditions.check;
 
 public final class SerializeNullableHandler implements AnnotationHandler<SerializeNullable, SerializeNullableEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, SerializeNullable annotation, CompatibilityLevel compatibilityLevel) {
-		return new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				Preconditions.check(!type.isPrimitive());
-				if (fallback instanceof SerializerGenString)
-					return ((SerializerGenString) fallback).nullable(true);
-				if (compatibilityLevel == CompatibilityLevel.LEVEL_3 && fallback instanceof NullableOptimization) {
-					return ((NullableOptimization) fallback).asNullable();
-				}
-				return new SerializerGenNullable(fallback);
+	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeNullable annotation, CompatibilityLevel compatibilityLevel) {
+		return (type, generics, fallback) -> {
+			check(!type.isPrimitive(), "Type must not represent a primitive type");
+			if (fallback instanceof SerializerGenString)
+				return ((SerializerGenString) fallback).nullable(true);
+			if (compatibilityLevel == CompatibilityLevel.LEVEL_3 && fallback instanceof NullableOptimization) {
+				return ((NullableOptimization) fallback).asNullable();
 			}
+			return new SerializerGenNullable(fallback);
 		};
 	}
 

@@ -58,10 +58,10 @@ public final class RangeTree<K, V> {
 	}
 
 	private RangeTree() {
-		this(new TreeMap<K, Segment<V>>());
+		this(new TreeMap<>());
 	}
 
-	public static <K, V> RangeTree<K, V> create() {return new RangeTree<K, V>();}
+	public static <K, V> RangeTree<K, V> create() {return new RangeTree<>();}
 
 	public static <K, V> RangeTree<K, V> cloneOf(RangeTree<K, V> source) {
 		RangeTree<K, V> result = create();
@@ -94,7 +94,7 @@ public final class RangeTree<K, V> {
 		}
 	}
 
-	@SuppressWarnings({"ConstantConditions", "EqualsBetweenInconvertibleTypes"})
+	@SuppressWarnings("ConstantConditions")
 	public boolean remove(K lower, K upper, V value) {
 		boolean removed = false;
 

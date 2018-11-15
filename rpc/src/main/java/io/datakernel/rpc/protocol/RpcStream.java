@@ -32,10 +32,9 @@ import io.datakernel.util.MemSize;
 
 import java.time.Duration;
 
-@SuppressWarnings("unchecked")
 public final class RpcStream {
 	public interface Listener extends StreamDataAcceptor<RpcMessage> {
-		void onClosedWithError(Throwable exception);
+		void onClosedWithError(Throwable e);
 
 		void onReadEndOfStream();
 	}
@@ -43,10 +42,6 @@ public final class RpcStream {
 	private Listener listener;
 	private final AbstractStreamSupplier<RpcMessage> sender;
 	private final AbstractStreamConsumer<RpcMessage> receiver;
-	private final AsyncTcpSocket socket;
-
-	private boolean readDone;
-	private boolean writeDone;
 
 	private boolean ready;
 	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;
@@ -55,14 +50,13 @@ public final class RpcStream {
 			BufferSerializer<RpcMessage> messageSerializer,
 			MemSize initialBufferSize, MemSize maxMessageSize,
 			Duration autoFlushInterval, boolean compression, boolean server) {
-		this.socket = socket;
 
 		if (server) {
 			sender = new AbstractStreamSupplier<RpcMessage>() {
 				@Override
 				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
-					RpcStream.this.downstreamDataAcceptor = dataAcceptor;
-					receiver.getSupplier().resume(RpcStream.this.listener);
+					downstreamDataAcceptor = dataAcceptor;
+					receiver.getSupplier().resume(listener);
 					ready = true;
 				}
 
@@ -73,8 +67,8 @@ public final class RpcStream {
 				}
 
 				@Override
-				protected void onError(Throwable t) {
-					RpcStream.this.listener.onClosedWithError(t);
+				protected void onError(Throwable e) {
+					listener.onClosedWithError(e);
 					ready = false;
 				}
 			};
@@ -82,7 +76,7 @@ public final class RpcStream {
 			sender = new AbstractStreamSupplier<RpcMessage>() {
 				@Override
 				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
-					RpcStream.this.downstreamDataAcceptor = dataAcceptor;
+					downstreamDataAcceptor = dataAcceptor;
 					ready = true;
 				}
 
@@ -92,8 +86,8 @@ public final class RpcStream {
 				}
 
 				@Override
-				protected void onError(Throwable t) {
-					RpcStream.this.listener.onClosedWithError(t);
+				protected void onError(Throwable e) {
+					listener.onClosedWithError(e);
 					ready = false;
 				}
 			};
@@ -102,17 +96,17 @@ public final class RpcStream {
 		receiver = new AbstractStreamConsumer<RpcMessage>() {
 			@Override
 			protected void onStarted() {
-				getSupplier().resume(RpcStream.this.listener);
+				getSupplier().resume(listener);
 			}
 
 			@Override
 			protected Promise<Void> onEndOfStream() {
-				RpcStream.this.listener.onReadEndOfStream();
+				listener.onReadEndOfStream();
 				return Promise.complete();
 			}
 
 			@Override
-			protected void onError(Throwable t) {
+			protected void onError(Throwable e) {
 			}
 		};
 

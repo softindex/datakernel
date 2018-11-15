@@ -17,34 +17,31 @@
 package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.SerializerBuilder.Helper;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenInt;
 import io.datakernel.serializer.asm.SerializerGenLong;
-import io.datakernel.util.Preconditions;
+
+import static io.datakernel.util.Preconditions.check;
 
 public final class SerializeVarLengthHandler implements AnnotationHandler<SerializeVarLength, SerializeVarLengthEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, SerializeVarLength annotation, CompatibilityLevel compatibilityLevel) {
-		return new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				Preconditions.check(generics.length == 0);
-				if (type == Integer.TYPE) {
-					return new SerializerGenInt(true);
-				}
-				if (type == Integer.class) {
-					return new SerializerGenInt(true);
-				}
-				if (type == Long.TYPE) {
-					return new SerializerGenLong(true);
-				}
-				if (type == Long.class) {
-					return new SerializerGenLong(true);
-				}
-				throw new IllegalArgumentException();
+	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeVarLength annotation, CompatibilityLevel compatibilityLevel) {
+		return (type, generics, fallback) -> {
+			check(generics.length == 0, "Type should have no generics");
+			if (type == Integer.TYPE) {
+				return new SerializerGenInt(true);
 			}
+			if (type == Integer.class) {
+				return new SerializerGenInt(true);
+			}
+			if (type == Long.TYPE) {
+				return new SerializerGenLong(true);
+			}
+			if (type == Long.class) {
+				return new SerializerGenLong(true);
+			}
+			throw new IllegalArgumentException();
 		};
 	}
 

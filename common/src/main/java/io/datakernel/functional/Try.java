@@ -27,28 +27,27 @@ import java.util.stream.Collector;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class Try<T> {
-	@Nullable
 	private final T result;
 	@Nullable
 	private final Throwable throwable;
 
-	private Try(@Nullable T result, @Nullable Throwable throwable) {
+	private Try(T result, @Nullable Throwable e) {
 		this.result = result;
-		this.throwable = throwable;
+		this.throwable = e;
 	}
 
-	public static <T> Try<T> of(@Nullable T result) {
+	public static <T> Try<T> of(T result) {
 		return new Try<>(result, null);
 	}
 
-	public static <T> Try<T> of(@Nullable T result, @Nullable Throwable throwable) {
-		assert result == null || throwable == null;
-		return new Try<>(result, throwable);
+	public static <T> Try<T> of(T result, @Nullable Throwable e) {
+		assert result == null || e == null;
+		return new Try<>(result, e);
 	}
 
-	public static <T> Try<T> ofException(Throwable throwable) {
-		assert throwable != null;
-		return new Try<>(null, throwable);
+	public static <T> Try<T> ofException(Throwable e) {
+		assert e != null;
+		return new Try<>(null, e);
 	}
 
 	public static <T> Try<T> wrap(Supplier<T> computation) {
@@ -91,13 +90,13 @@ public final class Try<T> {
 			if (acc.throwables.isEmpty()) {
 				return Try.of(acc.result);
 			}
-			Throwable throwable = acc.throwables.get(0);
+			Throwable e = acc.throwables.get(0);
 			for (Throwable t : acc.throwables) {
-				if (t != throwable) {
-					throwable.addSuppressed(t);
+				if (t != e) {
+					e.addSuppressed(t);
 				}
 			}
-			return Try.ofException(throwable);
+			return Try.ofException(e);
 		});
 	}
 
@@ -107,7 +106,6 @@ public final class Try<T> {
 
 	public T get() throws Exception {
 		if (throwable == null) {
-			//noinspection ConstantConditions - nullability of this method is equal to the nullability of T
 			return result;
 		}
 		throw throwable instanceof Exception ? (Exception) throwable : new RuntimeException(throwable);
@@ -115,13 +113,11 @@ public final class Try<T> {
 
 	public T getOr(T defaultValue) {
 		if (throwable == null) {
-			//noinspection ConstantConditions - nullability of this method is equal to the nullability of T
 			return result;
 		}
 		return defaultValue;
 	}
 
-	@Nullable
 	public T getOrSupply(Supplier<? extends T> defaultValueSupplier) {
 		if (throwable == null) {
 			return result;
@@ -136,13 +132,11 @@ public final class Try<T> {
 
 	public T getResult() {
 		assert isSuccess();
-		//noinspection ConstantConditions - nullability of this method is equal to the nullability of T
 		return result;
 	}
 
 	public Throwable getException() {
 		assert !isSuccess();
-		//noinspection ConstantConditions - isSuccess check
 		return throwable;
 	}
 
@@ -159,18 +153,16 @@ public final class Try<T> {
 		if (isSuccess()) {
 			consumer.accept(result);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	public boolean setExceptionTo(Consumer<Throwable> consumer) {
 		if (!isSuccess()) {
 			consumer.accept(throwable);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -194,8 +186,8 @@ public final class Try<T> {
 		if (throwable == null) {
 			try {
 				return new Try<>(function.apply(result), null);
-			} catch (Throwable t) {
-				return new Try<>(null, t);
+			} catch (Throwable e) {
+				return new Try<>(null, e);
 			}
 		}
 		return mold();

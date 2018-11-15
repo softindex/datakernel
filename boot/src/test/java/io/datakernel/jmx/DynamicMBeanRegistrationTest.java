@@ -57,12 +57,12 @@ public class DynamicMBeanRegistrationTest {
 	public static class DynamicMBeanStub implements DynamicMBean {
 
 		@Override
-		public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
+		public Object getAttribute(String attribute) {
 			return null;
 		}
 
 		@Override
-		public void setAttribute(Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException {
+		public void setAttribute(Attribute attribute) {
 
 		}
 
@@ -77,7 +77,7 @@ public class DynamicMBeanRegistrationTest {
 		}
 
 		@Override
-		public Object invoke(String actionName, Object[] params, String[] signature) throws MBeanException, ReflectionException {
+		public Object invoke(String actionName, Object[] params, String[] signature) {
 			return null;
 		}
 

@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxReducers.JmxReducerDistinct;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.ReflectionUtils;
 import org.slf4j.Logger;
@@ -44,6 +45,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 
+@SuppressWarnings("rawtypes")
 public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final Logger logger = LoggerFactory.getLogger(JmxMBeans.class);
 
@@ -56,7 +58,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private final Map<Eventloop, Integer> refreshableStatsCounts = new ConcurrentHashMap<>();
 	private final Map<Eventloop, Integer> effectiveRefreshPeriods = new ConcurrentHashMap<>();
 
-	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
+	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducerDistinct();
 
 	// JmxStats creator methods
 	private static final String CREATE = "create";
@@ -111,9 +113,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	@Override
 	public DynamicMBean createFor(List<?> monitorables, MBeanSettings setting, boolean enableRefresh) {
 		checkNotNull(monitorables);
-		checkArgument(monitorables.size() > 0);
-		checkArgument(monitorables.stream().noneMatch(Objects::isNull), "monitorable can not be null");
-		checkArgument(CollectionUtils.allItemsHaveSameType(monitorables));
+		checkArgument(monitorables.size() > 0, "Size of list of monitorables should be greater than 0");
+		checkArgument(monitorables.stream().noneMatch(Objects::isNull), "Monitorable can not be null");
+		checkArgument(CollectionUtils.allItemsHaveSameType(monitorables), "Monitorables should be of the same type");
 
 		Object firstMBean = monitorables.get(0);
 		Class<?> mbeanClass = firstMBean.getClass();
@@ -147,9 +149,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			AttributeModifier<?> modifier = setting.getModifiers().get(attrName);
 			try {
 				rootNode.applyModifier(attrName, modifier, monitorables);
-			} catch (ClassCastException cce) {
+			} catch (ClassCastException e) {
+				//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - doesn't ignore
 				throw new IllegalArgumentException("Cannot apply modifier \"" + modifier.getClass().getName() +
-						"\" for attribute \"" + attrName + "\": " + cce.toString());
+						"\" for attribute \"" + attrName + "\": " + e.toString());
 			}
 		}
 
@@ -398,9 +401,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Class<? extends JmxReducer<?>> reducerClass = attrAnnotation.reducer();
 		if (reducerClass == DEFAULT_REDUCER.getClass()) {
 			return DEFAULT_REDUCER;
-		} else {
-			return reducerClass.newInstance();
 		}
+		return reducerClass.newInstance();
 	}
 
 	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, @Nullable Method getter) {
@@ -483,7 +485,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		if (listElementType instanceof Class<?>) {
 			Class<?> listElementClass = (Class<?>) listElementType;
-			boolean isListOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(listElementClass));
+			boolean isListOfJmxRefreshable = JmxRefreshable.class.isAssignableFrom(listElementClass);
 			return new AttributeNodeForList(
 					attrName,
 					attrDescription,
@@ -520,7 +522,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		AttributeNode node;
 		if (valueType instanceof Class<?>) {
 			Class<?> valueClass = (Class<?>) valueType;
-			isMapOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(valueClass));
+			isMapOfJmxRefreshable = JmxRefreshable.class.isAssignableFrom(valueClass);
 			node = createAttributeNodeFor("", attrDescription, valueType, true, null, null, null, mbeanClass, customTypes);
 		} else if (valueType instanceof ParameterizedType) {
 			String typeName = ((Class<?>) ((ParameterizedType) valueType).getRawType()).getSimpleName();
@@ -829,7 +831,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			this.opkeyToMethod = opkeyToMethod;
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public Object getAttribute(String attribute) throws MBeanException {
 			Object value = rootNode.aggregateAttributes(singleton(attribute), mbeans).get(attribute);
@@ -867,11 +868,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				throw new MBeanException(e);
 			}
 
-			Exception exception = exceptionReference.get();
-			if (exception != null) {
-				Exception actualException = exception;
-				if (exception instanceof SetterException) {
-					SetterException setterException = (SetterException) exception;
+			Exception e = exceptionReference.get();
+			if (e != null) {
+				Exception actualException = e;
+				if (e instanceof SetterException) {
+					SetterException setterException = (SetterException) e;
 					actualException = setterException.getCausedException();
 				}
 				propagate(actualException);
@@ -880,7 +881,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 		@Override
 		public AttributeList getAttributes(String[] attributes) {
-			checkArgument(attributes != null);
+			checkNotNull(attributes);
 
 			AttributeList attrList = new AttributeList();
 			Set<String> attrNames = new HashSet<>(Arrays.asList(attributes));
@@ -952,18 +953,18 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				throw new MBeanException(e);
 			}
 
-			Exception exception = exceptionReference.get();
-			if (exception != null) {
-				propagate(exception);
+			Exception e = exceptionReference.get();
+			if (e != null) {
+				propagate(e);
 			}
 
 			// We don't know how to aggregate return values if there are several mbeans
 			return mbeanWrappers.size() == 1 ? lastValue.get() : null;
 		}
 
-		private void propagate(Throwable throwable) throws MBeanException {
-			if (throwable instanceof InvocationTargetException) {
-				Throwable targetException = ((InvocationTargetException) throwable).getTargetException();
+		private void propagate(Throwable e) throws MBeanException {
+			if (e instanceof InvocationTargetException) {
+				Throwable targetException = ((InvocationTargetException) e).getTargetException();
 
 				if (targetException instanceof Exception) {
 					throw new MBeanException((Exception) targetException);
@@ -977,13 +978,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				}
 
 			} else {
-				if (throwable instanceof Exception) {
-					throw new MBeanException((Exception) throwable);
+				if (e instanceof Exception) {
+					throw new MBeanException((Exception) e);
 				} else {
 					throw new MBeanException(
 							new Exception(format("Throwable of type \"%s\" and message \"%s\" " +
 											"was thrown",
-									throwable.getClass().getName(), throwable.getMessage())
+									e.getClass().getName(), e.getMessage())
 							)
 					);
 				}

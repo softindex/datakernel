@@ -25,6 +25,7 @@ import static io.datakernel.util.JmxUtils.filterNulls;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.singletonList;
 
+@SuppressWarnings("rawtypes")
 final class AttributeNodeForPojo implements AttributeNode {
 	private static final char ATTRIBUTE_NAME_SEPARATOR = '_';
 
@@ -202,9 +203,9 @@ final class AttributeNodeForPojo implements AttributeNode {
 		if (name.isEmpty()) {
 			adjustedName = attrName;
 		} else {
-			adjustedName = attrName.substring(name.length(), attrName.length());
+			adjustedName = attrName.substring(name.length());
 			if (adjustedName.length() > 0) {
-				adjustedName = adjustedName.substring(1, adjustedName.length()); // remove ATTRIBUTE_NAME_SEPARATOR
+				adjustedName = adjustedName.substring(1); // remove ATTRIBUTE_NAME_SEPARATOR
 			}
 		}
 		return adjustedName;
@@ -232,15 +233,14 @@ final class AttributeNodeForPojo implements AttributeNode {
 		}
 
 		if (pojo instanceof JmxRefreshable) {
-			return singletonList(((JmxRefreshable) pojo));
-		} else {
-			List<JmxRefreshable> allJmxRefreshables = new ArrayList<>();
-			for (AttributeNode attributeNode : subNodes) {
-				List<JmxRefreshable> subNodeRefreshables = attributeNode.getAllRefreshables(pojo);
-				allJmxRefreshables.addAll(subNodeRefreshables);
-			}
-			return allJmxRefreshables;
+			return singletonList((JmxRefreshable) pojo);
 		}
+		List<JmxRefreshable> allJmxRefreshables = new ArrayList<>();
+		for (AttributeNode attributeNode : subNodes) {
+			List<JmxRefreshable> subNodeRefreshables = attributeNode.getAllRefreshables(pojo);
+			allJmxRefreshables.addAll(subNodeRefreshables);
+		}
+		return allJmxRefreshables;
 	}
 
 	@Override
@@ -302,14 +302,14 @@ final class AttributeNodeForPojo implements AttributeNode {
 		}
 	}
 
-	@SuppressWarnings({"unchecked", "UnnecessaryLocalVariable"})
+	@SuppressWarnings("unchecked")
 	@Override
 	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
 		if (attrName.equals(name)) {
-			AttributeModifier attrModifierRaw = modifier;
+			AttributeModifier<Object> attrModifierObject = (AttributeModifier<Object>) modifier;
 			List<Object> attributes = fetchInnerPojos(target);
 			for (Object attribute : attributes) {
-				attrModifierRaw.apply(attribute);
+				attrModifierObject.apply(attribute);
 			}
 			return;
 		}

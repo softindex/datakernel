@@ -163,14 +163,14 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert array == byteBuffer.array();
 		assert byteBuffer.limit() == writePosition;
-		this.readPosition = byteBuffer.position();
+		readPosition = byteBuffer.position();
 	}
 
 	public void ofWriteByteBuffer(ByteBuffer byteBuffer) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert array == byteBuffer.array();
 		assert byteBuffer.limit() == array.length;
-		this.writePosition = byteBuffer.position();
+		writePosition = byteBuffer.position();
 	}
 
 	// getters & setters
@@ -196,13 +196,13 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	public void readPosition(int pos) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert pos <= writePosition;
-		this.readPosition = pos;
+		readPosition = pos;
 	}
 
 	public void writePosition(int pos) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert pos >= readPosition && pos <= array.length;
-		this.writePosition = pos;
+		writePosition = pos;
 	}
 
 	public void moveReadPosition(int delta) {
@@ -264,9 +264,9 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	public int drainTo(byte[] array, int offset, int length) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert length >= 0 && (offset + length) <= array.length;
-		assert this.readPosition + length <= this.writePosition;
-		System.arraycopy(this.array, this.readPosition, array, offset, length);
-		this.readPosition += length;
+		assert readPosition + length <= writePosition;
+		System.arraycopy(this.array, readPosition, array, offset, length);
+		readPosition += length;
 		return length;
 	}
 
@@ -381,7 +381,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert readRemaining() >= 2;
 
-		char c = (char) (((array[readPosition] & 0xFF) << 8) | ((array[readPosition + 1] & 0xFF)));
+		char c = (char) (((array[readPosition] & 0xFF) << 8) | (array[readPosition + 1] & 0xFF));
 		readPosition += 2;
 		return c;
 	}
@@ -463,7 +463,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 				| ((long) (array[readPosition + 4] & 0xFF) << 24)
 				| ((array[readPosition + 5] & 0xFF) << 16)
 				| ((array[readPosition + 6] & 0xFF) << 8)
-				| ((array[readPosition + 7] & 0xFF));
+				| (array[readPosition + 7] & 0xFF);
 
 		readPosition += 8;
 		return result;
@@ -474,7 +474,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		assert readRemaining() >= 2;
 
 		short result = (short) (((array[readPosition] & 0xFF) << 8)
-				| ((array[readPosition + 1] & 0xFF)));
+				| (array[readPosition + 1] & 0xFF));
 		readPosition += 2;
 		return result;
 	}
@@ -577,7 +577,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
-			chars[i] = (char) ((readByte() << 8) + (readByte()));
+			chars[i] = (char) ((readByte() << 8) + readByte());
 		}
 		return new String(chars, 0, length);
 	}

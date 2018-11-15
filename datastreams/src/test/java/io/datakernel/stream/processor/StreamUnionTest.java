@@ -33,9 +33,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
-@SuppressWarnings("unchecked")
 public class StreamUnionTest {
 	@Test
 	public void test1() {
@@ -141,7 +139,7 @@ public class StreamUnionTest {
 		streamUnion.getOutput().streamTo(consumer.apply(TestStreamConsumers.oneByOne()));
 		eventloop.run();
 
-		assertTrue(list.size() == 3);
+		assertEquals(3, list.size());
 		assertClosedWithError(streamUnion.getOutput());
 		assertConsumersClosedWithError(streamUnion.getInputs());
 	}

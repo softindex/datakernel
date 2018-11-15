@@ -46,7 +46,6 @@ import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-@SuppressWarnings("ThrowableResultOfMethodCallIgnored")
 @RunWith(DatakernelRunner.class)
 public final class StaticServletsTest {
 	public static final String EXPECTED_CONTENT = "Test";
@@ -121,7 +120,7 @@ public final class StaticServletsTest {
 
 	@Test
 	public void testRelativeClassPath() {
-		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor(), this.getClass());
+		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor(), getClass());
 		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
 				.serve(HttpRequest.get("http://test.com:8080/testFile.txt"))
 				.thenCompose(httpResponse -> httpResponse.getBodyPromise(Integer.MAX_VALUE))

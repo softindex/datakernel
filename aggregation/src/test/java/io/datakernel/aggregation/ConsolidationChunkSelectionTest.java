@@ -30,7 +30,7 @@ import static org.junit.Assert.assertNull;
 
 public class ConsolidationChunkSelectionTest {
 	@Test
-	public void testRangeExpansion() throws Exception {
+	public void testRangeExpansion() {
 		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
@@ -63,7 +63,7 @@ public class ConsolidationChunkSelectionTest {
 	}
 
 	@Test
-	public void testMinKeyStrategy() throws Exception {
+	public void testMinKeyStrategy() {
 		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
@@ -87,7 +87,7 @@ public class ConsolidationChunkSelectionTest {
 	}
 
 	@Test
-	public void testSizeFixStrategy() throws Exception {
+	public void testSizeFixStrategy() {
 		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
@@ -116,7 +116,7 @@ public class ConsolidationChunkSelectionTest {
 	}
 
 	@Test
-	public void testGroupingByPartition() throws Exception {
+	public void testGroupingByPartition() {
 		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
@@ -137,6 +137,7 @@ public class ConsolidationChunkSelectionTest {
 
 		Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = state.groupByPartition(2);
 
+		assert partitioningKeyToTree != null;
 		assertEquals(chunks1, partitioningKeyToTree.get(PrimaryKey.ofArray(1, 1)).getAll());
 		assertEquals(chunks2, partitioningKeyToTree.get(PrimaryKey.ofArray(2, 1)).getAll());
 		assertEquals(chunks3, partitioningKeyToTree.get(PrimaryKey.ofArray(2, 2)).getAll());
@@ -151,11 +152,11 @@ public class ConsolidationChunkSelectionTest {
 
 	private static AggregationChunk createTestChunk(int id, int d1Min, int d1Max, int d2Min, int d2Max, int d3Min,
 	                                                int d3Max) {
-		return AggregationChunk.create(id, new ArrayList<String>(), PrimaryKey.ofArray(d1Min, d2Min, d3Min),
+		return AggregationChunk.create(id, new ArrayList<>(), PrimaryKey.ofArray(d1Min, d2Min, d3Min),
 				PrimaryKey.ofArray(d1Max, d2Max, d3Max), 10);
 	}
 
 	private static AggregationChunk createTestChunk(int id, int min, int max, int count) {
-		return AggregationChunk.create(id, new ArrayList<String>(), PrimaryKey.ofArray(min), PrimaryKey.ofArray(max), count);
+		return AggregationChunk.create(id, new ArrayList<>(), PrimaryKey.ofArray(min), PrimaryKey.ofArray(max), count);
 	}
 }

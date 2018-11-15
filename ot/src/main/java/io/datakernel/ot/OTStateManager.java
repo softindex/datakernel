@@ -39,7 +39,7 @@ import static io.datakernel.util.Utils.coalesce;
 import static java.util.Collections.*;
 
 public final class OTStateManager<K, D> implements EventloopService, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(OTStateManager.class);
+	private static final Logger logger = LoggerFactory.getLogger(OTStateManager.class);
 
 	private final Eventloop eventloop;
 
@@ -57,7 +57,9 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	@Nullable
 	private K fetchedRevision;
+	@Nullable
 	private Long fetchedRevisionLevel;
+	@Nullable
 	private List<D> fetchedDiffs;
 
 	private Map<K, OTCommit<K, D>> pendingCommits = new HashMap<>();
@@ -211,8 +213,8 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		apply(transformed.left);
 		workingDiffs = new ArrayList<>(transformed.right);
 
-		revision = checkNotNull(fetchedRevision);
-		revisionLevel = checkNotNull(fetchedRevisionLevel);
+		revision = checkNotNull(fetchedRevision, "Cannot rebase onto fetched revision that is null");
+		revisionLevel = checkNotNull(fetchedRevisionLevel, "Cannot rebase when fetched revision level is null");
 
 		fetchedRevision = null;
 		fetchedRevisionLevel = null;
@@ -308,6 +310,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		}
 	}
 
+	@SuppressWarnings("AssignmentToNull") // state is invalid, no further calls should be made
 	private void invalidateInternalState() {
 		state = null;
 
@@ -323,9 +326,9 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	}
 
 	private boolean isInternalStateValid() {
-		checkState(state == null || (revision != null && pendingCommits != null));
-		checkState(revision == null || (revisionLevel != null && workingDiffs != null));
-		checkState(fetchedRevision == null || (fetchedRevisionLevel != null && fetchedDiffs != null));
+		checkState(state == null || (revision != null && pendingCommits != null), "Internal state invalid");
+		checkState(revision == null || (revisionLevel != null && workingDiffs != null), "Internal state invalid");
+		checkState(fetchedRevision == null || (fetchedRevisionLevel != null && fetchedDiffs != null), "Internal state invalid");
 		return state != null;
 	}
 
@@ -334,11 +337,11 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	}
 
 	public OTState<D> getState() {
-		return checkNotNull(state);
+		return checkNotNull(state, "Internal state has been invalidated");
 	}
 
 	public K getRevision() {
-		return checkNotNull(revision);
+		return checkNotNull(revision, "Internal state has been invalidated");
 	}
 
 	List<D> getWorkingDiffs() {
@@ -357,6 +360,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return fetchedDiffs != null;
 	}
 
+	@Nullable
 	@JmxAttribute(name = "revision")
 	public String getJmxRevision() {
 		return revision != null ? revision.toString() : null;
@@ -369,7 +373,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	@JmxAttribute
 	public int getFetchedDiffsSize() {
-		return fetchedDiffs.size();
+		return fetchedDiffs != null ? fetchedDiffs.size() : -1;
 	}
 
 	@JmxAttribute

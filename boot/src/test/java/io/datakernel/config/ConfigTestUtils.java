@@ -149,25 +149,25 @@ public class ConfigTestUtils {
 		try {
 			config.get("");
 			fail("should have no value for path: \"\"");
-		} catch (NoSuchElementException ignore) {
+		} catch (NoSuchElementException ignored) {
 		}
 
 		try {
 			config.get(".");
 			fail("should have no value for path: \".\"");
-		} catch (IllegalArgumentException ignore) {
+		} catch (IllegalArgumentException ignored) {
 		}
 
 		try {
 			config.get("a");
 			fail("should have no value for path: \"a\"");
-		} catch (NoSuchElementException ignore) {
+		} catch (NoSuchElementException ignored) {
 		}
 
 		try {
 			config.get("a.a..");
 			fail("should have no value for path \"a.a..\"");
-		} catch (IllegalArgumentException ignore) {
+		} catch (IllegalArgumentException ignored) {
 		}
 	}
 }

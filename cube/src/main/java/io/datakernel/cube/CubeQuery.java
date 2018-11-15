@@ -70,22 +70,22 @@ public final class CubeQuery {
 		return this;
 	}
 
-	public CubeQuery withOrderings(List<CubeQuery.Ordering> orderings) {
+	public CubeQuery withOrderings(List<Ordering> orderings) {
 		this.orderings = orderings;
 		return this;
 	}
 
 	public CubeQuery withOrderingAsc(String field) {
-		this.orderings.add(CubeQuery.Ordering.asc(field));
+		this.orderings.add(Ordering.asc(field));
 		return this;
 	}
 
 	public CubeQuery withOrderingDesc(String field) {
-		this.orderings.add(CubeQuery.Ordering.desc(field));
+		this.orderings.add(Ordering.desc(field));
 		return this;
 	}
 
-	public CubeQuery withOrderings(CubeQuery.Ordering... orderings) {
+	public CubeQuery withOrderings(Ordering... orderings) {
 		return withOrderings(asList(orderings));
 	}
 
@@ -119,7 +119,7 @@ public final class CubeQuery {
 		return where;
 	}
 
-	public List<CubeQuery.Ordering> getOrderings() {
+	public List<Ordering> getOrderings() {
 		return orderings;
 	}
 

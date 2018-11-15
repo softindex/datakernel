@@ -20,16 +20,16 @@ import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.NodeMap;
-import io.datakernel.stream.processor.StreamMap;
+import io.datakernel.stream.processor.StreamMap.Mapper;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class DatasetMap<I, O> extends Dataset<O> {
 	private final Dataset<I> input;
-	private final StreamMap.Mapper<I, O> mapper;
+	private final Mapper<I, O> mapper;
 
-	public DatasetMap(Dataset<I> input, StreamMap.Mapper<I, O> mapper, Class<O> resultType) {
+	public DatasetMap(Dataset<I> input, Mapper<I, O> mapper, Class<O> resultType) {
 		super(resultType);
 		this.input = input;
 		this.mapper = mapper;

@@ -28,7 +28,7 @@ import static io.datakernel.http.HttpUtils.skipSpaces;
 
 public final class AcceptMediaType {
 	public static final int DEFAULT_Q = 100;
-	private static final byte[] Q_KEY = new byte[]{'q'};
+	private static final byte[] Q_KEY = {'q'};
 
 	private MediaType mime;
 	private int q;

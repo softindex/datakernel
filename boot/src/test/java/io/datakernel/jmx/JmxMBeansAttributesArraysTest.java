@@ -34,8 +34,8 @@ public class JmxMBeansAttributesArraysTest {
 		MBeanWithIntArray mBeanWithIntArray = new MBeanWithIntArray();
 		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithIntArray);
 
-		Integer[] expected = new Integer[]{1, 2, 3};
-		assertArrayEquals(expected, ((Integer[]) mbean.getAttribute("integerNumbers")));
+		Integer[] expected = {1, 2, 3};
+		assertArrayEquals(expected, (Integer[]) mbean.getAttribute("integerNumbers"));
 	}
 
 	@Test
@@ -43,8 +43,8 @@ public class JmxMBeansAttributesArraysTest {
 		MBeanWithDoubleArray mBeanWithDoubleArray = new MBeanWithDoubleArray();
 		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithDoubleArray);
 
-		Double[] expected = new Double[]{1.1, 2.2, 3.3};
-		assertArrayEquals(expected, ((Double[]) mbean.getAttribute("doubleNumbers")));
+		Double[] expected = {1.1, 2.2, 3.3};
+		assertArrayEquals(expected, (Double[]) mbean.getAttribute("doubleNumbers"));
 	}
 
 	@Test
@@ -54,8 +54,8 @@ public class JmxMBeansAttributesArraysTest {
 
 		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithIntArray1, mBeanWithIntArray2);
 
-		Integer[] expected = new Integer[]{1, 2, 3, 1, 2, 3};
-		assertArrayEquals(expected, ((Integer[]) mbean.getAttribute("integerNumbers")));
+		Integer[] expected = {1, 2, 3, 1, 2, 3};
+		assertArrayEquals(expected, (Integer[]) mbean.getAttribute("integerNumbers"));
 	}
 
 	// region helper classes
@@ -82,7 +82,7 @@ public class JmxMBeansAttributesArraysTest {
 	// endregion
 
 	// region helper methods
-	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
+	public static DynamicMBean createDynamicMBeanFor(Object... objects) {
 		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), false);
 	}
 	// endregion

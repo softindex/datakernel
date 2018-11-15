@@ -152,7 +152,7 @@ public final class UrlParser {
 				portValue = toInt(raw, port, hostPortEnd);
 			} else {
 				if (host != -1) {
-					portValue = (https ? 443 : 80);
+					portValue = https ? 443 : 80;
 				}
 			}
 
@@ -268,26 +268,23 @@ public final class UrlParser {
 	public String getPath() {
 		if (path == -1) {
 			return "/";
-		} else {
-			return raw.substring(path, pathEnd);
 		}
+		return raw.substring(path, pathEnd);
 	}
 
 	public String getQuery() {
 		if (query == -1) {
 			return "";
-		} else {
-			int queryEnd = fragment == -1 ? raw.length() : fragment - 1;
-			return raw.substring(query, queryEnd);
 		}
+		int queryEnd = fragment == -1 ? raw.length() : fragment - 1;
+		return raw.substring(query, queryEnd);
 	}
 
 	public String getFragment() {
 		if (fragment == -1) {
 			return "";
-		} else {
-			return raw.substring(fragment);
 		}
+		return raw.substring(fragment);
 	}
 
 	int getPathAndQueryLength() {
@@ -359,7 +356,7 @@ public final class UrlParser {
 		queryPositions = parseQueryParameters(raw, query, queryEnd);
 	}
 
-	private static final int[] NO_PARAMETERS = new int[]{};
+	private static final int[] NO_PARAMETERS = {};
 
 	static int[] parseQueryParameters(String query, int pos, int end) {
 		if (pos == end)
@@ -489,7 +486,7 @@ public final class UrlParser {
 
 		int result = 0;
 		for (int i = pos; i < end; i++) {
-			int c = (str.charAt(i) - '0');
+			int c = str.charAt(i) - '0';
 			if (c < 0 || c > 9)
 				throw new ParseException(UrlParser.class, "Bad port: " + str.substring(pos, end));
 			result = c + result * 10;

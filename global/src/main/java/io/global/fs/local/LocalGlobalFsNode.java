@@ -247,15 +247,15 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		return catchUpImpl.get();
 	}
 
-	private void catchUpIteration(SettablePromise<Void> callback) {
+	private void catchUpIteration(SettablePromise<Void> cb) {
 		long started = now.currentTimeMillis();
 		fetch()
 				.whenResult(didAnything -> {
 					long timestampEnd = now.currentTimeMillis();
 					if (!didAnything || timestampEnd - started > latencyMargin.toMillis()) {
-						callback.set(null);
+						cb.set(null);
 					} else {
-						catchUpIteration(callback);
+						catchUpIteration(cb);
 					}
 				});
 	}
@@ -273,7 +273,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		private final CheckpointStorage checkpointStorage;
 
 		private final AsyncSupplier<Void> doRefreshAnnouncement = reuse(this::doRefreshAnnouncement);
-		private long announceTimestamp = 0L;
+		private long announceTimestamp;
 		private Set<RawServerId> announceServerIds;
 
 		Namespace(PubKey space, FsClient folder, MetadataStorage metadataStorage, CheckpointStorage checkpointStorage) {
@@ -395,9 +395,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 													}
 
 													if (ourSize == 0) {
-														return node.download(space, filename, ourSize, partSize)
+														return node.download(space, filename, 0, partSize)
 																.thenCompose(supplier ->
-																		save(filename, ourSize)
+																		save(filename, 0)
 																				.thenCompose(supplier::streamTo))
 																.thenApply($ -> true);
 													}

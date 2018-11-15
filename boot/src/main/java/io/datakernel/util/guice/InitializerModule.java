@@ -28,6 +28,7 @@ public final class InitializerModule extends AbstractModule {
 		return new InitializerModule();
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	protected void configure() {
 		Provider<Injector> injectorProvider = getProvider(Injector.class);
@@ -53,7 +54,7 @@ public final class InitializerModule extends AbstractModule {
 							Binding<?> binding = annotation != null ?
 									injectorProvider.get().getBinding(Key.get(initializerType, annotation)) :
 									injectorProvider.get().getBinding(Key.get(initializerType));
-							return ((OptionalInitializer) binding.getProvider().get());
+							return (OptionalInitializer) binding.getProvider().get();
 						})
 						.accept((Initializable) object);
 			}

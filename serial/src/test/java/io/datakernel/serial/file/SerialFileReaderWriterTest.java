@@ -67,7 +67,7 @@ public final class SerialFileReaderWriterTest {
 	@Test
 	public void testStreamFileWriter() throws IOException {
 		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
-		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
+		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
 		SerialSupplier.of(ByteBuf.wrapForReading(bytes))
 				.streamTo(SerialFileWriter.create(Executors.newSingleThreadExecutor(), tempPath))
@@ -77,7 +77,7 @@ public final class SerialFileReaderWriterTest {
 	@Test
 	public void testStreamFileWriterRecycle() throws IOException {
 		Path tempPath = tempFolder.getRoot().toPath().resolve("out.dat");
-		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
+		byte[] bytes = {'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
 		SerialFileWriter writer = SerialFileWriter.create(Executors.newSingleThreadExecutor(), tempPath);
 

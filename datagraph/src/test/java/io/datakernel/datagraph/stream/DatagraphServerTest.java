@@ -24,6 +24,7 @@ import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.helper.StreamMergeSorterStorageStub;
 import io.datakernel.datagraph.server.*;
+import io.datakernel.datagraph.stream.DatagraphServerTest.TestItem.KeyFunction;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -133,11 +134,11 @@ public final class DatagraphServerTest {
 		server2.listen();
 
 		result1.getResult()
-				.whenComplete(($, err) -> server1.close())
+				.whenComplete(($, e) -> server1.close())
 				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), list)));
 
 		result2.getResult()
-				.whenComplete(($, err) -> server2.close())
+				.whenComplete(($, e) -> server2.close())
 				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), list)));
 
 		graph.execute();
@@ -182,7 +183,7 @@ public final class DatagraphServerTest {
 				asList(partition1, partition2));
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
-				TestItem.class, Long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+				TestItem.class, Long.class, new KeyFunction(), new Comparator<Long>() {
 					@Override
 					public int compare(Long o1, Long o2) {
 						return o1.compareTo(o2);
@@ -198,11 +199,11 @@ public final class DatagraphServerTest {
 		server2.listen();
 
 		result1.getResult()
-				.whenComplete(($, err) -> server1.close())
+				.whenComplete(($, e) -> server1.close())
 				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), list)));
 
 		result2.getResult()
-				.whenComplete(($, err) -> server2.close())
+				.whenComplete(($, e) -> server2.close())
 				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), list)));
 
 		graph.execute();
@@ -221,7 +222,7 @@ public final class DatagraphServerTest {
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
 				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(Eventloop.getCurrentEventloop()));
+				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(Eventloop.getCurrentEventloop()));
 		DatagraphEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(6),
@@ -257,7 +258,7 @@ public final class DatagraphServerTest {
 				});
 
 		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+				localSort(filterDataset, long.class, new KeyFunction(), new Comparator<Long>() {
 					@Override
 					public int compare(Long o1, Long o2) {
 						return o1.compareTo(o2);
@@ -275,11 +276,11 @@ public final class DatagraphServerTest {
 		server2.listen();
 
 		result1.getResult()
-				.whenComplete(($, err) -> server1.close())
+				.whenComplete(($, e) -> server1.close())
 				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), list)));
 
 		result2.getResult()
-				.whenComplete(($, err) -> server2.close())
+				.whenComplete(($, e) -> server2.close())
 				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(8)), result2.getList())));
 
 		graph.execute();
@@ -297,7 +298,7 @@ public final class DatagraphServerTest {
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
 				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(Eventloop.getCurrentEventloop()));
+				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(Eventloop.getCurrentEventloop()));
 		DatagraphEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(1),
@@ -332,7 +333,7 @@ public final class DatagraphServerTest {
 				});
 
 		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+				localSort(filterDataset, long.class, new KeyFunction(), new Comparator<Long>() {
 					@Override
 					public int compare(Long o1, Long o2) {
 						return o1.compareTo(o2);
@@ -342,14 +343,14 @@ public final class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client, Eventloop.getCurrentEventloop());
+		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client);
 		StreamSupplier<TestItem> resultSupplier = collector.compile(graph);
 
 		System.out.println("Graph: ");
 		System.out.println(graph);
 
 		resultSupplier.streamTo(resultConsumer)
-				.whenComplete(($, err) -> {
+				.whenComplete(($, e) -> {
 					server1.close();
 					server2.close();
 				})

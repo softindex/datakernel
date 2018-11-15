@@ -19,6 +19,7 @@ package io.datakernel.http;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
+import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfFullCookies;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializable;
 
@@ -94,7 +95,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	@Override
 	public void setCookies(List<HttpCookie> cookies) {
-		setHeader(SET_COOKIE, new HttpHeaderValue.HttpHeaderValueOfFullCookies(cookies));
+		setHeader(SET_COOKIE, new HttpHeaderValueOfFullCookies(cookies));
 	}
 
 	public HttpResponse withCookies(List<HttpCookie> cookies) {
@@ -113,7 +114,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	public HttpResponse withBodyGzipCompression() {
-		super.setBodyGzipCompression();
+		setBodyGzipCompression();
 		return this;
 	}
 

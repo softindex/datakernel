@@ -18,6 +18,7 @@ package io.global.fs.api;
 
 import java.util.concurrent.ThreadLocalRandom;
 
+@FunctionalInterface
 public interface CheckpointPosStrategy {
 
 	long nextPosition(long position);

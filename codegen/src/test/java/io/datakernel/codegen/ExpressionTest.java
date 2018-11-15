@@ -230,25 +230,25 @@ public class ExpressionTest {
 		test.setXY(1, (byte) 10);
 		assertEquals(1, (int) test.getX());
 		assertEquals(10, test.getY());
-		assertTrue(test.compare(new TestPojo(1, 10), new TestPojo(1, 10)) == 0);
+		assertEquals(0, test.compare(new TestPojo(1, 10), new TestPojo(1, 10)));
 		assertTrue(test.compare(new TestPojo(2, 10), new TestPojo(1, 10)) > 0);
 		assertTrue(test.compare(new TestPojo(0, 10), new TestPojo(1, 10)) < 0);
 		assertTrue(test.compare(new TestPojo(1, 0), new TestPojo(1, 10)) < 0);
-		assertTrue(test.compareTo(test) == 0);
+		assertEquals(0, test.compareTo(test));
 
 		Test test1 = testClass.newInstance();
 		Test test2 = testClass.newInstance();
 
 		test1.setXY(1, (byte) 10);
 		test2.setXY(1, (byte) 10);
-		assertTrue(test1.compareTo(test2) == 0);
-		assertTrue(test1.equals(test2));
+		assertEquals(0, test1.compareTo(test2));
+		assertEquals(test1, test2);
 		test2.setXY(2, (byte) 10);
 		assertTrue(test1.compareTo(test2) < 0);
-		assertFalse(test1.equals(test2));
+		assertNotEquals(test1, test2);
 		test2.setXY(0, (byte) 10);
 		assertTrue(test1.compareTo(test2) > 0);
-		assertFalse(test1.equals(test2));
+		assertNotEquals(test1, test2);
 
 		assertTrue(test1.allEqual(1, 1, 1));
 		assertFalse(test1.allEqual(1, 2, 1));
@@ -286,7 +286,7 @@ public class ExpressionTest {
 				.withMethod("compare",
 						compare(TestPojo.class, "property1", "property2"))
 				.buildClassAndCreateNewInstance();
-		assertTrue(comparator.compare(new TestPojo(1, 10), new TestPojo(1, 10)) == 0);
+		assertEquals(0, comparator.compare(new TestPojo(1, 10), new TestPojo(1, 10)));
 	}
 
 	public interface TestNeg {
@@ -309,7 +309,6 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testNeg() {
-		boolean z = true;
 		byte b = Byte.MAX_VALUE;
 		short s = Short.MAX_VALUE;
 		char c = Character.MAX_VALUE;
@@ -319,7 +318,7 @@ public class ExpressionTest {
 		double d = Double.MAX_VALUE;
 
 		TestNeg testClass = ClassBuilder.create(DefiningClassLoader.create(), TestNeg.class)
-				.withMethod("negBoolean", neg(value(z)))
+				.withMethod("negBoolean", neg(value(true)))
 				.withMethod("negShort", neg(value(s)))
 				.withMethod("negByte", neg(value(b)))
 				.withMethod("negChar", neg(value(c)))
@@ -329,14 +328,14 @@ public class ExpressionTest {
 				.withMethod("negDouble", neg(value(d)))
 				.buildClassAndCreateNewInstance();
 
-		assertTrue(testClass.negBoolean() == !z);
-		assertTrue(testClass.negShort() == -s);
-		assertTrue(testClass.negByte() == -b);
-		assertTrue(testClass.negChar() == -c);
-		assertTrue(testClass.negInt() == -i);
-		assertTrue(testClass.negLong() == -l);
-		assertTrue(testClass.negFloat() == -f);
-		assertTrue(testClass.negDouble() == -d);
+		assertTrue(!testClass.negBoolean());
+		assertEquals(testClass.negShort(), -s);
+		assertEquals(testClass.negByte(), -b);
+		assertEquals(testClass.negChar(), -c);
+		assertEquals(testClass.negInt(), -i);
+		assertEquals(testClass.negLong(), -l);
+		assertEquals(testClass.negFloat(), -f, 0.0);
+		assertEquals(testClass.negDouble(), -d, 0.0);
 	}
 
 	public interface TestOperation {
@@ -375,13 +374,13 @@ public class ExpressionTest {
 				.withMethod("remD", arithmeticOp(ArithmeticOperation.REM, value(d), value(20)))
 				.buildClassAndCreateNewInstance();
 
-		assertTrue(testClass.remB() == (b % (20)));
-		assertTrue(testClass.remS() == (s % (20)));
-		assertTrue(testClass.remC() == (c % (20)));
-		assertTrue(testClass.remI() == (i % (20)));
-		assertTrue(testClass.remL() == (l % (20)));
-		assertTrue(testClass.remF() == (f % (20)));
-		assertTrue(testClass.remD() == (d % (20)));
+		assertEquals(testClass.remB(), b % 20);
+		assertEquals(testClass.remS(), s % 20);
+		assertEquals(testClass.remC(), c % 20);
+		assertEquals(testClass.remI(), i % 20);
+		assertEquals(testClass.remL(), l % 20);
+		assertEquals(testClass.remF(), f % 20, 0.0);
+		assertEquals(testClass.remD(), d % 20, 0.0);
 	}
 
 	public interface TestSH {
@@ -410,11 +409,11 @@ public class ExpressionTest {
 				.withMethod("ushrInt", bitOp(BitOperation.USHR, value(b), value(i)))
 				.buildClassAndCreateNewInstance();
 
-		assertTrue(testClass.shlInt() == (b << i));
-		assertTrue(testClass.shlLong() == (l << b));
-		assertTrue(testClass.shrInt() == (b >> i));
-		assertTrue(testClass.shrLong() == (l >> i));
-		assertTrue(testClass.ushrInt() == (b >>> i));
+		assertEquals(testClass.shlInt(), b << i);
+		assertEquals(testClass.shlLong(), l << b);
+		assertEquals(testClass.shrInt(), b >> i);
+		assertEquals(testClass.shrLong(), l >> i);
+		assertEquals(testClass.ushrInt(), b >>> i);
 	}
 
 	public interface TestBitMask {
@@ -442,12 +441,12 @@ public class ExpressionTest {
 				.withMethod("xorLong", bitOp(BitOperation.XOR, value(2L), value(4L)))
 				.buildClassAndCreateNewInstance();
 
-		assertTrue(testClass.andInt() == (2 & 4));
-		assertTrue(testClass.orInt() == (2 | 4));
-		assertTrue(testClass.xorInt() == (2 ^ 4));
-		assertTrue(testClass.andLong() == (2L & 4L));
-		assertTrue(testClass.orLong() == (2L | 4L));
-		assertTrue(testClass.xorLong() == (2L ^ 4L));
+		assertEquals(testClass.andInt(), 2 & 4);
+		assertEquals(testClass.orInt(), 2 | 4);
+		assertEquals(testClass.xorInt(), 2 ^ 4);
+		assertEquals(testClass.andLong(), 2L & 4L);
+		assertEquals(testClass.orLong(), 2L | 4L);
+		assertEquals(testClass.xorLong(), 2L ^ 4L);
 	}
 
 	public interface TestCall {
@@ -466,17 +465,17 @@ public class ExpressionTest {
 				.withMethod("callOther1", call(self(), "method", arg(0)))
 				.withMethod("callOther2", call(self(), "method"))
 				.withMethod("method", int.class, asList(int.class), arg(0))
-				.withMethod("method", long.class, Collections.<Class<?>>emptyList(), value(-1L))
+				.withMethod("method", long.class, Collections.emptyList(), value(-1L))
 				.withMethod("callStatic1", int.class, asList(int.class, int.class), callStaticSelf("method", arg(0), arg(1)))
 				.withMethod("callStatic2", long.class, asList(long.class), callStaticSelf("method", arg(0)))
 				.withStaticMethod("method", int.class, asList(int.class, int.class), arg(1))
 				.withStaticMethod("method", long.class, asList(long.class), arg(0))
 				.buildClassAndCreateNewInstance();
 
-		assert (testClass.callOther1(100) == 100);
-		assert (testClass.callOther2() == -1);
-		assert (testClass.callStatic1(1, 2) == 2);
-		assert (testClass.callStatic2(3L) == 3L);
+		assert testClass.callOther1(100) == 100;
+		assert testClass.callOther2() == -1;
+		assert testClass.callStatic1(1, 2) == 2;
+		assert testClass.callStatic2(3L) == 3L;
 	}
 
 	public interface TestArgument {
@@ -503,14 +502,14 @@ public class ExpressionTest {
 				.withMethod("write", call(arg(0), "write", arg(1)))
 				.buildClassAndCreateNewInstance();
 
-		assertTrue(testClass.array(new WriteFirstElement(), new Object[]{1000, 2, 3, 4}).equals(1000));
-		assertTrue(testClass.write(new WriteFirstElement(), 1000).equals(1000));
+		assertEquals(1000, testClass.array(new WriteFirstElement(), new Object[]{1000, 2, 3, 4}));
+		assertEquals(1000, testClass.write(new WriteFirstElement(), 1000));
 	}
 
 	public interface WriteAllListElement {
-		void write(List listFrom, List listTo);
+		void write(List<?> listFrom, List<?> listTo);
 
-		void writeIter(Iterator iteratorFrom, List listTo);
+		void writeIter(Iterator<?> iteratorFrom, List<?> listTo);
 	}
 
 	@org.junit.Test
@@ -531,12 +530,12 @@ public class ExpressionTest {
 
 		assertEquals(listFrom.size(), listTo1.size());
 		for (int i = 0; i < listFrom.size(); i++) {
-			assertEquals(listFrom.get(i), (listTo1.get(i)));
+			assertEquals(listFrom.get(i), listTo1.get(i));
 		}
 
 		assertEquals(listFrom.size(), listTo2.size());
 		for (int i = 0; i < listFrom.size(); i++) {
-			assertEquals(listFrom.get(i), (listTo2.get(i)));
+			assertEquals(listFrom.get(i), listTo2.get(i));
 		}
 	}
 
@@ -546,7 +545,7 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testIteratorForArray() {
-		Long[] intsFrom = new Long[]{1L, 1L, 2L, 3L, 5L, 8L};
+		Long[] intsFrom = {1L, 1L, 2L, 3L, 5L, 8L};
 		List<Long> list = new ArrayList<>();
 
 		WriteArrayElements testClass = ClassBuilder.create(DefiningClassLoader.create(), WriteArrayElements.class)
@@ -582,7 +581,7 @@ public class ExpressionTest {
 	}
 
 	@org.junit.Test
-	public void testGetter() throws Exception {
+	public void testGetter() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Initializable intHolder = ClassBuilder.create(classLoader, Initializable.class)
 				.withField("x", int.class)
@@ -599,7 +598,7 @@ public class ExpressionTest {
 	}
 
 	@org.junit.Test
-	public void testBuildedInstance() throws IllegalAccessException, InstantiationException {
+	public void testBuildedInstance() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 		Expression local = let(constructor(TestPojo.class, value(1)));
 		Class<Test> testClass1 = ClassBuilder.create(definingClassLoader, Test.class)
@@ -797,10 +796,11 @@ public class ExpressionTest {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@org.junit.Test
 	public void testComparatorNullable() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Comparator generatedComparator = ClassBuilder.create(classLoader, Comparator.class)
+		Comparator<StringHolder> generatedComparator = ClassBuilder.create(classLoader, Comparator.class)
 				.withMethod("compare", ExpressionComparator.create()
 						.with(leftProperty(StringHolder.class, "string1"), rightProperty(StringHolder.class, "string1"), true)
 						.with(leftProperty(StringHolder.class, "string2"), rightProperty(StringHolder.class, "string2"), true))
@@ -826,7 +826,7 @@ public class ExpressionTest {
 	}
 
 	@org.junit.Test
-	public void testAbstractClassWithInterface() throws Exception {
+	public void testAbstractClassWithInterface() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		TestAbstract testObj = ClassBuilder.create(classLoader, TestAbstract.class)
 				.withMethod("returnInt", value(42))
@@ -870,7 +870,7 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testMultipleInterfaces() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		B instance = ClassBuilder.create(definingClassLoader, B.class, Collections.<Class<?>>singletonList(C.class))
+		B instance = ClassBuilder.create(definingClassLoader, B.class, Collections.singletonList(C.class))
 				.withMethod("b", value(43))
 				.withMethod("c", value("44"))
 				.buildClassAndCreateNewInstance();
@@ -891,10 +891,11 @@ public class ExpressionTest {
 								.withArgument(call(self(), "b")))
 				.buildClassAndCreateNewInstance();
 
-		assertEquals(instance.b(), null);
+		assertNull(instance.b());
 		assertEquals(instance.toString(), "{null}");
 	}
 
+	@SuppressWarnings("ConstantConditions")
 	@org.junit.Test
 	public void testSetSaveBytecode() throws IOException {
 		File folder = tempFolder.newFolder();
@@ -908,7 +909,7 @@ public class ExpressionTest {
 								.withArgument(call(self(), "b")))
 				.buildClassAndCreateNewInstance();
 		assertEquals(folder.list().length, 1);
-		assertEquals(instance.b(), null);
+		assertNull(instance.b());
 		assertEquals(instance.toString(), "{null}");
 	}
 
@@ -922,7 +923,7 @@ public class ExpressionTest {
 		TestArraySet instance = ClassBuilder.create(definingClassLoader, TestArraySet.class)
 				.withMethod("ints", sequence(setArrayItem(arg(0), value(0), cast(value(42), Integer.class)), arg(0)))
 				.buildClassAndCreateNewInstance();
-		Integer[] ints = new Integer[]{1, 2, 3, 4};
+		Integer[] ints = {1, 2, 3, 4};
 
 		assertArrayEquals(instance.ints(ints), new Integer[]{42, 2, 3, 4});
 	}
@@ -951,8 +952,8 @@ public class ExpressionTest {
 		TestIsNull instance = ClassBuilder.create(definingClassLoader, TestIsNull.class)
 				.withMethod("method", isNull(arg(0)))
 				.buildClassAndCreateNewInstance();
-		assertEquals(instance.method("42"), false);
-		assertEquals(instance.method(null), true);
+		assertFalse(instance.method("42"));
+		assertTrue(instance.method(null));
 	}
 
 	public interface TestIsNotNull {
@@ -965,9 +966,9 @@ public class ExpressionTest {
 		TestIsNotNull instance = ClassBuilder.create(definingClassLoader, TestIsNotNull.class)
 				.withMethod("method", isNotNull(arg(0)))
 				.buildClassAndCreateNewInstance();
-		assertEquals(instance.method("42"), true);
-		assertEquals(instance.method(42), true);
-		assertEquals(instance.method(null), false);
+		assertTrue(instance.method("42"));
+		assertTrue(instance.method(42));
+		assertFalse(instance.method(null));
 	}
 
 	public interface TestNewArray {

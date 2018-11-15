@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.exception.ParseException;
+import io.datakernel.http.CaseInsensitiveTokenMap.Token;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -32,7 +33,7 @@ import static java.nio.charset.Charset.forName;
 // maximum of 40 characters, us-ascii, see rfc2978,
 // http://www.iana.org/assignments/character-sets/character-sets.txt
 // case insensitive
-public final class HttpCharset extends CaseInsensitiveTokenMap.Token {
+public final class HttpCharset extends Token {
 	private final static CaseInsensitiveTokenMap<HttpCharset> charsets = new CaseInsensitiveTokenMap<HttpCharset>(256, 2, HttpCharset.class) {
 		@Override
 		protected HttpCharset create(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode) {
@@ -78,7 +79,7 @@ public final class HttpCharset extends CaseInsensitiveTokenMap.Token {
 	}
 
 	private HttpCharset addCharset(Charset charset) {
-		this.javaCharset = charset;
+		javaCharset = charset;
 		java2http.put(charset, this);
 		return this;
 	}

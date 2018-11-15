@@ -57,6 +57,6 @@ public class DnsTransaction {
 
 	@Override
 	public int hashCode() {
-		return 31 * (int) id + query.hashCode();
+		return 31 * id + query.hashCode();
 	}
 }

@@ -115,8 +115,8 @@ public class CollectionUtils {
 
 					@Override
 					public T next() {
-						T next = this.item;
-						this.item = f.apply(this.item);
+						T next = item;
+						item = f.apply(item);
 						return next;
 					}
 				});
@@ -239,7 +239,7 @@ public class CollectionUtils {
 			@Override
 			public T next() {
 				if (!hasNext()) throw new NoSuchElementException();
-				return i == 0 ? head : tail[(i++) - 1];
+				return i == 0 ? head : tail[i++ - 1];
 			}
 		};
 	}

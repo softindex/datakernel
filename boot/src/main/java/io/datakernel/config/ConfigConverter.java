@@ -60,14 +60,14 @@ public interface ConfigConverter<T> {
 			@Override
 			public T get(Config config, T defaultValue) {
 				T value = thisConverter.get(config, defaultValue);
-				checkArgument(predicate.test(value));
+				checkArgument(predicate.test(value), "Predicate has returned false");
 				return value;
 			}
 
 			@Override
 			public T get(Config config) {
 				T t = thisConverter.get(config);
-				checkArgument(predicate.test(t));
+				checkArgument(predicate.test(t), "Predicate has returned false");
 				return t;
 			}
 		};

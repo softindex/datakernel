@@ -19,7 +19,7 @@ package io.datakernel.bytebuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.ThreadLocalCharArray;
 
-@SuppressWarnings({"ThrowableInstanceNeverThrown", "WeakerAccess", "unused"})
+@SuppressWarnings({"WeakerAccess", "unused"})
 public final class ByteBufStrings {
 	public static final ParseException READ_PAST_LIMIT = new ParseException(ByteBufStrings.class, "Malformed utf-8 input: Read past end");
 	public static final ParseException READ_PAST_ARRAY_LENGTH = new ParseException(ByteBufStrings.class, "Malformed utf-8 input");
@@ -218,12 +218,12 @@ public final class ByteBufStrings {
 		if (c <= 0x007F) {
 			array[p++] = (byte) c;
 		} else if (c > 0x07FF) {
-			array[p++] = ((byte) (0xE0 | c >> 12 & 0x0F));
-			array[p++] = ((byte) (0x80 | c >> 6 & 0x3F));
-			array[p++] = ((byte) (0x80 | c & 0x3F));
+			array[p++] = (byte) (0xE0 | c >> 12 & 0x0F);
+			array[p++] = (byte) (0x80 | c >> 6 & 0x3F);
+			array[p++] = (byte) (0x80 | c & 0x3F);
 		} else {
-			array[p++] = ((byte) (0xC0 | c >> 6 & 0x1F));
-			array[p++] = ((byte) (0x80 | c & 0x3F));
+			array[p++] = (byte) (0xC0 | c >> 6 & 0x1F);
+			array[p++] = (byte) (0x80 | c & 0x3F);
 		}
 		return p - pos;
 	}
@@ -271,7 +271,7 @@ public final class ByteBufStrings {
 				}
 			}
 			if (pos > end) throw READ_PAST_LIMIT;
-		} catch (ArrayIndexOutOfBoundsException e) {
+		} catch (ArrayIndexOutOfBoundsException ignored) {
 			throw READ_PAST_ARRAY_LENGTH;
 		}
 		return to;

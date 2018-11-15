@@ -21,11 +21,17 @@ import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.AggregationPredicates;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
+import io.datakernel.cube.Cube.AggregationConfig;
+import io.datakernel.cube.Cube.AggregationContainer;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
@@ -36,60 +42,61 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Stream.of;
 import static org.junit.Assert.*;
 
+@SuppressWarnings("rawtypes")
 public class TestCompatibleAggregations {
 	private static final Map<String, String> DATA_ITEM_DIMENSIONS = entriesToMap(of(
-			new AbstractMap.SimpleEntry<>("date", "date"),
-			new AbstractMap.SimpleEntry<>("advertiser", "advertiser"),
-			new AbstractMap.SimpleEntry<>("campaign", "campaign"),
-			new AbstractMap.SimpleEntry<>("banner", "banner"),
-			new AbstractMap.SimpleEntry<>("affiliate", "affiliate"),
-			new AbstractMap.SimpleEntry<>("site", "site"),
-			new AbstractMap.SimpleEntry<>("placement", "placement")));
+			new SimpleEntry<>("date", "date"),
+			new SimpleEntry<>("advertiser", "advertiser"),
+			new SimpleEntry<>("campaign", "campaign"),
+			new SimpleEntry<>("banner", "banner"),
+			new SimpleEntry<>("affiliate", "affiliate"),
+			new SimpleEntry<>("site", "site"),
+			new SimpleEntry<>("placement", "placement")));
 
 	private static final Map<String, String> DATA_ITEM_MEASURES = entriesToMap(of(
-			new AbstractMap.SimpleEntry<>("eventCount", "null"),
-			new AbstractMap.SimpleEntry<>("minRevenue", "revenue"),
-			new AbstractMap.SimpleEntry<>("maxRevenue", "revenue"),
-			new AbstractMap.SimpleEntry<>("revenue", "revenue"),
-			new AbstractMap.SimpleEntry<>("impressions", "impressions"),
-			new AbstractMap.SimpleEntry<>("clicks", "clicks"),
-			new AbstractMap.SimpleEntry<>("conversions", "conversions"),
-			new AbstractMap.SimpleEntry<>("uniqueUserIdsCount", "userId"),
-			new AbstractMap.SimpleEntry<>("errors", "errors")));
+			new SimpleEntry<>("eventCount", "null"),
+			new SimpleEntry<>("minRevenue", "revenue"),
+			new SimpleEntry<>("maxRevenue", "revenue"),
+			new SimpleEntry<>("revenue", "revenue"),
+			new SimpleEntry<>("impressions", "impressions"),
+			new SimpleEntry<>("clicks", "clicks"),
+			new SimpleEntry<>("conversions", "conversions"),
+			new SimpleEntry<>("uniqueUserIdsCount", "userId"),
+			new SimpleEntry<>("errors", "errors")));
 
 	private static final Map<String, FieldType> DIMENSIONS_DAILY_AGGREGATION = entriesToMap(of(
-			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01")))));
+			new SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01")))));
 
 	private static final Map<String, FieldType> DIMENSIONS_ADVERTISERS_AGGREGATION = entriesToMap(of(
-			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
-			new AbstractMap.SimpleEntry<>("advertiser", ofInt()),
-			new AbstractMap.SimpleEntry<>("campaign", ofInt()),
-			new AbstractMap.SimpleEntry<>("banner", ofInt())));
+			new SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new SimpleEntry<>("advertiser", ofInt()),
+			new SimpleEntry<>("campaign", ofInt()),
+			new SimpleEntry<>("banner", ofInt())));
 
 	private static final Map<String, FieldType> DIMENSIONS_AFFILIATES_AGGREGATION = entriesToMap(of(
-			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
-			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
-			new AbstractMap.SimpleEntry<>("site", ofString())));
+			new SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new SimpleEntry<>("affiliate", ofInt()),
+			new SimpleEntry<>("site", ofString())));
 
 	private static final Map<String, FieldType> DIMENSIONS_DETAILED_AFFILIATES_AGGREGATION = entriesToMap(of(
-			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
-			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
-			new AbstractMap.SimpleEntry<>("site", ofString()),
-			new AbstractMap.SimpleEntry<>("placement", ofInt())));
+			new SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new SimpleEntry<>("affiliate", ofInt()),
+			new SimpleEntry<>("site", ofString()),
+			new SimpleEntry<>("placement", ofInt())));
 
 	private static final Map<String, Measure> MEASURES = entriesToMap(of(
-			new AbstractMap.SimpleEntry<>("impressions", sum(ofLong())),
-			new AbstractMap.SimpleEntry<>("clicks", sum(ofLong())),
-			new AbstractMap.SimpleEntry<>("conversions", sum(ofLong())),
-			new AbstractMap.SimpleEntry<>("revenue", sum(ofDouble())),
-			new AbstractMap.SimpleEntry<>("eventCount", count(ofInt())),
-			new AbstractMap.SimpleEntry<>("minRevenue", min(ofDouble())),
-			new AbstractMap.SimpleEntry<>("maxRevenue", max(ofDouble())),
-			new AbstractMap.SimpleEntry<>("uniqueUserIdsCount", hyperLogLog(1024)),
-			new AbstractMap.SimpleEntry<>("errors", sum(ofLong()))));
+			new SimpleEntry<>("impressions", sum(ofLong())),
+			new SimpleEntry<>("clicks", sum(ofLong())),
+			new SimpleEntry<>("conversions", sum(ofLong())),
+			new SimpleEntry<>("revenue", sum(ofDouble())),
+			new SimpleEntry<>("eventCount", count(ofInt())),
+			new SimpleEntry<>("minRevenue", min(ofDouble())),
+			new SimpleEntry<>("maxRevenue", max(ofDouble())),
+			new SimpleEntry<>("uniqueUserIdsCount", hyperLogLog(1024)),
+			new SimpleEntry<>("errors", sum(ofLong()))));
 
 	private static final AggregationPredicate DAILY_AGGREGATION_PREDICATE = alwaysTrue();
-	private static final Cube.AggregationConfig DAILY_AGGREGATION = id("daily")
+	private static final AggregationConfig DAILY_AGGREGATION = id("daily")
 			.withDimensions(DIMENSIONS_DAILY_AGGREGATION.keySet())
 			.withMeasures(MEASURES.keySet())
 			.withPredicate(DAILY_AGGREGATION_PREDICATE);
@@ -104,28 +111,28 @@ public class TestCompatibleAggregations {
 
 	private static final AggregationPredicate ADVERTISER_AGGREGATION_PREDICATE =
 			and(not(eq("advertiser", EXCLUDE_ADVERTISER)), not(eq("banner", EXCLUDE_BANNER)), not(eq("campaign", EXCLUDE_CAMPAIGN)));
-	private static final Cube.AggregationConfig ADVERTISERS_AGGREGATION = id("advertisers")
+	private static final AggregationConfig ADVERTISERS_AGGREGATION = id("advertisers")
 			.withDimensions(DIMENSIONS_ADVERTISERS_AGGREGATION.keySet())
 			.withMeasures(MEASURES.keySet())
 			.withPredicate(ADVERTISER_AGGREGATION_PREDICATE);
 
 	private static final AggregationPredicate AFFILIATES_AGGREGATION_PREDICATE =
 			and(not(eq("affiliate", EXCLUDE_AFFILIATE)), not(eq("site", EXCLUDE_SITE)));
-	private static final Cube.AggregationConfig AFFILIATES_AGGREGATION = id("affiliates")
+	private static final AggregationConfig AFFILIATES_AGGREGATION = id("affiliates")
 			.withDimensions(DIMENSIONS_AFFILIATES_AGGREGATION.keySet())
 			.withMeasures(MEASURES.keySet())
 			.withPredicate(AFFILIATES_AGGREGATION_PREDICATE);
 
 	private static final AggregationPredicate DETAILED_AFFILIATES_AGGREGATION_PREDICATE =
 			and(notEq("affiliate", EXCLUDE_AFFILIATE), not(eq("site", EXCLUDE_SITE)), not(eq("placement", EXCLUDE_PLACEMENT)));
-	private static final Cube.AggregationConfig DETAILED_AFFILIATES_AGGREGATION = id("detailed_affiliates")
+	private static final AggregationConfig DETAILED_AFFILIATES_AGGREGATION = id("detailed_affiliates")
 			.withDimensions(DIMENSIONS_DETAILED_AFFILIATES_AGGREGATION.keySet())
 			.withMeasures(MEASURES.keySet())
 			.withPredicate(DETAILED_AFFILIATES_AGGREGATION_PREDICATE);
 
 	private static final AggregationPredicate LIMITED_DATES_AGGREGATION_PREDICATE =
 			and(between("date", LocalDate.parse("2001-01-01"), LocalDate.parse("2010-01-01")));
-	private static final Cube.AggregationConfig LIMITED_DATES_AGGREGATION = id("limited_date")
+	private static final AggregationConfig LIMITED_DATES_AGGREGATION = id("limited_date")
 			.withDimensions(DIMENSIONS_DAILY_AGGREGATION.keySet())
 			.withMeasures(MEASURES.keySet())
 			.withPredicate(LIMITED_DATES_AGGREGATION_PREDICATE);
@@ -234,7 +241,7 @@ public class TestCompatibleAggregations {
 	public void withWherePredicateAlwaysTrue_MatchesDailyAggregation() {
 		AggregationPredicate whereQueryPredicate = alwaysTrue();
 
-		List<Cube.AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
+		List<AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
 				asList("date"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cube.getAggregation(DAILY_AGGREGATION.getId());
@@ -250,7 +257,7 @@ public class TestCompatibleAggregations {
 				not(eq("campaign", EXCLUDE_CAMPAIGN)),
 				not(eq("banner", EXCLUDE_BANNER)));
 
-		List<Cube.AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
+		List<AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
 				asList("advertiser", "campaign", "banner"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cube.getAggregation(ADVERTISERS_AGGREGATION.getId());
@@ -263,7 +270,7 @@ public class TestCompatibleAggregations {
 	public void withWherePredicateForAffiliatesAggregation_MatchesAffiliatesAggregation() {
 		AggregationPredicate whereQueryPredicate = and(not(eq("affiliate", EXCLUDE_AFFILIATE)), not(eq("site", EXCLUDE_SITE)));
 
-		List<Cube.AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
+		List<AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
 				asList("affiliate", "site"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cube.getAggregation(AFFILIATES_AGGREGATION.getId());
@@ -279,7 +286,7 @@ public class TestCompatibleAggregations {
 				not(eq("site", EXCLUDE_SITE)),
 				not(eq("placement", EXCLUDE_PLACEMENT)));
 
-		List<Cube.AggregationContainer> actualAggregations =
+		List<AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
 						asList("affiliate", "site", "placement"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
@@ -293,7 +300,7 @@ public class TestCompatibleAggregations {
 	public void withWherePredicateForDetailedAffiliatesAggregations_MatchesDetailedAffiliatesAggregation() {
 		AggregationPredicate whereQueryPredicate = and(not(eq("affiliate", EXCLUDE_AFFILIATE)), not(eq("site", EXCLUDE_SITE)), not(eq("placement", EXCLUDE_PLACEMENT)));
 
-		List<Cube.AggregationContainer> actualAggregations =
+		List<AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
 						asList("affiliate", "site", "placement"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
@@ -307,7 +314,7 @@ public class TestCompatibleAggregations {
 	public void withWherePredicateForDailyAggregation_MatchesOnlyDailyAggregations() {
 		AggregationPredicate whereQueryPredicate = between("date", LocalDate.parse("2001-01-01"), LocalDate.parse("2004-01-01"));
 
-		List<Cube.AggregationContainer> actualAggregations =
+		List<AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
 						asList("date"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
@@ -325,7 +332,7 @@ public class TestCompatibleAggregations {
 				not(eq("advertiser", EXCLUDE_ADVERTISER)), not(eq("campaign", EXCLUDE_CAMPAIGN)), not(eq("banner", EXCLUDE_BANNER)),
 				between("date", LocalDate.parse("2001-01-01"), LocalDate.parse("2004-01-01")));
 
-		List<Cube.AggregationContainer> actualAggregations =
+		List<AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
 						asList("date"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
@@ -339,7 +346,7 @@ public class TestCompatibleAggregations {
 	public void withWherePredicateForDailyAggregation_MatchesTwoAggregations() {
 		AggregationPredicate whereQueryPredicate = eq("date", LocalDate.parse("2001-01-01"));
 
-		List<Cube.AggregationContainer> actualAggregations =
+		List<AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
 						asList("date"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 

@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
@@ -15,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 
 public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(EventloopTaskScheduler.class);
 
 	private final Eventloop eventloop;
 	private final AsyncSupplier<?> task;
@@ -40,6 +56,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	private Duration interval;
 	private boolean enabled = true;
 
+	@FunctionalInterface
 	public interface Schedule {
 		long nextTimestamp(long now, long lastStartTime, long lastCompleteTime);
 
@@ -178,22 +195,22 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		lastStartTime = eventloop.currentTimeMillis();
 		return task.get()
 				.whenComplete(stats.recordStats())
-				.whenComplete((result, throwable) -> {
+				.whenComplete((result, e) -> {
 					lastCompleteTime = eventloop.currentTimeMillis();
-					if (throwable == null) {
+					if (e == null) {
 						firstRetryTime = 0;
 						lastException = null;
 						errorCount = 0;
 						scheduleTask();
 					} else {
-						lastException = throwable;
+						lastException = e;
 						errorCount++;
-						logger.error("Retry attempt " + errorCount, throwable);
+						logger.error("Retry attempt " + errorCount, e);
 						if (abortOnError) {
 							if (scheduledTask != null) {
 								scheduledTask.cancel();
 							}
-							throw new RuntimeException(throwable);
+							throw new RuntimeException(e);
 						} else {
 							scheduleTask();
 						}

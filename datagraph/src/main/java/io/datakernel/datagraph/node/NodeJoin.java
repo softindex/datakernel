@@ -19,6 +19,7 @@ package io.datakernel.datagraph.node;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.processor.StreamJoin;
+import io.datakernel.stream.processor.StreamJoin.Joiner;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -41,14 +42,14 @@ public final class NodeJoin<K, L, R, V> implements Node {
 	private Comparator<K> keyComparator;
 	private Function<L, K> leftKeyFunction;
 	private Function<R, K> rightKeyFunction;
-	private StreamJoin.Joiner<K, L, R, V> joiner;
+	private Joiner<K, L, R, V> joiner;
 
 	public NodeJoin() {
 	}
 
 	public NodeJoin(StreamId left, StreamId right,
 					Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
-					StreamJoin.Joiner<K, L, R, V> joiner) {
+					Joiner<K, L, R, V> joiner) {
 		this.left = left;
 		this.right = right;
 		this.output = new StreamId();
@@ -120,11 +121,11 @@ public final class NodeJoin<K, L, R, V> implements Node {
 		this.rightKeyFunction = rightKeyFunction;
 	}
 
-	public StreamJoin.Joiner<K, L, R, V> getJoiner() {
+	public Joiner<K, L, R, V> getJoiner() {
 		return joiner;
 	}
 
-	public void setJoiner(StreamJoin.Joiner<K, L, R, V> joiner) {
+	public void setJoiner(Joiner<K, L, R, V> joiner) {
 		this.joiner = joiner;
 	}
 }

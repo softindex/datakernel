@@ -38,15 +38,11 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 public final class SettablePromise<T> extends AbstractPromise<T> implements MaterializedPromise<T> {
 	private static final Throwable PROMISE_NOT_SET = new StacklessException(SettablePromise.class, "Promise has not been completed yet");
 
-	@SuppressWarnings("unchecked")
 	@Nullable
-	protected T result;
+	private T result;
 
 	@Nullable
-	protected Throwable exception = PROMISE_NOT_SET;
-
-	public SettablePromise() {
-	}
+	private Throwable exception = PROMISE_NOT_SET;
 
 	public static <T> SettablePromise<T> ofPromise(Promise<T> promise) {
 		SettablePromise<T> result = new SettablePromise<>();
@@ -80,11 +76,11 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		complete(result);
 	}
 
-	public void set(@Nullable T result, @Nullable Throwable throwable) {
-		if (throwable == null) {
+	public void set(@Nullable T result, @Nullable Throwable e) {
+		if (e == null) {
 			set(result);
 		} else {
-			setException(throwable);
+			setException(e);
 		}
 	}
 
@@ -92,14 +88,14 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	 * Sets exception and completes this {@code SettablePromise} exceptionally.
 	 * <p>AssertionError is thrown when you try to set exception for  already completed promise.</p>
 	 *
-	 * @param throwable exception
+	 * @param e exception
 	 */
-	public void setException(Throwable throwable) {
-		assert throwable != null;
+	public void setException(Throwable e) {
+		assert e != null;
 		assert !isComplete();
 		result = null;
-		exception = throwable;
-		completeExceptionally(throwable);
+		exception = e;
+		completeExceptionally(e);
 	}
 
 	/**
@@ -115,54 +111,52 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	/**
 	 * Tries to set result or exception for this {@code SettablePromise} if it not yet set.
 	 * <p>Otherwise do nothing</p>
-	 *
-	 * @return {@code true} if result or exception was set, {@code false} otherwise
 	 */
-	public void trySet(@Nullable T result, @Nullable Throwable throwable) {
+	public void trySet(@Nullable T result, @Nullable Throwable e) {
 		if (isComplete()) {
 			return;
 		}
-		if (throwable == null) {
+		if (e == null) {
 			trySet(result);
 		} else {
-			trySetException(throwable);
+			trySetException(e);
 		}
 	}
 
 	/**
 	 * The same as {@link SettablePromise#trySet(Object, Throwable)} )} but for exception only.
 	 */
-	public void trySetException(Throwable throwable) {
-		assert throwable != null;
+	public void trySetException(Throwable e) {
+		assert e != null;
 		if (isComplete()) {
 			return;
 		}
-		setException(throwable);
+		setException(e);
 	}
 
 	public void post(@Nullable T result) {
 		getCurrentEventloop().post(() -> set(result));
 	}
 
-	public void postException(Throwable throwable) {
-		getCurrentEventloop().post(() -> setException(throwable));
+	public void postException(Throwable e) {
+		getCurrentEventloop().post(() -> setException(e));
 	}
 
-	public void post(@Nullable T result, @Nullable Throwable throwable) {
-		getCurrentEventloop().post(() -> set(result, throwable));
+	public void post(@Nullable T result, @Nullable Throwable e) {
+		getCurrentEventloop().post(() -> set(result, e));
 	}
 
 	public void tryPost(@Nullable T result) {
 		getCurrentEventloop().post(() -> trySet(result));
 	}
 
-	public void tryPostException(Throwable throwable) {
-		assert throwable != null;
-		getCurrentEventloop().post(() -> trySetException(throwable));
+	public void tryPostException(Throwable e) {
+		assert e != null;
+		getCurrentEventloop().post(() -> trySetException(e));
 	}
 
-	public void tryPost(@Nullable T result, @Nullable Throwable throwable) {
-		getCurrentEventloop().post(() -> trySet(result, throwable));
+	public void tryPost(@Nullable T result, @Nullable Throwable e) {
+		getCurrentEventloop().post(() -> trySet(result, e));
 	}
 
 	@Override
@@ -171,6 +165,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		super.subscribe(next);
 	}
 
+	@Nullable
 	@Override
 	public T getResult() {
 		if (isResult()) {
@@ -187,6 +182,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		throw new IllegalStateException();
 	}
 
+	@Nullable
 	@Override
 	public Try<T> asTry() {
 		return isComplete() ? Try.of(result, exception) : null;
@@ -197,9 +193,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		if (isComplete()) {
 			consumer.accept(result, exception);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	@Override
@@ -207,9 +202,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		if (isResult()) {
 			consumer.accept(result);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	@Override
@@ -217,9 +211,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		if (isException()) {
 			consumer.accept(exception);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -321,9 +314,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 				Throwable maybeException = fn.apply(result);
 				if (maybeException == null) return Promise.of(result);
 				return Promise.ofException(maybeException);
-			} else {
-				return this;
 			}
+			return this;
 		}
 		return super.thenException(fn);
 	}

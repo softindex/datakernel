@@ -17,6 +17,7 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.CollectListener.CollectCanceller;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.util.*;
@@ -827,13 +828,14 @@ public final class Promises {
 			this.accumulator = accumulator;
 		}
 
-		void processComplete(T result) {
+		void processComplete(@Nullable T result) {
 			if (isComplete()) {
 				return;
 			}
 			collector.accumulator().accept(accumulator, result);
 			if (--countdown == 0) {
 				R reducerResult = collector.finisher().apply(accumulator);
+				//noinspection AssignmentToNull - resource release
 				accumulator = null;
 				complete(reducerResult);
 			}
@@ -864,13 +866,14 @@ public final class Promises {
 			this.accumulator = accumulator;
 		}
 
-		void processComplete(T result, int i) {
+		void processComplete(@Nullable T result, int i) {
 			if (isComplete()) {
 				return;
 			}
 			collector.accumulate(accumulator, i, result);
 			if (--countdown == 0) {
 				R reducerResult = collector.finish(accumulator);
+				//noinspection AssignmentToNull - resource release
 				accumulator = null;
 				complete(reducerResult);
 			}
@@ -887,7 +890,7 @@ public final class Promises {
 
 	}
 
-	private static final class PromiseCollectEx<T, A, R> extends NextPromise<T, R> implements CollectListener.CollectCanceller {
+	private static final class PromiseCollectEx<T, A, R> extends NextPromise<T, R> implements CollectCanceller {
 		final IndexedCollector<T, A, R> collector;
 		final CollectListener<T, A, R> listener;
 		A accumulator;
@@ -908,7 +911,7 @@ public final class Promises {
 			}
 		}
 
-		void processComplete(T promiseResult, int index) {
+		void processComplete(@Nullable T promiseResult, int index) {
 			if (isComplete()) {
 				return;
 			}
@@ -925,6 +928,7 @@ public final class Promises {
 				return;
 			}
 			R finished = collector.finish(accumulator);
+			//noinspection AssignmentToNull - resource release
 			accumulator = null;
 			listener.onCollectResult(finished);
 			if (isComplete()) {

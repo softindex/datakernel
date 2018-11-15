@@ -49,8 +49,8 @@ public class StreamSuppliersTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		CompletableFuture<Void> future = supplier.streamTo(consumer)
-				.whenComplete(($, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))
-				.thenApplyEx(($, throwable) -> (Void) null)
+				.whenComplete(($, e) -> assertThat(e, instanceOf(IllegalArgumentException.class)))
+				.thenApplyEx(($, e) -> (Void) null)
 				.toCompletableFuture();
 		eventloop.run();
 

@@ -20,7 +20,7 @@ import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.NodeReduceSimple;
-import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,9 +28,9 @@ import java.util.function.Function;
 
 public final class DatasetLocalSortReduce<K, I, O> extends LocallySortedDataset<K, O> {
 	private final LocallySortedDataset<K, I> input;
-	private final StreamReducers.Reducer<K, I, O, ?> reducer;
+	private final Reducer<K, I, O, ?> reducer;
 
-	public DatasetLocalSortReduce(LocallySortedDataset<K, I> input, StreamReducers.Reducer<K, I, O, ?> reducer,
+	public DatasetLocalSortReduce(LocallySortedDataset<K, I> input, Reducer<K, I, O, ?> reducer,
 	                              Class<O> resultType, Function<O, K> resultKeyFunction) {
 		super(resultType, input.keyComparator(), input.keyType(), resultKeyFunction);
 		this.input = input;
@@ -43,7 +43,7 @@ public final class DatasetLocalSortReduce<K, I, O> extends LocallySortedDataset<
 		List<StreamId> outputStreamIds = new ArrayList<>();
 		for (StreamId streamId : input.channels(graph)) {
 			NodeReduceSimple<K, I, O, Object> node = new NodeReduceSimple<>(input.keyFunction(),
-					input.keyComparator(), (StreamReducers.Reducer<K, I, O, Object>) reducer);
+					input.keyComparator(), (Reducer<K, I, O, Object>) reducer);
 			node.addInput(streamId);
 			graph.addNode(graph.getPartition(streamId), node);
 			outputStreamIds.add(node.getOutput());

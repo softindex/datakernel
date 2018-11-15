@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import io.datakernel.util.ReflectionUtils;
 import io.datakernel.worker.WorkerPool;
@@ -37,7 +38,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 
 public final class JmxRegistry implements JmxRegistryMXBean {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
 
 	private static final String GENERIC_PARAM_NAME_FORMAT = "T%d=%s";
 
@@ -72,7 +73,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		return new JmxRegistry(mbs, mbeanFactory, keyToObjectNames, customTypes);
 	}
 
-	public void registerSingleton(Key<?> key, Object singletonInstance, MBeanSettings settings) {
+	public void registerSingleton(Key<?> key, Object singletonInstance, @Nullable MBeanSettings settings) {
 		checkNotNull(singletonInstance);
 		checkNotNull(key);
 
@@ -314,7 +315,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		return createNameForKey(key, null);
 	}
 
-	private String createNameForKey(Key<?> key, WorkerPool pool) throws ReflectiveOperationException {
+	private String createNameForKey(Key<?> key, @Nullable WorkerPool pool) throws ReflectiveOperationException {
 		if (keyToObjectNames.containsKey(key)) {
 			return keyToObjectNames.get(key);
 		}

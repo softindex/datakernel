@@ -17,17 +17,15 @@
 package io.datakernel.serial;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Cancellable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static java.lang.Integer.numberOfLeadingZeros;
 
-public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
+public final class SerialBuffer<T> implements SerialQueue<T> {
 	private Exception exception;
 
-	@SuppressWarnings("unchecked")
 	private Object[] elements;
 	private int tail;
 	private int head;
@@ -82,7 +80,6 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 		return tail == head;
 	}
 
-	@SuppressWarnings("unchecked")
 	public void add(@Nullable T item) throws Exception {
 		if (exception == null) {
 			if (take != null) {
@@ -121,7 +118,6 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	}
 
 	@Nullable
-	@SuppressWarnings("unchecked")
 	public T poll() throws Exception {
 		if (exception != null) throw exception;
 
@@ -146,7 +142,6 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public Promise<Void> put(@Nullable T value) {
 		assert put == null;
 		if (exception == null) {
@@ -173,7 +168,6 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public Promise<T> take() {
 		assert take == null;
 		if (exception == null) {
@@ -212,6 +206,7 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 		for (int i = head; i != tail; i = (i + 1) & (elements.length - 1)) {
 			tryRecycle(elements[i]);
 		}
+		//noinspection AssignmentToNull - resource release
 		elements = null;
 	}
 

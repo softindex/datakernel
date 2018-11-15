@@ -17,6 +17,7 @@
 package io.datakernel.cube;
 
 import io.datakernel.cube.bean.TestPubRequest;
+import io.datakernel.cube.bean.TestPubRequest.TestAdvRequest;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.logfs.ot.LogDataConsumerSplitter;
 import io.datakernel.stream.StreamDataAcceptor;
@@ -30,7 +31,6 @@ import static java.util.Collections.singleton;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toSet;
 
-@SuppressWarnings("unchecked")
 public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubRequest, CubeDiff> {
 	private final Cube cube;
 
@@ -82,13 +82,14 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 							keysToMap(ADV_DIMENSIONS.stream(), identity()),
 							keysToMap(ADV_METRICS.stream(), identity())));
 
+			@SuppressWarnings("ConstantConditions")
 			@Override
 			public void accept(TestPubRequest pubRequest) {
 				outputItem.date = (int) (pubRequest.timestamp / (24 * 60 * 60 * 1000L));
 				outputItem.hourOfDay = (byte) ((pubRequest.timestamp / (60 * 60 * 1000L)) % 24);
 				outputItem.pub = pubRequest.pub;
 				pubAggregator.accept(outputItem);
-				for (TestPubRequest.TestAdvRequest remRequest : pubRequest.advRequests) {
+				for (TestAdvRequest remRequest : pubRequest.advRequests) {
 					outputItem.adv = remRequest.adv;
 					advAggregator.accept(outputItem);
 				}

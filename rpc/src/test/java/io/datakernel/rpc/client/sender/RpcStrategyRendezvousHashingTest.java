@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,8 +28,7 @@ import java.net.InetSocketAddress;
 
 import static io.datakernel.rpc.client.sender.RpcStrategies.rendezvousHashing;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class RpcStrategyRendezvousHashingTest {
 
@@ -41,6 +40,7 @@ public class RpcStrategyRendezvousHashingTest {
 	private static final InetSocketAddress ADDRESS_2 = new InetSocketAddress(HOST, PORT_2);
 	private static final InetSocketAddress ADDRESS_3 = new InetSocketAddress(HOST, PORT_3);
 
+	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void itShouldDistributeCallsBetweenActiveSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
@@ -108,7 +108,7 @@ public class RpcStrategyRendezvousHashingTest {
 		// server3 is active
 		pool.put(ADDRESS_3, connection3);
 
-		assertTrue(rendezvousHashing.createSender(pool) != null);
+		assertNotNull(rendezvousHashing.createSender(pool));
 	}
 
 	@Test
@@ -128,7 +128,7 @@ public class RpcStrategyRendezvousHashingTest {
 
 		// no connections were added to pool, so there are no active servers
 
-		assertTrue(rendezvousHashing.createSender(pool) == null);
+		assertNull(rendezvousHashing.createSender(pool));
 	}
 
 	@Test
@@ -137,7 +137,7 @@ public class RpcStrategyRendezvousHashingTest {
 		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction);
 
-		assertTrue(rendezvousHashing.createSender(pool) == null);
+		assertNull(rendezvousHashing.createSender(pool));
 	}
 
 	@Test
@@ -163,10 +163,10 @@ public class RpcStrategyRendezvousHashingTest {
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
 
-		assertTrue(server1.createSender(pool) != null);
-		assertTrue(server2.createSender(pool) != null);
-		assertTrue(server3.createSender(pool) != null);
-		assertTrue(rendezvousHashing.createSender(pool) == null);
+		assertNotNull(server1.createSender(pool));
+		assertNotNull(server2.createSender(pool));
+		assertNotNull(server3.createSender(pool));
+		assertNull(rendezvousHashing.createSender(pool));
 	}
 
 	@Test
@@ -191,14 +191,14 @@ public class RpcStrategyRendezvousHashingTest {
 		pool.put(ADDRESS_2, connection2);
 		// we don't add connection3
 
-		assertTrue(server1.createSender(pool) != null);
-		assertTrue(server2.createSender(pool) != null);
-		assertTrue(server3.createSender(pool) == null);
-		assertTrue(rendezvousHashing.createSender(pool) == null);
+		assertNotNull(server1.createSender(pool));
+		assertNotNull(server2.createSender(pool));
+		assertNull(server3.createSender(pool));
+		assertNull(rendezvousHashing.createSender(pool));
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenHashFunctionIsNull() {
-		RpcStrategy rendezvousHashing = rendezvousHashing(null);
+		rendezvousHashing(null);
 	}
 }

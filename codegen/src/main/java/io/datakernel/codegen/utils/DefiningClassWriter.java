@@ -38,6 +38,7 @@ public final class DefiningClassWriter extends ClassWriter {
 			c = Class.forName(type1.replace('/', '.'), false, classLoader);
 			d = Class.forName(type2.replace('/', '.'), false, classLoader);
 		} catch (Exception e) {
+			//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - toString() is used
 			throw new RuntimeException(e.toString());
 		}
 		if (c.isAssignableFrom(d)) {

@@ -25,6 +25,7 @@ import io.datakernel.datagraph.node.NodeReduce;
 import io.datakernel.datagraph.node.NodeShard;
 import io.datakernel.datagraph.node.NodeUpload;
 import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +37,7 @@ public class DatasetUtils {
 
 	@SuppressWarnings("unchecked")
 	public static <K, I, O> List<StreamId> repartitionAndReduce(DataGraph graph, LocallySortedDataset<K, I> input,
-	                                                            StreamReducers.Reducer<K, I, O, ?> reducer,
+	                                                            Reducer<K, I, O, ?> reducer,
 	                                                            List<Partition> partitions) {
 		Function<I, K> keyFunction = input.keyFunction();
 		List<StreamId> outputStreamIds = new ArrayList<>();
@@ -57,7 +58,7 @@ public class DatasetUtils {
 				StreamId sharderOutput = sharder.newPartition();
 				graph.addNodeStream(sharder, sharderOutput);
 				StreamId reducerInput = forwardChannel(graph, input.valueType(), sharderOutput, partition);
-				streamReducer.addInput(reducerInput, keyFunction, (StreamReducers.Reducer<K, I, O, Object>) reducer);
+				streamReducer.addInput(reducerInput, keyFunction, (Reducer<K, I, O, Object>) reducer);
 			}
 
 			outputStreamIds.add(streamReducer.getOutput());
@@ -68,7 +69,7 @@ public class DatasetUtils {
 
 	public static <K, T> List<StreamId> repartitionAndSort(DataGraph graph, LocallySortedDataset<K, T> input,
 	                                                       List<Partition> partitions) {
-		return repartitionAndReduce(graph, input, StreamReducers.<K, T>mergeSortReducer(), partitions);
+		return repartitionAndReduce(graph, input, StreamReducers.mergeSortReducer(), partitions);
 	}
 
 	public static <T> StreamId forwardChannel(DataGraph graph, Class<T> type,

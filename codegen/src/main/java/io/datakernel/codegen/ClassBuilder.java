@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
  */
 @SuppressWarnings("unchecked")
 public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	public static final String DEFAULT_CLASS_NAME = ClassBuilder.class.getPackage().getName() + ".Class";
 	private static final AtomicInteger COUNTER = new AtomicInteger();
@@ -106,7 +106,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		public boolean equals(Object o) {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
-			AsmClassKey that = (AsmClassKey) o;
+			AsmClassKey<?> that = (AsmClassKey<?>) o;
 			return Objects.equals(mainClass, that.mainClass) &&
 				Objects.equals(otherClasses, that.otherClasses) &&
 				Objects.equals(fields, that.fields) &&
@@ -237,7 +237,6 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		}
 
 		Method foundMethod = null;
-		LinkedHashSet<java.lang.reflect.Method> methods = new LinkedHashSet<>();
 		List<List<java.lang.reflect.Method>> listOfMethods = new ArrayList<>();
 		listOfMethods.add(asList(Object.class.getMethods()));
 		listOfMethods.add(asList(mainClass.getMethods()));
@@ -268,7 +267,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	// endregion
 	public Class<T> build() {
 		synchronized (classLoader) {
-			AsmClassKey key = new AsmClassKey(mainClass, otherClasses, fields, methods, staticMethods);
+			AsmClassKey<?> key = new AsmClassKey<>(mainClass, otherClasses, fields, methods, staticMethods);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
@@ -290,7 +289,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		}
 	}
 
-	private Class<T> defineNewClass(AsmClassKey key) {
+	private Class<T> defineNewClass(AsmClassKey<?> key) {
 		DefiningClassWriter cw = DefiningClassWriter.create(classLoader);
 
 		String actualClassName;
@@ -407,14 +406,14 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	}
 
 	public T buildClassAndCreateNewInstance(Object... constructorParameters) {
-		Class[] constructorParameterTypes = new Class[constructorParameters.length];
+		Class<?>[] constructorParameterTypes = new Class<?>[constructorParameters.length];
 		for (int i = 0; i < constructorParameters.length; i++) {
 			constructorParameterTypes[i] = constructorParameters[i].getClass();
 		}
 		return buildClassAndCreateNewInstance(constructorParameterTypes, constructorParameters);
 	}
 
-	public T buildClassAndCreateNewInstance(Class[] constructorParameterTypes, Object[] constructorParameters) {
+	public T buildClassAndCreateNewInstance(Class<?>[] constructorParameterTypes, Object[] constructorParameters) {
 		try {
 			return build().getConstructor(constructorParameterTypes).newInstance(constructorParameters);
 		} catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {

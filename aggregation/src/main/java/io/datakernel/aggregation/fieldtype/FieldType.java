@@ -17,6 +17,7 @@
 package io.datakernel.aggregation.fieldtype;
 
 import com.google.gson.TypeAdapter;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.codegen.Expression;
 import io.datakernel.serializer.asm.SerializerGen;
 
@@ -29,6 +30,7 @@ public class FieldType<T> {
 	private final Class<?> internalDataType;
 	private final Type dataType;
 	private final SerializerGen serializer;
+	@Nullable
 	private final TypeAdapter<?> internalJson;
 	private final TypeAdapter<T> json;
 
@@ -36,7 +38,7 @@ public class FieldType<T> {
 		this(dataType, dataType, serializer, json, json);
 	}
 
-	protected FieldType(Class<?> internalDataType, Type dataType, SerializerGen serializer, TypeAdapter<T> json, TypeAdapter<?> internalJson) {
+	protected FieldType(Class<?> internalDataType, Type dataType, SerializerGen serializer, TypeAdapter<T> json, @Nullable TypeAdapter<?> internalJson) {
 		this.internalDataType = internalDataType;
 		this.dataType = dataType;
 		this.serializer = serializer;
@@ -60,6 +62,7 @@ public class FieldType<T> {
 		return json;
 	}
 
+	@Nullable
 	public TypeAdapter<?> getInternalJson() {
 		return internalJson;
 	}

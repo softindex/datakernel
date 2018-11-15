@@ -80,7 +80,6 @@ public class CubeMeasureRemovalTest {
 	private LocalFsLogFileSystem fileSystem;
 	private AggregationChunkStorage<Long> aggregationChunkStorage;
 	private BufferSerializer<LogItem> serializer;
-	private OTSystem<LogDiff<CubeDiff>> logOTSystem;
 
 	@Before
 	public void before() throws IOException {
@@ -94,10 +93,8 @@ public class CubeMeasureRemovalTest {
 		fileSystem = LocalFsLogFileSystem.create(eventloop, executor, logsDir);
 		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
-		logOTSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void test() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
@@ -290,7 +287,6 @@ public class CubeMeasureRemovalTest {
 		}
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void testNewUnknownMeasureInAggregationDiffOnDeserialization() throws Throwable {
 		{

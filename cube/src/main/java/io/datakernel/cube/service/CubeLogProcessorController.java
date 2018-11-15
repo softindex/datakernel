@@ -64,7 +64,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 		this.predicate = predicate;
 	}
 
-	public static <K, C> CubeLogProcessorController create(Eventloop eventloop,
+	public static <K, C> CubeLogProcessorController<K, C> create(Eventloop eventloop,
 			OTStateManager<K, LogDiff<CubeDiff>> stateManager,
 			AggregationChunkStorage<C> chunkStorage,
 			List<LogOTProcessor<?, CubeDiff>> logProcessors) {
@@ -82,7 +82,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 		return new CubeLogProcessorController<>(eventloop, logProcessors, system, chunkStorage, stateManager, predicate);
 	}
 
-	public CubeLogProcessorController withParallelRunner(boolean parallelRunner) {
+	public CubeLogProcessorController<K, C> withParallelRunner(boolean parallelRunner) {
 		this.parallelRunner = parallelRunner;
 		return this;
 	}

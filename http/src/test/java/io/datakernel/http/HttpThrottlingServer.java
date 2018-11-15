@@ -37,7 +37,7 @@ public class HttpThrottlingServer {
 		private int loadBusinessLogic;
 
 		public ServerOptions(int loadBusinessLogic) {
-			checkArgument(loadBusinessLogic >= 0);
+			checkArgument(loadBusinessLogic >= 0, "Load business logic should be a non-negative value");
 			this.loadBusinessLogic = loadBusinessLogic;
 		}
 
@@ -69,7 +69,7 @@ public class HttpThrottlingServer {
 
 		@Override
 		public String toString() {
-			return "Load business logic : " + getLoadBusinessLogic();
+			return "Load business logic : " + loadBusinessLogic;
 		}
 	}
 
@@ -81,12 +81,7 @@ public class HttpThrottlingServer {
 
 	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, int loadBusinessLogic) {
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				return Promise.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
-			}
-		};
+		AsyncServlet servlet = request -> Promise.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
 		return AsyncHttpServer.create(eventloop, servlet).withListenPort(SERVER_PORT);
 	}
 

@@ -3,7 +3,7 @@ package io.datakernel.stream.stats;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.stream.StreamDataAcceptor;
 
@@ -25,9 +25,8 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public StreamStatsDetailedEx withBasicSmoothingWindow(Duration smoothingWindow) {
-		return (StreamStatsDetailedEx) super.withBasicSmoothingWindow(smoothingWindow);
+	public StreamStatsDetailedEx<T> withBasicSmoothingWindow(Duration smoothingWindow) {
+		return (StreamStatsDetailedEx<T>) super.withBasicSmoothingWindow(smoothingWindow);
 	}
 
 	@Override
@@ -57,7 +56,7 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 				};
 	}
 
-	public StreamStatsDetailedEx withSizeHistogram(int[] levels) {
+	public StreamStatsDetailedEx<T> withSizeHistogram(int[] levels) {
 		itemSize.setHistogramLevels(levels);
 		return this;
 	}
@@ -67,20 +66,23 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 		return count;
 	}
 
+	@Nullable
 	@JmxAttribute
 	public ValueStats getItemSize() {
 		return sizeCounter != null ? itemSize : null;
 	}
 
+	@Nullable
 	@JmxAttribute
 	public EventStats getTotalSize() {
 		return sizeCounter != null ? totalSize : null;
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@Nullable
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public Long getTotalSizeAvg() {
-		return sizeCounter != null && super.getStarted().getTotalCount() != 0 ?
-				totalSize.getTotalCount() / super.getStarted().getTotalCount() :
+		return sizeCounter != null && getStarted().getTotalCount() != 0 ?
+				totalSize.getTotalCount() / getStarted().getTotalCount() :
 				null;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		this.eventloop = eventloop;
 	}
 
+	@Nullable
 	@Override
 	protected final A resolveAttributes(K key) {
 		A result = cache.get(key);
@@ -57,15 +58,15 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		return result;
 	}
 
-	protected abstract Promise<Map<K, A>> reload(@Nullable long lastTimestamp);
+	protected abstract Promise<Map<K, A>> reload(long lastTimestamp);
 
 	private void doReload() {
 		reloads++;
 		scheduledRunnable.cancel();
-		long reloadTimestamp = getEventloop().currentTimeMillis();
-		Promise<Map<K, A>> reload = reload(timestamp).whenComplete((result, throwable) -> {
-			if (throwable == null) {
-				reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
+		long reloadTimestamp = eventloop.currentTimeMillis();
+		reload(timestamp).whenComplete((result, e) -> {
+			if (e == null) {
+				reloadTime.recordValue((int) (eventloop.currentTimeMillis() - reloadTimestamp));
 				cache.putAll(result);
 				timestamp = reloadTimestamp;
 				scheduleReload(reloadPeriod);
@@ -77,7 +78,6 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	}
 
 	private void scheduleReload(long period) {
-		Eventloop eventloop = getEventloop();
 		scheduledRunnable = eventloop.delay(period, this::doReload);
 	}
 
@@ -89,10 +89,10 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	@Override
 	public Promise<Void> start() {
 		if (reloadPeriod == 0) return Promise.complete();
-		long reloadTimestamp = getEventloop().currentTimeMillis();
+		long reloadTimestamp = eventloop.currentTimeMillis();
 		return reload(timestamp)
 				.whenResult(result -> {
-					reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
+					reloadTime.recordValue((int) (eventloop.currentTimeMillis() - reloadTimestamp));
 					cache.putAll(result);
 					timestamp = reloadTimestamp;
 					scheduleReload(reloadPeriod);

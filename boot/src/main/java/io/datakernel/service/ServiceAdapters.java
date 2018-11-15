@@ -43,9 +43,9 @@ public final class ServiceAdapters {
 	}
 
 	private static BiConsumer<Void, Throwable> completeFuture(CompletableFuture<?> future) {
-		return ($, throwable) -> {
-			if (throwable != null) {
-				future.completeExceptionally(throwable);
+		return ($, e) -> {
+			if (e != null) {
+				future.completeExceptionally(e);
 			} else {
 				future.complete(null);
 			}
@@ -334,13 +334,13 @@ public final class ServiceAdapters {
 								  Iterator<? extends ServiceAdapter<? super T>> iterator, CompletableFuture<Void> future,
 								  Action<T> action) {
 				if (iterator.hasNext()) {
-					action.doAction((ServiceAdapter<T>) iterator.next(), instance, executor).whenCompleteAsync((o, throwable) -> {
-						if (throwable == null) {
+					action.doAction((ServiceAdapter<T>) iterator.next(), instance, executor).whenCompleteAsync(($, e) -> {
+						if (e == null) {
 							doAction(instance, executor, iterator, future, action);
-						} else if (throwable instanceof InterruptedException) {
-							future.completeExceptionally(throwable);
-						} else if (throwable instanceof ExecutionException) {
-							future.completeExceptionally(throwable.getCause());
+						} else if (e instanceof InterruptedException) {
+							future.completeExceptionally(e);
+						} else if (e instanceof ExecutionException) {
+							future.completeExceptionally(e.getCause());
 						}
 					}, Runnable::run);
 				} else {

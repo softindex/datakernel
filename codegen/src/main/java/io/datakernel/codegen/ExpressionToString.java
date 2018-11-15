@@ -33,7 +33,6 @@ import static org.objectweb.asm.commons.Method.getMethod;
 /**
  * Defines methods which allow to create a string
  */
-@SuppressWarnings("PointlessArithmeticExpression")
 public final class ExpressionToString implements Expression {
 	private String begin = "{";
 	private String end = "}";
@@ -117,7 +116,7 @@ public final class ExpressionToString implements Expression {
 				g.goTo(afterToString);
 				g.mark(nullLabel);
 				g.pop();
-				g.push(("null"));
+				g.push("null");
 				g.mark(afterToString);
 			}
 			g.invokeVirtual(getType(StringBuilder.class), getMethod("StringBuilder append(String)"));

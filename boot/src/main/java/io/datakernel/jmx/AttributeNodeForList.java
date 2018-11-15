@@ -73,8 +73,8 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 					itemTypes.add(visibleAttrType);
 				}
 
-				String[] itemNamesArr = itemNames.toArray(new String[itemNames.size()]);
-				OpenType<?>[] itemTypesArr = itemTypes.toArray(new OpenType<?>[itemTypes.size()]);
+				String[] itemNamesArr = itemNames.toArray(new String[0]);
+				OpenType<?>[] itemTypesArr = itemTypes.toArray(new OpenType<?>[0]);
 				elementType =
 						new CompositeType("CompositeData", "CompositeData", itemNamesArr, itemNamesArr, itemTypesArr);
 			}
@@ -87,9 +87,10 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 
 	@Override
 	public Map<String, OpenType<?>> getOpenTypes() {
-		return Collections.<String, OpenType<?>>singletonMap(name, arrayType);
+		return Collections.singletonMap(name, arrayType);
 	}
 
+	@Nullable
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
 		List<Map<String, Object>> attributesFromAllElements = new ArrayList<>();
@@ -113,32 +114,30 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 		OpenType<?> arrayElementOpenType = arrayType.getElementOpenType();
 		if (arrayElementOpenType instanceof ArrayType) {
 			throw new RuntimeException("Multidimensional arrays are not supported");
-		} else {
-			try {
-				Class<?> elementClass = classOf(arrayType.getElementOpenType());
-				Object[] array = (Object[]) Array.newInstance(elementClass, attributesFromAllElements.size());
-				for (int i = 0; i < attributesFromAllElements.size(); i++) {
-					Map<String, Object> attributesFromElement = attributesFromAllElements.get(i);
-					array[i] = jmxCompatibleObjectOf(arrayElementOpenType, attributesFromElement);
-				}
-				return array;
-			} catch (OpenDataException e) {
-				throw new RuntimeException(e);
+		}
+		try {
+			Class<?> elementClass = classOf(arrayType.getElementOpenType());
+			Object[] array = (Object[]) Array.newInstance(elementClass, attributesFromAllElements.size());
+			for (int i = 0; i < attributesFromAllElements.size(); i++) {
+				Map<String, Object> attributesFromElement = attributesFromAllElements.get(i);
+				array[i] = jmxCompatibleObjectOf(arrayElementOpenType, attributesFromElement);
 			}
+			return array;
+		} catch (OpenDataException e) {
+			throw new RuntimeException(e);
 		}
 	}
 
 	private static Object jmxCompatibleObjectOf(OpenType<?> openType, Map<String, Object> attributes)
 			throws OpenDataException {
 		if (openType instanceof SimpleType || openType instanceof TabularType) {
-			checkArgument(attributes.size() == 1);
+			checkArgument(attributes.size() == 1, "Only one attribute should be present");
 			return first(attributes.values());
 		} else if (openType instanceof CompositeType) {
 			CompositeType compositeType = (CompositeType) openType;
 			return new CompositeDataSupport(compositeType, attributes);
-		} else {
-			throw new RuntimeException("There is no support for " + openType);
 		}
+		throw new RuntimeException("There is no support for " + openType);
 	}
 
 	@Override
@@ -149,12 +148,9 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 		}
 
 		List<JmxRefreshable> listRef = (List<JmxRefreshable>) fetcher.fetchFrom(source);
-		return Collections.<JmxRefreshable>singletonList(new JmxRefreshable() {
-			@Override
-			public void refresh(long timestamp) {
-				for (JmxRefreshable jmxRefreshableElement : listRef) {
-					jmxRefreshableElement.refresh(timestamp);
-				}
+		return Collections.singletonList(timestamp -> {
+			for (JmxRefreshable jmxRefreshableElement : listRef) {
+				jmxRefreshableElement.refresh(timestamp);
 			}
 		});
 	}

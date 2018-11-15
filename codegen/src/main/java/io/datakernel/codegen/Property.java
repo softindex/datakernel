@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.codegen.utils.Primitives;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -88,7 +89,7 @@ public final class Property implements Variable {
 		Class<?> argumentClass = getJavaType(ctx.getClassLoader(), ownerType);
 
 		try {
-			java.lang.reflect.Field javaProperty = argumentClass.getField(property);
+			Field javaProperty = argumentClass.getField(property);
 			if (Modifier.isPublic(javaProperty.getModifiers())) {
 				Type propertyType = getType(javaProperty.getType());
 				cast(ctx, valueType, propertyType);
@@ -98,7 +99,7 @@ public final class Property implements Variable {
 		} catch (NoSuchFieldException ignored) {
 		}
 
-		java.lang.reflect.Method javaSetter = tryFindSetter(argumentClass, property, valueClass);
+		Method javaSetter = tryFindSetter(argumentClass, property, valueClass);
 
 		if (javaSetter == null && Primitives.isWrapperType(valueClass)) {
 			javaSetter = tryFindSetter(argumentClass, property, Primitives.unwrap(valueClass));
@@ -132,6 +133,7 @@ public final class Property implements Variable {
 		);
 	}
 
+	@Nullable
 	private static Method tryFindSetter(Class<?> argumentClass, String property, Class<?> valueClass) {
 		Method m = null;
 		try {
@@ -148,6 +150,7 @@ public final class Property implements Variable {
 		return m;
 	}
 
+	@Nullable
 	private static Method tryFindSetter(Class<?> argumentClass, String property) {
 		String setterName = "set" + toUpperCase(property.charAt(0)) + property.substring(1);
 
@@ -201,7 +204,7 @@ public final class Property implements Variable {
 		} catch (NoSuchFieldException ignored) {
 		}
 
-		java.lang.reflect.Method m = null;
+		Method m = null;
 		try {
 			m = argumentClass.getDeclaredMethod(property);
 		} catch (NoSuchMethodException ignored) {

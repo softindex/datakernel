@@ -26,7 +26,7 @@ import java.util.LinkedList;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 
 public class StreamSupplierOfValueTest {
 	Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -38,7 +38,7 @@ public class StreamSupplierOfValueTest {
 
 	@Test
 	public void test1() {
-		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create(new LinkedList<Integer>());
+		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create(new LinkedList<>());
 		StreamSupplier<Integer> supplier1 = StreamSupplier.of(TEST_INT);
 		supplier1.streamTo(consumer1);
 
@@ -47,7 +47,7 @@ public class StreamSupplierOfValueTest {
 		assertEquals(TEST_INT, consumer1.getList().get(0));
 		assertEndOfStream(supplier1);
 
-		StreamConsumerToList<String> consumer2 = StreamConsumerToList.create(new LinkedList<String>());
+		StreamConsumerToList<String> consumer2 = StreamConsumerToList.create(new LinkedList<>());
 		StreamSupplier<String> supplier2 = StreamSupplier.of(TEST_STRING);
 		supplier2.streamTo(consumer2);
 		eventloop.run();
@@ -55,7 +55,7 @@ public class StreamSupplierOfValueTest {
 		assertEquals(TEST_STRING, consumer2.getList().get(0));
 		assertEndOfStream(supplier2);
 
-		StreamConsumerToList<DataItem1> consumer3 = StreamConsumerToList.create(new LinkedList<DataItem1>());
+		StreamConsumerToList<DataItem1> consumer3 = StreamConsumerToList.create(new LinkedList<>());
 		StreamSupplier<DataItem1> supplier3 = StreamSupplier.of(TEST_OBJECT);
 		supplier3.streamTo(consumer3);
 		eventloop.run();
@@ -71,7 +71,7 @@ public class StreamSupplierOfValueTest {
 		supplier3.streamTo(consumer3);
 		eventloop.run();
 
-		assertTrue(consumer3.getList().get(0) == null);
+		assertNull(consumer3.getList().get(0));
 		assertEndOfStream(supplier3);
 	}
 

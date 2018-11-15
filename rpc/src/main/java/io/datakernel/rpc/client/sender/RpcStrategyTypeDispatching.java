@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
@@ -62,6 +63,7 @@ public final class RpcStrategyTypeDispatching implements RpcStrategy {
 		return result;
 	}
 
+	@Nullable
 	@Override
 	public RpcSender createSender(RpcClientConnectionPool pool) {
 		HashMap<Class<?>, RpcSender> typeToSender = new HashMap<>();

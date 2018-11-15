@@ -53,7 +53,7 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 	}
 
 	public void addGraph(Consumer<OTGraphBuilder<K, D>> builder) {
-		long initialLevel = 1L + this.commits.values().stream()
+		long initialLevel = 1L + commits.values().stream()
 				.mapToLong(OTCommit::getLevel)
 				.max()
 				.orElse(0L);

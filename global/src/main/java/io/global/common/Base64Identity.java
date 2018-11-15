@@ -17,11 +17,13 @@
 package io.global.common;
 
 import java.util.Base64;
+import java.util.Base64.Decoder;
+import java.util.Base64.Encoder;
 
 // TODO anton: find a better name for this, or just remove/replace this
 public interface Base64Identity extends ByteArrayIdentity, StringIdentity {
-	Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
-	Base64.Decoder decoder = Base64.getUrlDecoder();
+	Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+	Decoder decoder = Base64.getUrlDecoder();
 
 	@Override
 	default String asString() {

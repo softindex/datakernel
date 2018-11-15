@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.trigger;
 
 import io.datakernel.annotation.Nullable;
@@ -19,15 +35,15 @@ public final class TriggerResult {
 	private final Object value;
 	private final int count;
 
-	TriggerResult(long timestamp, @Nullable Throwable throwable, @Nullable Object value, int count) {
+	TriggerResult(long timestamp, @Nullable Throwable e, @Nullable Object value, int count) {
 		this.timestamp = timestamp;
-		this.throwable = throwable;
+		this.throwable = e;
 		this.value = value;
 		this.count = count;
 	}
 
-	TriggerResult(long timestamp, @Nullable Throwable throwable, @Nullable Object context) {
-		this(timestamp, throwable, context, 1);
+	TriggerResult(long timestamp, @Nullable Throwable e, @Nullable Object context) {
+		this(timestamp, e, context, 1);
 	}
 
 	public static TriggerResult none() {
@@ -38,24 +54,24 @@ public final class TriggerResult {
 		return new TriggerResult(0L, null, null);
 	}
 
-	public static TriggerResult create(long timestamp, Throwable throwable, int count) {
-		return new TriggerResult(timestamp, throwable, null, count);
+	public static TriggerResult create(long timestamp, Throwable e, int count) {
+		return new TriggerResult(timestamp, e, null, count);
 	}
 
-	public static TriggerResult create(long timestamp, @Nullable Throwable throwable, @Nullable Object value) {
-		return new TriggerResult(timestamp, throwable, value);
+	public static TriggerResult create(long timestamp, @Nullable Throwable e, @Nullable Object value) {
+		return new TriggerResult(timestamp, e, value);
 	}
 
-	public static TriggerResult create(long timestamp, Throwable throwable, Object value, int count) {
-		return new TriggerResult(timestamp, throwable, value, count);
+	public static TriggerResult create(long timestamp, Throwable e, Object value, int count) {
+		return new TriggerResult(timestamp, e, value, count);
 	}
 
-	public static TriggerResult create(Instant instant, Throwable throwable, Object value) {
-		return create(instant.toEpochMilli(), throwable, value);
+	public static TriggerResult create(Instant instant, @Nullable Throwable e, @Nullable Object value) {
+		return create(instant.toEpochMilli(), e, value);
 	}
 
-	public static TriggerResult create(Instant instant, Throwable throwable, Object value, int count) {
-		return create(instant.toEpochMilli(), throwable, value, count);
+	public static TriggerResult create(Instant instant, Throwable e, Object value, int count) {
+		return create(instant.toEpochMilli(), e, value, count);
 	}
 
 	public static TriggerResult ofTimestamp(long timestamp) {
@@ -78,19 +94,19 @@ public final class TriggerResult {
 				create(instant, null, null) : NONE;
 	}
 
-	public static TriggerResult ofError(Throwable throwable) {
-		return throwable != null ?
-				new TriggerResult(0L, throwable, null) : NONE;
+	public static TriggerResult ofError(Throwable e) {
+		return e != null ?
+				new TriggerResult(0L, e, null) : NONE;
 	}
 
-	public static TriggerResult ofError(Throwable throwable, long timestamp) {
-		return throwable != null ?
-				new TriggerResult(timestamp, throwable, null) : NONE;
+	public static TriggerResult ofError(Throwable e, long timestamp) {
+		return e != null ?
+				new TriggerResult(timestamp, e, null) : NONE;
 	}
 
-	public static TriggerResult ofError(Throwable throwable, Instant instant) {
-		return throwable != null ?
-				create(instant.toEpochMilli(), throwable, null) : NONE;
+	public static TriggerResult ofError(Throwable e, Instant instant) {
+		return e != null ?
+				create(instant.toEpochMilli(), e, null) : NONE;
 	}
 
 	public static TriggerResult ofError(ExceptionStats exceptionStats) {
@@ -168,30 +184,30 @@ public final class TriggerResult {
 	}
 
 	public long getTimestamp() {
-		checkState(isPresent());
+		checkState(isPresent(), "Trigger is not present");
 		return timestamp;
 	}
 
 	@Nullable
 	public Instant getInstant() {
-		checkState(isPresent());
+		checkState(isPresent(), "Trigger is not present");
 		return hasTimestamp() ? Instant.ofEpochMilli(timestamp) : null;
 	}
 
 	@Nullable
 	public Throwable getThrowable() {
-		checkState(isPresent());
+		checkState(isPresent(), "Trigger is not present");
 		return throwable;
 	}
 
 	@Nullable
 	public Object getValue() {
-		checkState(isPresent());
+		checkState(isPresent(), "Trigger is not present");
 		return value;
 	}
 
 	public int getCount() {
-		checkState(isPresent());
+		checkState(isPresent(), "Trigger is not present");
 		return count;
 	}
 

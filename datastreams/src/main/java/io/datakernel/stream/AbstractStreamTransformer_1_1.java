@@ -28,7 +28,6 @@ import io.datakernel.stream.processor.StreamTransformer;
  * @param <I> type of input data for consumer
  * @param <O> type of output data of supplier
  */
-@SuppressWarnings("unchecked")
 public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTransformer<I, O> {
 
 	public interface Inspector {

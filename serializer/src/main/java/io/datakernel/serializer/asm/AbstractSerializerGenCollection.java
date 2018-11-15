@@ -22,12 +22,12 @@ import io.datakernel.codegen.ExpressionParameter;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.util.Preconditions;
+import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 
 import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public abstract class AbstractSerializerGenCollection implements SerializerGen, NullableOptimization {
@@ -42,7 +42,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 		this.collectionType = checkNotNull(collectionType);
 		this.collectionImplType = checkNotNull(collectionImplType);
 		this.elementType = checkNotNull(elementType);
-		this.nullable = checkNotNull(nullable);
+		this.nullable = nullable;
 	}
 
 	protected Expression collectionForEach(Expression collection, Class<?> valueType, Function<ExpressionParameter, Expression> value) {
@@ -69,12 +69,12 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		valueSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public final Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public final Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression forEach = collectionForEach(value, valueSerializer.getRawType(),
 				it -> set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel)));
 
@@ -88,8 +88,8 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	@Override
-	public final Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		Preconditions.check(targetType.isAssignableFrom(collectionImplType));
+	public final Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		check(targetType.isAssignableFrom(collectionImplType), "Target(%s) should be assignable from collection implementation type(%s)", targetType, collectionImplType);
 		Expression length = let(call(arg(0), "readVarInt"));
 		Expression container = createConstructor(length);
 
@@ -106,7 +106,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 

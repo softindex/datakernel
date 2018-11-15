@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
@@ -27,6 +28,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcStrategyFirstValidResult implements RpcStrategy {
+	@FunctionalInterface
 	public interface ResultValidator<T> {
 		boolean isValidResult(T value);
 	}
@@ -36,10 +38,11 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 	private final RpcStrategyList list;
 
 	private final ResultValidator<?> resultValidator;
+	@Nullable
 	private final Exception noValidResultException;
 
 	private RpcStrategyFirstValidResult(RpcStrategyList list, ResultValidator<?> resultValidator,
-	                                    Exception noValidResultException) {
+			@Nullable Exception noValidResultException) {
 		this.list = list;
 		this.resultValidator = resultValidator;
 		this.noValidResultException = noValidResultException;
@@ -53,8 +56,8 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		return new RpcStrategyFirstValidResult(list, resultValidator, noValidResultException);
 	}
 
-	public RpcStrategyFirstValidResult withNoValidResultException(Exception exception) {
-		return new RpcStrategyFirstValidResult(list, resultValidator, exception);
+	public RpcStrategyFirstValidResult withNoValidResultException(Exception e) {
+		return new RpcStrategyFirstValidResult(list, resultValidator, e);
 	}
 
 	@Override
@@ -62,6 +65,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		return list.getAddresses();
 	}
 
+	@Nullable
 	@Override
 	public RpcSender createSender(RpcClientConnectionPool pool) {
 		List<RpcSender> senders = list.listOfSenders(pool);
@@ -77,17 +81,17 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 
 		public Sender(List<RpcSender> senders, ResultValidator<?> resultValidator,
 		              Exception noValidResultException) {
-			checkArgument(senders != null && senders.size() > 0);
-			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
+			checkArgument(senders != null && senders.size() > 0, "List of senders should not be null and should contain at least one sender");
+			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.resultValidator = checkNotNull(resultValidator);
 			this.noValidResultException = noValidResultException;
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 			FirstResultCallback<O> resultCallback
-					= new FirstResultCallback<>(callback, (ResultValidator<O>) resultValidator, subSenders.length, noValidResultException);
+					= new FirstResultCallback<>(cb, (ResultValidator<O>) resultValidator, subSenders.length, noValidResultException);
 			for (RpcSender sender : subSenders) {
 				sender.sendRequest(request, timeout, resultCallback.getCallback());
 			}
@@ -107,7 +111,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 
 		public FirstResultCallback(Callback<T> resultCallback, ResultValidator<T> resultValidator, int expectedCalls,
 		                           Exception noValidResultException) {
-			checkArgument(expectedCalls > 0);
+			checkArgument(expectedCalls > 0, "Number of expected calls should be greater than 0");
 			this.expectedCalls = expectedCalls;
 			this.resultCallback = checkNotNull(resultCallback);
 			this.resultValidator = checkNotNull(resultValidator);
@@ -127,10 +131,10 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 				}
 
 				@Override
-				public void setException(Throwable exception) {
+				public void setException(Throwable e) {
 					--expectedCalls;
 					if (!hasResult) {
-						FirstResultCallback.this.exception = exception; // last Exception
+						FirstResultCallback.this.exception = e; // last Exception
 					}
 					processResult();
 				}

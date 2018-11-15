@@ -2,6 +2,7 @@ package io.datakernel.stream;
 
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.stream.TestStreamSuppliers.Decorator.Context;
 
 import java.util.function.Function;
 
@@ -16,15 +17,15 @@ public class TestStreamSuppliers {
 
 			@Override
 			public void resume(StreamDataAcceptor<T> dataAcceptor) {
-				supplier.resume(decorator.decorate(new Decorator.Context() {
+				supplier.resume(decorator.decorate(new Context() {
 					@Override
 					public void endOfStream() {
 						endOfStream.trySet(null);
 					}
 
 					@Override
-					public void closeWithError(Throwable error) {
-						endOfStream.trySetException(error);
+					public void closeWithError(Throwable e) {
+						endOfStream.trySetException(e);
 					}
 				}, dataAcceptor));
 			}
@@ -39,20 +40,21 @@ public class TestStreamSuppliers {
 	public static <T> StreamSupplierFunction<T, StreamSupplier<T>> errorDecorator(Function<T, Throwable> errorFunction) {
 		return decorator((context, dataAcceptor) ->
 				item -> {
-					Throwable error = errorFunction.apply(item);
-					if (error == null) {
+					Throwable e = errorFunction.apply(item);
+					if (e == null) {
 						dataAcceptor.accept(item);
 					} else {
-						context.closeWithError(error);
+						context.closeWithError(e);
 					}
 				});
 	}
 
+	@FunctionalInterface
 	public interface Decorator<T> {
 		interface Context {
 			void endOfStream();
 
-			void closeWithError(Throwable error);
+			void closeWithError(Throwable e);
 		}
 
 		StreamDataAcceptor<T> decorate(Context context, StreamDataAcceptor<T> dataAcceptor);

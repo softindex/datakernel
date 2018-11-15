@@ -154,7 +154,7 @@ public class JmxMBeansAttributesTest {
 		assertEquals(2, row_2.get("value"));
 
 		CompositeData row_3 = tabularData.get(keyForTabularData("c"));
-		assertEquals(null, row_3.get("value"));
+		assertNull(row_3.get("value"));
 
 		CompositeData row_4 = tabularData.get(keyForTabularData("d"));
 		assertEquals(5, row_4.get("value"));
@@ -264,7 +264,7 @@ public class JmxMBeansAttributesTest {
 	}
 
 	@Test
-	public void throwsErrorForUnsupportedTypesInJmxAttributes() throws Exception {
+	public void throwsErrorForUnsupportedTypesInJmxAttributes() {
 
 		ArbitraryType arbitraryType = new ArbitraryType("String representation");
 		Date date = new Date();

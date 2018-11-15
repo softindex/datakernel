@@ -22,11 +22,13 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.codegen.*;
+import io.datakernel.cube.CubeQuery.Ordering;
 import io.datakernel.cube.asm.MeasuresFunction;
 import io.datakernel.cube.asm.RecordFunction;
 import io.datakernel.cube.asm.TotalsFunction;
@@ -41,7 +43,12 @@ import io.datakernel.ot.OTState;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.*;
+import io.datakernel.stream.processor.StreamFilter;
+import io.datakernel.stream.processor.StreamMap;
+import io.datakernel.stream.processor.StreamMap.MapperProjection;
+import io.datakernel.stream.processor.StreamReducer;
+import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.stream.processor.StreamSplitter;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,7 +85,7 @@ import static java.util.stream.Collectors.toList;
  * Represents an OLAP cube. Provides methods for loading and querying data.
  * Also provides functionality for managing aggregations.
  */
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "rawtypes"})
 public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
@@ -168,7 +175,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public Cube withAttribute(String attribute, AttributeResolver resolver) {
-		checkArgument(!this.attributes.containsKey(attribute), "Attribute %s has already been defined", attribute);
+		checkArgument(!attributes.containsKey(attribute), "Attribute %s has already been defined", attribute);
 		int pos = attribute.indexOf('.');
 		if (pos == -1)
 			throw new IllegalArgumentException();
@@ -316,22 +323,22 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public void addMeasure(String measureId, Measure measure) {
-		checkState(aggregations.isEmpty());
+		checkState(aggregations.isEmpty(), "Cannot add measure while aggregations are present");
 		measures.put(measureId, measure);
 		fieldTypes.put(measureId, measure.getFieldType());
 	}
 
 	public void addComputedMeasure(String measureId, ComputedMeasure computedMeasure) {
-		checkState(aggregations.isEmpty());
-		this.computedMeasures.put(measureId, computedMeasure);
+		checkState(aggregations.isEmpty(), "Cannot add computed measure while aggregations are present");
+		computedMeasures.put(measureId, computedMeasure);
 	}
 
 	public void addRelation(String child, String parent) {
-		this.childParentRelations.put(child, parent);
+		childParentRelations.put(child, parent);
 	}
 
 	public void addDimension(String dimensionId, FieldType type) {
-		checkState(aggregations.isEmpty());
+		checkState(aggregations.isEmpty(), "Cannot add dimension while aggregations are present");
 		dimensionTypes.put(dimensionId, type);
 		fieldTypes.put(dimensionId, type);
 	}
@@ -365,6 +372,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return this;
 	}
 
+	@Nullable
 	public Class<?> getAttributeInternalType(String attribute) {
 		if (dimensionTypes.containsKey(attribute))
 			return dimensionTypes.get(attribute).getInternalDataType();
@@ -373,6 +381,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return null;
 	}
 
+	@Nullable
 	public Class<?> getMeasureInternalType(String field) {
 		if (measures.containsKey(field))
 			return measures.get(field).getFieldType().getInternalDataType();
@@ -381,6 +390,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return null;
 	}
 
+	@Nullable
 	public Type getAttributeType(String attribute) {
 		if (dimensionTypes.containsKey(attribute))
 			return dimensionTypes.get(attribute).getDataType();
@@ -389,6 +399,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return null;
 	}
 
+	@Nullable
 	public Type getMeasureType(String field) {
 		if (measures.containsKey(field))
 			return measures.get(field).getFieldType().getDataType();
@@ -422,8 +433,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public Aggregation getAggregation(String aggregationId) {
-		AggregationContainer aggregationContainer = aggregations.get(aggregationId);
-		return (aggregationContainer == null) ? null : aggregationContainer.aggregation;
+		return aggregations.get(aggregationId).aggregation;
 	}
 
 	public Set<String> getAggregationIds() {
@@ -460,7 +470,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	public <T> LogDataConsumer<T, CubeDiff> logStreamConsumer(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
 			AggregationPredicate predicate) {
-		return () -> this.consume(inputClass, dimensionFields, measureFields, predicate)
+		return () -> consume(inputClass, dimensionFields, measureFields, predicate)
 				.transformResult(result -> result.thenApply(Collections::singletonList));
 	}
 
@@ -505,7 +515,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			AggregationPredicate dataInputFilterPredicate = aggregationToDataInputFilterPredicate.getValue();
 			StreamSupplier<T> output = streamSplitter.newOutput();
 			if (!dataInputFilterPredicate.equals(AggregationPredicates.alwaysTrue())) {
-				Predicate<T> filterPredicate = createFilterPredicate(inputClass, dataInputFilterPredicate, getClassLoader(), fieldTypes);
+				Predicate<T> filterPredicate = createFilterPredicate(inputClass, dataInputFilterPredicate, classLoader, fieldTypes);
 				output = output.apply(StreamFilter.create(filterPredicate));
 			}
 			Promise<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
@@ -576,7 +586,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	private <T, K extends Comparable, S, A> StreamSupplier<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
 			Class<T> resultClass, DefiningClassLoader queryClassLoader,
-			List<AggregationContainer> compatibleAggregations) throws QueryException {
+			List<AggregationContainer> compatibleAggregations) {
 		List<AggregationContainerWithScore> containerWithScores = new ArrayList<>();
 		for (AggregationContainer compatibleAggregation : compatibleAggregations) {
 			AggregationQuery aggregationQuery = AggregationQuery.create(dimensions, storedMeasures, where);
@@ -614,7 +624,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				If query is fulfilled from the single aggregation,
 				just use mapper instead of reducer to copy requested fields.
 				 */
-				StreamMap.MapperProjection<S, T> mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
+				MapperProjection<S, T> mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
 						compatibleMeasures, queryClassLoader);
 				queryResultSupplier = aggregationSupplier.apply(StreamMap.create(mapper));
 				break;
@@ -622,7 +632,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 			Function<S, K> keyFunction = AggregationUtils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
 
-			StreamReducers.Reducer<K, S, T, A> reducer = aggregationContainer.aggregation.aggregationReducer(aggregationClass, resultClass,
+			Reducer<K, S, T, A> reducer = aggregationContainer.aggregation.aggregationReducer(aggregationClass, resultClass,
 					dimensions, compatibleMeasures, queryClassLoader);
 
 			StreamConsumer<S> streamReducerInput = streamReducer.newInput(keyFunction, reducer);
@@ -753,15 +763,15 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				cubeQuery.getWhere().getDimensions()));
 		long queryStarted = eventloop.currentTimeMillis();
 		return new RequestContext<>().execute(queryClassLoader, cubeQuery)
-				.whenComplete((queryResult, throwable) -> {
-					if (throwable == null) {
+				.whenComplete((queryResult, e) -> {
+					if (e == null) {
 						queryTimes.recordValue((int) (eventloop.currentTimeMillis() - queryStarted));
 					} else {
 						queryErrors++;
-						queryLastError = throwable;
+						queryLastError = e;
 
-						if (throwable instanceof NoSuchFileException) {
-							logger.warn("Query failed because of NoSuchFileException. " + cubeQuery.toString(), throwable);
+						if (e instanceof NoSuchFileException) {
+							logger.warn("Query failed because of NoSuchFileException. " + cubeQuery.toString(), e);
 						}
 					}
 				});
@@ -770,10 +780,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	private DefiningClassLoader getQueryClassLoader(CubeClassLoaderCache.Key key) {
 		if (classLoaderCache == null)
-			return this.classLoader;
+			return classLoader;
 		return classLoaderCache.getOrCreate(key);
 	}
 
+	@SuppressWarnings("rawtypes")
 	private class RequestContext<R> {
 		DefiningClassLoader queryClassLoader;
 		CubeQuery query;
@@ -852,7 +863,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			}
 		}
 
-		void prepareMeasures() throws QueryException {
+		void prepareMeasures() {
 			Set<String> queryStoredMeasures = new HashSet<>();
 			for (String measure : query.getMeasures()) {
 				if (computedMeasures.containsKey(measure)) {
@@ -934,7 +945,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			List<Expression> computeSequence = new ArrayList<>();
 
 			for (String computedMeasure : resultComputedMeasures) {
-				builder = builder.withField(computedMeasure, computedMeasures.get(computedMeasure).getType(measures));
+				builder.withField(computedMeasure, computedMeasures.get(computedMeasure).getType(measures));
 				Expression record = cast(arg(0), resultClass);
 				computeSequence.add(set(property(record, computedMeasure),
 						computedMeasures.get(computedMeasure).getExpression(record, measures)));
@@ -960,12 +971,12 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 			ExpressionComparator comparator = ExpressionComparator.create();
 
-			for (CubeQuery.Ordering ordering : query.getOrderings()) {
+			for (Ordering ordering : query.getOrderings()) {
 				String field = ordering.getField();
 
 				if (resultMeasures.contains(field) || resultAttributes.contains(field)) {
 					String property = field.replace('.', '$');
-					comparator = comparator.with(
+					comparator.with(
 							ordering.isAsc() ? leftProperty(resultClass, property) : rightProperty(resultClass, property),
 							ordering.isAsc() ? rightProperty(resultClass, property) : leftProperty(resultClass, property),
 							true);
@@ -978,7 +989,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 					.buildClassAndCreateNewInstance();
 		}
 
-		@SuppressWarnings("unchecked")
 		Promise<QueryResult> processResults(List<R> results) {
 			R totals;
 			try {
@@ -1096,7 +1106,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				start = 0;
 				offset = 0;
 			} else if (offset >= results.size()) {
-				return new ArrayList();
+				return new ArrayList<>();
 			} else {
 				start = offset;
 			}
@@ -1112,7 +1122,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 			if (comparator != null) {
 				return ((List<Object>) results).stream()
-						.sorted(((Comparator<Object>) comparator))
+						.sorted((Comparator<Object>) comparator)
 						.skip(offset)
 						.limit(limit)
 						.collect(Collectors.toList());

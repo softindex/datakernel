@@ -22,6 +22,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
+import io.datakernel.stream.processor.StreamJoin.ValueJoiner;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -32,7 +33,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 public class StreamJoinTest {
 	private static final class DataItemMaster {
@@ -127,7 +128,7 @@ public class StreamJoinTest {
 				StreamJoin.create(Integer::compareTo,
 						input -> input.detailId,
 						input -> input.id,
-						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
+						new ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
 							@Override
 							public DataItemMasterDetail doInnerJoin(Integer key, DataItemMaster left, DataItemDetail right) {
 								return new DataItemMasterDetail(left.id, left.detailId, left.master, right.detail);
@@ -157,7 +158,7 @@ public class StreamJoinTest {
 						new DataItemMasterDetail(25, 15, "masterB+", null),
 						new DataItemMasterDetail(30, 20, "masterC", "detailY"),
 						new DataItemMasterDetail(40, 20, "masterD", "detailY")},
-				result.toArray(new DataItemMasterDetail[result.size()]));
+				result.toArray(new DataItemMasterDetail[0]));
 		assertEndOfStream(source1);
 		assertEndOfStream(source2);
 	}
@@ -182,7 +183,7 @@ public class StreamJoinTest {
 				StreamJoin.create(Integer::compareTo,
 						input -> input.detailId,
 						input -> input.id,
-						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
+						new ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
 							@Override
 							public DataItemMasterDetail doInnerJoin(Integer key, DataItemMaster left, DataItemDetail right) {
 								return new DataItemMasterDetail(left.id, left.detailId, left.master, right.detail);
@@ -210,7 +211,7 @@ public class StreamJoinTest {
 						})));
 
 		eventloop.run();
-		assertTrue(list.size() == 1);
+		assertEquals(1, list.size());
 		assertClosedWithError(source1);
 		assertEndOfStream(source2);
 	}
@@ -237,7 +238,7 @@ public class StreamJoinTest {
 				StreamJoin.create(Integer::compareTo,
 						input -> input.detailId,
 						input -> input.id,
-						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
+						new ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
 							@Override
 							public DataItemMasterDetail doInnerJoin(Integer key, DataItemMaster left, DataItemDetail right) {
 								return new DataItemMasterDetail(left.id, left.detailId, left.master, right.detail);
@@ -259,7 +260,7 @@ public class StreamJoinTest {
 		streamJoin.getOutput().streamTo(consumer.apply(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
-		assertTrue(list.size() == 0);
+		assertEquals(0, list.size());
 		assertClosedWithError(source1);
 		assertClosedWithError(source2);
 	}

@@ -38,8 +38,8 @@ public final class StreamConsumers {
 		private final Throwable exception;
 		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
-		ClosingWithErrorImpl(Throwable exception) {
-			this.exception = exception;
+		ClosingWithErrorImpl(Throwable e) {
+			this.exception = e;
 		}
 
 		@Override
@@ -93,7 +93,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
+		protected void onError(Throwable e) {
 		}
 
 		@Override
@@ -102,7 +102,7 @@ public final class StreamConsumers {
 		}
 	}
 
-	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
+	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 		private final SerialConsumer<T> consumer;
 		private final ArrayDeque<T> deque = new ArrayDeque<>();
 		private final SettablePromise<Void> result = new SettablePromise<>();
@@ -117,7 +117,6 @@ public final class StreamConsumers {
 			produce();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public void accept(T item) {
 			assert item != null;
@@ -159,10 +158,10 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
+		protected void onError(Throwable e) {
 			deque.clear();
-			consumer.close(t);
-			result.trySetException(t);
+			consumer.close(e);
+			result.trySetException(e);
 		}
 
 		@Override

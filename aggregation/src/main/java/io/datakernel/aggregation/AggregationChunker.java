@@ -27,7 +27,7 @@ import io.datakernel.stream.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> implements StreamConsumer<T> {
+public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> {
 	private final StreamConsumerSwitcher<T> switcher;
 	private final SettablePromise<List<AggregationChunk>> result = new SettablePromise<>();
 
@@ -78,9 +78,8 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		return result;
 	}
 
-	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
+	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamDataAcceptor<T> {
 		private final SettablePromise<AggregationChunk> result = new SettablePromise<>();
-		private final C chunkId;
 		private final int chunkSize;
 		private final PartitionPredicate<T> partitionPredicate;
 		private StreamDataAcceptor<T> dataAcceptor;
@@ -94,7 +93,6 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		public ChunkWriter(StreamConsumer<T> actualConsumer,
 				C chunkId, int chunkSize, PartitionPredicate<T> partitionPredicate) {
 			super(actualConsumer);
-			this.chunkId = chunkId;
 			this.chunkSize = chunkSize;
 			this.partitionPredicate = partitionPredicate;
 			actualConsumer.getAcknowledgement()

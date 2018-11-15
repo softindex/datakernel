@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.annotation.Nullable;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.newLocal;
@@ -45,6 +46,7 @@ final class ExpressionLet implements Variable {
 		return field.type(ctx);
 	}
 
+	@Nullable
 	@Override
 	public Object beginStore(Context ctx) {
 		return null;
