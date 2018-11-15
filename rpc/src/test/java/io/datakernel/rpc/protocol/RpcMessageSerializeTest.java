@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,15 +22,14 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.net.UnknownHostException;
-
 import static java.lang.ClassLoader.getSystemClassLoader;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-public class RpcMessageSerializeTest {
+public final class RpcMessageSerializeTest {
 
 	public static class TestRpcMessageData {
 		private final String s;
@@ -60,33 +59,24 @@ public class RpcMessageSerializeTest {
 
 	}
 
-	private static <T> T doTest(Class<T> type, T testData1) {
-		BufferSerializer<T> serializer = SerializerBuilder.create(getSystemClassLoader())
-				.withSubclasses(RpcMessage.MESSAGE_TYPES, TestRpcMessageData.class, TestRpcMessageData2.class)
-				.build(type);
-		return doTest(testData1, serializer, serializer);
-	}
-
-	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
-		byte[] array = new byte[1000];
-		ByteBuf buf = ByteBuf.wrapForWriting(array);
-		serializer.serialize(buf, testData1);
-		return deserializer.deserialize(buf);
-	}
-
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
-	public void testRpcMessage() throws UnknownHostException {
+	public void testRpcMessage() {
 		TestRpcMessageData messageData1 = new TestRpcMessageData("TestMessageData");
 		RpcMessage message1 = RpcMessage.of(1, messageData1);
+		BufferSerializer<RpcMessage> serializer = SerializerBuilder.create(getSystemClassLoader())
+				.withSubclasses(RpcMessage.MESSAGE_TYPES, TestRpcMessageData.class, TestRpcMessageData2.class)
+				.build(RpcMessage.class);
 
-		RpcMessage message2 = doTest(RpcMessage.class, message1);
-		Assert.assertEquals(message1.getCookie(), message2.getCookie());
-		Assert.assertTrue(message2.getData() instanceof TestRpcMessageData);
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[1000]);
+		serializer.serialize(buf, message1);
+
+		RpcMessage message2 = serializer.deserialize(buf);
+		assertEquals(message1.getCookie(), message2.getCookie());
+		assertTrue(message2.getData() instanceof TestRpcMessageData);
 		TestRpcMessageData messageData2 = (TestRpcMessageData) message2.getData();
-		Assert.assertEquals(messageData1.getS(), messageData2.getS());
+		assertEquals(messageData1.getS(), messageData2.getS());
 	}
-
 }

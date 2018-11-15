@@ -23,14 +23,13 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.util.MemSize;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -43,31 +42,28 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
-public class TestCachedFsClient {
-	public static final Function<SerialSupplier<ByteBuf>, Promise<Void>> RECYCLING_FUNCTION = supplier -> supplier.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
-	public static final Function<SerialSupplier<ByteBuf>, Promise<String>> TO_STRING = supplier -> supplier.toCollector(ByteBufQueue.collector()).thenApply(buf -> buf.asString(UTF_8));
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
+@RunWith(DatakernelRunner.class)
+public final class TestCachedFsClient {
+
+	public static final Function<SerialSupplier<ByteBuf>, Promise<Void>> RECYCLING_FUNCTION = supplier ->
+			supplier.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)));
+
+	public static final Function<SerialSupplier<ByteBuf>, Promise<String>> TO_STRING = supplier ->
+			supplier.toCollector(ByteBufQueue.collector()).thenApply(buf -> buf.asString(UTF_8));
 
 	@Rule
 	public final TemporaryFolder tempFolder = new TemporaryFolder();
 
-	@Rule
-	public final ByteBufRule byteBufRule = new ByteBufRule();
-
-	private final static InetSocketAddress address = new InetSocketAddress("localhost", 23343);
-	private Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+	private final static InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 23343);
 
 	private Path cacheStorage;
 	private Path serverStorage;
 	private Path cacheTestFile;
 	private Path serverTestFile;
-	private ExecutorService executor;
 	private CachedFsClient cacheRemote;
 	private RemoteFsServer server;
 	private String testTxtContent;
@@ -93,17 +89,16 @@ public class TestCachedFsClient {
 		testTxtContent = "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8";
 		Files.write(serverTestFile, testTxtContent.getBytes(UTF_8));
 
-		executor = Executors.newCachedThreadPool();
-		main = RemoteFsClient.create(eventloop, address);
-		cache = LocalFsClient.create(eventloop, executor, cacheStorage);
-		cacheRemote = CachedFsClient.create(main, cache, CachedFsClient.lruCompare()).with(MemSize.kilobytes(50));
-		server = RemoteFsServer.create(eventloop, executor, serverStorage).withListenAddress(address);
-		server.listen();
-	}
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
+		ExecutorService executor = Executors.newSingleThreadExecutor();
 
-	@After
-	public void tearDown() {
-		executor.shutdown();
+		main = RemoteFsClient.create(eventloop, ADDRESS);
+		cache = LocalFsClient.create(eventloop, executor, cacheStorage);
+		cacheRemote = CachedFsClient.create(main, cache, CachedFsClient.lruCompare())
+				.with(MemSize.kilobytes(50));
+		server = RemoteFsServer.create(eventloop, executor, serverStorage)
+				.withListenAddress(ADDRESS);
+		server.listen();
 	}
 
 	@Test
@@ -115,8 +110,6 @@ public class TestCachedFsClient {
 				.thenCompose($ -> cache.download("test.txt")
 						.thenCompose(TO_STRING)
 						.whenComplete(assertComplete(s -> assertEquals(testTxtContent, s))));
-
-		eventloop.run();
 	}
 
 	@Test
@@ -129,8 +122,6 @@ public class TestCachedFsClient {
 					assertFalse(Files.exists(cacheStorage.resolve("test.txt")));
 				})
 				.whenComplete(assertComplete());
-
-		eventloop.run();
 	}
 
 	@Test
@@ -146,8 +137,6 @@ public class TestCachedFsClient {
 				.thenCompose($ -> cache.download("test.txt"))
 				.thenCompose(TO_STRING)
 				.whenComplete(assertComplete(s -> assertEquals(testTxtContent, s)));
-
-		eventloop.run();
 	}
 
 	@Test
@@ -159,8 +148,6 @@ public class TestCachedFsClient {
 				.whenComplete(($, e) -> server.close())
 				.whenComplete((res, err) -> assertEquals("in", res))
 				.whenComplete(assertComplete());
-
-		eventloop.run();
 	}
 
 	@Test
@@ -171,8 +158,6 @@ public class TestCachedFsClient {
 				.whenComplete(($, e) -> server.close())
 				.whenResult(s -> assertEquals(testTxtContent, s))
 				.whenComplete(assertComplete());
-
-		eventloop.run();
 	}
 
 	@Test
@@ -183,8 +168,6 @@ public class TestCachedFsClient {
 				.whenComplete((res, err) -> assertEquals("in", res))
 				.whenComplete(assertComplete())
 				.whenComplete(($, e) -> server.close());
-
-		eventloop.run();
 	}
 
 	@Test
@@ -197,8 +180,6 @@ public class TestCachedFsClient {
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete())
 				.whenResult(s -> assertEquals(fileContent, s));
-
-		eventloop.run();
 	}
 
 	@Test
@@ -211,8 +192,6 @@ public class TestCachedFsClient {
 				.whenComplete((res, err) -> assertEquals("hi", res))
 				.whenComplete(assertComplete())
 				.whenComplete(($, e) -> server.close());
-
-		eventloop.run();
 	}
 
 	@Test
@@ -246,7 +225,6 @@ public class TestCachedFsClient {
 				.whenResult(list -> assertEquals(list.size(), 9))
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
-		eventloop.run();
 	}
 
 	@Test
@@ -270,8 +248,6 @@ public class TestCachedFsClient {
 				})
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
-
-		eventloop.run();
 	}
 
 	@Test
@@ -280,8 +256,6 @@ public class TestCachedFsClient {
 				.whenComplete((res, err) -> assertNull(res))
 				.whenComplete(assertComplete())
 				.whenComplete(($, err) -> server.close());
-
-		eventloop.run();
 	}
 
 	@Test
@@ -298,8 +272,6 @@ public class TestCachedFsClient {
 					server.close();
 				})
 				.whenResult($ -> server.close());
-
-		eventloop.run();
 	}
 
 	@Test
@@ -314,7 +286,7 @@ public class TestCachedFsClient {
 
 		cacheRemote.start().whenResult(r -> server.close());
 
-		eventloop.run();
+		Eventloop.getCurrentEventloop().run();
 
 		server.listen();
 
@@ -327,8 +299,6 @@ public class TestCachedFsClient {
 					server.close();
 				})
 				.whenComplete(($, e) -> server.close());
-
-		eventloop.run();
 	}
 
 	@Test
@@ -356,15 +326,12 @@ public class TestCachedFsClient {
 						})
 						.whenResult($ -> server.close())
 				);
-
-		eventloop.run();
 	}
 
 	@Test
 	public void testGetTotalCacheSize() throws IOException {
 		initializeCacheFolder();
 		cacheRemote.getTotalCacheSize().whenResult(r -> server.close());
-		eventloop.run();
 	}
 
 	@Test
@@ -376,7 +343,6 @@ public class TestCachedFsClient {
 				.thenApply($ -> cacheRemote.getTotalCacheSize()
 						.whenResult(r -> assertTrue(r.toLong() < cacheRemote.getCacheSizeLimit().toLong())))
 				.whenResult($ -> server.close());
-		eventloop.run();
 	}
 
 	@Test
@@ -388,8 +354,6 @@ public class TestCachedFsClient {
 			assertEquals(IllegalStateException.class, e.getClass());
 			server.close();
 		}
-
-		eventloop.run();
 	}
 
 	@Test
@@ -406,7 +370,6 @@ public class TestCachedFsClient {
 
 		cache.list()
 				.whenResult(list -> list.forEach(val -> assertTrue(val.getFilename().startsWith("new"))));
-		eventloop.run();
 	}
 
 	@Test
@@ -424,7 +387,6 @@ public class TestCachedFsClient {
 
 		cache.list()
 				.whenResult(list -> assertEquals(1, list.stream().filter(fileMetadata -> fileMetadata.getFilename().startsWith("new")).count()));
-		eventloop.run();
 	}
 
 	@Test
@@ -439,7 +401,8 @@ public class TestCachedFsClient {
 				.thenCompose($ -> cacheRemote.download("bigFile.txt"))
 				.thenCompose(RECYCLING_FUNCTION)
 				.whenComplete(($, e) -> server.close());
-		eventloop.run();
+
+		Eventloop.getCurrentEventloop().run();
 
 		server.listen();
 
@@ -453,7 +416,6 @@ public class TestCachedFsClient {
 							assertTrue(value.getFilename().startsWith("test"));
 						}))
 				.whenComplete(($, e) -> server.close());
-		eventloop.run();
 	}
 
 	@Test
@@ -473,7 +435,6 @@ public class TestCachedFsClient {
 				.whenComplete(($, e) -> server.close())
 				.thenCompose($ -> cacheRemote.getTotalCacheSize())
 				.whenComplete(assertComplete(size -> assertEquals(35 * 1024 + 1, size.toLong())));
-		eventloop.run();
 	}
 
 	@Test
@@ -494,7 +455,6 @@ public class TestCachedFsClient {
 					list.forEach(file -> assertTrue(file.getFilename().startsWith("test")));
 				}))
 				.whenComplete(($, e) -> server.close());
-		eventloop.run();
 	}
 
 	private void initializeCacheFolder() throws IOException {
@@ -536,7 +496,7 @@ public class TestCachedFsClient {
 				cacheRemote.download(prefix + i)
 						.thenCompose(RECYCLING_FUNCTION)
 						.whenComplete(($, e) -> server.close());
-				eventloop.run();
+				Eventloop.getCurrentEventloop().run();
 			}
 		}
 	}

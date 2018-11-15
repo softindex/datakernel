@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,14 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.CachedAsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -40,57 +37,51 @@ import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
-public class SimpleProxyServerTest {
-	final static int ECHO_SERVER_PORT = 9707;
-	final static int PROXY_SERVER_PORT = 9444;
+public final class SimpleProxyServerTest {
+	private static final int ECHO_SERVER_PORT = 9707;
+	private static final int PROXY_SERVER_PORT = 9444;
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
-	public static AsyncHttpServer proxyHttpServer(Eventloop primaryEventloop, AsyncHttpClient httpClient) {
-		return AsyncHttpServer.create(primaryEventloop,
-				request -> {
-					String path = ECHO_SERVER_PORT + request.getUrl().getPath();
-					return httpClient.request(HttpRequest.get("http://127.0.0.1:" + path))
-							.thenCompose(ensureResponseBody())
-							.thenApply(result -> HttpResponse.ofCode(result.getCode())
-									.withBody(encodeAscii("FORWARDED: " + result.getBody().asString(UTF_8))));
-				})
-				.withListenAddress(new InetSocketAddress("localhost", PROXY_SERVER_PORT));
-	}
-
-	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
-		AsyncServlet servlet = request ->
-				Promise.of(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
-
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", ECHO_SERVER_PORT));
-	}
-
-	private void readAndAssert(InputStream is, String expected) throws IOException {
+	private void readAndAssert(InputStream is, String expected) {
 		byte[] bytes = new byte[expected.length()];
 		readFully(is, bytes);
-		Assert.assertEquals(expected, decodeAscii(bytes));
+		assertEquals(expected, decodeAscii(bytes));
 	}
 
 	@Test
 	public void testSimpleProxyServer() throws Exception {
 		Eventloop eventloop1 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AsyncHttpServer echoServer = echoServer(eventloop1);
+
+		AsyncHttpServer echoServer = AsyncHttpServer.create(eventloop1, request ->
+				Promise.of(HttpResponse.ok200()
+						.withBody(encodeAscii(request.getUrl().getPathAndQuery()))))
+				.withListenPort(ECHO_SERVER_PORT);
 		echoServer.listen();
+
 		Thread echoServerThread = new Thread(eventloop1);
 		echoServerThread.start();
 
 		Eventloop eventloop2 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AsyncDnsClient dnsClient = CachedAsyncDnsClient.create(eventloop2, RemoteAsyncDnsClient.create(eventloop2)
-				.withDatagramSocketSetting(DatagramSocketSettings.create())
-				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2)
-				.withDnsClient(dnsClient);
 
-		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2)
+				.withDnsClient(CachedAsyncDnsClient.create(eventloop2, RemoteAsyncDnsClient.create(eventloop2)
+						.withDatagramSocketSetting(DatagramSocketSettings.create())
+						.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"))));
+
+		AsyncHttpServer proxyServer = AsyncHttpServer.create(eventloop2, request -> {
+			String path = ECHO_SERVER_PORT + request.getUrl().getPath();
+			return httpClient.request(HttpRequest.get("http://127.0.0.1:" + path))
+					.thenCompose(ensureResponseBody())
+					.thenApply(result -> HttpResponse.ofCode(result.getCode())
+							.withBody(encodeAscii("FORWARDED: " + result.getBody().asString(UTF_8))));
+		})
+				.withListenPort(PROXY_SERVER_PORT);
 		proxyServer.listen();
+
 		Thread proxyServerThread = new Thread(eventloop2);
 		proxyServerThread.start();
 
@@ -106,14 +97,12 @@ public class SimpleProxyServerTest {
 		httpClient.getEventloop().execute(httpClient::stop);
 
 		echoServer.closeFuture().get();
-
 		proxyServer.closeFuture().get();
 
-		assertTrue(toByteArray(socket.getInputStream()).length == 0);
+		assertEquals(0, toByteArray(socket.getInputStream()).length);
 		socket.close();
 
 		echoServerThread.join();
 		proxyServerThread.join();
 	}
-
 }

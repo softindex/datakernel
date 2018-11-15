@@ -16,40 +16,34 @@
 
 package io.global.fs;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.stream.processor.ActivePromisesRule;
+import io.datakernel.exception.StacklessException;
+import io.datakernel.stream.processor.DatakernelRunner;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.fs.http.DiscoveryServlet;
 import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.local.RuntimeDiscoveryService;
-import org.junit.Rule;
 import org.junit.Test;
-import org.spongycastle.crypto.CryptoException;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.set;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class DiscoveryHttpTest {
-
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
+@RunWith(DatakernelRunner.class)
+public final class DiscoveryHttpTest {
 
 	@Test
 	public void test() throws IOException {
-		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
-
 		DiscoveryServlet servlet = new DiscoveryServlet(new RuntimeDiscoveryService());
-
 		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), request -> {
 			try {
 				return servlet.serve(request);
@@ -78,7 +72,8 @@ public class DiscoveryHttpTest {
 				.whenComplete(assertComplete(data -> assertTrue(data.verify(bob.getPubKey()))))
 
 				.thenCompose($ -> clientService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(90, set()), alice.getPrivKey())))
-				.thenCompose($ -> clientService.find(alice.getPubKey()))
+				.whenComplete(assertFailure(StacklessException.class, "Rejected announce data as outdated"))
+				.thenComposeEx(($, e) -> clientService.find(alice.getPubKey()))
 				.whenComplete(assertComplete(data -> {
 					assertTrue(data.verify(alice.getPubKey()));
 					assertEquals(123, data.getData().getTimestamp());
@@ -88,15 +83,7 @@ public class DiscoveryHttpTest {
 				.thenCompose($ -> clientService.getSharedKey(alice.getPubKey(), bobSimKeyHash))
 				.whenComplete(assertComplete(signedSharedSimKey -> {
 					assertTrue(signedSharedSimKey.verify(bob.getPubKey()));
-					SharedSimKey sharedSimKey = signedSharedSimKey.getData();
-					try {
-						System.out.println(sharedSimKey);
-						assertEquals(bobSimKey, sharedSimKey.decryptSimKey(alice.getPrivKey()));
-					} catch (CryptoException e) {
-						throw new AssertionError(e);
-					}
+					assertEquals(bobSimKey, signedSharedSimKey.getData().decryptSimKey(alice.getPrivKey()));
 				}));
-
-		eventloop.run();
 	}
 }

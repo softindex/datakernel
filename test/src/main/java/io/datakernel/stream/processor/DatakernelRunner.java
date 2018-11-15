@@ -17,8 +17,13 @@
 package io.datakernel.stream.processor;
 
 import org.junit.rules.TestRule;
+import org.junit.runner.Runner;
 import org.junit.runners.BlockJUnit4ClassRunner;
+import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
+import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
+import org.junit.runners.parameterized.ParametersRunnerFactory;
+import org.junit.runners.parameterized.TestWithParameters;
 
 import java.util.List;
 
@@ -31,13 +36,40 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 		super(klass);
 	}
 
-	@Override
-	protected List<TestRule> getTestRules(Object target) {
-		List<TestRule> rules = super.getTestRules(target);
+	private static void addRules(List<TestRule> rules) {
 		rules.add(0, new EventloopRule());
 		rules.add(new ActivePromisesRule());
 		rules.add(new ByteBufRule());
 		rules.add(new LoggingRule());
+	}
+
+	@Override
+	protected List<TestRule> getTestRules(Object target) {
+		List<TestRule> rules = super.getTestRules(target);
+		addRules(rules);
 		return rules;
+	}
+
+	@Override
+	protected String testName(FrameworkMethod method) {
+		return super.testName(method);
+	}
+
+	/**
+	 * For use with {@link org.junit.runners.Parameterized} runner.
+	 */
+	public static final class DatakernelRunnerFactory implements ParametersRunnerFactory {
+		@Override
+		public Runner createRunnerForTestWithParameters(TestWithParameters test) throws InitializationError {
+			return new BlockJUnit4ClassRunnerWithParameters(test) {
+
+				@Override
+				protected List<TestRule> getTestRules(Object target) {
+					List<TestRule> rules = super.getTestRules(target);
+					addRules(rules);
+					return rules;
+				}
+			};
+		}
 	}
 }

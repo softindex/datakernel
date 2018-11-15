@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,10 +38,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
-public class RpcHelloWorldTest {
+public final class RpcHelloWorldTest {
 
 	private interface HelloService {
 		String hello(String name) throws Exception;
@@ -86,7 +88,7 @@ public class RpcHelloWorldTest {
 					}
 					return "Hello, " + name + "!";
 				}))
-				.withListenAddress(new InetSocketAddress("localhost", PORT));
+				.withListenPort(PORT);
 	}
 
 	private static class BlockingHelloClient implements HelloService, AutoCloseable {
@@ -139,39 +141,30 @@ public class RpcHelloWorldTest {
 	@Test
 	public void testBlockingCall() throws Exception {
 		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
-			for (int i = 0; i < 0; i++) {
+			for (int i = 0; i < 10; i++) {
 				assertEquals("Hello, World!", client.hello("World"));
 			}
 		} finally {
 			server.closeFuture().get();
-
 		}
 	}
 
 	@Test
 	public void testAsyncCall() throws Exception {
-		int count = 1; // amount requests
-		AtomicInteger success = new AtomicInteger();
+		int requestCount = 10;
+
 		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
-			CountDownLatch latch = new CountDownLatch(count);
-			for (int i = 0; i < count; i++) {
+			CountDownLatch latch = new CountDownLatch(requestCount);
+			for (int i = 0; i < requestCount; i++) {
 				String name = "World" + i;
 				client.eventloop.execute(() -> client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-						.whenComplete((helloResponse, throwable) -> {
-							if (throwable != null) {
-								System.err.println(throwable.getMessage());
-							} else {
-								success.incrementAndGet();
-								assertEquals("Hello, " + name + "!", helloResponse.message);
-							}
-							latch.countDown();
-						}));
+						.whenComplete(($, e) -> latch.countDown())
+						.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 			}
 			latch.await();
 		} finally {
 			server.closeFuture().get();
 		}
-		assertTrue(success.get() > 0);
 	}
 
 	@Test
@@ -199,42 +192,31 @@ public class RpcHelloWorldTest {
 
 	@Test
 	public void testAsync2Clients() throws Exception {
-		int count = 10; // amount requests
+		int requestCount = 10;
 
 		try (BlockingHelloClient client1 = new BlockingHelloClient(eventloop);
 				BlockingHelloClient client2 = new BlockingHelloClient(eventloop)) {
-			CountDownLatch latch1 = new CountDownLatch(count);
-			CountDownLatch latch2 = new CountDownLatch(count);
+			CountDownLatch latch = new CountDownLatch(2 * requestCount);
 
-			for (int i = 0; i < count; i++) {
+			for (int i = 0; i < requestCount; i++) {
 				String name = "world" + i;
-				client1.eventloop.execute(() -> client1.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-						.whenComplete((helloResponse, throwable) -> {
-							latch1.countDown();
-							if (throwable != null) {
-								fail(throwable.getMessage());
-							} else {
-								assertEquals("Hello, " + name + "!", helloResponse.message);
-							}
-						}));
-				client2.eventloop.execute(() -> client2.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-						.whenComplete((helloResponse, throwable) -> {
-							latch2.countDown();
-							if (throwable != null) {
-								fail(throwable.getMessage());
-							} else {
-								assertEquals("Hello, " + name + "!", helloResponse.message);
-							}
-						}));
+				client1.eventloop.execute(() ->
+						client1.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
+								.whenComplete(($1, e1) -> latch.countDown())
+								.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
+				client2.eventloop.execute(() ->
+						client2.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
+								.whenComplete(($, e) -> latch.countDown())
+								.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 			}
-			latch1.await();
-			latch2.await();
+			latch.await();
 		} finally {
 			server.closeFuture().get();
 		}
 	}
 
-	//	@Test
+	// @Test
+	// @Ignore("this is not a test but a benchmark, takes a lot of time")
 	public void testRejectedRequests() throws Exception {
 		int count = 1_000_000;
 
@@ -243,22 +225,18 @@ public class RpcHelloWorldTest {
 				AtomicInteger success = new AtomicInteger(0);
 				AtomicInteger error = new AtomicInteger(0);
 				CountDownLatch latch = new CountDownLatch(count);
-				Stopwatch stopwatch = Stopwatch.createUnstarted();
-				stopwatch.start();
+				Stopwatch stopwatch = Stopwatch.createStarted();
 				for (int i = 0; i < count; i++) {
-					client.eventloop.execute(() -> client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest("benchmark"), TIMEOUT)
-							.whenComplete((helloResponse, throwable) -> {
-								latch.countDown();
-								if (throwable != null) {
-									error.incrementAndGet();
-								} else {
-									success.incrementAndGet();
-								}
-							}));
+					client.eventloop.execute(() ->
+							client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest("benchmark"), TIMEOUT)
+									.whenComplete(($, e) -> {
+										latch.countDown();
+										(e == null ? success : error).incrementAndGet();
+									}));
 				}
 				latch.await();
-				System.out.println(t + ": Elapsed " + stopwatch.stop().toString() + " rps: " + count * 1000000.0 / stopwatch.elapsed(MICROSECONDS)
-						+ " (" + success.get() + "/" + count + " [" + error.get() + "])");
+				System.out.printf("%2d: Elapsed %8s rps: %18s (%d/%d [%d])%n",
+						t + 1, stopwatch.stop().toString(), count * 1000000.0 / stopwatch.elapsed(MICROSECONDS), success.get(), count, error.get());
 			}
 		} finally {
 			server.closeFuture().get();

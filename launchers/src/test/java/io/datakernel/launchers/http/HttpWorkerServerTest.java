@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
-public class HttpWorkerServerTest {
+public final class HttpWorkerServerTest {
 	public static final int PORT = 7124;
 
 	@Rule

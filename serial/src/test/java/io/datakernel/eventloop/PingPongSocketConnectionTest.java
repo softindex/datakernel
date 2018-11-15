@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,71 +16,61 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Rule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
 import static io.datakernel.async.Promises.loop;
-import static io.datakernel.async.Promises.repeat;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.assertComplete;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertEquals;
 
-public class PingPongSocketConnectionTest {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+@RunWith(DatakernelRunner.class)
+public final class PingPongSocketConnectionTest {
+	private static final int ITERATIONS = 100;
 
-	private final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 9022);
-	private final int ITERATIONS = 3;
 	private static final String REQUEST_MSG = "PING";
 	private static final String RESPONSE_MSG = "PONG";
 
-	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
-			.andThen(ByteBuf::asArray)
-			.andThen(ByteBufStrings::decodeAscii);
+	private static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 9022);
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
+			.andThen(buf -> buf.asString(UTF_8));
 
 	@Test
 	public void test() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		SimpleServer server = SimpleServer.create(eventloop,
-				socket -> {
-					ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(socket));
-					repeat(() ->
-							PARSER.parse(bufsSupplier)
-									.whenResult(System.out::println)
-									.thenCompose($ -> socket.write(wrapAscii(RESPONSE_MSG))))
-							.whenComplete(($, e) -> socket.close());
-				})
+		SimpleServer.create(socket -> {
+			ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(socket));
+			loop(ITERATIONS, i -> i != 0, i ->
+					PARSER.parse(bufsSupplier)
+							.whenResult(res -> assertEquals(REQUEST_MSG, res))
+							.thenCompose($ -> socket.write(wrapAscii(RESPONSE_MSG)))
+							.thenApply($ -> i - 1))
+					.whenComplete(($, e) -> socket.close())
+					.whenComplete(assertComplete());
+		})
 				.withListenAddress(ADDRESS)
-				.withAcceptOnce();
-
-		server.listen();
+				.withAcceptOnce()
+				.listen();
 
 		AsyncTcpSocketImpl.connect(ADDRESS)
-				.whenResult(socket -> {
+				.thenCompose(socket -> {
 					ByteBufsSupplier bufsSupplier = ByteBufsSupplier.of(SerialSupplier.ofSocket(socket));
-					loop(3, i -> i != 0,
+					return loop(ITERATIONS, i -> i != 0,
 							i -> socket.write(wrapAscii(REQUEST_MSG))
-									.thenCompose($ -> PARSER.parse(bufsSupplier)
-											.whenResult(System.out::println)
-											.thenApply($2 -> i - 1)))
-							.whenComplete(($, e) -> socket.close());
+									.thenCompose($ -> PARSER.parse(bufsSupplier))
+									.whenResult(res -> assertEquals(RESPONSE_MSG, res))
+									.thenApply($ -> i - 1))
+							.whenComplete(($, e) -> socket.close())
+							.whenComplete(assertComplete());
 				})
-				.whenException(e -> { throw new RuntimeException(e); });
-
-		eventloop.run();
+				.whenComplete(assertComplete());
 	}
-
 }

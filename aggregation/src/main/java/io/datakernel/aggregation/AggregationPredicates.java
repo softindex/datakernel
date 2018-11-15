@@ -17,6 +17,7 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.PredicateDef;
@@ -1143,9 +1144,7 @@ public class AggregationPredicates {
 
 			PredicateHas that = (PredicateHas) o;
 
-			if (!key.equals(that.key)) return false;
-			return true;
-
+			return key.equals(that.key);
 		}
 
 		@Override
@@ -1569,7 +1568,7 @@ public class AggregationPredicates {
 		return or(asList(predicates));
 	}
 
-	public static AggregationPredicate eq(String key, Object value) {
+	public static AggregationPredicate eq(String key, @Nullable Object value) {
 		return new PredicateEq(key, value);
 	}
 

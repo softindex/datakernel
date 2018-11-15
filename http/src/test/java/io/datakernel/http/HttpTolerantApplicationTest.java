@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,10 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Rule;
+import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.EventloopRule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -29,49 +30,35 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.concurrent.Future;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
+import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.asserting;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
-public class HttpTolerantApplicationTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
-
-	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
-
-		return AsyncHttpServer.create(primaryEventloop,
-				request ->
-						Promise.ofCallback(cb ->
-								primaryEventloop.post(() -> cb.set(
-										HttpResponse.ok200()
-												.withBody(encodeAscii(request.getUrl().getPathAndQuery()))))))
-				.withListenAddress(new InetSocketAddress("localhost", port));
-	}
-
-	private static void write(Socket socket, String string) throws IOException {
-		ByteBuf buf = ByteBuf.wrapForReading(encodeAscii(string));
-		socket.getOutputStream().write(buf.array(), buf.readPosition(), buf.readRemaining());
-	}
-
-	private static void readAndAssert(InputStream is, String expected) throws IOException {
-		byte[] bytes = new byte[expected.length()];
-		readFully(is, bytes);
-		assertEquals(expected, decodeAscii(bytes));
-	}
+@RunWith(DatakernelRunner.class)
+public final class HttpTolerantApplicationTest {
 
 	@Test
+	@EventloopRule.DontRun
 	public void testTolerantServer() throws Exception {
+		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
+
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		AsyncHttpServer server = asyncHttpServer(eventloop, port);
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				request ->
+						Promise.ofCallback(cb ->
+								eventloop.post(() -> cb.set(
+										HttpResponse.ok200()
+												.withBody(encodeAscii(request.getUrl().getPathAndQuery()))))))
+				.withListenPort(port);
+
 		server.listen();
+
 		Thread thread = new Thread(eventloop);
 		thread.start();
 
@@ -84,67 +71,50 @@ public class HttpTolerantApplicationTest {
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 4\r\n\r\n/abc");
 		write(socket, "GET /abc  HTTP1.1\nHost: \tlocalhost \t \n\n");
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\n/abc");
-		assertTrue(toByteArray(socket.getInputStream()).length == 0);
+		assertEquals(0, toByteArray(socket.getInputStream()).length);
 		socket.close();
 
 		server.closeFuture().get();
 		thread.join();
 	}
 
-	private static ServerSocket socketServer(int port, String testResponse) throws IOException {
-		ServerSocket listener = new ServerSocket(port);
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				while (!Thread.currentThread().isInterrupted()) {
-					try (Socket socket = listener.accept()) {
-						System.out.println("accept: " + socket);
-						DataInputStream in = new DataInputStream(socket.getInputStream());
-						readHttpMessage(in);
-						System.out.println("write: " + socket);
-						write(socket, testResponse);
-					} catch (IOException ignored) {
-					}
-				}
-			}
-
-			public void readHttpMessage(DataInputStream in) throws IOException {
-				//noinspection StatementWithEmptyBody
-				int eofCounter = 0;
-				while (eofCounter < 2) {
-					int i = in.read();
-					if (i == -1)
-						break;
-					if (i == LF) {
-						eofCounter++;
-					} else {
-						if (i != CR)
-							eofCounter = 0;
-					}
-				}
-			}
-		}).start();
-		return listener;
-	}
-
 	@Test
 	public void testTolerantClient() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
-			AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
-			Future<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + port))
-					.thenCompose(ensureResponseBody())
-					.thenApply(response ->
-							response.getHeaderOrNull(HttpHeaders.CONTENT_TYPE))
-					.whenComplete(($, e) -> httpClient.stop())
-					.toCompletableFuture();
+		ServerSocket listener = new ServerSocket(port);
+		new Thread(() -> {
+			while (Thread.currentThread().isAlive()) {
+				try (Socket socket = listener.accept()) {
+					System.out.println("accept: " + socket);
+					DataInputStream in = new DataInputStream(socket.getInputStream());
+					int b = 0;
+					while (b != -1 && !(((b = in.read()) == CR || b == LF) && (b = in.read()) == LF)) {
+					}
+					System.out.println("write: " + socket);
+					write(socket, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc");
+				} catch (IOException ignored) {
+				}
+			}
+		})
+				.start();
 
-			eventloop.run();
-
-			assertEquals("text/html; charset=UTF-8", future.get());
-		}
+		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.request(HttpRequest.get("http://127.0.0.1:" + port))
+				.whenComplete(asserting(($, e) -> {
+					listener.close();
+				}))
+				.whenComplete(assertComplete(response -> assertEquals("text/html; charset=UTF-8", response.getHeaderOrNull(HttpHeaders.CONTENT_TYPE))));
 	}
 
+	private static void write(Socket socket, String string) throws IOException {
+		ByteBuf buf = ByteBuf.wrapForReading(encodeAscii(string));
+		socket.getOutputStream().write(buf.array(), buf.readPosition(), buf.readRemaining());
+	}
+
+	private static void readAndAssert(InputStream is, String expected) {
+		byte[] bytes = new byte[expected.length()];
+		readFully(is, bytes);
+		assertEquals(expected, decodeAscii(bytes));
+	}
 }

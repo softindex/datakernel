@@ -29,10 +29,10 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.ActivePromisesRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.StreamSorterStorage;
-import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -41,14 +41,13 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static io.datakernel.datagraph.dataset.Datasets.*;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class DatagraphServerTest {
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
+@SuppressWarnings({"Convert2Lambda", "Anonymous2MethodRef"})
+@RunWith(DatakernelRunner.class)
+public final class DatagraphServerTest {
 
 	public static final class TestItem {
 		@Serialize(order = 0)
@@ -95,7 +94,6 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
@@ -114,9 +112,9 @@ public class DatagraphServerTest {
 						new TestItem(6)))
 				.with("result", result2);
 
-		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
+		DatagraphServer server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
+		DatagraphServer server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		DatagraphClient client = new DatagraphClient(serialization);
@@ -136,18 +134,13 @@ public class DatagraphServerTest {
 
 		result1.getResult()
 				.whenComplete(($, err) -> server1.close())
-				.whenComplete(assertComplete());
+				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), list)));
 
 		result2.getResult()
 				.whenComplete(($, err) -> server2.close())
-				.whenComplete(assertComplete());
+				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), list)));
 
 		graph.execute();
-
-		eventloop.run();
-
-		assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), result1.getList());
-		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result2.getList());
 	}
 
 	@Test
@@ -156,7 +149,6 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
@@ -179,9 +171,9 @@ public class DatagraphServerTest {
 						new TestItem(1),
 						new TestItem(6)))
 				.with("result", result2);
-		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
+		DatagraphServer server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
+		DatagraphServer server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
@@ -207,18 +199,13 @@ public class DatagraphServerTest {
 
 		result1.getResult()
 				.whenComplete(($, err) -> server1.close())
-				.whenComplete(assertComplete());
+				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), list)));
 
 		result2.getResult()
 				.whenComplete(($, err) -> server2.close())
-				.whenComplete(assertComplete());
+				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), list)));
 
 		graph.execute();
-
-		eventloop.run();
-
-		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), result1.getList());
-		assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), result2.getList());
 	}
 
 	@Test
@@ -227,7 +214,6 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DatagraphClient client = new DatagraphClient(serialization);
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
@@ -235,7 +221,7 @@ public class DatagraphServerTest {
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
 				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(Eventloop.getCurrentEventloop()));
 		DatagraphEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(6),
@@ -253,9 +239,9 @@ public class DatagraphServerTest {
 						new TestItem(5)))
 				.with("result", result2);
 
-		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
+		DatagraphServer server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
+		DatagraphServer server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
@@ -290,18 +276,13 @@ public class DatagraphServerTest {
 
 		result1.getResult()
 				.whenComplete(($, err) -> server1.close())
-				.whenComplete(assertComplete());
+				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), list)));
 
 		result2.getResult()
 				.whenComplete(($, err) -> server2.close())
-				.whenComplete(assertComplete());
+				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(8)), result2.getList())));
 
 		graph.execute();
-
-		eventloop.run();
-
-		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result1.getList());
-		assertEquals(asList(new TestItem(2), new TestItem(8)), result2.getList());
 	}
 
 	@Test
@@ -310,14 +291,13 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DatagraphClient client = new DatagraphClient(serialization);
 		StreamConsumerToList<TestItem> resultConsumer = StreamConsumerToList.create();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
 				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(Eventloop.getCurrentEventloop()));
 		DatagraphEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(1),
@@ -334,9 +314,9 @@ public class DatagraphServerTest {
 						new TestItem(10)
 				));
 
-		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
+		DatagraphServer server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
+		DatagraphServer server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
@@ -362,7 +342,7 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client, eventloop);
+		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client, Eventloop.getCurrentEventloop());
 		StreamSupplier<TestItem> resultSupplier = collector.compile(graph);
 
 		System.out.println("Graph: ");
@@ -373,18 +353,10 @@ public class DatagraphServerTest {
 					server1.close();
 					server2.close();
 				})
-				.whenComplete(assertComplete());
+				.thenCompose($ -> resultConsumer.getResult())
+				.whenComplete(assertComplete(list ->
+						assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(8), new TestItem(10)), list)));
 
 		graph.execute();
-
-		eventloop.run();
-
-		assertEquals(asList(
-				new TestItem(2),
-				new TestItem(4),
-				new TestItem(6),
-				new TestItem(8),
-				new TestItem(10)),
-				resultConsumer.getList());
 	}
 }

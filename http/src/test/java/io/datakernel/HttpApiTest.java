@@ -20,14 +20,12 @@ import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -35,20 +33,17 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaderValue.*;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static java.time.ZoneOffset.UTC;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
-@SuppressWarnings("ConstantConditions")
-public class HttpApiTest {
+@RunWith(DatakernelRunner.class)
+public final class HttpApiTest {
 	public static final int PORT = 5568;
-	private static final InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
 
-	private Eventloop eventloop;
 	private AsyncHttpServer server;
 	private AsyncHttpClient client;
 
@@ -72,27 +67,19 @@ public class HttpApiTest {
 	private List<HttpCookie> responseCookies = new ArrayList<>();
 	private int age = 10_000;
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
-
 	@Before
 	public void setUp() {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				try {
-					testRequest(request);
-					HttpResponse response = createResponse();
-					return Promise.of(response);
-				} catch (ParseException e) {
-					return Promise.ofException((Throwable) e);
-				}
+		server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request -> {
+			try {
+				testRequest(request);
+				return Promise.of(createResponse());
+			} catch (ParseException e) {
+				return Promise.ofException(e);
 			}
-		};
+		})
+				.withListenPort(PORT);
 
-		server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PORT));
-		client = AsyncHttpClient.create(eventloop);
+		client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 
 		// setup request and response data
 		requestAcceptContentTypes.add(AcceptMediaType.of(MediaTypes.ANY_AUDIO, 90));
@@ -121,23 +108,11 @@ public class HttpApiTest {
 		server.listen();
 		client.request(createRequest())
 				.thenCompose(ensureResponseBody())
-				.whenComplete((response, throwable) -> {
-					if (throwable != null) {
-						fail("Should not end here");
-					} else {
-						try {
-							testResponse(response);
-						} catch (ParseException e) {
-							fail("Invalid response");
-						}
-					}
-				})
-				.whenResult($ -> {
+				.whenComplete(($, e) -> {
 					server.close();
 					client.stop();
-				});
-
-		eventloop.run();
+				})
+				.whenComplete(assertComplete(this::testResponse));
 	}
 
 	private HttpResponse createResponse() {

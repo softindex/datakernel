@@ -20,45 +20,39 @@ import io.datakernel.async.AsyncProcess;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.http.TestUtils.AssertingConsumer;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.serial.SerialSupplier.ofIterable;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertTrue;
 
-public class BufsConsumerIntegrationTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
-	public final AssertingConsumer consumer = new AssertingConsumer();
-	public final ArrayList<ByteBuf> list = new ArrayList<>();
-	public final Random random = new Random();
-	public BufsConsumerChunkedEncoder chunkedEncoder = BufsConsumerChunkedEncoder.create();
-	public BufsConsumerChunkedDecoder chunkedDecoder = BufsConsumerChunkedDecoder.create();
-	public BufsConsumerGzipDeflater gzipDeflater = BufsConsumerGzipDeflater.create();
-	public BufsConsumerGzipInflater gzipInflater = BufsConsumerGzipInflater.create();
-	public final Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+@RunWith(DatakernelRunner.class)
+public final class BufsConsumerIntegrationTest {
+	private final AssertingConsumer consumer = new AssertingConsumer();
+	private final ArrayList<ByteBuf> list = new ArrayList<>();
+	private final BufsConsumerChunkedEncoder chunkedEncoder = BufsConsumerChunkedEncoder.create();
+	private final BufsConsumerChunkedDecoder chunkedDecoder = BufsConsumerChunkedDecoder.create();
+	private final BufsConsumerGzipDeflater gzipDeflater = BufsConsumerGzipDeflater.create();
+	private final BufsConsumerGzipInflater gzipInflater = BufsConsumerGzipInflater.create();
 
 	@Before
 	public void setUp() {
 		consumer.reset();
+		chunkedEncoder.getOutput().set(chunkedDecoder.getInput().getConsumer());
+		chunkedDecoder.getOutput().set(consumer);
+		gzipDeflater.getOutput().set(gzipInflater.getInput().getConsumer());
+		gzipInflater.getOutput().set(consumer);
 	}
 
 	@Test
 	public void testEncodeDecodeSingleBuf() {
-		chunkedEncoder.getOutput().set(chunkedDecoder.getInput().getConsumer());
-		chunkedDecoder.getOutput().set(consumer);
 		writeSingleBuf();
 		chunkedEncoder.getInput().set(ofIterable(list));
 		doTest(chunkedEncoder, chunkedDecoder);
@@ -66,8 +60,6 @@ public class BufsConsumerIntegrationTest {
 
 	@Test
 	public void testEncodeDecodeMultipleBufs() {
-		chunkedEncoder.getOutput().set(chunkedDecoder.getInput().getConsumer());
-		chunkedDecoder.getOutput().set(consumer);
 		writeMultipleBufs();
 		chunkedEncoder.getInput().set(ofIterable(list));
 		doTest(chunkedEncoder, chunkedDecoder);
@@ -75,8 +67,6 @@ public class BufsConsumerIntegrationTest {
 
 	@Test
 	public void testGzipGunzipSingleBuf() {
-		gzipDeflater.getOutput().set(gzipInflater.getInput().getConsumer());
-		gzipInflater.getOutput().set(consumer);
 		writeSingleBuf();
 		gzipDeflater.getInput().set(ofIterable(list));
 		doTest(gzipInflater, gzipDeflater);
@@ -84,8 +74,6 @@ public class BufsConsumerIntegrationTest {
 
 	@Test
 	public void testGzipGunzipMultipleBufs() {
-		gzipDeflater.getOutput().set(gzipInflater.getInput().getConsumer());
-		gzipInflater.getOutput().set(consumer);
 		writeMultipleBufs();
 		gzipDeflater.getInput().set(ofIterable(list));
 		doTest(gzipInflater, gzipDeflater);
@@ -93,7 +81,7 @@ public class BufsConsumerIntegrationTest {
 
 	private void writeSingleBuf() {
 		byte[] data = new byte[1000];
-		random.nextBytes(data);
+		ThreadLocalRandom.current().nextBytes(data);
 		consumer.setExpectedByteArray(data);
 		ByteBuf buf = ByteBufPool.allocate(data.length);
 		buf.put(data);
@@ -102,14 +90,14 @@ public class BufsConsumerIntegrationTest {
 
 	private void writeMultipleBufs() {
 		byte[] data = new byte[100_000];
-		random.nextBytes(data);
+		ThreadLocalRandom.current().nextBytes(data);
 		ByteBuf toBeSplitted = ByteBufPool.allocate(data.length);
 		ByteBuf expected = ByteBufPool.allocate(data.length);
 		toBeSplitted.put(data);
 		expected.put(data);
 		consumer.setExpectedBuf(expected);
 		while (toBeSplitted.isRecycleNeeded() && toBeSplitted.readRemaining() != 0) {
-			int part = Math.min(random.nextInt(100) + 100, toBeSplitted.readRemaining());
+			int part = Math.min(ThreadLocalRandom.current().nextInt(100) + 100, toBeSplitted.readRemaining());
 			ByteBuf slice = toBeSplitted.slice(part);
 			toBeSplitted.moveReadPosition(part);
 			list.add(slice);
@@ -119,9 +107,6 @@ public class BufsConsumerIntegrationTest {
 
 	private void doTest(AsyncProcess process1, AsyncProcess process2) {
 		Promises.all(process1.getProcessResult(), process2.getProcessResult())
-				.whenComplete(assertComplete())
-				.whenComplete(($, e) -> assertTrue(consumer.executed));
-
-		eventloop.run();
+				.whenComplete(assertComplete($ -> assertTrue(consumer.executed)));
 	}
 }

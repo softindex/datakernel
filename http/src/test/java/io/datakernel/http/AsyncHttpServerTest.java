@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,8 +41,7 @@ import static java.lang.Math.min;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class AsyncHttpServerTest {
-
+public final class AsyncHttpServerTest {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
@@ -50,7 +49,7 @@ public class AsyncHttpServerTest {
 		return AsyncHttpServer.create(primaryEventloop,
 				request -> Promise.of(
 						HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))))
-				.withListenAddress(new InetSocketAddress("localhost", port));
+				.withListenPort(port);
 	}
 
 	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
@@ -58,7 +57,7 @@ public class AsyncHttpServerTest {
 				request ->
 						Promise.ofCallback(cb -> cb.post(
 								HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())))))
-				.withListenAddress(new InetSocketAddress("localhost", port));
+				.withListenPort(port);
 	}
 
 	static final Random RANDOM = new Random();
@@ -69,7 +68,7 @@ public class AsyncHttpServerTest {
 						cb -> primaryEventloop.delay(RANDOM.nextInt(3),
 								() -> cb.set(
 										HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))))))
-				.withListenAddress(new InetSocketAddress("localhost", port));
+				.withListenPort(port);
 	}
 
 	public static void writeByRandomParts(Socket socket, String string) throws IOException {
@@ -82,7 +81,7 @@ public class AsyncHttpServerTest {
 		}
 	}
 
-	public static void readAndAssert(InputStream is, String expected) throws IOException {
+	public static void readAndAssert(InputStream is, String expected) {
 		byte[] bytes = new byte[expected.length()];
 		readFully(is, bytes);
 		Assert.assertEquals(expected, decodeAscii(bytes));
@@ -186,7 +185,7 @@ public class AsyncHttpServerTest {
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = blockingHttpServer(eventloop, port);
-		server.withListenAddress(new InetSocketAddress("localhost", port));
+		server.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -209,7 +208,7 @@ public class AsyncHttpServerTest {
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = blockingHttpServer(eventloop, port);
-		server.withListenAddress(new InetSocketAddress("localhost", port));
+		server.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -236,7 +235,7 @@ public class AsyncHttpServerTest {
 	}
 
 	private void doTestPipelining(Eventloop eventloop, AsyncHttpServer server, int port) throws Exception {
-		server.withListenAddress(new InetSocketAddress("localhost", port));
+		server.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -281,7 +280,7 @@ public class AsyncHttpServerTest {
 	}
 
 	private void doTestPipelining2(Eventloop eventloop, AsyncHttpServer server, int port) throws Exception {
-		server.withListenAddress(new InetSocketAddress("localhost", port));
+		server.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -331,7 +330,7 @@ public class AsyncHttpServerTest {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
 				req -> Promise.of(
 						HttpResponse.ok200().withBody(encodeAscii(req.getUrl().getPathAndQuery()))))
-				.withListenAddress(new InetSocketAddress("localhost", port));
+				.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -356,7 +355,7 @@ public class AsyncHttpServerTest {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
 				ensureRequestBody(request ->
 						Promise.of(HttpResponse.ok200().withBody(request.getBody()))))
-				.withListenAddress(new InetSocketAddress("localhost", port));
+				.withListenPort(port);
 
 		server.listen();
 		Thread thread = new Thread(eventloop);

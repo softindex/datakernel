@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopInspector;
 import io.datakernel.eventloop.ThrottlingController;
 
-import java.net.InetSocketAddress;
 import java.util.Random;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -88,7 +87,7 @@ public class HttpThrottlingServer {
 				return Promise.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
 			}
 		};
-		return AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", SERVER_PORT));
+		return AsyncHttpServer.create(eventloop, servlet).withListenPort(SERVER_PORT);
 	}
 
 	protected static HttpResponse longBusinessLogic(String response, int loadBusinessLogic) {

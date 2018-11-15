@@ -32,7 +32,7 @@ public final class ActivePromisesRule implements TestRule {
 		return new LambdaStatement(() -> {
 			TestUtils.clearActivePromises();
 			base.evaluate();
-			assert TestUtils.getActivePromises() == 0 : "Some promises has not been completed";
+			assert TestUtils.getActivePromises() == 0 : "Some promises have not been completed";
 		});
 	}
 }

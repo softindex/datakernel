@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,61 +18,50 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Rule;
+import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.util.Recyclable;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 
 import static io.datakernel.async.Promises.repeat;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.assertComplete;
 
-public class AbstractServerTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+@RunWith(DatakernelRunner.class)
+public final class AbstractServerTest {
 
 	@Test
 	public void testTimeouts() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 		InetSocketAddress address = new InetSocketAddress("localhost", 5588);
 		SocketSettings settings = SocketSettings.create().withImplReadTimeout(Duration.ofMillis(100000L)).withImplWriteTimeout(Duration.ofMillis(100000L));
 
-		SimpleServer server = SimpleServer.create(eventloop,
-				socket -> repeat(() ->
+		SimpleServer.create(socket ->
+				repeat(() ->
 						socket.read()
 								.whenResult(buf -> {
-									if (buf != null) {
-										eventloop.delay(5, () ->
-												socket.write(buf)
-														.whenResult($ -> socket.close()));
-									} else {
+									if (buf == null) {
 										socket.close();
+										return;
 									}
+									Eventloop.getCurrentEventloop().delay(5, () ->
+											socket.write(buf)
+													.whenResult($ -> socket.close()));
 								})
 								.toVoid()))
 				.withSocketSettings(settings)
 				.withListenAddress(address)
-				.withAcceptOnce();
-
-		server.listen();
+				.withAcceptOnce()
+				.listen();
 
 		AsyncTcpSocketImpl.connect(address)
-				.whenResult(socket -> {
-					socket.write(ByteBufStrings.wrapAscii("Hello!"))
-							.thenCompose($ ->
-									socket.read()
-											.whenResult(System.out::println)
-											.whenResult(buf -> {
-												if (buf != null) {
-													buf.recycle();
-												}
-											}))
-							.whenComplete(($1, e1) -> socket.close());
-				});
-
-		eventloop.run();
+				.thenCompose(socket ->
+						socket.write(ByteBufStrings.wrapAscii("Hello!"))
+								.thenCompose($ -> socket.read())
+								.whenResult(Recyclable::tryRecycle)
+								.whenComplete(($, e) -> socket.close()))
+				.whenComplete(assertComplete());
 	}
 }

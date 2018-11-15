@@ -21,10 +21,11 @@ import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.Promises;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.*;
+import io.datakernel.stream.processor.DatakernelRunner;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -37,16 +38,14 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.enableLogging;
 
-public class TestRepartitionController {
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
-
-	public static final int CLIENT_SERVER_PAIRS = 10;
+@RunWith(DatakernelRunner.class)
+// @Ignore("this test is completely manual, it takes forever")
+public final class TestRepartitionController {
+	private static final int CLIENT_SERVER_PAIRS = 10;
 
 	private final Path[] serverStorages = new Path[CLIENT_SERVER_PAIRS];
 	private List<RemoteFsServer> servers;
@@ -54,10 +53,6 @@ public class TestRepartitionController {
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
 
-	@Rule
-	public final ByteBufRule byteBufs = new ByteBufRule();
-
-	private Eventloop eventloop;
 	private Path localStorage;
 	private RemoteFsClusterClient cluster;
 	private RemoteFsRepartitionController controller;
@@ -65,17 +60,16 @@ public class TestRepartitionController {
 
 	@Before
 	public void setup() throws IOException, InterruptedException {
-
 		Runtime.getRuntime().exec("rm -r /tmp/TESTS").waitFor();
 
-		ExecutorService executor = Executors.newCachedThreadPool();
-		eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
+		ExecutorService executor = Executors.newSingleThreadExecutor();
 		servers = new ArrayList<>(CLIENT_SERVER_PAIRS);
 
 		Map<Object, FsClient> clients = new HashMap<>(CLIENT_SERVER_PAIRS);
 
-		//		localStorage = tmpFolder.getRoot().toPath().resolve("local");
+		// localStorage = tmpFolder.getRoot().toPath().resolve("local");
 		localStorage = Paths.get("/tmp/TESTS/local");
 		Files.createDirectories(localStorage);
 		LocalFsClient localFsClient = LocalFsClient.create(eventloop, executor, localStorage);
@@ -86,7 +80,7 @@ public class TestRepartitionController {
 		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
 			InetSocketAddress address = new InetSocketAddress("localhost", 5560 + i);
 
-			//			serverStorages[i] = tmpFolder.getRoot().toPath().resolve("storage_" + i);
+			// serverStorages[i] = tmpFolder.getRoot().toPath().resolve("storage_" + i);
 			serverStorages[i] = Paths.get("/tmp/TESTS/storage_" + i);
 
 			Files.createDirectories(serverStorages[i]);
@@ -127,16 +121,10 @@ public class TestRepartitionController {
 					System.out.println("Starting server_2 again");
 					servers.get(2).listen();
 				} catch (IOException e) {
-					e.printStackTrace();
+					throw new AssertionError(e);
 				}
 			});
 		});
-	}
-
-	@After
-	public void tearDown() {
-		scheduler.stop();
-		servers.forEach(AbstractServer::close);
 	}
 
 	private void testN(int n, int minSize, int maxSize) throws IOException {
@@ -174,54 +162,44 @@ public class TestRepartitionController {
 								servers.forEach(AbstractServer::close);
 							}));
 				}));
-
-		eventloop.run();
 	}
 
-	@Test
-	@Ignore
+	// @Test
 	public void testTest() throws IOException {
 		testN(1, 10 * 1024 * 1024, 50 * 1024 * 1024);
 	}
 
-	@Test
-	@Ignore
+	// @Test
 	public void testBig50() throws IOException {
 		testN(50, 10 * 1024 * 1024, 50 * 1024 * 1024);
 	}
 
-	@Test
-	@Ignore
+	// @Test
 	public void testMid100() throws IOException {
 		testN(100, 10 * 1024, 100 * 1024);
 	}
 
-	@Test
-	@Ignore
+	// @Test
 	public void testMid1000() throws IOException {
 		testN(1000, 10 * 1024, 100 * 1024);
 	}
 
-	@Test
-	@Ignore
+	// @Test
 	public void test1000() throws IOException {
 		testN(1000, 512, 1024);
 	}
 
-	@Test
-	@Ignore
+	// @Test
 	public void test10000() throws IOException {
 		testN(10000, 512, 1024);
 	}
 
-	@Test
-	@Ignore
+	// @Test
 	public void test100000() throws IOException {
 		testN(100000, 512, 1024);
 	}
 
-	@Test
-	@Ignore
+	// @Test
 	public void test1000000() throws IOException {
 		testN(1000000, 512, 1024);
 	}

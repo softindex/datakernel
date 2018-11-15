@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class CodeGenSerializerGenByteBufTest {
+public final class CodeGenSerializerGenByteBufTest {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 

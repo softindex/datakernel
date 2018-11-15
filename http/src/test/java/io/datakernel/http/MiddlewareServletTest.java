@@ -29,8 +29,7 @@ import static io.datakernel.http.HttpMethod.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
-public class MiddlewareServletTest {
-
+public final class MiddlewareServletTest {
 	private static final String TEMPLATE = "http://www.site.org";
 	private static final String DELIM = "*****************************************************************************";
 
@@ -169,7 +168,7 @@ public class MiddlewareServletTest {
 		expectedException.expect(IllegalArgumentException.class);
 		expectedException.expectMessage("Can't map. Servlet already exists");
 
-		MiddlewareServlet s1 = MiddlewareServlet.create()
+		MiddlewareServlet.create()
 				.with(GET, "/", request -> null)
 				.with(GET, "/", request -> null);
 	}

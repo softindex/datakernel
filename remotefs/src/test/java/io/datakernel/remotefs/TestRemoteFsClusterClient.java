@@ -24,10 +24,12 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.file.SerialFileWriter;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.*;
+import io.datakernel.stream.processor.DatakernelRunner;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -36,47 +38,41 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
 import static java.util.Collections.singletonList;
-import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.assertEquals;
 
-public class TestRemoteFsClusterClient {
+@RunWith(DatakernelRunner.class)
+public final class TestRemoteFsClusterClient {
 	public static final int CLIENT_SERVER_PAIRS = 10;
 
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
 
-	@Rule
-	public final ByteBufRule byteBufRule = new ByteBufRule();
-
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
-
 	private final Path[] serverStorages = new Path[CLIENT_SERVER_PAIRS];
 
 	private ExecutorService executor;
-	private Eventloop eventloop;
 	private List<RemoteFsServer> servers;
 	private Path clientStorage;
 	private RemoteFsClusterClient client;
 
 	@Before
 	public void setup() throws IOException {
-		executor = newCachedThreadPool();
-		eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+		executor = Executors.newSingleThreadExecutor();
 		servers = new ArrayList<>(CLIENT_SERVER_PAIRS);
 		clientStorage = Paths.get(tmpFolder.newFolder("client").toURI());
 
 		Files.createDirectories(clientStorage);
 
 		Map<Object, FsClient> clients = new HashMap<>(CLIENT_SERVER_PAIRS);
+
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
 			InetSocketAddress address = new InetSocketAddress("localhost", 5600 + i);
@@ -96,30 +92,27 @@ public class TestRemoteFsClusterClient {
 		clients.put("dead_three", RemoteFsClient.create(eventloop, new InetSocketAddress("localhost", 5557)));
 		client = RemoteFsClusterClient.create(eventloop, clients);
 		client.withReplicationCount(4); // there are those 3 dead nodes added above
-
-		eventloop.delayBackground(10_000, () -> Assert.fail("Timeout"));
 	}
 
 	@Test
-	public void testUpload() throws IOException {
+	public void testUpload() {
 		String content = "test content of the file";
 		String resultFile = "file.txt";
 
-		SerialSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8))).streamTo(client.uploadSerial(resultFile))
+		client.upload(resultFile)
+				.thenCompose(SerialSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8)))::streamTo)
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertComplete());
-
-		eventloop.run();
-
-		int uploaded = 0;
-		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
-			Path path = serverStorages[i].resolve(resultFile);
-			if (Files.exists(path)) {
-				assertEquals(new String(readAllBytes(path), UTF_8), content);
-				uploaded++;
-			}
-		}
-		assertEquals(4, uploaded); // replication count
+				.whenComplete(assertComplete($ -> {
+					int uploaded = 0;
+					for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
+						Path path = serverStorages[i].resolve(resultFile);
+						if (Files.exists(path)) {
+							assertEquals(new String(readAllBytes(path), UTF_8), content);
+							uploaded++;
+						}
+					}
+					assertEquals(4, uploaded); // replication count
+				}));
 	}
 
 	@Test
@@ -130,20 +123,15 @@ public class TestRemoteFsClusterClient {
 
 		Files.write(serverStorages[numOfServer].resolve(file), content.getBytes(UTF_8));
 
-		SerialSupplier<ByteBuf> supplier = client.downloadSerial(file, 0);
-		SerialFileWriter consumer = SerialFileWriter.create(executor, clientStorage.resolve(file));
-
-		supplier.streamTo(consumer)
+		client.downloadSerial(file, 0)
+				.streamTo(SerialFileWriter.create(executor, clientStorage.resolve(file)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertComplete());
-
-		eventloop.run();
-
-		assertEquals(new String(readAllBytes(clientStorage.resolve(file)), UTF_8), content);
+				.whenComplete(assertComplete($ ->
+						assertEquals(new String(readAllBytes(clientStorage.resolve(file)), UTF_8), content)));
 	}
 
 	@Test
-	public void testUploadSelector() throws IOException {
+	public void testUploadSelector() {
 		String content = "test content of the file";
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));
 
@@ -165,37 +153,30 @@ public class TestRemoteFsClusterClient {
 
 		Promises.all(Arrays.stream(files).map(f -> SerialSupplier.of(data.slice()).streamTo(client.uploadSerial(f))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertComplete());
-
-		eventloop.run();
-		data.recycle();
-
-		assertEquals(new String(readAllBytes(serverStorages[1].resolve("file_1.txt")), UTF_8), content);
-		assertEquals(new String(readAllBytes(serverStorages[2].resolve("file_2.txt")), UTF_8), content);
-		assertEquals(new String(readAllBytes(serverStorages[3].resolve("file_3.txt")), UTF_8), content);
-		assertEquals(new String(readAllBytes(serverStorages[0].resolve("other.txt")), UTF_8), content);
+				.whenComplete(assertComplete($ -> {
+					assertEquals(new String(readAllBytes(serverStorages[1].resolve("file_1.txt")), UTF_8), content);
+					assertEquals(new String(readAllBytes(serverStorages[2].resolve("file_2.txt")), UTF_8), content);
+					assertEquals(new String(readAllBytes(serverStorages[3].resolve("file_3.txt")), UTF_8), content);
+					assertEquals(new String(readAllBytes(serverStorages[0].resolve("other.txt")), UTF_8), content);
+				}));
 	}
 
-	@Test
-	@Ignore
-	// this test uses lots of local ports (and all of them are in TIME_WAIT state after it for a minute) so HTTP tests after it may fail indefinitely
-	public void testUploadAlot() throws IOException {
+	// @Test
+	// @Ignore("this test uses lots of local ports (and all of them are in TIME_WAIT state after it for a minute) so HTTP tests after it may fail indefinitely")
+	public void testUploadAlot() {
 		String content = "test content of the file";
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));
 
 		Promises.runSequence(IntStream.range(0, 1000)
 				.mapToObj(i -> SerialSupplier.of(data.slice()).streamTo(client.uploadSerial("file_uploaded_" + i + ".txt"))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertComplete());
-
-		eventloop.run();
-		data.recycle();
-
-		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
-			for (int j = 0; j < 1000; j++) {
-				assertEquals(new String(readAllBytes(serverStorages[i].resolve("file_uploaded_" + i + ".txt")), UTF_8), content);
-			}
-		}
+				.whenComplete(assertComplete($ -> {
+					for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
+						for (int j = 0; j < 1000; j++) {
+							assertEquals(new String(readAllBytes(serverStorages[i].resolve("file_uploaded_" + i + ".txt")), UTF_8), content);
+						}
+					}
+				}));
 	}
 
 	@Test
@@ -205,20 +186,15 @@ public class TestRemoteFsClusterClient {
 		SerialSupplier.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(client.uploadSerial("file_uploaded.txt"))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, "Didn't connect to enough partitions"));
-
-		eventloop.run();
 	}
 
 	@Test
 	public void downloadNonExisting() {
-
 		String fileName = "i_dont_exist.txt";
 
 		client.downloadSerial(fileName)
 				.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, fileName));
-
-		eventloop.run();
 	}
 }

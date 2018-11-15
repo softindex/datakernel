@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import static com.google.inject.name.Names.named;
 import static io.datakernel.service.ServiceAdapters.combinedAdapter;
 import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
 
-public class WorkerNameTest {
+public final class WorkerNameTest {
 	public static final int PORT = 7583;
 	public static final int WORKERS = 4;
 

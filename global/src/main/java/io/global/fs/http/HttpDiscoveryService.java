@@ -101,6 +101,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(SHARE_KEY)
+								.appendPathPart(receiver.asString())
 								.build())
 						.withBody(SIGNED_SHARED_SIM_KEY.toJson(simKey).getBytes(UTF_8)))
 				.thenCompose(ensureStatusCode(201))

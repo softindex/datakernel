@@ -22,16 +22,20 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.serial.AbstractSerialConsumer;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 import static io.datakernel.bytebuf.ByteBufStrings.asAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class TestUtils {
 
 	public static byte[] toByteArray(InputStream is) {
-		byte[] bytes = null;
+		byte[] bytes;
 
 		try {
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -49,13 +53,12 @@ public class TestUtils {
 
 			bytes = bos.toByteArray();
 		} catch (IOException e) {
-			e.printStackTrace();
-			fail();
+			throw new AssertionError(e);
 		}
 		return bytes;
 	}
 
-	public static void readFully(InputStream is, byte[] bytes) throws UnsupportedEncodingException {
+	public static void readFully(InputStream is, byte[] bytes) {
 		DataInputStream dis = new DataInputStream(is);
 		try {
 			dis.readFully(bytes);
@@ -65,26 +68,31 @@ public class TestUtils {
 	}
 
 	public static class AssertingConsumer extends AbstractSerialConsumer<ByteBuf> {
-		public boolean executed = false;
-		private byte[] expectedByteArray;
-		private String expectedString;
-		private ByteBuf expectedBuf;
-		private Exception expectedException;
-		private ByteBufQueue queue = new ByteBufQueue();
+		private final ByteBufQueue queue = new ByteBufQueue();
 
-		public void setExpectedByteArray(byte[] expectedByteArray) {
+		public boolean executed = false;
+		@Nullable
+		private byte[] expectedByteArray;
+		@Nullable
+		private String expectedString;
+		@Nullable
+		private ByteBuf expectedBuf;
+		@Nullable
+		private Exception expectedException;
+
+		public void setExpectedByteArray(@Nullable byte[] expectedByteArray) {
 			this.expectedByteArray = expectedByteArray;
 		}
 
-		public void setExpectedString(String expectedString) {
+		public void setExpectedString(@Nullable String expectedString) {
 			this.expectedString = expectedString;
 		}
 
-		public void setExpectedBuf(ByteBuf expectedBuf) {
+		public void setExpectedBuf(@Nullable ByteBuf expectedBuf) {
 			this.expectedBuf = expectedBuf;
 		}
 
-		public void setExpectedException(Exception expectedException) {
+		public void setExpectedException(@Nullable Exception expectedException) {
 			this.expectedException = expectedException;
 		}
 

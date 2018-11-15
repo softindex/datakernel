@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import static java.util.Collections.singletonMap;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.*;
 
-public class HttpUrlTest {
+public final class HttpUrlTest {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 

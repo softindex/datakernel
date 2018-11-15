@@ -77,10 +77,6 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return new OTStateManager<>(eventloop, algorithms, state);
 	}
 
-	private static <D> List<D> concatLists(List<D> a, List<D> b) {
-		return concat(a, b);
-	}
-
 	public OTStateManager<K, D> withCheckoutValidator(Supplier<Promise<Void>> stateValidator) {
 		this.checkoutValidator = stateValidator;
 		return this;

@@ -74,15 +74,19 @@ public final class QueryPlan {
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-
-		sb.append("\nSequences (" + sequences.size() + "): ");
-
+		sb
+				.append("\nSequences (")
+				.append(sequences.size())
+				.append("): ");
 		for (int i = 0; i < sequences.size(); ++i) {
-			sb.append("\n");
-			sb.append((i + 1) + " (" + sequences.get(i).chunks.size() + "). ");
-			sb.append(sequences.get(i) + " ");
+			sb
+					.append('\n')
+					.append(i + 1)
+					.append(" (")
+					.append(sequences.get(i).chunks.size())
+					.append("). ")
+					.append(sequences.get(i)).append(' ');
 		}
-
 		return sb.toString();
 	}
 

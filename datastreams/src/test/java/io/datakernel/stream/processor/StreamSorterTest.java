@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,29 +36,24 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
-import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
+import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.assertFailure;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
-public class StreamSorterTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
-
+@RunWith(DatakernelRunner.class)
+public final class StreamSorterTest {
 	@Rule
 	public TemporaryFolder tempFolder = new TemporaryFolder();
 
 	@Test
-	public void testStreamStorage() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = Executors.newCachedThreadPool();
-
+	public void testStreamStorage() {
 		StreamSupplier<Integer> source1 = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7);
-//		StreamSupplier<Integer> source2 = StreamSupplier.of(111);
+		//		StreamSupplier<Integer> source2 = StreamSupplier.of(111);
 
+		ExecutorService executor = Executors.newSingleThreadExecutor();
 		StreamSorterStorageImpl<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.getRoot().toPath())
 				.withWriteBlockSize(MemSize.of(64));
 
@@ -66,7 +62,7 @@ public class StreamSorterTest {
 		source1.streamTo(writer1);
 //		source2.streamTo(writer2);
 
-		eventloop.run();
+		Eventloop.getCurrentEventloop().run();
 
 		assertEndOfStream(source1);
 //		assertEndOfStream(source2);
@@ -75,45 +71,34 @@ public class StreamSorterTest {
 //		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
 		storage.readStream(1).streamTo(consumer1.apply(TestStreamConsumers.oneByOne()));
 //		storage.readStream(2).streamTo(consumer2.with(TestStreamConsumers.randomlySuspending()));
-		eventloop.run();
+		Eventloop.getCurrentEventloop().run();
+
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer1.getList());
 //		assertEquals(asList(111), consumer2.getList());
 
 		storage.cleanup(Arrays.asList(1, 2));
-		eventloop.run();
 	}
 
 	@Test
 	public void test() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = Executors.newCachedThreadPool();
-
 		StreamSupplier<Integer> source = StreamSupplier.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
 
+		ExecutorService executor = Executors.newSingleThreadExecutor();
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
-		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
-				storage, Function.identity(), Integer::compareTo, true, 2);
+		StreamSorter<Integer, Integer> sorter = StreamSorter.create(storage, Function.identity(), Integer::compareTo, true, 2);
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
-		source.streamTo(sorter.getInput());
-		sorter.getOutput().streamTo(consumerToList.apply(TestStreamConsumers.randomlySuspending()));
-
-		eventloop.run();
-
-		assertEndOfStream(source);
-//		assertEndOfStream(sorter.getOutput());
-		assertEndOfStream(sorter.getInput());
-		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
+		source.apply(sorter)
+				.streamTo(consumerToList.apply(TestStreamConsumers.randomlySuspending()))
+				.whenComplete(assertComplete($ -> assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList())));
 	}
 
 	@Test
 	public void testErrorOnConsumer() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = Executors.newCachedThreadPool();
-
 		StreamSupplier<Integer> source = StreamSupplier.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
 
+		ExecutorService executor = Executors.newSingleThreadExecutor();
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
 				storage, Function.identity(), Integer::compareTo, true, 2);
@@ -129,21 +114,13 @@ public class StreamSorterTest {
 							if (list.size() == 2) {
 								context.closeWithError(new ExpectedException());
 							}
-						})));
-
-		eventloop.run();
-
-//		assertTrue(list.size() == 2);
-		assertEndOfStream(source);
-		assertClosedWithError(sorter.getOutput());
-		assertClosedWithError(sorter.getInput());
-		assertClosedWithError(consumer);
+						})))
+				.whenComplete(assertFailure());
 	}
 
 	@Test
 	public void testErrorOnSupplier() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = Executors.newCachedThreadPool();
+		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		StreamSupplier<Integer> source = StreamSupplier.concat(
 				StreamSupplier.of(3, 1, 3, 2),
@@ -156,15 +133,8 @@ public class StreamSorterTest {
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
-		source.streamTo(sorter.getInput());
-		sorter.getOutput().streamTo(consumerToList);
-
-		eventloop.run();
-
-		assertTrue(consumerToList.getList().size() == 0);
-
-		assertClosedWithError(consumerToList);
-//		assertClosedWithError(sorter.getOutput());
-		assertClosedWithError(sorter.getInput());
+		source.apply(sorter)
+				.streamTo(consumerToList)
+				.whenComplete(assertFailure($ -> assertEquals(0, consumerToList.getList().size())));
 	}
 }

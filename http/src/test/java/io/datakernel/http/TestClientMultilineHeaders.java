@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,55 +18,35 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Rule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.ALLOW;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertEquals;
 
-public class TestClientMultilineHeaders {
-
-	public static final int PORT = 9595;
-	public static final InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
-
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+@RunWith(DatakernelRunner.class)
+public final class TestClientMultilineHeaders {
+	private static final int PORT = 9595;
 
 	@Test
-	public void testMultilineHeaders() throws ExecutionException, InterruptedException, IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
+	public void testMultilineHeaders() throws IOException {
+		AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request -> {
+			HttpResponse response = HttpResponse.ok200();
+			response.setHeader(ALLOW, "GET,\r\n HEAD");
+			return Promise.of(response);
+		})
+				.withListenPort(PORT)
+				.withAcceptOnce()
+				.listen();
 
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				HttpResponse response = HttpResponse.ok200();
-				response.setHeader(ALLOW, "GET,\r\n HEAD");
-				return Promise.of(response);
-			}
-		};
-
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PORT));
-		server.listen();
-
-		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenCompose(ensureResponseBody())
-				.thenApply(response -> {
-					httpClient.stop();
-					server.close();
-					return response.getHeaderOrNull(ALLOW);
-				}).toCompletableFuture();
-
-		eventloop.run();
-		assertEquals("GET,   HEAD", future.get());
+				.whenComplete(assertComplete(response -> assertEquals("GET,   HEAD", response.getHeaderOrNull(ALLOW))));
 	}
 }

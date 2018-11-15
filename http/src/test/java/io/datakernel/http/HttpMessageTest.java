@@ -31,7 +31,7 @@ import static io.datakernel.http.HttpHeaders.of;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class HttpMessageTest {
+public final class HttpMessageTest {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 

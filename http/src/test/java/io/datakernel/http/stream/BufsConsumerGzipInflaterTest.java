@@ -1,15 +1,30 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.http.stream;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.http.TestUtils.AssertingConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,10 +40,8 @@ import static java.util.Arrays.copyOfRange;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-public class BufsConsumerGzipInflaterTest {
-	@Rule
-	public ByteBufRule rule = new ByteBufRule();
-
+@RunWith(DatakernelRunner.class)
+public final class BufsConsumerGzipInflaterTest {
 	public final String[] plainText = {
 			"Suspendisse faucibus enim curabitur tempus leo viverra massa accumsan nisl nunc\n",
 			"Interdum sapien vehicula\nOrnare odio feugiat fringilla ",
@@ -40,11 +53,9 @@ public class BufsConsumerGzipInflaterTest {
 			"Taciti sapien fringilla u\nVitae ",
 			"Etiam egestas ac augue dui dapibus, aliquam adipiscing porttitor magna at, libero elit faucibus purus"
 	};
-	public final Random random = new Random();
 	public final List<ByteBuf> list = new ArrayList<>();
-	public final Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 	public final AssertingConsumer consumer = new AssertingConsumer();
-	public BufsConsumerGzipInflater gunzip = BufsConsumerGzipInflater.create();
+	public final BufsConsumerGzipInflater gunzip = BufsConsumerGzipInflater.create();
 
 	@Before
 	public void setUp() {
@@ -110,7 +121,7 @@ public class BufsConsumerGzipInflaterTest {
 		ByteBuf gzipped = toGzip(wrapForReading(bytes));
 		ByteBuf buf = ByteBufPool.allocate(gzipped.readRemaining() + header.length);
 		buf.put(header);
-		buf.put(gzipped.array(), 10, gzipped.readRemaining()-10);
+		buf.put(gzipped.array(), 10, gzipped.readRemaining() - 10);
 		gzipped.recycle();
 		list.add(buf);
 		consumer.setExpectedByteArray(bytes);
@@ -204,17 +215,16 @@ public class BufsConsumerGzipInflaterTest {
 		doTest(null);
 	}
 
-	private void doTest(Exception exception) {
+	private void doTest(@Nullable Exception exception) {
 		gunzip.getInput().set(SerialSupplier.ofIterable(list));
-		eventloop.post(() -> gunzip.getProcessResult().whenComplete(($, e) -> {
-			if (exception == null) {
-				assertNull(e);
-			} else {
-				assertEquals(exception, e);
-			}
-		}));
-
-		eventloop.run();
+		gunzip.getProcessResult()
+				.whenComplete(($, e) -> {
+					if (exception == null) {
+						assertNull(e);
+					} else {
+						assertEquals(exception, e);
+					}
+				});
 	}
 
 	private static String generateLargeText() {
@@ -227,5 +237,4 @@ public class BufsConsumerGzipInflaterTest {
 		}
 		return sb.toString();
 	}
-
 }

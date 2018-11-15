@@ -197,7 +197,7 @@ public class PageRankTest {
 	}
 
 	@SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-	@Ignore // TODO(vmykhalko)
+	@Ignore("TODO") // TODO(vmykhalko)
 	@Test
 	public void test2() throws Exception {
 		DatagraphSerialization serialization = DatagraphSerialization.create();
@@ -257,5 +257,4 @@ public class PageRankTest {
 		assertEquals(asList(new Rank(2, 0.6069)), result1.getList());
 		assertEquals(asList(new Rank(1, 1.7861), new Rank(3, 0.6069)), result2.getList());
 	}
-
 }

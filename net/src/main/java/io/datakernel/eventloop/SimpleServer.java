@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +27,8 @@ public final class SimpleServer extends AbstractServer<SimpleServer> {
 		this.socketConsumer = socketConsumer;
 	}
 
-	public static SimpleServer create(Eventloop eventloop, Consumer<AsyncTcpSocket> socketConsumer) {
-		return new SimpleServer(eventloop, socketConsumer);
+	public static SimpleServer create(Consumer<AsyncTcpSocket> socketConsumer) {
+		return new SimpleServer(Eventloop.getCurrentEventloop(), socketConsumer);
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import io.datakernel.remotefs.RemoteFsServer;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -45,7 +44,7 @@ public class StressServer {
 	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	public static RemoteFsServer server = RemoteFsServer.create(eventloop, executor, STORAGE_PATH)
-			.withListenAddress(new InetSocketAddress("localhost", PORT));
+			.withListenPort(PORT);
 
 	public static void main(String[] args) throws IOException {
 		Files.createDirectories(STORAGE_PATH);

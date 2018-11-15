@@ -21,6 +21,11 @@ import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 /**
@@ -36,7 +41,14 @@ public final class EventloopRule implements TestRule {
 					.withCurrentThread()
 					.withFatalErrorHandler(rethrowOnAnyError());
 			base.evaluate();
-			eventloop.run();
+			if (description.getAnnotation(DontRun.class) == null) {
+				eventloop.run();
+			}
 		});
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.METHOD})
+	public @interface DontRun {
 	}
 }

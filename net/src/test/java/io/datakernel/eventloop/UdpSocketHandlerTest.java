@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,58 +18,56 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.stream.processor.ByteBufRule;
-import org.junit.Rule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.fail;
 
-public class UdpSocketHandlerTest {
-	private static final int SERVER_PORT = 45555;
-	private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("127.0.0.1", SERVER_PORT);
-	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+@RunWith(DatakernelRunner.class)
+public final class UdpSocketHandlerTest {
+	private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("localhost", 45555);
 
 	private final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
 
-	private AsyncUdpSocketImpl getEchoServerUdpSocket(DatagramChannel serverChannel) {
-		AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, serverChannel);
-		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
+	@Test
+	public void testEchoUdpServer() throws IOException {
+		DatagramChannel serverDatagramChannel = createDatagramChannel(DatagramSocketSettings.create(), SERVER_ADDRESS, null);
+		AsyncUdpSocketImpl serverSocket = AsyncUdpSocketImpl.create(Eventloop.getCurrentEventloop(), serverDatagramChannel);
+		serverSocket.setEventHandler(new AsyncUdpSocket.EventHandler() {
 			@Override
 			public void onRegistered() {
-				socket.receive();
+				serverSocket.receive();
 			}
 
 			@Override
 			public void onReceive(UdpPacket packet) {
-				socket.send(packet);
+				serverSocket.send(packet);
 			}
 
 			@Override
 			public void onSend() {
-				socket.close();
+				serverSocket.close();
 			}
 
 			@Override
 			public void onClosedWithError(Exception e) {
-				// empty
+				throw new AssertionError(e);
 			}
 		});
-		return socket;
-	}
+		serverSocket.register();
 
-	private AsyncUdpSocketImpl getClientUdpSocket(DatagramChannel clientChannel) {
-		AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, clientChannel);
-		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
+		DatagramChannel clientDatagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
+		AsyncUdpSocketImpl clientSocket = AsyncUdpSocketImpl.create(Eventloop.getCurrentEventloop(), clientDatagramChannel);
+		clientSocket.setEventHandler(new AsyncUdpSocket.EventHandler() {
 			@Override
 			public void onRegistered() {
-				sendTestData(bytesToSend, SERVER_ADDRESS);
+				clientSocket.send(UdpPacket.of(ByteBuf.wrapForReading(bytesToSend), SERVER_ADDRESS));
 			}
 
 			@Override
@@ -81,52 +79,19 @@ public class UdpSocketHandlerTest {
 				assertArrayEquals(bytesToSend, message);
 
 				packet.recycle();
-				socket.close();
+				clientSocket.close();
 			}
 
 			@Override
 			public void onSend() {
-				socket.receive();
+				clientSocket.receive();
 			}
 
 			@Override
 			public void onClosedWithError(Exception e) {
 				throw new AssertionError(e);
 			}
-
-			void sendTestData(byte[] data, InetSocketAddress address) {
-				socket.send(UdpPacket.of(ByteBuf.wrapForReading(data), address));
-			}
 		});
-		return socket;
-	}
-
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
-
-	@Test
-	public void testEchoUdpServer() throws Exception {
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					//  server
-					DatagramChannel serverChannel = createDatagramChannel(DatagramSocketSettings.create(), SERVER_ADDRESS, null);
-					AsyncUdpSocketImpl serverConnection = getEchoServerUdpSocket(serverChannel);
-					serverConnection.register();
-
-					// client
-					DatagramChannel clientChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
-					AsyncUdpSocketImpl clientConnection = getClientUdpSocket(clientChannel);
-					clientConnection.register();
-
-				} catch (IOException e) {
-					e.printStackTrace();
-					fail();
-				}
-			}
-		});
-
-		eventloop.run();
+		clientSocket.register();
 	}
 }

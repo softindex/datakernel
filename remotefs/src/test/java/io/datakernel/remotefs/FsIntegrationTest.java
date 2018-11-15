@@ -16,7 +16,6 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
@@ -27,14 +26,13 @@ import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.SerialSuppliers;
 import io.datakernel.serial.file.SerialFileWriter;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import io.datakernel.stream.processor.ByteBufRule;
-import io.datakernel.test.TestUtils;
-import org.junit.After;
+import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.EventloopRule;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -42,151 +40,114 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.IntStream;
 
-import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.test.TestUtils.*;
+import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
-public class FsIntegrationTest {
+@RunWith(DatakernelRunner.class)
+public final class FsIntegrationTest {
 	private static final InetSocketAddress address = new InetSocketAddress("localhost", 5560);
 	private static final byte[] BIG_FILE = new byte[2 * 1024 * 1024]; // 2 MB
-
-	static {
-		TestUtils.enableLogging();
-		ThreadLocalRandom.current().nextBytes(BIG_FILE);
-	}
-
 	private static final byte[] CONTENT = "content".getBytes(UTF_8);
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	static {
+		ThreadLocalRandom.current().nextBytes(BIG_FILE);
+	}
 
 	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
-
 	private Path storage;
 	private RemoteFsServer server;
 	private FsClient client;
-	private Eventloop eventloop;
 	private ExecutorService executor;
 
 	@Before
 	public void setup() throws IOException {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		executor = newCachedThreadPool();
 
-//		storage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
-		try {
-			Runtime.getRuntime().exec("rm -r /tmp/TESTS").waitFor();
-		} catch (InterruptedException e) {
-			System.out.println("removal interrupted: " + e.getMessage());
-		}
-		storage = Paths.get("/tmp/TESTS");
-
-		server = RemoteFsServer.create(eventloop, executor, storage).withListenAddress(address);
+		storage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
+		server = RemoteFsServer.create(Eventloop.getCurrentEventloop(), executor, storage).withListenAddress(address);
 		server.listen();
-		client = RemoteFsClient.create(eventloop, address);
-
-//		eventloop.delayBackground(2000, () -> Assert.fail("Timeout"));
-	}
-
-	@After
-	public void tearDown() {
-		executor.shutdownNow();
+		client = RemoteFsClient.create(Eventloop.getCurrentEventloop(), address);
 	}
 
 	@Test
-	public void testUpload() throws IOException {
+	public void testUpload() {
 		String resultFile = "file_uploaded.txt";
 
 		upload(resultFile, CONTENT)
 				.whenComplete(($, err) -> server.close())
-				.whenComplete(assertComplete());
-		eventloop.run();
-
-		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
+				.whenComplete(assertComplete($ -> assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)))));
 	}
 
 	@Test
-	public void testUploadMultiple() throws IOException {
+	public void testUploadMultiple() {
 		int files = 10;
 
 		Promises.all(IntStream.range(0, 10)
 				.mapToObj(i -> SerialSupplier.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploadSerial("file" + i))))
 				.whenComplete(($, err) -> server.close())
-				.whenComplete(assertComplete());
-
-		eventloop.run();
-
-		for (int i = 0; i < files; i++) {
-			assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
-		}
+				.whenComplete(assertComplete($ -> {
+					for (int i = 0; i < files; i++) {
+						assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
+					}
+				}));
 	}
 
 	@Test
-	public void testUploadBigFile() throws IOException {
+	public void testUploadBigFile() {
 		String resultFile = "big file_uploaded.txt";
 
 		upload(resultFile, BIG_FILE)
 				.whenComplete(($, err) -> server.close())
-				.whenComplete(assertComplete());
-		eventloop.run();
-
-		assertArrayEquals(BIG_FILE, Files.readAllBytes(storage.resolve(resultFile)));
+				.whenComplete(assertComplete($ -> assertArrayEquals(BIG_FILE, Files.readAllBytes(storage.resolve(resultFile)))));
 	}
 
 	@Test
-	public void testUploadLong() throws IOException {
+	public void testUploadLong() {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
 		upload(resultFile, CONTENT)
 				.whenComplete(($, err) -> server.close())
-				.whenComplete(assertComplete());
-		eventloop.run();
-
-		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
+				.whenComplete(assertComplete($ -> assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)))));
 	}
 
 	@Test
-	public void testUploadExistingFile() throws IOException {
+	public void testUploadExistingFile() {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
 		upload(resultFile, CONTENT)
 				.thenCompose($ -> upload(resultFile, CONTENT))
 				.whenComplete(($, err) -> server.close())
-				.whenComplete(assertFailure(RemoteFsException.class, "FileAlreadyExistsException"));
-
-		eventloop.run();
-
-		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
+				.whenComplete(assertFailure(RemoteFsException.class, "FileAlreadyExistsException"))
+				.whenComplete(asserting(($, e) -> {
+					assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
+				}));
 	}
 
 	@Test
 	public void testUploadServerFail() {
-
 		upload("../../nonlocal/../file.txt", CONTENT)
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "File .*? goes outside of the storage directory"));
-
-		eventloop.run();
 	}
 
 	@Test
-	public void testOnClientExceptionWhileUploading() {
+	@EventloopRule.DontRun
+	public void testOnClientExceptionWhileUploading() throws IOException {
 		String resultFile = "upload_with_exceptions.txt";
 
 		ByteBuf test4 = wrapUtf8("Test4");
@@ -200,30 +161,18 @@ public class FsIntegrationTest {
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertFailure(StacklessException.class, "Test exception"));
 
-		eventloop.run();
-		test4.recycle();
+		Eventloop.getCurrentEventloop().run(); // because for some reason file does not exist until eventloop ends
 
-		byte[] actual;
-		try {
-			actual = Files.readAllBytes(storage.resolve(resultFile));
-		} catch (IOException e) {
-			throw new AssertionError(e);
-		}
+		test4.recycle();
 		ByteBufQueue queue = new ByteBufQueue();
 		queue.addAll(asList(wrapUtf8("Test1 Test2 Test3"), ByteBuf.wrapForReading(BIG_FILE)));
-		assertArrayEquals(queue.takeRemaining().asArray(), actual);
+		assertArrayEquals(queue.takeRemaining().asArray(), Files.readAllBytes(storage.resolve(resultFile)));
 	}
 
-	private ByteBuf download(String file) {
-		ByteBufQueue queue = new ByteBufQueue();
-
-		client.downloadSerial(file)
-				.streamTo(SerialConsumer.of(AsyncConsumer.of(queue::add)))
-				.whenComplete(($, err) -> server.close())
-				.whenComplete(assertComplete());
-
-		eventloop.run();
-		return queue.takeRemaining();
+	private Promise<ByteBuf> download(String file) {
+		return client.download(file)
+				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
+				.whenComplete(($, err) -> server.close());
 	}
 
 	@Test
@@ -231,9 +180,7 @@ public class FsIntegrationTest {
 		String file = "file1_downloaded.txt";
 		Files.write(storage.resolve(file), CONTENT);
 
-		ByteBuf expected = download(file);
-		assertTrue(equalsLowerCaseAscii(CONTENT, expected.array(), 0, 7));
-		expected.recycle();
+		download(file).whenComplete(assertComplete(result -> assertArrayEquals(CONTENT, result.asArray())));
 	}
 
 	@Test
@@ -242,9 +189,7 @@ public class FsIntegrationTest {
 		Files.createDirectories(storage.resolve("this/is/not/empty/directory"));
 		Files.write(storage.resolve(file), CONTENT);
 
-		ByteBuf expected = download(file);
-		assertTrue(equalsLowerCaseAscii(CONTENT, expected.array(), 0, 7));
-		expected.recycle();
+		download(file).whenComplete(assertComplete(result -> assertArrayEquals(CONTENT, result.asArray())));
 	}
 
 	@Test
@@ -253,7 +198,6 @@ public class FsIntegrationTest {
 		client.downloadSerial(file).streamTo(SerialConsumer.of($ -> Promise.complete()))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "File not found"));
-		eventloop.run();
 	}
 
 	@Test
@@ -269,13 +213,11 @@ public class FsIntegrationTest {
 
 		Promises.all(tasks)
 				.whenComplete(($, err) -> server.close())
-				.whenComplete(assertComplete());
-
-		eventloop.run();
-
-		for (int i = 0; i < tasks.size(); i++) {
-			assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
-		}
+				.whenComplete(assertComplete($ -> {
+					for (int i = 0; i < tasks.size(); i++) {
+						assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
+					}
+				}));
 	}
 
 	@Test
@@ -285,11 +227,7 @@ public class FsIntegrationTest {
 
 		client.delete(file)
 				.whenComplete(($, err) -> server.close())
-				.whenComplete(assertComplete());
-
-		eventloop.run();
-
-		assertFalse(Files.exists(storage.resolve(file)));
+				.whenComplete(assertComplete($ -> assertFalse(Files.exists(storage.resolve(file)))));
 	}
 
 	@Test
@@ -299,44 +237,27 @@ public class FsIntegrationTest {
 		client.delete(file)
 				.whenComplete(($, err) -> server.close())
 				.whenComplete(assertComplete());
-
-		eventloop.run();
 	}
 
 	@Test
 	public void testFileList() throws Exception {
-		List<FileMetadata> actual = new ArrayList<>();
-		List<FileMetadata> expected = asList(
-				new FileMetadata("this/is/not/empty/directory/file1.txt", 7, 0),
-				new FileMetadata("file1.txt", 7, 0),
-				new FileMetadata("first file.txt", 7, 0)
+		Set<String> expected = set(
+				"this/is/not/empty/directory/file1.txt",
+				"file1.txt",
+				"first file.txt"
 		);
 
 		Files.createDirectories(storage.resolve("this/is/not/empty/directory/"));
-		Files.write(storage.resolve("this/is/not/empty/directory/file1.txt"), CONTENT);
-		Files.write(storage.resolve("this/is/not/empty/directory/file1.txt"), CONTENT);
-		Files.write(storage.resolve("file1.txt"), CONTENT);
-		Files.write(storage.resolve("first file.txt"), CONTENT);
+		for (String filename : expected) {
+			Files.write(storage.resolve(filename), CONTENT);
+		}
 
 		client.list()
-				.whenComplete((list, throwable) -> {
-					if (throwable == null) {
-						assert list != null;
-						actual.addAll(list);
-					}
-					server.close();
-				});
-
-		eventloop.run();
-
-		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getFilename);
-		actual.sort(comparator);
-		expected.sort(comparator);
-
-		assertEquals(expected.size(), actual.size());
-		for (int i = 0; i < expected.size(); i++) {
-			assertTrue(expected.get(i).equalsIgnoringTimestamp(actual.get(i)));
-		}
+				.whenComplete(($, e) -> server.close())
+				.whenComplete(assertComplete(list ->
+						assertEquals(expected, list.stream()
+								.map(FileMetadata::getFilename)
+								.collect(toSet()))));
 	}
 
 	@Test
@@ -355,37 +276,25 @@ public class FsIntegrationTest {
 		Files.write(storage.resolve("subfolder2/subsubfolder/file1.txt"), CONTENT);
 		Files.write(storage.resolve("subfolder2/subsubfolder/first file.txt"), CONTENT);
 
-		List<FileMetadata> expected = new ArrayList<>();
-		expected.add(new FileMetadata("file1.txt", 7, 0));
-		expected.add(new FileMetadata("first file.txt", 7, 0));
+		Set<String> expected1 = new HashSet<>();
+		expected1.add("file1.txt");
+		expected1.add("first file.txt");
 
-		List<FileMetadata> expected2 = new ArrayList<>(expected);
-		expected2.add(new FileMetadata("subsubfolder/file1.txt", 7, 0));
-		expected2.add(new FileMetadata("subsubfolder/first file.txt", 7, 0));
+		Set<String> expected2 = new HashSet<>(expected1);
+		expected2.add("subsubfolder/file1.txt");
+		expected2.add("subsubfolder/first file.txt");
 
-		List<FileMetadata> actual = new ArrayList<>();
-		List<FileMetadata> actual2 = new ArrayList<>();
 
-		Promises.all(client.subfolder("subfolder1").list().whenResult(actual::addAll),
-				client.subfolder("subfolder2").list().whenResult(actual2::addAll)).whenComplete(($, err) -> server.close());
-
-		eventloop.run();
-
-		Comparator<FileMetadata> comparator = Comparator.comparing(FileMetadata::getFilename);
-		actual.sort(comparator);
-		expected.sort(comparator);
-		actual2.sort(comparator);
-		expected2.sort(comparator);
-
-		for (int i = 0; i < expected.size(); i++) {
-			assertTrue(expected.get(i).toString(), expected.get(i).equalsIgnoringTimestamp(actual.get(i)));
-		}
-		for (int i = 0; i < expected2.size(); i++) {
-			assertTrue(expected2.get(i).toString(), expected2.get(i).equalsIgnoringTimestamp(actual2.get(i)));
-		}
+		Promises.toTuple(client.subfolder("subfolder1").list(), client.subfolder("subfolder2").list())
+				.whenComplete(($, e) -> server.close())
+				.whenComplete(assertComplete(tuple -> {
+					assertEquals(expected1, tuple.getValue1().stream().map(FileMetadata::getFilename).collect(toSet()));
+					assertEquals(expected2, tuple.getValue2().stream().map(FileMetadata::getFilename).collect(toSet()));
+				}));
 	}
 
 	private Promise<Void> upload(String resultFile, byte[] bytes) {
-		return SerialSupplier.of(ByteBuf.wrapForReading(bytes)).streamTo(client.uploadSerial(resultFile));
+		return client.upload(resultFile)
+				.thenCompose(SerialSupplier.of(ByteBuf.wrapForReading(bytes))::streamTo);
 	}
 }

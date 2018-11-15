@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,14 +22,12 @@ import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
 import java.io.File;
-import java.net.InetSocketAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
@@ -51,19 +49,14 @@ public class TestHttpsServer {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 
-		AsyncServlet bobServlet = new AsyncServlet() {
-			@Override
-			public Promise<HttpResponse> serve(HttpRequest request) {
-				return Promise.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
-			}
-		};
+		AsyncServlet bobServlet = request -> Promise.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
 
 		KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 		TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.withSslListenPort(createSslContext("TLSv1", keyManagers, trustManagers, new SecureRandom()), executor, PORT)
-				.withListenAddress(new InetSocketAddress("localhost", 5569));
+				.withListenPort(5569);
 
 		System.out.println("https://127.0.0.1:" + PORT);
 

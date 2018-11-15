@@ -107,7 +107,7 @@ public class TestUtils {
 		enableLogging(Logger.ROOT_LOGGER_NAME, Level.TRACE);
 	}
 
-	public static <T> BiConsumer<T, Throwable> assertComplete(Consumer<T> consumer) {
+	public static <T> BiConsumer<T, Throwable> assertComplete(ThrowingConsumer<T> consumer) {
 		activePromises++;
 		return (t, error) -> {
 			activePromises--;
@@ -117,7 +117,11 @@ public class TestUtils {
 				}
 				throw new AssertionError(error);
 			}
-			consumer.accept(t);
+			try {
+				consumer.accept(t);
+			} catch (Throwable throwable) {
+				throw new AssertionError(throwable);
+			}
 		};
 	}
 
@@ -126,7 +130,7 @@ public class TestUtils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, @Nullable String messagePattern, Consumer<E> consumer) {
+	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, @Nullable String messagePattern, ThrowingConsumer<E> consumer) {
 		activePromises++;
 		return (t, error) -> {
 			activePromises--;
@@ -139,11 +143,15 @@ public class TestUtils {
 			if (messagePattern != null && !Pattern.compile(messagePattern).matcher(error.getMessage()).find()) {
 				throw new AssertionError("Expected error message to match pattern `" + messagePattern + "`, but got message '" + error.getMessage() + "'");
 			}
-			consumer.accept((E) error);
+			try {
+				consumer.accept((E) error);
+			} catch (Throwable throwable) {
+				throw new AssertionError(throwable);
+			}
 		};
 	}
 
-	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, Consumer<E> consumer) {
+	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, ThrowingConsumer<E> consumer) {
 		return assertFailure(errorClass, null, consumer);
 	}
 
@@ -159,7 +167,7 @@ public class TestUtils {
 		return assertFailure(Throwable.class, messagePattern);
 	}
 
-	public static <T> BiConsumer<T, Throwable> assertFailure(Consumer<Throwable> consumer) {
+	public static <T> BiConsumer<T, Throwable> assertFailure(ThrowingConsumer<Throwable> consumer) {
 		return assertFailure(Throwable.class, consumer);
 	}
 
@@ -201,6 +209,24 @@ public class TestUtils {
 		return x -> {
 			try {
 				consumer.accept(x);
+			} catch (Throwable throwable) {
+				throw new AssertionError(throwable);
+			}
+		};
+	}
+
+	@FunctionalInterface
+	public interface ThrowingBiConsumer<T, U> {
+
+		void accept(T t, U u) throws Throwable;
+	}
+
+	public static <T, U> BiConsumer<T, U> asserting(ThrowingBiConsumer<T, U> consumer) {
+		return (x, y) -> {
+			try {
+				consumer.accept(x, y);
+			} catch (RuntimeException | Error e) {
+				throw e;
 			} catch (Throwable throwable) {
 				throw new AssertionError(throwable);
 			}

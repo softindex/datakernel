@@ -16,7 +16,6 @@
 
 package io.global.fs;
 
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
@@ -24,7 +23,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActivePromisesRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.RawServerId;
@@ -37,40 +36,42 @@ import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import org.junit.Before;
 import org.junit.Ignore;
-import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.Promises.all;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.http.AsyncHttpClient.create;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
+import static io.global.common.SignedData.sign;
+import static io.global.common.api.AnnounceData.of;
 import static io.global.fs.api.CheckpointPosStrategy.fixed;
+import static java.lang.Integer.parseInt;
+import static java.lang.System.getProperty;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
 @Ignore("those are run configs that are launched manually")
-public class GlobalFsSetup {
+@RunWith(DatakernelRunner.class)
+public final class GlobalFsSetup {
 
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
-
-	private Eventloop eventloop;
 	private KeyPair alice, bob;
 
 	@Before
 	public void setUp() throws ParseException {
-		eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
 		alice = PrivKey.fromString("d6577f45e352a16e21a29e8b9fb927b17902332c7f141e51a6265558c6bdd7ef").computeKeys();
 		bob = PrivKey.fromString("538451a22387ba099222bdbfdeaed63435fde46c724eb3c72e8c64843c339ea1").computeKeys();
 	}
 
 	@Test
 	public void uploadDownload() {
-		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		DiscoveryService discoveryService = HttpDiscoveryService.create(new InetSocketAddress(9001), client);
 
 		RawServerId first = new RawServerId(new InetSocketAddress(8001));
@@ -101,28 +102,23 @@ public class GlobalFsSetup {
 				.whenResult(res -> assertEquals(text1 + text2, res.asString(UTF_8)))
 				.whenResult($ -> System.out.println("Download from second server finished"))
 				.whenComplete(assertComplete());
-
-		eventloop.run();
 	}
 
 	@Test
 	public void announceNodes() {
-		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+		AsyncHttpClient client = create(getCurrentEventloop());
 		DiscoveryService discoveryService = HttpDiscoveryService.create(new InetSocketAddress(9001), client);
 
 		Set<RawServerId> servers = new HashSet<>();
 
-		for (int i = 1; i <= Integer.parseInt(System.getProperty("globalfs.testing.numOfServers")); i++) {
+		for (int i = 1; i <= parseInt(getProperty("globalfs.testing.numOfServers")); i++) {
 			servers.add(new RawServerId(new InetSocketAddress(8000 + i)));
 		}
 
-		eventloop.post(() ->
-				Promises.all(
-						discoveryService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(123, servers), alice.getPrivKey())),
-						discoveryService.announce(bob.getPubKey(), SignedData.sign(AnnounceData.of(234, servers), bob.getPrivKey()))
-				)
-						.whenComplete(assertComplete()));
-
-		eventloop.run();
+		all(
+				discoveryService.announce(alice.getPubKey(), sign(of(123, servers), alice.getPrivKey())),
+				discoveryService.announce(bob.getPubKey(), sign(of(234, servers), bob.getPrivKey()))
+		)
+				.whenComplete(assertComplete());
 	}
 }

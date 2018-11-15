@@ -18,37 +18,28 @@ package io.datakernel.http.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.http.TestUtils.AssertingConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.zip.GZIPOutputStream;
 
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.test.TestUtils.assertComplete;
 
-public class BufsConsumerGzipDeflaterTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
-
-	public final AssertingConsumer consumer = new AssertingConsumer();
-	public BufsConsumerGzipDeflater gzip = BufsConsumerGzipDeflater.create();
-	public final ArrayList<ByteBuf> list = new ArrayList<>();
-	public final Random random = new Random();
-	public final Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+@RunWith(DatakernelRunner.class)
+public final class BufsConsumerGzipDeflaterTest {
+	private final AssertingConsumer consumer = new AssertingConsumer();
+	private final BufsConsumerGzipDeflater gzip = BufsConsumerGzipDeflater.create();
+	private final ArrayList<ByteBuf> list = new ArrayList<>();
 
 	@Before
 	public void setUp() {
@@ -79,7 +70,7 @@ public class BufsConsumerGzipDeflaterTest {
 	@Test
 	public void testCompressSingleBuf() {
 		byte[] data = new byte[17000];
-		random.nextBytes(data);
+		ThreadLocalRandom.current().nextBytes(data);
 		ByteBuf buf = ByteBufPool.allocate(data.length);
 		ByteBuf buf2 = ByteBufPool.allocate(data.length);
 		buf.put(data);
@@ -93,7 +84,7 @@ public class BufsConsumerGzipDeflaterTest {
 	@Test
 	public void testCompressMultipleBufs() {
 		byte[] data = new byte[100_000];
-		random.nextBytes(data);
+		ThreadLocalRandom.current().nextBytes(data);
 		ByteBuf buf1 = ByteBufPool.allocate(data.length);
 		ByteBuf buf2 = ByteBufPool.allocate(data.length);
 		buf1.put(data);
@@ -113,8 +104,6 @@ public class BufsConsumerGzipDeflaterTest {
 	private void doTest() {
 		gzip.getInput().set(SerialSupplier.ofIterable(list));
 		gzip.getProcessResult().whenComplete(assertComplete());
-
-		eventloop.run();
 	}
 
 	private byte[] compressWithGzipOutputStream(byte[]... arrays) {
@@ -131,5 +120,4 @@ public class BufsConsumerGzipDeflaterTest {
 			throw new AssertionError(e);
 		}
 	}
-
 }

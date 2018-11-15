@@ -24,169 +24,105 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.exception.AsyncTimeoutException;
+import io.datakernel.exception.InvalidSizeException;
+import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import io.datakernel.stream.processor.ByteBufRule;
-import org.hamcrest.beans.HasPropertyWithValue;
-import org.hamcrest.core.IsEqual;
-import org.hamcrest.core.IsSame;
-import org.junit.Rule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
-import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.http.HelloWorldServer.HELLO_WORLD;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-public class AsyncHttpClientTest {
+@RunWith(DatakernelRunner.class)
+public final class AsyncHttpClientTest {
 	private static final int PORT = 45788;
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	private static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
 
-	@Rule
-	public ExpectedException expectedException = ExpectedException.none();
-
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
-
-	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
-		return AsyncHttpServer.create(primaryEventloop,
-				request ->
-						Promise.of(HttpResponse.ok200()
-								.withBodyStream(SerialSupplier.ofStream(
-										IntStream.range(0, HELLO_WORLD.length)
-												.mapToObj(idx -> {
-													ByteBuf buf = ByteBufPool.allocate(1);
-													buf.put(HELLO_WORLD[idx]);
-													return buf;
-												})))))
-				.withListenAddress(new InetSocketAddress("localhost", port));
+	public static void startServer() throws IOException {
+		AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request ->
+				Promise.of(HttpResponse.ok200()
+						.withBodyStream(SerialSupplier.ofStream(
+								IntStream.range(0, HELLO_WORLD.length)
+										.mapToObj(idx -> {
+											ByteBuf buf = ByteBufPool.allocate(1);
+											buf.put(HELLO_WORLD[idx]);
+											return buf;
+										})))))
+				.withListenPort(PORT)
+				.withAcceptOnce()
+				.listen();
 	}
 
 	@Test
 	public void testAsyncClient() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		startServer();
 
-		AsyncHttpServer httpServer = helloWorldServer(eventloop, PORT);
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
-
-		httpServer.listen();
-
-		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenCompose(ensureResponseBody())
 				.thenApply(HttpMessage::getBody)
-				.thenApply(buf -> buf.asString(UTF_8))
-				.whenComplete(($, e) -> {
-					httpClient.stop();
-					httpServer.close();
-				})
-				.toCompletableFuture();
-
-		eventloop.run();
-
-		assertEquals(decodeAscii(HELLO_WORLD), future.get());
+				.whenComplete(assertComplete(buf -> assertEquals(decodeAscii(HELLO_WORLD), buf.asString(UTF_8))));
 	}
 
 	@Test
-	public void testClientTimeoutConnect() throws ExecutionException, InterruptedException {
-		Duration TIMEOUT = Duration.ofMillis(1);
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
-
-		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://google.com"))
+	public void testClientTimeoutConnect() {
+		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.withConnectTimeout(Duration.ofMillis(1))
+				.request(HttpRequest.get("http://google.com"))
 				.thenCompose(ensureResponseBody())
-				.thenApply(response -> response.getBody().asString(UTF_8))
-				.whenComplete(($, e) -> httpClient.stop())
-				.toCompletableFuture();
-
-		eventloop.run();
-
-		expectedException.expect(ExecutionException.class);
-		expectedException.expectCause(IsSame.sameInstance(Eventloop.CONNECT_TIMEOUT));
-			System.err.println("Result: " + future.get());
+				.whenComplete(assertFailure(AsyncTimeoutException.class, "Connection timed out"));
 	}
 
 	@Test
-	public void testBigHttpMessage() throws IOException, ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		AsyncHttpServer httpServer = helloWorldServer(eventloop, PORT);
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
-
-		httpServer.listen();
+	public void testBigHttpMessage() throws IOException {
+		startServer();
 
 		int maxBodySize = HELLO_WORLD.length - 1;
-		CompletableFuture<String> future = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(ensureResponseBody())
-				.thenApply(response -> response.getBody().asString(UTF_8))
-				.whenComplete(($, e) -> {
-					httpClient.stop();
-					httpServer.close();
-				})
-				.toCompletableFuture();
 
-		eventloop.run();
-
-		expectedException.expect(ExecutionException.class);
-		expectedException.expectCause(HasPropertyWithValue.hasProperty("message", IsEqual.equalTo("ByteBufQueue exceeds maximum size of " + maxBodySize + " bytes")));
-		System.err.println("Result: " + future.get());
+		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.thenCompose(ensureResponseBody(maxBodySize))
+				.whenComplete(assertFailure(InvalidSizeException.class, "ByteBufQueue exceeds maximum size of " + maxBodySize + " bytes"));
 	}
 
 	@Test
-	public void testEmptyLineResponse() throws IOException, ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		SimpleServer server = SimpleServer.create(eventloop,
-				socket -> socket.read()
+	public void testEmptyLineResponse() throws IOException {
+		SimpleServer.create(socket ->
+				socket.read()
 						.whenResult(ByteBuf::recycle)
 						.thenCompose($ -> socket.write(wrapAscii("\r\n")))
 						.whenComplete(($, e) -> socket.close()))
-				.withListenAddress(new InetSocketAddress("localhost", PORT));
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
+				.withListenPort(PORT)
+				.withAcceptOnce()
+				.listen();
 
-		server.listen();
-
-		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
-		CompletableFuture<String> future = httpClient.request(request)
+		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenCompose(ensureResponseBody())
-				.thenApply(response -> response.getBody().asString(UTF_8))
-				.whenComplete(($, e) -> {
-					httpClient.stop();
-					server.close();
-				})
-				.toCompletableFuture();
-
-		eventloop.run();
-
-		expectedException.expect(ExecutionException.class);
-		expectedException.expectCause(IsSame.sameInstance(HttpClientConnection.INVALID_RESPONSE));
-		System.err.println("Result: " + future.get());
+				.whenComplete(assertFailure(UnknownFormatException.class, "Invalid response"));
 	}
 
 	@Test
 	public void testActiveRequestsCounter() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 		List<SettablePromise<HttpResponse>> responses = new ArrayList<>();
+
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
 				request -> Promise.ofCallback(responses::add))
-				.withListenAddress(new InetSocketAddress("localhost", PORT));
+				.withListenPort(PORT);
 
 		server.listen();
 
@@ -225,7 +161,5 @@ public class AsyncHttpClientTest {
 					assertEquals(4, inspector.getActiveRequests());
 				})
 				.whenComplete(assertFailure(AsyncTimeoutException.class, "timeout"));
-
-		eventloop.run();
 	}
 }

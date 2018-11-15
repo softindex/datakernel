@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,116 +28,81 @@ import io.datakernel.serial.processor.SerialLZ4Compressor;
 import io.datakernel.serial.processor.SerialLZ4Decompressor;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.util.MemSize;
-import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static java.lang.ClassLoader.getSystemClassLoader;
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-public class RpcBinaryProtocolTest {
+@RunWith(DatakernelRunner.class)
+public final class RpcBinaryProtocolTest {
 	private static final int LISTEN_PORT = 12345;
-	private static final InetSocketAddress address;
-
-	static {
-		try {
-			address = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), LISTEN_PORT);
-		} catch (UnknownHostException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void test() throws Exception {
 		String testMessage = "Test";
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		RpcClient client = RpcClient.create(eventloop)
+		RpcClient client = RpcClient.create(Eventloop.getCurrentEventloop())
 				.withMessageTypes(String.class)
-				.withStrategy(server(address));
+				.withStrategy(server(new InetSocketAddress("localhost", LISTEN_PORT)));
 
-		RpcServer server = RpcServer.create(eventloop)
+		RpcServer server = RpcServer.create(Eventloop.getCurrentEventloop())
 				.withMessageTypes(String.class)
 				.withHandler(String.class, String.class, request -> Promise.of("Hello, " + request + "!"))
-				.withListenAddress(address);
+				.withListenPort(LISTEN_PORT);
 		server.listen();
 
 		int countRequests = 10;
-		List<String> results = new ArrayList<>();
 
 		client.start()
-				.thenCompose($ -> Promises.all(IntStream.range(0, countRequests).mapToObj(i ->
-						client.<String, String>sendRequest(testMessage, 1000)
-								.whenResult(results::add))))
-				.whenComplete(($1, e1) -> Promises.all(client.stop(), server.close()));
-
-		eventloop.run();
-
-		assertEquals(countRequests, results.size());
-		for (int i = 0; i < countRequests; i++) {
-			assertEquals("Hello, " + testMessage + "!", results.get(i));
-		}
+				.thenCompose($ ->
+						Promises.toList(IntStream.range(0, countRequests)
+								.mapToObj(i -> client.<String, String>sendRequest(testMessage, 1000))))
+				.whenComplete(($, e) -> {
+					client.stop();
+					server.close();
+				})
+				.whenComplete(assertComplete(list -> assertTrue(list.stream().allMatch(response -> response.equals("Hello, " + testMessage + "!")))));
 	}
 
 	@Test
 	public void testCompression() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 		BufferSerializer<RpcMessage> bufferSerializer = SerializerBuilder.create(getSystemClassLoader())
 				.withSubclasses(RpcMessage.MESSAGE_TYPES, String.class)
 				.build(RpcMessage.class);
 
 		int countRequests = 10;
 
-		// client side
 		String testMessage = "Test";
-		List<RpcMessage> sourceList = new ArrayList<>();
-		for (int i = 0; i < countRequests; i++) {
-			sourceList.add(RpcMessage.of(i, testMessage));
-		}
-		StreamSupplier<RpcMessage> client = StreamSupplier.ofIterable(sourceList);
+		List<RpcMessage> sourceList = IntStream.range(0, countRequests).mapToObj(i -> RpcMessage.of(i, testMessage)).collect(toList());
 
-		SerialLZ4Compressor compressor = SerialLZ4Compressor.createFastCompressor();
-		SerialBinarySerializer<RpcMessage> serializer = SerialBinarySerializer.create(bufferSerializer)
+		SerialBinarySerializer.create(bufferSerializer)
 				.withInitialBufferSize(MemSize.of(1))
-				.withMaxMessageSize(MemSize.of(64));
-		SerialBinaryDeserializer<RpcMessage> deserializer = SerialBinaryDeserializer.create(bufferSerializer);
+				.withMaxMessageSize(MemSize.of(64))
 
-		// server side
-		SerialLZ4Decompressor decompressor = SerialLZ4Decompressor.create();
-
-		StreamConsumerToList<RpcMessage> results = StreamConsumerToList.create();
-
-		client.streamTo(serializer);
-		serializer.getOutput().bindTo(compressor.getInput());
-		compressor.getOutput().bindTo(decompressor.getInput());
-		decompressor.getOutput().bindTo(deserializer.getInput());
-		deserializer.streamTo(results);
-
-		eventloop.run();
-
-		List<RpcMessage> resultsData = results.getList();
-		assertEquals(countRequests, resultsData.size());
-		for (int i = 0; i < countRequests; i++) {
-			assertEquals(i, resultsData.get(i).getCookie());
-			String data = (String) resultsData.get(i).getData();
-			assertEquals(testMessage, data);
-		}
+				.apply(StreamSupplier.ofIterable(sourceList))
+				.apply(SerialLZ4Compressor.createFastCompressor())
+				.apply(SerialLZ4Decompressor.create())
+				.apply(SerialBinaryDeserializer.create(bufferSerializer))
+				.toList()
+				.whenComplete(assertComplete(list -> {
+					assertEquals(countRequests, list.size());
+					for (int i = 0; i < countRequests; i++) {
+						assertEquals(i, list.get(i).getCookie());
+						String data = (String) list.get(i).getData();
+						assertEquals(testMessage, data);
+					}
+				}));
 	}
 }

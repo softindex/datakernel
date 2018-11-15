@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 
-import java.net.InetSocketAddress;
-
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
@@ -35,7 +33,7 @@ public final class HelloWorldPostServer {
 				ensureRequestBody(request -> Promise.of(
 						HttpResponse.ok200()
 								.withBody(encodeAscii(HELLO_WORLD + request.getBody().asString(UTF_8))))))
-				.withListenAddress(new InetSocketAddress("localhost", port));
+				.withListenPort(port);
 	}
 
 	public static void main(String[] args) throws Exception {

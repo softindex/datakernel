@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,121 +18,74 @@ package io.datakernel.serial.net;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.SerialByteChunker;
 import io.datakernel.serial.processor.SerialLZ4Compressor;
 import io.datakernel.serial.processor.SerialLZ4Decompressor;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.util.MemSize;
-import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.IntStream;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.test.TestUtils.assertComplete;
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertArrayEquals;
 
-public class StreamLZ4Test {
-	private static ByteBuf createRandomByteBuf(Random random) {
-		int offset = random.nextInt(10);
-		int tail = random.nextInt(10);
-		int len = random.nextInt(100);
-		ByteBuf result = ByteBuf.wrapForWriting(new byte[offset + len + tail]);
-		int lenUnique = 1 + random.nextInt(len + 1);
-		result.writePosition(offset);
-		result.readPosition(offset);
-		for (int i = 0; i < len; i++) {
-			result.put((byte) (i % lenUnique));
-		}
-		return result;
-	}
-
-	private static byte[] byteBufsToByteArray(List<ByteBuf> byteBufs) {
-		ByteBufQueue queue = new ByteBufQueue();
-		for (ByteBuf buf : byteBufs) {
-			queue.add(buf.slice());
-		}
-		byte[] bytes = new byte[queue.remainingBytes()];
-		queue.drainTo(bytes, 0, bytes.length);
-		return bytes;
-	}
-
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+@RunWith(DatakernelRunner.class)
+public final class StreamLZ4Test {
 
 	@Test
-	public void test() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		List<ByteBuf> buffers = new ArrayList<>();
-		Random random = new Random(123456);
+	public void test() {
 		int buffersCount = 100;
-		for (int i = 0; i < buffersCount; i++) {
-			buffers.add(createRandomByteBuf(random));
-		}
-		byte[] expected = byteBufsToByteArray(buffers);
 
-		CompletableFuture<List<ByteBuf>> future = SerialSupplier.ofIterable(buffers)
+		List<ByteBuf> buffers = IntStream.range(0, buffersCount).mapToObj($ -> createRandomByteBuf()).collect(toList());
+		byte[] expected = buffers.stream().map(ByteBuf::slice).collect(ByteBufQueue.collector()).asArray();
+
+		SerialSupplier.ofIterable(buffers)
 				.apply(SerialByteChunker.create(MemSize.of(64), MemSize.of(128)))
 				.apply(SerialLZ4Compressor.createFastCompressor())
 				.apply(SerialByteChunker.create(MemSize.of(64), MemSize.of(128)))
 				.apply(SerialLZ4Decompressor.create())
-				.toList()
-				.toCompletableFuture();
-
-		eventloop.run();
-
-		byte[] actual = byteBufsToByteArray(future.get());
-		for (ByteBuf buf : future.get()) {
-			buf.recycle();
-		}
-
-		assertArrayEquals(expected, actual);
+				.toCollector(ByteBufQueue.collector())
+				.whenComplete(assertComplete(buf -> assertArrayEquals(expected, buf.asArray())));
 	}
 
 	@Test
-	public void testLz4Fast() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		doTest(eventloop, SerialLZ4Compressor.createFastCompressor());
+	public void testLz4Fast() {
+		doTest(SerialLZ4Compressor.createFastCompressor());
 	}
 
 	@Test
-	public void testLz4High() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		doTest(eventloop, SerialLZ4Compressor.createHighCompressor());
+	public void testLz4High() {
+		doTest(SerialLZ4Compressor.createHighCompressor());
 	}
 
 	@Test
-	public void testLz4High10() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		doTest(eventloop, SerialLZ4Compressor.createHighCompressor(10));
+	public void testLz4High10() {
+		doTest(SerialLZ4Compressor.createHighCompressor(10));
 	}
 
-	private void doTest(Eventloop eventloop, SerialLZ4Compressor compressor) throws Exception {
-		byte data[] = "1".getBytes();
-		ByteBuf buf = ByteBuf.wrapForReading(data);
-		List<ByteBuf> buffers = new ArrayList<>();
-		buffers.add(buf);
+	private void doTest(SerialLZ4Compressor compressor) {
+		byte[] data = "1".getBytes();
 
-		CompletableFuture<List<ByteBuf>> result = SerialSupplier.ofIterable(buffers)
+		SerialSupplier.of(ByteBuf.wrapForReading(data))
 				.apply(compressor)
 				.apply(SerialLZ4Decompressor.create())
-				.toList()
-				.toCompletableFuture();
-
-		eventloop.run();
-
-		byte[] actual = byteBufsToByteArray(result.get());
-		byte[] expected = byteBufsToByteArray(buffers);
-		for (ByteBuf b : result.get()) {
-			b.recycle();
-		}
-		assertArrayEquals(actual, expected);
+				.toCollector(ByteBufQueue.collector())
+				.whenComplete(assertComplete(buf -> assertArrayEquals(data, buf.asArray())));
 	}
 
+	private static ByteBuf createRandomByteBuf() {
+		ThreadLocalRandom random = ThreadLocalRandom.current();
+		int offset = random.nextInt(10);
+		int tail = random.nextInt(10);
+		int len = random.nextInt(100);
+		byte[] array = new byte[offset + len + tail];
+		random.nextBytes(array);
+		return ByteBuf.wrap(array, offset, offset + len);
+	}
 }

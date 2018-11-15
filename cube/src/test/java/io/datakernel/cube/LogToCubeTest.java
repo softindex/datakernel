@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,18 +32,17 @@ import io.datakernel.logfs.ot.*;
 import io.datakernel.ot.*;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
-import org.junit.Ignore;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import javax.sql.DataSource;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -52,15 +51,15 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.test.TestUtils.dataSource;
+import static io.datakernel.test.TestUtils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-public class LogToCubeTest {
+@RunWith(DatakernelRunner.class)
+public final class LogToCubeTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -72,24 +71,22 @@ public class LogToCubeTest {
 	}
 
 	@Test
-	// TODO: remove ignore later
-	@Ignore
 	public void testStubStorage() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
 		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
-			.withDimension("pub", ofInt())
-			.withDimension("adv", ofInt())
-			.withMeasure("pubRequests", sum(ofLong()))
-			.withMeasure("advRequests", sum(ofLong()))
-			.withAggregation(id("pub").withDimensions("pub").withMeasures("pubRequests"))
-			.withAggregation(id("adv").withDimensions("adv").withMeasures("advRequests"));
+				.withDimension("pub", ofInt())
+				.withDimension("adv", ofInt())
+				.withMeasure("pubRequests", sum(ofLong()))
+				.withMeasure("advRequests", sum(ofLong()))
+				.withAggregation(id("pub").withDimensions("pub").withMeasures("pubRequests"))
+				.withAggregation(id("adv").withDimensions("adv").withMeasures("advRequests"));
 
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
@@ -102,48 +99,41 @@ public class LogToCubeTest {
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop,
-			LocalFsLogFileSystem.create(eventloop, executor, logsDir),
-			SerializerBuilder.create(classLoader).build(TestPubRequest.class));
+				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
+				SerializerBuilder.create(classLoader).build(TestPubRequest.class));
 
 		LogOTProcessor<TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
-			logManager,
-			new TestAggregatorSplitter(cube), // TestAggregatorSplitter.create(eventloop, cube),
-			"testlog",
-			asList("partitionA"),
-			cubeDiffLogOTState);
-
-		StreamSupplier.of(
-			new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
-			new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
-			new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),
-			new TestPubRequest(1002, 2, Arrays.asList()))
-			.streamTo(logManager.consumerStream("partitionA"));
-		eventloop.run();
-
-		CompletableFuture<?> future;
-
-		future = logCubeStateManager.checkout().toCompletableFuture();
-		eventloop.run();
-		future.get();
-
-		future = logOTProcessor.processLog()
-			.thenCompose(logDiff -> aggregationChunkStorage
-				.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
-				.thenApply($ -> logDiff))
-			.thenApply(addFunction(logCubeStateManager))
-			.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
-		eventloop.run();
-		future.get();
-
-		StreamConsumerToList<TestAdvResult> consumerToList = StreamConsumerToList.create();
-
-		cube.queryRawStream(asList("adv"), asList("advRequests"), alwaysTrue(),
-			TestAdvResult.class, DefiningClassLoader.create(classLoader))
-			.streamTo(consumerToList);
-		eventloop.run();
+				logManager,
+				new TestAggregatorSplitter(cube), // TestAggregatorSplitter.create(eventloop, cube),
+				"testlog",
+				asList("partitionA"),
+				cubeDiffLogOTState);
 
 		List<TestAdvResult> expected = asList(new TestAdvResult(10, 2), new TestAdvResult(20, 1), new TestAdvResult(30, 1));
-		assertEquals(expected, consumerToList.getList());
+
+		StreamSupplier.of(
+				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
+				new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
+				new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),
+				new TestPubRequest(1002, 2, Arrays.asList()))
+				.streamTo(logManager.consumerStream("partitionA"))
+				.whenComplete(assertComplete())
+				.thenCompose($ -> logCubeStateManager.checkout())
+				.thenCompose($ -> logOTProcessor.processLog())
+				.thenCompose(logDiff -> aggregationChunkStorage
+						.finish(logDiff.diffs().flatMap(CubeDiff::<Long>addedChunks).collect(toSet()))
+						.thenApply($ -> logDiff))
+				.thenApply(addFunction(logCubeStateManager))
+				.thenCompose(OTStateManager::commitAndPush)
+				.thenCompose(asserting($ -> {
+					return cube.queryRawStream(
+							asList("adv"),
+							asList("advRequests"),
+							alwaysTrue(),
+							TestAdvResult.class, DefiningClassLoader.create(classLoader))
+							.toList();
+				}))
+				.whenComplete(assertComplete(list -> assertEquals(expected, list)));
 	}
 
 	public static final class TestPubResult {
@@ -173,6 +163,7 @@ public class LogToCubeTest {
 			return "TestAdvResult{adv=" + adv + ", advRequests=" + advRequests + '}';
 		}
 
+		@SuppressWarnings("RedundantIfStatement")
 		@Override
 		public boolean equals(Object o) {
 			if (this == o) return true;

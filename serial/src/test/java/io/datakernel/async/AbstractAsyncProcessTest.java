@@ -18,19 +18,16 @@ package io.datakernel.async;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.exception.ParseException;
 import io.datakernel.serial.SerialConsumer;
 import io.datakernel.serial.SerialInput;
 import io.datakernel.serial.SerialOutput;
 import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serial.processor.WithSerialToSerial;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,18 +40,12 @@ import static io.datakernel.util.Recyclable.tryRecycle;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-public class AbstractAsyncProcessTest {
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
-
-	@Rule
-	public final ByteBufRule byteBufRule = new ByteBufRule();
+@RunWith(DatakernelRunner.class)
+public final class AbstractAsyncProcessTest {
 
 	private final int size = 10;
 	private final List<ByteBuf> actualData = new ArrayList<>();
 	private final ParseException error = new ParseException(AbstractAsyncProcessTest.class, "Test Error");
-
-	private Eventloop eventloop;
 
 	private PassThroughProcess[] processes = new PassThroughProcess[size];
 	private MaterializedPromise<Void> acknowledgement;
@@ -63,7 +54,6 @@ public class AbstractAsyncProcessTest {
 
 	@Before
 	public void setUp() {
-		eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError()).withCurrentThread();
 		Random random = new Random();
 		for (int i = 0; i < 5; i++) {
 			byte[] bytes = new byte[1000];
@@ -96,8 +86,6 @@ public class AbstractAsyncProcessTest {
 		}));
 
 		acknowledgement.whenComplete(assertComplete($ -> assertTrue(consumedAll)));
-
-		eventloop.run();
 	}
 
 	@Test
@@ -108,8 +96,6 @@ public class AbstractAsyncProcessTest {
 		}));
 
 		acknowledgement.whenComplete(assertFailure(e -> assertSame(error, e)));
-
-		eventloop.run();
 	}
 
 	// region stub

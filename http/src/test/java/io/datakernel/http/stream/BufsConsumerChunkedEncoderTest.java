@@ -18,31 +18,23 @@ package io.datakernel.http.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.http.TestUtils.AssertingConsumer;
 import io.datakernel.serial.SerialSupplier;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.test.TestUtils.assertComplete;
 
-public class BufsConsumerChunkedEncoderTest {
-	@Rule
-	public final ByteBufRule byteBufRule = new ByteBufRule();
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
-	private final Random RANDOM = new Random();
+@RunWith(DatakernelRunner.class)
+public final class BufsConsumerChunkedEncoderTest {
 	private final List<ByteBuf> list = new ArrayList<>();
-	private final Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 	private final AssertingConsumer consumer = new AssertingConsumer();
 	private final BufsConsumerChunkedEncoder chunkedEncoder = BufsConsumerChunkedEncoder.create();
 
@@ -55,7 +47,7 @@ public class BufsConsumerChunkedEncoderTest {
 	@Test
 	public void testEncoderSingleBuf() {
 		byte[] chunkData = new byte[100];
-		RANDOM.nextBytes(chunkData);
+		ThreadLocalRandom.current().nextBytes(chunkData);
 		ByteBuf buf = ByteBufPool.allocate(chunkData.length);
 		ByteBuf expected = ByteBufPool.allocate(200);
 		buf.put(chunkData);
@@ -70,7 +62,7 @@ public class BufsConsumerChunkedEncoderTest {
 	@Test
 	public void testEncodeWithEmptyBuf() {
 		byte[] chunkData = new byte[100];
-		RANDOM.nextBytes(chunkData);
+		ThreadLocalRandom.current().nextBytes(chunkData);
 		ByteBuf buf = ByteBufPool.allocate(chunkData.length);
 		buf.put(chunkData);
 		ByteBuf expected = ByteBufPool.allocate(200);
@@ -88,7 +80,7 @@ public class BufsConsumerChunkedEncoderTest {
 	@Test
 	public void testWithChunkedOutputStream() throws IOException {
 		byte[] chunkData = new byte[1000];
-		RANDOM.nextBytes(chunkData);
+		ThreadLocalRandom.current().nextBytes(chunkData);
 		consumer.setExpectedByteArray(BufsConsumerChunkedDecoderTest.encode(chunkData, true));
 		ByteBuf buf = ByteBufPool.allocate(chunkData.length);
 		buf.put(chunkData);
@@ -100,7 +92,5 @@ public class BufsConsumerChunkedEncoderTest {
 		chunkedEncoder.getInput().set(SerialSupplier.ofIterable(list));
 		chunkedEncoder.getProcessResult()
 				.whenComplete(assertComplete());
-		eventloop.run();
 	}
-
 }

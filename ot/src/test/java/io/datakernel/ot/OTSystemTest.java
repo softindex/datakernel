@@ -21,24 +21,23 @@ import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
-import io.datakernel.stream.processor.ActivePromisesRule;
-import org.junit.Rule;
+import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.EventloopRule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.utils.Utils.*;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "WeakerAccess"})
-public class OTSystemTest {
-	@Rule
-	public ActivePromisesRule activePromisesRule = new ActivePromisesRule();
+@RunWith(DatakernelRunner.class)
+public final class OTSystemTest {
 
 	@Test
+	@EventloopRule.DontRun
 	public void testTransform1() throws Exception {
 		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> left = asList(add(2), add(1));
@@ -49,6 +48,7 @@ public class OTSystemTest {
 	}
 
 	@Test
+	@EventloopRule.DontRun
 	public void testTransform2() throws Exception {
 		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> left = asList(add(2), set(2, 1), add(2), add(10));
@@ -59,23 +59,16 @@ public class OTSystemTest {
 	}
 
 	@Test
-	public void testSimplify() throws Exception {
+	@EventloopRule.DontRun
+	public void testSimplify() {
 		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> arg = asList(add(2), set(2, 1), add(2), add(10));
 		List<TestOp> result = opSystem.squash(arg);
 		System.out.println(result);
 	}
 
-	private static String reverse(String string) {
-		String result = "";
-		for (int i = 0; i < string.length(); i++) {
-			result += string.charAt(string.length() - i - 1);
-		}
-		return result;
-	}
-
 	@Test
-	public void testOtSource2() throws Exception {
+	public void testOtSource2() {
 		OTSystem<TestOp> system = createTestOp();
 		OTRepositoryStub<String, TestOp> repository = OTRepositoryStub.create(asList("m", "x", "y", "m2"));
 		repository.setGraph(g -> {
@@ -86,79 +79,60 @@ public class OTSystemTest {
 			g.add("b1", "b2", add(100));
 		});
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, state);
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), system, repository);
+		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(Eventloop.getCurrentEventloop(), algorithms, state);
 
-		stateManager.start().thenCompose($ -> stateManager.pull()).whenComplete(assertComplete());
-		eventloop.run();
-		System.out.println(stateManager);
-		System.out.println();
-
-		//		ResultCallbackFuture<Map<String, List<TestOp>>> future = ResultCallbackFuture.create();
-//		OTUtils.doMerge(eventloop, system, repository, comparator,
-//				new HashSet<>(asList("*", "a1", "a2", "a3")),
-//				new HashSet<>(Arrays.<String>asList()), "*",
-//				future);
-//		eventloop.run();
-//		System.out.println(future.get());
-
-		CompletableFuture<?> future;
-
-		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
-		eventloop.run();
-		future.get();
-		System.out.println(repository.loadCommit("m"));
-		System.out.println(stateManager);
-		System.out.println();
-
-		stateManager.add(new TestAdd(50));
-		System.out.println(stateManager);
-		future = stateManager.commit().toCompletableFuture();
-		eventloop.run();
-		future.get();
-		future.get();
-		System.out.println(stateManager);
-		System.out.println();
-
-		stateManager.add(new TestAdd(3));
-		System.out.println(stateManager);
-		future = stateManager.pull().toCompletableFuture();
-		eventloop.run();
-		future.get();
-		System.out.println(stateManager);
-		System.out.println();
-
-		future = stateManager.commit().toCompletableFuture();
-		eventloop.run();
-		future.get();
-		System.out.println(stateManager);
-		System.out.println();
-
-		System.out.println(repository);
-		System.out.println(stateManager);
-		future = stateManager.push().toCompletableFuture();
-		eventloop.run();
-		future.get();
-		System.out.println(repository.loadCommit("x"));
-		System.out.println(repository.loadCommit("y"));
-		System.out.println(stateManager);
-		System.out.println();
-
-		System.out.println(repository);
-		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
-		eventloop.run();
-		future.get();
-		System.out.println(stateManager);
-		System.out.println();
-
+		stateManager.start()
+				.thenCompose($ -> stateManager.pull())
+				.whenComplete(assertComplete($ -> {
+					System.out.println(stateManager);
+					System.out.println();
+				}))
+				.thenCompose($ -> algorithms.mergeHeadsAndPush())
+				.whenComplete(assertComplete($ -> {
+					System.out.println(repository.loadCommit("m"));
+					System.out.println(stateManager);
+					System.out.println();
+					stateManager.add(new TestAdd(50));
+					System.out.println(stateManager);
+				}))
+				.thenCompose($ -> stateManager.commit())
+				.whenComplete(assertComplete($ -> {
+					System.out.println(stateManager);
+					System.out.println();
+					stateManager.add(new TestAdd(3));
+					System.out.println(stateManager);
+				}))
+				.thenCompose($ -> stateManager.pull())
+				.whenComplete(assertComplete($ -> {
+					System.out.println(stateManager);
+					System.out.println();
+				}))
+				.thenCompose($ -> stateManager.commit())
+				.whenComplete(assertComplete($ -> {
+					System.out.println(stateManager);
+					System.out.println();
+					System.out.println(repository);
+					System.out.println(stateManager);
+				}))
+				.thenCompose($ -> stateManager.push())
+				.whenComplete(assertComplete($ -> {
+					System.out.println(repository.loadCommit("x"));
+					System.out.println(repository.loadCommit("y"));
+					System.out.println(stateManager);
+					System.out.println();
+					System.out.println(repository);
+				}))
+				.thenCompose($ -> algorithms.mergeHeadsAndPush())
+				.whenComplete(assertComplete($ -> {
+					System.out.println(stateManager);
+					System.out.println();
+				}));
 	}
 
 	@Test
-	public void testOtSource3() throws Exception {
-		OTSystem<TestOp> system = createTestOp();
-
+	public void testOtSource3() {
 		OTRepositoryStub<String, TestOp> otSource = OTRepositoryStub.create(asList("m"));
 		otSource.setGraph(g -> {
 			g.add("*", "a1", add(1));
@@ -167,28 +141,12 @@ public class OTSystemTest {
 			g.add("a2", "b1", add(10));
 		});
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, otSource);
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, state);
-
-		stateManager.start().thenCompose($ -> stateManager.pull()).whenComplete(assertComplete());
-		eventloop.run();
-		System.out.println(stateManager);
-		System.out.println();
-
-		CompletableFuture<?> future;
-
-		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
-		eventloop.run();
-		future.get();
-		System.out.println(otSource);
-		System.out.println(stateManager);
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), createTestOp(), otSource);
+		pullAndThenMergeAndPush(otSource, algorithms, new OTStateManager<>(Eventloop.getCurrentEventloop(), algorithms, new TestOpState()));
 	}
 
 	@Test
-	public void testOtSource4() throws Exception {
-		OTSystem<TestOp> system = createTestOp();
+	public void testOtSource4() {
 		OTRepositoryStub<String, TestOp> otSource = OTRepositoryStub.create(asList("m"));
 		otSource.setGraph(g -> {
 			g.add("*", "a1", add(1));
@@ -199,23 +157,21 @@ public class OTSystemTest {
 			g.add("b1", "b2", add(1));
 		});
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, otSource);
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, state);
-
-		stateManager.start().thenCompose($ -> stateManager.pull()).whenComplete(assertComplete());
-		eventloop.run();
-		System.out.println(stateManager);
-		System.out.println();
-
-		CompletableFuture<?> future;
-
-		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
-		eventloop.run();
-		future.get();
-		System.out.println(otSource);
-		System.out.println(stateManager);
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), createTestOp(), otSource);
+		pullAndThenMergeAndPush(otSource, algorithms, new OTStateManager<>(Eventloop.getCurrentEventloop(), algorithms, new TestOpState()));
 	}
 
+	private void pullAndThenMergeAndPush(OTRepositoryStub<String, TestOp> otSource, OTAlgorithms<String, TestOp> algorithms, OTStateManager<String, TestOp> stateManager) {
+		stateManager.start()
+				.thenCompose($ -> stateManager.pull())
+				.whenComplete(assertComplete($ -> {
+					System.out.println(stateManager);
+					System.out.println();
+				}))
+				.thenCompose($ -> algorithms.mergeHeadsAndPush())
+				.whenComplete(assertComplete($ -> {
+					System.out.println(otSource);
+					System.out.println(stateManager);
+				}));
+	}
 }

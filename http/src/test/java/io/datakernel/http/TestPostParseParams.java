@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static org.junit.Assert.assertEquals;
 
-public class TestPostParseParams {
+public final class TestPostParseParams {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,8 +38,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
 import static org.junit.Assert.assertEquals;
 
-public class RpcBlockingTest {
-
+public final class RpcBlockingTest {
 	private static final int PORT_1 = 10001;
 	private static final int PORT_2 = 10002;
 	private static final int PORT_3 = 10003;
@@ -63,21 +62,21 @@ public class RpcBlockingTest {
 				.withMessageTypes(HelloRequest.class, HelloResponse.class)
 				.withHandler(HelloRequest.class, HelloResponse.class,
 						helloServiceRequestHandler(new HelloServiceImplOne()))
-				.withListenAddress(new InetSocketAddress("localhost", PORT_1));
+				.withListenPort(PORT_1);
 		serverOne.listen();
 
 		serverTwo = RpcServer.create(eventloop)
 				.withMessageTypes(HelloRequest.class, HelloResponse.class)
 				.withHandler(HelloRequest.class, HelloResponse.class,
 						helloServiceRequestHandler(new HelloServiceImplTwo()))
-				.withListenAddress(new InetSocketAddress("localhost", PORT_2));
+				.withListenPort(PORT_2);
 		serverTwo.listen();
 
 		serverThree = RpcServer.create(eventloop)
 				.withMessageTypes(HelloRequest.class, HelloResponse.class)
 				.withHandler(HelloRequest.class, HelloResponse.class,
 						helloServiceRequestHandler(new HelloServiceImplThree()))
-				.withListenAddress(new InetSocketAddress("localhost", PORT_3));
+				.withListenPort(PORT_3);
 		serverThree.listen();
 
 		thread = new Thread(eventloop);
@@ -95,15 +94,12 @@ public class RpcBlockingTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_2);
 		InetSocketAddress address3 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_3);
 
-		ShardingFunction<HelloRequest> shardingFunction = new ShardingFunction<HelloRequest>() {
-			@Override
-			public int getShard(HelloRequest item) {
-				int shard = 0;
-				if (item.name.startsWith("S")) {
-					shard = 1;
-				}
-				return shard;
+		ShardingFunction<HelloRequest> shardingFunction = item -> {
+			int shard = 0;
+			if (item.name.startsWith("S")) {
+				shard = 1;
 			}
+			return shard;
 		};
 
 		RpcClient client = RpcClient.create(eventloop)
@@ -220,17 +216,14 @@ public class RpcBlockingTest {
 	}
 
 	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(HelloService helloService) {
-		return new RpcRequestHandler<HelloRequest, HelloResponse>() {
-			@Override
-			public Promise<HelloResponse> run(HelloRequest request) {
-				String result;
-				try {
-					result = helloService.hello(request.name);
-				} catch (Exception e) {
-					return Promise.ofException(e);
-				}
-				return Promise.of(new HelloResponse(result));
+		return request -> {
+			String result;
+			try {
+				result = helloService.hello(request.name);
+			} catch (Exception e) {
+				return Promise.ofException(e);
 			}
+			return Promise.of(new HelloResponse(result));
 		};
 	}
 
