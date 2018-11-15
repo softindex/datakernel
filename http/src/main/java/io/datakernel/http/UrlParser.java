@@ -268,26 +268,23 @@ public final class UrlParser {
 	public String getPath() {
 		if (path == -1) {
 			return "/";
-		} else {
-			return raw.substring(path, pathEnd);
 		}
+		return raw.substring(path, pathEnd);
 	}
 
 	public String getQuery() {
 		if (query == -1) {
 			return "";
-		} else {
-			int queryEnd = fragment == -1 ? raw.length() : fragment - 1;
-			return raw.substring(query, queryEnd);
 		}
+		int queryEnd = fragment == -1 ? raw.length() : fragment - 1;
+		return raw.substring(query, queryEnd);
 	}
 
 	public String getFragment() {
 		if (fragment == -1) {
 			return "";
-		} else {
-			return raw.substring(fragment);
 		}
+		return raw.substring(fragment);
 	}
 
 	int getPathAndQueryLength() {

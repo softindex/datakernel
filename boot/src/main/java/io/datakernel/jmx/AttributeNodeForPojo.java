@@ -234,14 +234,13 @@ final class AttributeNodeForPojo implements AttributeNode {
 
 		if (pojo instanceof JmxRefreshable) {
 			return singletonList(((JmxRefreshable) pojo));
-		} else {
-			List<JmxRefreshable> allJmxRefreshables = new ArrayList<>();
-			for (AttributeNode attributeNode : subNodes) {
-				List<JmxRefreshable> subNodeRefreshables = attributeNode.getAllRefreshables(pojo);
-				allJmxRefreshables.addAll(subNodeRefreshables);
-			}
-			return allJmxRefreshables;
 		}
+		List<JmxRefreshable> allJmxRefreshables = new ArrayList<>();
+		for (AttributeNode attributeNode : subNodes) {
+			List<JmxRefreshable> subNodeRefreshables = attributeNode.getAllRefreshables(pojo);
+			allJmxRefreshables.addAll(subNodeRefreshables);
+		}
+		return allJmxRefreshables;
 	}
 
 	@Override

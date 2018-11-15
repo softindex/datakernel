@@ -399,9 +399,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Class<? extends JmxReducer<?>> reducerClass = attrAnnotation.reducer();
 		if (reducerClass == DEFAULT_REDUCER.getClass()) {
 			return DEFAULT_REDUCER;
-		} else {
-			return reducerClass.newInstance();
 		}
+		return reducerClass.newInstance();
 	}
 
 	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, @Nullable Method getter) {

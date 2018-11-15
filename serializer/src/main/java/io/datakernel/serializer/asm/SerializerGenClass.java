@@ -49,19 +49,20 @@ public class SerializerGenClass implements SerializerGen {
 		public boolean hasVersion(int version) {
 			if (versionAdded == -1 && versionDeleted == -1) {
 				return true;
-			} else if (versionAdded != -1 && versionDeleted == -1) {
-				return version >= versionAdded;
-			} else if (versionAdded == -1) {
-				return version < versionDeleted;
-			} else {
-				if (versionAdded > versionDeleted) {
-					return version < versionDeleted || version >= versionAdded;
-				} else if (versionAdded < versionDeleted) {
-					return version >= versionAdded && version < versionDeleted;
-				} else {
-					throw new IllegalArgumentException();
-				}
 			}
+			if (versionAdded != -1 && versionDeleted == -1) {
+				return version >= versionAdded;
+			}
+			if (versionAdded == -1) {
+				return version < versionDeleted;
+			}
+			if (versionAdded > versionDeleted) {
+				return version < versionDeleted || version >= versionAdded;
+			}
+			if (versionAdded < versionDeleted) {
+				return version >= versionAdded && version < versionDeleted;
+			}
+			throw new IllegalArgumentException();
 		}
 
 		public Class<?> getRawType() {

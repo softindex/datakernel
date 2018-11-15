@@ -197,9 +197,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		if (isComplete()) {
 			consumer.accept(result, exception);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	@Override
@@ -207,9 +206,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		if (isResult()) {
 			consumer.accept(result);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	@Override
@@ -217,9 +215,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		if (isException()) {
 			consumer.accept(exception);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -321,9 +318,8 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 				Throwable maybeException = fn.apply(result);
 				if (maybeException == null) return Promise.of(result);
 				return Promise.ofException(maybeException);
-			} else {
-				return this;
 			}
+			return this;
 		}
 		return super.thenException(fn);
 	}

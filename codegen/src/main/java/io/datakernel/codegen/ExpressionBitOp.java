@@ -56,9 +56,8 @@ final class ExpressionBitOp implements Expression {
 	public Type load(Context ctx) {
 		if (op == BitOperation.AND || op == BitOperation.OR || op == BitOperation.XOR) {
 			return loadOther(ctx);
-		} else {
-			return loadShift(ctx);
 		}
+		return loadShift(ctx);
 	}
 
 	private Type loadOther(Context ctx) {

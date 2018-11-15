@@ -39,9 +39,8 @@ final class ValueFetcherFromGetterArrayAdapter implements ValueFetcher {
 			Object arr = getter.invoke(source);
 			if (arr.getClass().getComponentType().isPrimitive()) {
 				return wrapPrimitives(arr);
-			} else {
-				return asList((Object[]) arr);
 			}
+			return asList((Object[]) arr);
 		} catch (IllegalAccessException | InvocationTargetException e) {
 			throw new RuntimeException(e);
 		}

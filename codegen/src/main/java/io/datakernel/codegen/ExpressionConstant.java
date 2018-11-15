@@ -45,11 +45,11 @@ final class ExpressionConstant implements Expression {
 	public Type type(Context ctx) {
 		if (value instanceof String) {
 			return getType(String.class);
-		} else if (value instanceof Type) {
-			return (Type) value;
-		} else {
-			return getType(Primitives.unwrap(value.getClass()));
 		}
+		if (value instanceof Type) {
+			return (Type) value;
+		}
+		return getType(Primitives.unwrap(value.getClass()));
 	}
 
 	@Override

@@ -136,9 +136,8 @@ public final class ByteBufPool {
 			newBuf.put(buf);
 			buf.recycle();
 			return newBuf;
-		} else {
-			return buf;
 		}
+		return buf;
 	}
 
 	public static ByteBuf append(ByteBuf to, ByteBuf from) {

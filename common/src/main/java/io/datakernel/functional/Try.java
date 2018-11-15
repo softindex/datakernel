@@ -157,18 +157,16 @@ public final class Try<T> {
 		if (isSuccess()) {
 			consumer.accept(result);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	public boolean setExceptionTo(Consumer<Throwable> consumer) {
 		if (!isSuccess()) {
 			consumer.accept(throwable);
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 
 	@SuppressWarnings("unchecked")

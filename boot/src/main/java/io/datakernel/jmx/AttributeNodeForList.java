@@ -114,18 +114,17 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 		OpenType<?> arrayElementOpenType = arrayType.getElementOpenType();
 		if (arrayElementOpenType instanceof ArrayType) {
 			throw new RuntimeException("Multidimensional arrays are not supported");
-		} else {
-			try {
-				Class<?> elementClass = classOf(arrayType.getElementOpenType());
-				Object[] array = (Object[]) Array.newInstance(elementClass, attributesFromAllElements.size());
-				for (int i = 0; i < attributesFromAllElements.size(); i++) {
-					Map<String, Object> attributesFromElement = attributesFromAllElements.get(i);
-					array[i] = jmxCompatibleObjectOf(arrayElementOpenType, attributesFromElement);
-				}
-				return array;
-			} catch (OpenDataException e) {
-				throw new RuntimeException(e);
+		}
+		try {
+			Class<?> elementClass = classOf(arrayType.getElementOpenType());
+			Object[] array = (Object[]) Array.newInstance(elementClass, attributesFromAllElements.size());
+			for (int i = 0; i < attributesFromAllElements.size(); i++) {
+				Map<String, Object> attributesFromElement = attributesFromAllElements.get(i);
+				array[i] = jmxCompatibleObjectOf(arrayElementOpenType, attributesFromElement);
 			}
+			return array;
+		} catch (OpenDataException e) {
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -137,9 +136,8 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 		} else if (openType instanceof CompositeType) {
 			CompositeType compositeType = (CompositeType) openType;
 			return new CompositeDataSupport(compositeType, attributes);
-		} else {
-			throw new RuntimeException("There is no support for " + openType);
 		}
+		throw new RuntimeException("There is no support for " + openType);
 	}
 
 	@Override
