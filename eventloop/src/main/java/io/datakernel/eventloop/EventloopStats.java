@@ -194,18 +194,18 @@ public final class EventloopStats implements EventloopInspector {
 	}
 
 	@Override
-	public void onFatalError(Throwable throwable, Object causedObject) {
-		fatalErrors.recordException(throwable, causedObject);
+	public void onFatalError(Throwable e, Object causedObject) {
+		fatalErrors.recordException(e, causedObject);
 
-		Class<? extends Throwable> type = throwable.getClass();
+		Class<? extends Throwable> type = e.getClass();
 		ExceptionStats stats = fatalErrorsMap.get(type);
 		if (stats == null) {
 			stats = ExceptionStats.create();
 			fatalErrorsMap.put(type, stats);
 		}
-		stats.recordException(throwable, causedObject);
+		stats.recordException(e, causedObject);
 		if(next != null){
-			next.onFatalError(throwable, causedObject);
+			next.onFatalError(e, causedObject);
 		}
 	}
 

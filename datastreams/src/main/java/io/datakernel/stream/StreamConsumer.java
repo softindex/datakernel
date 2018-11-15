@@ -60,8 +60,8 @@ public interface StreamConsumer<T> extends Cancellable {
 		return new Skip<>();
 	}
 
-	static <T> StreamConsumer<T> closingWithError(Throwable exception) {
-		return new ClosingWithErrorImpl<>(exception);
+	static <T> StreamConsumer<T> closingWithError(Throwable e) {
+		return new ClosingWithErrorImpl<>(e);
 	}
 
 	static <T> StreamConsumer<T> ofSerialConsumer(SerialConsumer<T> consumer) {
@@ -106,13 +106,13 @@ public interface StreamConsumer<T> extends Cancellable {
 	static <T> StreamConsumer<T> ofPromise(Promise<? extends StreamConsumer<T>> promise) {
 		if (promise.isResult()) return promise.materialize().getResult();
 		StreamLateBinder<T> lateBounder = StreamLateBinder.create();
-		promise.whenComplete((consumer, throwable) -> {
-			if (throwable == null) {
+		promise.whenComplete((consumer, e) -> {
+			if (e == null) {
 				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, consumer);
 				lateBounder.getOutput().streamTo(consumer);
 			} else {
-				lateBounder.getOutput().streamTo(closingWithError(throwable));
+				lateBounder.getOutput().streamTo(closingWithError(e));
 			}
 		});
 		return lateBounder.getInput();

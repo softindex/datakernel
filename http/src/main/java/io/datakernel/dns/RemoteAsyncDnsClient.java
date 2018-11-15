@@ -219,7 +219,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, Event
 
 		void onDnsQueryResult(DnsQuery query, DnsResponse result);
 
-		void onDnsQueryError(DnsQuery query, Throwable t);
+		void onDnsQueryError(DnsQuery query, Throwable e);
 
 		@Nullable
 		AsyncUdpSocketImpl.Inspector socketInspector();

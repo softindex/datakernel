@@ -225,7 +225,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		onError(e);
 	}
 
-	protected abstract void onError(Throwable t);
+	protected abstract void onError(Throwable e);
 
 	protected void cleanup() {
 	}

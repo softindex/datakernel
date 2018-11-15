@@ -43,20 +43,20 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 		return new ExceptionStats();
 	}
 
-	public void recordException(Throwable throwable, @Nullable Object context) {
+	public void recordException(Throwable e, @Nullable Object context) {
 		this.count++;
 		long now = currentTimeMillis();
 
 		if (now >= lastExceptionTimestamp + DETAILS_REFRESH_TIMEOUT) {
-			this.exceptionClass = throwable != null ? throwable.getClass() : null;
-			this.throwable = throwable;
+			this.exceptionClass = e != null ? e.getClass() : null;
+			this.throwable = e;
 			this.context = context;
 			this.lastExceptionTimestamp = now;
 		}
 	}
 
-	public void recordException(Throwable throwable) {
-		recordException(throwable, null);
+	public void recordException(Throwable e) {
+		recordException(e, null);
 	}
 
 	@Override

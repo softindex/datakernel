@@ -47,8 +47,8 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	protected void onError(Throwable t) {
-		buffer.close(t);
+	protected void onError(Throwable e) {
+		buffer.close(e);
 	}
 
 	public Promise<T> take() {

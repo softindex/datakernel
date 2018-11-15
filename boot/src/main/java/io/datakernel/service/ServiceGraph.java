@@ -234,12 +234,12 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		return "color=" + (colorOrAttribute.startsWith("#") ? "\"" + colorOrAttribute + "\"" : colorOrAttribute);
 	}
 
-	private static Throwable getRootCause(Throwable throwable) {
+	private static Throwable getRootCause(Throwable e) {
 		Throwable cause;
-		while ((cause = throwable.getCause()) != null) {
-			throwable = cause;
+		while ((cause = e.getCause()) != null) {
+			e = cause;
 		}
-		return throwable;
+		return e;
 	}
 
 	public ServiceGraph add(Key<?> key, @Nullable Service service, Key<?>... dependencies) {
@@ -298,13 +298,13 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 						nodeStatus.stopBegin = currentTimeMillis();
 					}
 					return (start ? service.start() : service.stop())
-							.whenCompleteAsync(($2, throwable) -> {
+							.whenCompleteAsync(($2, e) -> {
 								if (start) {
 									nodeStatus.startEnd = currentTimeMillis();
-									nodeStatus.startException = throwable;
+									nodeStatus.startException = e;
 								} else {
 									nodeStatus.stopEnd = currentTimeMillis();
-									nodeStatus.stopException = throwable;
+									nodeStatus.stopException = e;
 								}
 
 								long elapsed = sw.elapsed(MILLISECONDS);
@@ -327,19 +327,19 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		AtomicInteger atomicInteger = new AtomicInteger(stages.size());
 		Set<Throwable> exceptions = new LinkedHashSet<>();
 		for (CompletionStage<?> future : stages) {
-			future.whenCompleteAsync(($, throwable) -> {
-				if (throwable != null) {
+			future.whenCompleteAsync(($, e) -> {
+				if (e != null) {
 					synchronized (exceptions) {
-						exceptions.add(getRootCause(throwable));
+						exceptions.add(getRootCause(e));
 					}
 				}
 				if (atomicInteger.decrementAndGet() == 0) {
 					if (exceptions.isEmpty()) {
 						result.complete(null);
 					} else {
-						Throwable e = first(exceptions);
-						exceptions.stream().skip(1).forEach(e::addSuppressed);
-						result.completeExceptionally(e);
+						Throwable exception = first(exceptions);
+						exceptions.stream().skip(1).forEach(exception::addSuppressed);
+						result.completeExceptionally(exception);
 					}
 				}
 			});
@@ -401,7 +401,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 				startNodes.stream()
 						.map(rootNode -> processNode(rootNode, start, cache, executor))
 						.collect(toList()))
-				.whenCompleteAsync(($, throwable) -> executor.shutdown(), executor);
+				.whenCompleteAsync(($, e) -> executor.shutdown(), executor);
 	}
 
 	private static void removeValue(Map<Key<?>, Set<Key<?>>> map, Key<?> key, Key<?> value) {

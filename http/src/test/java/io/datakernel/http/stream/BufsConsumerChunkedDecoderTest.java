@@ -212,13 +212,13 @@ public class BufsConsumerChunkedDecoderTest {
 		decodeThreeStrings(message1, message2, message3);
 	}
 
-	private void decodeOneString(String message, Exception exception) {
+	private void decodeOneString(String message, Exception e) {
 		byte[] bytes = message.getBytes();
 		ByteBuf buf = ByteBufPool.allocate(bytes.length);
 		buf.put(bytes);
 		list.add(buf);
 
-		doTest(exception);
+		doTest(e);
 	}
 
 	private void decodeTwoStrings(String message1, String message2) {
@@ -251,14 +251,14 @@ public class BufsConsumerChunkedDecoderTest {
 		doTest(null);
 	}
 
-	private void doTest(Exception exception) {
+	private void doTest(Exception expectedException) {
 		chunkedDecoder.getInput().set(ByteBufsSupplier.of(SerialSupplier.ofIterable(list)));
 		chunkedDecoder.getProcessResult()
 				.whenComplete(($, e) -> {
-					if (exception == null) {
+					if (expectedException == null) {
 						assertNull(e);
 					} else {
-						assertEquals(exception, e);
+						assertEquals(expectedException, e);
 					}
 				});
 

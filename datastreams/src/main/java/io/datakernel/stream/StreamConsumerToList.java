@@ -54,8 +54,8 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 	}
 
 	@Override
-	protected void onError(Throwable t) {
-		resultPromise.setException(t);
+	protected void onError(Throwable e) {
+		resultPromise.setException(e);
 	}
 
 	public MaterializedPromise<List<T>> getResult() {

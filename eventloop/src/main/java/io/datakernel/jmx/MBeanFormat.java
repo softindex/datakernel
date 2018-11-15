@@ -34,16 +34,16 @@ public final class MBeanFormat {
 	private MBeanFormat() {
 	}
 
-	public static String formatExceptionMultiline(@Nullable Throwable exception) {
-		if (exception == null)
+	public static String formatExceptionMultiline(@Nullable Throwable e) {
+		if (e == null)
 			return "";
 		StringWriter stringWriter = new StringWriter();
-		exception.printStackTrace(new PrintWriter(stringWriter));
+		e.printStackTrace(new PrintWriter(stringWriter));
 		return stringWriter.toString();
 	}
 
-	public static String[] formatException(Throwable exception) {
-		return exception == null ? new String[0] : formatExceptionMultiline(exception).split("\n");
+	public static String[] formatException(Throwable e) {
+		return e == null ? new String[0] : formatExceptionMultiline(e).split("\n");
 	}
 
 	public static String formatInstant(@Nullable Instant instant) {

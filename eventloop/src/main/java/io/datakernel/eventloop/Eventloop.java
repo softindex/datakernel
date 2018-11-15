@@ -254,9 +254,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		if (selector == null) {
 			try {
 				selector = (selectorProvider != null ? selectorProvider : SelectorProvider.provider()).openSelector();
-			} catch (Exception exception) {
-				logger.error("Could not open selector", exception);
-				throw new RuntimeException(exception);
+			} catch (Exception e) {
+				logger.error("Could not open selector", e);
+				throw new RuntimeException(e);
 			}
 		}
 	}
@@ -270,8 +270,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				selector.close();
 				selector = null;
 				cancelledKeys = 0;
-			} catch (IOException exception) {
-				logger.error("Could not close selector", exception);
+			} catch (IOException e) {
+				logger.error("Could not close selector", e);
 			}
 		}
 	}

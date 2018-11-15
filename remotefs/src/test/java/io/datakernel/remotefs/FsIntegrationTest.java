@@ -114,7 +114,7 @@ public class FsIntegrationTest {
 		String resultFile = "file_uploaded.txt";
 
 		upload(resultFile, CONTENT)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 		eventloop.run();
 
@@ -127,7 +127,7 @@ public class FsIntegrationTest {
 
 		Promises.all(IntStream.range(0, 10)
 				.mapToObj(i -> SerialSupplier.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploadSerial("file" + i))))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -142,7 +142,7 @@ public class FsIntegrationTest {
 		String resultFile = "big file_uploaded.txt";
 
 		upload(resultFile, BIG_FILE)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 		eventloop.run();
 
@@ -154,7 +154,7 @@ public class FsIntegrationTest {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
 		upload(resultFile, CONTENT)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 		eventloop.run();
 
@@ -167,7 +167,7 @@ public class FsIntegrationTest {
 
 		upload(resultFile, CONTENT)
 				.thenCompose($ -> upload(resultFile, CONTENT))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "FileAlreadyExistsException"));
 
 		eventloop.run();
@@ -179,7 +179,7 @@ public class FsIntegrationTest {
 	public void testUploadServerFail() {
 
 		upload("../../nonlocal/../file.txt", CONTENT)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "File .*? goes outside of the storage directory"));
 
 		eventloop.run();
@@ -197,7 +197,7 @@ public class FsIntegrationTest {
 				SerialSupplier.ofException(new StacklessException(FsIntegrationTest.class, "Test exception")),
 				SerialSupplier.of(test4))
 				.streamTo(client.uploadSerial(resultFile))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(StacklessException.class, "Test exception"));
 
 		eventloop.run();
@@ -219,7 +219,7 @@ public class FsIntegrationTest {
 
 		client.downloadSerial(file)
 				.streamTo(SerialConsumer.of(AsyncConsumer.of(queue::add)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -268,7 +268,7 @@ public class FsIntegrationTest {
 		}
 
 		Promises.all(tasks)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -284,7 +284,7 @@ public class FsIntegrationTest {
 		Files.write(storage.resolve(file), CONTENT);
 
 		client.delete(file)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -297,7 +297,7 @@ public class FsIntegrationTest {
 		String file = "no_file.txt";
 
 		client.delete(file)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -319,8 +319,8 @@ public class FsIntegrationTest {
 		Files.write(storage.resolve("first file.txt"), CONTENT);
 
 		client.list()
-				.whenComplete((list, throwable) -> {
-					if (throwable == null) {
+				.whenComplete((list, e) -> {
+					if (e == null) {
 						assert list != null;
 						actual.addAll(list);
 					}
@@ -367,7 +367,7 @@ public class FsIntegrationTest {
 		List<FileMetadata> actual2 = new ArrayList<>();
 
 		Promises.all(client.subfolder("subfolder1").list().whenResult(actual::addAll),
-				client.subfolder("subfolder2").list().whenResult(actual2::addAll)).whenComplete(($, err) -> server.close());
+				client.subfolder("subfolder2").list().whenResult(actual2::addAll)).whenComplete(($, e) -> server.close());
 
 		eventloop.run();
 

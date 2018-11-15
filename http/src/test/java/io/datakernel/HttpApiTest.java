@@ -115,13 +115,13 @@ public class HttpApiTest {
 		server.listen();
 		client.request(createRequest())
 				.thenCompose(ensureResponseBody())
-				.whenComplete((response, throwable) -> {
-					if (throwable != null) {
+				.whenComplete((response, e) -> {
+					if (e != null) {
 						fail("Should not end here");
 					} else {
 						try {
 							testResponse(response);
-						} catch (ParseException e) {
+						} catch (ParseException ignored) {
 							fail("Invalid response");
 						}
 					}

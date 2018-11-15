@@ -566,9 +566,9 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	public Promise<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {
 		return walkGraph(heads, new LoadGraphWalker(heads))
-//				.whenException(throwable -> {
+				//				.whenException(e -> {
 //					if (logger.isTraceEnabled()) {
-//						logger.error(graph.toGraphViz() + "\n", throwable);
+				//						logger.error(graph.toGraphViz() + "\n", e);
 //					}
 //				})
 				.whenComplete(toLogger(logger, thisMethod(), heads));

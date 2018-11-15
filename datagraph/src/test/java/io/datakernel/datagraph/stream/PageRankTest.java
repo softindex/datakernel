@@ -248,11 +248,11 @@ public class PageRankTest {
 		server2.listen();
 
 		Promises.all(result1.getResult(), result2.getResult())
-			.whenComplete(($, err) -> {
-				server1.close();
-				server2.close();
-			})
-			.whenComplete(assertComplete());
+				.whenComplete(($, e) -> {
+					server1.close();
+					server2.close();
+				})
+				.whenComplete(assertComplete());
 
 		graph.execute();
 

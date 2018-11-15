@@ -30,8 +30,8 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 public final class CompleteExceptionallyPromise<T> implements MaterializedPromise<T> {
 	private final Throwable exception;
 
-	public CompleteExceptionallyPromise(Throwable exception) {
-		this.exception = exception;
+	public CompleteExceptionallyPromise(Throwable e) {
+		this.exception = e;
 	}
 
 	@Override

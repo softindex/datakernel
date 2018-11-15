@@ -19,7 +19,7 @@ public interface StreamStats<T> extends
 
 	void onEndOfStream();
 
-	void onError(Throwable throwable);
+	void onError(Throwable e);
 
 	@Override
 	default StreamConsumer<T> apply(StreamConsumer<T> consumer) {

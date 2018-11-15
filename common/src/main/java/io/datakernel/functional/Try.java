@@ -31,23 +31,23 @@ public final class Try<T> {
 	@Nullable
 	private final Throwable throwable;
 
-	private Try(T result, @Nullable Throwable throwable) {
+	private Try(T result, @Nullable Throwable e) {
 		this.result = result;
-		this.throwable = throwable;
+		this.throwable = e;
 	}
 
 	public static <T> Try<T> of(T result) {
 		return new Try<>(result, null);
 	}
 
-	public static <T> Try<T> of(T result, @Nullable Throwable throwable) {
-		assert result == null || throwable == null;
-		return new Try<>(result, throwable);
+	public static <T> Try<T> of(T result, @Nullable Throwable e) {
+		assert result == null || e == null;
+		return new Try<>(result, e);
 	}
 
-	public static <T> Try<T> ofException(Throwable throwable) {
-		assert throwable != null;
-		return new Try<>(null, throwable);
+	public static <T> Try<T> ofException(Throwable e) {
+		assert e != null;
+		return new Try<>(null, e);
 	}
 
 	public static <T> Try<T> wrap(Supplier<T> computation) {
@@ -90,13 +90,13 @@ public final class Try<T> {
 			if (acc.throwables.isEmpty()) {
 				return Try.of(acc.result);
 			}
-			Throwable throwable = acc.throwables.get(0);
+			Throwable e = acc.throwables.get(0);
 			for (Throwable t : acc.throwables) {
-				if (t != throwable) {
-					throwable.addSuppressed(t);
+				if (t != e) {
+					e.addSuppressed(t);
 				}
 			}
-			return Try.ofException(throwable);
+			return Try.ofException(e);
 		});
 	}
 
@@ -186,8 +186,8 @@ public final class Try<T> {
 		if (throwable == null) {
 			try {
 				return new Try<>(function.apply(result), null);
-			} catch (Throwable t) {
-				return new Try<>(null, t);
+			} catch (Throwable e) {
+				return new Try<>(null, e);
 			}
 		}
 		return mold();

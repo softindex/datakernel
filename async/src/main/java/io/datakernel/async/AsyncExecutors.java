@@ -47,9 +47,9 @@ public class AsyncExecutors {
 				return Promise.ofCallback(cb -> {
 					currentEventloop.startExternalTask();
 					eventloop.execute(() -> supplier.get()
-							.whenComplete((result, throwable) -> {
+							.whenComplete((result, e) -> {
 								currentEventloop.execute(() ->
-										cb.set(result, throwable));
+										cb.set(result, e));
 								currentEventloop.completeExternalTask();
 							}));
 				});
@@ -85,10 +85,10 @@ public class AsyncExecutors {
 					AsyncSupplier<Object> supplier = (AsyncSupplier<Object>) deque.pollFirst();
 					SettablePromise<Object> settablePromise = (SettablePromise<Object>) deque.pollFirst();
 					pendingCalls++;
-					supplier.get().whenComplete((result, throwable) -> {
+					supplier.get().whenComplete((result, e) -> {
 						pendingCalls--;
 						processBuffer();
-						settablePromise.set(result, throwable);
+						settablePromise.set(result, e);
 					});
 				}
 			}
@@ -97,7 +97,7 @@ public class AsyncExecutors {
 			public <T> Promise<T> execute(AsyncSupplier<T> supplier) throws RejectedExecutionException {
 				if (pendingCalls <= maxParallelCalls) {
 					pendingCalls++;
-					return supplier.get().async().whenComplete(($, throwable) -> {
+					return supplier.get().async().whenComplete(($, e) -> {
 						pendingCalls--;
 						processBuffer();
 					});
@@ -125,16 +125,16 @@ public class AsyncExecutors {
 
 	private static <T> void retryImpl(AsyncSupplier<? extends T> supplier, RetryPolicy retryPolicy,
 			int retryCount, long _retryTimestamp, SettablePromise<T> cb) {
-		supplier.get().async().whenComplete((value, throwable) -> {
-			if (throwable == null) {
+		supplier.get().async().whenComplete((value, e) -> {
+			if (e == null) {
 				cb.set(value);
 			} else {
 				Eventloop eventloop = Eventloop.getCurrentEventloop();
 				long now = eventloop.currentTimeMillis();
 				long retryTimestamp = _retryTimestamp != 0 ? _retryTimestamp : now;
-				long nextRetryTimestamp = retryPolicy.nextRetryTimestamp(now, throwable, retryCount, retryTimestamp);
+				long nextRetryTimestamp = retryPolicy.nextRetryTimestamp(now, e, retryCount, retryTimestamp);
 				if (nextRetryTimestamp == 0) {
-					cb.setException(throwable);
+					cb.setException(e);
 				} else {
 					eventloop.schedule(nextRetryTimestamp,
 							() -> retryImpl(supplier, retryPolicy, retryCount + 1, retryTimestamp, cb));

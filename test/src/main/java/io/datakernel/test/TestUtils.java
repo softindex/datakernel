@@ -109,13 +109,13 @@ public class TestUtils {
 
 	public static <T> BiConsumer<T, Throwable> assertComplete(Consumer<T> consumer) {
 		activePromises++;
-		return (t, error) -> {
+		return (t, e) -> {
 			activePromises--;
-			if (error != null) {
-				if (error.getClass() == AssertionError.class) {
-					throw (AssertionError) error;
+			if (e != null) {
+				if (e.getClass() == AssertionError.class) {
+					throw (AssertionError) e;
 				}
-				throw new AssertionError(error);
+				throw new AssertionError(e);
 			}
 			consumer.accept(t);
 		};
@@ -128,18 +128,18 @@ public class TestUtils {
 	@SuppressWarnings("unchecked")
 	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, @Nullable String messagePattern, Consumer<E> consumer) {
 		activePromises++;
-		return (t, error) -> {
+		return (t, e) -> {
 			activePromises--;
-			if (error == null && errorClass == Throwable.class) {
+			if (e == null && errorClass == Throwable.class) {
 				throw new AssertionError("Expected an error");
 			}
-			if (error == null || !errorClass.isAssignableFrom(error.getClass())) {
-				throw new AssertionError("Expected an error of type " + errorClass.getName() + ", but got " + (error == null ? "none" : error.getClass().getSimpleName()));
+			if (e == null || !errorClass.isAssignableFrom(e.getClass())) {
+				throw new AssertionError("Expected an error of type " + errorClass.getName() + ", but got " + (e == null ? "none" : e.getClass().getSimpleName()));
 			}
-			if (messagePattern != null && !Pattern.compile(messagePattern).matcher(error.getMessage()).find()) {
-				throw new AssertionError("Expected error message to match pattern `" + messagePattern + "`, but got message '" + error.getMessage() + "'");
+			if (messagePattern != null && !Pattern.compile(messagePattern).matcher(e.getMessage()).find()) {
+				throw new AssertionError("Expected error message to match pattern `" + messagePattern + "`, but got message '" + e.getMessage() + "'");
 			}
-			consumer.accept((E) error);
+			consumer.accept((E) e);
 		};
 	}
 
@@ -185,8 +185,8 @@ public class TestUtils {
 		return () -> {
 			try {
 				return supplier.get();
-			} catch (Throwable throwable) {
-				throw new AssertionError(throwable);
+			} catch (Throwable e) {
+				throw new AssertionError(e);
 			}
 		};
 	}
@@ -201,8 +201,8 @@ public class TestUtils {
 		return x -> {
 			try {
 				consumer.accept(x);
-			} catch (Throwable throwable) {
-				throw new AssertionError(throwable);
+			} catch (Throwable e) {
+				throw new AssertionError(e);
 			}
 		};
 	}
@@ -217,8 +217,8 @@ public class TestUtils {
 		return x -> {
 			try {
 				return function.apply(x);
-			} catch (Throwable throwable) {
-				throw new AssertionError(throwable);
+			} catch (Throwable e) {
+				throw new AssertionError(e);
 			}
 		};
 	}
@@ -233,8 +233,8 @@ public class TestUtils {
 		return (x, y) -> {
 			try {
 				return function.apply(x, y);
-			} catch (Throwable throwable) {
-				throw new AssertionError(throwable);
+			} catch (Throwable e) {
+				throw new AssertionError(e);
 			}
 		};
 	}

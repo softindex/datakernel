@@ -135,8 +135,8 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			output.close(t);
+		protected void onError(Throwable e) {
+			output.close(e);
 		}
 	}
 
@@ -147,8 +147,8 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			input.close(t);
+		protected void onError(Throwable e) {
+			input.close(e);
 		}
 
 		@Override

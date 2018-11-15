@@ -261,6 +261,6 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	}
 
 	private static <T, R> BiConsumer<R, Throwable> transform(Function<? super R, ? extends T> fn, BiConsumer<? super T, Throwable> toConsumer) {
-		return (value, throwable) -> toConsumer.accept(value != null ? fn.apply(value) : null, throwable);
+		return (value, e) -> toConsumer.accept(value != null ? fn.apply(value) : null, e);
 	}
 }

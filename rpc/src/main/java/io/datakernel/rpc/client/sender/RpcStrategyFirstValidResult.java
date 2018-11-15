@@ -56,8 +56,8 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		return new RpcStrategyFirstValidResult(list, resultValidator, noValidResultException);
 	}
 
-	public RpcStrategyFirstValidResult withNoValidResultException(Exception exception) {
-		return new RpcStrategyFirstValidResult(list, resultValidator, exception);
+	public RpcStrategyFirstValidResult withNoValidResultException(Exception e) {
+		return new RpcStrategyFirstValidResult(list, resultValidator, e);
 	}
 
 	@Override
@@ -131,10 +131,10 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 				}
 
 				@Override
-				public void setException(Throwable exception) {
+				public void setException(Throwable e) {
 					--expectedCalls;
 					if (!hasResult) {
-						FirstResultCallback.this.exception = exception; // last Exception
+						FirstResultCallback.this.exception = e; // last Exception
 					}
 					processResult();
 				}

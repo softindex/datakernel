@@ -35,12 +35,12 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		return next == COMPLETED_EXCEPTIONALLY_PROMISE;
 	}
 
-	protected void complete(@Nullable T value, @Nullable Throwable error) {
+	protected void complete(@Nullable T value, @Nullable Throwable e) {
 		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
-		if (error == null) {
+		if (e == null) {
 			complete(value);
 		} else {
-			completeExceptionally(error);
+			completeExceptionally(e);
 		}
 	}
 
@@ -52,17 +52,17 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		}
 	}
 
-	protected void completeExceptionally(@Nullable Throwable error) {
+	protected void completeExceptionally(@Nullable Throwable e) {
 		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
 		if (next != null) {
-			next.accept(null, error);
+			next.accept(null, e);
 			next = COMPLETED_EXCEPTIONALLY_PROMISE;
 		}
 	}
 
-	protected void tryComplete(@Nullable T value, @Nullable Throwable error) {
+	protected void tryComplete(@Nullable T value, @Nullable Throwable e) {
 		if (!isComplete()) {
-			complete(value, error);
+			complete(value, e);
 		}
 	}
 
@@ -72,9 +72,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		}
 	}
 
-	protected void tryCompleteExceptionally(Throwable error) {
+	protected void tryCompleteExceptionally(Throwable e) {
 		if (!isComplete()) {
-			completeExceptionally(error);
+			completeExceptionally(e);
 		}
 	}
 
@@ -90,9 +90,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		} else {
 			assert !isComplete() : "Promise has already been completed";
 			BiConsumer<? super T, Throwable> finalNext = next;
-			next = (BiConsumer<T, Throwable>) (result, error) -> {
-				finalNext.accept(result, error);
-				consumer.accept(result, error);
+			next = (BiConsumer<T, Throwable>) (result, e) -> {
+				finalNext.accept(result, e);
+				consumer.accept(result, e);
 			};
 		}
 	}

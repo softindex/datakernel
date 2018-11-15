@@ -24,8 +24,8 @@ public class TestStreamSuppliers {
 					}
 
 					@Override
-					public void closeWithError(Throwable error) {
-						endOfStream.trySetException(error);
+					public void closeWithError(Throwable e) {
+						endOfStream.trySetException(e);
 					}
 				}, dataAcceptor));
 			}
@@ -40,11 +40,11 @@ public class TestStreamSuppliers {
 	public static <T> StreamSupplierFunction<T, StreamSupplier<T>> errorDecorator(Function<T, Throwable> errorFunction) {
 		return decorator((context, dataAcceptor) ->
 				item -> {
-					Throwable error = errorFunction.apply(item);
-					if (error == null) {
+					Throwable e = errorFunction.apply(item);
+					if (e == null) {
 						dataAcceptor.accept(item);
 					} else {
-						context.closeWithError(error);
+						context.closeWithError(e);
 					}
 				});
 	}
@@ -54,7 +54,7 @@ public class TestStreamSuppliers {
 		interface Context {
 			void endOfStream();
 
-			void closeWithError(Throwable error);
+			void closeWithError(Throwable e);
 		}
 
 		StreamDataAcceptor<T> decorate(Context context, StreamDataAcceptor<T> dataAcceptor);

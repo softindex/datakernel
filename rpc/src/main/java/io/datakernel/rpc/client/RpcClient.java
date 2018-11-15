@@ -457,8 +457,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 									}
 
 									@Override
-									public void setException(Throwable throwable) {
-										anotherEventloop.execute(() -> cb.setException(throwable));
+									public void setException(Throwable e) {
+										anotherEventloop.execute(() -> cb.setException(e));
 									}
 								}));
 			}

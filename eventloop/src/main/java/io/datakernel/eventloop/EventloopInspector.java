@@ -26,7 +26,7 @@ public interface EventloopInspector {
 
 	void onUpdateScheduledTasksStats(int newScheduledTasks, long loopTime, boolean background);
 
-	void onFatalError(Throwable throwable, Object causedObject);
+	void onFatalError(Throwable e, Object causedObject);
 
 	void onScheduledTaskOverdue(int overdue, boolean background);
 

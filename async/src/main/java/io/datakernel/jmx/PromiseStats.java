@@ -79,15 +79,15 @@ public class PromiseStats {
 		activePromises++;
 		long before = currentTimeMillis();
 		lastStartTimestamp = before;
-		return (value, throwable) -> {
+		return (value, e) -> {
 			activePromises--;
 			long now = currentTimeMillis();
 			long durationMillis = now - before;
 			lastCompleteTimestamp = now;
 			duration.recordValue(durationMillis);
 
-			if (throwable != null) {
-				exceptions.recordException(throwable);
+			if (e != null) {
+				exceptions.recordException(e);
 			}
 		};
 	}

@@ -75,27 +75,27 @@ public final class RpcServerConnection implements Listener, JmxRefreshable {
 		long startTime = monitoring ? System.currentTimeMillis() : 0;
 
 		Object messageData = message.getData();
-		apply(messageData).whenComplete((result, throwable) -> {
+		apply(messageData).whenComplete((result, e) -> {
 			if (startTime != 0) {
 				int value = (int) (System.currentTimeMillis() - startTime);
 				requestHandlingTime.recordValue(value);
 				rpcServer.getRequestHandlingTime().recordValue(value);
 			}
-			if (throwable == null) {
+			if (e == null) {
 				successfulRequests.recordEvent();
 				rpcServer.getSuccessfulRequests().recordEvent();
 
 				stream.sendMessage(RpcMessage.of(cookie, result));
 				decrementActiveRequest();
 			} else {
-				lastRequestHandlingException.recordException(throwable, messageData);
-				rpcServer.getLastRequestHandlingException().recordException(throwable, messageData);
+				lastRequestHandlingException.recordException(e, messageData);
+				rpcServer.getLastRequestHandlingException().recordException(e, messageData);
 				failedRequests.recordEvent();
 				rpcServer.getFailedRequests().recordEvent();
 
-				stream.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(throwable)));
+				stream.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(e)));
 				decrementActiveRequest();
-				logger.warn("Exception while processing request ID {}", cookie, throwable);
+				logger.warn("Exception while processing request ID {}", cookie, e);
 			}
 		});
 	}
@@ -117,13 +117,13 @@ public final class RpcServerConnection implements Listener, JmxRefreshable {
 	}
 
 	@Override
-	public void onClosedWithError(Throwable exception) {
+	public void onClosedWithError(Throwable e) {
 		onClosed();
 
 		// jmx
 		String causedAddress = "Remote address: " + remoteAddress.getAddress().toString();
-		logger.error("Protocol error. " + causedAddress, exception);
-		rpcServer.getLastProtocolError().recordException(exception, causedAddress);
+		logger.error("Protocol error. " + causedAddress, e);
+		rpcServer.getLastProtocolError().recordException(e, causedAddress);
 	}
 
 	@Override

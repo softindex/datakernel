@@ -53,8 +53,8 @@ public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamCons
 	}
 
 	@Override
-	protected void onError(Throwable t) {
-		resultPromise.setException(t);
+	protected void onError(Throwable e) {
+		resultPromise.setException(e);
 	}
 
 	public MaterializedPromise<R> getResult() {

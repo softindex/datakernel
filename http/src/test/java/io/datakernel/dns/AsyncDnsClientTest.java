@@ -242,7 +242,7 @@ public class AsyncDnsClientTest {
 		}
 
 		@Override
-		public void onDnsQueryError(DnsQuery query, Throwable t) {
+		public void onDnsQueryError(DnsQuery query, Throwable e) {
 
 		}
 

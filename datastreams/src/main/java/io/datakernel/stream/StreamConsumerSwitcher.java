@@ -58,7 +58,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	protected final void onError(Throwable t) {
+	protected final void onError(Throwable e) {
 		switchTo(StreamConsumer.idle());
 	}
 
@@ -165,8 +165,8 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public void close(Throwable t) {
-			StreamConsumerSwitcher.this.close(t);
+		public void close(Throwable e) {
+			StreamConsumerSwitcher.this.close(e);
 		}
 
 		@Override
@@ -191,9 +191,9 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 			}
 		}
 
-		public void sendError(Throwable exception) {
+		public void sendError(Throwable e) {
 			lastDataAcceptor = item -> {};
-			endOfStream.trySetException(exception);
+			endOfStream.trySetException(e);
 		}
 
 		public void sendEndOfStream() {

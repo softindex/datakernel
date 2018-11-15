@@ -246,7 +246,7 @@ public final class ThrottlingController implements EventloopJmxMBean, EventloopI
 	}
 
 	@Override
-	public void onFatalError(Throwable throwable, Object causedObject) {
+	public void onFatalError(Throwable e, Object causedObject) {
 	}
 
 	@Override

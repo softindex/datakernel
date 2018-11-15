@@ -38,8 +38,8 @@ public final class StreamConsumers {
 		private final Throwable exception;
 		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
-		ClosingWithErrorImpl(Throwable exception) {
-			this.exception = exception;
+		ClosingWithErrorImpl(Throwable e) {
+			this.exception = e;
 		}
 
 		@Override
@@ -93,7 +93,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
+		protected void onError(Throwable e) {
 		}
 
 		@Override
@@ -158,10 +158,10 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
+		protected void onError(Throwable e) {
 			deque.clear();
-			consumer.close(t);
-			result.trySetException(t);
+			consumer.close(e);
+			result.trySetException(e);
 		}
 
 		@Override

@@ -34,7 +34,7 @@ import java.time.Duration;
 
 public final class RpcStream {
 	public interface Listener extends StreamDataAcceptor<RpcMessage> {
-		void onClosedWithError(Throwable exception);
+		void onClosedWithError(Throwable e);
 
 		void onReadEndOfStream();
 	}
@@ -67,8 +67,8 @@ public final class RpcStream {
 				}
 
 				@Override
-				protected void onError(Throwable t) {
-					listener.onClosedWithError(t);
+				protected void onError(Throwable e) {
+					listener.onClosedWithError(e);
 					ready = false;
 				}
 			};
@@ -86,8 +86,8 @@ public final class RpcStream {
 				}
 
 				@Override
-				protected void onError(Throwable t) {
-					listener.onClosedWithError(t);
+				protected void onError(Throwable e) {
+					listener.onClosedWithError(e);
 					ready = false;
 				}
 			};
@@ -106,7 +106,7 @@ public final class RpcStream {
 			}
 
 			@Override
-			protected void onError(Throwable t) {
+			protected void onError(Throwable e) {
 			}
 		};
 

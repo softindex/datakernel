@@ -227,12 +227,12 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		};
 	}
 
-	private static Throwable getRootCause(Throwable throwable) {
+	private static Throwable getRootCause(Throwable e) {
 		Throwable cause;
-		while ((cause = throwable.getCause()) != null) {
-			throwable = cause;
+		while ((cause = e.getCause()) != null) {
+			e = cause;
 		}
-		return throwable;
+		return e;
 	}
 
 	private static CompletableFuture<Void> combineFutures(List<CompletableFuture<Void>> futures, Executor executor) {
@@ -241,9 +241,9 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		AtomicReference<Throwable> exception = new AtomicReference<>();
 		for (CompletableFuture<Void> future : futures) {
 			CompletableFuture<Void> finalFuture = future != null ? future : completedFuture(null);
-			finalFuture.whenCompleteAsync((o, throwable) -> {
-				if (throwable != null) {
-					exception.set(getRootCause(throwable));
+			finalFuture.whenCompleteAsync((o, e) -> {
+				if (e != null) {
+					exception.set(getRootCause(e));
 				}
 				if (count.decrementAndGet() == 0) {
 					if (exception.get() != null) {

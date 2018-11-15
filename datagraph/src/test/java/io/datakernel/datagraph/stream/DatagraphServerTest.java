@@ -136,11 +136,11 @@ public class DatagraphServerTest {
 		server2.listen();
 
 		result1.getResult()
-				.whenComplete(($, err) -> server1.close())
+				.whenComplete(($, e) -> server1.close())
 				.whenComplete(assertComplete());
 
 		result2.getResult()
-				.whenComplete(($, err) -> server2.close())
+				.whenComplete(($, e) -> server2.close())
 				.whenComplete(assertComplete());
 
 		graph.execute();
@@ -207,11 +207,11 @@ public class DatagraphServerTest {
 		server2.listen();
 
 		result1.getResult()
-				.whenComplete(($, err) -> server1.close())
+				.whenComplete(($, e) -> server1.close())
 				.whenComplete(assertComplete());
 
 		result2.getResult()
-				.whenComplete(($, err) -> server2.close())
+				.whenComplete(($, e) -> server2.close())
 				.whenComplete(assertComplete());
 
 		graph.execute();
@@ -290,11 +290,11 @@ public class DatagraphServerTest {
 		server2.listen();
 
 		result1.getResult()
-				.whenComplete(($, err) -> server1.close())
+				.whenComplete(($, e) -> server1.close())
 				.whenComplete(assertComplete());
 
 		result2.getResult()
-				.whenComplete(($, err) -> server2.close())
+				.whenComplete(($, e) -> server2.close())
 				.whenComplete(assertComplete());
 
 		graph.execute();
@@ -370,7 +370,7 @@ public class DatagraphServerTest {
 		System.out.println(graph);
 
 		resultSupplier.streamTo(resultConsumer)
-				.whenComplete(($, err) -> {
+				.whenComplete(($, e) -> {
 					server1.close();
 					server2.close();
 				})

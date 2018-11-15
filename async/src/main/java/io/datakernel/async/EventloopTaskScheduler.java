@@ -195,22 +195,22 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		lastStartTime = eventloop.currentTimeMillis();
 		return task.get()
 				.whenComplete(stats.recordStats())
-				.whenComplete((result, throwable) -> {
+				.whenComplete((result, e) -> {
 					lastCompleteTime = eventloop.currentTimeMillis();
-					if (throwable == null) {
+					if (e == null) {
 						firstRetryTime = 0;
 						lastException = null;
 						errorCount = 0;
 						scheduleTask();
 					} else {
-						lastException = throwable;
+						lastException = e;
 						errorCount++;
-						logger.error("Retry attempt " + errorCount, throwable);
+						logger.error("Retry attempt " + errorCount, e);
 						if (abortOnError) {
 							if (scheduledTask != null) {
 								scheduledTask.cancel();
 							}
-							throw new RuntimeException(throwable);
+							throw new RuntimeException(e);
 						} else {
 							scheduleTask();
 						}

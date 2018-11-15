@@ -187,10 +187,10 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Set<String>> move(Map<String, String> changes) {
-		return Promises.toList(changes.entrySet().stream().map(e ->
-				move(e.getKey(), e.getValue())
-						.whenException(err -> logger.warn("Failed to move file {} into {}: {}", e.getKey(), e.getValue(), err))
-						.thenApplyEx(($, err) -> err != null ? null : e.getKey())))
+		return Promises.toList(changes.entrySet().stream().map(entry ->
+				move(entry.getKey(), entry.getValue())
+						.whenException(e -> logger.warn("Failed to move file {} into {}: {}", entry.getKey(), entry.getValue(), e))
+						.thenApplyEx(($, e) -> e != null ? null : entry.getKey())))
 				.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
 				.whenComplete(toLogger(logger, TRACE, "move", changes, this))
 				.whenComplete(movePromise.recordStats());
@@ -247,10 +247,10 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Set<String>> copy(Map<String, String> changes) {
-		return Promises.toList(changes.entrySet().stream().map(e ->
-				copy(e.getKey(), e.getValue())
-						.whenException(err -> logger.warn("Failed to copy file {} into {}: {}", e.getKey(), e.getValue(), err))
-						.thenApplyEx(($, err) -> err != null ? null : e.getKey())))
+		return Promises.toList(changes.entrySet().stream().map(entry ->
+				copy(entry.getKey(), entry.getValue())
+						.whenException(e -> logger.warn("Failed to copy file {} into {}: {}", entry.getKey(), entry.getValue(), e))
+						.thenApplyEx(($, e) -> e != null ? null : entry.getKey())))
 				.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
 				.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
 				.whenComplete(copyPromise.recordStats());

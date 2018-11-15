@@ -126,17 +126,17 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 						}
 
 						@Override
-						public FileVisitResult visitFileFailed(Path file, IOException exc) {
-							if (exc != null) {
-								logger.error("visitFileFailed error", exc);
+						public FileVisitResult visitFileFailed(Path file, IOException e) {
+							if (e != null) {
+								logger.error("visitFileFailed error", e);
 							}
 							return FileVisitResult.CONTINUE;
 						}
 
 						@Override
-						public FileVisitResult postVisitDirectory(Path dir1, IOException exc) {
-							if (exc != null) {
-								logger.error("postVisitDirectory error", exc);
+						public FileVisitResult postVisitDirectory(Path dir1, IOException e) {
+							if (e != null) {
+								logger.error("postVisitDirectory error", e);
 							}
 							return FileVisitResult.CONTINUE;
 						}

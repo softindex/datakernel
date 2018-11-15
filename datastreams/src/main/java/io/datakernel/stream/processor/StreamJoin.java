@@ -207,8 +207,8 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			output.close(t);
+		protected void onError(Throwable e) {
+			output.close(e);
 		}
 	}
 
@@ -220,9 +220,9 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			left.close(t);
-			right.close(t);
+		protected void onError(Throwable e) {
+			left.close(e);
+			right.close(e);
 		}
 
 		@Override

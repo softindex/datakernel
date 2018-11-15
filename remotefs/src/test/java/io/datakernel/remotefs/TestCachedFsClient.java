@@ -123,7 +123,7 @@ public class TestCachedFsClient {
 	public void testDownloadFileNotInCacheWithOffsetAndLength() {
 		cacheRemote.download("test.txt", 1, 2)
 				.thenCompose(TO_STRING)
-				.whenComplete((res, err) -> {
+				.whenComplete((res, e) -> {
 					server.close();
 					assertEquals(res, "in");
 					assertFalse(Files.exists(cacheStorage.resolve("test.txt")));
@@ -157,7 +157,7 @@ public class TestCachedFsClient {
 		cacheRemote.download("test.txt", 1, 2)
 				.thenCompose(TO_STRING)
 				.whenComplete(($, e) -> server.close())
-				.whenComplete((res, err) -> assertEquals("in", res))
+				.whenComplete((res, e) -> assertEquals("in", res))
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -180,7 +180,7 @@ public class TestCachedFsClient {
 		Files.copy(serverTestFile, cacheTestFile);
 		cacheRemote.download("test.txt", 1, 2)
 				.thenCompose(TO_STRING)
-				.whenComplete((res, err) -> assertEquals("in", res))
+				.whenComplete((res, e) -> assertEquals("in", res))
 				.whenComplete(assertComplete())
 				.whenComplete(($, e) -> server.close());
 
@@ -208,7 +208,7 @@ public class TestCachedFsClient {
 		Files.write(filePath, fileContent.getBytes());
 		cacheRemote.download("cacheOnly.txt", 1, 2)
 				.thenCompose(TO_STRING)
-				.whenComplete((res, err) -> assertEquals("hi", res))
+				.whenComplete((res, e) -> assertEquals("hi", res))
 				.whenComplete(assertComplete())
 				.whenComplete(($, e) -> server.close());
 
@@ -244,7 +244,7 @@ public class TestCachedFsClient {
 
 		cacheRemote.list()
 				.whenResult(list -> assertEquals(list.size(), 9))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 		eventloop.run();
 	}
@@ -268,7 +268,7 @@ public class TestCachedFsClient {
 							.whenResult(newMetadata ->
 									assertTrue("New metadata is not greater than old one", newMetadata.getSize() > oldSize));
 				})
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -277,9 +277,9 @@ public class TestCachedFsClient {
 	@Test
 	public void testGetMetadataOfNonExistingFile() {
 		cacheRemote.getMetadata("nonExisting.txt")
-				.whenComplete((res, err) -> assertNull(res))
+				.whenComplete((res, e) -> assertNull(res))
 				.whenComplete(assertComplete())
-				.whenComplete(($, err) -> server.close());
+				.whenComplete(($, e) -> server.close());
 
 		eventloop.run();
 	}

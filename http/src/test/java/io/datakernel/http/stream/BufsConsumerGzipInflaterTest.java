@@ -204,13 +204,13 @@ public class BufsConsumerGzipInflaterTest {
 		doTest(null);
 	}
 
-	private void doTest(Exception exception) {
+	private void doTest(Exception expectedException) {
 		gunzip.getInput().set(SerialSupplier.ofIterable(list));
 		eventloop.post(() -> gunzip.getProcessResult().whenComplete(($, e) -> {
-			if (exception == null) {
+			if (expectedException == null) {
 				assertNull(e);
 			} else {
-				assertEquals(exception, e);
+				assertEquals(expectedException, e);
 			}
 		}));
 

@@ -50,13 +50,13 @@ final class RawCommitCache implements AsyncConsumer<RawCommitEntry> {
 		closePendingPromises(new ToDoException());
 	}
 
-	public void onError(Throwable throwable) {
-		closePendingPromises(throwable);
+	public void onError(Throwable e) {
+		closePendingPromises(e);
 		preloadedCommits.clear();
 	}
 
-	private void closePendingPromises(Throwable throwable) {
-		pendingPromises.values().forEach(pendingPromise -> pendingPromise.setException(throwable));
+	private void closePendingPromises(Throwable e) {
+		pendingPromises.values().forEach(pendingPromise -> pendingPromise.setException(e));
 		pendingPromises.clear();
 	}
 

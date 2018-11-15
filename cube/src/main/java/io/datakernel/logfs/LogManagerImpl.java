@@ -19,7 +19,6 @@ package io.datakernel.logfs;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -181,13 +180,13 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 									}));
 						}
 
-						private void log(Throwable throwable) {
-							if (throwable == null && logger.isTraceEnabled()) {
+						private void log(Throwable e) {
+							if (e == null && logger.isTraceEnabled()) {
 								logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
 										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
-							} else if (throwable != null && logger.isErrorEnabled()) {
+							} else if (e != null && logger.isErrorEnabled()) {
 								logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
-										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), throwable);
+										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), e);
 							}
 						}
 					};

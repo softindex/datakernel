@@ -42,8 +42,8 @@ public final class PromisesAccumulator<A> {
 
 	public <V> Promise<V> addPromise(Promise<V> promise, Reducer<A, V> reducer) {
 		activePromises++;
-		return promise.whenComplete((result, throwable) -> {
-			if (throwable == null) {
+		return promise.whenComplete((result, e) -> {
+			if (e == null) {
 				if (accumulator != null) {
 					reducer.accumulate(accumulator, result);
 					assert accumulator != null;
@@ -57,11 +57,11 @@ public final class PromisesAccumulator<A> {
 			} else {
 				activePromises--;
 				if (exception == null) {
-					exception = throwable;
+					exception = e;
 					//noinspection AssignmentToNull - resource release
 					accumulator = null;
 					if (resultPromise != null) {
-						resultPromise.setException(throwable);
+						resultPromise.setException(e);
 						resultPromise = null;
 					}
 				}

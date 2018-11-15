@@ -20,7 +20,7 @@ public final class AsyncSuppliers {
 				if (runningPromise != null) return runningPromise;
 				runningPromise = (Promise<T>) actual.get();
 				Promise<T> runningPromise = this.runningPromise;
-				runningPromise.whenComplete((result, throwable) -> this.runningPromise = null);
+				runningPromise.whenComplete((result, e) -> this.runningPromise = null);
 				return runningPromise;
 			}
 		};
@@ -37,7 +37,7 @@ public final class AsyncSuppliers {
 				if (runningPromise == null) {
 					assert subscribePromise == null;
 					runningPromise = new SettablePromise<>();
-					runningPromise.whenComplete((result, throwable) -> {
+					runningPromise.whenComplete((result, e) -> {
 						runningPromise = subscribePromise;
 						subscribePromise = null;
 						actual.get().async().whenComplete(runningPromise::set);
@@ -67,10 +67,10 @@ public final class AsyncSuppliers {
 				while (pendingCalls < maxParallelCalls && !deque.isEmpty()) {
 					SettablePromise<T> resultPromise = deque.pollFirst();
 					pendingCalls++;
-					actual.get().async().whenComplete((value, throwable) -> {
+					actual.get().async().whenComplete((value, e) -> {
 						pendingCalls--;
 						processQueue();
-						resultPromise.set(value, throwable);
+						resultPromise.set(value, e);
 					});
 				}
 			}
@@ -80,7 +80,7 @@ public final class AsyncSuppliers {
 			public Promise<T> get() {
 				if (pendingCalls <= maxParallelCalls) {
 					pendingCalls++;
-					return (Promise<T>) actual.get().async().whenComplete((value, throwable) -> {
+					return (Promise<T>) actual.get().async().whenComplete((value, e) -> {
 						pendingCalls--;
 						processQueue();
 					});
@@ -110,9 +110,9 @@ public final class AsyncSuppliers {
 					private void tryPrefetch() {
 						for (int i = 0; i < count - (deque.size() + pendingCalls); i++) {
 							pendingCalls++;
-							prefetchCallable.get().async().whenComplete((value, throwable) -> {
+							prefetchCallable.get().async().whenComplete((value, e) -> {
 								pendingCalls--;
-								if (throwable == null) {
+								if (e == null) {
 									deque.addLast(value);
 								}
 							});

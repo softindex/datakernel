@@ -80,12 +80,12 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 	}
 
 	@Nullable
-	private CompositeData createCompositeDataFor(Throwable throwable) throws OpenDataException {
+	private CompositeData createCompositeDataFor(Throwable e) throws OpenDataException {
 		CompositeData compositeData = null;
-		if (throwable != null) {
-			String type = throwable.getClass().getName();
-			String msg = throwable.getMessage();
-			List<String> stackTrace = asList(MBeanFormat.formatException(throwable));
+		if (e != null) {
+			String type = e.getClass().getName();
+			String msg = e.getMessage();
+			List<String> stackTrace = asList(MBeanFormat.formatException(e));
 			Map<String, Object> nameToValue = new HashMap<>();
 			nameToValue.put(THROWABLE_TYPE_KEY, type);
 			nameToValue.put(THROWABLE_MESSAGE_KEY, msg);

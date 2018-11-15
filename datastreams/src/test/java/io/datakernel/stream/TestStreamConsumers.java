@@ -42,8 +42,8 @@ public class TestStreamConsumers {
 							}
 
 							@Override
-							public void closeWithError(Throwable error) {
-								acknowledgement.trySetException(error);
+							public void closeWithError(Throwable e) {
+								acknowledgement.trySetException(e);
 							}
 						};
 						dataAcceptors[0] = decorator.decorate(context, dataAcceptor);
@@ -116,7 +116,7 @@ public class TestStreamConsumers {
 
 			void resume();
 
-			void closeWithError(Throwable error);
+			void closeWithError(Throwable e);
 		}
 
 		StreamDataAcceptor<T> decorate(Context context, StreamDataAcceptor<T> dataAcceptor);

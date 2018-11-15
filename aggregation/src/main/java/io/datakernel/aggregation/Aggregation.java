@@ -514,13 +514,13 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		consolidationStarted = eventloop.currentTimeMillis();
 
 		return doConsolidation(chunks)
-				.whenComplete(($, throwable) -> {
-					if (throwable == null) {
+				.whenComplete(($, e) -> {
+					if (e == null) {
 						consolidationLastTimeMillis = eventloop.currentTimeMillis() - consolidationStarted;
 						consolidations++;
 					} else {
 						consolidationStarted = 0;
-						consolidationLastError = throwable;
+						consolidationLastError = e;
 					}
 				})
 				.thenApply(removedChunks -> AggregationDiff.of(new LinkedHashSet<>(removedChunks), new LinkedHashSet<>(chunks)));

@@ -109,7 +109,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		eventloop.post(this::cleanup);
 	}
 
-	protected abstract void onError(Throwable t);
+	protected abstract void onError(Throwable e);
 
 	protected void cleanup() {
 	}

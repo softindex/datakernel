@@ -54,8 +54,8 @@ public class StreamConsumersTest {
 				consumer.apply(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		CompletableFuture<Void> supplierFuture = supplier.streamTo(errorConsumer)
-				.whenComplete(($, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))
-				.thenApplyEx(($, throwable) -> (Void) null)
+				.whenComplete(($, e) -> assertThat(e, instanceOf(IllegalArgumentException.class)))
+				.thenApplyEx(($, e) -> (Void) null)
 				.toCompletableFuture();
 		eventloop.run();
 
@@ -107,8 +107,8 @@ public class StreamConsumersTest {
 			}
 
 			@Override
-			protected void onError(Throwable t) {
-				output.close(t);
+			protected void onError(Throwable e) {
+				output.close(e);
 			}
 
 		}
@@ -121,8 +121,8 @@ public class StreamConsumersTest {
 			}
 
 			@Override
-			protected void onError(Throwable t) {
-				input.close(t);
+			protected void onError(Throwable e) {
+				input.close(e);
 			}
 
 			@Override

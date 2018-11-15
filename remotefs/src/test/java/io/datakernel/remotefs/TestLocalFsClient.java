@@ -283,10 +283,10 @@ public class TestLocalFsClient {
 		String fileName = "no_file.txt";
 		client.downloadSerial(fileName)
 				.withEndOfStream(eos ->
-						eos.whenComplete((result, error) -> {
-							assertNotNull(error);
-							assertEquals(error.getClass(), RemoteFsException.class);
-							assertTrue(error.getMessage().contains(fileName));
+						eos.whenComplete((result, e) -> {
+							assertNotNull(e);
+							assertEquals(e.getClass(), RemoteFsException.class);
+							assertTrue(e.getMessage().contains(fileName));
 						}));
 
 		eventloop.run();

@@ -78,11 +78,11 @@ class StressClient {
 
 				SerialFileReader.readFile(executor, file).withBufferSize(MemSize.kilobytes(16))
 						.streamTo(client.uploadSerial(fileName))
-						.whenComplete(($, throwable) -> {
-							if (throwable == null) {
+						.whenComplete(($, e) -> {
+							if (e == null) {
 								logger.info("Uploaded: " + fileName);
 							} else {
-								logger.info("Failed to upload: {}", throwable.getMessage());
+								logger.info("Failed to upload: {}", e.getMessage());
 							}
 						});
 			} catch (IOException e) {
@@ -124,22 +124,22 @@ class StressClient {
 			int index = rand.nextInt(existingClientFiles.size());
 			String fileName = existingClientFiles.get(index);
 
-			client.delete(fileName).whenComplete(($, throwable) -> {
-				if (throwable == null) {
+			client.delete(fileName).whenComplete(($, e) -> {
+				if (e == null) {
 					existingClientFiles.remove(fileName);
 					logger.info("Deleted: " + fileName);
 				} else {
-					logger.info("Failed to delete: {}", throwable.getMessage());
+					logger.info("Failed to delete: {}", e.getMessage());
 				}
 			});
 		});
 
 		// list file
-		operations.add(() -> client.list().whenComplete((strings, throwable) -> {
-			if (throwable == null) {
+		operations.add(() -> client.list().whenComplete((strings, e) -> {
+			if (e == null) {
 				logger.info("Listed: " + strings.size());
 			} else {
-				logger.info("Failed to list files: {}", throwable.getMessage());
+				logger.info("Failed to list files: {}", e.getMessage());
 			}
 		}));
 
@@ -204,9 +204,9 @@ class StressClient {
 
 	void downloadSmallObjects(int i) {
 		String name = "someName" + i;
-		client.download(name, 0).whenComplete((supplier, throwable) -> {
-			if (throwable != null) {
-				logger.error("can't download", throwable);
+		client.download(name, 0).whenComplete((supplier, e) -> {
+			if (e != null) {
+				logger.error("can't download", e);
 			} else {
 //				try {
 //					supplier.streamTo(SerialFileWriter.create(executor, downloads.resolve(name)));

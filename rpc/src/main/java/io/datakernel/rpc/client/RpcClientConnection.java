@@ -204,17 +204,17 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 		returnTimeout(cb, RPC_TIMEOUT_EXCEPTION);
 	}
 
-	private void returnTimeout(Callback<?> cb, Exception exception) {
-		returnError(cb, exception);
+	private void returnTimeout(Callback<?> cb, Exception e) {
+		returnError(cb, e);
 	}
 
-	private void returnProtocolError(Callback<?> cb, Exception exception) {
-		returnError(cb, exception);
+	private void returnProtocolError(Callback<?> cb, Exception e) {
+		returnError(cb, e);
 	}
 
-	private void returnError(Callback<?> cb, Exception exception) {
+	private void returnError(Callback<?> cb, Exception e) {
 		if (cb != null) {
-			cb.setException(exception);
+			cb.setException(e);
 		}
 	}
 
@@ -280,13 +280,13 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 	}
 
 	@Override
-	public void onClosedWithError(Throwable exception) {
+	public void onClosedWithError(Throwable e) {
 		finishClosing();
 
 		// jmx
 		String causedAddress = "Server address: " + address.getAddress().toString();
-		logger.error("Protocol error. " + causedAddress, exception);
-		rpcClient.getLastProtocolError().recordException(exception, causedAddress);
+		logger.error("Protocol error. " + causedAddress, e);
+		rpcClient.getLastProtocolError().recordException(e, causedAddress);
 	}
 
 	@Override
@@ -364,25 +364,25 @@ public final class RpcClientConnection implements Listener, RpcSender, JmxRefres
 		}
 
 		@Override
-		public void setException(Throwable exception) {
-			if (exception instanceof RpcRemoteException) {
+		public void setException(Throwable e) {
+			if (e instanceof RpcRemoteException) {
 				int responseTime = timeElapsed();
 				connectionStats.getFailedRequests().recordEvent();
 				connectionStats.getResponseTime().recordValue(responseTime);
-				connectionStats.getServerExceptions().recordException(exception, null);
+				connectionStats.getServerExceptions().recordException(e, null);
 				requestStatsPerClass.getFailedRequests().recordEvent();
 				requestStatsPerClass.getResponseTime().recordValue(responseTime);
 				rpcClient.getGeneralRequestsStats().getResponseTime().recordValue(responseTime);
-				requestStatsPerClass.getServerExceptions().recordException(exception, null);
+				requestStatsPerClass.getServerExceptions().recordException(e, null);
 				recordOverdue();
-			} else if (exception instanceof AsyncTimeoutException) {
+			} else if (e instanceof AsyncTimeoutException) {
 				connectionStats.getExpiredRequests().recordEvent();
 				requestStatsPerClass.getExpiredRequests().recordEvent();
-			} else if (exception instanceof RpcOverloadException) {
+			} else if (e instanceof RpcOverloadException) {
 				connectionStats.getRejectedRequests().recordEvent();
 				requestStatsPerClass.getRejectedRequests().recordEvent();
 			}
-			callback.setException(exception);
+			callback.setException(e);
 		}
 
 		private int timeElapsed() {

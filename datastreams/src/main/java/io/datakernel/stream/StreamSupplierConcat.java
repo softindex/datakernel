@@ -53,8 +53,8 @@ class StreamSupplierConcat<T> extends AbstractStreamSupplier<T> {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			StreamSupplierConcat.this.close(t);
+		protected void onError(Throwable e) {
+			StreamSupplierConcat.this.close(e);
 		}
 	}
 
@@ -81,10 +81,10 @@ class StreamSupplierConcat<T> extends AbstractStreamSupplier<T> {
 	}
 
 	@Override
-	protected void onError(Throwable t) {
+	protected void onError(Throwable e) {
 		if (supplier != null) {
 			assert internalConsumer != null;
-			internalConsumer.close(t);
+			internalConsumer.close(e);
 		} else {
 			// TODO ?
 		}

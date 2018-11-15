@@ -94,8 +94,8 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			}
 
 			@Override
-			protected void onError(Throwable t) {
-				outputs.forEach(output -> output.close(t));
+			protected void onError(Throwable e) {
+				outputs.forEach(output -> output.close(e));
 			}
 		}
 
@@ -123,8 +123,8 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			}
 
 			@Override
-			protected void onError(Throwable t) {
-				input.close(t);
+			protected void onError(Throwable e) {
+				input.close(e);
 			}
 		}
 	}

@@ -118,13 +118,13 @@ public class MessagingWithBinaryStreamingTest {
 					}
 
 					@Override
-					public void accept(AsyncTcpSocket asyncTcpSocket, Throwable throwable) {
-						if (throwable == null) {
+					public void accept(AsyncTcpSocket asyncTcpSocket, Throwable e) {
+						if (e == null) {
 							MessagingWithBinaryStreaming<Integer, Integer> messaging =
 									MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 							ping(3, messaging);
 						} else {
-							fail("Test Exception: " + throwable);
+							fail("Test Exception: " + e);
 						}
 					}
 				});

@@ -76,11 +76,11 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		complete(result);
 	}
 
-	public void set(@Nullable T result, @Nullable Throwable throwable) {
-		if (throwable == null) {
+	public void set(@Nullable T result, @Nullable Throwable e) {
+		if (e == null) {
 			set(result);
 		} else {
-			setException(throwable);
+			setException(e);
 		}
 	}
 
@@ -88,14 +88,14 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	 * Sets exception and completes this {@code SettablePromise} exceptionally.
 	 * <p>AssertionError is thrown when you try to set exception for  already completed promise.</p>
 	 *
-	 * @param throwable exception
+	 * @param e exception
 	 */
-	public void setException(Throwable throwable) {
-		assert throwable != null;
+	public void setException(Throwable e) {
+		assert e != null;
 		assert !isComplete();
 		result = null;
-		exception = throwable;
-		completeExceptionally(throwable);
+		exception = e;
+		completeExceptionally(e);
 	}
 
 	/**
@@ -112,51 +112,51 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	 * Tries to set result or exception for this {@code SettablePromise} if it not yet set.
 	 * <p>Otherwise do nothing</p>
 	 */
-	public void trySet(@Nullable T result, @Nullable Throwable throwable) {
+	public void trySet(@Nullable T result, @Nullable Throwable e) {
 		if (isComplete()) {
 			return;
 		}
-		if (throwable == null) {
+		if (e == null) {
 			trySet(result);
 		} else {
-			trySetException(throwable);
+			trySetException(e);
 		}
 	}
 
 	/**
 	 * The same as {@link SettablePromise#trySet(Object, Throwable)} )} but for exception only.
 	 */
-	public void trySetException(Throwable throwable) {
-		assert throwable != null;
+	public void trySetException(Throwable e) {
+		assert e != null;
 		if (isComplete()) {
 			return;
 		}
-		setException(throwable);
+		setException(e);
 	}
 
 	public void post(@Nullable T result) {
 		getCurrentEventloop().post(() -> set(result));
 	}
 
-	public void postException(Throwable throwable) {
-		getCurrentEventloop().post(() -> setException(throwable));
+	public void postException(Throwable e) {
+		getCurrentEventloop().post(() -> setException(e));
 	}
 
-	public void post(@Nullable T result, @Nullable Throwable throwable) {
-		getCurrentEventloop().post(() -> set(result, throwable));
+	public void post(@Nullable T result, @Nullable Throwable e) {
+		getCurrentEventloop().post(() -> set(result, e));
 	}
 
 	public void tryPost(@Nullable T result) {
 		getCurrentEventloop().post(() -> trySet(result));
 	}
 
-	public void tryPostException(Throwable throwable) {
-		assert throwable != null;
-		getCurrentEventloop().post(() -> trySetException(throwable));
+	public void tryPostException(Throwable e) {
+		assert e != null;
+		getCurrentEventloop().post(() -> trySetException(e));
 	}
 
-	public void tryPost(@Nullable T result, @Nullable Throwable throwable) {
-		getCurrentEventloop().post(() -> trySet(result, throwable));
+	public void tryPost(@Nullable T result, @Nullable Throwable e) {
+		getCurrentEventloop().post(() -> trySet(result, e));
 	}
 
 	@Override

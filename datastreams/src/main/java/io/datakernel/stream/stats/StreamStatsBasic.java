@@ -51,8 +51,8 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 	}
 
 	@Override
-	public void onError(Throwable throwable) {
-		error.recordException(throwable);
+	public void onError(Throwable e) {
+		error.recordException(e);
 	}
 
 	@JmxAttribute

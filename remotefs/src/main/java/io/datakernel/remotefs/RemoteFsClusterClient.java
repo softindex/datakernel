@@ -173,11 +173,11 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	 */
 	public Promise<Void> checkDeadPartitions() {
 		return Promises.all(deadClients.entrySet().stream()
-				.map(e -> e.getValue()
+				.map(entry -> entry.getValue()
 						.ping()
-						.thenApplyEx(($, exc) -> {
-							if (exc == null) {
-								markAlive(e.getKey());
+						.thenApplyEx(($, e) -> {
+							if (e == null) {
+								markAlive(entry.getKey());
 							}
 							return null;
 						})))
@@ -198,34 +198,34 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	 * mark it as alive again.
 	 *
 	 * @param partitionId id of the partition to be marked
-	 * @param error       optional exception for logging
+	 * @param e           optional exception for logging
 	 * @return <code>true</code> if partition was alive and <code>false</code> otherwise
 	 */
-	public boolean markDead(Object partitionId, @Nullable Throwable error) {
+	public boolean markDead(Object partitionId, @Nullable Throwable e) {
 		FsClient client = aliveClients.remove(partitionId);
 		if (client != null) {
-			logger.warn("marking " + partitionId + " as dead (" + error + ')');
+			logger.warn("marking " + partitionId + " as dead (" + e + ')');
 			deadClients.put(partitionId, client);
 			return true;
 		}
 		return false;
 	}
 
-	private void markIfDead(Object partitionId, Throwable throwable) {
+	private void markIfDead(Object partitionId, Throwable e) {
 		// marking as dead only on lower level connection and other I/O exceptions,
 		// remotefs exceptions are the ones actually received with an ServerError response (so the node is obviously not dead)
-		if (throwable.getClass() != RemoteFsException.class) {
-			markDead(partitionId, throwable);
+		if (e.getClass() != RemoteFsException.class) {
+			markDead(partitionId, e);
 		}
 	}
 
 	private <T> BiFunction<T, Throwable, Promise<T>> wrapDeath(Object partitionId) {
-		return (res, err) -> {
-			if (err == null) {
+		return (res, e) -> {
+			if (e == null) {
 				return Promise.of(res);
 			}
-			markIfDead(partitionId, err);
-			return Promise.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Node failed with exception", err));
+			markIfDead(partitionId, e);
+			return Promise.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Node failed with exception", e));
 		};
 	}
 
@@ -372,7 +372,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 								}
 								logger.trace("downloading file {} from {}", filename, partitionId);
 								return client.download(filename, offset, length)
-										.whenException(err -> logger.warn("Failed to connect to server with key " + partitionId + " to download file " + filename, err))
+										.whenException(e -> logger.warn("Failed to connect to server with key " + partitionId + " to download file " + filename, e))
 										.thenComposeEx(wrapDeath(partitionId))
 										.thenApply(supplier -> supplier
 												.withEndOfStream(eos -> eos

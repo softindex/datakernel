@@ -137,8 +137,8 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 											})));
 				})
 				.whenComplete(repartitionPromiseStats.recordStats())
-				.thenComposeEx(($, err) -> {
-					if (err != null) {
+				.thenComposeEx(($, e) -> {
+					if (e != null) {
 						logger.warn("forced repartition finish, {} files ensured, {} errored, {} untouched", ensuredFiles, failedFiles, allFiles - ensuredFiles - failedFiles);
 					} else {
 						logger.info("repartition finished, {} files ensured, {} errored", ensuredFiles, failedFiles);
@@ -242,10 +242,10 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					}
 					return clients.get(partitionId)
 							.list(fileToUpload.getFilename()) // checking file existense and size on particular partition
-							.whenComplete((list, err) -> {
-								if (err != null) {
-									logger.warn("failed connecting to partition " + partitionId + " (" + err + ')');
-									cluster.markDead(partitionId, err);
+							.whenComplete((list, e) -> {
+								if (e != null) {
+									logger.warn("failed connecting to partition " + partitionId + " (" + e + ')');
+									cluster.markDead(partitionId, e);
 									return;
 								}
 								// ↓ when there is no file or it is smaller than ours

@@ -42,8 +42,8 @@ public final class StreamSuppliers {
 
 		private final Throwable exception;
 
-		ClosingWithErrorImpl(Throwable exception) {
-			this.exception = exception;
+		ClosingWithErrorImpl(Throwable e) {
+			this.exception = e;
 		}
 
 		@Override
@@ -180,7 +180,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
+		protected void onError(Throwable e) {
 		}
 
 		@Override
@@ -215,8 +215,8 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			supplier.close(t);
+		protected void onError(Throwable e) {
+			supplier.close(e);
 		}
 
 		@Override

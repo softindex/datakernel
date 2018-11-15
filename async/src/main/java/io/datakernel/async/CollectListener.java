@@ -8,7 +8,7 @@ public interface CollectListener<T, A, R> {
 	interface CollectCanceller {
 		void finish();
 
-		void finishExceptionally(Throwable throwable);
+		void finishExceptionally(Throwable e);
 	}
 
 	void onStart(CollectCanceller canceller, A accumulator);
@@ -22,7 +22,7 @@ public interface CollectListener<T, A, R> {
 	default void onCollectResult(R result) {
 	}
 
-	default void onCollectException(Throwable throwable) {
+	default void onCollectException(Throwable e) {
 	}
 
 	static <T, A, R> CollectListener<T, A, R> timeout(long timeout) {

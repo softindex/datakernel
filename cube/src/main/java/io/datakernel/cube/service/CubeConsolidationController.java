@@ -144,8 +144,8 @@ public final class CubeConsolidationController<K, D, C> implements EventloopJmxM
 		return cubeDiff.addedChunks().map(id -> (C) id).collect(toSet());
 	}
 
-	private void logCubeDiff(CubeDiff cubeDiff, Throwable throwable) {
-		if (throwable != null) logger.warn("Consolidation failed", throwable);
+	private void logCubeDiff(CubeDiff cubeDiff, Throwable e) {
+		if (e != null) logger.warn("Consolidation failed", e);
 		else if (cubeDiff.isEmpty()) logger.info("Previous consolidation did not merge any chunks");
 		else logger.info("Consolidation finished. Launching consolidation task again.");
 	}

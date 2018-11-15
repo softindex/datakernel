@@ -158,9 +158,9 @@ public class RpcHelloWorldTest {
 			for (int i = 0; i < count; i++) {
 				String name = "World" + i;
 				client.eventloop.execute(() -> client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-						.whenComplete((helloResponse, throwable) -> {
-							if (throwable != null) {
-								System.err.println(throwable.getMessage());
+						.whenComplete((helloResponse, e) -> {
+							if (e != null) {
+								System.err.println(e.getMessage());
 							} else {
 								success.incrementAndGet();
 								assertEquals("Hello, " + name + "!", helloResponse.message);
@@ -210,19 +210,19 @@ public class RpcHelloWorldTest {
 			for (int i = 0; i < count; i++) {
 				String name = "world" + i;
 				client1.eventloop.execute(() -> client1.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-						.whenComplete((helloResponse, throwable) -> {
+						.whenComplete((helloResponse, e) -> {
 							latch1.countDown();
-							if (throwable != null) {
-								fail(throwable.getMessage());
+							if (e != null) {
+								fail(e.getMessage());
 							} else {
 								assertEquals("Hello, " + name + "!", helloResponse.message);
 							}
 						}));
 				client2.eventloop.execute(() -> client2.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-						.whenComplete((helloResponse, throwable) -> {
+						.whenComplete((helloResponse, e) -> {
 							latch2.countDown();
-							if (throwable != null) {
-								fail(throwable.getMessage());
+							if (e != null) {
+								fail(e.getMessage());
 							} else {
 								assertEquals("Hello, " + name + "!", helloResponse.message);
 							}
@@ -248,9 +248,9 @@ public class RpcHelloWorldTest {
 				stopwatch.start();
 				for (int i = 0; i < count; i++) {
 					client.eventloop.execute(() -> client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest("benchmark"), TIMEOUT)
-							.whenComplete((helloResponse, throwable) -> {
+							.whenComplete((helloResponse, e) -> {
 								latch.countDown();
-								if (throwable != null) {
+								if (e != null) {
 									error.incrementAndGet();
 								} else {
 									success.incrementAndGet();

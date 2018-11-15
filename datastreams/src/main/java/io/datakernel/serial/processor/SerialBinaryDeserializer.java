@@ -118,9 +118,9 @@ public final class SerialBinaryDeserializer<T> extends AbstractStreamSupplier<T>
 	}
 
 	@Override
-	protected void onError(Throwable t) {
+	protected void onError(Throwable e) {
 		queue.recycle();
-		input.close(t);
+		input.close(e);
 	}
 
 	private static int tryPeekSize(ByteBufQueue queue) throws ParseException {

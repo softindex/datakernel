@@ -63,8 +63,8 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			outputs.forEach(output -> output.close(t));
+		protected void onError(Throwable e) {
+			outputs.forEach(output -> output.close(e));
 		}
 	}
 
@@ -95,8 +95,8 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			input.close(t);
+		protected void onError(Throwable e) {
+			input.close(e);
 		}
 	}
 }

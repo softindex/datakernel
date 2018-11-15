@@ -52,10 +52,10 @@ public interface Promise<T> {
 	/**
 	 * Creates exceptionally completed {@code Promise}
 	 *
-	 * @param exception Throwable
+	 * @param e Throwable
 	 */
-	static <T> CompleteExceptionallyPromise<T> ofException(Throwable exception) {
-		return new CompleteExceptionallyPromise<>(exception);
+	static <T> CompleteExceptionallyPromise<T> ofException(Throwable e) {
+		return new CompleteExceptionallyPromise<>(e);
 	}
 
 	static <T> Promise<T> ofCallback(Consumer<SettablePromise<T>> callbackConsumer) {
@@ -84,11 +84,11 @@ public interface Promise<T> {
 	 * Useful for {@link #thenComposeEx(BiFunction)} passthroughs (eg. when mapping specific exceptions).
 	 *
 	 * @param value     value to wrap when exception is null
-	 * @param exception possibly-null exception, determines type of promise completion
+	 * @param e possibly-null exception, determines type of promise completion
 	 */
-	static <T> Promise<T> of(@Nullable T value, @Nullable Throwable exception) {
-		assert !(value != null && exception != null);
-		return exception == null ? of(value) : ofException(exception);
+	static <T> Promise<T> of(@Nullable T value, @Nullable Throwable e) {
+		assert !(value != null && e != null);
+		return e == null ? of(value) : ofException(e);
 	}
 
 	static <T> Promise<T> ofTry(Try<T> t) {
@@ -114,8 +114,8 @@ public interface Promise<T> {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		eventloop.startExternalTask();
 		SettablePromise<T> promise = new SettablePromise<>();
-		completionStage.whenCompleteAsync((result, throwable) -> {
-			promise.set(result, throwable);
+		completionStage.whenCompleteAsync((result, e) -> {
+			promise.set(result, e);
 			eventloop.completeExternalTask();
 		}, eventloop);
 		return promise;
@@ -258,7 +258,7 @@ public interface Promise<T> {
 	 * Executes given promise after execution of this promise completes
 	 *
 	 * @param promise given promise
-	 * @param <U>   type of result
+	 * @param <U>     type of result
 	 * @return subscribed {@code Promise}
 	 */
 	<U, S extends BiConsumer<? super T, Throwable> & Promise<U>> Promise<U> then(S promise);

@@ -97,7 +97,7 @@ public class TestPartialRemoteFs {
 	public void justDownload() throws IOException {
 
 		client.downloadSerial(FILE).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -116,7 +116,7 @@ public class TestPartialRemoteFs {
 		SerialConsumer<ByteBuf> consumer = client.uploadSerial("test_big_file.bin", ".upload");
 
 		supplier.streamTo(consumer)
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -128,7 +128,7 @@ public class TestPartialRemoteFs {
 	public void downloadPrefix() throws IOException {
 
 		client.downloadSerial(FILE, 0, 12).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -140,7 +140,7 @@ public class TestPartialRemoteFs {
 	public void downloadSuffix() throws IOException {
 
 		client.downloadSerial(FILE, 13).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -152,7 +152,7 @@ public class TestPartialRemoteFs {
 	public void downloadPart() throws IOException {
 
 		client.downloadSerial(FILE, 5, 10).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();
@@ -164,7 +164,7 @@ public class TestPartialRemoteFs {
 	public void downloadOverSuffix() throws IOException {
 
 		client.downloadSerial(FILE, 13, 123).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "Boundaries exceed file size"));
 
 		eventloop.run();
@@ -174,7 +174,7 @@ public class TestPartialRemoteFs {
 	public void downloadOver() throws IOException {
 
 		client.downloadSerial(FILE, 123, 123).streamTo(SerialFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "Offset exceeds file size"));
 
 		eventloop.run();
@@ -193,7 +193,7 @@ public class TestPartialRemoteFs {
 
 		SerialSupplier.of(ByteBuf.wrapForReading(override.getBytes(UTF_8)))
 				.streamTo(client.uploadSerial(path.getFileName().toString(), 35))
-				.whenComplete(($, err) -> server.close())
+				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 
 		eventloop.run();

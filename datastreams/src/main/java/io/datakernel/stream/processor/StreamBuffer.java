@@ -51,8 +51,8 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			output.close(t);
+		protected void onError(Throwable e) {
+			output.close(e);
 		}
 	}
 
@@ -103,8 +103,8 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			input.close(t);
+		protected void onError(Throwable e) {
+			input.close(e);
 		}
 	}
 

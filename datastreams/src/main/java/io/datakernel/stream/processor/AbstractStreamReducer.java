@@ -159,15 +159,15 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		}
 
 		@Override
-		protected void onError(Throwable t) {
-			output.close(t);
+		protected void onError(Throwable e) {
+			output.close(e);
 		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<O> {
 		@Override
-		protected void onError(Throwable t) {
-			inputs.forEach(input -> input.close(t));
+		protected void onError(Throwable e) {
+			inputs.forEach(input -> input.close(e));
 		}
 
 		@Override

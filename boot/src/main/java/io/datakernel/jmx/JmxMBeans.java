@@ -149,10 +149,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			AttributeModifier<?> modifier = setting.getModifiers().get(attrName);
 			try {
 				rootNode.applyModifier(attrName, modifier, monitorables);
-			} catch (ClassCastException cce) {
+			} catch (ClassCastException e) {
 				//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - doesn't ignore
 				throw new IllegalArgumentException("Cannot apply modifier \"" + modifier.getClass().getName() +
-						"\" for attribute \"" + attrName + "\": " + cce.toString());
+						"\" for attribute \"" + attrName + "\": " + e.toString());
 			}
 		}
 
@@ -868,11 +868,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				throw new MBeanException(e);
 			}
 
-			Exception exception = exceptionReference.get();
-			if (exception != null) {
-				Exception actualException = exception;
-				if (exception instanceof SetterException) {
-					SetterException setterException = (SetterException) exception;
+			Exception e = exceptionReference.get();
+			if (e != null) {
+				Exception actualException = e;
+				if (e instanceof SetterException) {
+					SetterException setterException = (SetterException) e;
 					actualException = setterException.getCausedException();
 				}
 				propagate(actualException);
@@ -953,18 +953,18 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				throw new MBeanException(e);
 			}
 
-			Exception exception = exceptionReference.get();
-			if (exception != null) {
-				propagate(exception);
+			Exception e = exceptionReference.get();
+			if (e != null) {
+				propagate(e);
 			}
 
 			// We don't know how to aggregate return values if there are several mbeans
 			return mbeanWrappers.size() == 1 ? lastValue.get() : null;
 		}
 
-		private void propagate(Throwable throwable) throws MBeanException {
-			if (throwable instanceof InvocationTargetException) {
-				Throwable targetException = ((InvocationTargetException) throwable).getTargetException();
+		private void propagate(Throwable e) throws MBeanException {
+			if (e instanceof InvocationTargetException) {
+				Throwable targetException = ((InvocationTargetException) e).getTargetException();
 
 				if (targetException instanceof Exception) {
 					throw new MBeanException((Exception) targetException);
@@ -978,13 +978,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				}
 
 			} else {
-				if (throwable instanceof Exception) {
-					throw new MBeanException((Exception) throwable);
+				if (e instanceof Exception) {
+					throw new MBeanException((Exception) e);
 				} else {
 					throw new MBeanException(
 							new Exception(format("Throwable of type \"%s\" and message \"%s\" " +
 											"was thrown",
-									throwable.getClass().getName(), throwable.getMessage())
+									e.getClass().getName(), e.getMessage())
 							)
 					);
 				}

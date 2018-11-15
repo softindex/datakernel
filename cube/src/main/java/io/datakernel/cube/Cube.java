@@ -763,15 +763,15 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				cubeQuery.getWhere().getDimensions()));
 		long queryStarted = eventloop.currentTimeMillis();
 		return new RequestContext<>().execute(queryClassLoader, cubeQuery)
-				.whenComplete((queryResult, throwable) -> {
-					if (throwable == null) {
+				.whenComplete((queryResult, e) -> {
+					if (e == null) {
 						queryTimes.recordValue((int) (eventloop.currentTimeMillis() - queryStarted));
 					} else {
 						queryErrors++;
-						queryLastError = throwable;
+						queryLastError = e;
 
-						if (throwable instanceof NoSuchFileException) {
-							logger.warn("Query failed because of NoSuchFileException. " + cubeQuery.toString(), throwable);
+						if (e instanceof NoSuchFileException) {
+							logger.warn("Query failed because of NoSuchFileException. " + cubeQuery.toString(), e);
 						}
 					}
 				});
