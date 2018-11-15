@@ -3,7 +3,7 @@ package io.datakernel.service;
 import com.google.inject.*;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
-import io.datakernel.async.Stage;
+import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import org.hamcrest.core.IsSame;
@@ -55,8 +55,8 @@ public class ServiceGraphTest {
 		EventloopService failService(Eventloop eventloop) {
 			return new EventloopServiceEmpty(eventloop) {
 				@Override
-				public Stage<Void> start() {
-					return Stage.ofException(INTERRUPTED);
+				public Promise<Void> start() {
+					return Promise.ofException(INTERRUPTED);
 				}
 			};
 		}
@@ -87,13 +87,13 @@ public class ServiceGraphTest {
 		}
 
 		@Override
-		public Stage<Void> start() {
-			return Stage.of(null);
+		public Promise<Void> start() {
+			return Promise.of(null);
 		}
 
 		@Override
-		public Stage<Void> stop() {
-			return Stage.of(null);
+		public Promise<Void> stop() {
+			return Promise.of(null);
 		}
 
 	}
