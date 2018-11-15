@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,10 @@
 
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
+
 public final class PromisesAccumulator<A> {
+	@Nullable
 	private SettablePromise<A> resultPromise;
 
 	private A accumulator;
@@ -55,6 +58,7 @@ public final class PromisesAccumulator<A> {
 				activePromises--;
 				if (exception == null) {
 					exception = throwable;
+					//noinspection AssignmentToNull - resource release
 					accumulator = null;
 					if (resultPromise != null) {
 						resultPromise.setException(throwable);

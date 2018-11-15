@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
@@ -37,10 +38,11 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 	private final RpcStrategyList list;
 
 	private final ResultValidator<?> resultValidator;
+	@Nullable
 	private final Exception noValidResultException;
 
 	private RpcStrategyFirstValidResult(RpcStrategyList list, ResultValidator<?> resultValidator,
-	                                    Exception noValidResultException) {
+			@Nullable Exception noValidResultException) {
 		this.list = list;
 		this.resultValidator = resultValidator;
 		this.noValidResultException = noValidResultException;
@@ -63,6 +65,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		return list.getAddresses();
 	}
 
+	@Nullable
 	@Override
 	public RpcSender createSender(RpcClientConnectionPool pool) {
 		List<RpcSender> senders = list.listOfSenders(pool);

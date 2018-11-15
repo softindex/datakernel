@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
 
@@ -43,8 +44,11 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 
 	private int bufferSize = DEFAULT_BUFFER_SIZE;
 
+	@Nullable
 	private Input<?> lastInput;
+	@Nullable
 	private K key = null;
+	@Nullable
 	private A accumulator;
 
 	private final PriorityQueue<Input> priorityQueue;
@@ -150,6 +154,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 				streamsAwaiting--;
 			}
 			produce();
+			assert output.getConsumer() != null;
 			return output.getConsumer().getAcknowledgement();
 		}
 
@@ -179,6 +184,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 			Input<Object> input = priorityQueue.poll();
 			if (input == null)
 				break;
+			//noinspection PointlessNullCheck intellij doesn't know
 			if (key != null && input.headKey.equals(key)) {
 				accumulator = input.reducer.onNextItem(dataAcceptor, key, input.headItem, accumulator);
 			} else {

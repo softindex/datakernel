@@ -312,7 +312,7 @@ public final class Expressions {
 	public static ExpressionComparator compare(Class<?> type, List<String> properties) {
 		ExpressionComparator comparator = ExpressionComparator.create();
 		for (String property : properties) {
-			comparator = comparator.with(leftProperty(type, property), rightProperty(type, property), true);
+			comparator.with(leftProperty(type, property), rightProperty(type, property), true);
 		}
 		return comparator;
 	}
@@ -337,7 +337,7 @@ public final class Expressions {
 	public static ExpressionComparator compareTo(List<String> properties) {
 		ExpressionComparator comparator = ExpressionComparator.create();
 		for (String property : properties) {
-			comparator = comparator.with(thisProperty(property), thatProperty(property), true);
+			comparator.with(thisProperty(property), thatProperty(property), true);
 		}
 		return comparator;
 	}

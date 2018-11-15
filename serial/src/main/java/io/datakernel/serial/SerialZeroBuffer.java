@@ -29,7 +29,9 @@ public final class SerialZeroBuffer<T> implements SerialQueue<T>, Cancellable {
 	@Nullable
 	private T value;
 
+	@Nullable
 	private SettablePromise<Void> put;
+	@Nullable
 	private SettablePromise<T> take;
 
 	public boolean isWaiting() {

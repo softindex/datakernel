@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package io.datakernel.datagraph.server;
 
+import io.datakernel.annotation.Nullable;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,10 +25,11 @@ import java.util.Map;
  * Environment for datagraph, which holds the instances of classes, required to perform certain datagraph operations.
  */
 public final class DatagraphEnvironment {
+	@Nullable
 	private final DatagraphEnvironment parent;
 	private final Map<?, ?> instances = new HashMap<>();
 
-	private DatagraphEnvironment(DatagraphEnvironment parent) {
+	private DatagraphEnvironment(@Nullable DatagraphEnvironment parent) {
 		this.parent = parent;
 	}
 
@@ -80,6 +83,7 @@ public final class DatagraphEnvironment {
 		return this;
 	}
 
+	@Nullable
 	public Object get(Object key) {
 		Object result = instances.get(key);
 		if (result == null && parent != null) {

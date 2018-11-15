@@ -16,6 +16,8 @@
 
 package io.datakernel.asm;
 
+import io.datakernel.annotation.Nullable;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -25,6 +27,7 @@ public final class Annotations {
 	private Annotations() {
 	}
 
+	@Nullable
 	public static <A extends Annotation> A findAnnotation(Class<A> type, Annotation[] annotations) {
 		for (Annotation annotation : annotations) {
 			if (annotation.annotationType() == type)

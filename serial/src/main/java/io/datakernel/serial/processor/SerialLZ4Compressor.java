@@ -100,6 +100,7 @@ public final class SerialLZ4Compressor extends AbstractAsyncProcess
 		return new SerialLZ4Compressor(LZ4Factory.fastestInstance().highCompressor(compressionLevel));
 	}
 
+	@SuppressWarnings("ConstantConditions") //check input for clarity
 	@Override
 	public SerialInput<ByteBuf> getInput() {
 		return input -> {
@@ -109,6 +110,7 @@ public final class SerialLZ4Compressor extends AbstractAsyncProcess
 		};
 	}
 
+	@SuppressWarnings("ConstantConditions") //check output for clarity
 	@Override
 	public SerialOutput<ByteBuf> getOutput() {
 		return output -> {

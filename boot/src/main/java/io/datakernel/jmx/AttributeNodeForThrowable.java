@@ -55,6 +55,7 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 		return Collections.<String, OpenType<?>>singletonMap(name, compositeType);
 	}
 
+	@Nullable
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
 		Object firstPojo = sources.get(0);
@@ -78,6 +79,7 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 		return compositeData;
 	}
 
+	@Nullable
 	private CompositeData createCompositeDataFor(Throwable throwable) throws OpenDataException {
 		CompositeData compositeData = null;
 		if (throwable != null) {

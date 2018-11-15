@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.stream.*;
 
@@ -118,6 +119,7 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		 * @param left left stream
 		 * @return stream with joined streams
 		 */
+		@Nullable
 		public V doLeftJoin(K key, L left) {
 			return null;
 		}

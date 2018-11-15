@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
@@ -47,6 +48,7 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 		return list.getAddresses();
 	}
 
+	@Nullable
 	@Override
 	public RpcSender createSender(RpcClientConnectionPool pool) {
 		List<RpcSender> subSenders = list.listOfSenders(pool);

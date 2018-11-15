@@ -46,6 +46,7 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 		@Override
 		protected Promise<Void> onEndOfStream() {
 			output.tryProduce();
+			assert output.getConsumer() != null;
 			return output.getConsumer().getAcknowledgement();
 		}
 

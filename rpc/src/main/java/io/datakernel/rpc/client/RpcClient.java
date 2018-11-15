@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
@@ -107,7 +108,9 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	private RpcSender requestSender;
 
+	@Nullable
 	private SettablePromise<Void> startPromise;
+	@Nullable
 	private SettablePromise<Void> stopPromise;
 	private boolean running;
 

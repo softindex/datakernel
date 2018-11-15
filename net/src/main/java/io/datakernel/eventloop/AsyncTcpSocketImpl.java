@@ -60,7 +60,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
 	private boolean writeEndOfStream;
 
+	@Nullable
 	private SettablePromise<Void> write;
+	@Nullable
 	private SettablePromise<ByteBuf> read;
 
 	@Nullable
@@ -508,6 +510,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void doClose() {
 		eventloop.closeChannel(channel, key);
+		//noinspection AssignmentToNull - null only after close
 		channel = null;
 		key = null;
 		connectionCount.decrementAndGet();

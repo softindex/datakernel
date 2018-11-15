@@ -44,6 +44,7 @@ public final class LogDiffJson<D> extends TypeAdapter<LogDiff<D>> {
 		@Override
 		public void write(JsonWriter out, LogPosition value) throws IOException {
 			out.beginArray();
+			assert value.getLogFile() != null;
 			out.value(value.getLogFile().getName());
 			out.value(value.getLogFile().getN());
 			out.value(value.getPosition());

@@ -30,7 +30,6 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 
 	@FunctionalInterface
 	public interface EmptyPredicate<OP> {
-		@Nullable
 		boolean isEmpty(OP op);
 	}
 

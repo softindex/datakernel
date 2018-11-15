@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import com.google.inject.spi.Dependency;
 import com.google.inject.spi.DependencyAndSource;
 import com.google.inject.spi.HasDependencies;
 import com.google.inject.spi.ProvisionListener;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
@@ -192,6 +193,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		return this;
 	}
 
+	@Nullable
 	private Service getWorkersServiceOrNull(Key<?> key, List<?> instances) {
 		List<Service> services = new ArrayList<>();
 		boolean found = false;
@@ -255,6 +257,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		return resultFuture;
 	}
 
+	@Nullable
 	@SuppressWarnings("unchecked")
 	private Service getServiceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);

@@ -309,7 +309,6 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testNeg() {
-		boolean z = true;
 		byte b = Byte.MAX_VALUE;
 		short s = Short.MAX_VALUE;
 		char c = Character.MAX_VALUE;
@@ -319,7 +318,7 @@ public class ExpressionTest {
 		double d = Double.MAX_VALUE;
 
 		TestNeg testClass = ClassBuilder.create(DefiningClassLoader.create(), TestNeg.class)
-				.withMethod("negBoolean", neg(value(z)))
+				.withMethod("negBoolean", neg(value(true)))
 				.withMethod("negShort", neg(value(s)))
 				.withMethod("negByte", neg(value(b)))
 				.withMethod("negChar", neg(value(c)))
@@ -329,7 +328,7 @@ public class ExpressionTest {
 				.withMethod("negDouble", neg(value(d)))
 				.buildClassAndCreateNewInstance();
 
-		assertTrue(testClass.negBoolean() == !z);
+		assertTrue(!testClass.negBoolean());
 		assertTrue(testClass.negShort() == -s);
 		assertTrue(testClass.negByte() == -b);
 		assertTrue(testClass.negChar() == -c);
@@ -895,6 +894,7 @@ public class ExpressionTest {
 		assertEquals(instance.toString(), "{null}");
 	}
 
+	@SuppressWarnings("ConstantConditions")
 	@org.junit.Test
 	public void testSetSaveBytecode() throws IOException {
 		File folder = tempFolder.newFolder();

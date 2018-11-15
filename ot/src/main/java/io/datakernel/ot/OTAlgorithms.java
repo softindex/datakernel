@@ -125,7 +125,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		private final long childLevel;
 		private final A accumulatedDiffs;
 
-		private FindResult(K commit, K child, Set<K> commitParents, long commitLevel, long childLevel, A accumulatedDiffs) {
+		private FindResult(@Nullable K commit, K child, Set<K> commitParents, long commitLevel, long childLevel, A accumulatedDiffs) {
 			this.child = child;
 			this.commit = commit;
 			this.commitParents = commitParents;
@@ -199,9 +199,10 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			final K parent;
 			final K child;
 			final A accumulator;
+			@Nullable
 			Long childLevel;
 
-			private FindEntry(K parent, K child, A accumulator, Long childLevel) {
+			private FindEntry(K parent, K child, A accumulator, @Nullable Long childLevel) {
 				this.parent = parent;
 				this.child = child;
 				this.accumulator = accumulator;
@@ -405,6 +406,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			super(heads);
 		}
 
+		@Nullable
 		@Override
 		protected Set<K> tryGetResult() {
 			return nodeToHeads.values().stream().allMatch(heads::equals) ?
@@ -445,6 +447,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		public void onStart(List<OTCommit<K, D>> otCommits) {
 		}
 
+		@Nullable
 		@Override
 		protected Map<K, A> handleCommit(OTCommit<K, D> commit) {
 			ReduceEntry<K, A> polledEntry = queueMap.remove(commit.getId());

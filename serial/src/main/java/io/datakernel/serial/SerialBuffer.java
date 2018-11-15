@@ -212,6 +212,7 @@ public final class SerialBuffer<T> implements SerialQueue<T>, Cancellable {
 		for (int i = head; i != tail; i = (i + 1) & (elements.length - 1)) {
 			tryRecycle(elements[i]);
 		}
+		//noinspection AssignmentToNull - resource release
 		elements = null;
 	}
 

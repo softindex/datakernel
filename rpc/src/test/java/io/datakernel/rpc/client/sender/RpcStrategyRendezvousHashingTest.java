@@ -41,6 +41,7 @@ public class RpcStrategyRendezvousHashingTest {
 	private static final InetSocketAddress ADDRESS_2 = new InetSocketAddress(HOST, PORT_2);
 	private static final InetSocketAddress ADDRESS_3 = new InetSocketAddress(HOST, PORT_3);
 
+	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void itShouldDistributeCallsBetweenActiveSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();

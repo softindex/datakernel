@@ -1,5 +1,6 @@
 package io.datakernel.ot;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.util.CollectionUtils;
 
 import java.util.ArrayList;
@@ -14,12 +15,13 @@ public interface DiffsReducer<A, D> {
 
 	A combine(A existing, A additional);
 
-	static <A, D> DiffsReducer<A, D> of(A initialValue, BiFunction<A, List<D>, A> reduceFunction) {
+	static <A, D> DiffsReducer<A, D> of(@Nullable A initialValue, BiFunction<A, List<D>, A> reduceFunction) {
 		return of(initialValue, reduceFunction, (existing, additional) -> existing);
 	}
 
-	static <A, D> DiffsReducer<A, D> of(A initialValue, BiFunction<A, List<D>, A> reduceFunction, BinaryOperator<A> combiner) {
+	static <A, D> DiffsReducer<A, D> of(@Nullable A initialValue, BiFunction<A, List<D>, A> reduceFunction, BinaryOperator<A> combiner) {
 		return new DiffsReducer<A, D>() {
+			@Nullable
 			@Override
 			public A initialValue() {
 				return initialValue;

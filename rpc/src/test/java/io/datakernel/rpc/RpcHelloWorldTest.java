@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -139,7 +139,7 @@ public class RpcHelloWorldTest {
 	@Test
 	public void testBlockingCall() throws Exception {
 		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
-			for (int i = 0; i < 0; i++) {
+			for (int i = 0; i < 100; i++) {
 				assertEquals("Hello, World!", client.hello("World"));
 			}
 		} finally {

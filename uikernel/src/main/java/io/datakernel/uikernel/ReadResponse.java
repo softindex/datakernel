@@ -19,6 +19,7 @@ package io.datakernel.uikernel;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.datakernel.annotation.Nullable;
 
 import java.util.Collections;
 import java.util.List;
@@ -29,9 +30,10 @@ public final class ReadResponse<K, R extends AbstractRecord<K>> {
 	private final List<R> records;
 	private final int count;
 	private List<R> extra;
+	@Nullable
 	private R totals;
 
-	private ReadResponse(List<R> records, int count, List<R> extra, R totals) {
+	private ReadResponse(List<R> records, int count, List<R> extra, @Nullable R totals) {
 		this.records = checkNotNull(records, "Records cannot be null in ReadResponse");
 		this.count = count;
 		this.extra = checkNotNull(extra, "Extras cannot be null in ReadResponse");

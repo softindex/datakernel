@@ -129,11 +129,12 @@ public final class OTCommit<K, D> implements Comparable<OTCommit> {
 		return Instant.ofEpochMilli(timestamp);
 	}
 
+	@Nullable
 	public Object getSerializedData() {
 		return serializedData;
 	}
 
-	public void setSerializedData(Object serializedData) {
+	public void setSerializedData(@Nullable Object serializedData) {
 		this.serializedData = serializedData;
 	}
 

@@ -1,5 +1,6 @@
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 
 public interface CollectListener<T, A, R> {
@@ -11,7 +12,7 @@ public interface CollectListener<T, A, R> {
 
 	void onStart(CollectCanceller canceller, A accumulator);
 
-	default void onResult(T promiseResult, int index) {
+	default void onResult(@Nullable T promiseResult, int index) {
 	}
 
 	default void onException(Throwable e, int index) {

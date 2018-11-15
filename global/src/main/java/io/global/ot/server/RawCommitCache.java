@@ -16,6 +16,7 @@
 
 package io.global.ot.server;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
@@ -31,6 +32,7 @@ import java.util.Map;
 final class RawCommitCache implements AsyncConsumer<RawCommitEntry> {
 	private final Map<CommitId, RawCommit> preloadedCommits = new HashMap<>();
 	private final Map<CommitId, SettablePromise<RawCommit>> pendingPromises = new HashMap<>();
+	@Nullable
 	private SettablePromise<Void> acceptPromise;
 
 	public RawCommitCache() {

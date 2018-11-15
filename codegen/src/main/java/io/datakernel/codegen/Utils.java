@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.codegen.utils.Primitives;
 import io.datakernel.util.Preconditions;
 import org.objectweb.asm.Type;
@@ -133,6 +134,7 @@ final class Utils {
 		return result;
 	}
 
+	@Nullable
 	public static Type complementTypeOrNull(Type type) {
 		if (isPrimitiveType(type))
 			return wrap(type);

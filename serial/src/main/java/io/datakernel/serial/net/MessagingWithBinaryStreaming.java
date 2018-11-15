@@ -16,7 +16,6 @@
 
 package io.datakernel.serial.net;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -65,7 +64,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	}
 
 	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket socket,
-			@Nullable ByteBufSerializer<I, O> serializer) {
+			ByteBufSerializer<I, O> serializer) {
 		MessagingWithBinaryStreaming<I, O> messaging = new MessagingWithBinaryStreaming<>(socket, serializer);
 		messaging.prefetch();
 		return messaging;

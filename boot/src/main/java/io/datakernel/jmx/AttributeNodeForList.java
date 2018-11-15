@@ -90,6 +90,7 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 		return Collections.<String, OpenType<?>>singletonMap(name, arrayType);
 	}
 
+	@Nullable
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
 		List<Map<String, Object>> attributesFromAllElements = new ArrayList<>();

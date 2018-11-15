@@ -334,6 +334,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 					if (e == null) {
 						if (inspector != null) inspector.onResolve(request, dnsResponse);
 						if (dnsResponse.isSuccessful()) {
+							//noinspection ConstantConditions - dnsResponse is successful (not null)
 							return doSend(request, dnsResponse.getRecord().getIps());
 						} else {
 							return Promise.ofException(new DnsQueryException(AsyncHttpClient.class, dnsResponse));

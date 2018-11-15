@@ -115,8 +115,6 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	/**
 	 * Tries to set result or exception for this {@code SettablePromise} if it not yet set.
 	 * <p>Otherwise do nothing</p>
-	 *
-	 * @return {@code true} if result or exception was set, {@code false} otherwise
 	 */
 	public void trySet(@Nullable T result, @Nullable Throwable throwable) {
 		if (isComplete()) {
@@ -171,6 +169,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		super.subscribe(next);
 	}
 
+	@Nullable
 	@Override
 	public T getResult() {
 		if (isResult()) {
@@ -187,6 +186,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 		throw new IllegalStateException();
 	}
 
+	@Nullable
 	@Override
 	public Try<T> asTry() {
 		return isComplete() ? Try.of(result, exception) : null;

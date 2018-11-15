@@ -16,6 +16,7 @@
 
 package io.datakernel.cube.attributes;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -46,6 +47,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		this.eventloop = eventloop;
 	}
 
+	@Nullable
 	@Override
 	protected final A resolveAttributes(K key) {
 		A result = cache.get(key);

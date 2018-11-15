@@ -16,6 +16,8 @@
 
 package io.datakernel.util;
 
+import io.datakernel.annotation.Nullable;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -24,13 +26,13 @@ import java.util.Map;
 public interface Recyclable {
 	void recycle();
 
-	static void tryRecycle(Object object) {
+	static void tryRecycle(@Nullable Object object) {
 		if (object instanceof Recyclable) {
 			((Recyclable) object).recycle();
 		}
 	}
 
-	static void deepRecycle(Object object) {
+	static void deepRecycle(@Nullable Object object) {
 		if (object == null) return;
 		if (object instanceof Recyclable) {
 			Recyclable recyclable = (Recyclable) object;

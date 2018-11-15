@@ -19,6 +19,7 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -178,6 +179,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 
 	public AggregationState detachState() {
 		AggregationState state = this.state;
+		//noinspection AssignmentToNull - in the lifecycle of a component field is not nullable
 		this.state = null;
 		return state;
 	}
@@ -582,11 +584,13 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		this.maxChunksToConsolidate = maxChunksToConsolidate;
 	}
 
+	@Nullable
 	@JmxAttribute
 	public Integer getConsolidationSeconds() {
 		return consolidationStarted == 0 ? null : (int) ((eventloop.currentTimeMillis() - consolidationStarted) / 1000);
 	}
 
+	@Nullable
 	@JmxAttribute
 	public Integer getConsolidationLastTimeSeconds() {
 		return consolidationLastTimeMillis == 0 ? null : (int) ((consolidationLastTimeMillis) / 1000);

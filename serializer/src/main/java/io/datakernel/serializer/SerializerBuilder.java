@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.asm.Annotations;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.ClassBuilder;
@@ -345,6 +346,7 @@ public final class SerializerBuilder {
 		return new SerializerGenSubclass(type, subclasses, startIndex);
 	}
 
+	@Nullable
 	private static Class<?> findKey(Class<?> classType, Set<Class<?>> classes) {
 		Class<?> foundKey = null;
 		for (Class<?> key : classes) {
@@ -487,6 +489,7 @@ public final class SerializerBuilder {
 		}
 	}
 
+	@Nullable
 	private FoundSerializer findAnnotations(Object methodOrField, Annotation[] annotations) {
 		TypedModsMap mods = extractMods(annotations);
 
@@ -535,6 +538,7 @@ public final class SerializerBuilder {
 		return SerializeProfiles.DEFAULT_VERSION;
 	}
 
+	@Nullable
 	private FoundSerializer tryAddField(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, Field field) {
 		FoundSerializer result = findAnnotations(field, field.getAnnotations());
 		if (result == null)
@@ -546,6 +550,7 @@ public final class SerializerBuilder {
 		return result;
 	}
 
+	@Nullable
 	private FoundSerializer tryAddGetter(Class<?> classType, SerializerGenBuilder.SerializerForType[] classGenerics, Method getter) {
 		if (getter.isBridge()) {
 			return null;
@@ -790,9 +795,10 @@ public final class SerializerBuilder {
 
 		private final class Value {
 			public String method;
+			@Nullable
 			public Expression expression;
 
-			public Value(String method, Expression expression) {
+			public Value(String method, @Nullable Expression expression) {
 				this.method = method;
 				this.expression = expression;
 			}
@@ -958,6 +964,7 @@ public final class SerializerBuilder {
 		}
 	}
 
+	@Nullable
 	private Integer getLatestVersion(List<Integer> versions) {
 		return versions.isEmpty() ? null : versions.get(versions.size() - 1);
 	}

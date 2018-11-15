@@ -595,10 +595,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			if (peeked.getTimestamp() > currentTimeMillis()) {
 				break;
 			}
-			ScheduledRunnable polled = taskQueue.poll();
-			assert polled == peeked;
+			taskQueue.poll();
 
-			Runnable runnable = polled.getRunnable();
+			Runnable runnable = peeked.getRunnable();
 			if (sw != null) {
 				sw.reset();
 				sw.start();
@@ -612,7 +611,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			try {
 				runnable.run();
 				tick++;
-				polled.complete();
+				peeked.complete();
 				if (sw != null && inspector != null)
 					inspector.onUpdateScheduledTaskDuration(runnable, sw, background);
 			} catch (Throwable e) {
@@ -1138,6 +1137,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return keepAlive;
 	}
 
+	@Nullable
 	@JmxAttribute(name = "")
 	public EventloopStats getStats() {
 		return (inspector instanceof EventloopStats ? (EventloopStats) inspector : null);

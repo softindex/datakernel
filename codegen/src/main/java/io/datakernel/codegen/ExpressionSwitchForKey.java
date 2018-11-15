@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.annotation.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -31,11 +32,12 @@ import static org.objectweb.asm.Type.getType;
 
 public final class ExpressionSwitchForKey implements Expression {
 	private final Expression key;
+	@Nullable
 	private Expression defaultExp;
 	private final List<Expression> listKey = new ArrayList<>();
 	private final List<Expression> listValue = new ArrayList<>();
 
-	ExpressionSwitchForKey(Expression key, Expression defaultExp,
+	ExpressionSwitchForKey(Expression key, @Nullable Expression defaultExp,
 			List<Expression> listKey, List<Expression> listValue) {
 		this.key = checkNotNull(key);
 		this.defaultExp = defaultExp;

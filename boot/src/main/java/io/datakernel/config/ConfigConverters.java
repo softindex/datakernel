@@ -687,7 +687,7 @@ public final class ConfigConverters {
 				SimpleThreadFactory result = SimpleThreadFactory.create();
 				String threadGroupName = config.get(ofNullableString(), "threadGroup", Utils.transform(defaultValue.getThreadGroup(), ThreadGroup::getName));
 				if (threadGroupName != null) {
-					result = result.withThreadGroup(new ThreadGroup(threadGroupName));
+					result.withThreadGroup(new ThreadGroup(threadGroupName));
 				}
 				return result
 						.withName(config.get(ofNullableString(), "name", defaultValue.getName()))

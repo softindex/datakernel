@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,24 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.annotation.Nullable;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class Record {
 	private final RecordScheme scheme;
 
+	@Nullable
 	private final Object[] objects;
 
+	@Nullable
 	private final int[] ints;
+	@Nullable
 	private final double[] doubles;
+	@Nullable
 	private final long[] longs;
+	@Nullable
 	private final float[] floats;
 
 	private Record(RecordScheme scheme) {
@@ -49,15 +56,15 @@ public final class Record {
 	private void putRaw(int rawIndex, Object value) {
 		int index = rawIndex & 0xFFFF;
 		int rawType = rawIndex >>> 16;
-		if (rawType == 1) {
+		if (rawType == 1 && ints != null) {
 			ints[index] = (int) value;
-		} else if (rawType == 2) {
+		} else if (rawType == 2 && doubles != null) {
 			doubles[index] = (double) value;
-		} else if (rawType == 3) {
+		} else if (rawType == 3 && longs != null) {
 			longs[index] = (long) value;
-		} else if (rawType == 4) {
+		} else if (rawType == 4 && floats != null) {
 			floats[index] = (float) value;
-		} else if (rawType == 0) {
+		} else if (rawType == 0 && objects != null) {
 			objects[index] = value;
 		} else {
 			throw new IllegalArgumentException();
@@ -67,15 +74,15 @@ public final class Record {
 	private Object getRaw(int rawIndex) {
 		int index = rawIndex & 0xFFFF;
 		int type = rawIndex >>> 16;
-		if (type == 1) {
+		if (type == 1 && ints != null) {
 			return ints[index];
-		} else if (type == 2) {
+		} else if (type == 2 && doubles != null) {
 			return doubles[index];
-		} else if (type == 3) {
+		} else if (type == 3 && longs != null) {
 			return longs[index];
-		} else if (type == 4) {
+		} else if (type == 4 && floats != null) {
 			return floats[index];
-		} else if (type == 0) {
+		} else if (type == 0 && objects != null) {
 			return objects[index];
 		} else {
 			throw new IllegalArgumentException();

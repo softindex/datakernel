@@ -56,6 +56,7 @@ public final class SerialBinarySerializer<T> extends AbstractStreamConsumer<T> i
 	private final BufferSerializer<T> serializer;
 	private MemSize initialBufferSize = DEFAULT_INITIAL_BUFFER_SIZE;
 	private MemSize maxMessageSize = MAX_SIZE;
+	@Nullable
 	private Duration autoFlushInterval;
 	private boolean skipSerializationErrors = false;
 

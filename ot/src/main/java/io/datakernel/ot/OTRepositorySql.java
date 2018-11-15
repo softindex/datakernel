@@ -64,6 +64,7 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 
 	private String tableRevision = DEFAULT_REVISION_TABLE;
 	private String tableDiffs = DEFAULT_DIFFS_TABLE;
+	@Nullable
 	private String tableBackup = DEFAULT_BACKUP_TABLE;
 
 	private String createdBy = null;

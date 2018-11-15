@@ -27,21 +27,20 @@ import java.util.stream.Collector;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class Try<T> {
-	@Nullable
 	private final T result;
 	@Nullable
 	private final Throwable throwable;
 
-	private Try(@Nullable T result, @Nullable Throwable throwable) {
+	private Try(T result, @Nullable Throwable throwable) {
 		this.result = result;
 		this.throwable = throwable;
 	}
 
-	public static <T> Try<T> of(@Nullable T result) {
+	public static <T> Try<T> of(T result) {
 		return new Try<>(result, null);
 	}
 
-	public static <T> Try<T> of(@Nullable T result, @Nullable Throwable throwable) {
+	public static <T> Try<T> of(T result, @Nullable Throwable throwable) {
 		assert result == null || throwable == null;
 		return new Try<>(result, throwable);
 	}
@@ -121,7 +120,6 @@ public final class Try<T> {
 		return defaultValue;
 	}
 
-	@Nullable
 	public T getOrSupply(Supplier<? extends T> defaultValueSupplier) {
 		if (throwable == null) {
 			return result;

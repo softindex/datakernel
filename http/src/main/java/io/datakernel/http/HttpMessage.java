@@ -38,6 +38,7 @@ import static java.util.Collections.singletonList;
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
  */
+@SuppressWarnings("unused")
 public abstract class HttpMessage {
 	protected Map<HttpHeader, HttpHeaderValue> headers = new LinkedHashMap<>();
 	protected Map<String, HttpCookie> cookies;

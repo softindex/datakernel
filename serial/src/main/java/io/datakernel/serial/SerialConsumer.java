@@ -49,7 +49,7 @@ import static io.datakernel.util.Recyclable.tryRecycle;
 public interface SerialConsumer<T> extends Cancellable {
 	Promise<Void> accept(@Nullable T value);
 
-	default Promise<Void> accept(T item1, T item2) {
+	default Promise<Void> accept(@Nullable T item1, @Nullable T item2) {
 		return accept(item1)
 				.thenComposeEx(($, e) -> {
 					if (e == null) {

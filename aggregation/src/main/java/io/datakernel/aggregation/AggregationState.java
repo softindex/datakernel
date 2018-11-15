@@ -19,6 +19,7 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.AggregationPredicates.RangeScan;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.ot.OTState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -234,10 +235,11 @@ public final class AggregationState implements OTState<AggregationDiff> {
 
 	private static class PickedChunks {
 		private final PickingStrategy strategy;
+		@Nullable
 		private final RangeTree<PrimaryKey, AggregationChunk> partitionTree;
 		private final List<AggregationChunk> chunks;
 
-		public PickedChunks(PickingStrategy strategy, RangeTree<PrimaryKey, AggregationChunk> partitionTree,
+		public PickedChunks(PickingStrategy strategy, @Nullable RangeTree<PrimaryKey, AggregationChunk> partitionTree,
 				List<AggregationChunk> chunks) {
 			this.strategy = strategy;
 			this.partitionTree = partitionTree;

@@ -270,6 +270,7 @@ public final class SerialSuppliers {
 	@SuppressWarnings("unchecked")
 	public static <T> SerialSupplier<T> prefetch(SerialSupplier<? extends T> actual) {
 		return new AbstractSerialSupplier<T>() {
+			@Nullable
 			private T prefetched;
 			private boolean endOfStream;
 			private boolean prefetching;

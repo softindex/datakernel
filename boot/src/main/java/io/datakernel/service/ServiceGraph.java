@@ -243,7 +243,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		return throwable;
 	}
 
-	public ServiceGraph add(Key<?> key, Service service, Key<?>... dependencies) {
+	public ServiceGraph add(Key<?> key, @Nullable Service service, Key<?>... dependencies) {
 		checkArgument(!services.containsKey(key));
 		if (service != null) {
 			services.put(key, service);

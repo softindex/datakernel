@@ -460,6 +460,7 @@ public final class EventloopStats implements EventloopInspector {
 
 	public static final class DurationRunnable implements JmxStats<DurationRunnable>, JmxStatsWithReset {
 		private long duration;
+		@Nullable
 		private Runnable runnable;
 
 		@Override

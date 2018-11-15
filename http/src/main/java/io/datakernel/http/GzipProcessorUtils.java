@@ -69,7 +69,7 @@ public final class GzipProcessorUtils {
 		Inflater decompressor = ensureDecompressor();
 		decompressor.setInput(src.array(), src.readPosition(), src.readRemaining());
 		try {
-			dst = readDecompressedData(decompressor, src, dst, maxMessageSize);
+			readDecompressedData(decompressor, src, dst, maxMessageSize);
 		} catch (DataFormatException e) {
 			moveDecompressorToPool(decompressor);
 			src.recycle();
@@ -140,7 +140,7 @@ public final class GzipProcessorUtils {
 		}
 	}
 
-	private static ByteBuf readDecompressedData(Inflater decompressor, ByteBuf src, ByteBuf dst, int maxSize) throws DataFormatException, ParseException {
+	private static void readDecompressedData(Inflater decompressor, ByteBuf src, ByteBuf dst, int maxSize) throws DataFormatException, ParseException {
 		int totalUncompressedBytesCount = 0;
 		int count = decompressor.inflate(dst.array(), dst.writePosition(), dst.writeRemaining());
 		totalUncompressedBytesCount += count;
@@ -149,7 +149,6 @@ public final class GzipProcessorUtils {
 		check(decompressor.finished(), dst, src, ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED);
 		int totalRead = decompressor.getTotalIn();
 		src.moveReadPosition(totalRead);
-		return dst;
 	}
 
 	private static int estimateMaxCompressedSize(int dataSize) {

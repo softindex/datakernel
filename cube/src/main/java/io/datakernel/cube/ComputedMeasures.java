@@ -17,6 +17,7 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.measure.Measure;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.utils.Primitives;
@@ -38,6 +39,7 @@ public final class ComputedMeasures {
 			this.dependencies = new LinkedHashSet<>(Arrays.asList(dependencies));
 		}
 
+		@Nullable
 		@Override
 		public Class<?> getType(Map<String, Measure> storedMeasures) {
 			return null;

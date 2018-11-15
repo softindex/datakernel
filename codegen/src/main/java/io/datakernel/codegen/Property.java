@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.codegen.utils.Primitives;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -132,6 +133,7 @@ public final class Property implements Variable {
 		);
 	}
 
+	@Nullable
 	private static Method tryFindSetter(Class<?> argumentClass, String property, Class<?> valueClass) {
 		Method m = null;
 		try {
@@ -148,6 +150,7 @@ public final class Property implements Variable {
 		return m;
 	}
 
+	@Nullable
 	private static Method tryFindSetter(Class<?> argumentClass, String property) {
 		String setterName = "set" + toUpperCase(property.charAt(0)) + property.substring(1);
 

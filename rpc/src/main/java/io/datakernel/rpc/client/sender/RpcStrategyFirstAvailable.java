@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.net.InetSocketAddress;
@@ -36,6 +37,7 @@ public final class RpcStrategyFirstAvailable implements RpcStrategy {
 		return list.getAddresses();
 	}
 
+	@Nullable
 	@Override
 	public RpcSender createSender(RpcClientConnectionPool pool) {
 		List<RpcSender> senders = list.listOfSenders(pool);

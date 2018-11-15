@@ -17,6 +17,7 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.PredicateDef;
@@ -582,6 +583,7 @@ public class AggregationPredicates {
 		});
 	}
 
+	@Nullable
 	@SuppressWarnings("unchecked")
 	private static AggregationPredicate simplifyAnd(AggregationPredicate left, AggregationPredicate right) {
 		if (left.equals(right))

@@ -16,6 +16,8 @@
 
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
+
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,7 +28,7 @@ import java.util.stream.Collector;
 public interface IndexedCollector<T, A, R> {
 	A accumulator(int promises);
 
-	void accumulate(A accumulator, int promiseIndex, T promiseResult);
+	void accumulate(A accumulator, int promiseIndex, @Nullable T promiseResult);
 
 	R finish(A accumulator);
 

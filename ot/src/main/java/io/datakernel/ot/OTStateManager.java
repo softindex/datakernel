@@ -57,7 +57,9 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	@Nullable
 	private K fetchedRevision;
+	@Nullable
 	private Long fetchedRevisionLevel;
+	@Nullable
 	private List<D> fetchedDiffs;
 
 	private Map<K, OTCommit<K, D>> pendingCommits = new HashMap<>();
@@ -312,6 +314,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		}
 	}
 
+	@SuppressWarnings("AssignmentToNull") // state is invalid, no further calls should be made
 	private void invalidateInternalState() {
 		state = null;
 
@@ -361,6 +364,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return fetchedDiffs != null;
 	}
 
+	@Nullable
 	@JmxAttribute(name = "revision")
 	public String getJmxRevision() {
 		return revision != null ? revision.toString() : null;
@@ -373,7 +377,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	@JmxAttribute
 	public int getFetchedDiffsSize() {
-		return fetchedDiffs.size();
+		return fetchedDiffs != null ? fetchedDiffs.size() : -1;
 	}
 
 	@JmxAttribute

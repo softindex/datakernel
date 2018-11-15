@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNull;
 
 public final class ConcurrentStackPoolTest {
 
+	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void testBase() {
 		ConcurrentStackPool<Supplier<String>> pool = new ConcurrentStackPool<>(new Supplier<Supplier<String>>() {

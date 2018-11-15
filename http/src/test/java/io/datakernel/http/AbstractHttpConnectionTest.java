@@ -110,6 +110,7 @@ public class AbstractHttpConnectionTest {
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
+		assert client.getStats() != null;
 		EventStats clientConnectionCount = client.getStats().getConnected();
 
 		client.request(HttpRequest.get(url))

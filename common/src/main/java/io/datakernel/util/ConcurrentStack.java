@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 package io.datakernel.util;
+
+import io.datakernel.annotation.Nullable;
 
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicReference;
@@ -46,6 +48,7 @@ public final class ConcurrentStack<E> implements Iterable<E> {
 		} while (!head.compareAndSet(oldHead, newHead));
 	}
 
+	@Nullable
 	public E pop() {
 		Node<E> oldHead;
 		Node<E> newHead;
@@ -58,6 +61,7 @@ public final class ConcurrentStack<E> implements Iterable<E> {
 		return oldHead.item;
 	}
 
+	@Nullable
 	public E peek() {
 		Node<E> node = head.get();
 		return node == null ? null : node.item;

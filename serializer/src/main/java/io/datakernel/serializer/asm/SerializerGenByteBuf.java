@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.SerializationUtils;
@@ -124,6 +125,7 @@ public class SerializerGenByteBuf implements SerializerGen, NullableOptimization
 		return byteBuf;
 	}
 
+	@Nullable
 	public static ByteBuf readNullable(ByteBuf input) {
 		int length = input.readVarInt();
 		if (length == 0) return null;
@@ -141,6 +143,7 @@ public class SerializerGenByteBuf implements SerializerGen, NullableOptimization
 		return result;
 	}
 
+	@Nullable
 	public static ByteBuf readSliceNullable(ByteBuf input) {
 		int length = input.readVarInt();
 		if (length == 0) return null;

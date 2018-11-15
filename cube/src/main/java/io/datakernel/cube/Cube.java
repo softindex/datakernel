@@ -22,6 +22,7 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
@@ -365,6 +366,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return this;
 	}
 
+	@Nullable
 	public Class<?> getAttributeInternalType(String attribute) {
 		if (dimensionTypes.containsKey(attribute))
 			return dimensionTypes.get(attribute).getInternalDataType();
@@ -373,6 +375,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return null;
 	}
 
+	@Nullable
 	public Class<?> getMeasureInternalType(String field) {
 		if (measures.containsKey(field))
 			return measures.get(field).getFieldType().getInternalDataType();
@@ -381,6 +384,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return null;
 	}
 
+	@Nullable
 	public Type getAttributeType(String attribute) {
 		if (dimensionTypes.containsKey(attribute))
 			return dimensionTypes.get(attribute).getDataType();
@@ -389,6 +393,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return null;
 	}
 
+	@Nullable
 	public Type getMeasureType(String field) {
 		if (measures.containsKey(field))
 			return measures.get(field).getFieldType().getDataType();
@@ -422,8 +427,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public Aggregation getAggregation(String aggregationId) {
-		AggregationContainer aggregationContainer = aggregations.get(aggregationId);
-		return (aggregationContainer == null) ? null : aggregationContainer.aggregation;
+		return aggregations.get(aggregationId).aggregation;
 	}
 
 	public Set<String> getAggregationIds() {
@@ -934,7 +938,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			List<Expression> computeSequence = new ArrayList<>();
 
 			for (String computedMeasure : resultComputedMeasures) {
-				builder = builder.withField(computedMeasure, computedMeasures.get(computedMeasure).getType(measures));
+				builder.withField(computedMeasure, computedMeasures.get(computedMeasure).getType(measures));
 				Expression record = cast(arg(0), resultClass);
 				computeSequence.add(set(property(record, computedMeasure),
 						computedMeasures.get(computedMeasure).getExpression(record, measures)));
@@ -965,7 +969,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 				if (resultMeasures.contains(field) || resultAttributes.contains(field)) {
 					String property = field.replace('.', '$');
-					comparator = comparator.with(
+					comparator.with(
 							ordering.isAsc() ? leftProperty(resultClass, property) : rightProperty(resultClass, property),
 							ordering.isAsc() ? rightProperty(resultClass, property) : leftProperty(resultClass, property),
 							true);

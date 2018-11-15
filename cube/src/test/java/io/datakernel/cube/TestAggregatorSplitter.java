@@ -82,6 +82,7 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 							keysToMap(ADV_DIMENSIONS.stream(), identity()),
 							keysToMap(ADV_METRICS.stream(), identity())));
 
+			@SuppressWarnings("ConstantConditions")
 			@Override
 			public void accept(TestPubRequest pubRequest) {
 				outputItem.date = (int) (pubRequest.timestamp / (24 * 60 * 60 * 1000L));

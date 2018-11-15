@@ -85,6 +85,7 @@ public final class SerialLZ4Decompressor extends AbstractAsyncProcess
 		};
 	}
 
+	@SuppressWarnings("ConstantConditions") //check output for clarity
 	@Override
 	public SerialOutput<ByteBuf> getOutput() {
 		return output -> {

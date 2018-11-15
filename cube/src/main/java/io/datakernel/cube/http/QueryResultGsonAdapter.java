@@ -264,10 +264,10 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 	public RecordScheme recordScheme(List<String> attributes, List<String> measures) {
 		RecordScheme recordScheme = RecordScheme.create();
 		for (String attribute : attributes) {
-			recordScheme = recordScheme.withField(attribute, attributeTypes.get(attribute));
+			recordScheme.withField(attribute, attributeTypes.get(attribute));
 		}
 		for (String measure : measures) {
-			recordScheme = recordScheme.withField(measure, measureTypes.get(measure));
+			recordScheme.withField(measure, measureTypes.get(measure));
 		}
 		return recordScheme;
 	}

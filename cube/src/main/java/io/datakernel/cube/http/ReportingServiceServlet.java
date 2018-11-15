@@ -148,35 +148,35 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 		String parameter;
 		parameter = request.getQueryParameterOrNull(ATTRIBUTES_PARAM);
 		if (parameter != null)
-			query = query.withAttributes(split(parameter));
+			query.withAttributes(split(parameter));
 
 		parameter = request.getQueryParameterOrNull(MEASURES_PARAM);
 		if (parameter != null)
-			query = query.withMeasures(split(parameter));
+			query.withMeasures(split(parameter));
 
 		parameter = request.getQueryParameterOrNull(WHERE_PARAM);
 		if (parameter != null)
-			query = query.withWhere(getAggregationPredicateJson().fromJson(parameter));
+			query.withWhere(getAggregationPredicateJson().fromJson(parameter));
 
 		parameter = request.getQueryParameterOrNull(SORT_PARAM);
 		if (parameter != null)
-			query = query.withOrderings(parseOrderings(parameter));
+			query.withOrderings(parseOrderings(parameter));
 
 		parameter = request.getQueryParameterOrNull(HAVING_PARAM);
 		if (parameter != null)
-			query = query.withHaving(getAggregationPredicateJson().fromJson(parameter));
+			query.withHaving(getAggregationPredicateJson().fromJson(parameter));
 
 		parameter = request.getQueryParameterOrNull(LIMIT_PARAM);
 		if (parameter != null)
-			query = query.withLimit(Integer.valueOf(parameter)); // TODO throws ParseException
+			query.withLimit(Integer.valueOf(parameter));// TODO throws ParseException
 
 		parameter = request.getQueryParameterOrNull(OFFSET_PARAM);
 		if (parameter != null)
-			query = query.withOffset(Integer.valueOf(parameter));
+			query.withOffset(Integer.valueOf(parameter));
 
 		parameter = request.getQueryParameterOrNull(REPORT_TYPE_PARAM);
 		if (parameter != null)
-			query = query.withReportType(ReportType.valueOf(parameter.toUpperCase()));
+			query.withReportType(ReportType.valueOf(parameter.toUpperCase()));
 
 		return query;
 	}

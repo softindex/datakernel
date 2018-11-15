@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package io.datakernel.logfs.ot;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.PromisesAccumulator;
@@ -30,6 +31,7 @@ import static io.datakernel.util.Preconditions.checkState;
 @SuppressWarnings("unchecked")
 public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T, D> {
 	private final List<LogDataConsumer<?, D>> logDataConsumers = new ArrayList<>();
+	@Nullable
 	private Iterator<? extends StreamDataAcceptor<?>> receivers;
 
 	@Override
@@ -52,6 +54,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 
 	protected abstract StreamDataAcceptor<T> createSplitter();
 
+	@Nullable
 	protected final <X> StreamDataAcceptor<X> addOutput(LogDataConsumer<X, D> logDataConsumer) {
 		if (receivers == null) {
 			// initial run, recording scheme

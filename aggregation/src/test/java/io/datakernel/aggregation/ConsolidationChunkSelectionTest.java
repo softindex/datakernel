@@ -137,6 +137,7 @@ public class ConsolidationChunkSelectionTest {
 
 		Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = state.groupByPartition(2);
 
+		assert partitioningKeyToTree != null;
 		assertEquals(chunks1, partitioningKeyToTree.get(PrimaryKey.ofArray(1, 1)).getAll());
 		assertEquals(chunks2, partitioningKeyToTree.get(PrimaryKey.ofArray(2, 1)).getAll());
 		assertEquals(chunks3, partitioningKeyToTree.get(PrimaryKey.ofArray(2, 2)).getAll());

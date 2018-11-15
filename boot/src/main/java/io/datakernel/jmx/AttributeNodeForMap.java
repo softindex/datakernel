@@ -103,6 +103,7 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 		return Collections.<String, OpenType<?>>singletonMap(name, tabularType);
 	}
 
+	@Nullable
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
 		Map<Object, List<Object>> groupedByKey = fetchMapsAndGroupEntriesByKey(sources);
