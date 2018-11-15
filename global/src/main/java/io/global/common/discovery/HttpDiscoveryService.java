@@ -121,7 +121,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 				.thenCompose(ensureResponseBody())
 				.thenCompose(response -> Promise.ofTry(
 						tryParseResponse(response, body -> decode(SIGNED_SHARED_SIM_KEY, body))
-								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_KEY))));
+								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_SHARED_KEY))));
 	}
 
 	@Override

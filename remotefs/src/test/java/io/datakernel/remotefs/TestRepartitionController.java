@@ -23,7 +23,9 @@ import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -43,7 +45,7 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.enableLogging;
 
 @RunWith(DatakernelRunner.class)
-// @Ignore("this test is completely manual, it takes forever")
+@Ignore("this test is completely manual, it takes forever")
 public final class TestRepartitionController {
 	private static final int CLIENT_SERVER_PAIRS = 10;
 
@@ -164,42 +166,42 @@ public final class TestRepartitionController {
 				}));
 	}
 
-	// @Test
+	@Test
 	public void testTest() throws IOException {
 		testN(1, 10 * 1024 * 1024, 50 * 1024 * 1024);
 	}
 
-	// @Test
+	@Test
 	public void testBig50() throws IOException {
 		testN(50, 10 * 1024 * 1024, 50 * 1024 * 1024);
 	}
 
-	// @Test
+	@Test
 	public void testMid100() throws IOException {
 		testN(100, 10 * 1024, 100 * 1024);
 	}
 
-	// @Test
+	@Test
 	public void testMid1000() throws IOException {
 		testN(1000, 10 * 1024, 100 * 1024);
 	}
 
-	// @Test
+	@Test
 	public void test1000() throws IOException {
 		testN(1000, 512, 1024);
 	}
 
-	// @Test
+	@Test
 	public void test10000() throws IOException {
 		testN(10000, 512, 1024);
 	}
 
-	// @Test
+	@Test
 	public void test100000() throws IOException {
 		testN(100000, 512, 1024);
 	}
 
-	// @Test
+	@Test
 	public void test1000000() throws IOException {
 		testN(1000000, 512, 1024);
 	}

@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.codec.*;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
+import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.util.TypeT;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
@@ -37,6 +38,7 @@ import java.net.UnknownHostException;
 import java.util.Set;
 
 import static io.datakernel.codec.Codecs.record;
+import static io.datakernel.serial.ByteBufsParser.ofVarIntSizePrefixedBytes;
 
 public final class BinaryDataFormats2 {
 	// region creators
@@ -266,5 +268,9 @@ public final class BinaryDataFormats2 {
 		ByteBuf slice = buf.slice(size);
 		buf.moveReadPosition(size);
 		return slice;
+	}
+
+	public static <T> ByteBufsParser<T> fromDecoder(StructuredDecoder<T> decoder) {
+		return ofVarIntSizePrefixedBytes().andThen(buf -> decode(decoder, buf));
 	}
 }

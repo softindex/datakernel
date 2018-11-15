@@ -55,6 +55,7 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
+import static io.global.common.api.DiscoveryService.NO_SHARED_KEY;
 import static io.global.fs.api.CheckpointPosStrategy.fixed;
 import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -309,7 +310,7 @@ public final class GlobalFsTest {
 				})
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertFailure(StacklessException.class, e -> assertSame(DiscoveryService.NO_KEY, e)))
+				.whenComplete(assertFailure(StacklessException.class, e -> assertSame(NO_SHARED_KEY, e)))
 				.thenComposeEx(($, e) -> discoveryService.shareKey(alice.getPubKey(),
 						SignedData.sign(REGISTRY.get(SharedSimKey.class), SharedSimKey.of(key1, alice.getPubKey()), alice.getPrivKey())))
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
