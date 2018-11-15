@@ -21,7 +21,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.codec.*;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
-import io.datakernel.util.SimpleType;
+import io.datakernel.util.TypeT;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -97,7 +97,7 @@ public final class BinaryDataFormats2 {
 			.with(AnnounceData.class, registry ->
 					record(AnnounceData::parse,
 							AnnounceData::getTimestamp, registry.get(long.class),
-							AnnounceData::getServerIds, registry.get(Set.class, RawServerId.class)))
+							AnnounceData::getServerIds, registry.get(new TypeT<Set<RawServerId>>() {})))
 
 			.with(SharedSimKey.class, registry ->
 					record(SharedSimKey::parse,
@@ -110,7 +110,7 @@ public final class BinaryDataFormats2 {
 					record(CommitEntry::parse,
 							CommitEntry::getCommitId, registry.get(CommitId.class),
 							CommitEntry::getCommit, registry.get(RawCommit.class),
-							CommitEntry::getHead, registry.<SignedData<RawCommitHead>>get(SignedData.class, RawCommitHead.class).nullable()))
+							CommitEntry::getHead, registry.get(new TypeT<SignedData<RawCommitHead>>() {}).nullable()))
 
 			.with(CommitId.class, registry ->
 					registry.get(byte[].class)
@@ -141,7 +141,7 @@ public final class BinaryDataFormats2 {
 
 			.with(RawCommit.class, registry ->
 					record(RawCommit::parse,
-							RawCommit::getParents, registry.get(SimpleType.of(Set.class, CommitId.class)),
+							RawCommit::getParents, registry.get(new TypeT<Set<CommitId>>() {}),
 							RawCommit::getEncryptedDiffs, registry.get(EncryptedData.class),
 							RawCommit::getSimKeyHash, registry.get(Hash.class),
 							RawCommit::getLevel, registry.get(Long.class),

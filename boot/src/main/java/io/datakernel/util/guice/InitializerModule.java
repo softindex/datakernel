@@ -48,7 +48,7 @@ public final class InitializerModule extends AbstractModule {
 				initializerCache
 						.computeIfAbsent(provision.getBinding().getKey(), key -> {
 							Type type = key.getTypeLiteral().getType();
-							Type initializerType = SimpleType.of(OptionalInitializer.class, SimpleType.ofType(type)).getType();
+							Type initializerType = SimpleType.of(OptionalInitializer.class, SimpleType.of(type)).getType();
 							Annotation annotation = key.getAnnotation();
 							Binding<?> binding = annotation != null ?
 									injectorProvider.get().getBinding(Key.get(initializerType, annotation)) :

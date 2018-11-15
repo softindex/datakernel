@@ -4,8 +4,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.StructuredOutput;
-import io.datakernel.util.SimpleType;
 
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -111,7 +111,7 @@ public class StructuredOutputImpl implements StructuredOutput {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> void writeCustom(SimpleType type, T value) {
+	public <T> void writeCustom(Type type, T value) {
 		throw new UnsupportedOperationException();
 	}
 }

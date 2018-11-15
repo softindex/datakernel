@@ -67,7 +67,12 @@ public final class CodecRegistry implements CodecFactory {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> StructuredCodec<T> get(SimpleType type) {
+	public <T> StructuredCodec<T> get(Type type) {
+		return doGet(SimpleType.of(type));
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> StructuredCodec<T> doGet(SimpleType type) {
 		Class clazz = type.getRawType();
 		BiFunction<CodecFactory, StructuredCodec<?>[], StructuredCodec<?>> fn = checkNotNull(map.get(clazz));
 
@@ -75,19 +80,10 @@ public final class CodecRegistry implements CodecFactory {
 
 		SimpleType[] typeParams = type.getTypeParams();
 		for (int i = 0; i < typeParams.length; i++) {
-			subCodecs[i] = get(typeParams[i]);
+			subCodecs[i] = doGet(typeParams[i]);
 		}
 
 		return (StructuredCodec<T>) fn.apply(this, subCodecs);
 	}
 
-	@Override
-	public <T> StructuredCodec<T> get(Class<T> type) {
-		return get(SimpleType.of(type));
-	}
-
-	@Override
-	public <T> StructuredCodec<T> get(Type type) {
-		return get(SimpleType.ofType(type));
-	}
 }

@@ -23,6 +23,7 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsMetadata;
 import io.global.fs.api.MetadataStorage;
@@ -37,7 +38,7 @@ import static java.util.stream.Collectors.toList;
 
 public class RemoteFsMetadataStorage implements MetadataStorage {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsMetadataStorage.class);
-	private static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(SignedData.class, GlobalFsMetadata.class);
+	private static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsMetadata>>() {});
 
 	private final FsClient fsClient;
 

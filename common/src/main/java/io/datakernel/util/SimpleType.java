@@ -37,35 +37,26 @@ public final class SimpleType {
 		return new SimpleType(clazz, typeParams.toArray(new SimpleType[0]), clazz.isArray() ? 1 : 0);
 	}
 
-	public static SimpleType of(Class clazz, Class subtype1, Class... subtypes) {
-		return new SimpleType(clazz, simpleTypes(subtype1, subtypes), clazz.isArray() ? 1 : 0);
+	public static SimpleType of(TypeT<?> type) {
+		return of(type.getType());
 	}
 
-	private static SimpleType[] simpleTypes(Class subtype1, Class[] subtypes) {
-		SimpleType[] simpleTypes = new SimpleType[subtypes.length + 1];
-		simpleTypes[0] = SimpleType.of(subtype1);
-		for (int i = 0; i < subtypes.length; i++) {
-			simpleTypes[i + 1] = SimpleType.of(subtypes[i]);
-		}
-		return simpleTypes;
-	}
-
-	public static SimpleType ofType(Type type) {
+	public static SimpleType of(Type type) {
 		if (type instanceof Class) {
 			return of(((Class) type));
 		} else if (type instanceof ParameterizedType) {
 			ParameterizedType parameterizedType = (ParameterizedType) type;
 			return of(((Class) parameterizedType.getRawType()),
 					Arrays.stream(parameterizedType.getActualTypeArguments())
-							.map(SimpleType::ofType)
+							.map(SimpleType::of)
 							.collect(toList())
-							.toArray(new SimpleType[]{}));
+							.toArray(new SimpleType[0]));
 		} else if (type instanceof WildcardType) {
 			Type[] upperBounds = ((WildcardType) type).getUpperBounds();
 			Preconditions.check(upperBounds.length == 1, type);
-			return ofType(upperBounds[0]);
+			return of(upperBounds[0]);
 		} else if (type instanceof GenericArrayType) {
-			SimpleType component = ofType(((GenericArrayType) type).getGenericComponentType());
+			SimpleType component = of(((GenericArrayType) type).getGenericComponentType());
 			return new SimpleType(component.clazz, component.typeParams, component.arrayDimension + 1);
 		} else {
 			throw new IllegalArgumentException(type.getTypeName());

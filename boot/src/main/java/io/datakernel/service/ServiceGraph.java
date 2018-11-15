@@ -526,7 +526,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		Object nodeSuffix = nodeSuffixes.apply(key);
 		NodeStatus status = nodeStatuses.get(key);
 		String label = (annotation != null ? prettyPrintAnnotation(annotation) + "\\n" : "") +
-				SimpleType.ofType(key.getTypeLiteral().getType()).getSimpleName() +
+				SimpleType.of(key.getTypeLiteral().getType()).getSimpleName() +
 				(nodeSuffix != null ? " [" + nodeSuffix + "]" : "") +
 				(status != null && status.isStarted() ?
 						"\\n" +

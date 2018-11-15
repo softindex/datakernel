@@ -28,8 +28,8 @@ public class SimpleTypeTest {
 
 	@Test
 	public void testListExtendsString() throws NoSuchFieldException {
-		assertEquals(SimpleType.ofType(ListStringPojo.class.getField("list2").getGenericType()),
-				SimpleType.ofType(ListStringPojo.class.getField("list").getGenericType()));
+		assertEquals(SimpleType.of(ListStringPojo.class.getField("list2").getGenericType()),
+				SimpleType.of(ListStringPojo.class.getField("list").getGenericType()));
 	}
 
 }

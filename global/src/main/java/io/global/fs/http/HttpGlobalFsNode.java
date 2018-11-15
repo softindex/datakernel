@@ -26,6 +26,7 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.http.UrlBuilder;
 import io.datakernel.serial.*;
+import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
@@ -45,7 +46,7 @@ import static io.global.ot.util.BinaryDataFormats2.*;
 import static java.util.stream.Collectors.toList;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {
-	private static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(SignedData.class, GlobalFsMetadata.class);
+	private static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsMetadata>>() {});
 
 	private final InetSocketAddress address;
 	private final IAsyncHttpClient client;

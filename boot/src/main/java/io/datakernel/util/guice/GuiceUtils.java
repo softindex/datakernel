@@ -77,13 +77,13 @@ public final class GuiceUtils {
 				prettyPrintAnnotation(key.getAnnotation()) + " " :
 				key.getAnnotationType() != null ?
 						"@" + SimpleType.of(key.getAnnotationType()).getSimpleName() + " " :
-						"") + SimpleType.ofType(type).getSimpleName();
+						"") + SimpleType.of(type).getSimpleName();
 	}
 
 	public static String prettyPrintKeyName(Key<?> key) {
 		Type type = key.getTypeLiteral().getType();
 		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "") +
-				SimpleType.ofType(type).getName();
+				SimpleType.of(type).getName();
 	}
 
 	@Nullable

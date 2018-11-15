@@ -2,8 +2,8 @@ package io.datakernel.codec;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.ParseException;
-import io.datakernel.util.SimpleType;
 
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -50,8 +50,8 @@ public interface StructuredInput {
 	<T> Map<String, T> readMapEx(Function<String, ? extends StructuredDecoder<? extends T>> elementDecoderSupplier) throws ParseException;
 
 	default <T> T readCustom(Class<T> type) throws ParseException {
-		return readCustom(SimpleType.of(type));
+		return readCustom((Type) type);
 	}
 
-	<T> T readCustom(SimpleType type) throws ParseException;
+	<T> T readCustom(Type type) throws ParseException;
 }

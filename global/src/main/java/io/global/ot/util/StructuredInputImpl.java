@@ -5,8 +5,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.exception.ParseException;
-import io.datakernel.util.SimpleType;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -144,7 +144,7 @@ public class StructuredInputImpl implements StructuredInput {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> T readCustom(SimpleType type) throws ParseException {
+	public <T> T readCustom(Type type) throws ParseException {
 		throw new UnsupportedOperationException();
 	}
 }

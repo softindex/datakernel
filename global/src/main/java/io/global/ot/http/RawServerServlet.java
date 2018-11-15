@@ -28,6 +28,7 @@ import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.processor.SerialByteChunker;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.ot.api.CommitId;
@@ -54,7 +55,7 @@ public final class RawServerServlet implements AsyncServlet {
 	public static final MemSize DEFAULT_CHUNK_SIZE = MemSize.kilobytes(128);
 	private static final Pattern HEADS_SPLITTER = Pattern.compile(",");
 	private static final StructuredCodec<CommitEntry> COMMIT_ENTRY_STRUCTURED_CODEC = REGISTRY.get(CommitEntry.class);
-	private static final StructuredCodec<SignedData<RawSnapshot>> SIGNED_SNAPSHOT_CODEC = REGISTRY.get(SignedData.class, RawSnapshot.class);
+	private static final StructuredCodec<SignedData<RawSnapshot>> SIGNED_SNAPSHOT_CODEC = REGISTRY.get(new TypeT<SignedData<RawSnapshot>>() {});
 
 	private final GlobalOTNode node;
 	private final MiddlewareServlet middlewareServlet;

@@ -324,17 +324,13 @@ public class JmxHttpModule extends AbstractModule {
 
 				Node<String, String> tree = new Node<>(null, null, null);
 
-				Stream<KeyWithWorkerData> stream = singletons.stream().map(KeyWithWorkerData::new);
-				if (!workers.isEmpty()) {
-					stream = Stream.concat(stream, workers.stream());
-				}
-				stream
+				Stream.concat(singletons.stream().map(KeyWithWorkerData::new), workers.stream())
 						.filter(desc -> ReflectionUtils.isBean(desc.getKey().getTypeLiteral().getRawType()))
 						.forEach(desc -> {
 							Key<?> key = desc.getKey();
 							TypeLiteral<?> literal = key.getTypeLiteral();
 							String name = prettyPrintSimpleKeyName(key);
-							String pkg = SimpleType.ofType(key.getTypeLiteral().getType()).getPackage();
+							String pkg = SimpleType.of(key.getTypeLiteral().getType()).getPackage();
 							String[] path = pkg != null ? pkg.split("\\.") : new String[]{"unknown_package"};
 
 							Node<String, String> subtree = tree;

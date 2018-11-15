@@ -180,14 +180,10 @@ public final class Codecs {
 	};
 
 	static <T> StructuredCodec<T> ofCustomType(Class<T> type) {
-		return ofCustomType(SimpleType.of(type));
+		return ofCustomType((Type) type);
 	}
 
 	static <T> StructuredCodec<T> ofCustomType(Type type) {
-		return ofCustomType(SimpleType.ofType(type));
-	}
-
-	static <T> StructuredCodec<T> ofCustomType(SimpleType type) {
 		return new StructuredCodec<T>() {
 			@Override
 			public void encode(StructuredOutput out, T item) {

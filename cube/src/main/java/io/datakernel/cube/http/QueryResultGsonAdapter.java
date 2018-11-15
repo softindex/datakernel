@@ -71,12 +71,12 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 		Map<String, Class<?>> attributeRawTypes = new LinkedHashMap<>();
 		Map<String, Class<?>> measureRawTypes = new LinkedHashMap<>();
 		for(String attribute : attributeTypes.keySet()) {
-			SimpleType token = SimpleType.ofType(attributeTypes.get(attribute));
+			SimpleType token = SimpleType.of(attributeTypes.get(attribute));
 			attributeAdapters.put(attribute, mapping.getAdapter(token.getType()).nullSafe());
 			attributeRawTypes.put(attribute, token.getRawType());
 		}
 		for(String measure : measureTypes.keySet()) {
-			SimpleType token = SimpleType.ofType(measureTypes.get(measure));
+			SimpleType token = SimpleType.of(measureTypes.get(measure));
 			measureAdapters.put(measure, mapping.getAdapter(token.getType()));
 			measureRawTypes.put(measure, token.getRawType());
 		}

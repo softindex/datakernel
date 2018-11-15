@@ -27,6 +27,7 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsMetadata;
@@ -48,7 +49,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 	public static final String DEL = "delete";
 	public static final String COPY = "copy";
 	public static final String MOVE = "move";
-	public static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(SignedData.class, GlobalFsMetadata.class);
+	public static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsMetadata>>() {});
 
 	private final AsyncServlet servlet;
 

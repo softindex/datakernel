@@ -23,6 +23,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.serial.ByteBufsSupplier;
 import io.datakernel.serial.processor.SerialTransformer;
+import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -36,7 +37,7 @@ import static io.global.ot.util.BinaryDataFormats2.decode;
  * It's counterpart is the {@link FrameEncoder}.
  */
 public final class FrameDecoder extends SerialTransformer<FrameDecoder, ByteBuf, DataFrame> {
-	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(SignedData.class, GlobalFsCheckpoint.class);
+	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 
 	@Override
 	protected Promise<Void> onItem(ByteBuf item) {

@@ -1,8 +1,8 @@
 package io.datakernel.codec;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.util.SimpleType;
 
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -52,8 +52,8 @@ public interface StructuredOutput {
 	<T> void writeMapEx(Function<String, ? extends StructuredEncoder<? extends T>> elementEncoderSupplier, Map<String, T> map);
 
 	default <T> void writeCustom(Class<T> type, T value) {
-		writeCustom(SimpleType.of(type), value);
+		writeCustom((Type) type, value);
 	}
 
-	<T> void writeCustom(SimpleType type, T value);
+	<T> void writeCustom(Type type, T value);
 }

@@ -65,7 +65,7 @@ public final class FieldTypes {
 		Type wrappedNestedType = fieldType.getDataType() instanceof Class ?
 				Primitives.wrap((Class<?>) fieldType.getDataType()) :
 				fieldType.getDataType();
-		Type dataType = SimpleType.of(Set.class, SimpleType.ofType(wrappedNestedType)).getType();
+		Type dataType = SimpleType.of(Set.class, SimpleType.of(wrappedNestedType)).getType();
 		TypeAdapter<Set<T>> json = GsonAdapters.ofSet(fieldType.getJson());
 		return new FieldType<>(Set.class, dataType, serializer, json, json);
 	}

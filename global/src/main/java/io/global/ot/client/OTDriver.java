@@ -24,6 +24,7 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Tuple2;
+import io.datakernel.util.TypeT;
 import io.global.common.*;
 import io.global.ot.api.*;
 import org.spongycastle.crypto.CryptoException;
@@ -40,9 +41,9 @@ import static java.util.stream.Collectors.toSet;
 
 public final class OTDriver {
 	private static final StructuredCodec<RawCommit> COMMIT_CODEC = REGISTRY.get(RawCommit.class);
-	private static final StructuredCodec<List<byte[]>> COMMIT_DIFFS_CODEC = REGISTRY.get(List.class, byte[].class);
+	private static final StructuredCodec<List<byte[]>> COMMIT_DIFFS_CODEC = REGISTRY.get(new TypeT<List<byte[]>>() {});
 	private static final StructuredCodec<RawCommitHead> COMMIT_HEAD_CODEC = REGISTRY.get(RawCommitHead.class);
-	private static final StructuredCodec<RawSnapshot> SNAPSHOT_CODEC = REGISTRY.get(SignedData.class, RawSnapshot.class);
+	private static final StructuredCodec<RawSnapshot> SNAPSHOT_CODEC = REGISTRY.get(new TypeT<RawSnapshot>() {});
 
 	private final GlobalOTNode service;
 
