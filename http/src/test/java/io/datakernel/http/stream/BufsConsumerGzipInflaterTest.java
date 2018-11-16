@@ -19,8 +19,8 @@ package io.datakernel.http.stream;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.TestUtils.AssertingConsumer;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,8 +33,8 @@ import java.util.zip.Deflater;
 
 import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
+import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_DATA_EXCEPTION;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
-import static io.datakernel.serial.ByteBufsSupplier.UNEXPECTED_DATA_EXCEPTION;
 import static java.lang.Math.min;
 import static java.util.Arrays.copyOfRange;
 import static org.junit.Assert.assertEquals;
@@ -216,7 +216,7 @@ public final class BufsConsumerGzipInflaterTest {
 	}
 
 	private void doTest(@Nullable Exception expectedException) {
-		gunzip.getInput().set(SerialSupplier.ofIterable(list));
+		gunzip.getInput().set(ChannelSupplier.ofIterable(list));
 		gunzip.getProcessResult()
 				.whenComplete(($, e) -> {
 					if (expectedException == null) {

@@ -17,10 +17,10 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.async.Promise;
+import io.datakernel.csp.file.ChannelFileReader;
+import io.datakernel.csp.file.ChannelFileWriter;
+import io.datakernel.csp.process.*;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.serial.file.SerialFileReader;
-import io.datakernel.serial.file.SerialFileWriter;
-import io.datakernel.serial.processor.*;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
@@ -129,11 +129,11 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{WRITE, CREATE_NEW, APPEND})
 				.thenApply(file -> StreamConsumer.<T>ofSupplier(
 						supplier -> supplier
-								.apply(SerialBinarySerializer.create(serializer))
-								.apply(SerialByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
-								.apply(SerialLZ4Compressor.create(compressionLevel))
-								.apply(SerialByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
-								.streamTo(SerialFileWriter.create(file)))
+								.transformWith(ChannelBinarySerializer.create(serializer))
+								.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
+								.transformWith(ChannelLZ4Compressor.create(compressionLevel))
+								.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
+								.streamTo(ChannelFileWriter.create(file)))
 						.withLateBinding());
 	}
 
@@ -147,9 +147,9 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	public Promise<StreamSupplier<T>> read(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
-				.thenApply(file -> SerialFileReader.readFile(file).withBufferSize(readBlockSize)
-						.apply(SerialLZ4Decompressor.create())
-						.apply(SerialBinaryDeserializer.create(serializer))
+				.thenApply(file -> ChannelFileReader.readFile(file).withBufferSize(readBlockSize)
+						.transformWith(ChannelLZ4Decompressor.create())
+						.transformWith(ChannelBinaryDeserializer.create(serializer))
 						.withLateBinding());
 	}
 

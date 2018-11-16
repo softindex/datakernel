@@ -20,12 +20,12 @@ import com.google.gson.TypeAdapter;
 import com.google.inject.Inject;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serial.SerialSupplier;
 import io.global.fs.util.HttpDataFormats;
 
 import java.util.List;
@@ -69,7 +69,7 @@ public final class RemoteFsServlet implements AsyncServlet {
 				.with(HttpMethod.PUT, "/" + UPLOAD + "/:path*", request -> {
 					String path = request.getRelativePath();
 					long offset = HttpDataFormats.parseOffset(request);
-					SerialSupplier<ByteBuf> bodyStream = request.getBodyStream();
+					ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
 					return client.getMetadata(path)
 							.thenCompose(meta ->
 									client.upload(path, offset)

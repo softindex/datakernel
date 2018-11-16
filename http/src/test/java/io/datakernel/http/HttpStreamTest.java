@@ -20,8 +20,8 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
 import org.junit.Test;
@@ -67,8 +67,8 @@ public final class HttpStreamTest {
 
 		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
-						.withBodyStream(SerialSupplier.ofIterable(expectedList)
-								.transformAsync(item -> ofCallback(cb ->
+						.withBodyStream(ChannelSupplier.ofIterable(expectedList)
+								.mapAsync(item -> ofCallback(cb ->
 										getCurrentEventloop().delay(1, () -> cb.set(item))))))
 				.async()
 				.whenComplete(assertComplete(response -> assertEquals(200, response.getCode())));
@@ -78,8 +78,8 @@ public final class HttpStreamTest {
 	public void testStreamDownload() throws IOException {
 		startTestServer(request -> Promise.of(
 				HttpResponse.ok200()
-						.withBodyStream(SerialSupplier.ofIterable(expectedList)
-								.transformAsync(item -> ofCallback(cb ->
+						.withBodyStream(ChannelSupplier.ofIterable(expectedList)
+								.mapAsync(item -> ofCallback(cb ->
 										getCurrentEventloop().delay(1, () -> cb.set(item)))))));
 
 		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
@@ -96,13 +96,13 @@ public final class HttpStreamTest {
 				.getBodyStream()
 				.async()
 				.toList()
-				.thenApply(SerialSupplier::ofIterable)
+				.thenApply(ChannelSupplier::ofIterable)
 				.thenCompose(bodyStream -> Promise.of(HttpResponse.ok200().withBodyStream(bodyStream.async()))));
 
 		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
-						.withBodyStream(SerialSupplier.ofIterable(expectedList)
-								.transformAsync(item -> ofCallback(cb ->
+						.withBodyStream(ChannelSupplier.ofIterable(expectedList)
+								.mapAsync(item -> ofCallback(cb ->
 										getCurrentEventloop().delay(1, () -> cb.set(item))))))
 				.whenComplete(assertComplete(response -> assertEquals(200, response.getCode())))
 				.thenCompose(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector()))
@@ -115,7 +115,7 @@ public final class HttpStreamTest {
 
 		startTestServer(request -> Promise.ofException(new HttpException(432, exceptionMessage)));
 
-		SerialSupplier<ByteBuf> supplier = SerialSupplier.ofIterable(expectedList);
+		ChannelSupplier<ByteBuf> supplier = ChannelSupplier.ofIterable(expectedList);
 
 		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT)

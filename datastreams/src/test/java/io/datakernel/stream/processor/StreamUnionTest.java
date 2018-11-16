@@ -21,7 +21,6 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -30,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.TestStreamConsumers.*;
 import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -58,7 +58,8 @@ public class StreamUnionTest {
 		source4.streamTo(streamUnion.newInput());
 		source5.streamTo(streamUnion.newInput());
 		source6.streamTo(streamUnion.newInput());
-		streamUnion.getOutput().streamTo(consumer.apply(TestStreamConsumers.randomlySuspending()));
+		streamUnion.getOutput()
+				.streamTo(consumer.transformWith(randomlySuspending()));
 		eventloop.run();
 
 		List<Integer> result = consumer.getList();
@@ -94,13 +95,15 @@ public class StreamUnionTest {
 		source1.streamTo(streamUnion.newInput());
 		source2.streamTo(streamUnion.newInput());
 
-		streamUnion.getOutput().streamTo(consumer.apply(TestStreamConsumers.decorator((context, dataAcceptor) ->
-						item -> {
-							dataAcceptor.accept(item);
-							if (item == 1) {
-								context.closeWithError(new ExpectedException("Test Exception"));
-							}
-						})));
+		streamUnion.getOutput()
+				.streamTo(consumer
+						.transformWith(decorator((context, dataAcceptor) ->
+								item -> {
+									dataAcceptor.accept(item);
+									if (item == 1) {
+										context.closeWithError(new ExpectedException("Test Exception"));
+									}
+								})));
 
 		eventloop.run();
 
@@ -136,7 +139,8 @@ public class StreamUnionTest {
 		source0.streamTo(streamUnion.newInput());
 		source1.streamTo(streamUnion.newInput());
 
-		streamUnion.getOutput().streamTo(consumer.apply(TestStreamConsumers.oneByOne()));
+		streamUnion.getOutput()
+				.streamTo(consumer.transformWith(oneByOne()));
 		eventloop.run();
 
 		assertEquals(3, list.size());

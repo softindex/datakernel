@@ -7,7 +7,7 @@ import io.datakernel.stream.TestStreamSuppliers.Decorator.Context;
 import java.util.function.Function;
 
 public class TestStreamSuppliers {
-	public static <T> StreamSupplierFunction<T, StreamSupplier<T>> decorator(Decorator<T> decorator) {
+	public static <T> StreamSupplierTransformer<T, StreamSupplier<T>> decorator(Decorator<T> decorator) {
 		return supplier -> new ForwardingStreamSupplier<T>(supplier) {
 			final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
@@ -37,7 +37,7 @@ public class TestStreamSuppliers {
 		};
 	}
 
-	public static <T> StreamSupplierFunction<T, StreamSupplier<T>> errorDecorator(Function<T, Throwable> errorFunction) {
+	public static <T> StreamSupplierTransformer<T, StreamSupplier<T>> errorDecorator(Function<T, Throwable> errorFunction) {
 		return decorator((context, dataAcceptor) ->
 				item -> {
 					Throwable e = errorFunction.apply(item);

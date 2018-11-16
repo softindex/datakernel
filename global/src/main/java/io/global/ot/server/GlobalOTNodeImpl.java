@@ -20,10 +20,10 @@ import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.*;
 import io.global.common.api.DiscoveryService;
@@ -131,7 +131,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 	}
 
 	@Override
-	public Promise<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 		checkArgument(!hasIntersection(bases, heads), "Bases and heads cannot have intersections");
 		Set<CommitId> skipCommits = new HashSet<>(heads);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
@@ -146,10 +146,10 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 						.thenApply($ -> AsyncSupplier.of(() -> getNextStreamEntry(queue, skipCommits, bases, heads)))
 						.thenApply(supplier -> supplier.transform(
 								entry -> new CommitEntry(entry.commitId, entry.rawCommit, thisHeads.get(entry.commitId))))
-						.thenApply(SerialSupplier::of));
+						.thenApply(ChannelSupplier::of));
 	}
 
-	public Promise<SerialSupplier<CommitEntry>> getCommitsSupplier(RepoID repositoryId, Set<CommitId> thatBases, Set<CommitId> thatHeads) {
+	public Promise<ChannelSupplier<CommitEntry>> getCommitsSupplier(RepoID repositoryId, Set<CommitId> thatBases, Set<CommitId> thatHeads) {
 		checkArgument(!hasIntersection(thatBases, thatHeads), "Bases and heads cannot have intersections");
 		Set<CommitId> skipCommits = new HashSet<>(thatHeads);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
@@ -164,7 +164,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 						.thenApply($ -> AsyncSupplier.of(() -> getNextStreamEntry(queue, skipCommits, thatBases, thatHeads)))
 						.thenApply(supplier -> supplier.transform(
 								entry -> new CommitEntry(entry.commitId, entry.rawCommit, thisHeads.get(entry.commitId))))
-						.thenApply(SerialSupplier::of));
+						.thenApply(ChannelSupplier::of));
 	}
 
 	private Promise<RawCommitEntry> getNextStreamEntry(PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
@@ -252,13 +252,13 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 	}
 
 	@Override
-	public Promise<SerialConsumer<CommitEntry>> upload(RepoID repositoryId) {
+	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId) {
 		return commitStorage.getHeads(repositoryId)
 				.thenApply(Map::keySet)
 				.thenApply(thisHeads -> {
 					Set<CommitId> excludedHeads = new HashSet<>();
 					Set<SignedData<RawCommitHead>> addedHeads = new HashSet<>();
-					return SerialConsumer.of(
+					return ChannelConsumer.of(
 							(CommitEntry entry) -> {
 								for (CommitId parentId : entry.getCommit().getParents()) {
 									if (thisHeads.contains(parentId)) {
@@ -512,7 +512,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 			private Promise<Void> doFetch(GlobalOTNode server) {
 				return getHeadsInfo(repositoryId)
 						.thenCompose(headsInfo -> server.downloader(repositoryId, headsInfo.bases, headsInfo.heads)
-								.streamTo(SerialConsumer.ofPromise(upload(repositoryId))));
+								.streamTo(ChannelConsumer.ofPromise(upload(repositoryId))));
 			}
 
 			private Promise<Void> doCatchUp() {
@@ -548,7 +548,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 
 			private Promise<Void> doPush(GlobalOTNode server) {
 				return server.getHeadsInfo(repositoryId)
-						.thenCompose(headsInfo -> SerialSupplier.ofPromise(
+						.thenCompose(headsInfo -> ChannelSupplier.ofPromise(
 								getCommitsSupplier(repositoryId, headsInfo.bases, headsInfo.heads))
 								.streamTo(server.uploader(repositoryId)));
 			}

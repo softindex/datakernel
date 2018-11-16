@@ -1,14 +1,14 @@
 package io.datakernel.stream.stats;
 
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialConsumerFunction;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialSupplierFunction;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.dsl.ChannelConsumerTransformer;
+import io.datakernel.csp.dsl.ChannelSupplierTransformer;
 import io.datakernel.stream.*;
 
 public interface StreamStats<T> extends
-		StreamSupplierFunction<T, StreamSupplier<T>>, StreamConsumerFunction<T, StreamConsumer<T>>,
-		SerialSupplierFunction<T, SerialSupplier<T>>, SerialConsumerFunction<T, SerialConsumer<T>> {
+		StreamSupplierTransformer<T, StreamSupplier<T>>, StreamConsumerTransformer<T, StreamConsumer<T>>,
+		ChannelSupplierTransformer<T, ChannelSupplier<T>>, ChannelConsumerTransformer<T, ChannelConsumer<T>> {
 	StreamDataAcceptor<T> createDataAcceptor(StreamDataAcceptor<T> actualDataAcceptor);
 
 	void onStarted();
@@ -22,22 +22,22 @@ public interface StreamStats<T> extends
 	void onError(Throwable e);
 
 	@Override
-	default StreamConsumer<T> apply(StreamConsumer<T> consumer) {
-		return consumer.apply(StreamStatsForwarder.create(this));
+	default StreamConsumer<T> transform(StreamConsumer<T> consumer) {
+		return consumer.transformWith(StreamStatsForwarder.create(this));
 	}
 
 	@Override
-	default StreamSupplier<T> apply(StreamSupplier<T> supplier) {
-		return supplier.apply(StreamStatsForwarder.create(this));
+	default StreamSupplier<T> transform(StreamSupplier<T> supplier) {
+		return supplier.transformWith(StreamStatsForwarder.create(this));
 	}
 
 	@Override
-	default SerialSupplier<T> apply(SerialSupplier<T> supplier) {
+	default ChannelSupplier<T> transform(ChannelSupplier<T> supplier) {
 		return supplier; // TODO
 	}
 
 	@Override
-	default SerialConsumer<T> apply(SerialConsumer<T> consumer) {
+	default ChannelConsumer<T> transform(ChannelConsumer<T> consumer) {
 		return consumer; // TODO
 	}
 

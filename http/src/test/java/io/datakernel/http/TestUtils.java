@@ -20,7 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.serial.AbstractSerialConsumer;
+import io.datakernel.csp.AbstractChannelConsumer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -67,7 +67,7 @@ public class TestUtils {
 		}
 	}
 
-	public static class AssertingConsumer extends AbstractSerialConsumer<ByteBuf> {
+	public static class AssertingConsumer extends AbstractChannelConsumer<ByteBuf> {
 		private final ByteBufQueue queue = new ByteBufQueue();
 
 		public boolean executed = false;

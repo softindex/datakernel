@@ -20,8 +20,8 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.serial.ByteBufsSupplier;
-import io.datakernel.serial.SerialSupplier;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
 import org.junit.Test;
@@ -265,7 +265,7 @@ public final class BufsConsumerChunkedDecoderTest {
 	}
 
 	private void doTest(@Nullable Exception expectedException) {
-		chunkedDecoder.getInput().set(ByteBufsSupplier.of(SerialSupplier.ofIterable(list)));
+		chunkedDecoder.getInput().set(BinaryChannelSupplier.of(ChannelSupplier.ofIterable(list)));
 		chunkedDecoder.getProcessResult()
 				.whenComplete(($, e) -> {
 					if (expectedException == null) {

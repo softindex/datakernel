@@ -19,9 +19,9 @@ package io.global.ot.util;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.codec.*;
+import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
-import io.datakernel.serial.ByteBufsParser;
 import io.datakernel.util.TypeT;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
@@ -38,7 +38,7 @@ import java.net.UnknownHostException;
 import java.util.Set;
 
 import static io.datakernel.codec.Codecs.record;
-import static io.datakernel.serial.ByteBufsParser.ofVarIntSizePrefixedBytes;
+import static io.datakernel.csp.binary.ByteBufsParser.ofVarIntSizePrefixedBytes;
 
 public final class BinaryDataFormats2 {
 	// region creators

@@ -20,12 +20,12 @@ import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.EventloopRule;
 import io.datakernel.util.MemSize;
@@ -47,9 +47,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.serial.file.SerialFileReader.READ_OPTIONS;
-import static io.datakernel.serial.file.SerialFileReader.readFile;
-import static io.datakernel.serial.file.SerialFileWriter.CREATE_OPTIONS;
+import static io.datakernel.csp.file.ChannelFileReader.READ_OPTIONS;
+import static io.datakernel.csp.file.ChannelFileReader.readFile;
+import static io.datakernel.csp.file.ChannelFileWriter.CREATE_OPTIONS;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.set;
@@ -212,7 +212,7 @@ public final class TestLocalFsClient {
 		)
 				.thenCompose($ ->
 						client.downloadSerial(file)
-								.streamTo(SerialConsumer.of(AsyncConsumer.of(buf -> {
+								.streamTo(ChannelConsumer.of(AsyncConsumer.of(buf -> {
 									String actual = buf.asString(UTF_8);
 									String expected = "Concurrent data - 1\n" +
 											"Concurrent data - 2\n" +
@@ -234,9 +234,9 @@ public final class TestLocalFsClient {
 				.whenComplete(assertComplete());
 	}
 
-	private SerialSupplier<ByteBuf> delayed(List<ByteBuf> list) {
+	private ChannelSupplier<ByteBuf> delayed(List<ByteBuf> list) {
 		Iterator<ByteBuf> iterator = list.iterator();
-		return SerialSupplier.of(() ->
+		return ChannelSupplier.of(() ->
 				iterator.hasNext() ?
 						Promise.ofCallback(cb ->
 								Eventloop.getCurrentEventloop()
@@ -251,7 +251,7 @@ public final class TestLocalFsClient {
 		Path outputFile = clientPath.resolve("d.txt");
 		AsyncFile open = AsyncFile.open(executor, outputFile, CREATE_OPTIONS);
 		client.download("2/b/d.txt")
-				.whenResult(reader -> reader.streamTo(SerialFileWriter.create(open)))
+				.whenResult(reader -> reader.streamTo(ChannelFileWriter.create(open)))
 				.whenComplete(assertComplete());
 
 		Eventloop.getCurrentEventloop().run(); // again, cant see the file
@@ -264,7 +264,7 @@ public final class TestLocalFsClient {
 		String fileName = "no_file.txt";
 
 		client.download(fileName)
-				.thenCompose(supplier -> supplier.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle))))
+				.thenCompose(supplier -> supplier.streamTo(ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle))))
 				.whenComplete(assertFailure(StacklessException.class, fileName));
 	}
 

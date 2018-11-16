@@ -17,9 +17,9 @@
 package io.global.fs.api;
 
 import io.datakernel.async.Promise;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 
@@ -37,16 +37,16 @@ public interface GlobalFsNode {
 	StacklessException CANT_VERIFY_METADATA = new StacklessException(GlobalFsNode.class, "Failed to verify signature of the metadata.");
 	StacklessException FILE_NOT_FOUND = new StacklessException(GlobalFsNode.class, "Did not found the requested file on given node.");
 
-	Promise<SerialConsumer<DataFrame>> upload(PubKey space, String filename, long offset);
+	Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset);
 
-	default SerialConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
-		return SerialConsumer.ofPromise(upload(space, filename, offset));
+	default ChannelConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
+		return ChannelConsumer.ofPromise(upload(space, filename, offset));
 	}
 
-	Promise<SerialSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit);
+	Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit);
 
-	default SerialSupplier<DataFrame> downloader(PubKey space, String filename, long offset, long limit) {
-		return SerialSupplier.ofPromise(download(space, filename, offset, limit));
+	default ChannelSupplier<DataFrame> downloader(PubKey space, String filename, long offset, long limit) {
+		return ChannelSupplier.ofPromise(download(space, filename, offset, limit));
 	}
 
 	Promise<List<SignedData<GlobalFsMetadata>>> listLocal(PubKey space, String glob);

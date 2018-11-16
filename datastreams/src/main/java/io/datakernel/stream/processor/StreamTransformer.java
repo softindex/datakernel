@@ -20,23 +20,22 @@ import io.datakernel.stream.*;
 
 import java.util.function.Function;
 
-public interface StreamTransformer<I, O> extends
-		StreamInput<I>, StreamOutput<O>,
-		StreamSupplierFunction<I, StreamSupplier<O>>,
-		StreamConsumerFunction<O, StreamConsumer<I>> {
+public interface StreamTransformer<I, O> extends StreamInput<I>, StreamOutput<O>,
+		StreamSupplierTransformer<I, StreamSupplier<O>>,
+		StreamConsumerTransformer<O, StreamConsumer<I>> {
 
 	static <X> StreamTransformer<X, X> identity() {
-		return StreamFunction.create(Function.identity());
+		return StreamDecorator.create(Function.identity());
 	}
 
 	@Override
-	default StreamConsumer<I> apply(StreamConsumer<O> consumer) {
+	default StreamConsumer<I> transform(StreamConsumer<O> consumer) {
 		getOutput().streamTo(consumer);
 		return getInput();
 	}
 
 	@Override
-	default StreamSupplier<O> apply(StreamSupplier<I> supplier) {
+	default StreamSupplier<O> transform(StreamSupplier<I> supplier) {
 		supplier.streamTo(getInput());
 		return getOutput();
 	}

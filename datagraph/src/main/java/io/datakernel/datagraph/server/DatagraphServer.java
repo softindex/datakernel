@@ -17,6 +17,12 @@
 package io.datakernel.datagraph.server;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.binary.ByteBufSerializer;
+import io.datakernel.csp.net.MessagingWithBinaryStreaming;
+import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.queue.ChannelQueue;
+import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.datagraph.node.Node;
@@ -27,12 +33,6 @@ import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialQueue;
-import io.datakernel.serial.SerialZeroBuffer;
-import io.datakernel.serial.net.ByteBufSerializer;
-import io.datakernel.serial.net.MessagingWithBinaryStreaming;
-import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.util.MemSize;
@@ -42,7 +42,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.serial.net.ByteBufSerializers.ofJson;
+import static io.datakernel.csp.binary.ByteBufSerializers.ofJson;
 
 /**
  * Server for processing JSON commands.
@@ -50,7 +50,7 @@ import static io.datakernel.serial.net.ByteBufSerializers.ofJson;
 @SuppressWarnings("rawtypes")
 public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	private final DatagraphEnvironment environment;
-	private final Map<StreamId, SerialQueue<ByteBuf>> pendingStreams = new HashMap<>();
+	private final Map<StreamId, ChannelQueue<ByteBuf>> pendingStreams = new HashMap<>();
 	private final ByteBufSerializer<DatagraphCommand, DatagraphResponse> serializer;
 	private final Map<Class, CommandHandler> handlers = new HashMap<>();
 
@@ -84,15 +84,15 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		@Override
 		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
 			StreamId streamId = command.getStreamId();
-			SerialQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
+			ChannelQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
 			if (forwarder != null) {
 				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 			} else {
 				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-				forwarder = new SerialZeroBuffer<>();
+				forwarder = new ChannelZeroBuffer<>();
 				pendingStreams.put(streamId, forwarder);
 			}
-			SerialConsumer<ByteBuf> consumer = messaging.sendBinaryStream();
+			ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream();
 			forwarder.getSupplier().streamTo(consumer);
 			consumer.withAcknowledgement(ack ->
 					ack.whenComplete(($, e) -> {
@@ -119,14 +119,14 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	public <T> StreamConsumer<T> upload(StreamId streamId, Class<T> type) {
 		BufferSerializer<T> serializer = environment.getInstance(DatagraphSerialization.class).getSerializer(type);
 
-		SerialBinarySerializer<T> streamSerializer = SerialBinarySerializer.create(serializer)
+		ChannelBinarySerializer<T> streamSerializer = ChannelBinarySerializer.create(serializer)
 				.withInitialBufferSize(MemSize.kilobytes(256))
 				.withAutoFlushInterval(Duration.ofSeconds(1));
 
-		SerialQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
+		ChannelQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
 		if (forwarder == null) {
 			logger.info("onUpload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-			forwarder = new SerialZeroBuffer<>();
+			forwarder = new ChannelZeroBuffer<>();
 			pendingStreams.put(streamId, forwarder);
 		} else {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());

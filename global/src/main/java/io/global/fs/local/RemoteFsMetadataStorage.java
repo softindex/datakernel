@@ -20,9 +20,9 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsMetadata;
@@ -52,7 +52,7 @@ public class RemoteFsMetadataStorage implements MetadataStorage {
 		String path = signedMetadata.getValue().getFilename();
 		return fsClient.delete(escapeGlob(path))
 				.thenCompose($ -> fsClient.upload(path, 0)) // offset 0 because atst this same file could be fetched from another node too
-				.thenCompose(SerialSupplier.of(encode(SIGNED_METADATA_CODEC, signedMetadata))::streamTo);
+				.thenCompose(ChannelSupplier.of(encode(SIGNED_METADATA_CODEC, signedMetadata))::streamTo);
 	}
 
 	@Override

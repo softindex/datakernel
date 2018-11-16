@@ -21,7 +21,6 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
@@ -37,6 +36,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
+import static io.datakernel.stream.TestStreamConsumers.*;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
@@ -69,7 +69,7 @@ public final class StreamSorterTest {
 
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
 //		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
-		storage.readStream(1).streamTo(consumer1.apply(TestStreamConsumers.oneByOne()));
+		storage.readStream(1).streamTo(consumer1.transformWith(oneByOne()));
 //		storage.readStream(2).streamTo(consumer2.with(TestStreamConsumers.randomlySuspending()));
 		Eventloop.getCurrentEventloop().run();
 
@@ -89,8 +89,8 @@ public final class StreamSorterTest {
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
-		source.apply(sorter)
-				.streamTo(consumerToList.apply(TestStreamConsumers.randomlySuspending()))
+		source.transformWith(sorter)
+				.streamTo(consumerToList.transformWith(randomlySuspending()))
 				.whenComplete(assertComplete($ -> assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList())));
 	}
 
@@ -107,14 +107,15 @@ public final class StreamSorterTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		source.streamTo(sorter.getInput());
-		sorter.getOutput().streamTo(
-				consumer.apply(TestStreamConsumers.decorator((context, dataAcceptor) ->
-						item -> {
-							dataAcceptor.accept(item);
-							if (list.size() == 2) {
-								context.closeWithError(new ExpectedException());
-							}
-						})))
+		sorter.getOutput()
+				.streamTo(consumer
+						.transformWith(decorator((context, dataAcceptor) ->
+								item -> {
+									dataAcceptor.accept(item);
+									if (list.size() == 2) {
+										context.closeWithError(new ExpectedException());
+									}
+								})))
 				.whenComplete(assertFailure());
 	}
 
@@ -133,7 +134,7 @@ public final class StreamSorterTest {
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
-		source.apply(sorter)
+		source.transformWith(sorter)
 				.streamTo(consumerToList)
 				.whenComplete(assertFailure($ -> assertEquals(0, consumerToList.getList().size())));
 	}

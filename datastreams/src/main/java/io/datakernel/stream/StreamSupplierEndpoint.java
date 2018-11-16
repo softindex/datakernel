@@ -2,12 +2,12 @@ package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
-import io.datakernel.serial.SerialBuffer;
+import io.datakernel.csp.queue.ChannelBuffer;
 
 public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 	public static final int DEFAULT_BUFFER_SIZE = 10;
 
-	private final SerialBuffer<T> buffer;
+	private final ChannelBuffer<T> buffer;
 
 	public StreamSupplierEndpoint() {
 		this(0, DEFAULT_BUFFER_SIZE);
@@ -18,7 +18,7 @@ public final class StreamSupplierEndpoint<T> extends AbstractStreamSupplier<T> {
 	}
 
 	private StreamSupplierEndpoint(int bufferMinSize, int bufferMaxSize) {
-		this.buffer = new SerialBuffer<>(bufferMinSize, bufferMaxSize);
+		this.buffer = new ChannelBuffer<>(bufferMinSize, bufferMaxSize);
 	}
 
 	public void add(T item) throws Exception {

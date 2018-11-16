@@ -2,8 +2,8 @@ package io.datakernel.remotefs;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 
 import java.io.File;
 import java.util.List;
@@ -24,12 +24,12 @@ class SubfolderFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
 		return parent.upload(folder + filename, offset);
 	}
 
 	@Override
-	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		return parent.download(folder + filename, offset, length);
 	}
 

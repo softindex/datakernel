@@ -20,12 +20,12 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialSuppliers;
-import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.EventloopRule;
 import org.junit.Before;
@@ -98,7 +98,7 @@ public final class FsIntegrationTest {
 		int files = 10;
 
 		Promises.all(IntStream.range(0, 10)
-				.mapToObj(i -> SerialSupplier.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploadSerial("file" + i))))
+				.mapToObj(i -> ChannelSupplier.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploadSerial("file" + i))))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> {
 					for (int i = 0; i < files; i++) {
@@ -152,11 +152,11 @@ public final class FsIntegrationTest {
 
 		ByteBuf test4 = wrapUtf8("Test4");
 
-		SerialSuppliers.concat(
-				SerialSupplier.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")).async(),
-				SerialSupplier.of(ByteBuf.wrapForReading(BIG_FILE)),
-				SerialSupplier.ofException(new StacklessException(FsIntegrationTest.class, "Test exception")),
-				SerialSupplier.of(test4))
+		ChannelSuppliers.concat(
+				ChannelSupplier.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")).async(),
+				ChannelSupplier.of(ByteBuf.wrapForReading(BIG_FILE)),
+				ChannelSupplier.ofException(new StacklessException(FsIntegrationTest.class, "Test exception")),
+				ChannelSupplier.of(test4))
 				.streamTo(client.uploadSerial(resultFile))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(StacklessException.class, "Test exception"));
@@ -195,7 +195,7 @@ public final class FsIntegrationTest {
 	@Test
 	public void testDownloadNotExist() {
 		String file = "file_not_exist_downloaded.txt";
-		client.downloadSerial(file).streamTo(SerialConsumer.of($ -> Promise.complete()))
+		client.downloadSerial(file).streamTo(ChannelConsumer.of($ -> Promise.complete()))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "File not found"));
 	}
@@ -208,7 +208,7 @@ public final class FsIntegrationTest {
 		List<Promise<Void>> tasks = new ArrayList<>();
 
 		for (int i = 0; i < 10; i++) {
-			tasks.add(client.downloadSerial(file).streamTo(SerialFileWriter.create(executor, storage.resolve("file" + i))));
+			tasks.add(client.downloadSerial(file).streamTo(ChannelFileWriter.create(executor, storage.resolve("file" + i))));
 		}
 
 		Promises.all(tasks)
@@ -295,6 +295,6 @@ public final class FsIntegrationTest {
 
 	private Promise<Void> upload(String resultFile, byte[] bytes) {
 		return client.upload(resultFile)
-				.thenCompose(SerialSupplier.of(ByteBuf.wrapForReading(bytes))::streamTo);
+				.thenCompose(ChannelSupplier.of(ByteBuf.wrapForReading(bytes))::streamTo);
 	}
 }

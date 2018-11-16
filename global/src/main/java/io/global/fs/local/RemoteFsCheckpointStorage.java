@@ -20,10 +20,10 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
@@ -120,7 +120,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					}
 					return fsClient.getMetadata(filename)
 							.thenCompose(m -> fsClient.upload(filename, m != null ? m.getSize() : 0))
-							.thenCompose(SerialSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, checkpoint))::streamTo);
+							.thenCompose(ChannelSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, checkpoint))::streamTo);
 				});
 	}
 

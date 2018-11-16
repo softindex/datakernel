@@ -18,14 +18,14 @@ package io.global.fs.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.json.GsonAdapters;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialZeroBuffer;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -51,13 +51,13 @@ public class HttpFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
 		return Promise.of(uploadSerial(filename, offset));
 	}
 
 	@Override
-	public SerialConsumer<ByteBuf> uploadSerial(String filename, long offset) {
-		SerialZeroBuffer<ByteBuf> buffer = new SerialZeroBuffer<>();
+	public ChannelConsumer<ByteBuf> uploadSerial(String filename, long offset) {
+		ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
 		Promise<HttpResponse> res = client.request(
 				HttpRequest.put(
 						UrlBuilder.http()
@@ -73,7 +73,7 @@ public class HttpFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		return client.request(
 				HttpRequest.get(
 						UrlBuilder.http()

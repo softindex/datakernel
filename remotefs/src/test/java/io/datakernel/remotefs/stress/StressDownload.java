@@ -16,9 +16,9 @@
 
 package io.datakernel.remotefs.stress;
 
+import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
-import io.datakernel.serial.file.SerialFileWriter;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -62,7 +62,7 @@ public class StressDownload {
 			client.download(file, 0).whenComplete((supplier, e) -> {
 				if (e == null) {
 					try {
-						supplier.streamTo(SerialFileWriter.create(executor, CLIENT_STORAGE.resolve(file)));
+						supplier.streamTo(ChannelFileWriter.create(executor, CLIENT_STORAGE.resolve(file)));
 					} catch (IOException ignored) {
 						failures[0]++;
 					}

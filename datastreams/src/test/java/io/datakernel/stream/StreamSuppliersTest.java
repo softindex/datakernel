@@ -29,7 +29,7 @@ public class StreamSuppliersTest {
 	@Test
 	public void testErrorDecorator() {
 		StreamSupplier<Integer> supplier = StreamSupplier.ofStream(IntStream.range(1, 10).boxed())
-				.apply(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
+				.transformWith(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
@@ -44,7 +44,7 @@ public class StreamSuppliersTest {
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
 		StreamSupplier<Integer> supplier = StreamSupplier.ofStream(IntStream.range(1, 10).boxed())
-				.apply(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
+				.transformWith(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 

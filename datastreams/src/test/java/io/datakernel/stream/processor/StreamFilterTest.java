@@ -20,7 +20,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -28,8 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.TestStreamConsumers.decorator;
-import static io.datakernel.stream.TestStreamConsumers.randomlySuspending;
+import static io.datakernel.stream.TestStreamConsumers.*;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
@@ -44,8 +42,8 @@ public class StreamFilterTest {
 		StreamFilter<Integer> filter = StreamFilter.create(input -> input % 2 == 1);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		supplier.apply(filter).streamTo(
-				consumer.apply(randomlySuspending()));
+		supplier.transformWith(filter)
+				.streamTo(consumer.transformWith(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(1, 3), consumer.getList());
@@ -63,14 +61,15 @@ public class StreamFilterTest {
 		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		source.apply(streamFilter).streamTo(
-				consumer.apply(decorator((context, dataAcceptor) ->
-						item -> {
-							dataAcceptor.accept(item);
-							if (item == 3) {
-								context.closeWithError(new ExpectedException("Test Exception"));
-							}
-						})));
+		source.transformWith(streamFilter)
+				.streamTo(consumer
+						.transformWith(decorator((context, dataAcceptor) ->
+								item -> {
+									dataAcceptor.accept(item);
+									if (item == 3) {
+										context.closeWithError(new ExpectedException("Test Exception"));
+									}
+								})));
 
 		eventloop.run();
 
@@ -94,8 +93,8 @@ public class StreamFilterTest {
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		source.apply(streamFilter).streamTo(
-				consumer.apply(TestStreamConsumers.oneByOne()));
+		source.transformWith(streamFilter)
+				.streamTo(consumer.transformWith(oneByOne()));
 
 		eventloop.run();
 

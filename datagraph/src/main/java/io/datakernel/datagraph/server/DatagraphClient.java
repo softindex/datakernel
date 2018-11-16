@@ -17,6 +17,9 @@
 package io.datakernel.datagraph.server;
 
 import io.datakernel.async.Promise;
+import io.datakernel.csp.binary.ByteBufSerializer;
+import io.datakernel.csp.net.MessagingWithBinaryStreaming;
+import io.datakernel.csp.process.ChannelBinaryDeserializer;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.command.DatagraphCommand;
@@ -25,16 +28,13 @@ import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.serial.net.ByteBufSerializer;
-import io.datakernel.serial.net.MessagingWithBinaryStreaming;
-import io.datakernel.serial.processor.SerialBinaryDeserializer;
 import io.datakernel.stream.StreamSupplier;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import static io.datakernel.serial.net.ByteBufSerializers.ofJson;
+import static io.datakernel.csp.binary.ByteBufSerializers.ofJson;
 
 /**
  * Client for datagraph server.
@@ -65,7 +65,7 @@ public final class DatagraphClient {
 
 					return messaging.send(commandDownload)
 							.thenApply($ -> messaging.receiveBinaryStream()
-									.apply(SerialBinaryDeserializer.create(serialization.getSerializer(type)))
+									.transformWith(ChannelBinaryDeserializer.create(serialization.getSerializer(type)))
 									.withEndOfStream(eos -> eos
 											.whenComplete(($1, e1) -> messaging.close()))
 									.withLateBinding());

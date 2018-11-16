@@ -18,11 +18,11 @@ package io.global.fs.transformers;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serial.processor.SerialTransformer;
+import io.datakernel.csp.process.AbstractChannelTransformer;
 import io.global.fs.api.DataFrame;
 
 /** Abstracted out bytebuf cutting code */
-abstract class ByteBufsToFrames extends SerialTransformer<ByteBufsToFrames, ByteBuf, DataFrame> {
+abstract class ByteBufsToFrames extends AbstractChannelTransformer<ByteBufsToFrames, ByteBuf, DataFrame> {
 	protected long position;
 	protected long nextCheckpoint;
 

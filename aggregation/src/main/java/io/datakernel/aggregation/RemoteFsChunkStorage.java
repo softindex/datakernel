@@ -22,12 +22,12 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.csp.process.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.*;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serial.processor.*;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.stats.StreamStats;
@@ -154,12 +154,12 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 		return client.download(getPath(chunkId))
 				.whenComplete(promiseOpenR.recordStats())
 				.thenApply(supplier -> supplier
-						.apply(readFile)
-						.apply(SerialLZ4Decompressor.create())
-						.apply(readDecompress)
-						.apply(SerialBinaryDeserializer.create(
+						.transformWith(readFile)
+						.transformWith(ChannelLZ4Decompressor.create())
+						.transformWith(readDecompress)
+						.transformWith(ChannelBinaryDeserializer.create(
 								createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader)))
-						.apply((StreamStats<T>) (detailed ? readDeserializeDetailed : readDeserialize))
+						.transformWith((StreamStats<T>) (detailed ? readDeserializeDetailed : readDeserialize))
 						.withLateBinding());
 	}
 
@@ -172,17 +172,17 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 				.whenComplete(promiseOpenW.recordStats())
 				.thenApply(consumer -> StreamConsumer.ofSupplier(
 						supplier -> supplier
-								.apply((StreamStats<T>) (detailed ? writeSerializeDetailed : writeSerialize))
-								.apply(SerialBinarySerializer.create(
+								.transformWith((StreamStats<T>) (detailed ? writeSerializeDetailed : writeSerialize))
+								.transformWith(ChannelBinarySerializer.create(
 										createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader))
 										.withInitialBufferSize(bufferSize))
-								.apply(writeCompress)
-								.apply(SerialLZ4Compressor.createFastCompressor())
-								.apply(writeChunker)
-								.apply(SerialByteChunker.create(
+								.transformWith(writeCompress)
+								.transformWith(ChannelLZ4Compressor.createFastCompressor())
+								.transformWith(writeChunker)
+								.transformWith(ChannelByteChunker.create(
 										bufferSize.map(bytes -> bytes / 2),
 										bufferSize.map(bytes -> bytes * 2)))
-								.apply(writeFile)
+								.transformWith(writeFile)
 								.streamTo(consumer)));
 	}
 

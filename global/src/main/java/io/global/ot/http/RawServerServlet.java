@@ -18,15 +18,15 @@ package io.global.ot.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.process.ChannelByteChunker;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.serial.ByteBufsParser;
-import io.datakernel.serial.ByteBufsSupplier;
-import io.datakernel.serial.processor.SerialByteChunker;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
@@ -160,12 +160,12 @@ public final class RawServerServlet implements AsyncServlet {
 							.thenApply(downloader ->
 									HttpResponse.ok200()
 											.withBodyStream(downloader
-													.transform(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_STRUCTURED_CODEC, commitEntry))
-													.apply(SerialByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))));
+													.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_STRUCTURED_CODEC, commitEntry))
+													.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))));
 				})
 				.with(POST, "/" + UPLOAD, req -> {
 					RepoID repoID = urlDecodeRepositoryId(req);
-					return ByteBufsSupplier.of(req.getBodyStream())
+					return BinaryChannelSupplier.of(req.getBodyStream())
 							.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
 									.andThen(buf -> decode(COMMIT_ENTRY_STRUCTURED_CODEC, buf)))
 							.streamTo(node.uploader(repoID))

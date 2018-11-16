@@ -16,15 +16,11 @@
 
 package io.datakernel.http.stream;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialInput;
-import io.datakernel.serial.SerialOutput;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.WithSerialToSerial;
+import io.datakernel.csp.*;
+import io.datakernel.csp.dsl.WithChannelTransformer;
 
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
@@ -32,8 +28,8 @@ import java.util.zip.Deflater;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class BufsConsumerGzipDeflater extends AbstractAsyncProcess
-		implements WithSerialToSerial<BufsConsumerGzipDeflater, ByteBuf, ByteBuf> {
+public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
+		implements WithChannelTransformer<BufsConsumerGzipDeflater, ByteBuf, ByteBuf> {
 	public static final int DEFAULT_MAX_BUF_SIZE = 512;
 	// rfc 1952 section 2.3.1
 	private static final byte[] GZIP_HEADER = {(byte) 0x1f, (byte) 0x8b, Deflater.DEFLATED, 0, 0, 0, 0, 0, 0, 0};
@@ -43,8 +39,8 @@ public final class BufsConsumerGzipDeflater extends AbstractAsyncProcess
 
 	private Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
 	private int maxBufSize = DEFAULT_MAX_BUF_SIZE;
-	private SerialSupplier<ByteBuf> input;
-	private SerialConsumer<ByteBuf> output;
+	private ChannelSupplier<ByteBuf> input;
+	private ChannelConsumer<ByteBuf> output;
 
 	// region creators
 	private BufsConsumerGzipDeflater() {}
@@ -67,7 +63,7 @@ public final class BufsConsumerGzipDeflater extends AbstractAsyncProcess
 
 	@SuppressWarnings("ConstantConditions") //check input for clarity
 	@Override
-	public SerialInput<ByteBuf> getInput() {
+	public ChannelInput<ByteBuf> getInput() {
 		return input -> {
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
@@ -78,7 +74,7 @@ public final class BufsConsumerGzipDeflater extends AbstractAsyncProcess
 
 	@SuppressWarnings("ConstantConditions") //check output for clarity
 	@Override
-	public SerialOutput<ByteBuf> getOutput() {
+	public ChannelOutput<ByteBuf> getOutput() {
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = sanitize(output);

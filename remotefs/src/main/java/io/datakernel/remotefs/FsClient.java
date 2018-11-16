@@ -18,9 +18,9 @@ package io.datakernel.remotefs;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
 
 import java.io.File;
 import java.util.*;
@@ -45,7 +45,7 @@ public interface FsClient {
 	 * @param offset   from which byte to write the uploaded data
 	 * @return promise for stream consumer of byte buffers
 	 */
-	Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset);
+	Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset);
 
 	/**
 	 * Shortcut for uploading NEW file
@@ -53,7 +53,7 @@ public interface FsClient {
 	 * @param filename name of the file to upload
 	 * @return promise for stream consumer of byte buffers
 	 */
-	default Promise<SerialConsumer<ByteBuf>> upload(String filename) {
+	default Promise<ChannelConsumer<ByteBuf>> upload(String filename) {
 		return upload(filename, -1);
 	}
 
@@ -64,7 +64,7 @@ public interface FsClient {
 	 * @param tempFolder name of the temporary folder
 	 * @return stream consumer of byte buffers
 	 */
-	default Promise<SerialConsumer<ByteBuf>> upload(String filename, String tempFolder) {
+	default Promise<ChannelConsumer<ByteBuf>> upload(String filename, String tempFolder) {
 		String tempName = tempFolder + File.separator + filename;
 		return upload(tempName)
 				.thenApply(consumer ->
@@ -81,19 +81,19 @@ public interface FsClient {
 	 * @param filename name of the file to upload
 	 * @return stream consumer of byte buffers
 	 */
-	default SerialConsumer<ByteBuf> uploadSerial(String filename) {
-		return SerialConsumer.ofPromise(upload(filename));
+	default ChannelConsumer<ByteBuf> uploadSerial(String filename) {
+		return ChannelConsumer.ofPromise(upload(filename));
 	}
 
-	default SerialConsumer<ByteBuf> uploadSerial(String filename, long offset) {
-		return SerialConsumer.ofPromise(upload(filename, offset));
+	default ChannelConsumer<ByteBuf> uploadSerial(String filename, long offset) {
+		return ChannelConsumer.ofPromise(upload(filename, offset));
 	}
 
 	/**
 	 * Same shortcut, but for {@link #upload(String, String)}
 	 */
-	default SerialConsumer<ByteBuf> uploadSerial(String filename, String tempFolder) {
-		return SerialConsumer.ofPromise(upload(filename, tempFolder));
+	default ChannelConsumer<ByteBuf> uploadSerial(String filename, String tempFolder) {
+		return ChannelConsumer.ofPromise(upload(filename, tempFolder));
 	}
 
 	/**
@@ -108,7 +108,7 @@ public interface FsClient {
 	 * @see #download(String, long)
 	 * @see #download(String)
 	 */
-	Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length);
+	Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length);
 
 	/**
 	 * Shortcut for downloading the whole file from given offset.
@@ -117,7 +117,7 @@ public interface FsClient {
 	 * @see #download(String, long, long)
 	 * @see #download(String)
 	 */
-	default Promise<SerialSupplier<ByteBuf>> download(String filename, long offset) {
+	default Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset) {
 		return download(filename, offset, -1);
 	}
 
@@ -129,7 +129,7 @@ public interface FsClient {
 	 * @see #download(String, long)
 	 * @see #download(String, long, long)
 	 */
-	default Promise<SerialSupplier<ByteBuf>> download(String filename) {
+	default Promise<ChannelSupplier<ByteBuf>> download(String filename) {
 		return download(filename, 0, -1);
 	}
 
@@ -138,8 +138,8 @@ public interface FsClient {
 	 *
 	 * @see #download(String, long, long)
 	 */
-	default SerialSupplier<ByteBuf> downloadSerial(String filename, long offset, long length) {
-		return SerialSupplier.ofPromise(download(filename, offset, length));
+	default ChannelSupplier<ByteBuf> downloadSerial(String filename, long offset, long length) {
+		return ChannelSupplier.ofPromise(download(filename, offset, length));
 	}
 
 	/**
@@ -147,8 +147,8 @@ public interface FsClient {
 	 *
 	 * @see #download(String, long)
 	 */
-	default SerialSupplier<ByteBuf> downloadSerial(String filename, long offset) {
-		return SerialSupplier.ofPromise(download(filename, offset));
+	default ChannelSupplier<ByteBuf> downloadSerial(String filename, long offset) {
+		return ChannelSupplier.ofPromise(download(filename, offset));
 	}
 
 	/**
@@ -157,8 +157,8 @@ public interface FsClient {
 	 * @param filename name of the file to be downloaded
 	 * @see #download(String)
 	 */
-	default SerialSupplier<ByteBuf> downloadSerial(String filename) {
-		return SerialSupplier.ofPromise(download(filename));
+	default ChannelSupplier<ByteBuf> downloadSerial(String filename) {
+		return ChannelSupplier.ofPromise(download(filename));
 	}
 
 	/**

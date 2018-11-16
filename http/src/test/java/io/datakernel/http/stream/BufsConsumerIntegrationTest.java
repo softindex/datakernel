@@ -29,7 +29,7 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.serial.SerialSupplier.ofIterable;
+import static io.datakernel.csp.ChannelSupplier.ofIterable;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertTrue;
 

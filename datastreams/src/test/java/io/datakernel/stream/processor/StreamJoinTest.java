@@ -21,7 +21,6 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.stream.processor.StreamJoin.ValueJoiner;
 import org.junit.Test;
 
@@ -30,6 +29,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.TestStreamConsumers.*;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static org.junit.Assert.assertArrayEquals;
@@ -147,7 +147,7 @@ public class StreamJoinTest {
 		source2.streamTo(streamJoin.getRight());
 
 		streamJoin.getOutput().streamTo(
-				consumer.apply(TestStreamConsumers.randomlySuspending()));
+				consumer.transformWith(randomlySuspending()));
 
 		eventloop.run();
 
@@ -201,14 +201,15 @@ public class StreamJoinTest {
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
 
-		streamJoin.getOutput().streamTo(
-				consumer.apply(TestStreamConsumers.decorator((context, dataAcceptor) ->
-						item -> {
-							dataAcceptor.accept(item);
-							if (list.size() == 1) {
-								context.closeWithError(new ExpectedException("Test Exception"));
-							}
-						})));
+		streamJoin.getOutput()
+				.streamTo(consumer
+						.transformWith(decorator((context, dataAcceptor) ->
+								item -> {
+									dataAcceptor.accept(item);
+									if (list.size() == 1) {
+										context.closeWithError(new ExpectedException("Test Exception"));
+									}
+								})));
 
 		eventloop.run();
 		assertEquals(1, list.size());
@@ -257,7 +258,7 @@ public class StreamJoinTest {
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
 
-		streamJoin.getOutput().streamTo(consumer.apply(TestStreamConsumers.oneByOne()));
+		streamJoin.getOutput().streamTo(consumer.transformWith(oneByOne()));
 
 		eventloop.run();
 		assertEquals(0, list.size());

@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.csp.process.ChannelBinarySerializer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.AsyncTcpSocketImpl.JmxInspector;
@@ -39,7 +40,6 @@ import io.datakernel.rpc.client.sender.RpcStrategy;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.util.Initializable;
@@ -77,8 +77,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
 	public static final Duration DEFAULT_RECONNECT_INTERVAL = Duration.ofSeconds(1);
-	public static final MemSize DEFAULT_PACKET_SIZE = SerialBinarySerializer.DEFAULT_INITIAL_BUFFER_SIZE;
-	public static final MemSize MAX_PACKET_SIZE = SerialBinarySerializer.MAX_SIZE;
+	public static final MemSize DEFAULT_PACKET_SIZE = ChannelBinarySerializer.DEFAULT_INITIAL_BUFFER_SIZE;
+	public static final MemSize MAX_PACKET_SIZE = ChannelBinarySerializer.MAX_SIZE;
 
 	private Logger logger = getLogger(getClass());
 

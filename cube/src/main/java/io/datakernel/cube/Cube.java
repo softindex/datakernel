@@ -516,7 +516,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			StreamSupplier<T> output = streamSplitter.newOutput();
 			if (!dataInputFilterPredicate.equals(AggregationPredicates.alwaysTrue())) {
 				Predicate<T> filterPredicate = createFilterPredicate(inputClass, dataInputFilterPredicate, classLoader, fieldTypes);
-				output = output.apply(StreamFilter.create(filterPredicate));
+				output = output
+						.transformWith(StreamFilter.create(filterPredicate));
 			}
 			Promise<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
 			tracker.addPromise(consume, (accumulator, diff) -> accumulator.put(aggregationId, diff));
@@ -626,7 +627,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				 */
 				MapperProjection<S, T> mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
 						compatibleMeasures, queryClassLoader);
-				queryResultSupplier = aggregationSupplier.apply(StreamMap.create(mapper));
+				queryResultSupplier = aggregationSupplier
+						.transformWith(StreamMap.create(mapper));
 				break;
 			}
 

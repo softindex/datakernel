@@ -17,13 +17,13 @@
 package io.datakernel.rpc.protocol;
 
 import io.datakernel.async.Promise;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.process.ChannelBinaryDeserializer;
+import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelLZ4Compressor;
+import io.datakernel.csp.process.ChannelLZ4Decompressor;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.SerialBinaryDeserializer;
-import io.datakernel.serial.processor.SerialBinarySerializer;
-import io.datakernel.serial.processor.SerialLZ4Compressor;
-import io.datakernel.serial.processor.SerialLZ4Decompressor;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.AbstractStreamSupplier;
@@ -110,25 +110,25 @@ public final class RpcStream {
 			}
 		};
 
-		SerialBinarySerializer<RpcMessage> serializer = SerialBinarySerializer.create(messageSerializer)
+		ChannelBinarySerializer<RpcMessage> serializer = ChannelBinarySerializer.create(messageSerializer)
 				.withInitialBufferSize(initialBufferSize)
 				.withMaxMessageSize(maxMessageSize)
 				.withAutoFlushInterval(autoFlushInterval)
 				.withSkipSerializationErrors();
-		SerialBinaryDeserializer<RpcMessage> deserializer = SerialBinaryDeserializer.create(messageSerializer);
+		ChannelBinaryDeserializer<RpcMessage> deserializer = ChannelBinaryDeserializer.create(messageSerializer);
 
 		if (compression) {
-			SerialLZ4Decompressor decompressor = SerialLZ4Decompressor.create();
-			SerialLZ4Compressor compressor = SerialLZ4Compressor.createFastCompressor();
+			ChannelLZ4Decompressor decompressor = ChannelLZ4Decompressor.create();
+			ChannelLZ4Compressor compressor = ChannelLZ4Compressor.createFastCompressor();
 
-			SerialSupplier.ofSocket(socket).bindTo(decompressor.getInput());
+			ChannelSupplier.ofSocket(socket).bindTo(decompressor.getInput());
 			decompressor.getOutput().bindTo(deserializer.getInput());
 
 			serializer.getOutput().bindTo(compressor.getInput());
-			compressor.getOutput().set(SerialConsumer.ofSocket(socket));
+			compressor.getOutput().set(ChannelConsumer.ofSocket(socket));
 		} else {
-			SerialSupplier.ofSocket(socket).bindTo(deserializer.getInput());
-			serializer.getOutput().set(SerialConsumer.ofSocket(socket));
+			ChannelSupplier.ofSocket(socket).bindTo(deserializer.getInput());
+			serializer.getOutput().set(ChannelConsumer.ofSocket(socket));
 		}
 
 		deserializer.streamTo(receiver);

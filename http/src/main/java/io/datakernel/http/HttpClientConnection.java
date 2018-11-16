@@ -19,12 +19,12 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpClient.Inspector;
-import io.datakernel.serial.SerialSupplier;
 
 import java.net.InetSocketAddress;
 
@@ -161,7 +161,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onHeadersReceived(ByteBuf body, SerialSupplier<ByteBuf> bodySupplier) {
+	protected void onHeadersReceived(ByteBuf body, ChannelSupplier<ByteBuf> bodySupplier) {
 		assert !isClosed();
 		assert body != null ^ bodySupplier != null;
 

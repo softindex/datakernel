@@ -148,7 +148,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		}
 		return StreamSupplierWithResult.of(
 				streamUnion.getOutput()
-						.apply(detailed ? streamStatsDetailed : streamStatsBasic),
+						.transformWith(detailed ? streamStatsDetailed : streamStatsBasic),
 				result.get());
 	}
 

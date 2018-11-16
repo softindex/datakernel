@@ -19,12 +19,12 @@ package io.global.fs;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.ByteBufRule.IgnoreLeaks;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.LoggingRule.Enable;
@@ -121,7 +121,7 @@ public final class GlobalFsTest {
 	public void cutters() {
 		announce(alice, set(firstId))
 				.thenCompose($ -> firstAliceAdapter.upload("test1.txt"))
-				.thenCompose(SerialSupplier.of(
+				.thenCompose(ChannelSupplier.of(
 						ByteBuf.wrapForReading("hello, this is a test buffer data #01\n".getBytes(UTF_8)),
 						ByteBuf.wrapForReading("hello, this is a test buffer data #02\n".getBytes(UTF_8)),
 						ByteBuf.wrapForReading("hello, this is a test buffer data #03\n".getBytes(UTF_8)),
@@ -178,7 +178,7 @@ public final class GlobalFsTest {
 		String content = "hello world, i am here!";
 
 		firstAliceAdapter.upload("test.txt")
-				.thenCompose(consumer -> SerialSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8))).streamTo(consumer))
+				.thenCompose(consumer -> ChannelSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8))).streamTo(consumer))
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenResult(buf -> assertEquals(content, buf.asString(UTF_8)))
@@ -192,8 +192,8 @@ public final class GlobalFsTest {
 
 		String filename = "folder/test.txt";
 
-		SerialSupplier.of(wrapUtf8(content))
-				.apply(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.fixed(4), filename, 0, new SHA256Digest()))
+		ChannelSupplier.of(wrapUtf8(content))
+				.transformWith(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.fixed(4), filename, 0, new SHA256Digest()))
 				.streamTo(firstClient.uploader(alice.getPubKey(), filename, -1))
 				.thenCompose($ -> firstClient.pushMetadata(alice.getPubKey(),
 						SignedData.sign(REGISTRY.get(GlobalFsMetadata.class), GlobalFsMetadata.of(filename, content.length(), System.currentTimeMillis()), alice.getPrivKey())))
@@ -213,9 +213,9 @@ public final class GlobalFsTest {
 	public void uploadWithOffset() {
 		announce(alice, set(firstId))
 				.thenCompose($ -> firstAliceAdapter.upload("folder/test.txt"))
-				.thenCompose(SerialSupplier.of(wrapUtf8("first line of the content\n"))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8("first line of the content\n"))::streamTo)
 				.thenCompose($ ->
-						SerialSupplier.of(wrapUtf8("ntent\nsecond line, appended\n"))
+						ChannelSupplier.of(wrapUtf8("ntent\nsecond line, appended\n"))
 								.streamTo(firstAliceAdapter.uploadSerial("folder/test.txt", 20)))
 				.thenCompose($ -> firstAliceAdapter.downloadSerial("folder/test.txt").toCollector(ByteBufQueue.collector()))
 				.whenResult(buf -> System.out.println(buf.asString(UTF_8)))
@@ -229,7 +229,7 @@ public final class GlobalFsTest {
 
 		announce(alice, set(firstId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(SerialSupplier.of(wrapUtf8(first))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8(first))::streamTo)
 				.whenComplete(assertComplete());
 	}
 
@@ -240,10 +240,10 @@ public final class GlobalFsTest {
 
 		announce(alice, set(firstId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(SerialSupplier.of(wrapUtf8(first))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8(first))::streamTo)
 				.thenCompose($ -> firstAliceAdapter.getMetadata("test.txt"))
 				.thenCompose(meta -> firstAliceAdapter.upload("test.txt", meta.getSize() - 6))
-				.thenCompose(SerialSupplier.of(wrapUtf8("bytes " + second))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8("bytes " + second))::streamTo)
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(first + second, res.asString(UTF_8))));
@@ -254,7 +254,7 @@ public final class GlobalFsTest {
 		String string = "hello, this is a test little string of bytes";
 		announce(alice, set(firstId, secondId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(SerialSupplier.of(wrapUtf8(string))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8(string))::streamTo)
 				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(string, res.asString(UTF_8))));
@@ -265,7 +265,7 @@ public final class GlobalFsTest {
 		String string = "hello, this is a test little string of bytes";
 		announce(alice, set(firstId, secondId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(SerialSupplier.of(wrapUtf8(string))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8(string))::streamTo)
 				.thenCompose($ -> rawSecondClient.fetch())
 				.whenComplete(assertComplete(Assert::assertTrue))
 				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
@@ -279,9 +279,9 @@ public final class GlobalFsTest {
 		String string = part + "\nwhich has a second line by the way, hello there";
 		announce(alice, set(firstId, secondId))
 				.thenCompose($ -> secondAliceAdapter.upload("test.txt"))
-				.thenCompose(SerialSupplier.of(wrapUtf8(part))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8(part))::streamTo)
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt", 0))
-				.thenCompose(SerialSupplier.of(wrapUtf8(string))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8(string))::streamTo)
 				.thenCompose($ -> rawSecondClient.fetch())
 				.whenComplete(assertComplete(res -> assertTrue("Fetch did nothing", res)))
 				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
@@ -300,7 +300,7 @@ public final class GlobalFsTest {
 		String data = "some plain ASCII data to be uploaded and encrypted";
 
 		firstAliceAdapter.upload("test.txt")
-				.thenCompose(SerialSupplier.of(wrapUtf8(data))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8(data))::streamTo)
 				.thenCompose($ -> firstAliceAdapter.download("test.txt", 12, 32))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(data.substring(12, 12 + 32), res.asString(UTF_8))))
@@ -324,11 +324,11 @@ public final class GlobalFsTest {
 	public void uploadWhenOldCache() {
 		announce(alice, set(secondId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(SerialSupplier.of(wrapUtf8("some string of bytes to test"))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8("some string of bytes to test"))::streamTo)
 				.thenCompose($ -> secondAliceAdapter.delete("test.txt"))
 				.thenCompose($ -> rawFirstClient.fetch())
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(SerialSupplier.of(wrapUtf8("another string of bytes to test"))::streamTo)
+				.thenCompose(ChannelSupplier.of(wrapUtf8("another string of bytes to test"))::streamTo)
 				.whenComplete(assertComplete());
 	}
 

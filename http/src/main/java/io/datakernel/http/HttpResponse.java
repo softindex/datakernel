@@ -18,9 +18,9 @@ package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfFullCookies;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializable;
 
 import java.util.List;
@@ -135,7 +135,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		return this;
 	}
 
-	public HttpResponse withBodyStream(SerialSupplier<ByteBuf> stream) {
+	public HttpResponse withBodyStream(ChannelSupplier<ByteBuf> stream) {
 		setBodyStream(stream);
 		return this;
 	}

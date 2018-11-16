@@ -5,7 +5,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.ForwardingStreamSupplier;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.StreamSupplierFunction;
+import io.datakernel.stream.StreamSupplierTransformer;
 import org.junit.Test;
 
 import java.util.List;
@@ -19,7 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 public class StreamSuspendBufferTest {
-	private void testImmediateSuspend(StreamSupplierFunction<String, StreamSupplier<String>> suspendingModifier) {
+	private void testImmediateSuspend(StreamSupplierTransformer<String, StreamSupplier<String>> suspendingModifier) {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<String> items = IntStream.range(0, 100).mapToObj(i -> "test_" + i).collect(toList());
@@ -28,11 +28,11 @@ public class StreamSuspendBufferTest {
 
 		boolean[] suspended = {false};
 		StreamSupplier.ofIterable(items)
-				.apply(suspendingModifier)
-				.apply(StreamBuffer.create())
+				.transformWith(suspendingModifier)
+				.transformWith(StreamBuffer.create())
 				.streamTo(StreamConsumerToList.<String>create()
 						.withResultAcceptor(v -> v.whenComplete(result::set))
-						.apply(decorator((context, receiver) ->
+						.transformWith(decorator((context, receiver) ->
 								item -> {
 									receiver.accept(item);
 //									logger.info("Received: " + item);
@@ -50,7 +50,7 @@ public class StreamSuspendBufferTest {
 		assertEquals(items, result.getResult());
 	}
 
-	private static <T> StreamSupplierFunction<T, StreamSupplier<T>> suspend(BiConsumer<Integer, StreamSupplier<T>> suspend) {
+	private static <T> StreamSupplierTransformer<T, StreamSupplier<T>> suspend(BiConsumer<Integer, StreamSupplier<T>> suspend) {
 		return p -> new ForwardingStreamSupplier<T>(p) {
 			private int counter = 0;
 

@@ -18,11 +18,11 @@ package io.global.ot.http;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.IAsyncHttpClient;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
 import io.global.common.*;
 import io.global.ot.api.*;
 import io.global.ot.api.GlobalOTNode.Heads;
@@ -98,12 +98,12 @@ public class GlobalOTNodeHttpClientTest {
 			}
 
 			@Override
-			public Promise<SerialSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+			public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
 				throw new UnsupportedOperationException();
 			}
 
 			@Override
-			public Promise<SerialConsumer<CommitEntry>> upload(RepoID repositoryId) {
+			public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId) {
 				throw new UnsupportedOperationException();
 			}
 

@@ -45,8 +45,7 @@ public class StreamSupplierConcatTest {
 		StreamSupplier.concat(
 				StreamSupplier.of(1, 2, 3),
 				StreamSupplier.of(4, 5, 6))
-				.streamTo(
-						consumer.apply(randomlySuspending()));
+				.streamTo(consumer.transformWith(randomlySuspending()));
 
 		eventloop.run();
 
@@ -66,8 +65,7 @@ public class StreamSupplierConcatTest {
 				StreamSupplier.of(4, 5, 6),
 				StreamSupplier.closingWithError(new ExpectedException("Test Exception")),
 				StreamSupplier.of(1, 2, 3))
-				.streamTo(
-						consumer.apply(randomlySuspending()));
+				.streamTo(consumer.transformWith(randomlySuspending()));
 
 		eventloop.run();
 
@@ -102,8 +100,7 @@ public class StreamSupplierConcatTest {
 				StreamSupplier.of(1, 2, 3),
 				StreamSupplier.of(4, 5, 6),
 				StreamSupplier.closingWithError(new ExpectedException("Test Exception")))
-				.streamTo(
-						consumer.apply(TestStreamConsumers.oneByOne()));
+				.streamTo(consumer.transformWith(TestStreamConsumers.oneByOne()));
 
 		eventloop.run();
 

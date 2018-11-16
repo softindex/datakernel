@@ -24,12 +24,16 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelOutput;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.stream.*;
-import io.datakernel.serial.*;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 
@@ -51,7 +55,7 @@ public abstract class AbstractHttpConnection {
 	public static final ParseException INCOMPLETE_MESSAGE = new ParseException(AbstractHttpConnection.class, "Incomplete HTTP message");
 	public static final ParseException UNEXPECTED_READ = new ParseException(AbstractHttpConnection.class, "Unexpected read data");
 
-	public static final SerialConsumer<ByteBuf> BUF_RECYCLER = SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle));
+	public static final ChannelConsumer<ByteBuf> BUF_RECYCLER = ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle));
 
 	public static final MemSize MAX_HEADER_LINE_SIZE = MemSize.of(ApplicationSettings.getInt(HttpMessage.class, "maxHeaderLineSize", MemSize.kilobytes(8).toInt())); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
@@ -102,7 +106,7 @@ public abstract class AbstractHttpConnection {
 
 	protected abstract void onFirstLine(byte[] line, int size) throws ParseException;
 
-	protected abstract void onHeadersReceived(ByteBuf body, SerialSupplier<ByteBuf> bodySupplier);
+	protected abstract void onHeadersReceived(ByteBuf body, ChannelSupplier<ByteBuf> bodySupplier);
 
 	protected abstract void onBodyReceived();
 
@@ -131,7 +135,7 @@ public abstract class AbstractHttpConnection {
 		readQueue.recycle();
 	}
 
-	static SerialSupplier<ByteBuf> bodySupplier(HttpMessage httpMessage) {
+	static ChannelSupplier<ByteBuf> bodySupplier(HttpMessage httpMessage) {
 		if (httpMessage.body != null) {
 			ByteBuf body = httpMessage.body;
 			assert httpMessage.bodySupplier == null;
@@ -142,7 +146,7 @@ public abstract class AbstractHttpConnection {
 				buf.put(body);
 				body.recycle();
 				httpMessage.body = null;
-				return SerialSupplier.of(buf);
+				return ChannelSupplier.of(buf);
 			} else {
 				ByteBuf gzippedBody = GzipProcessorUtils.toGzip(body);
 				httpMessage.setHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
@@ -152,7 +156,7 @@ public abstract class AbstractHttpConnection {
 				buf.put(gzippedBody);
 				gzippedBody.recycle();
 				httpMessage.body = null;
-				return SerialSupplier.of(buf);
+				return ChannelSupplier.of(buf);
 			}
 		} else if (httpMessage.bodySupplier != null) {
 			httpMessage.setHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
@@ -161,7 +165,7 @@ public abstract class AbstractHttpConnection {
 				httpMessage.writeTo(buf);
 				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
 				httpMessage.bodySupplier.bindTo(chunker.getInput());
-				return SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutput().getSupplier());
+				return ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier());
 			} else {
 				httpMessage.setHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
@@ -170,13 +174,13 @@ public abstract class AbstractHttpConnection {
 				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
 				httpMessage.bodySupplier.bindTo(deflater.getInput());
 				deflater.getOutput().bindTo(chunker.getInput());
-				return SerialSuppliers.concat(SerialSupplier.of(buf), chunker.getOutput().getSupplier());
+				return ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier());
 			}
 		} else {
 			httpMessage.setHeader(CONTENT_LENGTH, ofDecimal(0));
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
-			return SerialSupplier.of(buf);
+			return ChannelSupplier.of(buf);
 		}
 	}
 
@@ -185,7 +189,7 @@ public abstract class AbstractHttpConnection {
 		httpMessage.recycle();
 	}
 
-	private void writeHttpMessageImpl(SerialSupplier<ByteBuf> bodySupplier) {
+	private void writeHttpMessageImpl(ChannelSupplier<ByteBuf> bodySupplier) {
 		bodySupplier.get()
 				.whenComplete((buf, e) -> {
 					if (e == null) {
@@ -378,7 +382,7 @@ public abstract class AbstractHttpConnection {
 			return;
 		}
 
-		ByteBufsSupplier encodedStream = ByteBufsSupplier.ofProvidedQueue(
+		BinaryChannelSupplier encodedStream = BinaryChannelSupplier.ofProvidedQueue(
 				readQueue,
 				() -> socket.read()
 						.thenComposeEx((buf, e) -> {
@@ -387,13 +391,13 @@ public abstract class AbstractHttpConnection {
 								return Promise.complete();
 							} else {
 								closeWithError(e);
-								return Promise.ofException(e);
+								return Promise.<Void>ofException(e);
 							}
 						}),
 				Promise::complete,
 				this::closeWithError);
 
-		SerialOutput<ByteBuf> bodyStream;
+		ChannelOutput<ByteBuf> bodyStream;
 		AsyncProcess process;
 
 		if ((flags & CHUNKED) == 0) {
@@ -405,14 +409,16 @@ public abstract class AbstractHttpConnection {
 			BufsConsumerChunkedDecoder decoder = BufsConsumerChunkedDecoder.create();
 			process = decoder;
 			encodedStream.bindTo(decoder.getInput());
-			bodyStream = decoder.getOutput().apply(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
+			bodyStream = decoder.getOutput()
+					.transformWith(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
 		}
 
 		if ((flags & GZIPPED) != 0) {
 			BufsConsumerGzipInflater decoder = BufsConsumerGzipInflater.create();
 			process = decoder;
 			bodyStream.bindTo(decoder.getInput());
-			bodyStream = decoder.getOutput().apply(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
+			bodyStream = decoder.getOutput()
+					.transformWith(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
 		}
 
 		onHeadersReceived(null, bodyStream.getSupplier());

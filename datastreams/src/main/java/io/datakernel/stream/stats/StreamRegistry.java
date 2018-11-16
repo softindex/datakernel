@@ -1,15 +1,15 @@
 package io.datakernel.stream.stats;
 
 import io.datakernel.async.Promise;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.dsl.ChannelConsumerTransformer;
+import io.datakernel.csp.dsl.ChannelSupplierTransformer;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialConsumerFunction;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialSupplierFunction;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerFunction;
+import io.datakernel.stream.StreamConsumerTransformer;
 import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.StreamSupplierFunction;
+import io.datakernel.stream.StreamSupplierTransformer;
 import io.datakernel.util.CollectionUtils;
 import io.datakernel.util.IntrusiveLinkedList;
 import io.datakernel.util.IntrusiveLinkedList.Node;
@@ -49,45 +49,45 @@ public final class StreamRegistry<V> implements Iterable<V> {
 		return this;
 	}
 
-	public final class RegisterFunction<T> implements
-			SerialSupplierFunction<T, SerialSupplier<T>>,
-			SerialConsumerFunction<T, SerialConsumer<T>>,
-			StreamSupplierFunction<T, StreamSupplier<T>>,
-			StreamConsumerFunction<T, StreamConsumer<T>> {
+	public final class RegisterTransformer<T> implements
+			ChannelSupplierTransformer<T, ChannelSupplier<T>>,
+			ChannelConsumerTransformer<T, ChannelConsumer<T>>,
+			StreamSupplierTransformer<T, StreamSupplier<T>>,
+			StreamConsumerTransformer<T, StreamConsumer<T>> {
 		private final V value;
 
-		private RegisterFunction(V value) {this.value = value;}
+		private RegisterTransformer(V value) {this.value = value;}
 
 		@Override
-		public StreamConsumer<T> apply(StreamConsumer<T> consumer) {
+		public StreamConsumer<T> transform(StreamConsumer<T> consumer) {
 			return register(consumer, value);
 		}
 
 		@Override
-		public StreamSupplier<T> apply(StreamSupplier<T> supplier) {
+		public StreamSupplier<T> transform(StreamSupplier<T> supplier) {
 			return register(supplier, value);
 		}
 
 		@Override
-		public SerialConsumer<T> apply(SerialConsumer<T> consumer) {
+		public ChannelConsumer<T> transform(ChannelConsumer<T> consumer) {
 			return register(consumer, value);
 		}
 
 		@Override
-		public SerialSupplier<T> apply(SerialSupplier<T> supplier) {
+		public ChannelSupplier<T> transform(ChannelSupplier<T> supplier) {
 			return register(supplier, value);
 		}
 	}
 
-	public <T> RegisterFunction<T> register(V value) {
-		return new RegisterFunction<>(value);
+	public <T> RegisterTransformer<T> register(V value) {
+		return new RegisterTransformer<>(value);
 	}
 
-	public <T> SerialSupplier<T> register(SerialSupplier<T> supplier, V value) {
+	public <T> ChannelSupplier<T> register(ChannelSupplier<T> supplier, V value) {
 		return supplier.withEndOfStream(subscribe(value));
 	}
 
-	public <T> SerialConsumer<T> register(SerialConsumer<T> consumer, V value) {
+	public <T> ChannelConsumer<T> register(ChannelConsumer<T> consumer, V value) {
 		return consumer.withAcknowledgement(subscribe(value));
 	}
 

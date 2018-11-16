@@ -20,13 +20,13 @@ import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serial.ByteBufsParser;
-import io.datakernel.serial.ByteBufsSupplier;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Tuple2;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
@@ -79,17 +79,17 @@ public final class RemoteFsDiscoveryService extends RuntimeDiscoveryService impl
 						logger.info("Failed to load announcements from " + ANNOUNCEMENTS_FILE, e);
 						return Promise.complete();
 					}
-					return ByteBufsSupplier.of(supplier)
+					return BinaryChannelSupplier.of(supplier)
 							.parseStream(ANNOUNCE_PARSER)
-							.streamTo(SerialConsumer.of(AsyncConsumer.of(tuple -> announced.put(tuple.getValue1(), tuple.getValue2()))));
+							.streamTo(ChannelConsumer.of(AsyncConsumer.of(tuple -> announced.put(tuple.getValue1(), tuple.getValue2()))));
 				});
 	}
 
 	private Promise<Void> storeAnnouncements() {
 		return storage.upload(ANNOUNCEMENTS_FILE, ".temp")
 				.thenCompose(consumer ->
-						SerialSupplier.ofStream(announced.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(), entry.getValue())))
-								.transform(tuple -> encode(ANNOUNCE_CODEC, tuple))
+						ChannelSupplier.ofStream(announced.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(), entry.getValue())))
+								.map(tuple -> encode(ANNOUNCE_CODEC, tuple))
 								.streamTo(consumer));
 	}
 
@@ -100,9 +100,9 @@ public final class RemoteFsDiscoveryService extends RuntimeDiscoveryService impl
 						logger.info("Failed to load shared keys from " + SHARED_KEYS_FILE, e);
 						return Promise.complete();
 					}
-					return ByteBufsSupplier.of(supplier)
+					return BinaryChannelSupplier.of(supplier)
 							.parseStream(SHARED_KEY_PARSER)
-							.streamTo(SerialConsumer.of(AsyncConsumer.of(tuple ->
+							.streamTo(ChannelConsumer.of(AsyncConsumer.of(tuple ->
 									sharedKeys.put(tuple.getValue1(), tuple.getValue2().stream().collect(toMap(Tuple2::getValue1, Tuple2::getValue2))))));
 				});
 	}
@@ -110,14 +110,14 @@ public final class RemoteFsDiscoveryService extends RuntimeDiscoveryService impl
 	private Promise<Void> storeSharedKeys() {
 		return storage.upload(ANNOUNCEMENTS_FILE, ".temp")
 				.thenCompose(consumer ->
-						SerialSupplier.ofStream(sharedKeys.entrySet()
+						ChannelSupplier.ofStream(sharedKeys.entrySet()
 								.stream()
 								.map(entry ->
 										new Tuple2<>(entry.getKey(), entry.getValue().entrySet()
 												.stream()
 												.map(entry2 -> new Tuple2<>(entry2.getKey(), entry2.getValue()))
 												.collect(toList()))))
-								.transform(tuple -> encode(SHARED_KEY_CODEC, tuple))
+								.map(tuple -> encode(SHARED_KEY_CODEC, tuple))
 								.streamTo(consumer));
 	}
 

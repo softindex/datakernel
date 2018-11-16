@@ -45,8 +45,8 @@ public class StreamFunctionTest {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		supplier.apply(StreamFunction.create(input -> input * input))
-				.streamTo(consumer.apply(randomlySuspending()));
+		supplier.transformWith(StreamDecorator.create(input -> input * input))
+				.streamTo(consumer.transformWith(randomlySuspending()));
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
@@ -61,20 +61,21 @@ public class StreamFunctionTest {
 	public void testFunctionConsumerError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
+		StreamDecorator<Integer, Integer> streamFunction = StreamDecorator.create(input -> input * input);
 
 		List<Integer> list = new ArrayList<>();
 		StreamSupplier<Integer> source1 = StreamSupplier.of(1, 2, 3);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		source1.apply(streamFunction).streamTo(
-				consumer.apply(decorator((context, dataAcceptor) ->
-						item -> {
-							dataAcceptor.accept(item);
-							if (list.size() == 2) {
-								context.closeWithError(new ExpectedException("Test Exception"));
-							}
-						})));
+		source1.transformWith(streamFunction)
+				.streamTo(consumer
+						.transformWith(decorator((context, dataAcceptor) ->
+								item -> {
+									dataAcceptor.accept(item);
+									if (list.size() == 2) {
+										context.closeWithError(new ExpectedException("Test Exception"));
+									}
+								})));
 		eventloop.run();
 
 		assertEquals(asList(1, 4), list);
@@ -89,7 +90,7 @@ public class StreamFunctionTest {
 	public void testFunctionSupplierError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
+		StreamDecorator<Integer, Integer> streamFunction = StreamDecorator.create(input -> input * input);
 
 		StreamSupplier<Integer> supplier = concat(
 				StreamSupplier.of(1, 2, 3),
@@ -98,7 +99,8 @@ public class StreamFunctionTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		supplier.apply(streamFunction).streamTo(consumer);
+		supplier.transformWith(streamFunction)
+				.streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9, 16, 25, 36), consumer.getList());

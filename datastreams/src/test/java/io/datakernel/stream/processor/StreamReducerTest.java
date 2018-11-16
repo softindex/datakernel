@@ -52,7 +52,9 @@ public class StreamReducerTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		source.streamTo(streamReducer.newInput(Function.identity(), reducer));
-		streamReducer.getOutput().streamTo(consumer.apply(randomlySuspending()));
+		streamReducer.getOutput()
+				.streamTo(consumer
+						.transformWith(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
@@ -89,7 +91,8 @@ public class StreamReducerTest {
 		source5.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source6.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
-		streamReducer.getOutput().streamTo(consumer.apply(randomlySuspending()));
+		streamReducer.getOutput()
+				.streamTo(consumer.transformWith(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
@@ -130,14 +133,15 @@ public class StreamReducerTest {
 		source2.streamTo(streamReducer.newInput(input -> input.key, KeyValue2.REDUCER));
 		source3.streamTo(streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
 
-		streamReducer.getOutput().streamTo(
-				consumer.apply(decorator((context, dataAcceptor) ->
-						item -> {
-							list.add(item);
-							if (list.size() == 1) {
-								context.closeWithError(new ExpectedException("Test Exception"));
-							}
-						})));
+		streamReducer.getOutput()
+				.streamTo(consumer
+						.transformWith(decorator((context, dataAcceptor) ->
+								item -> {
+									list.add(item);
+									if (list.size() == 1) {
+										context.closeWithError(new ExpectedException("Test Exception"));
+									}
+								})));
 
 		eventloop.run();
 
@@ -370,8 +374,8 @@ public class StreamReducerTest {
 		source3.streamTo(
 				streamReducer.newInput(input -> input.key, KeyValue3.REDUCER_TO_ACCUMULATOR.inputToOutput()));
 
-		streamReducer.getOutput().streamTo(
-				consumer.apply(randomlySuspending()));
+		streamReducer.getOutput()
+				.streamTo(consumer.transformWith(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(
@@ -406,8 +410,8 @@ public class StreamReducerTest {
 		source3.streamTo(
 				streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
 
-		streamReducer.getOutput().streamTo(
-				consumer.apply(randomlySuspending()));
+		streamReducer.getOutput()
+				.streamTo(consumer.transformWith(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(

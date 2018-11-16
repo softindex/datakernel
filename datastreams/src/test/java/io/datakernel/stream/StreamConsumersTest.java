@@ -2,8 +2,8 @@ package io.datakernel.stream;
 
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promise;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.serial.SerialConsumer;
 import io.datakernel.stream.processor.StreamTransformer;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,7 +37,7 @@ public class StreamConsumersTest {
 		StreamSupplier<Integer> supplier = StreamSupplier.ofStream(IntStream.range(1, 10).boxed());
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		supplier.streamTo(consumer.apply(errorDecorator(item -> item.equals(5) ? new IllegalArgumentException() : null)));
+		supplier.streamTo(consumer.transformWith(errorDecorator(item -> item.equals(5) ? new IllegalArgumentException() : null)));
 		eventloop.run();
 
 		assertClosedWithError(supplier);
@@ -51,7 +51,7 @@ public class StreamConsumersTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 		StreamConsumer<Integer> errorConsumer =
-				consumer.apply(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
+				consumer.transformWith(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		CompletableFuture<Void> supplierFuture = supplier.streamTo(errorConsumer)
 				.whenComplete(($, e) -> assertThat(e, instanceOf(IllegalArgumentException.class)))
@@ -142,7 +142,7 @@ public class StreamConsumersTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 		StreamConsumer<Integer> errorConsumer = consumer
-				.apply(suspendDecorator(
+				.transformWith(suspendDecorator(
 						k -> true,
 						context -> eventloop.delay(10, context::resume)
 				));
@@ -164,10 +164,11 @@ public class StreamConsumersTest {
 		CountTransformer<Integer> transformer = new CountTransformer<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		supplier.apply(transformer).streamTo(
-				consumer.apply(suspendDecorator(
-						item -> true,
-						context -> eventloop.delay(10, context::resume))));
+		supplier.transformWith(transformer)
+				.streamTo(consumer
+						.transformWith(suspendDecorator(
+								item -> true,
+								context -> eventloop.delay(10, context::resume))));
 
 		CompletableFuture<List<Integer>> listFuture = consumer.getResult().toCompletableFuture();
 		eventloop.run();
@@ -182,7 +183,7 @@ public class StreamConsumersTest {
 		List<Integer> values = IntStream.range(1, 6).boxed().collect(toList());
 		List<Integer> actual = new ArrayList<>();
 		StreamSupplier<Integer> supplier = StreamSupplier.ofIterable(values);
-		StreamConsumer<Integer> consumer = StreamConsumer.ofSerialConsumer(SerialConsumer.of(AsyncConsumer.of(actual::add)));
+		StreamConsumer<Integer> consumer = StreamConsumer.ofSerialConsumer(ChannelConsumer.of(AsyncConsumer.of(actual::add)));
 		supplier.streamTo(consumer);
 		eventloop.run();
 		assertEquals(values, actual);

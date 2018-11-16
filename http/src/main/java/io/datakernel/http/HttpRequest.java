@@ -19,9 +19,9 @@ package io.datakernel.http;
 import io.datakernel.annotation.NotNull;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.ParserFunction;
 
@@ -106,7 +106,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return this;
 	}
 
-	public HttpRequest withBodyStream(SerialSupplier<ByteBuf> stream) {
+	public HttpRequest withBodyStream(ChannelSupplier<ByteBuf> stream) {
 		setBodyStream(stream);
 		return this;
 	}

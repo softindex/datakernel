@@ -43,7 +43,7 @@
 		<module>test</module>
 		<module>launchers</module>
 		<module>net</module>
-		<module>serial</module>
+		<module>csp</module>
 	</modules>
 
 	<licenses>

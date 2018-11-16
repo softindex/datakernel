@@ -19,6 +19,12 @@ package io.datakernel.remotefs;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.dsl.ChannelConsumerTransformer;
+import io.datakernel.csp.file.ChannelFileReader;
+import io.datakernel.csp.file.ChannelFileWriter;
+import io.datakernel.csp.process.ChannelByteRanger;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
@@ -26,12 +32,6 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialConsumerFunction;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.file.SerialFileReader;
-import io.datakernel.serial.file.SerialFileWriter;
-import io.datakernel.serial.processor.SerialByteRanger;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,7 +113,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	// endregion
 
 	@Override
-	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
 		checkNotNull(filename, "fileName");
 
 		return ensureDirectory(filename)
@@ -133,14 +133,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 									}
 								}
 								return Promise.of(
-										SerialFileWriter.create(file)
+										ChannelFileWriter.create(file)
 												.withOffset(offset == -1 ? 0L : lazyOverrides ? size : offset)
 												.withForceOnClose(true)
 												.withAcknowledgement(ack ->
 														ack.whenComplete(writeFinishPromise.recordStats()))
-												.apply(lazyOverrides && offset != -1 && offset != size ?
-														SerialByteRanger.drop(size - offset) :
-														SerialConsumerFunction.identity()));
+												.transformWith(lazyOverrides && offset != -1 && offset != size ?
+														ChannelByteRanger.drop(size - offset) :
+														ChannelConsumerTransformer.identity()));
 							});
 				})
 				.whenComplete(toLogger(logger, TRACE, "upload", filename, this))
@@ -148,7 +148,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		checkNotNull(filename, "fileName");
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
@@ -170,10 +170,10 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					if (length != -1 && offset + length > size) {
 						return Promise.ofException(new StacklessException(LocalFsClient.class, "Boundaries size exceed file for " + repr));
 					}
-					return AsyncFile.openAsync(executor, path, SerialFileReader.READ_OPTIONS, this)
+					return AsyncFile.openAsync(executor, path, ChannelFileReader.READ_OPTIONS, this)
 							.thenApply(file -> {
 								logger.trace("reading from file {}: {}", repr, this);
-								return SerialFileReader.readFile(file)
+								return ChannelFileReader.readFile(file)
 										.withBufferSize(readerBufferSize)
 										.withOffset(offset)
 										.withLength(length == -1 ? Long.MAX_VALUE : length)

@@ -17,6 +17,10 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Promise;
+import io.datakernel.csp.binary.ByteBufSerializer;
+import io.datakernel.csp.binary.ByteBufSerializers;
+import io.datakernel.csp.net.Messaging;
+import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -25,10 +29,6 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
-import io.datakernel.serial.net.ByteBufSerializer;
-import io.datakernel.serial.net.ByteBufSerializers;
-import io.datakernel.serial.net.Messaging;
-import io.datakernel.serial.net.MessagingWithBinaryStreaming;
 
 import java.net.InetAddress;
 import java.nio.file.Path;

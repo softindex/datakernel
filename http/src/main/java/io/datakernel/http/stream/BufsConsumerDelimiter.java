@@ -16,24 +16,24 @@
 
 package io.datakernel.http.stream;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.serial.ByteBufsInput;
-import io.datakernel.serial.ByteBufsSupplier;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialOutput;
-import io.datakernel.serial.processor.WithByteBufsInput;
-import io.datakernel.serial.processor.WithSerialToSerial;
+import io.datakernel.csp.AbstractCommunicatingProcess;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelOutput;
+import io.datakernel.csp.binary.BinaryChannelInput;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.csp.dsl.WithBinaryChannelInput;
+import io.datakernel.csp.dsl.WithChannelTransformer;
 
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class BufsConsumerDelimiter extends AbstractAsyncProcess
-		implements WithSerialToSerial<BufsConsumerDelimiter, ByteBuf, ByteBuf>, WithByteBufsInput<BufsConsumerDelimiter> {
+public final class BufsConsumerDelimiter extends AbstractCommunicatingProcess
+		implements WithChannelTransformer<BufsConsumerDelimiter, ByteBuf, ByteBuf>, WithBinaryChannelInput<BufsConsumerDelimiter> {
 
 	private ByteBufQueue bufs;
-	private ByteBufsSupplier input;
-	private SerialConsumer<ByteBuf> output;
+	private BinaryChannelSupplier input;
+	private ChannelConsumer<ByteBuf> output;
 
 	private int remaining;
 
@@ -46,7 +46,7 @@ public final class BufsConsumerDelimiter extends AbstractAsyncProcess
 	}
 
 	@Override
-	public ByteBufsInput getInput() {
+	public BinaryChannelInput getInput() {
 		return input -> {
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
@@ -58,7 +58,7 @@ public final class BufsConsumerDelimiter extends AbstractAsyncProcess
 
 	@SuppressWarnings("ConstantConditions") //check output for clarity
 	@Override
-	public SerialOutput<ByteBuf> getOutput() {
+	public ChannelOutput<ByteBuf> getOutput() {
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = sanitize(output);

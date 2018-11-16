@@ -20,13 +20,13 @@ import com.google.inject.Inject;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -61,17 +61,19 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
 					String path = request.getPathParameter("path");
 					return node.download(pubKey, path, range[0], range[1])
-							.thenApply(supplier -> HttpResponse.ok200().withBodyStream(supplier.apply(new FrameEncoder())));
+							.thenApply(supplier ->
+									HttpResponse.ok200()
+											.withBodyStream(supplier.transformWith(new FrameEncoder())));
 				})
 				.with(PUT, "/" + UPLOAD + "/:owner/:path*", request -> {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
 					String path = request.getPathParameter("path");
 					long offset = parseOffset(request);
-					SerialSupplier<ByteBuf> body = request.getBodyStream();
+					ChannelSupplier<ByteBuf> body = request.getBodyStream();
 					return node.getMetadata(PubKey.fromString(request.getPathParameter("owner")), request.getPathParameter("path"))
 							.thenCompose(meta ->
 									node.upload(pubKey, path, offset)
-											.thenCompose(consumer -> body.streamTo(consumer.apply(new FrameDecoder())))
+											.thenCompose(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
 											.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
 				})
 				.with(POST, "/" + PUSH + "/:owner", ensureRequestBody(request -> {
@@ -87,7 +89,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 							node.listLocal(pubKey, request.getQueryParameter("glob")))
 							.thenApply(list -> HttpResponse.ok200()
 									.withBodyStream(
-											SerialSupplier.ofStream(
+											ChannelSupplier.ofStream(
 													list.stream()
 															.map(meta -> encodeWithSizePrefix(SIGNED_METADATA_CODEC, meta)))));
 				});

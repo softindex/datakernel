@@ -18,8 +18,8 @@ package io.datakernel.http.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.TestUtils.AssertingConsumer;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
 import org.junit.Test;
@@ -89,7 +89,7 @@ public final class BufsConsumerChunkedEncoderTest {
 	}
 
 	private void doTest() {
-		chunkedEncoder.getInput().set(SerialSupplier.ofIterable(list));
+		chunkedEncoder.getInput().set(ChannelSupplier.ofIterable(list));
 		chunkedEncoder.getProcessResult()
 				.whenComplete(assertComplete());
 	}

@@ -19,13 +19,13 @@ package io.datakernel.logfs;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.csp.process.ChannelBinaryDeserializer;
+import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelLZ4Compressor;
+import io.datakernel.csp.process.ChannelLZ4Decompressor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.serial.processor.SerialBinaryDeserializer;
-import io.datakernel.serial.processor.SerialBinarySerializer;
-import io.datakernel.serial.processor.SerialLZ4Compressor;
-import io.datakernel.serial.processor.SerialLZ4Decompressor;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
@@ -102,11 +102,11 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 
 		return Promise.of(StreamConsumer.<T>ofSupplier(
 				supplier -> supplier
-						.apply(SerialBinarySerializer.create(serializer)
+						.transformWith(ChannelBinarySerializer.create(serializer)
 								.withAutoFlushInterval(autoFlushInterval)
 								.withInitialBufferSize(bufferSize)
 								.withSkipSerializationErrors())
-						.apply(SerialLZ4Compressor.createFastCompressor())
+						.transformWith(ChannelLZ4Compressor.createFastCompressor())
 						.bindTo(LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition)))
 				.withLateBinding());
 	}
@@ -166,14 +166,14 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 										inputStreamPosition = 0L;
 										sw.reset().start();
 										return fileStream
-												.apply(SerialLZ4Decompressor.create()
-														.withInspector((self, header, inputBuf, outputBuf) -> inputStreamPosition += SerialLZ4Decompressor.HEADER_LENGTH + header.compressedLen))
-												.apply(supplier ->
+												.transformWith(ChannelLZ4Decompressor.create()
+														.withInspector((self, header, inputBuf, outputBuf) -> inputStreamPosition += ChannelLZ4Decompressor.HEADER_LENGTH + header.compressedLen))
+												.transformWith(supplier ->
 														supplier.withEndOfStream(eos ->
 																eos.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
 																		Promise.complete() :
 																		Promise.ofException(e))))
-												.apply(SerialBinaryDeserializer.create(serializer))
+												.transformWith(ChannelBinaryDeserializer.create(serializer))
 												.withEndOfStream(eos ->
 														eos.whenComplete(($, e) -> log(e)))
 												.withLateBinding();

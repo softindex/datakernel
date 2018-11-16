@@ -13,7 +13,7 @@ import java.util.function.Predicate;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public class TestStreamConsumers {
-	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> decorator(Decorator<T> decorator) {
+	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> decorator(Decorator<T> decorator) {
 		return consumer -> new ForwardingStreamConsumer<T>(consumer) {
 			final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
@@ -65,7 +65,7 @@ public class TestStreamConsumers {
 		};
 	}
 
-	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> errorDecorator(Function<T, Throwable> errorFunction) {
+	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> errorDecorator(Function<T, Throwable> errorFunction) {
 		return decorator((context, dataAcceptor) ->
 				item -> {
 					Throwable error = errorFunction.apply(item);
@@ -77,7 +77,7 @@ public class TestStreamConsumers {
 				});
 	}
 
-	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> suspendDecorator(Predicate<T> predicate, Consumer<Context> resumer) {
+	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> suspendDecorator(Predicate<T> predicate, Consumer<Context> resumer) {
 		return decorator((context, dataAcceptor) ->
 				item -> {
 					dataAcceptor.accept(item);
@@ -89,23 +89,23 @@ public class TestStreamConsumers {
 				});
 	}
 
-	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> suspendDecorator(Predicate<T> predicate) {
+	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> suspendDecorator(Predicate<T> predicate) {
 		return suspendDecorator(predicate, Context::resume);
 	}
 
-	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> oneByOne() {
+	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> oneByOne() {
 		return suspendDecorator(item -> true);
 	}
 
-	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> randomlySuspending(Random random, double probability) {
+	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> randomlySuspending(Random random, double probability) {
 		return suspendDecorator(item -> random.nextDouble() < probability);
 	}
 
-	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> randomlySuspending(double probability) {
+	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> randomlySuspending(double probability) {
 		return randomlySuspending(new Random(), probability);
 	}
 
-	public static <T> StreamConsumerFunction<T, StreamConsumer<T>> randomlySuspending() {
+	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> randomlySuspending() {
 		return randomlySuspending(0.5);
 	}
 

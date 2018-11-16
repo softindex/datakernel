@@ -18,13 +18,13 @@ package io.global.fs.local;
 
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.csp.process.ChannelSplitter;
+import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.functional.Try;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialSuppliers;
-import io.datakernel.serial.SerialZeroBuffer;
-import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Initializable;
 import io.global.common.PubKey;
@@ -111,7 +111,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	// endregion
 
 	@Override
-	public Promise<SerialSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
+	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
 		Namespace fs = ensureNamespace(space);
 		return fs.getMetadata(filename)
 				.thenCompose(signedMetadata -> {
@@ -140,9 +140,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 														logger.trace("Trying to download and cache file at " + filename + " from " + node + "...");
 														return node.download(space, filename, offset, limit)
 																.thenApply(supplier -> {
-																	SerialSplitter<DataFrame> splitter = SerialSplitter.create(supplier);
+																	ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(supplier);
 
-																	splitter.addOutput().set(SerialConsumer.ofPromise(fs.save(filename, offset)));
+																	splitter.addOutput().set(ChannelConsumer.ofPromise(fs.save(filename, offset)));
 
 																	return splitter.addOutput()
 																			.getSupplier()
@@ -156,7 +156,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	}
 
 	@Override
-	public Promise<SerialConsumer<DataFrame>> upload(PubKey space, String filename, long offset) {
+	public Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset) {
 		if (managedPubKeys.contains(space)) {
 			return ensureNamespace(space).save(filename, offset);
 		}
@@ -179,12 +179,12 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 								logger.trace("Trying to upload and cache file at {} at {}", filename, node);
 								return node.upload(space, filename, offset)
 										.thenApply(consumer -> {
-											SerialZeroBuffer<DataFrame> buffer = new SerialZeroBuffer<>();
+											ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
 
-											SerialSplitter<DataFrame> splitter = SerialSplitter.<DataFrame>create()
+											ChannelSplitter<DataFrame> splitter = ChannelSplitter.<DataFrame>create()
 													.withInput(buffer.getSupplier());
 
-											splitter.addOutput().set(SerialConsumer.ofPromise(fs.save(filename, offset)));
+											splitter.addOutput().set(ChannelConsumer.ofPromise(fs.save(filename, offset)));
 											splitter.addOutput().set(consumer);
 
 											MaterializedPromise<Void> process = splitter.startProcess();
@@ -386,7 +386,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 																.thenCompose(frames -> {
 																	assert frames.size() == 1;
 																	return save(filename, metadata.getSize())
-																			.thenCompose(SerialSupplier.of(frames.get(0))::streamTo);
+																			.thenCompose(ChannelSupplier.of(frames.get(0))::streamTo);
 																})
 																// override our metadata
 																// TODO anton: for file truncations to work, lazyOverrides in LocalFsClient should be disabled
@@ -447,21 +447,21 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 									return node.download(space, fileName, thirdFrame.getCheckpoint().getValue().getPosition(), partSize - buf.readRemaining())
 											.thenCompose(supplier ->
 													save(filename, ourSize)
-															.thenCompose(SerialSuppliers.concat(
-																	SerialSupplier.of(ourLastFrame, DataFrame.of(buf)),
+															.thenCompose(ChannelSuppliers.concat(
+																	ChannelSupplier.of(ourLastFrame, DataFrame.of(buf)),
 																	supplier
 															)::streamTo));
 								});
 					});
 		}
 
-		public Promise<SerialConsumer<DataFrame>> save(String filename, long offset) {
+		public Promise<ChannelConsumer<DataFrame>> save(String filename, long offset) {
 			logger.trace("uploading to local storage {}, offset: {}", filename, offset);
 			return folder.upload(filename, offset)
-					.thenApply(consumer -> consumer.apply(FramesIntoStorage.create(filename, space, checkpointStorage)));
+					.thenApply(consumer -> consumer.transformWith(FramesIntoStorage.create(filename, space, checkpointStorage)));
 		}
 
-		public Promise<SerialSupplier<DataFrame>> load(String fileName, long offset, long length) {
+		public Promise<ChannelSupplier<DataFrame>> load(String fileName, long offset, long length) {
 			logger.trace("downloading local copy of {} at {}, offset: {}, length: {}", fileName, space, offset, length);
 			return checkpointStorage.getCheckpoints(fileName)
 					.thenCompose(checkpoints -> {
@@ -471,7 +471,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 						int start = extremes[0];
 						int finish = extremes[1];
 						return folder.download(fileName, checkpoints[start], checkpoints[finish] - checkpoints[start])
-								.thenApply(supplier -> supplier.apply(FramesFromStorage.create(fileName, checkpointStorage, checkpoints, start, finish)));
+								.thenApply(supplier -> supplier.transformWith(FramesFromStorage.create(fileName, checkpointStorage, checkpoints, start, finish)));
 					});
 		}
 

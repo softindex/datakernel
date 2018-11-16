@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.functional.Try;
@@ -27,7 +28,6 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
-import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +39,8 @@ import java.time.Duration;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
 import static io.datakernel.file.FileUtils.isWildcard;
-import static io.datakernel.serial.SerialConsumer.getAcknowledgement;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -188,7 +188,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 					logger.trace("uploading file {} to partitions {}...", meta, uploadTargets);
 
-					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create()
+					ChannelSplitter<ByteBuf> splitter = ChannelSplitter.<ByteBuf>create()
 							.withInput(localStorage.downloadSerial(name));
 
 					// recycle original non-slice buffer

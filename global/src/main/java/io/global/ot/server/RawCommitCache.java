@@ -20,9 +20,9 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ToDoException;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RawCommit;
 
@@ -38,9 +38,9 @@ final class RawCommitCache implements AsyncConsumer<RawCommitEntry> {
 	public RawCommitCache() {
 	}
 
-	public static RawCommitCache of(SerialSupplier<RawCommitEntry> supplier) {
+	public static RawCommitCache of(ChannelSupplier<RawCommitEntry> supplier) {
 		RawCommitCache cache = new RawCommitCache();
-		supplier.streamTo(SerialConsumer.of(cache))
+		supplier.streamTo(ChannelConsumer.of(cache))
 				.whenResult($ -> cache.onEndOfStream())
 				.whenException(cache::onError);
 		return cache;

@@ -21,10 +21,10 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfBuf;
 import io.datakernel.http.HttpHeaderValue.ParserIntoList;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 
@@ -42,7 +42,7 @@ import static java.util.Collections.singletonList;
 public abstract class HttpMessage {
 	protected Map<HttpHeader, HttpHeaderValue> headers = new LinkedHashMap<>();
 	protected Map<String, HttpCookie> cookies;
-	protected SerialSupplier<ByteBuf> bodySupplier;
+	protected ChannelSupplier<ByteBuf> bodySupplier;
 	protected ByteBuf body;
 	protected boolean useGzip;
 
@@ -201,7 +201,7 @@ public abstract class HttpMessage {
 			this.body = null;
 			return Promise.of(body);
 		}
-		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
+		ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		this.bodySupplier = null;
 		return bodySupplier.toCollector(ByteBufQueue.collector(maxBodySize));
 	}
@@ -212,7 +212,7 @@ public abstract class HttpMessage {
 
 	public final Promise<Void> ensureBody(int maxBodySize) {
 		if (body != null) return Promise.of(null);
-		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
+		ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		if (bodySupplier != null) {
 			this.bodySupplier = null;
 			return bodySupplier.toCollector(ByteBufQueue.collector(maxBodySize))
@@ -228,14 +228,14 @@ public abstract class HttpMessage {
 		return Promise.of(null);
 	}
 
-	public SerialSupplier<ByteBuf> getBodyStream() {
+	public ChannelSupplier<ByteBuf> getBodyStream() {
 		checkState(body != null || bodySupplier != null, "Either body or body supplier should be present");
 		if (body != null) {
 			ByteBuf body = this.body;
 			this.body = null;
-			return SerialSupplier.of(body);
+			return ChannelSupplier.of(body);
 		}
-		SerialSupplier<ByteBuf> bodySupplier = this.bodySupplier;
+		ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		this.bodySupplier = null;
 		return bodySupplier;
 	}
@@ -248,7 +248,7 @@ public abstract class HttpMessage {
 		setBody(ByteBuf.wrapForReading(body));
 	}
 
-	public void setBodyStream(SerialSupplier<ByteBuf> bodySupplier) {
+	public void setBodyStream(ChannelSupplier<ByteBuf> bodySupplier) {
 		this.bodySupplier = bodySupplier;
 	}
 

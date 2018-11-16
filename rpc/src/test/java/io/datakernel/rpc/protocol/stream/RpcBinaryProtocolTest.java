@@ -18,14 +18,14 @@ package io.datakernel.rpc.protocol.stream;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.csp.process.ChannelBinaryDeserializer;
+import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelLZ4Compressor;
+import io.datakernel.csp.process.ChannelLZ4Decompressor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.serial.processor.SerialBinaryDeserializer;
-import io.datakernel.serial.processor.SerialBinarySerializer;
-import io.datakernel.serial.processor.SerialLZ4Compressor;
-import io.datakernel.serial.processor.SerialLZ4Decompressor;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamSupplier;
@@ -87,14 +87,13 @@ public final class RpcBinaryProtocolTest {
 		String testMessage = "Test";
 		List<RpcMessage> sourceList = IntStream.range(0, countRequests).mapToObj(i -> RpcMessage.of(i, testMessage)).collect(toList());
 
-		SerialBinarySerializer.create(bufferSerializer)
-				.withInitialBufferSize(MemSize.of(1))
-				.withMaxMessageSize(MemSize.of(64))
-
-				.apply(StreamSupplier.ofIterable(sourceList))
-				.apply(SerialLZ4Compressor.createFastCompressor())
-				.apply(SerialLZ4Decompressor.create())
-				.apply(SerialBinaryDeserializer.create(bufferSerializer))
+		StreamSupplier.ofIterable(sourceList)
+				.transformWith(ChannelBinarySerializer.create(bufferSerializer)
+						.withInitialBufferSize(MemSize.of(1))
+						.withMaxMessageSize(MemSize.of(64)))
+				.transformWith(ChannelLZ4Compressor.createFastCompressor())
+				.transformWith(ChannelLZ4Decompressor.create())
+				.transformWith(ChannelBinaryDeserializer.create(bufferSerializer))
 				.toList()
 				.whenComplete(assertComplete(list -> {
 					assertEquals(countRequests, list.size());

@@ -21,13 +21,13 @@ import io.datakernel.async.Promises;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpClient.JmxInspector;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -54,7 +54,7 @@ public final class AsyncHttpClientTest {
 	public static void startServer() throws IOException {
 		AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request ->
 				Promise.of(HttpResponse.ok200()
-						.withBodyStream(SerialSupplier.ofStream(
+						.withBodyStream(ChannelSupplier.ofStream(
 								IntStream.range(0, HELLO_WORLD.length)
 										.mapToObj(idx -> {
 											ByteBuf buf = ByteBufPool.allocate(1);

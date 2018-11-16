@@ -20,7 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.serial.processor.SerialTransformer;
+import io.datakernel.csp.process.AbstractChannelTransformer;
 import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
@@ -34,7 +34,7 @@ import static io.global.ot.util.BinaryDataFormats2.encode;
  * <p>
  * It's counterpart is the {@link FrameDecoder}.
  */
-public final class FrameEncoder extends SerialTransformer<FrameEncoder, DataFrame, ByteBuf> {
+public final class FrameEncoder extends AbstractChannelTransformer<FrameEncoder, DataFrame, ByteBuf> {
 	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 
 	@Override

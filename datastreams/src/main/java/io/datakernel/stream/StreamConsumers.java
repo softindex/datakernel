@@ -19,8 +19,8 @@ package io.datakernel.stream;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.exception.UncheckedException;
-import io.datakernel.serial.SerialConsumer;
 
 import java.util.ArrayDeque;
 import java.util.EnumSet;
@@ -103,12 +103,12 @@ public final class StreamConsumers {
 	}
 
 	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
-		private final SerialConsumer<T> consumer;
+		private final ChannelConsumer<T> consumer;
 		private final ArrayDeque<T> deque = new ArrayDeque<>();
 		private final SettablePromise<Void> result = new SettablePromise<>();
 		private boolean writing;
 
-		OfSerialConsumerImpl(SerialConsumer<T> consumer) {
+		OfSerialConsumerImpl(ChannelConsumer<T> consumer) {
 			this.consumer = consumer;
 		}
 

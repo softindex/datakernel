@@ -19,10 +19,10 @@ package io.global.fs.transformers;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.process.AbstractChannelTransformer;
 import io.datakernel.exception.ParseException;
-import io.datakernel.serial.ByteBufsParser;
-import io.datakernel.serial.ByteBufsSupplier;
-import io.datakernel.serial.processor.SerialTransformer;
 import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
@@ -36,7 +36,7 @@ import static io.global.ot.util.BinaryDataFormats2.decode;
  * <p>
  * It's counterpart is the {@link FrameEncoder}.
  */
-public final class FrameDecoder extends SerialTransformer<FrameDecoder, ByteBuf, DataFrame> {
+public final class FrameDecoder extends AbstractChannelTransformer<FrameDecoder, ByteBuf, DataFrame> {
 	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 
 	@Override
@@ -46,7 +46,7 @@ public final class FrameDecoder extends SerialTransformer<FrameDecoder, ByteBuf,
 
 	@Override
 	protected void doProcess() {
-		ByteBufsSupplier.of(input)
+		BinaryChannelSupplier.of(input)
 				.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes().andThen(this::parseDataFrame))
 				.streamTo(output)
 				.whenResult($ -> completeProcess())

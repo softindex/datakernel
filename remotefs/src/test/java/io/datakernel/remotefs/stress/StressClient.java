@@ -17,11 +17,11 @@
 package io.datakernel.remotefs.stress;
 
 import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.csp.file.ChannelFileReader;
+import io.datakernel.csp.file.ChannelFileWriter;
+import io.datakernel.csp.process.ChannelBinarySerializer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
-import io.datakernel.serial.file.SerialFileReader;
-import io.datakernel.serial.file.SerialFileWriter;
-import io.datakernel.serial.processor.SerialBinarySerializer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
@@ -76,7 +76,7 @@ class StressClient {
 
 				Path file = clientStorage.resolve(fileName);
 
-				SerialFileReader.readFile(executor, file).withBufferSize(MemSize.kilobytes(16))
+				ChannelFileReader.readFile(executor, file).withBufferSize(MemSize.kilobytes(16))
 						.streamTo(client.uploadSerial(fileName))
 						.whenComplete(($, e) -> {
 							if (e == null) {
@@ -100,7 +100,7 @@ class StressClient {
 			if (fileName == null) return;
 
 			try {
-				SerialFileWriter consumer = SerialFileWriter.create(executor, downloads.resolve(fileName));
+				ChannelFileWriter consumer = ChannelFileWriter.create(executor, downloads.resolve(fileName));
 
 				client.download(fileName, 0)
 						.thenCompose(supplier -> supplier.streamTo(consumer))
@@ -193,8 +193,8 @@ class StressClient {
 		obj.ip = InetAddress.getLocalHost();
 
 		StreamSupplier<TestObject> supplier = StreamSupplier.ofIterable(Collections.singletonList(obj));
-		SerialBinarySerializer<TestObject> serializer = SerialBinarySerializer.create(bufferSerializer)
-				.withInitialBufferSize(SerialBinarySerializer.MAX_SIZE);
+		ChannelBinarySerializer<TestObject> serializer = ChannelBinarySerializer.create(bufferSerializer)
+				.withInitialBufferSize(ChannelBinarySerializer.MAX_SIZE);
 
 //		supplier.with(serializer).streamTo(
 //				client.uploadStream("someName" + i));

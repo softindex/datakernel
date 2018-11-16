@@ -18,7 +18,7 @@ package io.datakernel.stream;
 
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.SettablePromise;
-import io.datakernel.serial.SerialSupplier;
+import io.datakernel.csp.ChannelSupplier;
 
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -190,9 +190,9 @@ public final class StreamSuppliers {
 	}
 
 	static class OfSerialSupplierImpl<T> extends AbstractStreamSupplier<T> {
-		private final SerialSupplier<T> supplier;
+		private final ChannelSupplier<T> supplier;
 
-		public OfSerialSupplierImpl(SerialSupplier<T> supplier) {
+		public OfSerialSupplierImpl(ChannelSupplier<T> supplier) {
 			this.supplier = supplier;
 		}
 

@@ -1,12 +1,12 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.Promise;
-import io.datakernel.serial.SerialBuffer;
+import io.datakernel.csp.queue.ChannelBuffer;
 
 public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 	public static final int DEFAULT_BUFFER_SIZE = 10;
 
-	private final SerialBuffer<T> buffer;
+	private final ChannelBuffer<T> buffer;
 
 	public StreamConsumerEndpoint() {
 		this(0, DEFAULT_BUFFER_SIZE);
@@ -17,7 +17,7 @@ public final class StreamConsumerEndpoint<T> extends AbstractStreamConsumer<T> i
 	}
 
 	private StreamConsumerEndpoint(int bufferMinSize, int bufferMaxSize) {
-		this.buffer = new SerialBuffer<>(bufferMinSize, bufferMaxSize);
+		this.buffer = new ChannelBuffer<>(bufferMinSize, bufferMaxSize);
 	}
 
 	@Override

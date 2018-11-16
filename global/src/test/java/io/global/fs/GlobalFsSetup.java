@@ -19,11 +19,11 @@ package io.global.fs;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
@@ -88,7 +88,7 @@ public final class GlobalFsSetup {
 		String text1 = "Hello world, this is some bytes ";
 		String text2 = "to be sent through the GlobalFs HTTP interface";
 
-		SerialSupplier<ByteBuf> supplier = SerialSupplier.of(ByteBuf.wrapForReading(text1.getBytes(UTF_8)), ByteBuf.wrapForReading(text2.getBytes(UTF_8)));
+		ChannelSupplier<ByteBuf> supplier = ChannelSupplier.of(ByteBuf.wrapForReading(text1.getBytes(UTF_8)), ByteBuf.wrapForReading(text2.getBytes(UTF_8)));
 
 		discoveryService.announce(alice.getPubKey(), sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
 				.whenResult($ -> System.out.println("Servers announced"))

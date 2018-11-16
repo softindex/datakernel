@@ -299,7 +299,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 			}
 		}
 		return unsortedStream
-				.apply(StreamSorter.create(
+				.transformWith(StreamSorter.create(
 						StreamSorterStorageImpl.create(executorService, bufferSerializer, temporarySortDir),
 						Function.identity(), keyComparator, false, sorterItemsInMemory));
 	}
@@ -420,9 +420,9 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 			MapperProjection<S, R> mapper = createMapper(sequence.type, resultClass,
 					queryKeys, measures.stream().filter(sequence.fields::contains).collect(toList()),
 					classLoader);
-			StreamSupplier<S> stream = sequence.stream;
-			StreamMap<S, R> modifier = StreamMap.create(mapper);
-			return stream.apply(modifier).apply((StreamStats<R>) stats.mergeMapOutput);
+			return sequence.stream
+					.transformWith(StreamMap.create(mapper))
+					.transformWith((StreamStats<R>) stats.mergeMapOutput);
 		}
 
 		StreamReducer<K, R, Object> streamReducer = StreamReducer.create(Comparable::compareTo);
@@ -444,10 +444,11 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 
 			sequence.stream.streamTo(
 					streamReducer.newInput(extractKeyFunction, reducer)
-							.apply((StreamStats<S>) stats.mergeReducerInput));
+							.transformWith((StreamStats<S>) stats.mergeReducerInput));
 		}
 
-		return streamReducer.getOutput().apply((StreamStats<R>) stats.mergeReducerOutput);
+		return streamReducer.getOutput()
+				.transformWith((StreamStats<R>) stats.mergeReducerOutput);
 	}
 
 	private <T> StreamSupplier<T> sequenceStream(AggregationPredicate where,
@@ -472,9 +473,9 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 			Class<T> chunkRecordClass, DefiningClassLoader queryClassLoader) {
 		StreamSupplier<T> supplier = aggregationChunkStorage.readStream(structure, chunk.getMeasures(), chunkRecordClass, chunk.getChunkId(), classLoader);
 		if (where != AggregationPredicates.alwaysTrue()) {
-			StreamFilter<T> streamFilter = StreamFilter.create(
-					createPredicate(chunkRecordClass, where, queryClassLoader));
-			return supplier.apply(streamFilter);
+			return supplier
+					.transformWith(StreamFilter.create(
+							createPredicate(chunkRecordClass, where, queryClassLoader)));
 		}
 		return supplier;
 	}

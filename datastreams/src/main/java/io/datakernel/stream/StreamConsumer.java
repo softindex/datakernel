@@ -19,8 +19,8 @@ package io.datakernel.stream;
 import io.datakernel.async.Cancellable;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
-import io.datakernel.serial.AbstractSerialConsumer;
-import io.datakernel.serial.SerialConsumer;
+import io.datakernel.csp.AbstractChannelConsumer;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.stream.StreamConsumers.ClosingWithErrorImpl;
 import io.datakernel.stream.StreamConsumers.Idle;
 import io.datakernel.stream.StreamConsumers.OfSerialConsumerImpl;
@@ -64,7 +64,7 @@ public interface StreamConsumer<T> extends Cancellable {
 		return new ClosingWithErrorImpl<>(e);
 	}
 
-	static <T> StreamConsumer<T> ofSerialConsumer(SerialConsumer<T> consumer) {
+	static <T> StreamConsumer<T> ofSerialConsumer(ChannelConsumer<T> consumer) {
 		return new OfSerialConsumerImpl<>(consumer);
 	}
 
@@ -77,18 +77,18 @@ public interface StreamConsumer<T> extends Cancellable {
 				.withAcknowledgement(ack -> ack.both(extraAcknowledge));
 	}
 
-	default <R> R apply(StreamConsumerFunction<T, R> fn) {
-		return fn.apply(this);
+	default <R> R transformWith(StreamConsumerTransformer<T, R> fn) {
+		return fn.transform(this);
 	}
 
 	default StreamConsumer<T> withLateBinding() {
-		return getCapabilities().contains(LATE_BINDING) ? this : apply(StreamLateBinder.create());
+		return getCapabilities().contains(LATE_BINDING) ? this : transformWith(StreamLateBinder.create());
 	}
 
-	default SerialConsumer<T> asSerialConsumer() {
+	default ChannelConsumer<T> asSerialConsumer() {
 		StreamSupplierEndpoint<T> endpoint = new StreamSupplierEndpoint<>();
 		endpoint.streamTo(this);
-		return new AbstractSerialConsumer<T>(this) {
+		return new AbstractChannelConsumer<T>(this) {
 			@Override
 			protected Promise<Void> doAccept(T item) {
 				if (item != null) return endpoint.put(item);

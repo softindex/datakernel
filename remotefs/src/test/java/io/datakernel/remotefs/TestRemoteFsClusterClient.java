@@ -19,11 +19,11 @@ package io.datakernel.remotefs;
 import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
 import org.junit.Rule;
@@ -100,7 +100,7 @@ public final class TestRemoteFsClusterClient {
 		String resultFile = "file.txt";
 
 		client.upload(resultFile)
-				.thenCompose(SerialSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8)))::streamTo)
+				.thenCompose(ChannelSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8)))::streamTo)
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete($ -> {
 					int uploaded = 0;
@@ -124,7 +124,7 @@ public final class TestRemoteFsClusterClient {
 		Files.write(serverStorages[numOfServer].resolve(file), content.getBytes(UTF_8));
 
 		client.downloadSerial(file, 0)
-				.streamTo(SerialFileWriter.create(executor, clientStorage.resolve(file)))
+				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(file)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete($ ->
 						assertEquals(new String(readAllBytes(clientStorage.resolve(file)), UTF_8), content)));
@@ -151,7 +151,7 @@ public final class TestRemoteFsClusterClient {
 
 		String[] files = {"file_1.txt", "file_2.txt", "file_3.txt", "other.txt"};
 
-		Promises.all(Arrays.stream(files).map(f -> SerialSupplier.of(data.slice()).streamTo(client.uploadSerial(f))))
+		Promises.all(Arrays.stream(files).map(f -> ChannelSupplier.of(data.slice()).streamTo(client.uploadSerial(f))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete($ -> {
 					assertEquals(new String(readAllBytes(serverStorages[1].resolve("file_1.txt")), UTF_8), content);
@@ -168,7 +168,7 @@ public final class TestRemoteFsClusterClient {
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));
 
 		Promises.runSequence(IntStream.range(0, 1000)
-				.mapToObj(i -> SerialSupplier.of(data.slice()).streamTo(client.uploadSerial("file_uploaded_" + i + ".txt"))))
+				.mapToObj(i -> ChannelSupplier.of(data.slice()).streamTo(client.uploadSerial("file_uploaded_" + i + ".txt"))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete($ -> {
 					for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
@@ -183,7 +183,7 @@ public final class TestRemoteFsClusterClient {
 	public void testNotEnoughUploads() {
 		client.withReplicationCount(client.getClients().size()); // max possible replication
 
-		SerialSupplier.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(client.uploadSerial("file_uploaded.txt"))
+		ChannelSupplier.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(client.uploadSerial("file_uploaded.txt"))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, "Didn't connect to enough partitions"));
 	}
@@ -193,7 +193,7 @@ public final class TestRemoteFsClusterClient {
 		String fileName = "i_dont_exist.txt";
 
 		client.downloadSerial(fileName)
-				.streamTo(SerialConsumer.of(AsyncConsumer.of(ByteBuf::recycle)))
+				.streamTo(ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, fileName));
 	}

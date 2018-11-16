@@ -18,13 +18,13 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpServer.Inspector;
-import io.datakernel.serial.SerialSupplier;
 
 import java.net.InetAddress;
 import java.util.Arrays;
@@ -210,7 +210,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onHeadersReceived(ByteBuf body, SerialSupplier<ByteBuf> bodySupplier) {
+	protected void onHeadersReceived(ByteBuf body, ChannelSupplier<ByteBuf> bodySupplier) {
 		request.body = body;
 		request.bodySupplier = bodySupplier;
 		request.setRemoteAddress(remoteAddress);

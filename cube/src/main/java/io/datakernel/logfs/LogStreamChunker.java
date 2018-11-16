@@ -16,27 +16,27 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.AbstractCommunicatingProcess;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelInput;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialInput;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.time.CurrentTimeProvider;
 
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
-public final class LogStreamChunker extends AbstractAsyncProcess implements SerialInput<ByteBuf> {
+public final class LogStreamChunker extends AbstractCommunicatingProcess implements ChannelInput<ByteBuf> {
 	private final CurrentTimeProvider currentTimeProvider;
 	private final DateTimeFormatter datetimeFormat;
 	private final LogFileSystem fileSystem;
 	private final String logPartition;
 
-	private SerialSupplier<ByteBuf> input;
-	private SerialConsumer<ByteBuf> currentConsumer;
+	private ChannelSupplier<ByteBuf> input;
+	private ChannelConsumer<ByteBuf> currentConsumer;
 
 	private String currentChunkName;
 
@@ -56,7 +56,7 @@ public final class LogStreamChunker extends AbstractAsyncProcess implements Seri
 	}
 
 	@Override
-	public MaterializedPromise<Void> set(SerialSupplier<ByteBuf> input) {
+	public MaterializedPromise<Void> set(ChannelSupplier<ByteBuf> input) {
 		this.input = input;
 		if (this.input != null) startProcess();
 		return getProcessResult();

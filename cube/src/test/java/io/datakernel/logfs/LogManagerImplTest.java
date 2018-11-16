@@ -5,9 +5,9 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.StreamConsumerToList;
@@ -89,9 +89,9 @@ public class LogManagerImplTest {
 		}
 
 		@Override
-		public Promise<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
+		public Promise<ChannelSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
 			List<ByteBuf> byteBufs = getOffset(partitions.get(logPartition).get(logFile), startPosition);
-			return Promise.of(SerialSupplier.ofIterable(byteBufs));
+			return Promise.of(ChannelSupplier.ofIterable(byteBufs));
 		}
 
 		private static List<ByteBuf> getOffset(List<ByteBuf> byteBufs, long startPosition) {
@@ -106,9 +106,9 @@ public class LogManagerImplTest {
 		}
 
 		@Override
-		public Promise<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
+		public Promise<ChannelConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
 			List<ByteBuf> bufs = partitions.get(logPartition).get(logFile);
-			return Promise.of(SerialConsumer.of(AsyncConsumer.of(bufs::add)));
+			return Promise.of(ChannelConsumer.of(AsyncConsumer.of(bufs::add)));
 		}
 	}
 

@@ -18,9 +18,9 @@ package io.global.ot.api;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -166,18 +166,18 @@ public interface GlobalOTNode {
 		}
 	}
 
-	Promise<SerialSupplier<CommitEntry>> download(RepoID repositoryId,
+	Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId,
 			Set<CommitId> bases, Set<CommitId> heads);
 
-	default SerialSupplier<CommitEntry> downloader(RepoID repositoryId,
+	default ChannelSupplier<CommitEntry> downloader(RepoID repositoryId,
 			Set<CommitId> bases, Set<CommitId> heads) {
-		return SerialSupplier.ofPromise(download(repositoryId, bases, heads));
+		return ChannelSupplier.ofPromise(download(repositoryId, bases, heads));
 	}
 
-	Promise<SerialConsumer<CommitEntry>> upload(RepoID repositoryId);
+	Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId);
 
-	default SerialConsumer<CommitEntry> uploader(RepoID repositoryId) {
-		return SerialConsumer.ofPromise(upload(repositoryId));
+	default ChannelConsumer<CommitEntry> uploader(RepoID repositoryId) {
+		return ChannelConsumer.ofPromise(upload(repositoryId));
 	}
 
 }

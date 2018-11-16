@@ -21,13 +21,13 @@ import io.datakernel.async.AsyncSuppliers;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialSuppliers;
-import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.MemSize;
 
@@ -109,7 +109,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
 		return mainClient.upload(filename, offset);
 	}
 
@@ -122,7 +122,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	 * @return promise for stream supplier of byte buffers
 	 */
 	@Override
-	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		checkNotNull(filename, "fileName");
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
@@ -177,7 +177,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 				});
 	}
 
-	private Promise<SerialSupplier<ByteBuf>> downloadToCache(String fileName, long offset, long length, long sizeInCache, long sizeInMain) {
+	private Promise<ChannelSupplier<ByteBuf>> downloadToCache(String fileName, long offset, long length, long sizeInCache, long sizeInMain) {
 		long size = length == -1 ? length : length + offset - sizeInCache;
 		return mainClient.download(fileName, sizeInCache, size)
 				.thenCompose(supplier -> {
@@ -189,14 +189,14 @@ public class CachedFsClient implements FsClient, EventloopService {
 
 					return ensureSpace()
 							.thenApply($ -> {
-								SerialSplitter<ByteBuf> splitter = SerialSplitter.create(supplier);
+								ChannelSplitter<ByteBuf> splitter = ChannelSplitter.create(supplier);
 								long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
 								splitter.addOutput().set(cacheClient.uploadSerial(fileName, cacheOffset));
-								SerialSupplier<ByteBuf> prefix = sizeInCache != 0 ?
+								ChannelSupplier<ByteBuf> prefix = sizeInCache != 0 ?
 										cacheClient.downloadSerial(fileName, offset, sizeInCache) :
-										SerialSupplier.of();
+										ChannelSupplier.of();
 
-								return SerialSuppliers.concat(prefix, splitter.addOutput().getSupplier())
+								return ChannelSuppliers.concat(prefix, splitter.addOutput().getSupplier())
 										.withEndOfStream(eos -> eos
 												.both(splitter.getProcessResult())
 												.thenCompose($2 -> {

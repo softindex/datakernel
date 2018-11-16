@@ -22,7 +22,7 @@ import io.datakernel.async.Promise;
 import java.util.Iterator;
 
 /**
- * Represents {@link AbstractStreamTransformer_1_1}, which created with iterator with {@link AbstractStreamSupplier}
+ * Represents {@link AbstractStreamTransformer}, which created with iterator with {@link AbstractStreamSupplier}
  * which will stream to this
  *
  * @param <T> type of received data

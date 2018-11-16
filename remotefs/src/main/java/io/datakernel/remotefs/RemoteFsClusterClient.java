@@ -21,15 +21,15 @@ import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.functional.Try;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.SerialSplitter;
 import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,8 +40,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
-import static io.datakernel.serial.SerialConsumer.getAcknowledgement;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.*;
 import static java.util.Collections.emptyList;
@@ -240,7 +240,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
 		checkNotNull(filename, "fileName");
 
 		List<Object> selected = serverSelector.selectFrom(filename, aliveClients.keySet(), replicationCount);
@@ -250,9 +250,9 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 		class ConsumerWithId {
 			final Object id;
-			final SerialConsumer<ByteBuf> consumer;
+			final ChannelConsumer<ByteBuf> consumer;
 
-			ConsumerWithId(Object id, SerialConsumer<ByteBuf> consumer) {
+			ConsumerWithId(Object id, ChannelConsumer<ByteBuf> consumer) {
 				this.id = id;
 				this.consumer = consumer;
 			}
@@ -276,7 +276,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						return ofFailure("Couldn't connect to any partition to upload file " + filename, tries);
 					}
 
-					SerialSplitter<ByteBuf> splitter = SerialSplitter.<ByteBuf>create().lenient();
+					ChannelSplitter<ByteBuf> splitter = ChannelSplitter.<ByteBuf>create().lenient();
 
 					MaterializedPromise<List<Try<Void>>> uploadResults = Promises.collect(toList(), successes.stream()
 							.map(s -> getAcknowledgement(cb ->
@@ -289,7 +289,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 						logger.trace("uploading file {} to {}, {}", filename, successes.stream().map(s -> s.id.toString()).collect(joining(", ", "[", "]")), this);
 					}
 
-					SerialConsumer<ByteBuf> consumer = splitter.getInput().getConsumer();
+					ChannelConsumer<ByteBuf> consumer = splitter.getInput().getConsumer();
 
 					// check number of uploads only here, so even if there were less connections
 					// than replicationCount, they will still upload
@@ -315,7 +315,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long length) {
 		checkNotNull(filename, "fileName");
 
 		class PartitionIdWithFileSize {

@@ -18,8 +18,8 @@ package io.global.fs.transformers;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.process.AbstractChannelTransformer;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.serial.processor.SerialTransformer;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
@@ -33,7 +33,7 @@ import org.spongycastle.crypto.digests.SHA256Digest;
  * <p>
  * It's counterpart is the {@link FrameSigner}.
  */
-abstract class FramesToByteBufs extends SerialTransformer<FramesToByteBufs, DataFrame, ByteBuf> {
+abstract class FramesToByteBufs extends AbstractChannelTransformer<FramesToByteBufs, DataFrame, ByteBuf> {
 	private final PubKey pubKey;
 	private final String filename;
 

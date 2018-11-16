@@ -21,12 +21,12 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.process.ChannelByteRanger;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.processor.SerialByteRanger;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Initializable;
 import io.global.common.*;
@@ -34,9 +34,9 @@ import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsMetadata;
 import io.global.fs.api.GlobalFsNode;
+import io.global.fs.transformers.ChannelFileCipher;
 import io.global.fs.transformers.FrameSigner;
 import io.global.fs.transformers.FrameVerifier;
-import io.global.fs.transformers.SerialFileCipher;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.List;
@@ -72,7 +72,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 		this.checkpointPosStrategy = checkpointPosStrategy;
 	}
 
-	private Promise<SerialConsumer<ByteBuf>> doUpload(String filename, @Nullable GlobalFsMetadata metadata, long offset, long skip, SHA256Digest startingDigest) {
+	private Promise<ChannelConsumer<ByteBuf>> doUpload(String filename, @Nullable GlobalFsMetadata metadata, long offset, long skip, SHA256Digest startingDigest) {
 		long[] size = {offset + skip};
 		Promise<SimKey> simKey = metadata != null ?
 				driver.getKey(pubKey, metadata.getSimKeyHash()) :
@@ -80,10 +80,10 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 		return simKey.thenCompose(key ->
 				node.upload(pubKey, filename, offset + skip)
 						.thenApply(consumer -> consumer
-								.apply(FrameSigner.create(privKey, checkpointPosStrategy, filename, offset + skip, startingDigest))
-								.apply(SerialFileCipher.create(key, filename, offset + skip))
+								.transformWith(FrameSigner.create(privKey, checkpointPosStrategy, filename, offset + skip, startingDigest))
+								.transformWith(ChannelFileCipher.create(key, filename, offset + skip))
 								.peek(buf -> size[0] += buf.readRemaining())
-								.apply(SerialByteRanger.drop(skip))
+								.transformWith(ChannelByteRanger.drop(skip))
 								.withAcknowledgement(ack -> ack
 										.thenCompose($ -> {
 											GlobalFsMetadata updatedMetadata =
@@ -93,7 +93,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 	}
 
 	@Override
-	public Promise<SerialConsumer<ByteBuf>> upload(String filename, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
 		// cut off the part of the file that is already on the local node
 		return node.getLocalMetadata(pubKey, filename)
 				.thenCompose(signedMetadata -> {
@@ -131,7 +131,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 	}
 
 	@Override
-	public Promise<SerialSupplier<ByteBuf>> download(String filename, long offset, long limit) {
+	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long limit) {
 		return node.getMetadata(pubKey, filename)
 				.thenCompose(signedMetadata -> {
 					if (signedMetadata == null) {
@@ -145,8 +145,8 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 								GlobalFsMetadata metadata = signedMetadata.getValue();
 								return driver.getKey(pubKey, metadata.getSimKeyHash())
 										.thenApply(key -> supplier
-												.apply(FrameVerifier.create(pubKey, filename, offset, limit))
-												.apply(SerialFileCipher.create(key, filename, offset)));
+												.transformWith(FrameVerifier.create(pubKey, filename, offset, limit))
+												.transformWith(ChannelFileCipher.create(key, filename, offset)));
 							});
 				});
 	}

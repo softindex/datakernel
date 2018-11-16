@@ -18,15 +18,15 @@ package io.datakernel.logfs;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.file.ChannelFileReader;
+import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.file.SerialFileReader;
-import io.datakernel.serial.file.SerialFileWriter;
 import io.datakernel.stream.stats.StreamRegistry;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsDetailed;
@@ -42,7 +42,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.serial.file.SerialFileWriter.CREATE_OPTIONS;
+import static io.datakernel.csp.file.ChannelFileWriter.CREATE_OPTIONS;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.nio.file.StandardOpenOption.READ;
 
@@ -147,21 +147,21 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@Override
-	public Promise<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
+	public Promise<ChannelSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
 				.whenComplete(promiseRead.recordStats())
-				.thenApply(file -> SerialFileReader.readFile(file).withBufferSize(readBlockSize).withOffset(startPosition)
-						.apply(streamReads.register(logPartition + ":" + logFile + "@" + startPosition))
-						.apply(streamReadStats));
+				.thenApply(file -> ChannelFileReader.readFile(file).withBufferSize(readBlockSize).withOffset(startPosition)
+						.transformWith(streamReads.register(logPartition + ":" + logFile + "@" + startPosition))
+						.transformWith(streamReadStats));
 	}
 
 	@Override
-	public Promise<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
+	public Promise<ChannelConsumer<ByteBuf>> write(String logPartition, LogFile logFile) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), CREATE_OPTIONS)
 				.whenComplete(promiseWrite.recordStats())
-				.thenApply(file -> SerialFileWriter.create(file).withForceOnClose(true)
-						.apply(streamWrites.register(logPartition + ":" + logFile))
-						.apply(streamWriteStats));
+				.thenApply(file -> ChannelFileWriter.create(file).withForceOnClose(true)
+						.transformWith(streamWrites.register(logPartition + ":" + logFile))
+						.transformWith(streamWriteStats));
 	}
 
 	@Override

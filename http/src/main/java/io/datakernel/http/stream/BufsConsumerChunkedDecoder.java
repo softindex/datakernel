@@ -16,27 +16,27 @@
 
 package io.datakernel.http.stream;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.csp.AbstractCommunicatingProcess;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelOutput;
+import io.datakernel.csp.binary.BinaryChannelInput;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.csp.dsl.WithBinaryChannelInput;
+import io.datakernel.csp.dsl.WithChannelTransformer;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
-import io.datakernel.serial.ByteBufsInput;
-import io.datakernel.serial.ByteBufsSupplier;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialOutput;
-import io.datakernel.serial.processor.WithByteBufsInput;
-import io.datakernel.serial.processor.WithSerialToSerial;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
-import static io.datakernel.serial.ByteBufsParser.assertBytes;
-import static io.datakernel.serial.ByteBufsParser.ofCrlfTerminatedBytes;
+import static io.datakernel.csp.binary.ByteBufsParser.assertBytes;
+import static io.datakernel.csp.binary.ByteBufsParser.ofCrlfTerminatedBytes;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.Math.min;
 
-public final class BufsConsumerChunkedDecoder extends AbstractAsyncProcess
-		implements WithSerialToSerial<BufsConsumerChunkedDecoder, ByteBuf, ByteBuf>, WithByteBufsInput<BufsConsumerChunkedDecoder> {
+public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProcess
+		implements WithChannelTransformer<BufsConsumerChunkedDecoder, ByteBuf, ByteBuf>, WithBinaryChannelInput<BufsConsumerChunkedDecoder> {
 	public static final int DEFAULT_MAX_EXT_LENGTH = 1024; //1 Kb
 	public static final int DEFAULT_MAX_CHUNK_LENGTH = 1024; //1 Kb
 	public static final int MAX_CHUNK_LENGTH_DIGITS = 8;
@@ -52,8 +52,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractAsyncProcess
 	private int maxChunkLength = DEFAULT_MAX_CHUNK_LENGTH;
 
 	private ByteBufQueue bufs;
-	private ByteBufsSupplier input;
-	private SerialConsumer<ByteBuf> output;
+	private BinaryChannelSupplier input;
+	private ChannelConsumer<ByteBuf> output;
 
 	// region creators
 	private BufsConsumerChunkedDecoder() {}
@@ -73,7 +73,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractAsyncProcess
 	}
 
 	@Override
-	public ByteBufsInput getInput() {
+	public BinaryChannelInput getInput() {
 		return input -> {
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
@@ -85,7 +85,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractAsyncProcess
 
 	@SuppressWarnings("ConstantConditions") //check output for clarity
 	@Override
-	public SerialOutput<ByteBuf> getOutput() {
+	public ChannelOutput<ByteBuf> getOutput() {
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = sanitize(output);

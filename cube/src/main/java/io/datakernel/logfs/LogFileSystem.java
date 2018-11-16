@@ -18,8 +18,8 @@ package io.datakernel.logfs;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 
 import java.util.List;
 
@@ -31,15 +31,15 @@ public interface LogFileSystem {
 
 	Promise<List<LogFile>> list(String logPartition);
 
-	Promise<SerialSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition);
+	Promise<ChannelSupplier<ByteBuf>> read(String logPartition, LogFile logFile, long startPosition);
 
-	default SerialSupplier<ByteBuf> readStream(String logPartition, LogFile logFile, long startPosition) {
-		return SerialSupplier.ofPromise(read(logPartition, logFile, startPosition));
+	default ChannelSupplier<ByteBuf> readStream(String logPartition, LogFile logFile, long startPosition) {
+		return ChannelSupplier.ofPromise(read(logPartition, logFile, startPosition));
 	}
 
-	Promise<SerialConsumer<ByteBuf>> write(String logPartition, LogFile logFile);
+	Promise<ChannelConsumer<ByteBuf>> write(String logPartition, LogFile logFile);
 
-	default SerialConsumer<ByteBuf> writeStream(String logPartition, LogFile logFile) {
-		return SerialConsumer.ofPromise(write(logPartition, logFile));
+	default ChannelConsumer<ByteBuf> writeStream(String logPartition, LogFile logFile) {
+		return ChannelConsumer.ofPromise(write(logPartition, logFile));
 	}
 }

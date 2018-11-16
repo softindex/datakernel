@@ -19,13 +19,17 @@ package io.global.fs.http;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.http.UrlBuilder;
-import io.datakernel.serial.*;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -39,8 +43,8 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.function.Function;
 
+import static io.datakernel.csp.binary.ByteBufsParser.ofVarIntSizePrefixedBytes;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
-import static io.datakernel.serial.ByteBufsParser.ofVarIntSizePrefixedBytes;
 import static io.global.fs.http.GlobalFsNodeServlet.*;
 import static io.global.ot.util.BinaryDataFormats2.*;
 import static java.util.stream.Collectors.toList;
@@ -59,7 +63,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	// endregion
 
 	@Override
-	public Promise<SerialSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
+	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
 		return client.request(
 				HttpRequest.get(
 						UrlBuilder.http()
@@ -73,13 +77,13 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 					if (response.getCode() != 200) {
 						throw new UncheckedException(new StacklessException(HttpGlobalFsNode.class, "Response code is not 200"));
 					}
-					return response.getBodyStream().apply(new FrameDecoder());
+					return response.getBodyStream().transformWith(new FrameDecoder());
 				});
 	}
 
 	@Override
-	public SerialConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
-		SerialZeroBuffer<DataFrame> buffer = new SerialZeroBuffer<>();
+	public ChannelConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
+		ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
 		MaterializedPromise<HttpResponse> request = client.request(HttpRequest.post(
 				UrlBuilder.http()
 						.withAuthority(address)
@@ -88,14 +92,14 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPath(filename)
 						.appendQuery("offset", "" + offset)
 						.build())
-				.withBodyStream(buffer.getSupplier().apply(new FrameEncoder())))
+				.withBodyStream(buffer.getSupplier().transformWith(new FrameEncoder())))
 				.thenCompose(ensureResponseBody())
 				.materialize();
 		return buffer.getConsumer().withAcknowledgement(ack -> ack.both(request));
 	}
 
 	@Override
-	public Promise<SerialConsumer<DataFrame>> upload(PubKey space, String filename, long offset) {
+	public Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset) {
 		return Promise.of(uploader(space, filename, offset));
 	}
 
@@ -105,7 +109,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 
 	private static final Function<HttpResponse, Promise<List<SignedData<GlobalFsMetadata>>>> LIST_RESPONSE_PARSER =
 			response ->
-					ByteBufsSupplier.of(response.getBodyStream())
+					BinaryChannelSupplier.of(response.getBodyStream())
 							.parseStream(SIGNED_METADATA_PARSER)
 							.toCollector(toList());
 

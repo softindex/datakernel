@@ -16,31 +16,35 @@
 
 package io.datakernel.http.stream;
 
-import io.datakernel.async.AbstractAsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.csp.AbstractCommunicatingProcess;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelOutput;
+import io.datakernel.csp.binary.BinaryChannelInput;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.dsl.WithBinaryChannelInput;
+import io.datakernel.csp.dsl.WithChannelTransformer;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UnknownFormatException;
-import io.datakernel.serial.*;
-import io.datakernel.serial.processor.WithByteBufsInput;
-import io.datakernel.serial.processor.WithSerialToSerial;
 
 import java.util.zip.CRC32;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
-import static io.datakernel.serial.ByteBufsParser.ofFixedSize;
+import static io.datakernel.csp.binary.ByteBufsParser.ofFixedSize;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.Integer.reverseBytes;
 import static java.lang.Math.max;
 import static java.lang.Short.reverseBytes;
 
-public final class BufsConsumerGzipInflater extends AbstractAsyncProcess
-		implements WithSerialToSerial<BufsConsumerGzipInflater, ByteBuf, ByteBuf>, WithByteBufsInput<BufsConsumerGzipInflater> {
+public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
+		implements WithChannelTransformer<BufsConsumerGzipInflater, ByteBuf, ByteBuf>, WithBinaryChannelInput<BufsConsumerGzipInflater> {
 	public static final int MAX_HEADER_FIELD_LENGTH = 4096; //4 Kb
 	public static final int DEFAULT_BUF_SIZE = 512;
 	// region exceptions
@@ -65,8 +69,8 @@ public final class BufsConsumerGzipInflater extends AbstractAsyncProcess
 	private Inflater inflater = new Inflater(true);
 
 	private ByteBufQueue bufs;
-	private ByteBufsSupplier input;
-	private SerialConsumer<ByteBuf> output;
+	private BinaryChannelSupplier input;
+	private ChannelConsumer<ByteBuf> output;
 
 	// region creators
 	private BufsConsumerGzipInflater() {}
@@ -82,7 +86,7 @@ public final class BufsConsumerGzipInflater extends AbstractAsyncProcess
 	}
 
 	@Override
-	public ByteBufsInput getInput() {
+	public BinaryChannelInput getInput() {
 		return input -> {
 			checkState(this.input == null, "Input already set");
 			this.input = sanitize(input);
@@ -94,7 +98,7 @@ public final class BufsConsumerGzipInflater extends AbstractAsyncProcess
 
 	@SuppressWarnings("ConstantConditions") //check output for clarity
 	@Override
-	public SerialOutput<ByteBuf> getOutput() {
+	public ChannelOutput<ByteBuf> getOutput() {
 		return output -> {
 			checkState(this.output == null, "Output already set");
 			this.output = sanitize(output);
