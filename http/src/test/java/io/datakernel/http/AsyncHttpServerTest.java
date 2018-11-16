@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -269,7 +270,8 @@ public final class AsyncHttpServerTest {
 		thread.join();
 	}
 
-	//	@Test
+	@Test
+	@Ignore("does not work")
 	public void testPipelining2() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);

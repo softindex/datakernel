@@ -19,7 +19,11 @@ package io.datakernel.launchers.remotefs;
 import com.google.inject.Module;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.EventloopRule;
+import io.datakernel.stream.processor.Manual;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -32,17 +36,20 @@ import java.util.Random;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static java.util.Collections.singleton;
 
-public class RemoteFsClusterLauncherTest {
+@RunWith(DatakernelRunner.class)
+@EventloopRule.DontRun
+public final class RemoteFsClusterLauncherTest {
+
+	private static final int serverNumber = 5400;
+
 	@Test
 	public void testInjector() {
 		new RemoteFsClusterLauncher() {
 		}.testInjector();
 	}
 
-	static int serverNumber = 5400;
-
-	// @Test
-	// @Ignore("manual startup point for the testing launcher override")
+	@Test
+	@Manual("startup point for the testing launcher override")
 	public void launchServer() throws Exception {
 		new RemoteFsServerLauncher() {
 			@Override
@@ -54,10 +61,9 @@ public class RemoteFsClusterLauncherTest {
 		}.launch(false, new String[0]);
 	}
 
-	// @Test
-	// @Ignore("manual startup point for the testing launcher override")
+	@Test
+	@Manual("manual startup point for the testing launcher override")
 	public void launchCluster() throws Exception {
-
 		long start = System.nanoTime();
 		createFiles(Paths.get("storages/local"), 1000, 10 * 1024, 100 * 1024);
 		System.out.println("Created local files in " + ((System.nanoTime() - start) / 1e6) + " ms");

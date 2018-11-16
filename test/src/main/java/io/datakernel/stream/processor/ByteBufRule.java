@@ -44,14 +44,15 @@ public final class ByteBufRule implements TestRule {
 		return new LambdaStatement(() -> {
 			ByteBufPool.clear();
 			base.evaluate();
-			if (description.getAnnotation(IgnoreLeaks.class) == null) {
+			if (description.getTestClass().getAnnotation(IgnoreLeaks.class) == null
+					&& description.getAnnotation(IgnoreLeaks.class) == null) {
 				assertEquals(ByteBufPool.getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 			}
 		});
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.METHOD)
+	@Target({ElementType.METHOD, ElementType.TYPE})
 	public @interface IgnoreLeaks {
 
 		/**

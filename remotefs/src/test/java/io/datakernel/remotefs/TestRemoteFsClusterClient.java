@@ -26,6 +26,7 @@ import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -161,8 +162,8 @@ public final class TestRemoteFsClusterClient {
 				}));
 	}
 
-	// @Test
-	// @Ignore("this test uses lots of local ports (and all of them are in TIME_WAIT state after it for a minute) so HTTP tests after it may fail indefinitely")
+	@Test
+	@Ignore("this test uses lots of local ports (and all of them are in TIME_WAIT state after it for a minute) so HTTP tests after it may fail indefinitely")
 	public void testUploadAlot() {
 		String content = "test content of the file";
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.launchers.globalfs;
+package io.global.fs.launchers;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
@@ -44,8 +44,6 @@ import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.launchers.Initializers.ofEventloop;
-import static io.datakernel.launchers.Initializers.ofHttpServer;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -81,9 +79,9 @@ public class GlobalFsNodeLauncher extends Launcher {
 										// storage path for this node
 										.with("storage", "/tmp/TESTS/server" + server)
 										// this node manages Alice and Bob
-										.with("managedRepos",
-												/* alice(p) = */"cb78f3ac392aa96ec7a1ba3d1848423097cb5d892638ab297149ea03e9b7ba7d:10d6096aaff36c5b11d5abf063e0499e68e63270ef70d6dc18f0c47566ffdac5/testFs," +
-														/* bob(p) = */"aed50797fe8950ea25745c5cee391156905033ee4e3f5a2df418f687df78a7f1:784ca80eaa2fc2f643052a7469ec23fa2f72dd9ce248044e34ae986d7ce9ef8d/testFs")
+										.with("managedPubKeys",
+												/* alice(p) = */"cb78f3ac392aa96ec7a1ba3d1848423097cb5d892638ab297149ea03e9b7ba7d:10d6096aaff36c5b11d5abf063e0499e68e63270ef70d6dc18f0c47566ffdac5," +
+														/* bob(p) = */"aed50797fe8950ea25745c5cee391156905033ee4e3f5a2df418f687df78a7f1:784ca80eaa2fc2f643052a7469ec23fa2f72dd9ce248044e34ae986d7ce9ef8d")
 
 										// address of the node for inter-Global-FS HTTP communication
 										.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8000 + server))))
@@ -96,7 +94,7 @@ public class GlobalFsNodeLauncher extends Launcher {
 					@Singleton
 					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
+								.initialize(Initializers.ofEventloop(config.getChild("eventloop")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
 					}
 
@@ -122,7 +120,7 @@ public class GlobalFsNodeLauncher extends Launcher {
 					@Singleton
 					AsyncHttpServer provide(Eventloop eventloop, GlobalFsNodeServlet servlet, Config config) {
 						return AsyncHttpServer.create(eventloop, servlet)
-								.initialize(ofHttpServer(config.getChild("globalfs.http")));
+								.initialize(Initializers.ofHttpServer(config.getChild("globalfs.http")));
 					}
 				}
 		);

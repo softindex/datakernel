@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.launchers;
+package io.global.fs.launchers;
 
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.util.Initializer;
 
@@ -31,18 +30,6 @@ import static io.datakernel.config.ConfigConverters.*;
 public final class Initializers {
 	private Initializers() {
 		throw new AssertionError("nope.");
-	}
-
-	public static <T extends AbstractServer<T>> Initializer<T> ofAbstractServer(Config config) {
-		return server -> server
-				.withListenAddresses(config.get(ofList(ofInetSocketAddress()), "listenAddresses"))
-				.withAcceptOnce(config.get(ofBoolean(), "acceptOnce", false))
-				.withSocketSettings(config.get(ofSocketSettings(), "socketSettings", server.getSocketSettings()))
-				.withServerSocketSettings(config.get(ofServerSocketSettings(), "serverSocketSettings", server.getServerSocketSettings()));
-	}
-
-	public static Initializer<PrimaryServer> ofPrimaryServer(Config config) {
-		return ofAbstractServer(config);
 	}
 
 	public static Initializer<Eventloop> ofEventloop(Config config) {
@@ -60,6 +47,14 @@ public final class Initializers {
 					.withSchedule(config.get(ofEventloopTaskSchedule(), "schedule", null))
 					.withRetryPolicy(config.get(ofRetryPolicy(), "retryPolicy"));
 		};
+	}
+
+	public static <T extends AbstractServer<T>> Initializer<T> ofAbstractServer(Config config) {
+		return server -> server
+				.withListenAddresses(config.get(ofList(ofInetSocketAddress()), "listenAddresses"))
+				.withAcceptOnce(config.get(ofBoolean(), "acceptOnce", false))
+				.withSocketSettings(config.get(ofSocketSettings(), "socketSettings", server.getSocketSettings()))
+				.withServerSocketSettings(config.get(ofServerSocketSettings(), "serverSocketSettings", server.getServerSocketSettings()));
 	}
 
 	public static Initializer<AsyncHttpServer> ofHttpServer(Config config) {

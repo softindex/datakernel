@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.launchers.globalfs;
+package io.global.fs.launchers;
 
 import com.google.inject.*;
-import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
@@ -44,9 +43,7 @@ import java.util.concurrent.Executors;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.launchers.Initializers.ofEventloop;
 import static java.lang.Boolean.parseBoolean;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 
 public final class GlobalFsGatewayUsageDemo extends Launcher {
@@ -90,7 +87,7 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 					@Singleton
 					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
+								.initialize(Initializers.ofEventloop(config.getChild("eventloop")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
 					}
 
@@ -128,32 +125,20 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		// eventloop.post(() ->
-		// 		gateway.getMetadata(testFile)
-		// 				.thenCompose(meta ->
-		// 						SerialSupplier.of(ByteBufStrings.wrapAscii("file!\n\na surprising addition to the file!\n"))
-		// 								.streamTo(gateway.uploader(testFile, meta.getSize() - 6)))
-		// 				.whenComplete(($, e) -> {
-		// 					System.out.println("whenComplete: " + $ + ", " + e);
-		// 					shutdown();
-		// 				}));
+		String testFile = "test.txt";
 
-		eventloop.post(() -> {
-			gateway.downloadSerial("folder/test.txt").toCollector(ByteBufQueue.collector())
-					.whenComplete((buf, e) -> {
-						if (e == null) {
-							System.out.println(buf.asString(UTF_8));
-						} else {
-							e.printStackTrace();
-						}
-						shutdown();
-					});
-		});
+		// eventloop.execute(() -> {
+		// 	storage.upload(testFile)
+		// 			.thenCompose(SerialSupplier.of(wrapUtf8("thats some test data right in that file!\n"))::streamTo)
+		// 			.whenComplete(($, e) -> {
+		// 				shutdown();
+		// 			});
+		// });
 
-		// eventloop.post(() ->
-		// 		storage.downloadSerial("test.txt").streamTo(gateway.uploader(testFile, 0))
-		// 				.thenCompose($ -> gateway.downloader(testFile).streamTo(storage.uploadSerial("test2.txt", 0)))
-		// 				.thenCompose($ -> storage.downloadSerial("test.txt").toCollector(ByteBufQueue.collector()))
+		// eventloop.execute(() ->
+		// 		storage.downloadSerial(testFile).streamTo(gateway.uploadSerial(testFile, 0))
+		// 				.thenCompose($ -> gateway.downloadSerial(testFile).streamTo(storage.uploadSerial("test2.txt", 0)))
+		// 				.thenCompose($ -> storage.downloadSerial(testFile).toCollector(ByteBufQueue.collector()))
 		// 				.thenCompose(original -> storage.downloadSerial("test2.txt").toCollector(ByteBufQueue.collector())
 		// 						.whenResult(transfered -> {
 		// 							if (!Arrays.equals(original.asArray(), transfered.asArray())) {
@@ -161,11 +146,33 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 		// 							}
 		// 						}))
 		// 				.whenComplete(($, e) -> {
+		// 					shutdown();
 		// 					if (e != null) {
 		// 						throw new AssertionError(e);
 		// 					}
+		// 				}));
+
+		// eventloop.post(() ->
+		// 		gateway.getMetadata(testFile)
+		// 				.thenCompose(meta ->
+		// 						SerialSupplier.of(wrapUtf8("file!\n\na surprising addition to the file!\n"))
+		// 								.streamTo(gateway.uploader(testFile, meta.getSize() - 6)))
+		// 				.whenComplete(($, e) -> {
+		// 					System.out.println("whenComplete: " + $ + ", " + e);
 		// 					shutdown();
 		// 				}));
+
+		// eventloop.post(() -> {
+		// 	gateway.downloadSerial("folder/test.txt").toCollector(ByteBufQueue.collector())
+		// 			.whenComplete((buf, e) -> {
+		// 				if (e == null) {
+		// 					System.out.println(buf.asString(UTF_8));
+		// 				} else {
+		// 					e.printStackTrace();
+		// 				}
+		// 				shutdown();
+		// 			});
+		// });
 		awaitShutdown();
 	}
 

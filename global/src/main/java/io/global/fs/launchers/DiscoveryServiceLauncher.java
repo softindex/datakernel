@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.launchers.globalfs;
+package io.global.fs.launchers;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
@@ -40,8 +40,6 @@ import java.util.Collections;
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
-import static io.datakernel.launchers.Initializers.ofEventloop;
-import static io.datakernel.launchers.Initializers.ofHttpServer;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -73,7 +71,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 					@Singleton
 					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
+								.initialize(Initializers.ofEventloop(config.getChild("eventloop")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
 					}
 
@@ -86,7 +84,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 					@Provides
 					@Singleton
 					AsyncHttpServer provide(Eventloop eventloop, DiscoveryServlet servlet, Config config) {
-						return AsyncHttpServer.create(eventloop, servlet).initialize(ofHttpServer(config.getChild("http")));
+						return AsyncHttpServer.create(eventloop, servlet).initialize(Initializers.ofHttpServer(config.getChild("http")));
 					}
 				}
 		);

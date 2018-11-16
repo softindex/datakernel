@@ -41,14 +41,15 @@ public final class EventloopRule implements TestRule {
 					.withCurrentThread()
 					.withFatalErrorHandler(rethrowOnAnyError());
 			base.evaluate();
-			if (description.getAnnotation(DontRun.class) == null) {
+			if (description.getTestClass().getAnnotation(DontRun.class) == null
+					&& description.getAnnotation(DontRun.class) == null) {
 				eventloop.run();
 			}
 		});
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.METHOD})
+	@Target({ElementType.METHOD, ElementType.TYPE})
 	public @interface DontRun {
 	}
 }

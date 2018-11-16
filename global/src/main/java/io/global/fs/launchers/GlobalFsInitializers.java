@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.launchers;
+package io.global.fs.launchers;
 
 import io.datakernel.config.Config;
 import io.datakernel.util.Initializer;
@@ -23,7 +23,7 @@ import io.global.fs.local.LocalGlobalFsNode;
 import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.*;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey;
+import static io.global.fs.launchers.GlobalFsConfigConverters.ofPubKey;
 import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
 import static java.util.Collections.emptyList;
 

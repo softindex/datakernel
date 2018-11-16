@@ -118,7 +118,6 @@ public final class AbstractHttpConnectionTest {
 					assertEquals(expectedHeader, response.getHeader(CONNECTION));
 					connectionCount.refresh(System.currentTimeMillis());
 					assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
-					System.out.println(response.getHeader(CONNECTION));
 				}));
 	}
 

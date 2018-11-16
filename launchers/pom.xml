@@ -46,12 +46,6 @@
 			<optional>true</optional>
 		</dependency>
 		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-global</artifactId>
-			<version>${project.version}</version>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<optional>true</optional>

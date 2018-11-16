@@ -14,22 +14,16 @@
  * limitations under the License.
  */
 
-package io.datakernel.launchers.globalfs;
+package io.global.fs.launchers;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverter;
-import io.datakernel.config.SimpleConfigConverter;
-import io.datakernel.exception.ParseException;
-import io.datakernel.util.ParserFunction;
 import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.ot.api.RepoID;
 
-import java.util.function.Function;
-
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
-import static io.datakernel.config.ConfigConverters.ofMemSizeAsLong;
+import static io.datakernel.config.ConfigConverters.*;
 import static io.global.fs.api.CheckpointPosStrategy.*;
 
 public final class GlobalFsConfigConverters {
@@ -41,43 +35,24 @@ public final class GlobalFsConfigConverters {
 		return ofInetSocketAddress().transform(RawServerId::new, RawServerId::getInetSocketAddress);
 	}
 
-	private static <T> ConfigConverter<T> ofStringIdentity(ParserFunction<String, T> from, Function<T, String> to) {
-		return new SimpleConfigConverter<T>() {
-			@Override
-			protected T fromString(String string) {
-				try {
-					return from.parse(string);
-				} catch (ParseException e) {
-					throw new IllegalArgumentException(e);
-				}
-			}
-
-			@Override
-			protected String toString(T value) {
-				return to.apply(value);
-			}
-		};
-
-	}
-
 	public static ConfigConverter<RepoID> ofRepoID() {
-		return ofStringIdentity(RepoID::fromString, RepoID::asString);
+		return ofString().transform(RepoID::fromString, RepoID::asString);
 	}
 
 	public static ConfigConverter<PubKey> ofPubKey() {
-		return ofStringIdentity(PubKey::fromString, PubKey::asString);
+		return ofString().transform(PubKey::fromString, PubKey::asString);
 	}
 
 	public static ConfigConverter<PrivKey> ofPrivKey() {
-		return ofStringIdentity(PrivKey::fromString, PrivKey::asString);
+		return ofString().transform(PrivKey::fromString, PrivKey::asString);
 	}
 
 	public static ConfigConverter<SimKey> ofSimKey() {
-		return ofStringIdentity(SimKey::fromString, SimKey::asString);
+		return ofString().transform(SimKey::fromString, SimKey::asString);
 	}
 
 	public static ConfigConverter<Hash> ofHash() {
-		return ofStringIdentity(Hash::parseString, Hash::asString);
+		return ofString().transform(Hash::parseString, Hash::asString);
 	}
 
 	public static ConfigConverter<CheckpointPosStrategy> ofCheckpointPositionStrategy() {

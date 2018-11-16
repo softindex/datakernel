@@ -25,10 +25,14 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.EventloopRule;
+import io.datakernel.stream.processor.Manual;
 import io.datakernel.util.Stopwatch;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -36,13 +40,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+@RunWith(DatakernelRunner.class)
+@EventloopRule.DontRun
 public final class RpcHelloWorldTest {
 
 	private interface HelloService {
@@ -125,7 +130,6 @@ public final class RpcHelloWorldTest {
 	}
 
 	private static final int PORT = 1234, TIMEOUT = 1500;
-	private Eventloop eventloop;
 	private RpcServer server;
 
 	@Rule
@@ -133,7 +137,7 @@ public final class RpcHelloWorldTest {
 
 	@Before
 	public void setUp() throws Exception {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		server = createServer(eventloop);
 		server.listen();
 		new Thread(eventloop).start();
@@ -141,7 +145,7 @@ public final class RpcHelloWorldTest {
 
 	@Test
 	public void testBlockingCall() throws Exception {
-		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
+		try (BlockingHelloClient client = new BlockingHelloClient(Eventloop.getCurrentEventloop())) {
 			for (int i = 0; i < 100; i++) {
 				assertEquals("Hello, World!", client.hello("World"));
 			}
@@ -154,7 +158,7 @@ public final class RpcHelloWorldTest {
 	public void testAsyncCall() throws Exception {
 		int requestCount = 10;
 
-		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
+		try (BlockingHelloClient client = new BlockingHelloClient(Eventloop.getCurrentEventloop())) {
 			CountDownLatch latch = new CountDownLatch(requestCount);
 			for (int i = 0; i < requestCount; i++) {
 				String name = "World" + i;
@@ -170,8 +174,8 @@ public final class RpcHelloWorldTest {
 
 	@Test
 	public void testBlocking2Clients() throws Exception {
-		try (BlockingHelloClient client1 = new BlockingHelloClient(eventloop);
-				BlockingHelloClient client2 = new BlockingHelloClient(eventloop)) {
+		try (BlockingHelloClient client1 = new BlockingHelloClient(Eventloop.getCurrentEventloop());
+				BlockingHelloClient client2 = new BlockingHelloClient(Eventloop.getCurrentEventloop())) {
 			assertEquals("Hello, John!", client2.hello("John"));
 			assertEquals("Hello, World!", client1.hello("World"));
 		} finally {
@@ -181,7 +185,7 @@ public final class RpcHelloWorldTest {
 
 	@Test
 	public void testBlockingRpcException() throws Exception {
-		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
+		try (BlockingHelloClient client = new BlockingHelloClient(Eventloop.getCurrentEventloop())) {
 			client.hello("--");
 			fail("Exception expected");
 		} catch (RpcRemoteException e) {
@@ -195,8 +199,8 @@ public final class RpcHelloWorldTest {
 	public void testAsync2Clients() throws Exception {
 		int requestCount = 10;
 
-		try (BlockingHelloClient client1 = new BlockingHelloClient(eventloop);
-				BlockingHelloClient client2 = new BlockingHelloClient(eventloop)) {
+		try (BlockingHelloClient client1 = new BlockingHelloClient(Eventloop.getCurrentEventloop());
+				BlockingHelloClient client2 = new BlockingHelloClient(Eventloop.getCurrentEventloop())) {
 			CountDownLatch latch = new CountDownLatch(2 * requestCount);
 
 			for (int i = 0; i < requestCount; i++) {
@@ -216,12 +220,12 @@ public final class RpcHelloWorldTest {
 		}
 	}
 
-	// @Test
-	// @Ignore("this is not a test but a benchmark, takes a lot of time")
+	@Test
+	@Manual("this is not a test but a benchmark, takes a lot of time")
 	public void testRejectedRequests() throws Exception {
 		int count = 1_000_000;
 
-		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
+		try (BlockingHelloClient client = new BlockingHelloClient(Eventloop.getCurrentEventloop())) {
 			for (int t = 0; t < 10; t++) {
 				AtomicInteger success = new AtomicInteger(0);
 				AtomicInteger error = new AtomicInteger(0);

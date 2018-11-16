@@ -19,12 +19,14 @@ package io.global.fs;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.Manual;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.RawServerId;
@@ -35,7 +37,6 @@ import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -56,10 +57,11 @@ import static java.lang.System.getProperty;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-@Ignore("those are run configs that are launched manually")
+@Manual("setting up methods that require running instances of servers")
 @RunWith(DatakernelRunner.class)
 public final class GlobalFsSetup {
 
+	public static final StructuredCodec<AnnounceData> ANNOUNCE_DATA_CODEC = REGISTRY.get(AnnounceData.class);
 	private KeyPair alice, bob;
 
 	@Before
@@ -90,7 +92,7 @@ public final class GlobalFsSetup {
 
 		ChannelSupplier<ByteBuf> supplier = ChannelSupplier.of(ByteBuf.wrapForReading(text1.getBytes(UTF_8)), ByteBuf.wrapForReading(text2.getBytes(UTF_8)));
 
-		discoveryService.announce(alice.getPubKey(), sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
+		discoveryService.announce(alice.getPubKey(), sign(ANNOUNCE_DATA_CODEC, AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
 				.whenResult($ -> System.out.println("Servers announced"))
 				.thenCompose($ -> firstAdapter.upload("test.txt"))
 				.thenCompose(supplier::streamTo)
@@ -115,8 +117,8 @@ public final class GlobalFsSetup {
 		}
 
 		Promises.all(
-				discoveryService.announce(alice.getPubKey(), sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(123, servers), alice.getPrivKey())),
-				discoveryService.announce(bob.getPubKey(), sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(234, servers), bob.getPrivKey()))
+				discoveryService.announce(alice.getPubKey(), sign(ANNOUNCE_DATA_CODEC, AnnounceData.of(123, servers), alice.getPrivKey())),
+				discoveryService.announce(bob.getPubKey(), sign(ANNOUNCE_DATA_CODEC, AnnounceData.of(234, servers), bob.getPrivKey()))
 		)
 				.whenComplete(assertComplete());
 	}

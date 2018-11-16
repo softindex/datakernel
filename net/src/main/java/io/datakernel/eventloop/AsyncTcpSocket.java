@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,8 +34,8 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
  * <p>
  * Implementations of this interface should follow rules described below:
  * <ul>
- * <li>Each request to socket after it has been closed should be completed exceptionally. <i>This is due to an ability of
- * socket to be closed before any read/write operation is called. User should be informed about it after he makes first
+ * <li>Each request to the socket after it was closed should complete exceptionally. <i>This is due to an ability of
+ * the socket to be closed before any read/write operation is called. User should be informed about it after he makes first
  * call to {@link #read()} or {@link #write(ByteBuf)}<i/></li>
  * </ul>
  */

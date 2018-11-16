@@ -22,8 +22,8 @@ import io.datakernel.async.Promises;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.Manual;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -45,7 +45,7 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.enableLogging;
 
 @RunWith(DatakernelRunner.class)
-@Ignore("this test is completely manual, it takes forever")
+@Manual("takes forever, only for manual testing")
 public final class TestRepartitionController {
 	private static final int CLIENT_SERVER_PAIRS = 10;
 

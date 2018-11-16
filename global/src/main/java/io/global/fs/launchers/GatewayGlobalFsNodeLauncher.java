@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.launchers.globalfs;
+package io.global.fs.launchers;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
@@ -44,7 +42,6 @@ import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.RemoteFsServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.GlobalFsGatewayAdapter;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -54,13 +51,10 @@ import java.util.concurrent.Executors;
 
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
-import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.launchers.Initializers.ofEventloop;
-import static io.datakernel.launchers.Initializers.ofHttpServer;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofCheckpointPositionStrategy;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPrivKey;
+import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.util.CollectionUtils.list;
+import static io.global.fs.launchers.GlobalFsConfigConverters.ofCheckpointPositionStrategy;
+import static io.global.fs.launchers.GlobalFsConfigConverters.ofPrivKey;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -104,9 +98,9 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 										// storage path for this node
 										.with("storage", "/tmp/TESTS/server" + server)
 										// this node manages Alice and Bob repos both named 'testFs'
-										.with("managedRepos",
-												/* alice(p) = */"cb78f3ac392aa96ec7a1ba3d1848423097cb5d892638ab297149ea03e9b7ba7d:10d6096aaff36c5b11d5abf063e0499e68e63270ef70d6dc18f0c47566ffdac5/testFs," +
-														/* bob(p) = */"aed50797fe8950ea25745c5cee391156905033ee4e3f5a2df418f687df78a7f1:784ca80eaa2fc2f643052a7469ec23fa2f72dd9ce248044e34ae986d7ce9ef8d/testFs")
+										.with("managedPubKeys",
+												/* alice(p) = */"cb78f3ac392aa96ec7a1ba3d1848423097cb5d892638ab297149ea03e9b7ba7d:10d6096aaff36c5b11d5abf063e0499e68e63270ef70d6dc18f0c47566ffdac5," +
+														/* bob(p) = */"aed50797fe8950ea25745c5cee391156905033ee4e3f5a2df418f687df78a7f1:784ca80eaa2fc2f643052a7469ec23fa2f72dd9ce248044e34ae986d7ce9ef8d")
 
 										// very short latency margin so it will actually do the task each time we call it *testing*
 										.with("fetching.latencyMargin", "1 second")
@@ -139,7 +133,10 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 					@Singleton
 					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
+								.initialize(eventloop -> eventloop
+										.withFatalErrorHandler(config.get(ofFatalErrorHandler(), "fatalErrorHandler", eventloop.getFatalErrorHandler()))
+										.withIdleInterval(config.get(ofDuration(), "idleInterval", eventloop.getIdleInterval()))
+										.withThreadPriority(config.get(ofInteger(), "threadPriority", eventloop.getThreadPriority())))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
 					}
 
@@ -176,7 +173,7 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 					@Singleton
 					AsyncHttpServer provide(Eventloop eventloop, GlobalFsNodeServlet servlet, Config config) {
 						return AsyncHttpServer.create(eventloop, servlet)
-								.initialize(ofHttpServer(config.getChild("globalfs.http")));
+								.initialize(Initializers.ofHttpServer(config.getChild("globalfs.http")));
 					}
 
 					@Provides
@@ -184,7 +181,7 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 					@Singleton
 					AsyncHttpServer provide(Eventloop eventloop, RemoteFsServlet servlet, Config config) {
 						return AsyncHttpServer.create(eventloop, servlet)
-								.initialize(ofHttpServer(config.getChild("globalfs.gateway.http")));
+								.initialize(Initializers.ofHttpServer(config.getChild("globalfs.gateway.http")));
 					}
 				}
 		);
@@ -203,8 +200,6 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Logger logger = (Logger) LoggerFactory.getLogger("ROOT");
-		logger.setLevel(Level.TRACE);
 		new GatewayGlobalFsNodeLauncher().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }

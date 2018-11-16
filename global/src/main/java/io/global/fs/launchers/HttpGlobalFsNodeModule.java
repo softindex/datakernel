@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.launchers.globalfs;
+package io.global.fs.launchers;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -35,8 +35,7 @@ import io.global.fs.local.LocalGlobalFsNode;
 import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.*;
-import static io.datakernel.launchers.Initializers.ofEventloopTaskScheduler;
-import static io.datakernel.launchers.globalfs.GlobalFsConfigConverters.ofPubKey;
+import static io.global.fs.launchers.GlobalFsConfigConverters.ofPubKey;
 import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
 
 public class HttpGlobalFsNodeModule extends AbstractModule {
@@ -46,6 +45,11 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 
 	public static HttpGlobalFsNodeModule create() {
 		return new HttpGlobalFsNodeModule();
+	}
+
+	@Override
+	protected void configure() {
+		bind(GlobalFsNode.class).to(LocalGlobalFsNode.class).in(Singleton.class);
 	}
 
 	@Provides
@@ -62,10 +66,10 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	GlobalFsNode provide(Config config, DiscoveryService discoveryService, NodeClientFactory nodeClientFactory, FsClient storage) {
+	LocalGlobalFsNode provide(Config config, DiscoveryService discoveryService, NodeClientFactory nodeClientFactory, FsClient storage) {
 		RawServerId id = new RawServerId(config.get(ofInetSocketAddress(), "globalfs.http.listenAddresses"));
 		return LocalGlobalFsNode.create(id, discoveryService, nodeClientFactory, storage)
-				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "globalfs.managedRepos")))
+				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "globalfs.managedPubKeys")))
 				.withDownloadCaching(config.get(ofBoolean(), "globalfs.caching.download", true))
 				.withUploadCaching(config.get(ofBoolean(), "globalfs.caching.upload", false))
 				.withLatencyMargin(config.get(ofDuration(), "globalfs.fetching.latencyMargin", DEFAULT_LATENCY_MARGIN));
@@ -73,8 +77,8 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	EventloopTaskScheduler provide(Config config, Eventloop eventloop, GlobalFsNode node) {
-		return EventloopTaskScheduler.create(eventloop, ((LocalGlobalFsNode) node)::fetch)
-				.initialize(ofEventloopTaskScheduler(config.getChild("globalfs.fetching")));
+	EventloopTaskScheduler provide(Config config, Eventloop eventloop, LocalGlobalFsNode node) {
+		return EventloopTaskScheduler.create(eventloop, node::fetch)
+				.initialize(Initializers.ofEventloopTaskScheduler(config.getChild("globalfs.fetching")));
 	}
 }

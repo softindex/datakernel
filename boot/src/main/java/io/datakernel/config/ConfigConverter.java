@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 package io.datakernel.config;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.exception.ParseException;
+import io.datakernel.util.ParserFunction;
 
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -36,20 +38,28 @@ public interface ConfigConverter<T> {
 	 * @param <V>  return type
 	 * @return converter that knows how to get V value from T value saved in config
 	 */
-	default <V> ConfigConverter<V> transform(Function<T, V> to, Function<V, T> from) {
+	default <V> ConfigConverter<V> transform(ParserFunction<T, V> to, Function<V, T> from) {
 		ConfigConverter<T> thisConverter = this;
 		return new ConfigConverter<V>() {
 			@Override
 			@Nullable
 			public V get(Config config, @Nullable V defaultValue) {
 				T value = thisConverter.get(config, defaultValue == null ? null : from.apply(defaultValue));
-				return value != null ? to.apply(value) : null;
+				try {
+					return value != null ? to.parse(value) : null;
+				} catch (ParseException e) {
+					throw new IllegalArgumentException(e);
+				}
 			}
 
 			@Override
 			@Nullable
 			public V get(Config config) {
-				return to.apply(thisConverter.get(config));
+				try {
+					return to.parse(thisConverter.get(config));
+				} catch (ParseException e) {
+					throw new IllegalArgumentException(e);
+				}
 			}
 		};
 	}
