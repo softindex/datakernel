@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.ot;
 
 import io.datakernel.ot.exceptions.OTException;
@@ -11,7 +27,7 @@ import static java.util.Collections.*;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.*;
 
-final class OTLoadedGraph<K, D> {
+public class OTLoadedGraph<K, D> {
 	private final AtomicLong mergeId = new AtomicLong();
 
 	public OTLoadedGraph(OTSystem<D> otSystem) {
@@ -52,8 +68,8 @@ final class OTLoadedGraph<K, D> {
 	private final OTSystem<D> otSystem;
 
 	private final Map<K, Long> timestamps = new HashMap<>();
-	private final Map<K, Map<K, List<D>>> child2parent = new HashMap<>();
-	private final Map<K, Map<K, List<D>>> parent2child = new HashMap<>();
+	protected final Map<K, Map<K, List<D>>> child2parent = new HashMap<>();
+	protected final Map<K, Map<K, List<D>>> parent2child = new HashMap<>();
 
 	public void setNodeTimestamp(K node, long timestamp) {
 		timestamps.put(node, timestamp);
@@ -231,12 +247,12 @@ final class OTLoadedGraph<K, D> {
 		return sb.toString();
 	}
 
-	private static <K> String nodeToGraphViz(K node) {
+	protected static <K> String nodeToGraphViz(K node) {
 		return "\"" + node + "\"";
 	}
 
-	private static <D> String diffsToGraphViz(List<D> diffs) {
-		return diffs.isEmpty() ? "∅" : diffs.size() == 1 ? diffs.get(0).toString() : diffs.toString();
+	protected static <D> String diffsToGraphViz(Collection<D> diffs) {
+		return diffs.isEmpty() ? "∅" : diffs.size() == 1 ? first(diffs).toString() : diffs.toString();
 	}
 
 	@Override

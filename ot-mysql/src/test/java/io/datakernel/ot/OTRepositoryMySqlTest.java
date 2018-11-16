@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.ot;
 
 import ch.qos.logback.classic.Level;
@@ -28,10 +44,10 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
-public class OTRepositorySqlTest {
+public class OTRepositoryMySqlTest {
 
 	private Eventloop eventloop;
-	private OTRepositorySql<TestOp> repository;
+	private OTRepositoryMySql<TestOp> repository;
 	private OTSystem<TestOp> otSystem;
 
 	static {
@@ -43,11 +59,12 @@ public class OTRepositorySqlTest {
 	public void before() throws IOException, SQLException {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		otSystem = Utils.createTestOp();
-		repository = OTRepositorySql.create(eventloop, Executors.newFixedThreadPool(4), dataSource("test.properties"), otSystem, Utils.OP_ADAPTER);
+		repository = OTRepositoryMySql.create(eventloop, Executors.newFixedThreadPool(4), dataSource("test.properties"), otSystem, Utils.OP_ADAPTER);
 
 		repository.truncateTables();
 	}
 
+	@SafeVarargs
 	static <T> Set<T> set(T... values) {
 		return Arrays.stream(values).collect(toSet());
 	}
@@ -233,7 +250,7 @@ public class OTRepositorySqlTest {
 		eventloop.run();
 		merge.get();
 
-//		assertEquals(searchSurface, rootNodesFuture.get());
+		//		assertEquals(searchSurface, rootNodesFuture.get());
 	}
 
 	@Test
@@ -347,7 +364,7 @@ public class OTRepositorySqlTest {
 		mergeSnapshotFuture.get();
 
 		CompletableFuture<Integer> snapshotFuture = algorithms.checkout(7L)
-				.thenApply(OTRepositorySqlTest::apply)
+				.thenApply(OTRepositoryMySqlTest::apply)
 				.toCompletableFuture();
 		eventloop.run();
 

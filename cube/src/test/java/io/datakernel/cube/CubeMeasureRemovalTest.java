@@ -128,7 +128,7 @@ public class CubeMeasureRemovalTest {
 
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRepositorySql<LogDiff<CubeDiff>> repository = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
+		OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
 		repository.truncateTables();
 		repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 		eventloop.run();
@@ -301,7 +301,7 @@ public class CubeMeasureRemovalTest {
 
 			LogDiffJson<CubeDiff> diffAdapter1 = LogDiffJson.create(CubeDiffJson.create(cube1));
 			OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-			OTRepositorySql<LogDiff<CubeDiff>> repository = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, diffAdapter1);
+			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffAdapter1);
 			repository.truncateTables();
 			repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 			eventloop.run();
@@ -343,7 +343,7 @@ public class CubeMeasureRemovalTest {
 
 		LogDiffJson<CubeDiff> diffAdapter2 = LogDiffJson.create(CubeDiffJson.create(cube2));
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRepositorySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
+		OTRepositoryMySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
 
 		exception.expectCause(instanceOf(ParseException.class));
 		exception.expectCause(hasProperty("cause", hasProperty("message", equalTo("Unknown fields: [clicks, conversions]"))));
@@ -377,7 +377,7 @@ public class CubeMeasureRemovalTest {
 
 			LogDiffJson<CubeDiff> diffAdapter1 = LogDiffJson.create(CubeDiffJson.create(cube1));
 			OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-			OTRepositorySql<LogDiff<CubeDiff>> repository = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, diffAdapter1);
+			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffAdapter1);
 			repository.truncateTables();
 			repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 			eventloop.run();
@@ -420,7 +420,7 @@ public class CubeMeasureRemovalTest {
 
 		LogDiffJson<CubeDiff> diffAdapter2 = LogDiffJson.create(CubeDiffJson.create(cube2));
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRepositorySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositorySql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
+		OTRepositoryMySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
 
 		exception.expectCause(instanceOf(ParseException.class));
 		exception.expectCause(hasProperty("cause", hasProperty("message", equalTo("Unknown aggregations: [impressionsAggregation, otherAggregation]"))));

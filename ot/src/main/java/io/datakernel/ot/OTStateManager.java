@@ -344,12 +344,16 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return checkNotNull(revision, "Internal state has been invalidated");
 	}
 
-	List<D> getWorkingDiffs() {
+	public List<D> getWorkingDiffs() {
 		return workingDiffs;
 	}
 
 	public boolean hasWorkingDiffs() {
 		return !workingDiffs.isEmpty();
+	}
+
+	public Map<K, OTCommit<K, D>> getPendingCommits() {
+		return pendingCommits;
 	}
 
 	public boolean hasPendingCommits() {
@@ -371,6 +375,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return fetchedRevision != null ? fetchedRevision.toString() : null;
 	}
 
+	// -1 indicates that fetchedDiffs is currently null
 	@JmxAttribute
 	public int getFetchedDiffsSize() {
 		return fetchedDiffs != null ? fetchedDiffs.size() : -1;

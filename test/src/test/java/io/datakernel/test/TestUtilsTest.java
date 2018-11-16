@@ -4,14 +4,18 @@ import org.junit.Test;
 
 import javax.sql.DataSource;
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.SQLException;
-
-import static io.datakernel.test.TestUtils.dataSource;
+import java.sql.Statement;
 
 public class TestUtilsTest {
 	@Test
-	public void execute() throws IOException, SQLException {
-		DataSource dataSource = dataSource("test.properties");
-		TestUtils.executeScript(dataSource, "io.datakernel.test/script.sql");
+	public void dataSource() throws IOException, SQLException {
+		DataSource dataSource = TestUtils.dataSource("test.properties");
+		try (Connection connection = dataSource.getConnection()) {
+			try (Statement statement = connection.createStatement()) {
+				statement.execute("SELECT 1;SELECT 2;");
+			}
+		}
 	}
 }

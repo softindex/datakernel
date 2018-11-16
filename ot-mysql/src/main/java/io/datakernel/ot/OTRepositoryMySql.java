@@ -20,6 +20,7 @@ import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -39,13 +40,15 @@ import java.util.stream.Stream;
 import static io.datakernel.json.GsonAdapters.indent;
 import static io.datakernel.json.GsonAdapters.ofList;
 import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.SqlUtils.execute;
+import static io.datakernel.util.Utils.loadResource;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.*;
 
-public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
+public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx, EventloopService {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	public static final Duration DEFAULT_DELETE_MARGIN = Duration.ofHours(1);
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
@@ -77,7 +80,7 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 	private final PromiseStats promiseLoadSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseSaveSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private OTRepositorySql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, TypeAdapter<List<D>> diffsAdapter,
+	private OTRepositoryMySql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, TypeAdapter<List<D>> diffsAdapter,
 			DataSource dataSource) {
 		this.eventloop = eventloop;
 		this.executor = executor;
@@ -86,22 +89,22 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 		this.diffsAdapter = diffsAdapter;
 	}
 
-	public static <D> OTRepositorySql<D> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, TypeAdapter<D> diffAdapter) {
+	public static <D> OTRepositoryMySql<D> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, TypeAdapter<D> diffAdapter) {
 		TypeAdapter<List<D>> listAdapter = indent(ofList(diffAdapter), "\t");
-		return new OTRepositorySql<>(eventloop, executor, otSystem, listAdapter, dataSource);
+		return new OTRepositoryMySql<>(eventloop, executor, otSystem, listAdapter, dataSource);
 	}
 
-	public OTRepositorySql<D> withDeleteMargin(Duration deleteMargin) {
+	public OTRepositoryMySql<D> withDeleteMargin(Duration deleteMargin) {
 		this.deleteMargin = deleteMargin;
 		return this;
 	}
 
-	public OTRepositorySql<D> withCreatedBy(String createdBy) {
+	public OTRepositoryMySql<D> withCreatedBy(String createdBy) {
 		this.createdBy = createdBy;
 		return this;
 	}
 
-	public OTRepositorySql<D> withCustomTableNames(String tableRevision, String tableDiffs, @Nullable String tableBackup) {
+	public OTRepositoryMySql<D> withCustomTableNames(String tableRevision, String tableDiffs, @Nullable String tableBackup) {
 		this.tableRevision = tableRevision;
 		this.tableDiffs = tableDiffs;
 		this.tableBackup = tableBackup;
@@ -121,6 +124,19 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 				.replace("{revisions}", tableRevision)
 				.replace("{diffs}", tableDiffs)
 				.replace("{backup}", Objects.toString(tableBackup, ""));
+	}
+
+	private Promise<Void> initialize() {
+		return Promise.<Void>ofCallable(executor,
+				() -> {
+					execute(dataSource, sql(new String(loadResource("sql/ot_diffs.sql"), UTF_8)));
+					execute(dataSource, sql(new String(loadResource("sql/ot_revisions.sql"), UTF_8)));
+					if (tableBackup != null) {
+						execute(dataSource, sql(new String(loadResource("sql/ot_revisions_backup.sql"), UTF_8)));
+					}
+					return null;
+				})
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	public void truncateTables() throws SQLException {
@@ -178,7 +194,6 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 						Set<Long> commitIds = commits.stream().map(OTCommit::getId).collect(toSet());
 						Set<Long> commitsParentIds = commits.stream().flatMap(commit -> commit.getParents().keySet().stream()).collect(toSet());
 						Set<Long> headCommitIds = difference(commitIds, commitsParentIds);
-						Set<Long> innerCommitIds = union(commitsParentIds, difference(commitIds, headCommitIds));
 
 						try (PreparedStatement ps = connection.prepareStatement(
 								sql("INSERT IGNORE INTO {revisions}(`id`) VALUES " +
@@ -395,6 +410,16 @@ public class OTRepositorySql<D> implements OTRepositoryEx<Long, D>, EventloopJmx
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
+	}
+
+	@Override
+	public Promise<Void> start() {
+		return initialize();
+	}
+
+	@Override
+	public Promise<Void> stop() {
+		return Promise.complete();
 	}
 
 	@JmxAttribute

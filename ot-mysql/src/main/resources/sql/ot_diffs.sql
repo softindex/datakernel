@@ -1,4 +1,4 @@
-CREATE TABLE `ot_diffs` (
+CREATE TABLE IF NOT EXISTS `{diffs}` (
   `revision_id` bigint unsigned NOT NULL,
   `parent_id` bigint NOT NULL,
   `diff` longtext NOT NULL,

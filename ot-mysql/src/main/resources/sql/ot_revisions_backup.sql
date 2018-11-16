@@ -1,4 +1,4 @@
-CREATE TABLE `ot_revisions_backup` (
+CREATE TABLE IF NOT EXISTS `{backup}` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `level` bigint NOT NULL,
   `snapshot` longtext,

@@ -24,43 +24,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.*;
-import java.net.URL;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Properties;
 import java.util.function.*;
 import java.util.regex.Pattern;
 
 public class TestUtils {
 	private static int activePromises = 0;
-
-	private static byte[] loadResource(URL file) throws IOException {
-		try (InputStream in = file.openStream()) {
-			// reading file as resource
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			byte[] buffer = new byte[4096];
-			int size;
-			while ((size = in.read(buffer)) != -1) {
-				out.write(buffer, 0, size);
-			}
-			return out.toByteArray();
-		}
-	}
-
-	public static byte[] loadResource(String name) {
-		URL resource = Thread.currentThread().getContextClassLoader().getResource(name);
-		if (resource == null) {
-			throw new IllegalArgumentException(name);
-		}
-		try {
-			return loadResource(resource);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-	}
 
 	public static DataSource dataSource(String databasePropertiesPath) throws IOException {
 		Properties properties = new Properties();
@@ -72,22 +42,6 @@ public class TestUtils {
 		dataSource.setPassword(properties.getProperty("dataSource.password"));
 		dataSource.setAllowMultiQueries(true);
 		return dataSource;
-	}
-
-	public static void executeScript(DataSource dataSource, Class<?> clazz) throws SQLException {
-		executeScript(dataSource, clazz.getPackage().getName() + "/" + clazz.getSimpleName() + ".sql");
-	}
-
-	public static void executeScript(DataSource dataSource, String scriptName) throws SQLException {
-		String sql = new String(loadResource(scriptName), Charset.forName("UTF-8"));
-		execute(dataSource, sql);
-	}
-
-	private static void execute(DataSource dataSource, String sql) throws SQLException {
-		try (Connection connection = dataSource.getConnection()) {
-			Statement statement = connection.createStatement();
-			statement.execute(sql);
-		}
 	}
 
 	public static void enableLogging(String name, Level level) {

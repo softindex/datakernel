@@ -37,6 +37,7 @@
 		<module>serializer</module>
 		<module>uikernel</module>
 		<module>ot</module>
+		<module>ot-mysql</module>
 		<module>global</module>
 		<module>common</module>
 		<module>test</module>

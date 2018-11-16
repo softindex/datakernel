@@ -18,10 +18,17 @@ package io.datakernel.util;
 
 import io.datakernel.annotation.Nullable;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.*;
+
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings("UnnecessaryLocalVariable")
 public class Utils {
@@ -197,6 +204,35 @@ public class Utils {
 			}
 		}
 		return true;
+	}
+
+	private static byte[] loadResource(InputStream stream) throws IOException {
+		// reading file as resource
+		try {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			byte[] buffer = new byte[4096];
+			int size;
+			while ((size = stream.read(buffer)) != -1) {
+				out.write(buffer, 0, size);
+			}
+			return out.toByteArray();
+		} finally {
+			stream.close();
+		}
+	}
+
+	public static byte[] loadResource(Path path) throws IOException {
+		return loadResource(path.toString());
+	}
+
+	public static byte[] loadResource(File file) throws IOException {
+		return loadResource(file.getPath());
+	}
+
+	public static byte[] loadResource(String name) throws IOException {
+		InputStream resource = Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
+		checkNotNull(resource);
+		return loadResource(resource);
 	}
 
 	private static final boolean launchedByIntellij = System.getProperty("java.class.path").contains("idea_rt.jar");
