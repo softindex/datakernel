@@ -359,7 +359,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 
 	@Override
 	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
-		ensureSharedKeysDb(receiver).put(simKey.getData().getHash(), simKey);
+		ensureSharedKeysDb(receiver).put(simKey.getValue().getHash(), simKey);
 		return Promise.complete();
 	}
 
@@ -372,7 +372,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 	public Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
 		return commitStorage.savePullRequest(pullRequest)
 				.thenCompose(saveStatus -> saveStatus ?
-						ensureServers(pullRequest.getData().repository)
+						ensureServers(pullRequest.getValue().repository)
 								.thenCompose(servers -> Promises.any(
 										servers.stream().map(server -> server.sendPullRequest(pullRequest))
 								)) :
@@ -413,7 +413,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 			}
 			return discoveryService.find(pubKey)
 					.whenResult(announceData -> {
-						Set<RawServerId> newServerIds = announceData.getData().getServerIds();
+						Set<RawServerId> newServerIds = announceData.getValue().getServerIds();
 						difference(servers.keySet(), newServerIds).forEach(servers::remove);
 						for (RawServerId newServerId : newServerIds) {
 							if (servers.containsKey(newServerId)) continue;

@@ -62,7 +62,7 @@ abstract class FramesToByteBufs extends SerialTransformer<FramesToByteBufs, Data
 			if (!frame.isCheckpoint()) {
 				return Promise.ofException(new StacklessException(getClass(), "First dataframe is not a checkpoint!"));
 			}
-			GlobalFsCheckpoint data = frame.getCheckpoint().getData();
+			GlobalFsCheckpoint data = frame.getCheckpoint().getValue();
 			position = data.getPosition();
 			digest = new SHA256Digest(data.getDigest());
 		}

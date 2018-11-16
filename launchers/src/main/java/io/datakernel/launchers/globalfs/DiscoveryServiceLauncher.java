@@ -30,7 +30,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.api.DiscoveryService;
-import io.global.fs.http.DiscoveryServlet;
+import io.global.common.discovery.DiscoveryServlet;
 import io.global.fs.local.RuntimeDiscoveryService;
 
 import java.net.InetSocketAddress;

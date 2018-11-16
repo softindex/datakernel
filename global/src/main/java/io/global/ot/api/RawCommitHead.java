@@ -16,50 +16,27 @@
 
 package io.global.ot.api;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
-import io.global.common.ByteArrayIdentity;
 
-import java.util.Arrays;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
-import static io.global.ot.util.BinaryDataFormats.*;
-
-public final class RawCommitHead implements ByteArrayIdentity {
-	public final byte[] bytes;
-
+public final class RawCommitHead {
 	public final RepoID repositoryId;
 	public final CommitId commitId;
 	public final long timestamp;
 
-	private RawCommitHead(byte[] bytes,
-			RepoID repositoryId, CommitId commitId, long timestamp) {
-		this.bytes = bytes;
-		this.repositoryId = repositoryId;
-		this.commitId = commitId;
+	private RawCommitHead(RepoID repositoryId, CommitId commitId, long timestamp) {
+		this.repositoryId = checkNotNull(repositoryId);
+		this.commitId = checkNotNull(commitId);
 		this.timestamp = timestamp;
 	}
 
-	public static RawCommitHead ofBytes(byte[] bytes) throws ParseException {
-		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		RepoID repositoryId = readRepoID(buf);
-		CommitId commitId = readCommitId(buf);
-		long timestamp = buf.readLong();
-		return new RawCommitHead(bytes, repositoryId, commitId, timestamp);
+	public static RawCommitHead parse(RepoID repositoryId, CommitId commitId, long timestamp) throws ParseException {
+		return of(repositoryId, commitId, timestamp);
 	}
 
 	public static RawCommitHead of(RepoID repositoryId, CommitId commitId, long timestamp) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(repositoryId) + sizeof(commitId) + 8);
-		writeRepoID(buf, repositoryId);
-		writeCommitId(buf, commitId);
-		buf.writeLong(timestamp);
-		return new RawCommitHead(buf.asArray(),
-				repositoryId, commitId, timestamp);
-	}
-
-	@Override
-	public byte[] toBytes() {
-		return bytes;
+		return new RawCommitHead(repositoryId, commitId, timestamp);
 	}
 
 	public RepoID getRepositoryId() {
@@ -70,16 +47,25 @@ public final class RawCommitHead implements ByteArrayIdentity {
 		return commitId;
 	}
 
+	public long getTimestamp() {
+		return timestamp;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		RawCommitHead that = (RawCommitHead) o;
-		return Arrays.equals(bytes, that.bytes);
+		if (timestamp != that.timestamp) return false;
+		if (!repositoryId.equals(that.repositoryId)) return false;
+		return commitId.equals(that.commitId);
 	}
 
 	@Override
 	public int hashCode() {
-		return Arrays.hashCode(bytes);
+		int result = repositoryId.hashCode();
+		result = 31 * result + commitId.hashCode();
+		result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
+		return result;
 	}
 }

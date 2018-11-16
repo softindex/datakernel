@@ -18,12 +18,15 @@ package io.global.fs.transformers;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codec.StructuredCodec;
 import io.global.common.PrivKey;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
 import org.spongycastle.crypto.digests.SHA256Digest;
+
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 
 /**
  * Converts a stream of data into a stream of frames.
@@ -32,6 +35,8 @@ import org.spongycastle.crypto.digests.SHA256Digest;
  * It's counterpart is the {@link FrameVerifier}.
  */
 public final class FrameSigner extends ByteBufsToFrames {
+	private static final StructuredCodec<GlobalFsCheckpoint> CHECKPOINT_CODEC = REGISTRY.get(GlobalFsCheckpoint.class);
+
 	private final String filename;
 	private final CheckpointPosStrategy checkpointPosStrategy;
 	private final PrivKey privateKey;
@@ -67,7 +72,7 @@ public final class FrameSigner extends ByteBufsToFrames {
 		nextCheckpoint = checkpointPosStrategy.nextPosition(nextCheckpoint);
 		GlobalFsCheckpoint checkpoint = GlobalFsCheckpoint.of(filename, position, new SHA256Digest(digest));
 		lastPostedCheckpoint = true;
-		return send(DataFrame.of(SignedData.sign(checkpoint, privateKey)));
+		return send(DataFrame.of(SignedData.sign(CHECKPOINT_CODEC, checkpoint, privateKey)));
 	}
 
 	@Override

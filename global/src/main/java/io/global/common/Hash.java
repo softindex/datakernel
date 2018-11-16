@@ -16,10 +16,18 @@
 
 package io.global.common;
 
-import java.util.Arrays;
+import io.datakernel.exception.ParseException;
 
-/** Thin holder/wrapper around SHA-256 hash of some object. */
-public final class Hash implements Base64Identity {
+import java.util.Arrays;
+import java.util.Base64;
+
+/**
+ * Thin holder/wrapper around SHA-256 hash of some object.
+ */
+public final class Hash {
+	private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
+	private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
+
 	private final byte[] bytes;
 
 	// region creators
@@ -27,26 +35,37 @@ public final class Hash implements Base64Identity {
 		this.bytes = bytes;
 	}
 
-	public static Hash of(byte[] data) {
+	public static Hash sha256(byte[] data) {
 		return new Hash(CryptoUtils.sha256(data));
 	}
 
-	public static Hash of(ByteArrayIdentity object) {
-		return new Hash(CryptoUtils.sha256(object.toBytes()));
+	public static Hash sha1(byte[] data) {
+		return new Hash(CryptoUtils.sha1(data));
 	}
 
-	public static Hash ofBytes(byte[] bytes) {
+	public static Hash of(byte[] bytes) {
 		return new Hash(bytes);
 	}
 
-	public static Hash fromString(String s) {
-		return new Hash(decoder.decode(s));
+	public static Hash parse(byte[] bytes) throws ParseException {
+		return new Hash(bytes);
+	}
+
+	public static Hash parseString(String s) throws ParseException {
+		try {
+			return parse(DECODER.decode(s));
+		} catch (IllegalArgumentException e) {
+			throw new ParseException(e);
+		}
 	}
 	// endregion
 
-	@Override
-	public byte[] toBytes() {
+	public byte[] getBytes() {
 		return bytes;
+	}
+
+	public String asString() {
+		return ENCODER.encodeToString(bytes);
 	}
 
 	@Override

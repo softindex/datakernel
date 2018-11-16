@@ -16,60 +16,54 @@
 
 package io.global.common;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.codec.StructuredDecoder;
+import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.exception.ParseException;
-import io.datakernel.util.ParserFunction;
-import io.global.ot.util.BinaryDataFormats;
+import org.spongycastle.crypto.params.ECPublicKeyParameters;
 
-import java.math.BigInteger;
+import static io.global.ot.util.BinaryDataFormats2.decode;
+import static io.global.ot.util.BinaryDataFormats2.encode;
 
-import static io.global.ot.util.BinaryDataFormats.*;
-
-public final class SignedData<T extends ByteArrayIdentity> implements ByteArrayIdentity {
-	private final T data;
+public final class SignedData<T> {
+	private final T value;
+	private final byte[] bytes;
 	private final Signature signature;
 
-	private SignedData(T data, Signature signature) {
-		this.data = data;
+	private SignedData(T value, byte[] bytes, Signature signature) {
+		this.value = value;
+		this.bytes = bytes;
 		this.signature = signature;
 	}
 
-	public static <T extends ByteArrayIdentity> SignedData<T> of(T data, Signature signature) {
-		return new SignedData<>(data, signature);
+	public static <T> SignedData<T> parse(StructuredDecoder<T> decoder, byte[] bytes, Signature signature) throws ParseException {
+		T value = decode(decoder, bytes);
+		return new SignedData<>(value, bytes, signature);
 	}
 
-	public static <T extends ByteArrayIdentity> SignedData<T> ofBytes(byte[] bytes, ParserFunction<byte[], T> dataParser) throws ParseException {
-		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		byte[] dataBytes = BinaryDataFormats.readBytes(buf);
-		T data = dataParser.parse(dataBytes);
-		BigInteger r = readBigInteger(buf);
-		BigInteger s = readBigInteger(buf);
-		return of(data, Signature.of(r, s));
+	public static <T> SignedData<T> sign(StructuredEncoder<T> encoder, T value, PrivKey privKey) {
+		byte[] bytes = encode(encoder, value).asArray();
+		return sign(value, bytes, privKey);
 	}
 
-	public static <T extends ByteArrayIdentity> SignedData<T> sign(T data, PrivKey privKey) {
-		byte[] dataBytes = data.toBytes();
-		Signature signature = CryptoUtils.sign(dataBytes, privKey.getEcPrivateKey());
-		return of(data, signature);
+	private static <T> SignedData<T> sign(T value, byte[] bytes, PrivKey privKey) {
+		Signature signature = CryptoUtils.sign(bytes, privKey.getEcPrivateKey());
+		return new SignedData<>(value, bytes, signature);
 	}
 
 	public boolean verify(PubKey pubKey) {
-		return CryptoUtils.verify(data.toBytes(), signature, pubKey.getEcPublicKey());
+		return verify(pubKey.getEcPublicKey());
 	}
 
-	@Override
-	public byte[] toBytes() {
-		byte[] dataBytes = data.toBytes();
-		ByteBuf buf = ByteBufPool.allocate(sizeof(dataBytes) + sizeof(signature.getR()) + sizeof(signature.getS()));
-		writeBytes(buf, dataBytes);
-		writeBigInteger(buf, signature.getR());
-		writeBigInteger(buf, signature.getS());
-		return buf.asArray();
+	public boolean verify(ECPublicKeyParameters ecPublicKey) {
+		return CryptoUtils.verify(bytes, signature, ecPublicKey);
 	}
 
-	public T getData() {
-		return data;
+	public T getValue() {
+		return value;
+	}
+
+	public byte[] getBytes() {
+		return bytes;
 	}
 
 	public Signature getSignature() {
@@ -81,16 +75,16 @@ public final class SignedData<T extends ByteArrayIdentity> implements ByteArrayI
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		SignedData<?> that = (SignedData<?>) o;
-		return data.equals(that.data) && signature.equals(that.signature);
+		return value.equals(that.value) && signature.equals(that.signature);
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * data.hashCode() + signature.hashCode();
+		return 31 * value.hashCode() + signature.hashCode();
 	}
 
 	@Override
 	public String toString() {
-		return "☉" + data.toString();
+		return "☉" + value.toString();
 	}
 }

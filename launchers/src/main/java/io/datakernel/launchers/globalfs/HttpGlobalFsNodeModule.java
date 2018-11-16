@@ -26,9 +26,9 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
+import io.global.common.discovery.HttpDiscoveryService;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.api.NodeClientFactory;
-import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.LocalGlobalFsNode;
 

@@ -17,12 +17,13 @@
 package io.global.common;
 
 import io.datakernel.exception.ParseException;
+import io.global.ot.util.BinaryDataFormats2;
 import org.spongycastle.crypto.params.ECPublicKeyParameters;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
 
-public final class PubKey implements StringIdentity {
+public final class PubKey {
 	private final ECPublicKeyParameters ecPublicKey;
 
 	// region creators
@@ -32,6 +33,14 @@ public final class PubKey implements StringIdentity {
 
 	public static PubKey of(ECPoint q) {
 		return new PubKey(new ECPublicKeyParameters(q, CryptoUtils.CURVE));
+	}
+
+	public static PubKey parse(ECPoint q) throws ParseException {
+		try {
+			return PubKey.of(q);
+		} catch (IllegalArgumentException | ArithmeticException e) {
+			throw new ParseException(BinaryDataFormats2.class, "Failed to read public key", e);
+		}
 	}
 
 	public static PubKey fromString(String string) throws ParseException {
@@ -57,15 +66,10 @@ public final class PubKey implements StringIdentity {
 		return ecPublicKey;
 	}
 
-	public byte[] encrypt(ByteArrayIdentity item) {
-		return CryptoUtils.encryptECIES(item.toBytes(), ecPublicKey);
-	}
-
 	public byte[] encrypt(byte[] data) {
 		return CryptoUtils.encryptECIES(data, ecPublicKey);
 	}
 
-	@Override
 	public String asString() {
 		ECPoint q = ecPublicKey.getQ();
 		return q.getXCoord() + ":" + q.getYCoord();

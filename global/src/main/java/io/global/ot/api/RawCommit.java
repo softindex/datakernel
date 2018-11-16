@@ -16,69 +16,44 @@
 
 package io.global.ot.api;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
 import io.global.common.Hash;
-import io.global.ot.util.BinaryDataFormats;
 
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
-import static io.global.ot.util.BinaryDataFormats.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RawCommit {
-	private final byte[] bytes;
-
-	private final List<CommitId> parents;
+	private final Set<CommitId> parents;
 	private final EncryptedData encryptedDiffs;
 	private final Hash simKeyHash;
 	private final long level;
 	private final long timestamp;
 
 	// region creators
-	private RawCommit(byte[] bytes,
-			List<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
+	private RawCommit(Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
 			long level, long timestamp) {
-		this.bytes = bytes;
-		this.parents = parents;
-		this.encryptedDiffs = encryptedDiffs;
-		this.simKeyHash = simKeyHash;
+		this.parents = checkNotNull(parents);
+		this.encryptedDiffs = checkNotNull(encryptedDiffs);
+		this.simKeyHash = checkNotNull(simKeyHash);
 		this.level = level;
 		this.timestamp = timestamp;
 	}
 
-	public static RawCommit ofBytes(byte[] bytes) throws ParseException {
-		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		List<CommitId> parents = readList(buf, BinaryDataFormats::readCommitId);
-		EncryptedData encryptedData = readEncryptedData(buf);
-		long level = buf.readLong();
-		long timestamp = buf.readLong();
-		Hash simKeyHash = Hash.ofBytes(readBytes(buf));
-		return new RawCommit(bytes,
-				parents, encryptedData, simKeyHash, level, timestamp);
+	public static RawCommit of(Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
+			long level, long timestamp) {
+		return new RawCommit(parents, encryptedDiffs, simKeyHash, level, timestamp);
 	}
 
-	public static RawCommit of(List<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash, long level, long timestamp) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(parents, BinaryDataFormats::sizeof) + sizeof(encryptedDiffs) + sizeof(simKeyHash.toBytes()) + 8 + 8);
-		writeCollection(buf, parents, BinaryDataFormats::writeCommitId);
-		writeEncryptedData(buf, encryptedDiffs);
-		buf.writeLong(level);
-		buf.writeLong(timestamp);
-		write(buf, simKeyHash);
-		return new RawCommit(buf.asArray(),
-				parents, encryptedDiffs, simKeyHash, level, timestamp);
+	public static RawCommit parse(Set<CommitId> parents, EncryptedData encryptedDiffs, Hash simKeyHash,
+			long level, long timestamp) throws ParseException {
+		return new RawCommit(parents, encryptedDiffs, simKeyHash, level, timestamp);
 	}
 	// endregion
 
 	public Set<CommitId> getParents() {
 		return new HashSet<>(parents);
-	}
-
-	public byte[] toBytes() {
-		return bytes;
 	}
 
 	public EncryptedData getEncryptedDiffs() {
@@ -101,12 +76,23 @@ public final class RawCommit {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		RawCommit that = (RawCommit) o;
-		return Arrays.equals(bytes, that.bytes);
+
+		RawCommit rawCommit = (RawCommit) o;
+
+		if (level != rawCommit.level) return false;
+		if (timestamp != rawCommit.timestamp) return false;
+		if (!parents.equals(rawCommit.parents)) return false;
+		if (!encryptedDiffs.equals(rawCommit.encryptedDiffs)) return false;
+		return simKeyHash.equals(rawCommit.simKeyHash);
 	}
 
 	@Override
 	public int hashCode() {
-		return Arrays.hashCode(bytes);
+		int result = parents.hashCode();
+		result = 31 * result + encryptedDiffs.hashCode();
+		result = 31 * result + simKeyHash.hashCode();
+		result = 31 * result + (int) (level ^ (level >>> 32));
+		result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
+		return result;
 	}
 }

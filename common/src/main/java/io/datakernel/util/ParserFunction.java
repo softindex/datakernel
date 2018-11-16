@@ -5,7 +5,7 @@ import io.datakernel.exception.ParseException;
 
 @FunctionalInterface
 public interface ParserFunction<T, R> {
-	R parse(T t) throws ParseException;
+	R parse(T value) throws ParseException;
 
 	default R parseOrDefault(@Nullable T value, R defaultResult) throws ParseException {
 		if (value != null) return parse(value);

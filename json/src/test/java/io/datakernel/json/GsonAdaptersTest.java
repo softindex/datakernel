@@ -18,7 +18,7 @@ package io.datakernel.json;
 
 import com.google.gson.TypeAdapter;
 import io.datakernel.exception.ParseException;
-import io.datakernel.util.SimpleType;
+import io.datakernel.util.RecursiveType;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -71,7 +71,7 @@ public class GsonAdaptersTest {
 	public void primitiveListTest() throws ParseException {
 		List<String> testList = Arrays.asList("one", "two", "strawberry", "five");
 
-		TypeAdapter<List<String>> adapter = PRIMITIVES_MAP.getAdapter(SimpleType.of(testList.getClass(), SimpleType.of(String.class)).getType());
+		TypeAdapter<List<String>> adapter = PRIMITIVES_MAP.getAdapter(RecursiveType.of(testList.getClass(), RecursiveType.of(String.class)).getType());
 
 		String listJson = toJson(adapter, testList);
 
@@ -87,7 +87,7 @@ public class GsonAdaptersTest {
 		testSet.add("strawberry");
 		testSet.add("five");
 
-		TypeAdapter<Set<String>> adapter = PRIMITIVES_MAP.getAdapter(SimpleType.of(testSet.getClass(), SimpleType.of(String.class)).getType());
+		TypeAdapter<Set<String>> adapter = PRIMITIVES_MAP.getAdapter(RecursiveType.of(testSet.getClass(), RecursiveType.of(String.class)).getType());
 
 		String setJson = toJson(adapter, testSet);
 
@@ -106,7 +106,7 @@ public class GsonAdaptersTest {
 		testMap.put("~sqrt2", 1.4142F);
 		testMap.put("~phi", 1.6180F);
 
-		TypeAdapter<Object> adapter = PRIMITIVES_MAP.getAdapter(SimpleType.of(testMap.getClass(), SimpleType.of(String.class), SimpleType.of(Float.class)).getType());
+		TypeAdapter<Object> adapter = PRIMITIVES_MAP.getAdapter(RecursiveType.of(testMap.getClass(), RecursiveType.of(String.class), RecursiveType.of(Float.class)).getType());
 
 		String mapJson = toJson(adapter, testMap);
 
@@ -120,7 +120,7 @@ public class GsonAdaptersTest {
 	public void nonStringMapKeyTest() {
 		thrown.expect(IllegalArgumentException.class);
 		thrown.expectMessage("should be string");
-		PRIMITIVES_MAP.getAdapter(SimpleType.of(LinkedHashMap.class, SimpleType.of(Float.class), SimpleType.of(String.class)).getType());
+		PRIMITIVES_MAP.getAdapter(RecursiveType.of(LinkedHashMap.class, RecursiveType.of(Float.class), RecursiveType.of(String.class)).getType());
 	}
 
 	@Test

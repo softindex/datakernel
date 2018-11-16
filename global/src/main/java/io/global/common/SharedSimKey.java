@@ -16,46 +16,30 @@
 
 package io.global.common;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
 import org.spongycastle.crypto.CryptoException;
 
 import java.util.Arrays;
 
-import static io.global.ot.util.BinaryDataFormats.*;
-
-public final class SharedSimKey implements ByteArrayIdentity {
-	private final byte[] bytes;
-
+public final class SharedSimKey {
 	private final Hash hash;
 	private final byte[] encrypted;
 
-	private SharedSimKey(byte[] bytes, Hash hash, byte[] encrypted) {
-		this.bytes = bytes;
+	private SharedSimKey(Hash hash, byte[] encrypted) {
 		this.hash = hash;
 		this.encrypted = encrypted;
 	}
 
-	public static SharedSimKey ofBytes(byte[] bytes) throws ParseException {
-		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		return new SharedSimKey(bytes, Hash.ofBytes(readBytes(buf)), readBytes(buf));
-	}
-
 	public static SharedSimKey of(Hash hash, byte[] encryptedSimKey) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(hash.toBytes()) + sizeof(encryptedSimKey));
-		write(buf, hash);
-		writeBytes(buf, encryptedSimKey);
-		return new SharedSimKey(buf.asArray(), hash, encryptedSimKey);
+		return new SharedSimKey(hash, encryptedSimKey);
 	}
 
 	public static SharedSimKey of(SimKey simKey, PubKey receiver) {
-		return of(Hash.of(simKey), receiver.encrypt(simKey));
+		return of(Hash.sha1(simKey.getBytes()), receiver.encrypt(simKey.getBytes()));
 	}
 
-	@Override
-	public byte[] toBytes() {
-		return bytes;
+	public static SharedSimKey parse(Hash hash, byte[] encryptedSimKey) throws ParseException {
+		return new SharedSimKey(hash, encryptedSimKey);
 	}
 
 	public Hash getHash() {
@@ -67,7 +51,7 @@ public final class SharedSimKey implements ByteArrayIdentity {
 	}
 
 	public SimKey decryptSimKey(PrivKey privKey) throws CryptoException {
-		return SimKey.ofBytes(privKey.decrypt(encrypted));
+		return SimKey.of(privKey.decrypt(encrypted));
 	}
 
 	@Override

@@ -1,25 +1,24 @@
 package io.datakernel.aggregation.fieldtype;
 
-import io.datakernel.util.SimpleType;
+import io.datakernel.util.RecursiveType;
 import org.junit.Test;
 
 import java.util.List;
 
-import static io.datakernel.util.SimpleType.of;
-import static io.datakernel.util.SimpleType.ofClass;
+import static io.datakernel.util.RecursiveType.of;
 import static org.junit.Assert.assertEquals;
 
-public class SimpleTypeTest {
+public class RecursiveTypeTest {
 
 	@Test
 	public void testClass() {
-		assertEquals(Integer.class, ofClass(Integer.class).getType());
+		assertEquals(Integer.class, of(Integer.class).getType());
 	}
 
 	@Test
 	public void testListString() throws NoSuchFieldException {
 		assertEquals(ListStringPojo.class.getField("list").getGenericType(),
-				of(List.class, ofClass(String.class)).getType());
+				of(List.class, of(String.class)).getType());
 	}
 
 	private static class ListStringPojo {
@@ -29,8 +28,8 @@ public class SimpleTypeTest {
 
 	@Test
 	public void testListExtendsString() throws NoSuchFieldException {
-		assertEquals(SimpleType.ofType(ListStringPojo.class.getField("list2").getGenericType()),
-				SimpleType.ofType(ListStringPojo.class.getField("list").getGenericType()));
+		assertEquals(RecursiveType.of(ListStringPojo.class.getField("list2").getGenericType()),
+				RecursiveType.of(ListStringPojo.class.getField("list").getGenericType()));
 	}
 
 }

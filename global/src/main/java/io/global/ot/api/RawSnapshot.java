@@ -16,59 +16,42 @@
 
 package io.global.ot.api;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
-import io.global.common.ByteArrayIdentity;
 import io.global.common.Hash;
 
-import java.util.Arrays;
+import java.util.Objects;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.global.ot.util.BinaryDataFormats.*;
 
-public final class RawSnapshot implements ByteArrayIdentity {
-	public final byte[] bytes;
-
+public final class RawSnapshot {
 	public final RepoID repositoryId;
 	public final CommitId commitId;
 	public final EncryptedData encryptedDiffs;
 	public final Hash simKeyHash;
 
-	private RawSnapshot(byte[] bytes,
-			RepoID repositoryId, CommitId commitId, EncryptedData encryptedDiffs, Hash simKeyHash) {
-		this.bytes = bytes;
-		this.repositoryId = repositoryId;
-		this.commitId = commitId;
-		this.encryptedDiffs = encryptedDiffs;
-		this.simKeyHash = simKeyHash;
-	}
-
-	public static RawSnapshot ofBytes(byte[] bytes) throws ParseException {
-		ByteBuf buf = ByteBuf.wrapForReading(bytes);
-		RepoID repositoryId = readRepoID(buf);
-		CommitId commitId = readCommitId(buf);
-		EncryptedData encryptedData = readEncryptedData(buf);
-		Hash simKeyHash = Hash.ofBytes(readBytes(buf));
-		return new RawSnapshot(bytes, repositoryId, commitId, encryptedData, simKeyHash);
+	private RawSnapshot(RepoID repositoryId, CommitId commitId, EncryptedData encryptedDiffs, Hash simKeyHash) {
+		this.repositoryId = checkNotNull(repositoryId);
+		this.commitId = checkNotNull(commitId);
+		this.encryptedDiffs = checkNotNull(encryptedDiffs);
+		this.simKeyHash = checkNotNull(simKeyHash);
 	}
 
 	public static RawSnapshot of(RepoID repositoryId,
 			CommitId commitId,
 			EncryptedData encryptedDiffs,
 			Hash simKeyHash) {
-		ByteBuf buf = ByteBufPool.allocate(sizeof(repositoryId) + sizeof(commitId) + sizeof(encryptedDiffs) + sizeof(simKeyHash.toBytes()));
-		writeRepoID(buf, repositoryId);
-		writeCommitId(buf, commitId);
-		writeEncryptedData(buf, encryptedDiffs);
-		write(buf, simKeyHash);
-		return new RawSnapshot(buf.asArray(),
-				repositoryId, commitId, encryptedDiffs, simKeyHash);
+		return new RawSnapshot(repositoryId, commitId, encryptedDiffs, simKeyHash);
 	}
 
-	@Override
-	public byte[] toBytes() {
-		return checkNotNull(bytes);
+	public static RawSnapshot parse(RepoID repositoryId,
+			CommitId commitId,
+			EncryptedData encryptedDiffs,
+			Hash simKeyHash) throws ParseException {
+		return new RawSnapshot(repositoryId, commitId, encryptedDiffs, simKeyHash);
+	}
+
+	public RepoID getRepositoryId() {
+		return repositoryId;
 	}
 
 	public CommitId getCommitId() {
@@ -88,11 +71,14 @@ public final class RawSnapshot implements ByteArrayIdentity {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		RawSnapshot that = (RawSnapshot) o;
-		return Arrays.equals(bytes, that.bytes);
+		return Objects.equals(repositoryId, that.repositoryId) &&
+				Objects.equals(commitId, that.commitId) &&
+				Objects.equals(encryptedDiffs, that.encryptedDiffs) &&
+				Objects.equals(simKeyHash, that.simKeyHash);
 	}
 
 	@Override
 	public int hashCode() {
-		return Arrays.hashCode(bytes);
+		return Objects.hash(repositoryId, commitId, encryptedDiffs, simKeyHash);
 	}
 }

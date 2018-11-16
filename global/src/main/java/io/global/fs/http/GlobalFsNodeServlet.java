@@ -19,7 +19,7 @@ package io.global.fs.http;
 import com.google.inject.Inject;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
@@ -27,19 +27,19 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsMetadata;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
-import io.global.ot.util.BinaryDataFormats;
 
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.*;
 import static io.global.fs.util.HttpDataFormats.parseOffset;
 import static io.global.fs.util.HttpDataFormats.parseRange;
-import static io.global.ot.util.BinaryDataFormats.sizeof;
+import static io.global.ot.util.BinaryDataFormats2.*;
 
 public final class GlobalFsNodeServlet implements AsyncServlet {
 	public static final String UPLOAD = "upload";
@@ -49,6 +49,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 	public static final String DEL = "delete";
 	public static final String COPY = "copy";
 	public static final String MOVE = "move";
+	public static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsMetadata>>() {});
 
 	private final AsyncServlet servlet;
 
@@ -67,9 +68,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 					String path = request.getPathParameter("path");
 					long offset = parseOffset(request);
 					SerialSupplier<ByteBuf> body = request.getBodyStream();
-					return node.getMetadata(
-							PubKey.fromString(request.getPathParameter("owner")),
-							request.getPathParameter("path"))
+					return node.getMetadata(PubKey.fromString(request.getPathParameter("owner")), request.getPathParameter("path"))
 							.thenCompose(meta ->
 									node.upload(pubKey, path, offset)
 											.thenCompose(consumer -> body.streamTo(consumer.apply(new FrameDecoder())))
@@ -77,7 +76,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 				})
 				.with(POST, "/" + PUSH + "/:owner", ensureRequestBody(request -> {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-					SignedData<GlobalFsMetadata> signedMeta = SignedData.ofBytes(request.getBody().asArray(), GlobalFsMetadata::fromBytes);
+					SignedData<GlobalFsMetadata> signedMeta = decode(SIGNED_METADATA_CODEC, request.getBody());
 					return node.pushMetadata(pubKey, signedMeta)
 							.thenApply($ -> HttpResponse.ok200());
 				}))
@@ -87,13 +86,10 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 							node.list(pubKey, request.getQueryParameter("glob")) :
 							node.listLocal(pubKey, request.getQueryParameter("glob")))
 							.thenApply(list -> HttpResponse.ok200()
-									.withBodyStream(SerialSupplier.ofStream(list.stream()
-											.map(meta -> {
-												byte[] bytes = meta.toBytes();
-												ByteBuf buf = ByteBufPool.allocate(sizeof(bytes));
-												BinaryDataFormats.writeBytes(buf, bytes);
-												return buf;
-											}))));
+									.withBodyStream(
+											SerialSupplier.ofStream(
+													list.stream()
+															.map(meta -> encodeWithSizePrefix(SIGNED_METADATA_CODEC, meta)))));
 				});
 		// .with(POST, "/" + COPY + "/:owner/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
 		// 		node.copy(parseNamespace(request), request.getPostParameters())

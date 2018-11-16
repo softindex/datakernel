@@ -16,6 +16,8 @@
 
 package io.datakernel.exception;
 
+import io.datakernel.annotation.Nullable;
+
 /**
  * This exception (as well as its subtypes) is used in asynchronous contexts
  * where the default Java call stacktrace has no useful meaning and is redundant
@@ -24,6 +26,26 @@ package io.datakernel.exception;
 
 public class StacklessException extends Exception {
 	private final Class<?> component;
+
+	public StacklessException() {
+		super();
+		this.component = null;
+	}
+
+	public StacklessException(String message) {
+		super(message);
+		this.component = null;
+	}
+
+	public StacklessException(String message, Throwable cause) {
+		super(message, cause);
+		this.component = null;
+	}
+
+	public StacklessException(Throwable cause) {
+		super(cause);
+		this.component = null;
+	}
 
 	public StacklessException(Class<?> component, String message) {
 		super(message);
@@ -35,13 +57,14 @@ public class StacklessException extends Exception {
 		this.component = component;
 	}
 
+	@Nullable
 	public Class<?> getComponent() {
 		return component;
 	}
 
 	@Override
 	public final Throwable fillInStackTrace() {
-		return this;
+		return component == null ? super.fillInStackTrace() : this;
 	}
 
 	@Override

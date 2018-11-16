@@ -43,7 +43,7 @@ public class CommitStorageStub implements CommitStorage {
 	@Override
 	public Promise<Void> applyHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
 		Map<CommitId, SignedData<RawCommitHead>> map = heads.computeIfAbsent(repositoryId, repositoryId1 -> new HashMap<>());
-		newHeads.forEach(head -> map.put(head.getData().commitId, head));
+		newHeads.forEach(head -> map.put(head.getValue().commitId, head));
 		excludedHeads.forEach(map::remove);
 		return Promise.complete();
 	}
@@ -83,8 +83,8 @@ public class CommitStorageStub implements CommitStorage {
 	@Override
 	public Promise<Boolean> saveSnapshot(SignedData<RawSnapshot> encryptedSnapshot) {
 		SignedData<RawSnapshot> old = snapshots
-				.computeIfAbsent(encryptedSnapshot.getData().repositoryId, $ -> new HashMap<>())
-				.put(encryptedSnapshot.getData().commitId, encryptedSnapshot);
+				.computeIfAbsent(encryptedSnapshot.getValue().repositoryId, $ -> new HashMap<>())
+				.put(encryptedSnapshot.getValue().commitId, encryptedSnapshot);
 		return Promise.of(old == null);
 	}
 
@@ -96,7 +96,7 @@ public class CommitStorageStub implements CommitStorage {
 
 	@Override
 	public Promise<Boolean> savePullRequest(SignedData<RawPullRequest> pullRequest) {
-		pullRequests.computeIfAbsent(pullRequest.getData().repository, $ -> new HashSet<>()).add(pullRequest);
+		pullRequests.computeIfAbsent(pullRequest.getValue().repository, $ -> new HashSet<>()).add(pullRequest);
 		return null;
 	}
 

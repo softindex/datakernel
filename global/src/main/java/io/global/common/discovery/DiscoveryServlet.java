@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package io.global.fs.http;
+package io.global.common.discovery;
 
-import com.google.gson.TypeAdapter;
 import com.google.inject.Inject;
 import io.datakernel.async.Promise;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
+import io.datakernel.util.TypeT;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -29,12 +30,9 @@ import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 
-import java.io.IOException;
 import java.util.List;
 
-import static io.datakernel.json.GsonAdapters.ofList;
-import static io.global.common.GlobalJsonAdapters.*;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static io.global.ot.util.BinaryDataFormats2.*;
 
 public final class DiscoveryServlet implements AsyncServlet {
 	public static final String ANNOUNCE_ALL = "announceAll";
@@ -47,9 +45,9 @@ public final class DiscoveryServlet implements AsyncServlet {
 
 	private final AsyncServlet servlet;
 
-	static final TypeAdapter<SignedData<AnnounceData>> SIGNED_ANNOUNCE = withSignarure(ANNOUNCE_DATA);
-	static final TypeAdapter<SignedData<SharedSimKey>> SIGNED_SHARED_SIM_KEY = withSignarure(SHARED_SIM_KEY);
-	static final TypeAdapter<List<SignedData<SharedSimKey>>> LIST_OF_SIGNED_SHARED_SIM_KEYS = ofList(SIGNED_SHARED_SIM_KEY);
+	static final StructuredCodec<SignedData<AnnounceData>> SIGNED_ANNOUNCE = REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
+	static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_SIM_KEY = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
+	static final StructuredCodec<List<SignedData<SharedSimKey>>> LIST_OF_SIGNED_SHARED_SIM_KEYS = REGISTRY.get(new TypeT<List<SignedData<SharedSimKey>>>() {});
 
 	@Inject
 	public DiscoveryServlet(DiscoveryService discoveryService) {
@@ -59,8 +57,8 @@ public final class DiscoveryServlet implements AsyncServlet {
 					return request.getBodyPromise(Integer.MAX_VALUE)
 							.thenCompose(body -> {
 								try {
-									return discoveryService.announce(owner, SIGNED_ANNOUNCE.fromJson(body.asString(UTF_8)));
-								} catch (IOException e) {
+									return discoveryService.announce(owner, decode(SIGNED_ANNOUNCE, body));
+								} catch (ParseException e) {
 									return Promise.ofException(e);
 								}
 							})
@@ -72,15 +70,15 @@ public final class DiscoveryServlet implements AsyncServlet {
 								.thenComposeEx((data, e) ->
 										e == null ?
 												Promise.of(HttpResponse.ok200()
-														.withBody(SIGNED_ANNOUNCE.toJson(data).getBytes(UTF_8))) :
+														.withBody(encode(SIGNED_ANNOUNCE, data))) :
 												Promise.ofException(HttpException.notFound404())))
 				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", request -> {
 					PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
 					return request.getBodyPromise(Integer.MAX_VALUE)
 							.thenCompose(body -> {
 								try {
-									return discoveryService.shareKey(receiver, SIGNED_SHARED_SIM_KEY.fromJson(body.asString(UTF_8)));
-								} catch (IOException e) {
+									return discoveryService.shareKey(receiver, decode(SIGNED_SHARED_SIM_KEY, body));
+								} catch (ParseException e) {
 									return Promise.ofException(e);
 								}
 							})
@@ -88,19 +86,19 @@ public final class DiscoveryServlet implements AsyncServlet {
 				})
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEY + "/:receiver/:hash", request -> {
 					PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
-					Hash simKeyHash = Hash.fromString(request.getPathParameter("hash"));
+					Hash simKeyHash = Hash.parseString(request.getPathParameter("hash"));
 					return discoveryService.getSharedKey(receiver, simKeyHash)
 							.thenComposeEx((signedSharedKey, e) ->
 									e == null ?
 											Promise.of(HttpResponse.ok200()
-													.withBody(SIGNED_SHARED_SIM_KEY.toJson(signedSharedKey).getBytes(UTF_8))) :
+													.withBody(encode(SIGNED_SHARED_SIM_KEY, signedSharedKey))) :
 											Promise.ofException(HttpException.notFound404()));
 				})
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEYS + "/:receiver", request ->
 						discoveryService.getSharedKeys(PubKey.fromString(request.getPathParameter("receiver")))
 								.thenApply(signedSharedKeys ->
 										HttpResponse.ok200()
-												.withBody(LIST_OF_SIGNED_SHARED_SIM_KEYS.toJson(signedSharedKeys).getBytes(UTF_8))));
+												.withBody(encode(LIST_OF_SIGNED_SHARED_SIM_KEYS, signedSharedKeys))));
 	}
 
 	@Override

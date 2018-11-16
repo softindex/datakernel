@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serial.SerialSupplier;
@@ -54,7 +55,9 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
+import static io.global.common.api.DiscoveryService.NO_SHARED_KEY;
 import static io.global.fs.api.CheckpointPosStrategy.fixed;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
@@ -111,7 +114,7 @@ public final class GlobalFsTest {
 	}
 
 	private Promise<Void> announce(KeyPair keys, Set<RawServerId> rawServerIds) {
-		return discoveryService.announce(keys.getPubKey(), SignedData.sign(AnnounceData.of(123, rawServerIds), keys.getPrivKey()));
+		return discoveryService.announce(keys.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(123, rawServerIds), keys.getPrivKey()));
 	}
 
 	@Test
@@ -193,7 +196,7 @@ public final class GlobalFsTest {
 				.apply(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.fixed(4), filename, 0, new SHA256Digest()))
 				.streamTo(firstClient.uploader(alice.getPubKey(), filename, -1))
 				.thenCompose($ -> firstClient.pushMetadata(alice.getPubKey(),
-						SignedData.sign(GlobalFsMetadata.of(filename, content.length(), System.currentTimeMillis()), alice.getPrivKey())))
+						SignedData.sign(REGISTRY.get(GlobalFsMetadata.class), GlobalFsMetadata.of(filename, content.length(), System.currentTimeMillis()), alice.getPrivKey())))
 				.thenCompose($ -> firstClient.download(alice.getPubKey(), filename, 4, 0))
 				.thenCompose(supplier -> supplier.toCollector(toList()))
 				.whenComplete(assertComplete(list -> {
@@ -202,7 +205,7 @@ public final class GlobalFsTest {
 					DataFrame frame = list.get(0);
 					assertTrue(frame.isCheckpoint());
 					assertTrue(frame.getCheckpoint().verify(alice.getPubKey()));
-					assertEquals(4, frame.getCheckpoint().getData().getPosition());
+					assertEquals(4, frame.getCheckpoint().getValue().getPosition());
 				}));
 	}
 
@@ -302,14 +305,14 @@ public final class GlobalFsTest {
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(data.substring(12, 12 + 32), res.asString(UTF_8))))
 				.whenResult($ -> {
-					firstDriver.forget(Hash.of(key1));
+					firstDriver.forget(Hash.sha1(key1.getBytes()));
 					firstDriver.changeCurrentSimKey(key2);
 				})
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertFailure(e -> assertSame(DiscoveryService.NO_KEY, e)))
+				.whenComplete(assertFailure(StacklessException.class, e -> assertSame(NO_SHARED_KEY, e)))
 				.thenComposeEx(($, e) -> discoveryService.shareKey(alice.getPubKey(),
-						SignedData.sign(SharedSimKey.of(key1, alice.getPubKey()), alice.getPrivKey())))
+						SignedData.sign(REGISTRY.get(SharedSimKey.class), SharedSimKey.of(key1, alice.getPubKey()), alice.getPrivKey())))
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(data, res.asString(UTF_8))));

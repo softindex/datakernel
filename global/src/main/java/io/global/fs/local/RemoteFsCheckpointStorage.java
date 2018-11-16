@@ -18,23 +18,26 @@ package io.global.fs.local;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
-import io.global.ot.util.BinaryDataFormats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
+import static io.global.ot.util.BinaryDataFormats2.*;
+
 public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsCheckpointStorage.class);
+	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 
 	private final FsClient fsClient;
 
@@ -66,12 +69,11 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					int size = 0;
 					while (buf.canRead()) {
 						try {
-							byte[] bytes = BinaryDataFormats.readBytes(buf);
-							SignedData<GlobalFsCheckpoint> checkpoint = SignedData.ofBytes(bytes, GlobalFsCheckpoint::ofBytes);
+							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
 							if (array.length == size) {
 								array = Arrays.copyOf(array, size * 2);
 							}
-							array[size++] = checkpoint.getData().getPosition();
+							array[size++] = checkpoint.getValue().getPosition();
 						} catch (ParseException e) {
 							buf.recycle();
 							return Promise.ofException(e);
@@ -91,9 +93,8 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					}
 					while (buf.canRead()) {
 						try {
-							byte[] bytes = BinaryDataFormats.readBytes(buf);
-							SignedData<GlobalFsCheckpoint> checkpoint = SignedData.ofBytes(bytes, GlobalFsCheckpoint::ofBytes);
-							if (checkpoint.getData().getPosition() == position) {
+							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
+							if (checkpoint.getValue().getPosition() == position) {
 								buf.recycle();
 								return Promise.of(checkpoint);
 							}
@@ -103,29 +104,25 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						}
 					}
 					buf.recycle();
-					return Promise.ofException(new StacklessException(CheckpointStorage.class, "No checkpoint found on position " + position));
+					return Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "No checkpoint found on position " + position));
 				});
 	}
 
 	@Override
 	public Promise<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
-		long pos = checkpoint.getData().getPosition();
+		long pos = checkpoint.getValue().getPosition();
 		return loadCheckpoint(filename, pos)
 				.thenComposeEx((existing, e) -> {
 					if (e == null) {
 						return checkpoint.equals(existing) ?
 								Promise.complete() :
-								Promise.ofException(new StacklessException(CheckpointStorage.class, "Trying to override existing checkpoint at " + pos));
+								Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Trying to override existing checkpoint at " + pos));
 					}
 					return fsClient.getMetadata(filename)
 							.thenCompose(m -> fsClient.upload(filename, m != null ? m.getSize() : 0))
-							.thenCompose(consumer -> {
-								byte[] bytes = checkpoint.toBytes();
-								ByteBuf buf = ByteBufPool.allocate(bytes.length + 5);
-								BinaryDataFormats.writeBytes(buf, bytes);
-								return SerialSupplier.of(buf).streamTo(consumer);
-							});
+							.thenCompose(SerialSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, checkpoint))::streamTo);
 				});
 	}
+
 }
 

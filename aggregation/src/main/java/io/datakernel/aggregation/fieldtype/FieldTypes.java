@@ -22,7 +22,7 @@ import io.datakernel.codegen.utils.Primitives;
 import io.datakernel.json.GsonAdapters;
 import io.datakernel.serializer.StringFormat;
 import io.datakernel.serializer.asm.*;
-import io.datakernel.util.SimpleType;
+import io.datakernel.util.RecursiveType;
 
 import java.lang.reflect.Type;
 import java.time.LocalDate;
@@ -65,7 +65,7 @@ public final class FieldTypes {
 		Type wrappedNestedType = fieldType.getDataType() instanceof Class ?
 				Primitives.wrap((Class<?>) fieldType.getDataType()) :
 				fieldType.getDataType();
-		Type dataType = SimpleType.of(Set.class, SimpleType.ofType(wrappedNestedType)).getType();
+		Type dataType = RecursiveType.of(Set.class, RecursiveType.of(wrappedNestedType)).getType();
 		TypeAdapter<Set<T>> json = GsonAdapters.ofSet(fieldType.getJson());
 		return new FieldType<>(Set.class, dataType, serializer, json, json);
 	}

@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
@@ -43,11 +44,13 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.file.FileUtils.isWildcard;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsGatewayAdapter implements FsClient, Initializable<GlobalFsGatewayAdapter> {
 	private static final StacklessException METADATA_SIG = new StacklessException(GlobalFsGatewayAdapter.class, "Received metadata signature is not verified");
 	private static final StacklessException CHECKPOINT_SIG = new StacklessException(GlobalFsGatewayAdapter.class, "Received checkpoint signature is not verified");
+	private static final StructuredCodec<GlobalFsMetadata> METADATA_CODEC = REGISTRY.get(GlobalFsMetadata.class);
 
 	private final GlobalFsDriver driver;
 
@@ -84,8 +87,8 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 								.withAcknowledgement(ack -> ack
 										.thenCompose($ -> {
 											GlobalFsMetadata updatedMetadata =
-													GlobalFsMetadata.of(filename, size[0], now.currentTimeMillis(), key != null ? Hash.of(key) : null);
-											return node.pushMetadata(pubKey, SignedData.sign(updatedMetadata, privKey));
+													GlobalFsMetadata.of(filename, size[0], now.currentTimeMillis(), key != null ? Hash.sha1(key.getBytes()) : null);
+											return node.pushMetadata(pubKey, SignedData.sign(METADATA_CODEC, updatedMetadata, privKey));
 										}))));
 	}
 
@@ -106,7 +109,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 					if (offset == -1) {
 						return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "File already exists"));
 					}
-					GlobalFsMetadata metadata = signedMetadata.getData();
+					GlobalFsMetadata metadata = signedMetadata.getValue();
 					long metaSize = metadata.getSize();
 					if (offset > metaSize) {
 						return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "Trying to upload at offset greater than the file size"));
@@ -122,7 +125,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 								if (!checkpoint.verify(pubKey)) {
 									return Promise.ofException(CHECKPOINT_SIG);
 								}
-								return doUpload(filename, metadata, offset, skip, checkpoint.getData().getDigest());
+								return doUpload(filename, metadata, offset, skip, checkpoint.getValue().getDigest());
 							});
 				});
 	}
@@ -139,7 +142,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 								if (!signedMetadata.verify(pubKey)) {
 									return Promise.ofException(METADATA_SIG);
 								}
-								GlobalFsMetadata metadata = signedMetadata.getData();
+								GlobalFsMetadata metadata = signedMetadata.getValue();
 								return driver.getKey(pubKey, metadata.getSimKeyHash())
 										.thenApply(key -> supplier
 												.apply(FrameVerifier.create(pubKey, filename, offset, limit))
@@ -153,7 +156,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 		return node.list(pubKey, glob)
 				.thenApply(res -> res.stream()
 						.filter(signedMeta -> signedMeta.verify(pubKey))
-						.map(signedMeta -> signedMeta.getData().toFileMetadata())
+						.map(signedMeta -> signedMeta.getValue().toFileMetadata())
 						.collect(toList()));
 	}
 
@@ -163,11 +166,11 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 			return node.list(pubKey, glob)
 					.thenCompose(list ->
 							Promises.all(list.stream()
-									.filter(signedMeta -> !signedMeta.getData().isRemoved() && signedMeta.verify(pubKey))
+									.filter(signedMeta -> !signedMeta.getValue().isRemoved() && signedMeta.verify(pubKey))
 									.map(signedMeta ->
-											node.pushMetadata(pubKey, SignedData.sign(signedMeta.getData().toRemoved(now.currentTimeMillis()), privKey)))));
+											node.pushMetadata(pubKey, SignedData.sign(METADATA_CODEC, signedMeta.getValue().toRemoved(now.currentTimeMillis()), privKey)))));
 		}
-		return node.pushMetadata(pubKey, SignedData.sign(GlobalFsMetadata.ofRemoved(glob, now.currentTimeMillis()), privKey));
+		return node.pushMetadata(pubKey, SignedData.sign(METADATA_CODEC, GlobalFsMetadata.ofRemoved(glob, now.currentTimeMillis()), privKey));
 	}
 
 	@Override

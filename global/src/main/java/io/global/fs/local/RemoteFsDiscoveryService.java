@@ -16,46 +16,118 @@
 
 package io.global.fs.local;
 
+import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.serial.ByteBufsParser;
+import io.datakernel.serial.ByteBufsSupplier;
+import io.datakernel.serial.SerialConsumer;
+import io.datakernel.serial.SerialSupplier;
+import io.datakernel.util.Tuple2;
+import io.datakernel.util.TypeT;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
-import io.global.common.api.DiscoveryService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-public final class RemoteFsDiscoveryService implements DiscoveryService {
-	private final FsClient fsClient;
+import static io.global.ot.util.BinaryDataFormats2.*;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
-	public RemoteFsDiscoveryService(FsClient fsClient) {
-		this.fsClient = fsClient;
+public final class RemoteFsDiscoveryService extends RuntimeDiscoveryService implements EventloopService {
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFsDiscoveryService.class);
+
+	private static final String ANNOUNCEMENTS_FILE = "announcements.bin";
+	private static final String SHARED_KEYS_FILE = "shared-keys.bin";
+
+	private static final StructuredCodec<Tuple2<PubKey, SignedData<AnnounceData>>> ANNOUNCE_CODEC =
+			REGISTRY.get(new TypeT<Tuple2<PubKey, SignedData<AnnounceData>>>() {});
+
+	private static final ByteBufsParser<Tuple2<PubKey, SignedData<AnnounceData>>> ANNOUNCE_PARSER = fromDecoder(ANNOUNCE_CODEC);
+
+	private static final StructuredCodec<Tuple2<PubKey, List<Tuple2<Hash, SignedData<SharedSimKey>>>>> SHARED_KEY_CODEC =
+			REGISTRY.get(new TypeT<Tuple2<PubKey, List<Tuple2<Hash, SignedData<SharedSimKey>>>>>() {});
+
+	private static final ByteBufsParser<Tuple2<PubKey, List<Tuple2<Hash, SignedData<SharedSimKey>>>>> SHARED_KEY_PARSER = fromDecoder(SHARED_KEY_CODEC);
+
+	private final Eventloop eventloop;
+	private final FsClient storage;
+
+	public RemoteFsDiscoveryService(Eventloop eventloop, FsClient storage) {
+		this.eventloop = eventloop;
+		this.storage = storage;
 	}
 
 	@Override
-	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
-		throw new UnsupportedOperationException("RemoteFsDiscoveryService#announce is not implemented yet");
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
+
+	private Promise<Void> loadAnnouncements() {
+		return storage.download(ANNOUNCEMENTS_FILE)
+				.thenComposeEx((supplier, e) -> {
+					if (e != null) {
+						logger.info("Failed to load announcements from " + ANNOUNCEMENTS_FILE, e);
+						return Promise.complete();
+					}
+					return ByteBufsSupplier.of(supplier)
+							.parseStream(ANNOUNCE_PARSER)
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(tuple -> announced.put(tuple.getValue1(), tuple.getValue2()))));
+				});
+	}
+
+	private Promise<Void> storeAnnouncements() {
+		return storage.upload(ANNOUNCEMENTS_FILE, ".temp")
+				.thenCompose(consumer ->
+						SerialSupplier.ofStream(announced.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(), entry.getValue())))
+								.transform(tuple -> encode(ANNOUNCE_CODEC, tuple))
+								.streamTo(consumer));
+	}
+
+	private Promise<Void> loadSharedKeys() {
+		return storage.download(SHARED_KEYS_FILE)
+				.thenComposeEx((supplier, e) -> {
+					if (e != null) {
+						logger.info("Failed to load shared keys from " + SHARED_KEYS_FILE, e);
+						return Promise.complete();
+					}
+					return ByteBufsSupplier.of(supplier)
+							.parseStream(SHARED_KEY_PARSER)
+							.streamTo(SerialConsumer.of(AsyncConsumer.of(tuple ->
+									sharedKeys.put(tuple.getValue1(), tuple.getValue2().stream().collect(toMap(Tuple2::getValue1, Tuple2::getValue2))))));
+				});
+	}
+
+	private Promise<Void> storeSharedKeys() {
+		return storage.upload(ANNOUNCEMENTS_FILE, ".temp")
+				.thenCompose(consumer ->
+						SerialSupplier.ofStream(sharedKeys.entrySet()
+								.stream()
+								.map(entry ->
+										new Tuple2<>(entry.getKey(), entry.getValue().entrySet()
+												.stream()
+												.map(entry2 -> new Tuple2<>(entry2.getKey(), entry2.getValue()))
+												.collect(toList()))))
+								.transform(tuple -> encode(SHARED_KEY_CODEC, tuple))
+								.streamTo(consumer));
 	}
 
 	@Override
-	public Promise<SignedData<AnnounceData>> find(PubKey space) {
-		throw new UnsupportedOperationException("RemoteFsDiscoveryService#find is not implemented yet");
+	public Promise<Void> start() {
+		return Promises.all(loadAnnouncements(), loadSharedKeys());
 	}
 
 	@Override
-	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
-		throw new UnsupportedOperationException("RemoteFsDiscoveryService#shareKey is not implemented yet");
-	}
-
-	@Override
-	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash) {
-		throw new UnsupportedOperationException("RemoteFsDiscoveryService#getSharedKey is not implemented yet");
-	}
-
-	@Override
-	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
-		throw new UnsupportedOperationException("RemoteFsDiscoveryService#getSharedKeys is not implemented yet");
+	public Promise<Void> stop() {
+		return Promises.all(storeAnnouncements(), storeSharedKeys());
 	}
 }

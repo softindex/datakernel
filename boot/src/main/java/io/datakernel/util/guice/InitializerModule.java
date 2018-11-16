@@ -5,7 +5,7 @@ import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.ProvisionListener;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
-import io.datakernel.util.SimpleType;
+import io.datakernel.util.RecursiveType;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
@@ -49,7 +49,7 @@ public final class InitializerModule extends AbstractModule {
 				initializerCache
 						.computeIfAbsent(provision.getBinding().getKey(), key -> {
 							Type type = key.getTypeLiteral().getType();
-							Type initializerType = SimpleType.of(OptionalInitializer.class, SimpleType.ofType(type)).getType();
+							Type initializerType = RecursiveType.of(OptionalInitializer.class, RecursiveType.of(type)).getType();
 							Annotation annotation = key.getAnnotation();
 							Binding<?> binding = annotation != null ?
 									injectorProvider.get().getBinding(Key.get(initializerType, annotation)) :

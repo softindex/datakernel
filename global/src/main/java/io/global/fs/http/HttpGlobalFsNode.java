@@ -18,18 +18,15 @@ package io.global.fs.http;
 
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.ParseException;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.http.UrlBuilder;
-import io.datakernel.serial.ByteBufsSupplier;
-import io.datakernel.serial.SerialConsumer;
-import io.datakernel.serial.SerialSupplier;
-import io.datakernel.serial.SerialZeroBuffer;
+import io.datakernel.serial.*;
+import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
@@ -45,9 +42,12 @@ import java.util.function.Function;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.serial.ByteBufsParser.ofVarIntSizePrefixedBytes;
 import static io.global.fs.http.GlobalFsNodeServlet.*;
+import static io.global.ot.util.BinaryDataFormats2.*;
 import static java.util.stream.Collectors.toList;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {
+	private static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsMetadata>>() {});
+
 	private final InetSocketAddress address;
 	private final IAsyncHttpClient client;
 
@@ -99,17 +99,15 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 		return Promise.of(uploader(space, filename, offset));
 	}
 
-	private static final Function<HttpResponse, Promise<List<SignedData<GlobalFsMetadata>>>> listResponseHandler =
+	public static final ByteBufsParser<SignedData<GlobalFsMetadata>> SIGNED_METADATA_PARSER =
+			ofVarIntSizePrefixedBytes()
+					.andThen(buf -> decode(SIGNED_METADATA_CODEC, buf));
+
+	private static final Function<HttpResponse, Promise<List<SignedData<GlobalFsMetadata>>>> LIST_RESPONSE_PARSER =
 			response ->
 					ByteBufsSupplier.of(response.getBodyStream())
-							.parseStream(ofVarIntSizePrefixedBytes())
-							.transform(buf -> {
-								try {
-									return SignedData.ofBytes(buf.asArray(), GlobalFsMetadata::fromBytes);
-								} catch (ParseException e) {
-									throw new UncheckedException(e);
-								}
-							}).toCollector(toList());
+							.parseStream(SIGNED_METADATA_PARSER)
+							.toCollector(toList());
 
 	@Override
 	public Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob) {
@@ -121,7 +119,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendQuery("glob", glob)
 						.build()))
 				.thenCompose(ensureResponseBody())
-				.thenCompose(listResponseHandler);
+				.thenCompose(LIST_RESPONSE_PARSER);
 	}
 
 	@Override
@@ -135,7 +133,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendQuery("local", "1")
 						.build()))
 				.thenCompose(ensureResponseBody())
-				.thenCompose(listResponseHandler);
+				.thenCompose(LIST_RESPONSE_PARSER);
 	}
 
 	@Override
@@ -146,7 +144,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(PUSH)
 						.appendPathPart(pubKey.asString())
 						.build())
-				.withBody(ByteBuf.wrapForReading(signedMetadata.toBytes())))
+				.withBody(encode(SIGNED_METADATA_CODEC, signedMetadata)))
 				.toVoid();
 	}
 

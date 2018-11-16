@@ -18,11 +18,12 @@ package io.global.fs.local;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serial.SerialSupplier;
+import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsMetadata;
 import io.global.fs.api.MetadataStorage;
@@ -32,10 +33,12 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 import static io.datakernel.file.FileUtils.escapeGlob;
+import static io.global.ot.util.BinaryDataFormats2.*;
 import static java.util.stream.Collectors.toList;
 
 public class RemoteFsMetadataStorage implements MetadataStorage {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsMetadataStorage.class);
+	private static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsMetadata>>() {});
 
 	private final FsClient fsClient;
 
@@ -46,10 +49,10 @@ public class RemoteFsMetadataStorage implements MetadataStorage {
 	@Override
 	public Promise<Void> store(SignedData<GlobalFsMetadata> signedMetadata) {
 		logger.trace("pushing {}", signedMetadata);
-		String path = signedMetadata.getData().getFilename();
+		String path = signedMetadata.getValue().getFilename();
 		return fsClient.delete(escapeGlob(path))
 				.thenCompose($ -> fsClient.upload(path, 0)) // offset 0 because atst this same file could be fetched from another node too
-				.thenCompose(SerialSupplier.of(ByteBuf.wrapForReading(signedMetadata.toBytes()))::streamTo);
+				.thenCompose(SerialSupplier.of(encode(SIGNED_METADATA_CODEC, signedMetadata))::streamTo);
 	}
 
 	@Override
@@ -64,7 +67,7 @@ public class RemoteFsMetadataStorage implements MetadataStorage {
 							.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 							.thenCompose(buf -> {
 								try {
-									SignedData<GlobalFsMetadata> signedMetadata = SignedData.ofBytes(buf.asArray(), GlobalFsMetadata::fromBytes);
+									SignedData<GlobalFsMetadata> signedMetadata = decode(SIGNED_METADATA_CODEC, buf);
 									logger.trace("loading {}, found {}", fileName, signedMetadata);
 									return Promise.of(signedMetadata);
 								} catch (ParseException e) {
@@ -73,7 +76,6 @@ public class RemoteFsMetadataStorage implements MetadataStorage {
 							});
 				});
 	}
-
 
 	@Override
 	public Promise<List<SignedData<GlobalFsMetadata>>> list(String glob) {

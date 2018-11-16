@@ -13,8 +13,8 @@ import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.RecursiveType;
 import io.datakernel.util.ReflectionUtils;
-import io.datakernel.util.SimpleType;
 import io.datakernel.util.StringFormatUtils;
 import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.util.guice.OptionalDependency;
@@ -50,6 +50,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 public class JmxHttpModule extends AbstractModule {
 	private Set<Key<?>> singletons = new HashSet<>();
@@ -322,17 +323,13 @@ public class JmxHttpModule extends AbstractModule {
 
 				Node<String, String> tree = new Node<>(null, null, null);
 
-				Stream<KeyWithWorkerData> stream = singletons.stream().map(KeyWithWorkerData::new);
-				if (!workers.isEmpty()) {
-					stream = Stream.concat(stream, workers.stream());
-				}
-				stream
+				Stream.concat(singletons.stream().map(KeyWithWorkerData::new), workers.stream())
 						.filter(desc -> ReflectionUtils.isBean(desc.getKey().getTypeLiteral().getRawType()))
 						.forEach(desc -> {
 							Key<?> key = desc.getKey();
 							TypeLiteral<?> literal = key.getTypeLiteral();
 							String name = prettyPrintSimpleKeyName(key);
-							String pkg = SimpleType.ofType(key.getTypeLiteral().getType()).getPackage();
+							String pkg = RecursiveType.of(key.getTypeLiteral().getType()).getPackage();
 							String[] path = pkg != null ? pkg.split("\\.") : new String[]{"unknown_package"};
 
 							Node<String, String> subtree = tree;
@@ -370,12 +367,17 @@ public class JmxHttpModule extends AbstractModule {
 
 			return Promises.toTuple(
 					JmxHttpModule.getClass(clsName),
-					generics != null ?
-							Promises.toList(Arrays.stream(generics.split(", ")).map(JmxHttpModule::getClass)) :
-							Promise.of(Collections.<Class<?>>emptyList()))
+					Promises.toList(
+							Arrays.stream(generics != null ? generics.split(", ") : new String[0])
+									.map(JmxHttpModule::getClass)))
 					.thenCompose(tuple -> {
-						@SuppressWarnings("SuspiciousToArrayCall") // what.?
-								Type type = SimpleType.ofClass(tuple.getValue1(), tuple.getValue2().toArray(new Class<?>[0])).getType();
+						Type type = RecursiveType.of(
+								tuple.getValue1(),
+								tuple.getValue2()
+										.stream()
+										.map(RecursiveType::of)
+										.collect(toList()))
+								.getType();
 						if (annotation == null) {
 							return Promise.of(Key.get(type));
 						}

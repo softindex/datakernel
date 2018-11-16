@@ -17,7 +17,6 @@
 package io.global.fs.local;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -34,15 +33,11 @@ import java.util.Map;
 
 import static java.util.Collections.emptyMap;
 
-public final class RuntimeDiscoveryService implements DiscoveryService {
+public class RuntimeDiscoveryService implements DiscoveryService {
 	private static final Logger logger = LoggerFactory.getLogger(RuntimeDiscoveryService.class);
 
-	public static final StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(RuntimeDiscoveryService.class, "Rejected announce data as outdated");
-	public static final StacklessException CANNOT_VERIFY_ANNOUNCE_DATA = new StacklessException(RuntimeDiscoveryService.class, "Cannot verify announce data");
-	public static final StacklessException CANNOT_VERIFY_SHARED_KEY = new StacklessException(RuntimeDiscoveryService.class, "Cannot verify shared key");
-
-	private final Map<PubKey, SignedData<AnnounceData>> announced = new HashMap<>();
-	private final Map<PubKey, Map<Hash, SignedData<SharedSimKey>>> sharedKeys = new HashMap<>();
+	protected final Map<PubKey, SignedData<AnnounceData>> announced = new HashMap<>();
+	protected final Map<PubKey, Map<Hash, SignedData<SharedSimKey>>> sharedKeys = new HashMap<>();
 
 	@Override
 	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
@@ -52,7 +47,7 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 			return Promise.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
 		}
 		SignedData<AnnounceData> signedAnnounceData = announced.get(space);
-		if (signedAnnounceData != null && signedAnnounceData.getData().getTimestamp() >= announceData.getData().getTimestamp()) {
+		if (signedAnnounceData != null && signedAnnounceData.getValue().getTimestamp() >= announceData.getValue().getTimestamp()) {
 			logger.info("rejected as outdated: {}", announceData);
 			return Promise.ofException(REJECTED_OUTDATED_ANNOUNCE_DATA);
 		}
@@ -71,7 +66,7 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 	@Override
 	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
 		logger.info("received {}", simKey);
-		sharedKeys.computeIfAbsent(receiver, $ -> new HashMap<>()).put(simKey.getData().getHash(), simKey);
+		sharedKeys.computeIfAbsent(receiver, $ -> new HashMap<>()).put(simKey.getValue().getHash(), simKey);
 		return Promise.complete();
 	}
 
@@ -84,7 +79,7 @@ public final class RuntimeDiscoveryService implements DiscoveryService {
 				return Promise.of(data);
 			}
 		}
-		return Promise.ofException(NO_KEY);
+		return Promise.ofException(NO_SHARED_KEY);
 	}
 
 	@Override

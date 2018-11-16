@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package io.global.fs.http;
+package io.global.common.discovery;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 import io.datakernel.functional.Try;
 import io.datakernel.http.*;
-import io.datakernel.json.GsonAdapters;
 import io.datakernel.util.ParserFunction;
 import io.global.common.Hash;
 import io.global.common.PubKey;
@@ -35,7 +34,9 @@ import java.util.List;
 
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
-import static io.global.fs.http.DiscoveryServlet.*;
+import static io.global.common.discovery.DiscoveryServlet.*;
+import static io.global.ot.util.BinaryDataFormats2.decode;
+import static io.global.ot.util.BinaryDataFormats2.encode;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class HttpDiscoveryService implements DiscoveryService {
@@ -60,7 +61,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 								.appendPathPart(ANNOUNCE_ALL)
 								.appendPathPart(space.asString())
 								.build())
-						.withBody(SIGNED_ANNOUNCE.toJson(announceData).getBytes(UTF_8)))
+						.withBody(encode(SIGNED_ANNOUNCE, announceData)))
 				.thenCompose(ensureStatusCode(201))
 				.toVoid();
 	}
@@ -90,7 +91,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.build()))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(response -> Promise.ofTry(
-						tryParseResponse(response, body -> GsonAdapters.fromJson(SIGNED_ANNOUNCE, body.asString(UTF_8)))
+						tryParseResponse(response, body -> decode(SIGNED_ANNOUNCE, body))
 								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_ANNOUNCE_DATA))));
 	}
 
@@ -103,7 +104,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 								.appendPathPart(SHARE_KEY)
 								.appendPathPart(receiver.asString())
 								.build())
-						.withBody(SIGNED_SHARED_SIM_KEY.toJson(simKey).getBytes(UTF_8)))
+						.withBody(encode(SIGNED_SHARED_SIM_KEY, simKey)))
 				.thenCompose(ensureStatusCode(201))
 				.toVoid();
 	}
@@ -119,8 +120,8 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.build()))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(response -> Promise.ofTry(
-						tryParseResponse(response, body -> GsonAdapters.fromJson(SIGNED_SHARED_SIM_KEY, body.asString(UTF_8)))
-								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_KEY))));
+						tryParseResponse(response, body -> decode(SIGNED_SHARED_SIM_KEY, body))
+								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_SHARED_KEY))));
 	}
 
 	@Override
@@ -134,6 +135,6 @@ public final class HttpDiscoveryService implements DiscoveryService {
 				.thenCompose(ensureResponseBody())
 				.thenCompose(response -> Promise.ofTry(
 						tryParseResponse(response, body ->
-								GsonAdapters.fromJson(LIST_OF_SIGNED_SHARED_SIM_KEYS, body.asString(UTF_8)))));
+								decode(LIST_OF_SIGNED_SHARED_SIM_KEYS, body))));
 	}
 }

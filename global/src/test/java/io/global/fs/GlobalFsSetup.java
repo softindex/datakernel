@@ -16,6 +16,7 @@
 
 package io.global.fs;
 
+import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
@@ -27,11 +28,10 @@ import io.datakernel.stream.processor.DatakernelRunner;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.RawServerId;
-import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import io.global.common.discovery.HttpDiscoveryService;
 import io.global.fs.api.GlobalFsNode;
-import io.global.fs.http.HttpDiscoveryService;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import org.junit.Before;
@@ -43,15 +43,14 @@ import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 
-import static io.datakernel.async.Promises.all;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.http.AsyncHttpClient.create;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.SignedData.sign;
-import static io.global.common.api.AnnounceData.of;
 import static io.global.fs.api.CheckpointPosStrategy.fixed;
+import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 import static java.lang.Integer.parseInt;
 import static java.lang.System.getProperty;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -91,7 +90,7 @@ public final class GlobalFsSetup {
 
 		SerialSupplier<ByteBuf> supplier = SerialSupplier.of(ByteBuf.wrapForReading(text1.getBytes(UTF_8)), ByteBuf.wrapForReading(text2.getBytes(UTF_8)));
 
-		discoveryService.announce(alice.getPubKey(), SignedData.sign(AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
+		discoveryService.announce(alice.getPubKey(), sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
 				.whenResult($ -> System.out.println("Servers announced"))
 				.thenCompose($ -> firstAdapter.upload("test.txt"))
 				.thenCompose(supplier::streamTo)
@@ -115,9 +114,9 @@ public final class GlobalFsSetup {
 			servers.add(new RawServerId(new InetSocketAddress(8000 + i)));
 		}
 
-		all(
-				discoveryService.announce(alice.getPubKey(), sign(of(123, servers), alice.getPrivKey())),
-				discoveryService.announce(bob.getPubKey(), sign(of(234, servers), bob.getPrivKey()))
+		Promises.all(
+				discoveryService.announce(alice.getPubKey(), sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(123, servers), alice.getPrivKey())),
+				discoveryService.announce(bob.getPubKey(), sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(234, servers), bob.getPrivKey()))
 		)
 				.whenComplete(assertComplete());
 	}
