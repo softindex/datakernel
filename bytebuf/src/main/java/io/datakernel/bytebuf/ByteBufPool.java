@@ -18,7 +18,6 @@ package io.datakernel.bytebuf;
 
 import io.datakernel.bytebuf.ByteBuf.ByteBufSlice;
 import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.ConcurrentStack;
 import io.datakernel.util.MemSize;
 
 import java.util.ArrayList;
@@ -34,15 +33,15 @@ public final class ByteBufPool {
 	private static final int minSize = ApplicationSettings.getInt(ByteBufPool.class, "minSize", 32);
 	private static final int maxSize = ApplicationSettings.getInt(ByteBufPool.class, "maxSize", 1 << 30);
 
-	private static final ConcurrentStack<ByteBuf>[] slabs;
+	private static final ByteBufConcurrentStack[] slabs;
 	private static final AtomicInteger[] created;
 
 	static {
 		//noinspection unchecked
-		slabs = new ConcurrentStack[NUMBER_OF_SLABS];
+		slabs = new ByteBufConcurrentStack[NUMBER_OF_SLABS];
 		created = new AtomicInteger[NUMBER_OF_SLABS];
 		for (int i = 0; i < NUMBER_OF_SLABS; i++) {
-			slabs[i] = new ConcurrentStack<>();
+			slabs[i] = new ByteBufConcurrentStack();
 			created[i] = new AtomicInteger();
 		}
 	}
@@ -63,7 +62,7 @@ public final class ByteBufPool {
 			return ByteBuf.wrapForWriting(new byte[size]);
 		}
 		int index = 32 - numberOfLeadingZeros(size - 1); // index==32 for size==0
-		ConcurrentStack<ByteBuf> stack = slabs[index];
+		ByteBufConcurrentStack stack = slabs[index];
 		ByteBuf buf = stack.pop();
 		if (buf != null) {
 			buf.reset();
@@ -103,7 +102,7 @@ public final class ByteBufPool {
 
 	public static void recycle(ByteBuf buf) {
 		int slab = 32 - numberOfLeadingZeros(buf.array.length - 1);
-		ConcurrentStack<ByteBuf> stack = slabs[slab];
+		ByteBufConcurrentStack stack = slabs[slab];
 		stack.push(buf);
 	}
 
@@ -114,7 +113,7 @@ public final class ByteBufPool {
 		return ByteBuf.empty();
 	}
 
-	public static ConcurrentStack<ByteBuf>[] getSlabs() {
+	public static ByteBufConcurrentStack[] getSlabs() {
 		return slabs;
 	}
 
@@ -187,7 +186,7 @@ public final class ByteBufPool {
 
 	public static int getPoolItems() {
 		int result = 0;
-		for (ConcurrentStack<ByteBuf> slab : slabs) {
+		for (ByteBufConcurrentStack slab : slabs) {
 			result += slab.size();
 		}
 		return result;

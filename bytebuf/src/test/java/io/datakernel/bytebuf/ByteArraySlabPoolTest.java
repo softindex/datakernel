@@ -16,7 +16,6 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.util.ConcurrentStack;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -36,7 +35,7 @@ public class ByteArraySlabPoolTest {
 
 		assertTrue(poolSizes.length <= ByteBufPool.getSlabs().length);
 		for (int i = 0; i < poolSizes.length; i++) {
-			ConcurrentStack<ByteBuf> slab = ByteBufPool.getSlabs()[i];
+			ByteBufConcurrentStack slab = ByteBufPool.getSlabs()[i];
 			assertEquals(poolSizes[i] == 0 ? 0 : 1, slab.size());
 			if (!slab.isEmpty()) {
 				assertTrue(slab.peek().isRecycled());

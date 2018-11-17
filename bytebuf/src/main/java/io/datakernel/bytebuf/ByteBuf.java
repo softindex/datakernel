@@ -64,6 +64,8 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	int refs;
 
+	ByteBuf next;
+
 	private static final ByteBuf EMPTY = wrap(new byte[0], 0, 0);
 
 	// creators
