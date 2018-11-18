@@ -22,14 +22,14 @@ import io.datakernel.util.*;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
+import static java.util.Collections.*;
 
 @SuppressWarnings("unchecked")
-public final class Codecs {
+public final class StructuredCodecs {
 
 	public static final StructuredCodec<Boolean> BOOLEAN_CODEC = new StructuredCodec<Boolean>() {
 		@Override
@@ -230,36 +230,32 @@ public final class Codecs {
 				.transform(LinkedHashSet::new, ArrayList::new);
 	}
 
-	public static <T> StructuredCodec<List<T>> ofListEx(Supplier<StructuredCodec<T>> elementDecoder) {
-		return new StructuredCodec<List<T>>() {
-			@Override
-			public List<T> decode(StructuredInput in) throws ParseException {
-				return in.readListEx(elementDecoder);
-			}
-
-			@Override
-			public void encode(StructuredOutput out, List<T> item) {
-				out.writeListEx(elementDecoder, item);
-			}
-		};
-	}
-
 	public static <T> StructuredCodec<List<T>> ofListEx(StructuredCodec<? extends T>... elementDecoders) {
 		return ofListEx(asList(elementDecoders));
 	}
 
-	public static <T> StructuredCodec<List<T>> ofListEx(List<StructuredCodec<? extends T>> elementCodecs) {
+	public static <T> StructuredCodec<List<T>> ofListEx(List<StructuredCodec<? extends T>> codecs) {
 		return new StructuredCodec<List<T>>() {
 			@Override
 			public List<T> decode(StructuredInput in) throws ParseException {
-				Iterator<StructuredCodec<? extends T>> it = elementCodecs.iterator();
-				return in.readListEx(it::next);
+				List<T> list = new ArrayList<>();
+				StructuredInput.ListReader listReader = in.listReader(false);
+				for (StructuredCodec<? extends T> codec : codecs) {
+					list.add(codec.decode(listReader.next()));
+				}
+				listReader.close();
+				return list;
 			}
 
 			@Override
-			public void encode(StructuredOutput out, List<T> item) {
-				Iterator<StructuredCodec<? extends T>> it = elementCodecs.iterator();
-				out.writeListEx(it::next, item);
+			public void encode(StructuredOutput out, List<T> list) {
+				checkArgument(list.size() == codecs.size());
+				Iterator<T> it = list.iterator();
+				StructuredOutput.ListWriter listWriter = out.listWriter(false);
+				for (StructuredCodec<? extends T> codec : codecs) {
+					((StructuredCodec<T>) codec).encode(listWriter.next(), it.next());
+				}
+				listWriter.close();
 			}
 		};
 	}
@@ -278,22 +274,37 @@ public final class Codecs {
 		};
 	}
 
-	public static <T> StructuredCodec<Map<String, T>> ofMapEx(Function<String, ? extends StructuredCodec<? extends T>> elementCodecSupplier) {
+	public static <T> StructuredCodec<Map<String, T>> ofMapEx(Map<String, StructuredCodec<? extends T>> fieldCodecs) {
 		return new StructuredCodec<Map<String, T>>() {
 			@Override
-			public void encode(StructuredOutput out, Map<String, T> map) {
-				out.writeMapEx(elementCodecSupplier, map);
+			public Map<String, T> decode(StructuredInput in) throws ParseException {
+				Map<String, T> map = new LinkedHashMap<>();
+				StructuredInput.MapReader mapReader = in.mapReader(false);
+				for (Map.Entry<String, StructuredCodec<? extends T>> entry : fieldCodecs.entrySet()) {
+					String field = entry.getKey();
+					StructuredCodec<? extends T> codec = entry.getValue();
+					Tuple2<String, StructuredInput> next = mapReader.next();
+					String actualField = next.getValue1();
+					if (actualField != null && !field.equals(actualField)) {
+						throw new ParseException("Field expected: " + field + ", actual: " + actualField);
+					}
+					map.put(field, codec.decode(next.getValue2()));
+				}
+				mapReader.close();
+				return map;
 			}
 
 			@Override
-			public Map<String, T> decode(StructuredInput in) throws ParseException {
-				return in.readMapEx(elementCodecSupplier);
+			public void encode(StructuredOutput out, Map<String, T> map) {
+				StructuredOutput.MapWriter mapWriter = out.mapWriter(false);
+				for (Map.Entry<String, StructuredCodec<? extends T>> entry : fieldCodecs.entrySet()) {
+					String field = entry.getKey();
+					StructuredCodec<T> codec = (StructuredCodec<T>) entry.getValue();
+					codec.encode(mapWriter.next(field), map.get(field));
+				}
+				mapWriter.close();
 			}
 		};
-	}
-
-	public static <T> StructuredCodec<Map<String, T>> ofMapEx(Map<String, StructuredCodec<? extends T>> valueAdapters) {
-		return ofMapEx(valueAdapters::get);
 	}
 
 	public static <T> StructuredCodec<List<T>> concat(StructuredCodec<? extends T>... elementCodecs) {
@@ -321,18 +332,25 @@ public final class Codecs {
 		};
 	}
 
+	public static <R> StructuredCodec<R> record(TupleParser0<R> constructor) {
+		return ofListEx()
+				.transform(
+						list -> constructor.create(),
+						item -> emptyList());
+	}
+
 	public static <R, T1> StructuredCodec<R> record(TupleParser1<T1, R> constructor,
 			Function<R, T1> getter1, StructuredCodec<T1> codec1) {
-		return concat(codec1)
+		return ofListEx(codec1)
 				.transform(
 						list -> constructor.create((T1) list.get(0)),
-						item -> asList(getter1.apply(item)));
+						item -> singletonList(getter1.apply(item)));
 	}
 
 	public static <R, T1, T2> StructuredCodec<R> record(TupleParser2<T1, T2, R> constructor,
 			Function<R, T1> getter1, StructuredCodec<T1> codec1,
 			Function<R, T2> getter2, StructuredCodec<T2> codec2) {
-		return concat(codec1, codec2)
+		return ofListEx(codec1, codec2)
 				.transform(
 						list -> constructor.create((T1) list.get(0), (T2) list.get(1)),
 						item -> asList(getter1.apply(item), getter2.apply(item)));
@@ -342,7 +360,7 @@ public final class Codecs {
 			Function<R, T1> getter1, StructuredCodec<T1> codec1,
 			Function<R, T2> getter2, StructuredCodec<T2> codec2,
 			Function<R, T3> getter3, StructuredCodec<T3> codec3) {
-		return concat(codec1, codec2, codec3)
+		return ofListEx(codec1, codec2, codec3)
 				.transform(
 						list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2)),
 						item -> asList(getter1.apply(item), getter2.apply(item), getter3.apply(item)));
@@ -353,7 +371,7 @@ public final class Codecs {
 			Function<R, T2> getter2, StructuredCodec<T2> codec2,
 			Function<R, T3> getter3, StructuredCodec<T3> codec3,
 			Function<R, T4> getter4, StructuredCodec<T4> codec4) {
-		return concat(codec1, codec2, codec3, codec4)
+		return ofListEx(codec1, codec2, codec3, codec4)
 				.transform(
 						list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3)),
 						item -> asList(getter1.apply(item), getter2.apply(item), getter3.apply(item), getter4.apply(item)));
@@ -365,7 +383,7 @@ public final class Codecs {
 			Function<R, T3> getter3, StructuredCodec<T3> codec3,
 			Function<R, T4> getter4, StructuredCodec<T4> codec4,
 			Function<R, T5> getter5, StructuredCodec<T5> codec5) {
-		return concat(codec1, codec2, codec3, codec4, codec5)
+		return ofListEx(codec1, codec2, codec3, codec4, codec5)
 				.transform(
 						list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4)),
 						item -> asList(getter1.apply(item), getter2.apply(item), getter3.apply(item), getter4.apply(item), getter5.apply(item)));
@@ -378,7 +396,7 @@ public final class Codecs {
 			Function<R, T4> getter4, StructuredCodec<T4> codec4,
 			Function<R, T5> getter5, StructuredCodec<T5> codec5,
 			Function<R, T6> getter6, StructuredCodec<T6> codec6) {
-		return concat(codec1, codec2, codec3, codec4, codec5, codec6)
+		return ofListEx(codec1, codec2, codec3, codec4, codec5, codec6)
 				.transform(
 						list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4), (T6) list.get(5)),
 						item -> asList(getter1.apply(item), getter2.apply(item), getter3.apply(item), getter4.apply(item), getter5.apply(item), getter6.apply(item)));
@@ -392,59 +410,11 @@ public final class Codecs {
 						item -> asList(getter1.apply(item)));
 	}
 
-	public static <R, T1, T2> StructuredCodec<R> recordAsList(TupleParser2<T1, T2, R> constructor,
-			Function<R, T1> getter1, StructuredCodec<T1> codec1,
-			Function<R, T2> getter2, StructuredCodec<T2> codec2) {
-		return ofListEx(codec1, codec2)
+	public static <R> StructuredCodec<R> recordAsMap(TupleParser0<R> constructor) {
+		return ofMapEx(emptyMap())
 				.transform(
-						list -> constructor.create((T1) list.get(0), (T2) list.get(1)),
-						item -> asList(getter1.apply(item), getter2.apply(item)));
-	}
-
-	public static <R, T1, T2, T3> StructuredCodec<R> recordAsList(TupleParser3<T1, T2, T3, R> constructor,
-			Function<R, T1> getter1, StructuredCodec<T1> codec1,
-			Function<R, T2> getter2, StructuredCodec<T2> codec2,
-			Function<R, T3> getter3, StructuredCodec<T3> codec3) {
-		return ofListEx(codec1, codec2, codec3)
-				.transform(
-						list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2)),
-						item -> asList(getter1.apply(item), getter2.apply(item), getter3.apply(item)));
-	}
-
-	public static <R, T1, T2, T3, T4> StructuredCodec<R> recordAsList(TupleParser4<T1, T2, T3, T4, R> constructor,
-			Function<R, T1> getter1, StructuredCodec<T1> codec1,
-			Function<R, T2> getter2, StructuredCodec<T2> codec2,
-			Function<R, T3> getter3, StructuredCodec<T3> codec3,
-			Function<R, T4> getter4, StructuredCodec<T4> codec4) {
-		return ofListEx(codec1, codec2, codec3, codec4)
-				.transform(
-						list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3)),
-						item -> asList(getter1.apply(item), getter2.apply(item), getter3.apply(item), getter4.apply(item)));
-	}
-
-	public static <R, T1, T2, T3, T4, T5> StructuredCodec<R> recordAsList(TupleParser5<T1, T2, T3, T4, T5, R> constructor,
-			Function<R, T1> getter1, StructuredCodec<T1> codec1,
-			Function<R, T2> getter2, StructuredCodec<T2> codec2,
-			Function<R, T3> getter3, StructuredCodec<T3> codec3,
-			Function<R, T4> getter4, StructuredCodec<T4> codec4,
-			Function<R, T5> getter5, StructuredCodec<T5> codec5) {
-		return ofListEx(codec1, codec2, codec3, codec4, codec5)
-				.transform(
-						list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4)),
-						item -> asList(getter1.apply(item), getter2.apply(item), getter3.apply(item), getter4.apply(item), getter5.apply(item)));
-	}
-
-	public static <R, T1, T2, T3, T4, T5, T6> StructuredCodec<R> recordAsList(TupleParser6<T1, T2, T3, T4, T5, T6, R> constructor,
-			Function<R, T1> getter1, StructuredCodec<T1> codec1,
-			Function<R, T2> getter2, StructuredCodec<T2> codec2,
-			Function<R, T3> getter3, StructuredCodec<T3> codec3,
-			Function<R, T4> getter4, StructuredCodec<T4> codec4,
-			Function<R, T5> getter5, StructuredCodec<T5> codec5,
-			Function<R, T6> getter6, StructuredCodec<T6> codec6) {
-		return ofListEx(codec1, codec2, codec3, codec4, codec5, codec6)
-				.transform(
-						list -> constructor.create((T1) list.get(0), (T2) list.get(1), (T3) list.get(2), (T4) list.get(3), (T5) list.get(4), (T6) list.get(5)),
-						item -> asList(getter1.apply(item), getter2.apply(item), getter3.apply(item), getter4.apply(item), getter5.apply(item), getter6.apply(item)));
+						map -> constructor.create(),
+						item -> map());
 	}
 
 	public static <R, T1> StructuredCodec<R> recordAsMap(TupleParser1<T1, R> constructor,

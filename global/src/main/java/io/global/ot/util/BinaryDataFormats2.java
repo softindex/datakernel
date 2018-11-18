@@ -19,6 +19,10 @@ package io.global.ot.util;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.codec.*;
+import io.datakernel.codec.binary.BinaryStructuredInput;
+import io.datakernel.codec.binary.BinaryStructuredOutput;
+import io.datakernel.codec.registry.CodecFactory;
+import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
@@ -37,7 +41,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Set;
 
-import static io.datakernel.codec.Codecs.record;
+import static io.datakernel.codec.StructuredCodecs.record;
 import static io.datakernel.csp.binary.ByteBufsParser.ofVarIntSizePrefixedBytes;
 
 public final class BinaryDataFormats2 {
@@ -210,7 +214,7 @@ public final class BinaryDataFormats2 {
 
 	public static <T> T decode(StructuredDecoder<T> decoder, ByteBuf buf) throws ParseException {
 		try {
-			StructuredInputImpl in = new StructuredInputImpl(buf);
+			BinaryStructuredInput in = new BinaryStructuredInput(buf);
 			T result = decoder.decode(in);
 			if (buf.readRemaining() != 0) {
 				throw new ParseException();
@@ -222,13 +226,13 @@ public final class BinaryDataFormats2 {
 	}
 
 	public static <T> ByteBuf encode(StructuredEncoder<T> encoder, T item) {
-		StructuredOutputImpl out = new StructuredOutputImpl();
+		BinaryStructuredOutput out = new BinaryStructuredOutput();
 		encoder.encode(out, item);
 		return out.getBuf();
 	}
 
 	public static <T> ByteBuf encodeWithSizePrefix(StructuredEncoder<T> encoder, T item) {
-		StructuredOutputImpl out = new StructuredOutputImpl();
+		BinaryStructuredOutput out = new BinaryStructuredOutput();
 		encoder.encode(out, item);
 		ByteBuf buf = ByteBufPool.allocate(out.getBuf().readRemaining() + 5);
 		buf.writeVarInt(out.getBuf().readRemaining());

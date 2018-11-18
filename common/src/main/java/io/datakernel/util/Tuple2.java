@@ -1,6 +1,7 @@
 package io.datakernel.util;
 
 import java.util.Objects;
+import java.util.StringJoiner;
 
 public final class Tuple2<T1, T2> {
 	private final T1 value1;
@@ -23,13 +24,21 @@ public final class Tuple2<T1, T2> {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		Tuple2<?, ?> tuple2 = (Tuple2<?, ?>) o;
-		return Objects.equals(value1, tuple2.value1) &&
-				Objects.equals(value2, tuple2.value2);
+		Tuple2<?, ?> that = (Tuple2<?, ?>) o;
+		return Objects.equals(value1, that.value1) &&
+				Objects.equals(value2, that.value2);
 	}
 
 	@Override
 	public int hashCode() {
 		return Objects.hash(value1, value2);
+	}
+
+	@Override
+	public String toString() {
+		return new StringJoiner(", ", "{", "}")
+				.add("" + value1)
+				.add("" + value2)
+				.toString();
 	}
 }

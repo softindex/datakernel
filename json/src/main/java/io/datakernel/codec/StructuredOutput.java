@@ -5,8 +5,6 @@ import io.datakernel.annotation.Nullable;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 public interface StructuredOutput {
 	void writeBoolean(boolean value);
@@ -39,21 +37,37 @@ public interface StructuredOutput {
 
 	<T> void writeNullable(StructuredEncoder<T> encoder, @Nullable T value);
 
-	default <T> void writeList(StructuredEncoder<T> elementEncoder, List<T> list) {
-		writeListEx(() -> elementEncoder, list);
+	default <T> void writeList(StructuredEncoder<T> encoder, List<T> list) {
+		ListWriter listWriter = listWriter(true);
+		for (T item : list) {
+			encoder.encode(listWriter.next(), item);
+		}
+		listWriter.close();
 	}
 
-	<T> void writeListEx(Supplier<? extends StructuredEncoder<? extends T>> elementEncoderSupplier, List<T> list);
-
-	default <T> void writeMap(StructuredEncoder<T> elementEncoder, Map<String, T> map) {
-		writeMapEx($ -> elementEncoder, map);
+	default <T> void writeMap(StructuredEncoder<T> encoder, Map<String, T> map) {
+		MapWriter mapWriter = mapWriter(true);
+		for (Map.Entry<String, T> entry : map.entrySet()) {
+			encoder.encode(mapWriter.next(entry.getKey()), entry.getValue());
+		}
+		mapWriter.close();
 	}
 
-	<T> void writeMapEx(Function<String, ? extends StructuredEncoder<? extends T>> elementEncoderSupplier, Map<String, T> map);
+	interface ListWriter {
+		StructuredOutput next();
 
-	default <T> void writeCustom(Class<T> type, T value) {
-		writeCustom((Type) type, value);
+		void close();
 	}
+
+	interface MapWriter {
+		StructuredOutput next(String field);
+
+		void close();
+	}
+
+	ListWriter listWriter(boolean selfDelimited);
+
+	MapWriter mapWriter(boolean selfDelimited);
 
 	<T> void writeCustom(Type type, T value);
 }

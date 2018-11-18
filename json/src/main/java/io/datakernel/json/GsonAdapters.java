@@ -690,7 +690,7 @@ public final class GsonAdapters {
 		}
 	}
 
-	private static final class JsonWriterEx extends JsonWriter {
+	public static final class JsonWriterEx extends JsonWriter {
 		final Writer out;
 
 		public JsonWriterEx(Writer out) {

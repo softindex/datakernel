@@ -1,4 +1,4 @@
-package io.global.ot.util;
+package io.datakernel.codec.registry;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.util.TypeT;

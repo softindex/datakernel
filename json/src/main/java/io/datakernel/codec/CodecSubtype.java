@@ -18,15 +18,13 @@ package io.datakernel.codec;
 
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.Tuple2;
 
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 import static java.lang.Math.max;
-import static java.util.Collections.singletonMap;
-import static java.util.Objects.requireNonNull;
 
 public final class CodecSubtype<T> implements Initializable<CodecSubtype<T>>, StructuredCodec<T> {
 	private final Map<String, StructuredCodec<? extends T>> namesToAdapters = new HashMap<>();
@@ -54,16 +52,21 @@ public final class CodecSubtype<T> implements Initializable<CodecSubtype<T>>, St
 	@SuppressWarnings({"unchecked"})
 	@Override
 	public void encode(StructuredOutput out, T value) {
-		Map<String, T> map = singletonMap(requireNonNull(subtypesToNames.get(value.getClass())), value);
-		out.writeMapEx(namesToAdapters::get, map);
+		StructuredOutput.MapWriter mapWriter = out.mapWriter(false);
+		String field = subtypesToNames.get(value.getClass());
+		StructuredCodec<T> codec = (StructuredCodec<T>) namesToAdapters.get(field);
+		codec.encode(mapWriter.next(field), value);
+		mapWriter.close();
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public T decode(StructuredInput in) throws ParseException {
-		Function<String, ? extends StructuredDecoder<? extends T>> get = namesToAdapters::get;
-		Map<String, ? extends T> map = in.readMapEx(get);
-		if (map.size() != 1) throw new ParseException();
-		return map.values().iterator().next();
+		StructuredInput.MapReader mapReader = in.mapReader(false);
+		Tuple2<String, StructuredInput> entry = mapReader.next();
+		StructuredCodec<? extends T> codec = namesToAdapters.get(entry.getValue1());
+		T result = codec.decode(entry.getValue2());
+		mapReader.close();
+		return result;
 	}
 }

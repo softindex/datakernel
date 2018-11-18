@@ -21,6 +21,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.ParserFunction;
 
+import java.util.List;
 import java.util.function.Function;
 
 public interface StructuredCodec<T> extends StructuredEncoder<T>, StructuredDecoder<T> {
@@ -52,6 +53,10 @@ public interface StructuredCodec<T> extends StructuredEncoder<T>, StructuredDeco
 				out.writeNullable(StructuredCodec.this, item);
 			}
 		};
+	}
+
+	default StructuredCodec<List<T>> ofList() {
+		return StructuredCodecs.ofList(this);
 	}
 
 	default <R> StructuredCodec<R> transform(ParserFunction<T, R> reader, Function<R, T> writer) {

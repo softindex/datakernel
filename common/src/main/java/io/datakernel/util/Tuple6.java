@@ -1,6 +1,7 @@
 package io.datakernel.util;
 
 import java.util.Objects;
+import java.util.StringJoiner;
 
 public final class Tuple6<T1, T2, T3, T4, T5, T6> {
 	private final T1 value1;
@@ -47,17 +48,29 @@ public final class Tuple6<T1, T2, T3, T4, T5, T6> {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		Tuple6<?, ?, ?, ?, ?, ?> tuple6 = (Tuple6<?, ?, ?, ?, ?, ?>) o;
-		return Objects.equals(value1, tuple6.value1) &&
-				Objects.equals(value2, tuple6.value2) &&
-				Objects.equals(value3, tuple6.value3) &&
-				Objects.equals(value4, tuple6.value4) &&
-				Objects.equals(value5, tuple6.value5) &&
-				Objects.equals(value6, tuple6.value6);
+		Tuple6<?, ?, ?, ?, ?, ?> that = (Tuple6<?, ?, ?, ?, ?, ?>) o;
+		return Objects.equals(value1, that.value1) &&
+				Objects.equals(value2, that.value2) &&
+				Objects.equals(value3, that.value3) &&
+				Objects.equals(value4, that.value4) &&
+				Objects.equals(value5, that.value5) &&
+				Objects.equals(value6, that.value6);
 	}
 
 	@Override
 	public int hashCode() {
 		return Objects.hash(value1, value2, value3, value4, value5, value6);
+	}
+
+	@Override
+	public String toString() {
+		return new StringJoiner(", ", "{", "}")
+				.add("" + value1)
+				.add("" + value2)
+				.add("" + value3)
+				.add("" + value4)
+				.add("" + value5)
+				.add("" + value6)
+				.toString();
 	}
 }

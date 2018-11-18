@@ -1,23 +1,22 @@
-package io.global.ot.util;
+package io.datakernel.codec.binary;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.Tuple2;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
-public class StructuredInputImpl implements StructuredInput {
+public final class BinaryStructuredInput implements StructuredInput {
 	private final ByteBuf buf;
 
-	public StructuredInputImpl(ByteBuf buf) {
+	public BinaryStructuredInput(ByteBuf buf) {
 		this.buf = buf;
 	}
 
@@ -120,26 +119,67 @@ public class StructuredInputImpl implements StructuredInput {
 	}
 
 	@Override
-	public <T> List<T> readListEx(Supplier<? extends StructuredDecoder<? extends T>> decoderSupplier) throws ParseException {
+	public <T> List<T> readList(StructuredDecoder<T> decoder) throws ParseException {
 		int size = readInt();
 		List<T> list = new ArrayList<>(size);
 		for (int i = 0; i < size; i++) {
-			StructuredDecoder<? extends T> decoder = decoderSupplier.get();
 			list.add(decoder.decode(this));
 		}
 		return list;
 	}
 
 	@Override
-	public <T> Map<String, T> readMapEx(Function<String, ? extends StructuredDecoder<? extends T>> elementDecoderSupplier) throws ParseException {
+	public <T> Map<String, T> readMap(StructuredDecoder<T> decoder) throws ParseException {
 		int size = readInt();
 		Map<String, T> map = new LinkedHashMap<>();
 		for (int i = 0; i < size; i++) {
-			String field = readString();
-			StructuredDecoder<? extends T> decoder = elementDecoderSupplier.apply(field);
-			map.put(field, decoder.decode(this));
+			map.put(readString(), decoder.decode(this));
 		}
 		return map;
+	}
+
+	@Override
+	public ListReader listReader(boolean selfDelimited) throws ParseException {
+		if (selfDelimited) {
+			throw new UnsupportedOperationException();
+		}
+		return new ListReader() {
+			@Override
+			public boolean hasNext() throws ParseException {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public StructuredInput next() throws ParseException {
+				return BinaryStructuredInput.this;
+			}
+
+			@Override
+			public void close() throws ParseException {
+			}
+		};
+	}
+
+	@Override
+	public MapReader mapReader(boolean selfDelimited) throws ParseException {
+		if (selfDelimited) {
+			throw new UnsupportedOperationException();
+		}
+		return new MapReader() {
+			@Override
+			public boolean hasNext() throws ParseException {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public Tuple2<String, StructuredInput> next() throws ParseException {
+				return new Tuple2<>(readString(), BinaryStructuredInput.this);
+			}
+
+			@Override
+			public void close() throws ParseException {
+			}
+		};
 	}
 
 	@SuppressWarnings("unchecked")

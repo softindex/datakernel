@@ -1,4 +1,4 @@
-package io.global.ot.util;
+package io.datakernel.codec.binary;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -8,10 +8,8 @@ import io.datakernel.codec.StructuredOutput;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
-public class StructuredOutputImpl implements StructuredOutput {
+public final class BinaryStructuredOutput implements StructuredOutput {
 	private ByteBuf buf = ByteBufPool.allocate(256);
 
 	public ByteBuf getBuf() {
@@ -90,23 +88,56 @@ public class StructuredOutputImpl implements StructuredOutput {
 	}
 
 	@Override
-	public <T> void writeListEx(Supplier<? extends StructuredEncoder<? extends T>> elementEncoderSupplier, List<T> list) {
+	public <T> void writeList(StructuredEncoder<T> encoder, List<T> list) {
 		writeInt(list.size());
 		for (T item : list) {
-			StructuredEncoder<T> encoder = (StructuredEncoder<T>) elementEncoderSupplier.get();
 			encoder.encode(this, item);
 		}
 	}
 
 	@Override
-	public <T> void writeMapEx(Function<String, ? extends StructuredEncoder<? extends T>> elementEncoderSupplier, Map<String, T> map) {
+	public <T> void writeMap(StructuredEncoder<T> encoder, Map<String, T> map) {
 		writeInt(map.size());
 		for (Map.Entry<String, T> entry : map.entrySet()) {
 			String field = entry.getKey();
 			writeString(field);
-			StructuredEncoder<T> encoder = (StructuredEncoder<T>) elementEncoderSupplier.apply(field);
 			encoder.encode(this, entry.getValue());
 		}
+	}
+
+	@Override
+	public ListWriter listWriter(boolean selfDelimited) {
+		if (selfDelimited) {
+			throw new UnsupportedOperationException();
+		}
+		return new ListWriter() {
+			@Override
+			public StructuredOutput next() {
+				return BinaryStructuredOutput.this;
+			}
+
+			@Override
+			public void close() {
+			}
+		};
+	}
+
+	@Override
+	public MapWriter mapWriter(boolean selfDelimited) {
+		if (selfDelimited) {
+			throw new UnsupportedOperationException();
+		}
+		return new MapWriter() {
+			@Override
+			public StructuredOutput next(String field) {
+				writeString(field);
+				return BinaryStructuredOutput.this;
+			}
+
+			@Override
+			public void close() {
+			}
+		};
 	}
 
 	@SuppressWarnings("unchecked")

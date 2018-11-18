@@ -2,12 +2,13 @@ package io.datakernel.codec;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.Tuple2;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 public interface StructuredInput {
 	boolean readBoolean() throws ParseException;
@@ -37,21 +38,47 @@ public interface StructuredInput {
 	@Nullable
 	<T> T readNullable(StructuredDecoder<T> decoder) throws ParseException;
 
-	default <T> List<T> readList(StructuredDecoder<T> elementDecoder) throws ParseException {
-		return readListEx(() -> elementDecoder);
+	default <T> List<T> readList(StructuredDecoder<T> decoder) throws ParseException {
+		List<T> list = new ArrayList<>();
+		ListReader reader = listReader(true);
+		while (reader.hasNext()) {
+			StructuredInput in = reader.next();
+			list.add(decoder.decode(in));
+		}
+		reader.close();
+		return list;
 	}
 
-	<T> List<T> readListEx(Supplier<? extends StructuredDecoder<? extends T>> elementDecoder) throws ParseException;
-
-	default <T> Map<String, T> readMap(StructuredDecoder<T> elementDecoder) throws ParseException {
-		return this.readMapEx((String field) -> elementDecoder);
+	default <T> Map<String, T> readMap(StructuredDecoder<T> decoder) throws ParseException {
+		Map<String, T> map = new LinkedHashMap<>();
+		MapReader reader = mapReader(true);
+		while (reader.hasNext()) {
+			Tuple2<String, StructuredInput> entry = reader.next();
+			map.put(entry.getValue1(), decoder.decode(entry.getValue2()));
+		}
+		reader.close();
+		return map;
 	}
 
-	<T> Map<String, T> readMapEx(Function<String, ? extends StructuredDecoder<? extends T>> elementDecoderSupplier) throws ParseException;
+	interface ListReader {
+		boolean hasNext() throws ParseException;
 
-	default <T> T readCustom(Class<T> type) throws ParseException {
-		return readCustom((Type) type);
+		StructuredInput next() throws ParseException;
+
+		void close() throws ParseException;
 	}
+
+	interface MapReader {
+		boolean hasNext() throws ParseException;
+
+		Tuple2<String, StructuredInput> next() throws ParseException;
+
+		void close() throws ParseException;
+	}
+
+	ListReader listReader(boolean selfDelimited) throws ParseException;
+
+	MapReader mapReader(boolean selfDelimited) throws ParseException;
 
 	<T> T readCustom(Type type) throws ParseException;
 }
