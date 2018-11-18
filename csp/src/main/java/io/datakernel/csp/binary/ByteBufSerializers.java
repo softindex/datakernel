@@ -20,6 +20,8 @@ import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.ByteBufPoolAppendable;
 
@@ -34,10 +36,12 @@ public final class ByteBufSerializers {
 	private ByteBufSerializers() {
 	}
 
+	@Deprecated
 	public static <IO> ByteBufSerializer<IO, IO> ofJson(TypeAdapter<IO> io) {
 		return ofJson(io, io);
 	}
 
+	@Deprecated
 	public static <I, O> ByteBufSerializer<I, O> ofJson(TypeAdapter<I> in, TypeAdapter<O> out) {
 		return new ByteBufSerializer<I, O>() {
 			private final ByteBufsParser<I> parser = ByteBufsParser.ofNullTerminatedBytes()
@@ -57,6 +61,27 @@ public final class ByteBufSerializers {
 				} catch (IOException e) {
 					throw new RuntimeException(e);
 				}
+				appendable.append("\0");
+				return appendable.get();
+			}
+		};
+	}
+
+	public static <I, O> ByteBufSerializer<I, O> ofJsonCodec(StructuredCodec<I> in, StructuredCodec<O> out) {
+		return new ByteBufSerializer<I, O>() {
+			private final ByteBufsParser<I> parser = ByteBufsParser.ofNullTerminatedBytes()
+					.andThen(buf -> JsonUtils.fromJson(in, buf.asString(UTF_8)));
+
+			@Nullable
+			@Override
+			public I tryParse(ByteBufQueue bufs) throws ParseException {
+				return parser.tryParse(bufs);
+			}
+
+			@Override
+			public ByteBuf serialize(O item) {
+				ByteBufPoolAppendable appendable = new ByteBufPoolAppendable();
+				JsonUtils.toJson(out, item, appendable);
 				appendable.append("\0");
 				return appendable.get();
 			}

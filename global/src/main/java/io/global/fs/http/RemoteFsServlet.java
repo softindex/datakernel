@@ -16,10 +16,10 @@
 
 package io.global.fs.http;
 
-import com.google.gson.TypeAdapter;
 import com.google.inject.Inject;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
@@ -31,9 +31,10 @@ import io.global.fs.util.HttpDataFormats;
 import java.util.List;
 import java.util.Set;
 
+import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
-import static io.datakernel.json.GsonAdapters.*;
-import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_JSON;
+import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_CODEC;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class RemoteFsServlet implements AsyncServlet {
@@ -44,8 +45,8 @@ public final class RemoteFsServlet implements AsyncServlet {
 	public static final String COPY = "copy";
 	public static final String MOVE = "move";
 
-	static final TypeAdapter<Set<String>> STRING_SET = ofSet(STRING_JSON);
-	static final TypeAdapter<List<FileMetadata>> FILE_META_LIST = ofList(FILE_META_JSON);
+	static final StructuredCodec<Set<String>> STRING_SET = ofSet(STRING_CODEC);
+	static final StructuredCodec<List<FileMetadata>> FILE_META_LIST = ofList(FILE_META_CODEC);
 
 	private final AsyncServlet servlet;
 
@@ -79,7 +80,7 @@ public final class RemoteFsServlet implements AsyncServlet {
 				.with(HttpMethod.GET, "/" + LIST, request ->
 						client.list(request.getQueryParameter("glob"))
 								.thenApply(list -> HttpResponse.ok200()
-										.withBody(FILE_META_LIST.toJson(list).getBytes(UTF_8))
+										.withBody(toJson(FILE_META_LIST, list).getBytes(UTF_8))
 										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON)))))
 				.with(HttpMethod.DELETE, "/" + DEL, request ->
 						client.delete(request.getQueryParameter("glob"))
@@ -87,12 +88,12 @@ public final class RemoteFsServlet implements AsyncServlet {
 				.with(HttpMethod.POST, "/" + COPY, ensureRequestBody(request ->
 						client.copy(request.getPostParameters())
 								.thenApply(set -> HttpResponse.ok200()
-										.withBody(HttpDataFormats.STRING_SET.toJson(set).getBytes(UTF_8))
+										.withBody(toJson(ofSet(STRING_CODEC), set).getBytes(UTF_8))
 										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON))))))
 				.with(HttpMethod.POST, "/" + MOVE, ensureRequestBody(request ->
 						client.move(request.getPostParameters())
 								.thenApply(set -> HttpResponse.ok200()
-										.withBody(HttpDataFormats.STRING_SET.toJson(set).getBytes(UTF_8))
+										.withBody(toJson(ofSet(STRING_CODEC), set).getBytes(UTF_8))
 										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON))))));
 	}
 

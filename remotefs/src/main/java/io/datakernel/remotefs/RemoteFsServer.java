@@ -45,7 +45,7 @@ import java.util.function.Function;
  */
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private static final ByteBufSerializer<FsCommand, FsResponse> SERIALIZER =
-			ByteBufSerializers.ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
+			ByteBufSerializers.ofJsonCodec(RemoteFsCommands.CODEC, RemoteFsResponses.CODEC);
 
 	private final Map<Class<?>, MessagingHandler<FsCommand>> handlers = new HashMap<>();
 	private final FsClient client;

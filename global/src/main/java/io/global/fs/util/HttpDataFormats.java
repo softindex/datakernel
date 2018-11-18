@@ -16,20 +16,12 @@
 
 package io.global.fs.util;
 
-import com.google.gson.TypeAdapter;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
-
-import java.util.Set;
-
-import static io.datakernel.json.GsonAdapters.STRING_JSON;
-import static io.datakernel.json.GsonAdapters.ofSet;
 
 public final class HttpDataFormats {
 	public static final ParseException INVALID_RANGE_FORMAT = new ParseException(HttpDataFormats.class, "Invalid range format");
 	public static final ParseException RANGE_OUT_OF_BOUNDS = new ParseException(HttpDataFormats.class, "Specified range is out of bounds");
-
-	public static final TypeAdapter<Set<String>> STRING_SET = ofSet(STRING_JSON);
 
 	private HttpDataFormats() {
 		throw new AssertionError("nope.");

@@ -40,7 +40,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.csp.binary.ByteBufSerializers.ofJson;
+import static io.datakernel.csp.binary.ByteBufSerializers.ofJsonCodec;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -53,7 +53,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 
 	public static final RemoteFsException UNEXPECTED_END_OF_STREAM = new RemoteFsException(RemoteFsClient.class, "Unexpected end of stream");
 	private static final ByteBufSerializer<FsResponse, FsCommand> SERIALIZER =
-			ofJson(RemoteFsResponses.ADAPTER, RemoteFsCommands.ADAPTER);
+			ofJsonCodec(RemoteFsResponses.CODEC, RemoteFsCommands.CODEC);
 
 	private final Eventloop eventloop;
 	private final InetSocketAddress address;

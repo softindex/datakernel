@@ -16,42 +16,40 @@
 
 package io.datakernel.remotefs;
 
-import com.google.gson.TypeAdapter;
-import io.datakernel.json.TypeAdapterObject;
-import io.datakernel.json.TypeAdapterObjectSubtype;
+import io.datakernel.codec.CodecSubtype;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredCodecs;
 
 import java.util.Map;
 
-import static io.datakernel.json.GsonAdapters.*;
+import static io.datakernel.codec.StructuredCodecs.*;
 
 @SuppressWarnings("WeakerAccess")
 public final class RemoteFsCommands {
-	static final TypeAdapter<FsCommand> ADAPTER = TypeAdapterObjectSubtype.<FsCommand>create()
-		.withSubtype(Upload.class, TypeAdapterObject.create(Upload::new)
-			.with("fileName", STRING_JSON, Upload::getFileName, Upload::setFileName)
-			.with("offset", LONG_JSON, Upload::getOffset, Upload::setOffset))
-		.withSubtype(Download.class, TypeAdapterObject.create(Download::new)
-			.with("filePath", STRING_JSON, Download::getFileName, Download::setFileName)
-			.with("offset", LONG_JSON, Download::getOffset, Download::setOffset)
-			.with("length", LONG_JSON, Download::getLength, Download::setLength))
-		.withSubtype(Move.class, TypeAdapterObject.create(Move::new)
-			.with("changes", ofMap(STRING_JSON), Move::getChanges, Move::setChanges))
-		.withSubtype(Copy.class, TypeAdapterObject.create(Copy::new)
-			.with("changes", ofMap(STRING_JSON), Copy::getChanges, Copy::setChanges))
-		.withSubtype(List.class, TypeAdapterObject.create(List::new)
-			.with("glob", STRING_JSON, List::getGlob, List::setGlob))
-		.withSubtype(Delete.class, TypeAdapterObject.create(Delete::new)
-			.with("glob", STRING_JSON, Delete::getGlob, Delete::setGlob));
+
+	static final StructuredCodec<FsCommand> CODEC = CodecSubtype.<FsCommand>create()
+			.with(Upload.class, StructuredCodecs.recordAsMap(Upload::new,
+					"fileName", Upload::getFileName, STRING_CODEC,
+					"offset", Upload::getOffset, LONG_CODEC))
+			.with(Download.class, StructuredCodecs.recordAsMap(Download::new,
+					"filePath", Download::getFileName, STRING_CODEC,
+					"offset", Download::getOffset, LONG_CODEC,
+					"length", Download::getLength, LONG_CODEC))
+			.with(Move.class, StructuredCodecs.recordAsMap(Move::new,
+					"changes", Move::getChanges, ofMap(STRING_CODEC)))
+			.with(Copy.class, StructuredCodecs.recordAsMap(Copy::new,
+					"changes", Copy::getChanges, ofMap(STRING_CODEC)))
+			.with(List.class, StructuredCodecs.recordAsMap(List::new,
+					"glob", List::getGlob, STRING_CODEC))
+			.with(Delete.class, StructuredCodecs.recordAsMap(Delete::new,
+					"glob", Delete::getGlob, STRING_CODEC));
 
 	public static abstract class FsCommand {
 	}
 
 	public static final class Upload extends FsCommand {
-		private String fileName;
-		private long offset;
-
-		public Upload() {
-		}
+		private final String fileName;
+		private final long offset;
 
 		public Upload(String fileName, long offset) {
 			this.fileName = fileName;
@@ -62,16 +60,8 @@ public final class RemoteFsCommands {
 			return fileName;
 		}
 
-		public void setFileName(String fileName) {
-			this.fileName = fileName;
-		}
-
 		public long getOffset() {
 			return offset;
-		}
-
-		public void setOffset(long offset) {
-			this.offset = offset;
 		}
 
 		@Override
@@ -81,12 +71,9 @@ public final class RemoteFsCommands {
 	}
 
 	public static final class Download extends FsCommand {
-		private String fileName;
-		private long offset;
-		private long length;
-
-		public Download() {
-		}
+		private final String fileName;
+		private final long offset;
+		private final long length;
 
 		public Download(String fileName, long offset, long length) {
 			this.fileName = fileName;
@@ -98,24 +85,12 @@ public final class RemoteFsCommands {
 			return fileName;
 		}
 
-		public void setFileName(String fileName) {
-			this.fileName = fileName;
-		}
-
 		public long getOffset() {
 			return offset;
 		}
 
-		public void setOffset(long offset) {
-			this.offset = offset;
-		}
-
 		public long getLength() {
 			return length;
-		}
-
-		public void setLength(long length) {
-			this.length = length;
 		}
 
 		@Override

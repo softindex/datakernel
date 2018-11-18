@@ -16,36 +16,35 @@
 
 package io.datakernel.remotefs;
 
-import com.google.gson.TypeAdapter;
-import io.datakernel.json.TypeAdapterObject;
-import io.datakernel.json.TypeAdapterObjectSubtype;
+import io.datakernel.codec.CodecSubtype;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredCodecs;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.json.GsonAdapters.*;
+import static io.datakernel.codec.StructuredCodecs.*;
 
 public final class RemoteFsResponses {
-	public static final TypeAdapter<FileMetadata> FILE_META_JSON = transform(
-			ofHeterogeneousArray(new TypeAdapter<?>[]{STRING_JSON, LONG_JSON, LONG_JSON}),
-			data -> new FileMetadata((String) data[0], (long) data[1], (long) data[2]),
-			meta -> new Object[]{meta.getFilename(), meta.getSize(), meta.getTimestamp()}
-	);
+	public static final StructuredCodec<FileMetadata> FILE_META_CODEC = StructuredCodecs.record(FileMetadata::new,
+			FileMetadata::getFilename, STRING_CODEC,
+			FileMetadata::getSize, LONG_CODEC,
+			FileMetadata::getTimestamp, LONG_CODEC);
 
-	static final TypeAdapter<FsResponse> ADAPTER = TypeAdapterObjectSubtype.<FsResponse>create()
-			.withSubtype(UploadFinished.class, TypeAdapterObject.create(UploadFinished::new))
-			.withSubtype(DownloadSize.class, TypeAdapterObject.create(DownloadSize::new)
-					.with("size", LONG_JSON, DownloadSize::getSize, DownloadSize::setSize))
-			.withSubtype(MoveFinished.class, TypeAdapterObject.create(MoveFinished::new)
-					.with("moved", ofSet(STRING_JSON), MoveFinished::getMoved, MoveFinished::setMoved))
-			.withSubtype(CopyFinished.class, TypeAdapterObject.create(CopyFinished::new)
-					.with("copied", ofSet(STRING_JSON), CopyFinished::getCopied, CopyFinished::setCopied))
-			.withSubtype(ListFinished.class, TypeAdapterObject.create(ListFinished::new)
-					.with("files", ofList(FILE_META_JSON), ListFinished::getFiles, ListFinished::setFiles))
-			.withSubtype(DeleteFinished.class, TypeAdapterObject.create(DeleteFinished::new))
-			.withSubtype(ServerError.class, TypeAdapterObject.create(ServerError::new)
-					.with("message", STRING_JSON, ServerError::getMessage, ServerError::setMessage));
+	static final StructuredCodec<FsResponse> CODEC = CodecSubtype.<FsResponse>create()
+			.with(UploadFinished.class, recordAsMap(UploadFinished::new))
+			.with(DownloadSize.class, recordAsMap(DownloadSize::new,
+					"size", DownloadSize::getSize, LONG_CODEC))
+			.with(MoveFinished.class, recordAsMap(MoveFinished::new,
+					"moved", MoveFinished::getMoved, ofSet(STRING_CODEC)))
+			.with(CopyFinished.class, recordAsMap(CopyFinished::new,
+					"copied", CopyFinished::getCopied, ofSet(STRING_CODEC)))
+			.with(ListFinished.class, recordAsMap(ListFinished::new,
+					"files", ListFinished::getFiles, ofList(FILE_META_CODEC)))
+			.with(DeleteFinished.class, recordAsMap(DeleteFinished::new))
+			.with(ServerError.class, recordAsMap(ServerError::new,
+					"message", ServerError::getMessage, STRING_CODEC));
 
 	public static abstract class FsResponse {
 	}
@@ -58,10 +57,7 @@ public final class RemoteFsResponses {
 	}
 
 	public static class DownloadSize extends FsResponse {
-		private long size;
-
-		public DownloadSize() {
-		}
+		private final long size;
 
 		public DownloadSize(long size) {
 			this.size = size;
@@ -71,10 +67,6 @@ public final class RemoteFsResponses {
 			return size;
 		}
 
-		public void setSize(long size) {
-			this.size = size;
-		}
-
 		@Override
 		public String toString() {
 			return "DownloadSize{size=" + size + '}';
@@ -82,10 +74,7 @@ public final class RemoteFsResponses {
 	}
 
 	public static class MoveFinished extends FsResponse {
-		private Set<String> moved;
-
-		public MoveFinished() {
-		}
+		private final Set<String> moved;
 
 		public MoveFinished(Set<String> moved) {
 			this.moved = moved;
@@ -95,10 +84,6 @@ public final class RemoteFsResponses {
 			return moved;
 		}
 
-		public void setMoved(Set<String> moved) {
-			this.moved = moved;
-		}
-
 		@Override
 		public String toString() {
 			return "MoveFinished{moved=" + moved + '}';
@@ -106,10 +91,7 @@ public final class RemoteFsResponses {
 	}
 
 	public static class CopyFinished extends FsResponse {
-		private Set<String> copied;
-
-		public CopyFinished() {
-		}
+		private final Set<String> copied;
 
 		public CopyFinished(Set<String> copied) {
 			this.copied = copied;
@@ -119,10 +101,6 @@ public final class RemoteFsResponses {
 			return copied;
 		}
 
-		public void setCopied(Set<String> copied) {
-			this.copied = copied;
-		}
-
 		@Override
 		public String toString() {
 			return "CopyFinished{copied=" + copied + '}';
@@ -130,10 +108,7 @@ public final class RemoteFsResponses {
 	}
 
 	public static class ListFinished extends FsResponse {
-		private List<FileMetadata> files;
-
-		public ListFinished() {
-		}
+		private final List<FileMetadata> files;
 
 		public ListFinished(List<FileMetadata> files) {
 			this.files = Collections.unmodifiableList(files);
@@ -141,10 +116,6 @@ public final class RemoteFsResponses {
 
 		public List<FileMetadata> getFiles() {
 			return files;
-		}
-
-		public void setFiles(List<FileMetadata> files) {
-			this.files = files;
 		}
 
 		@Override
@@ -167,10 +138,7 @@ public final class RemoteFsResponses {
 	}
 
 	public static class ServerError extends FsResponse {
-		private String message;
-
-		public ServerError() {
-		}
+		private final String message;
 
 		public ServerError(String message) {
 			this.message = message;
@@ -178,10 +146,6 @@ public final class RemoteFsResponses {
 
 		public String getMessage() {
 			return message;
-		}
-
-		public void setMessage(String message) {
-			this.message = message;
 		}
 
 		@Override

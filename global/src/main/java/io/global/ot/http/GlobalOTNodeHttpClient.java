@@ -107,8 +107,9 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 
 	@Override
 	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
-		return httpClient.request(request(POST, SAVE, apiQuery(repositoryId))
-				.initialize(withJson(SAVE_GSON, new SaveTuple(commits, heads))))
+		return httpClient.request(
+				request(POST, SAVE, apiQuery(repositoryId))
+						.initialize(withJson(SAVE_GSON, new SaveTuple(commits, heads))))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, null));
 	}
@@ -179,8 +180,9 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 
 	@Override
 	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
-		return httpClient.request(request(POST, SHARE_KEY + "/" + receiver.asString(), apiQuery((RepoID) null))
-				.initialize(withJson(SHARED_SIM_KEY_JSON, simKey)))
+		return httpClient.request(
+				request(POST, SHARE_KEY + "/" + receiver.asString(), apiQuery((RepoID) null))
+						.initialize(withJson(SHARED_SIM_KEY_JSON, simKey)))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, null));
 	}
