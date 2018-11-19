@@ -47,8 +47,6 @@ public final class GlobalFsDriver {
 		this.discoveryService = discoveryService;
 		this.keys.putAll(keys);
 		this.checkpointPosStrategy = checkpointPosStrategy;
-
-		// changeCurrentSimKey(SimKey.fromString("GBKadnXVViYZEYopiY0_sg")); // testing stub
 	}
 
 	public static GlobalFsDriver create(GlobalFsNode node, DiscoveryService discoveryService, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {

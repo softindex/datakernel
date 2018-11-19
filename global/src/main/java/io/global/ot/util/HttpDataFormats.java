@@ -16,13 +16,10 @@
 
 package io.global.ot.util;
 
-import com.google.gson.TypeAdapter;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
-import io.datakernel.json.GsonAdapters;
 import io.datakernel.util.TypeT;
 import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
@@ -41,11 +38,9 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.http.HttpUtils.urlEncode;
-import static io.datakernel.json.GsonAdapters.BYTES_JSON;
-import static io.datakernel.json.GsonAdapters.STRING_JSON;
 import static io.global.ot.util.BinaryDataFormats2.*;
-import static java.util.stream.Collectors.toMap;
 
 public class HttpDataFormats {
 	private HttpDataFormats() {}
@@ -61,51 +56,21 @@ public class HttpDataFormats {
 	public static final String DOWNLOAD = "download";
 	public static final String UPLOAD = "upload";
 
-	public static final TypeAdapter<Set<String>> SET_OF_STRINGS = GsonAdapters.ofSet(STRING_JSON);
-
 	private static final StructuredCodec<SignedData<RawCommitHead>> SIGNED_COMMIT_HEAD_CODEC = REGISTRY.get(new TypeT<SignedData<RawCommitHead>>() {});
 	private static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_KEY_CODEC = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
 	private static final StructuredCodec<RawCommit> COMMIT_CODEC = REGISTRY.get(RawCommit.class);
 	private static final StructuredCodec<CommitId> COMMIT_ID_CODEC = REGISTRY.get(CommitId.class);
 
-	public static final TypeAdapter<SignedData<RawCommitHead>> COMMIT_HEAD_JSON = GsonAdapters.transform(BYTES_JSON,
-			bytes -> decode(SIGNED_COMMIT_HEAD_CODEC, bytes),
-			item -> encode(SIGNED_COMMIT_HEAD_CODEC, item).asArray());
+	private static <T> StructuredCodec<T> ofBinaryCodec(StructuredCodec<T> binaryCodec) {
+		return BYTES_CODEC.transform(
+				bytes -> decode(binaryCodec, bytes),
+				item -> encode(binaryCodec, item).asArray());
+	}
 
-	public static final TypeAdapter<SignedData<SharedSimKey>> SHARED_SIM_KEY_JSON = GsonAdapters.transform(BYTES_JSON,
-			bytes -> decode(SIGNED_SHARED_KEY_CODEC, bytes),
-			item -> encode(SIGNED_SHARED_KEY_CODEC, item).asArray());
-
-	public static final TypeAdapter<RawCommit> COMMIT_JSON = GsonAdapters.transform(BYTES_JSON,
-			bytes -> decode(COMMIT_CODEC, bytes),
-			item -> encode(COMMIT_CODEC, item).asArray());
-
-	public static final TypeAdapter<CommitId> COMMIT_ID_JSON = GsonAdapters.transform(BYTES_JSON,
-			bytes -> decode(COMMIT_ID_CODEC, bytes),
-			item -> encode(COMMIT_ID_CODEC, item).asArray());
-
-	public static final TypeAdapter<Map<CommitId, RawCommit>> COMMIT_MAP_JSON = GsonAdapters.transform(GsonAdapters.ofMap(COMMIT_JSON),
-			map -> {
-				try {
-					return map.entrySet().stream()
-							.collect(toMap(
-									entry -> {
-										try {
-											return urlDecodeCommitId(entry.getKey());
-										} catch (ParseException e) {
-											throw new UncheckedException(e);
-										}
-									},
-									Map.Entry::getValue));
-				} catch (UncheckedException u) {
-					//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - propagated
-					throw u.propagate(ParseException.class);
-				}
-			},
-			map -> map.entrySet().stream()
-					.collect(toMap(
-							entry -> urlEncodeCommitId(entry.getKey()),
-							Map.Entry::getValue)));
+	public static final StructuredCodec<SignedData<RawCommitHead>> SIGNED_COMMIT_HEAD_JSON = ofBinaryCodec(SIGNED_COMMIT_HEAD_CODEC);
+	public static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_KEY_JSON = ofBinaryCodec(SIGNED_SHARED_KEY_CODEC);
+	public static final StructuredCodec<RawCommit> COMMIT_JSON = ofBinaryCodec(COMMIT_CODEC);
+	public static final StructuredCodec<CommitId> COMMIT_ID_JSON = ofBinaryCodec(COMMIT_ID_CODEC);
 
 	public static final class SaveTuple {
 		public final Map<CommitId, RawCommit> commits;
@@ -125,17 +90,17 @@ public class HttpDataFormats {
 		}
 	}
 
-	public static final TypeAdapter<SaveTuple> SAVE_GSON = GsonAdapters.ofTuple(SaveTuple::new,
-			"commits", SaveTuple::getCommits, COMMIT_MAP_JSON,
-			"heads", SaveTuple::getHeads, GsonAdapters.ofSet(COMMIT_HEAD_JSON));
+	public static final StructuredCodec<SaveTuple> SAVE_JSON = recordAsMap(SaveTuple::new,
+			"commits", SaveTuple::getCommits, ofMap(COMMIT_ID_JSON, COMMIT_JSON),
+			"heads", SaveTuple::getHeads, ofSet(SIGNED_COMMIT_HEAD_JSON));
 
-	public static final TypeAdapter<HeadsInfo> HEADS_INFO_GSON = GsonAdapters.ofTuple(HeadsInfo::new,
-			"bases", HeadsInfo::getBases, GsonAdapters.ofSet(COMMIT_ID_JSON),
-			"heads", HeadsInfo::getHeads, GsonAdapters.ofSet(COMMIT_ID_JSON));
+	public static final StructuredCodec<HeadsInfo> HEADS_INFO_JSON = recordAsMap(HeadsInfo::new,
+			"bases", HeadsInfo::getBases, ofSet(COMMIT_ID_JSON),
+			"heads", HeadsInfo::getHeads, ofSet(COMMIT_ID_JSON));
 
-	public static final TypeAdapter<Heads> HEADS_DELTA_GSON = GsonAdapters.ofTuple(Heads::new,
-			"newHeads", Heads::getNewHeads, GsonAdapters.ofSet(COMMIT_HEAD_JSON),
-			"excludedHeads", Heads::getExcludedHeads, GsonAdapters.ofSet(COMMIT_ID_JSON));
+	public static final StructuredCodec<Heads> HEADS_DELTA_JSON = recordAsMap(Heads::new,
+			"newHeads", Heads::getNewHeads, ofSet(SIGNED_COMMIT_HEAD_JSON),
+			"excludedHeads", Heads::getExcludedHeads, ofSet(COMMIT_ID_JSON));
 
 	public static String urlEncodeCommitId(CommitId commitId) {
 		return Base64.getUrlEncoder().encodeToString(commitId.toBytes());

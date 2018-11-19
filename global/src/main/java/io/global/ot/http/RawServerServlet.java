@@ -41,11 +41,13 @@ import io.global.ot.util.HttpDataFormats;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.codec.StructuredCodecs.ofSet;
+import static io.datakernel.codec.json.JsonUtils.fromJson;
+import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.json.GsonAdapters.fromJson;
-import static io.datakernel.json.GsonAdapters.toJson;
 import static io.global.ot.util.BinaryDataFormats2.*;
 import static io.global.ot.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -80,9 +82,9 @@ public final class RawServerServlet implements AsyncServlet {
 						node.list(req.parsePathParameter("pubKey", HttpDataFormats::urlDecodePubKey))
 								.thenApply(names ->
 										HttpResponse.ok200()
-												.withBody(toJson(SET_OF_STRINGS, names).getBytes(UTF_8))))
+												.withBody(toJson(ofSet(STRING_CODEC), names).getBytes(UTF_8))))
 				.with(POST, "/" + SAVE + "/:pubKey/:name", ensureRequestBody(req -> {
-					SaveTuple saveTuple = fromJson(SAVE_GSON, req.getBody().asString(UTF_8));
+					SaveTuple saveTuple = fromJson(SAVE_JSON, req.getBody().asString(UTF_8));
 					return node.save(urlDecodeRepositoryId(req), saveTuple.commits, saveTuple.heads)
 							.thenApply($ ->
 									HttpResponse.ok200());
@@ -99,7 +101,7 @@ public final class RawServerServlet implements AsyncServlet {
 								urlDecodeRepositoryId(req))
 								.thenApply(headsInfo ->
 										HttpResponse.ok200()
-												.withBody(toJson(HEADS_INFO_GSON, headsInfo).getBytes(UTF_8))))
+												.withBody(toJson(HEADS_INFO_JSON, headsInfo).getBytes(UTF_8))))
 				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", ensureRequestBody(req -> {
 					SignedData<RawSnapshot> encryptedSnapshot = decode(
 							SIGNED_SNAPSHOT_CODEC,
@@ -131,9 +133,9 @@ public final class RawServerServlet implements AsyncServlet {
 										.collect(toSet()))
 								.thenApply(heads ->
 										HttpResponse.ok200()
-												.withBody(toJson(HEADS_DELTA_GSON, heads).getBytes(UTF_8))))
+												.withBody(toJson(HEADS_DELTA_JSON, heads).getBytes(UTF_8))))
 				.with(POST, "/" + SHARE_KEY + "/:owner", ensureRequestBody(req ->
-						node.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SHARED_SIM_KEY_JSON, req.getBody().asString(UTF_8)))
+						node.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SIGNED_SHARED_KEY_JSON, req.getBody().asString(UTF_8)))
 								.thenApply($1 ->
 										HttpResponse.ok200())))
 				.with(GET, "/" + DOWNLOAD, req -> {

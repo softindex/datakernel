@@ -16,7 +16,6 @@
 
 package io.global.ot.http;
 
-import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
@@ -39,6 +38,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.codec.StructuredCodecs.ofSet;
+import static io.datakernel.codec.json.JsonUtils.fromJson;
+import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
@@ -46,8 +49,6 @@ import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpUtils.renderQueryString;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.MediaTypes.JSON;
-import static io.datakernel.json.GsonAdapters.fromJson;
-import static io.datakernel.json.GsonAdapters.toJson;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.ot.util.BinaryDataFormats2.*;
 import static io.global.ot.util.HttpDataFormats.*;
@@ -83,16 +84,16 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return apiQuery(null, parameters);
 	}
 
-	private <T> Initializer<HttpRequest> withJson(TypeAdapter<T> gson, T value) {
+	private <T> Initializer<HttpRequest> withJson(StructuredCodec<T> json, T value) {
 		return httpRequest -> httpRequest
 				.withHeader(CONTENT_TYPE, ofContentType(ContentType.of(JSON)))
-				.withBody(toJson(gson, value).getBytes(UTF_8));
+				.withBody(toJson(json, value).getBytes(UTF_8));
 	}
 
-	private <T> Promise<T> processResult(HttpResponse r, @Nullable TypeAdapter<T> gson) {
+	private <T> Promise<T> processResult(HttpResponse r, @Nullable StructuredCodec<T> json) {
 		if (r.getCode() != 200) Promise.ofException(HttpException.ofCode(r.getCode()));
 		try {
-			return Promise.of(gson != null ? fromJson(gson, r.getBody().asString(UTF_8)) : null);
+			return Promise.of(json != null ? fromJson(json, r.getBody().asString(UTF_8)) : null);
 		} catch (ParseException e) {
 			return Promise.ofException(e);
 		}
@@ -102,14 +103,14 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	public Promise<Set<String>> list(PubKey pubKey) {
 		return httpClient.request(request(GET, LIST, urlEncodePubKey(pubKey)))
 				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, SET_OF_STRINGS));
+				.thenCompose(r -> processResult(r, ofSet(STRING_CODEC)));
 	}
 
 	@Override
 	public Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads) {
 		return httpClient.request(
 				request(POST, SAVE, apiQuery(repositoryId))
-						.initialize(withJson(SAVE_GSON, new SaveTuple(commits, heads))))
+						.initialize(withJson(SAVE_JSON, new SaveTuple(commits, heads))))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, null));
 	}
@@ -125,7 +126,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
 		return httpClient.request(request(GET, GET_HEADS_INFO, apiQuery(repositoryId)))
 				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, HEADS_INFO_GSON));
+				.thenCompose(r -> processResult(r, HEADS_INFO_JSON));
 	}
 
 	@Override
@@ -175,14 +176,14 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 						.map(HttpDataFormats::urlEncodeCommitId)
 						.collect(joining(","))))))
 				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, HEADS_DELTA_GSON));
+				.thenCompose(r -> processResult(r, HEADS_DELTA_JSON));
 	}
 
 	@Override
 	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
 		return httpClient.request(
 				request(POST, SHARE_KEY + "/" + receiver.asString(), apiQuery((RepoID) null))
-						.initialize(withJson(SHARED_SIM_KEY_JSON, simKey)))
+						.initialize(withJson(SIGNED_SHARED_KEY_JSON, simKey)))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, null));
 	}

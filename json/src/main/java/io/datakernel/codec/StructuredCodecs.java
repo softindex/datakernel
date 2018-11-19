@@ -27,6 +27,8 @@ import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 @SuppressWarnings("unchecked")
 public final class StructuredCodecs {
@@ -258,6 +260,16 @@ public final class StructuredCodecs {
 				listWriter.close();
 			}
 		};
+	}
+
+	public static <K, V> StructuredCodec<Map<K, V>> ofMap(StructuredCodec<K> codecKey, StructuredCodec<V> codecValue) {
+		return StructuredCodecs.<Tuple2<K, V>>ofList(
+				record(Tuple2::new,
+						Tuple2::getValue1, codecKey,
+						Tuple2::getValue2, codecValue))
+				.transform(
+						tuples -> tuples.stream().collect(toMap(Tuple2::getValue1, Tuple2::getValue2)),
+						map -> map.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(), entry.getValue())).collect(toList()));
 	}
 
 	public static <T> StructuredCodec<Map<String, T>> ofMap(StructuredCodec<T> codec) {
