@@ -29,6 +29,9 @@ public final class ByteBufStrings {
 	public static final byte SP = (byte) ' ';
 	public static final byte HT = (byte) '\t';
 
+	// Same as String.valueOf(Long.MIN_VALUE).getBytes()
+	private static final byte[] MIN_LONG_BYTES = new byte[]{45, 57, 50, 50, 51, 51, 55, 50, 48, 51, 54, 56, 53, 52, 55, 55, 53, 56, 48, 56};
+
 	private ByteBufStrings() {
 	}
 
@@ -287,8 +290,16 @@ public final class ByteBufStrings {
 		return decodeUtf8(array, pos, len, ThreadLocalCharArray.ensure(len));
 	}
 
+	public static String decodeUtf8(ByteBuf buf, char[] tmpBuffer) throws ParseException {
+		return decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), tmpBuffer);
+	}
+
+	public static String decodeUtf8(ByteBuf buf) throws ParseException {
+		return decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), new char[buf.readRemaining()]);
+	}
+
 	public static String decodeUtf8(byte[] array) throws ParseException {
-		return decodeUtf8(array, 0, array.length, ThreadLocalCharArray.ensure(array.length));
+		return decodeUtf8(array, 0, array.length, new char[array.length]);
 	}
 
 	public static String asUtf8(ByteBuf buf) throws ParseException {
@@ -297,51 +308,75 @@ public final class ByteBufStrings {
 		return str;
 	}
 
-	// Decimal (unsigned)
-	public static int encodeDecimal(byte[] array, int pos, int value) {
+	public static int encodeDecimal(byte[] array, int pos, long value) {
+		if (value == Long.MIN_VALUE) {
+			System.arraycopy(MIN_LONG_BYTES, 0, array, pos, 20);
+			return 20;
+		}
+		boolean neg = value < 0;
+		value = Math.abs(value);
 		int digits = digits(value);
-		for (int i = pos + digits - 1; i >= pos; i--) {
-			int digit = value % 10;
+		int i = pos + digits + (neg ? 0 : -1);
+		for (; i >= (neg ? pos + 1 : pos); i--) {
+			long digit = value % 10;
 			value = value / 10;
 			array[i] = (byte) ('0' + digit);
 		}
-		return digits;
+		if (neg) {
+			array[i] = (byte) '-';
+		}
+		return digits + (neg ? 1 : 0);
 	}
 
-	public static void putDecimal(ByteBuf buf, int value) {
+	public static void putDecimal(ByteBuf buf, long value) {
 		int digits = encodeDecimal(buf.array(), buf.writePosition(), value);
 		buf.moveWritePosition(digits);
 	}
 
-	public static ByteBuf wrapDecimal(int value) {
-		int digits = digits(value);
-		ByteBuf buf = ByteBufPool.allocate(digits);
-		byte[] array = buf.array();
-		for (int i = digits - 1; i >= 0; i--) {
-			int digit = value % 10;
-			value = value / 10;
-			array[i] = (byte) ('0' + digit);
+	public static ByteBuf wrapDecimal(long value) {
+		if (value == Long.MIN_VALUE) {
+			return ByteBuf.wrapForReading(MIN_LONG_BYTES);
 		}
+		int digits = digits(Math.abs(value)) + (value < 0 ? 1 : 0);
+		ByteBuf buf = ByteBufPool.allocate(digits);
+		encodeDecimal(buf.array, 0, value);
+		buf.moveWritePosition(digits);
 		return buf;
 	}
 
-	public static int decodeDecimal(byte[] array, int pos, int len) throws ParseException {
-		int result = 0;
-		int offsetLeft = trimOffsetLeft(array, pos, len);
-		pos = pos + offsetLeft;
-		len = len - offsetLeft;
-		len = len - trimOffsetRight(array, pos, len);
-		for (int i = pos; i < pos + len; i++) {
+	public static int decodeInt(byte[] array, int pos, int len) throws ParseException {
+		long longValue = decodeLong(array, pos, len);
+		int intValue = (int) longValue;
+		if (intValue != longValue) {
+			throw new ParseException("Decoded value exceeds boundaries of type int " + new String(array, pos, len));
+		}
+		return intValue;
+	}
+
+	public static long decodeLong(byte[] array, int pos, int len) throws ParseException {
+		long result = 0;
+
+		int i = pos;
+		int multiplier = 1;
+		if (array[i] == (byte) '-') {
+			multiplier = -1;
+			i++;
+		}
+
+		for (; i < pos + len; i++) {
 			byte b = (byte) (array[i] - '0');
 			if (b < 0 || b >= 10) {
-				throw new ParseException(ByteBufStrings.class, "Not a decimal value" + new String(array, pos, len));
+				throw new ParseException(ByteBufStrings.class, "Not a decimal value: " + new String(array, pos, len));
 			}
 			result = b + result * 10;
 			if (result < 0) {
-				throw new ParseException(ByteBufStrings.class, "Bigger than max int value: " + new String(array, pos, len));
+				if (result == Long.MIN_VALUE && (i + 1 == pos + len)) {
+					return Long.MIN_VALUE;
+				}
+				throw new ParseException("Bigger than max long value: " + new String(array, pos, len));
 			}
 		}
-		return result;
+		return result * multiplier;
 	}
 
 	private static int trimOffsetLeft(byte[] array, int pos, int len) {
@@ -360,13 +395,13 @@ public final class ByteBufStrings {
 		return 0;
 	}
 
-	private static int digits(int x) {
-		int limit = 10;
-		for (int i = 1; i <= 9; i++) {
+	private static int digits(long x) {
+		long limit = 10;
+		for (int i = 1; i <= 18; i++) {
 			if (x < limit)
 				return i;
 			limit *= 10;
 		}
-		return 10;
+		return 19;
 	}
 }

@@ -19,7 +19,9 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
 
-import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeDecimal;
+import static io.datakernel.http.HttpUtils.decodeUnsignedInt;
 
 /* <[RFC2616], Section 3.3.1> case-sensitive
  Can't parse dates earlier than 1970*/
@@ -68,7 +70,7 @@ final class HttpDate {
 
 	static long parse(byte[] bytes, int start) throws ParseException {
 		try {
-			int day = decodeDecimal(bytes, start + 5, 2);
+			int day = decodeUnsignedInt(bytes, start + 5, 2);
 
 			int month = -1;
 			for (int i = 0; i < MONTHS_IN_YEAR.length; i++) {
@@ -82,10 +84,10 @@ final class HttpDate {
 
 			int yearLength = '0' <= bytes[start + 12 + 2] && bytes[start + 12 + 2] <= '9' ? 4 : 2;
 
-			int year = (yearLength == 2 ? 2000 : 0) + decodeDecimal(bytes, start + 12, yearLength);
-			int hour = decodeDecimal(bytes, start + 13 + yearLength, 2);
-			int minutes = decodeDecimal(bytes, start + 16 + yearLength, 2);
-			int seconds = decodeDecimal(bytes, start + 19 + yearLength, 2);
+			int year = (yearLength == 2 ? 2000 : 0) + decodeUnsignedInt(bytes, start + 12, yearLength);
+			int hour = decodeUnsignedInt(bytes, start + 13 + yearLength, 2);
+			int minutes = decodeUnsignedInt(bytes, start + 16 + yearLength, 2);
+			int seconds = decodeUnsignedInt(bytes, start + 19 + yearLength, 2);
 			boolean isLeapYear = isLeap(year);
 
 			int[] days = isLeapYear ? DAYS_IN_MONTH_LEAP : DAYS_IN_MONTH;

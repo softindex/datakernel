@@ -27,6 +27,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.HttpUtils.skipSpaces;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AcceptCharset {
 	public static final int DEFAULT_Q = 100;
@@ -49,6 +50,7 @@ public final class AcceptCharset {
 	}
 
 	public static AcceptCharset of(Charset charset, int q) {
+		checkArgument(q >= 0 && q <= 100, "Cannot create AcceptCharset with 'q' that is outside of bounds [0, 100]");
 		return new AcceptCharset(HttpCharset.of(charset), q);
 	}
 

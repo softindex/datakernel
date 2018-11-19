@@ -172,12 +172,14 @@ public final class AsyncSslSocketTest {
 
 		AsyncTcpSocketImpl.connect(ADDRESS)
 				.thenApply(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
-				.whenResult(sslSocket -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
-						.parse(PARSER)
-						.whenComplete(assertFailure(e -> {
-							BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket)).getBufs().recycle();
-							assertSame(CLOSE_EXCEPTION, e);
-						})));
+				.whenComplete(assertComplete(sslSocket -> {
+					BinaryChannelSupplier supplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket));
+					supplier.parse(PARSER)
+							.whenComplete(assertFailure(e -> {
+								supplier.getBufs().recycle();
+								assertSame(CLOSE_EXCEPTION, e);
+							}));
+				}));
 	}
 
 	static void startServer(SSLContext sslContext, Consumer<AsyncTcpSocket> logic) throws IOException {

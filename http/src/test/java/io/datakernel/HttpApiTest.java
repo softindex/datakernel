@@ -26,7 +26,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -141,7 +140,7 @@ public final class HttpApiTest {
 		assertEquals(responseContentType, response.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
 		assertEquals(responseCookies, new ArrayList<>(response.getCookies().values()));
 		assertEquals(responseDate, response.parseHeader(DATE, HttpHeaderValue::toInstant));
-		assertEquals(age, (int) response.parseHeader(AGE, HttpHeaderValue::toDecimal));
+		assertEquals(age, (int) response.parseHeader(AGE, HttpHeaderValue::toInt));
 		assertEquals(expiresDate, response.parseHeader(EXPIRES, HttpHeaderValue::toInstant));
 		assertEquals(lastModified, response.parseHeader(LAST_MODIFIED, HttpHeaderValue::toInstant));
 	}

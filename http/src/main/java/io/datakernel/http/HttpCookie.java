@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.http.HttpUtils.decodeUnsignedInt;
 import static io.datakernel.http.HttpUtils.skipSpaces;
 
 // RFC 6265
@@ -374,7 +375,7 @@ public final class HttpCookie {
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException {
-						cookie.setMaxAge(decodeDecimal(bytes, start, end - start));
+						cookie.setMaxAge(decodeUnsignedInt(bytes, start, end - start));
 					}
 				};
 			case DOMAIN_HC:

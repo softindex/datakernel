@@ -80,8 +80,8 @@ public abstract class HttpHeaderValue {
 		return new HttpHeaderValueOfContentType(type);
 	}
 
-	public static int toDecimal(ByteBuf buf) throws ParseException {
-		return decodeDecimal(buf.array(), buf.readPosition(), buf.readRemaining());
+	public static int toInt(ByteBuf buf) throws ParseException {
+		return decodeInt(buf.array(), buf.readPosition(), buf.readRemaining());
 	}
 
 	public static ContentType toContentType(ByteBuf buf) throws ParseException {

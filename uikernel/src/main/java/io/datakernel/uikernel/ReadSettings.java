@@ -26,8 +26,8 @@ import io.datakernel.http.HttpRequest;
 import java.lang.reflect.Type;
 import java.util.*;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.http.HttpUtils.decodeUnsignedInt;
 import static io.datakernel.uikernel.Utils.fromJson;
 
 @SuppressWarnings("unused")
@@ -81,13 +81,13 @@ public final class ReadSettings<K> {
 		String offsetParameter = request.getQueryParameterOrNull("offset");
 		int offset = DEFAULT_OFFSET;
 		if (offsetParameter != null && !offsetParameter.isEmpty()) {
-			offset = decodeDecimal(encodeAscii(offsetParameter), 0, offsetParameter.length());
+			offset = decodeUnsignedInt(encodeAscii(offsetParameter), 0, offsetParameter.length());
 		}
 
 		String limitParameter = request.getQueryParameterOrNull("limit");
 		int limit = DEFAULT_LIMIT;
 		if (limitParameter != null && !limitParameter.isEmpty()) {
-			limit = decodeDecimal(encodeAscii(limitParameter), 0, limitParameter.length());
+			limit = decodeUnsignedInt(encodeAscii(limitParameter), 0, limitParameter.length());
 		}
 
 		String filtersParameter = request.getQueryParameterOrNull("filters");
