@@ -78,7 +78,7 @@ public interface StreamSupplier<T> extends Cancellable {
 		return Promises.all(supplier.getEndOfStream(), consumer.getAcknowledgement());
 	}
 
-	static <T, R> StreamSupplier<T> ofConsumer(Consumer<StreamConsumer<T>> consumer) {
+	static <T> StreamSupplier<T> ofConsumer(Consumer<StreamConsumer<T>> consumer) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
 		consumer.accept(forwarder.getInput());
 		return forwarder.getOutput();
@@ -162,8 +162,8 @@ public interface StreamSupplier<T> extends Cancellable {
 		});
 	}
 
-	static <T> StreamSupplier<T> ofSerialSupplier(ChannelSupplier<T> supplier) {
-		return new OfSerialSupplierImpl<>(supplier);
+	static <T> StreamSupplier<T> ofChannelSupplier(ChannelSupplier<T> supplier) {
+		return new OfChannelSupplierImpl<>(supplier);
 	}
 
 	default <R> R transformWith(StreamSupplierTransformer<T, R> fn) {

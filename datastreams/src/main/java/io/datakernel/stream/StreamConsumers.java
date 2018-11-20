@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,13 +102,13 @@ public final class StreamConsumers {
 		}
 	}
 
-	static final class OfSerialConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
+	static final class OfChannelConsumerImpl<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 		private final ChannelConsumer<T> consumer;
 		private final ArrayDeque<T> deque = new ArrayDeque<>();
 		private final SettablePromise<Void> result = new SettablePromise<>();
 		private boolean writing;
 
-		OfSerialConsumerImpl(ChannelConsumer<T> consumer) {
+		OfChannelConsumerImpl(ChannelConsumer<T> consumer) {
 			this.consumer = consumer;
 		}
 
@@ -130,7 +130,7 @@ public final class StreamConsumers {
 		@Override
 		protected Promise<Void> onEndOfStream() {
 			produce();
-			return Promise.complete();
+			return result;
 		}
 
 		private void produce() {

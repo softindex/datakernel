@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -189,10 +189,10 @@ public final class StreamSuppliers {
 		}
 	}
 
-	static class OfSerialSupplierImpl<T> extends AbstractStreamSupplier<T> {
+	static class OfChannelSupplierImpl<T> extends AbstractStreamSupplier<T> {
 		private final ChannelSupplier<T> supplier;
 
-		public OfSerialSupplierImpl(ChannelSupplier<T> supplier) {
+		public OfChannelSupplierImpl(ChannelSupplier<T> supplier) {
 			this.supplier = supplier;
 		}
 

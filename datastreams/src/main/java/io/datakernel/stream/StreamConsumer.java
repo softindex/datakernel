@@ -23,12 +23,13 @@ import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.stream.StreamConsumers.ClosingWithErrorImpl;
 import io.datakernel.stream.StreamConsumers.Idle;
-import io.datakernel.stream.StreamConsumers.OfSerialConsumerImpl;
+import io.datakernel.stream.StreamConsumers.OfChannelConsumerImpl;
 import io.datakernel.stream.StreamConsumers.Skip;
 import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.stream.processor.StreamTransformer;
 
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
@@ -60,12 +61,21 @@ public interface StreamConsumer<T> extends Cancellable {
 		return new Skip<>();
 	}
 
+	/**
+	 * @deprecated use of this consumer is discouraged as it breaks the whole asynchronous model.
+	 * Exists only for testing
+	 */
+	@Deprecated
+	static <T> StreamConsumer<T> of(Consumer<T> consumer) {
+		return new StreamConsumers.OfConsumerImpl<>(consumer);
+	}
+
 	static <T> StreamConsumer<T> closingWithError(Throwable e) {
 		return new ClosingWithErrorImpl<>(e);
 	}
 
-	static <T> StreamConsumer<T> ofSerialConsumer(ChannelConsumer<T> consumer) {
-		return new OfSerialConsumerImpl<>(consumer);
+	static <T> StreamConsumer<T> ofChannelConsumer(ChannelConsumer<T> consumer) {
+		return new OfChannelConsumerImpl<>(consumer);
 	}
 
 	static <T> StreamConsumer<T> ofSupplier(Function<StreamSupplier<T>, MaterializedPromise<Void>> supplier) {
