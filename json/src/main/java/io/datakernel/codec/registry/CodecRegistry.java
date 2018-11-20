@@ -70,35 +70,35 @@ public final class CodecRegistry implements CodecFactory {
 				.withGeneric(List.class, (registry, subCodecs) ->
 						ofList(subCodecs[0]))
 				.withGeneric(Map.class, (registry, subCodecs) ->
-						ofMap(subCodecs[0]))
+						ofMap(subCodecs[0], subCodecs[1]))
 
 				.withGeneric(Tuple1.class, (registry, subCodecs) ->
-						record(Tuple1::new,
+						tuple(Tuple1::new,
 								Tuple1::getValue1, subCodecs[0]))
 				.withGeneric(Tuple2.class, (registry, subCodecs) ->
-						record(Tuple2::new,
+						tuple(Tuple2::new,
 								Tuple2::getValue1, subCodecs[0],
 								Tuple2::getValue2, subCodecs[1]))
 				.withGeneric(Tuple3.class, (registry, subCodecs) ->
-						record(Tuple3::new,
+						tuple(Tuple3::new,
 								Tuple3::getValue1, subCodecs[0],
 								Tuple3::getValue2, subCodecs[1],
 								Tuple3::getValue3, subCodecs[2]))
 				.withGeneric(Tuple4.class, (registry, subCodecs) ->
-						record(Tuple4::new,
+						tuple(Tuple4::new,
 								Tuple4::getValue1, subCodecs[0],
 								Tuple4::getValue2, subCodecs[1],
 								Tuple4::getValue3, subCodecs[2],
 								Tuple4::getValue4, subCodecs[3]))
 				.withGeneric(Tuple5.class, (registry, subCodecs) ->
-						record(Tuple5::new,
+						tuple(Tuple5::new,
 								Tuple5::getValue1, subCodecs[0],
 								Tuple5::getValue2, subCodecs[1],
 								Tuple5::getValue3, subCodecs[2],
 								Tuple5::getValue4, subCodecs[3],
 								Tuple5::getValue5, subCodecs[4]))
 				.withGeneric(Tuple6.class, (registry, subCodecs) ->
-						record(Tuple6::new,
+						tuple(Tuple6::new,
 								Tuple6::getValue1, subCodecs[0],
 								Tuple6::getValue2, subCodecs[1],
 								Tuple6::getValue3, subCodecs[2],

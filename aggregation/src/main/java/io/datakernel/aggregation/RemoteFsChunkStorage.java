@@ -67,7 +67,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	public static final String TEMP_LOG = ".temp";
 
 	private final Eventloop eventloop;
-	private final ChunkIdScheme<C> chunkIdScheme;
+	private final ChunkIdCodec<C> chunkIdCodec;
 	private final IdGenerator<C> idGenerator;
 
 	private final FsClient client;
@@ -107,17 +107,17 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 
 	private int finishChunks;
 
-	private RemoteFsChunkStorage(Eventloop eventloop, ChunkIdScheme<C> chunkIdScheme, IdGenerator<C> idGenerator, FsClient client) {
+	private RemoteFsChunkStorage(Eventloop eventloop, ChunkIdCodec<C> chunkIdCodec, IdGenerator<C> idGenerator, FsClient client) {
 		this.eventloop = eventloop;
-		this.chunkIdScheme = chunkIdScheme;
+		this.chunkIdCodec = chunkIdCodec;
 		this.idGenerator = idGenerator;
 		this.client = client;
 	}
 
 	public static <C> RemoteFsChunkStorage<C> create(Eventloop eventloop,
-			ChunkIdScheme<C> chunkIdScheme,
+			ChunkIdCodec<C> chunkIdCodec,
 			IdGenerator<C> idGenerator, FsClient client) {
-		return new RemoteFsChunkStorage<>(eventloop, chunkIdScheme, idGenerator, client);
+		return new RemoteFsChunkStorage<>(eventloop, chunkIdCodec, idGenerator, client);
 	}
 
 	public RemoteFsChunkStorage<C> withBufferSize(MemSize bufferSize) {
@@ -139,11 +139,11 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	}
 
 	private String toFileName(C chunkId) {
-		return chunkIdScheme.toFileName(chunkId);
+		return chunkIdCodec.toFileName(chunkId);
 	}
 
 	private C fromFileName(String fileName) {
-		return chunkIdScheme.fromFileName(fileName);
+		return chunkIdCodec.fromFileName(fileName);
 	}
 
 	@SuppressWarnings("unchecked")

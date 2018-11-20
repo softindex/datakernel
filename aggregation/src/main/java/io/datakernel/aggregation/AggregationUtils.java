@@ -16,15 +16,14 @@
 
 package io.datakernel.aggregation;
 
-import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codegen.*;
-import io.datakernel.json.GsonAdapters;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
@@ -38,6 +37,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static io.datakernel.codec.StructuredCodecs.ofTupleArray;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.CollectionUtils.keysToMap;
@@ -310,15 +310,15 @@ public class AggregationUtils {
 		return measureFields;
 	}
 
-	public static TypeAdapter<PrimaryKey> getPrimaryKeyJson(AggregationStructure aggregation) {
-		TypeAdapter<?>[] keyTypeAdapters = new TypeAdapter<?>[aggregation.getKeys().size()];
+	public static StructuredCodec<PrimaryKey> getPrimaryKeyCodec(AggregationStructure aggregation) {
+		StructuredCodec<?>[] keyCodec = new StructuredCodec<?>[aggregation.getKeys().size()];
 		for (int i = 0; i < aggregation.getKeys().size(); i++) {
 			String key = aggregation.getKeys().get(i);
 			FieldType keyType = aggregation.getKeyTypes().get(key);
-			keyTypeAdapters[i] = keyType.getInternalJson();
+			keyCodec[i] = keyType.getInternalCodec();
 		}
-		TypeAdapter<Object[]> typeAdapter = GsonAdapters.ofHeterogeneousArray(keyTypeAdapters);
-		return GsonAdapters.transform(typeAdapter, PrimaryKey::ofArray, PrimaryKey::getArray);
+		return ofTupleArray(keyCodec)
+				.transform(PrimaryKey::ofArray, PrimaryKey::getArray);
 	}
 
 }

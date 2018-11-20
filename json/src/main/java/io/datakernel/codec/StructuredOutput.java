@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 public interface StructuredOutput {
+	void writeNull();
+
 	void writeBoolean(boolean value);
 
 	void writeByte(byte value);
@@ -31,43 +33,25 @@ public interface StructuredOutput {
 
 	void writeString(String value);
 
-	default void writeNull() {
-		writeNullable((out, item) -> { throw new AssertionError();}, null);
-	}
-
 	<T> void writeNullable(StructuredEncoder<T> encoder, @Nullable T value);
 
-	default <T> void writeList(StructuredEncoder<T> encoder, List<T> list) {
-		ListWriter listWriter = listWriter(true);
-		for (T item : list) {
-			encoder.encode(listWriter.next(), item);
-		}
-		listWriter.close();
+	<T> void writeList(StructuredEncoder<T> encoder, List<T> list);
+
+	<K, V> void writeMap(StructuredEncoder<K> keyEncoder, StructuredEncoder<V> valueEncoder, Map<K, V> map);
+
+	<T> void writeTuple(StructuredEncoder<T> encoder, T value);
+
+	<T> void writeObject(StructuredEncoder<T> encoder, T value);
+
+	default void writeTuple(Runnable encoder) {
+		writeTuple((o1, v1) -> encoder.run(), null);
 	}
 
-	default <T> void writeMap(StructuredEncoder<T> encoder, Map<String, T> map) {
-		MapWriter mapWriter = mapWriter(true);
-		for (Map.Entry<String, T> entry : map.entrySet()) {
-			encoder.encode(mapWriter.next(entry.getKey()), entry.getValue());
-		}
-		mapWriter.close();
+	default void writeObject(Runnable encoder) {
+		writeObject((o1, v1) -> encoder.run(), null);
 	}
 
-	interface ListWriter {
-		StructuredOutput next();
-
-		void close();
-	}
-
-	interface MapWriter {
-		StructuredOutput next(String field);
-
-		void close();
-	}
-
-	ListWriter listWriter(boolean selfDelimited);
-
-	MapWriter mapWriter(boolean selfDelimited);
+	void writeKey(String field);
 
 	<T> void writeCustom(Type type, T value);
 }

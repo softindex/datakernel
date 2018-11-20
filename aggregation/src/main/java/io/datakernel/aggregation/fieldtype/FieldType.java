@@ -16,8 +16,8 @@
 
 package io.datakernel.aggregation.fieldtype;
 
-import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codegen.Expression;
 import io.datakernel.serializer.asm.SerializerGen;
 
@@ -31,19 +31,19 @@ public class FieldType<T> {
 	private final Type dataType;
 	private final SerializerGen serializer;
 	@Nullable
-	private final TypeAdapter<?> internalJson;
-	private final TypeAdapter<T> json;
+	private final StructuredCodec<?> internalCodec;
+	private final StructuredCodec<T> codec;
 
-	protected FieldType(Class<T> dataType, SerializerGen serializer, TypeAdapter<T> json) {
-		this(dataType, dataType, serializer, json, json);
+	protected FieldType(Class<T> dataType, SerializerGen serializer, StructuredCodec<T> codec) {
+		this(dataType, dataType, serializer, codec, codec);
 	}
 
-	protected FieldType(Class<?> internalDataType, Type dataType, SerializerGen serializer, TypeAdapter<T> json, @Nullable TypeAdapter<?> internalJson) {
+	protected FieldType(Class<?> internalDataType, Type dataType, SerializerGen serializer, StructuredCodec<T> codec, @Nullable StructuredCodec<?> internalCodec) {
 		this.internalDataType = internalDataType;
 		this.dataType = dataType;
 		this.serializer = serializer;
-		this.internalJson = internalJson;
-		this.json = json;
+		this.internalCodec = internalCodec;
+		this.codec = codec;
 	}
 
 	public final Class<?> getInternalDataType() {
@@ -58,13 +58,13 @@ public class FieldType<T> {
 		return serializer;
 	}
 
-	public TypeAdapter<T> getJson() {
-		return json;
+	public StructuredCodec<T> getCodec() {
+		return codec;
 	}
 
 	@Nullable
-	public TypeAdapter<?> getInternalJson() {
-		return internalJson;
+	public StructuredCodec<?> getInternalCodec() {
+		return internalCodec;
 	}
 
 	public Expression toValue(Expression internalValue) {

@@ -78,6 +78,11 @@ public final class BinaryStructuredOutput implements StructuredOutput {
 	}
 
 	@Override
+	public void writeNull() {
+		writeBoolean(false);
+	}
+
+	@Override
 	public <T> void writeNullable(StructuredEncoder<T> encoder, T value) {
 		if (value != null) {
 			writeBoolean(true);
@@ -96,48 +101,27 @@ public final class BinaryStructuredOutput implements StructuredOutput {
 	}
 
 	@Override
-	public <T> void writeMap(StructuredEncoder<T> encoder, Map<String, T> map) {
+	public <K, V> void writeMap(StructuredEncoder<K> keyEncoder, StructuredEncoder<V> valueEncoder, Map<K, V> map) {
 		writeInt(map.size());
-		for (Map.Entry<String, T> entry : map.entrySet()) {
-			String field = entry.getKey();
-			writeString(field);
-			encoder.encode(this, entry.getValue());
+		for (Map.Entry<K, V> entry : map.entrySet()) {
+			keyEncoder.encode(this, entry.getKey());
+			valueEncoder.encode(this, entry.getValue());
 		}
 	}
 
 	@Override
-	public ListWriter listWriter(boolean selfDelimited) {
-		if (selfDelimited) {
-			throw new UnsupportedOperationException();
-		}
-		return new ListWriter() {
-			@Override
-			public StructuredOutput next() {
-				return BinaryStructuredOutput.this;
-			}
-
-			@Override
-			public void close() {
-			}
-		};
+	public <T> void writeTuple(StructuredEncoder<T> encoder, T value) {
+		encoder.encode(this, value);
 	}
 
 	@Override
-	public MapWriter mapWriter(boolean selfDelimited) {
-		if (selfDelimited) {
-			throw new UnsupportedOperationException();
-		}
-		return new MapWriter() {
-			@Override
-			public StructuredOutput next(String field) {
-				writeString(field);
-				return BinaryStructuredOutput.this;
-			}
+	public <T> void writeObject(StructuredEncoder<T> encoder, T value) {
+		encoder.encode(this, value);
+	}
 
-			@Override
-			public void close() {
-			}
-		};
+	@Override
+	public void writeKey(String field) {
+		writeString(field);
 	}
 
 	@SuppressWarnings("unchecked")

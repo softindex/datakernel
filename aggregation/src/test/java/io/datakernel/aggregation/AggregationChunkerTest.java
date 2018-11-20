@@ -56,7 +56,7 @@ public final class AggregationChunkerTest {
 	public void test() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
+		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
 				.withKey("key", ofInt())
 				.withMeasure("value", sum(ofInt()))
 				.withMeasure("timestamp", sum(ofLong()));
@@ -126,7 +126,7 @@ public final class AggregationChunkerTest {
 	public void testSupplierWithError() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
+		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
 				.withKey("key", ofInt())
 				.withMeasure("value", sum(ofInt()))
 				.withMeasure("timestamp", sum(ofLong()));
@@ -215,7 +215,7 @@ public final class AggregationChunkerTest {
 
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
+		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
 				.withKey("key", ofInt())
 				.withMeasure("value", sum(ofInt()))
 				.withMeasure("timestamp", sum(ofLong()));

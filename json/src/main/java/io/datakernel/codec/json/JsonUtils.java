@@ -40,6 +40,8 @@ public class JsonUtils {
 			}
 		} catch (IOException e) {
 			throw new AssertionError();
+		} catch (ParseException e) {
+			throw e;
 		}
 		return result;
 	}
@@ -49,7 +51,7 @@ public class JsonUtils {
 		jsonWriter.setLenient(true);
 		jsonWriter.setIndentEx("");
 		jsonWriter.setHtmlSafe(false);
-		jsonWriter.setSerializeNulls(false);
+		jsonWriter.setSerializeNulls(true);
 		encoder.encode(new JsonStructuredOutput(jsonWriter), value);
 	}
 

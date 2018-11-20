@@ -19,6 +19,7 @@ package io.datakernel.ot;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.ot.utils.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,6 +34,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.codec.json.JsonUtils.fromJson;
+import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
@@ -76,18 +79,18 @@ public class OTRepositoryMySqlTest {
 	}
 
 	@Test
-	public void testJson() throws IOException {
+	public void testJson() throws ParseException {
 		{
 			TestAdd testAdd = new TestAdd(1);
-			String json = Utils.OP_ADAPTER.toJson(testAdd);
-			TestAdd testAdd2 = (TestAdd) Utils.OP_ADAPTER.fromJson(json);
+			String json = toJson(Utils.OP_ADAPTER, testAdd);
+			TestAdd testAdd2 = (TestAdd) fromJson(Utils.OP_ADAPTER, json);
 			assertEquals(testAdd.getDelta(), testAdd2.getDelta());
 		}
 
 		{
 			TestSet testSet = new TestSet(0, 4);
-			String json = Utils.OP_ADAPTER.toJson(testSet);
-			TestSet testSet2 = (TestSet) Utils.OP_ADAPTER.fromJson(json);
+			String json = toJson(Utils.OP_ADAPTER, testSet);
+			TestSet testSet2 = (TestSet) fromJson(Utils.OP_ADAPTER, json);
 			assertEquals(testSet.getPrev(), testSet2.getPrev());
 			assertEquals(testSet.getNext(), testSet2.getNext());
 		}

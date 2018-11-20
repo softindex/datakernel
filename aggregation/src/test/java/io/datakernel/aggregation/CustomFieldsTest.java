@@ -100,9 +100,9 @@ public class CustomFieldsTest {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
 		Path path = temporaryFolder.newFolder().toPath();
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executorService, path));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executorService, path));
 
-		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
+		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
 			.withKey("siteId", FieldTypes.ofInt())
 			.withMeasure("eventCount", count(ofLong()))
 			.withMeasure("sumRevenue", sum(ofDouble()))

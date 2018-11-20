@@ -27,7 +27,7 @@ public class StructuredCodecTest {
 
 	@Test
 	public void test1() throws ParseException {
-		StructuredCodec<Tuple2<String, Integer>> codec = record(Tuple2::new,
+		StructuredCodec<Tuple2<String, Integer>> codec = tuple(Tuple2::new,
 				Tuple2::getValue1, STRING_CODEC.nullable(),
 				Tuple2::getValue2, INT_CODEC.nullable());
 

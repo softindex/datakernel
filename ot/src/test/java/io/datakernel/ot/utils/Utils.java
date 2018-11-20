@@ -1,13 +1,13 @@
 package io.datakernel.ot.utils;
 
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredInput;
+import io.datakernel.codec.StructuredOutput;
+import io.datakernel.exception.ParseException;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -58,40 +58,40 @@ public class Utils {
 				.withInvertFunction(TestSet.class, op -> asList(set(op.getNext(), op.getPrev())));
 	}
 
-	public static TypeAdapter<TestOp> OP_ADAPTER = new TypeAdapter<TestOp>() {
+	public static StructuredCodec<TestOp> OP_ADAPTER = new StructuredCodec<TestOp>() {
 		@Override
-		public void write(JsonWriter jsonWriter, TestOp testOp) throws IOException {
-			jsonWriter.beginObject();
-			if (testOp instanceof TestAdd) {
-				jsonWriter.name("add");
-				jsonWriter.value(((TestAdd) testOp).getDelta());
-			} else {
-				jsonWriter.name("set");
-				TestSet testSet = (TestSet) testOp;
-				jsonWriter.beginArray();
-				jsonWriter.value(testSet.getPrev());
-				jsonWriter.value(testSet.getNext());
-				jsonWriter.endArray();
-			}
-			jsonWriter.endObject();
+		public void encode(StructuredOutput out, TestOp testOp) {
+			out.writeObject(() -> {
+				if (testOp instanceof TestAdd) {
+					out.writeKey("add");
+					out.writeInt(((TestAdd) testOp).getDelta());
+				} else {
+					out.writeKey("set");
+					out.writeTuple(() -> {
+						TestSet testSet = (TestSet) testOp;
+						out.writeInt(testSet.getPrev());
+						out.writeInt(testSet.getNext());
+					});
+				}
+			});
 		}
 
 		@Override
-		public TestOp read(JsonReader jsonReader) throws IOException {
-			jsonReader.beginObject();
-			TestOp testOp;
-			String name = jsonReader.nextName();
-			if (name.equals("add")) {
-				testOp = new TestAdd(jsonReader.nextInt());
-			} else {
-				jsonReader.beginArray();
-				int prev = jsonReader.nextInt();
-				int next = jsonReader.nextInt();
-				jsonReader.endArray();
-				testOp = new TestSet(prev, next);
-			}
-			jsonReader.endObject();
-			return testOp;
+		public TestOp decode(StructuredInput in) throws ParseException {
+			return in.readObject($1 -> {
+				switch (in.readKey()) {
+					case "add":
+						return new TestAdd(in.readInt());
+					case "set":
+						return in.readTuple($ -> {
+							int prev = in.readInt();
+							int next = in.readInt();
+							return new TestSet(prev, next);
+						});
+					default:
+						throw new ParseException();
+				}
+			});
 		}
 	};
 

@@ -16,20 +16,24 @@
 
 package io.datakernel.aggregation.fieldtype;
 
-import com.google.gson.TypeAdapter;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredCodecs;
+import io.datakernel.codec.StructuredInput;
+import io.datakernel.codec.StructuredOutput;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Primitives;
-import io.datakernel.json.GsonAdapters;
+import io.datakernel.exception.ParseException;
 import io.datakernel.serializer.StringFormat;
 import io.datakernel.serializer.asm.*;
 import io.datakernel.util.RecursiveType;
 
 import java.lang.reflect.Type;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.util.Set;
 
+import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.json.GsonAdapters.*;
 import static java.time.temporal.ChronoUnit.DAYS;
 
 public final class FieldTypes {
@@ -37,27 +41,27 @@ public final class FieldTypes {
 	}
 
 	public static FieldType<Byte> ofByte() {
-		return new FieldType<>(byte.class, new SerializerGenByte(), BYTE_JSON);
+		return new FieldType<>(byte.class, new SerializerGenByte(), BYTE_CODEC);
 	}
 
 	public static FieldType<Short> ofShort() {
-		return new FieldType<>(short.class, new SerializerGenShort(), SHORT_JSON);
+		return new FieldType<>(short.class, new SerializerGenShort(), SHORT_CODEC);
 	}
 
 	public static FieldType<Integer> ofInt() {
-		return new FieldType<>(int.class, new SerializerGenInt(true), INTEGER_JSON);
+		return new FieldType<>(int.class, new SerializerGenInt(true), INT_CODEC);
 	}
 
 	public static FieldType<Long> ofLong() {
-		return new FieldType<>(long.class, new SerializerGenLong(true), LONG_JSON);
+		return new FieldType<>(long.class, new SerializerGenLong(true), LONG_CODEC);
 	}
 
 	public static FieldType<Float> ofFloat() {
-		return new FieldType<>(float.class, new SerializerGenFloat(), FLOAT_JSON);
+		return new FieldType<>(float.class, new SerializerGenFloat(), FLOAT_CODEC);
 	}
 
 	public static FieldType<Double> ofDouble() {
-		return new FieldType<>(double.class, new SerializerGenDouble(), DOUBLE_JSON);
+		return new FieldType<>(double.class, new SerializerGenDouble(), DOUBLE_CODEC);
 	}
 
 	public static <T> FieldType<Set<T>> ofSet(FieldType<T> fieldType) {
@@ -66,20 +70,20 @@ public final class FieldTypes {
 				Primitives.wrap((Class<?>) fieldType.getDataType()) :
 				fieldType.getDataType();
 		Type dataType = RecursiveType.of(Set.class, RecursiveType.of(wrappedNestedType)).getType();
-		TypeAdapter<Set<T>> json = GsonAdapters.ofSet(fieldType.getJson());
-		return new FieldType<>(Set.class, dataType, serializer, json, json);
+		StructuredCodec<Set<T>> codec = StructuredCodecs.ofSet(fieldType.getCodec());
+		return new FieldType<>(Set.class, dataType, serializer, codec, codec);
 	}
 
 	public static <E extends Enum<E>> FieldType<E> ofEnum(Class<E> enumClass) {
-		return new FieldType<>(enumClass, new SerializerGenEnum(enumClass), GsonAdapters.ofEnum(enumClass));
+		return new FieldType<>(enumClass, new SerializerGenEnum(enumClass), StructuredCodecs.ofEnum(enumClass));
 	}
 
 	public static FieldType<String> ofString() {
-		return new FieldType<>(String.class, new SerializerGenString(), STRING_JSON);
+		return new FieldType<>(String.class, new SerializerGenString(), STRING_CODEC);
 	}
 
 	public static FieldType<String> ofString(StringFormat format) {
-		return new FieldType<>(String.class, new SerializerGenString(format), STRING_JSON);
+		return new FieldType<>(String.class, new SerializerGenString(format), STRING_CODEC);
 	}
 
 	public static FieldType<LocalDate> ofLocalDate() {
@@ -98,7 +102,7 @@ public final class FieldTypes {
 		}
 
 		FieldTypeDate(LocalDate startDate) {
-			super(int.class, LocalDate.class, new SerializerGenInt(true), LOCAL_DATE_JSON, INTEGER_JSON);
+			super(int.class, LocalDate.class, new SerializerGenInt(true), LOCAL_DATE_CODEC, INT_CODEC);
 			this.startDate = startDate;
 		}
 
@@ -113,4 +117,21 @@ public final class FieldTypes {
 		}
 
 	}
+
+	public static final StructuredCodec<LocalDate> LOCAL_DATE_CODEC = new StructuredCodec<LocalDate>() {
+		@Override
+		public void encode(StructuredOutput out, LocalDate value) {
+			out.writeString(value.toString());
+		}
+
+		@Override
+		public LocalDate decode(StructuredInput in) throws ParseException {
+			try {
+				return LocalDate.parse(in.readString());
+			} catch (DateTimeException e) {
+				throw new ParseException(e);
+			}
+		}
+	};
+
 }

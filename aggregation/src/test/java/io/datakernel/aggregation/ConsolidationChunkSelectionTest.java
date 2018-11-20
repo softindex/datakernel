@@ -31,7 +31,7 @@ import static org.junit.Assert.assertNull;
 public class ConsolidationChunkSelectionTest {
 	@Test
 	public void testRangeExpansion() {
-		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
+		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
 		Set<AggregationChunk> chunks = new HashSet<>();
@@ -64,7 +64,7 @@ public class ConsolidationChunkSelectionTest {
 
 	@Test
 	public void testMinKeyStrategy() {
-		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
+		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
 		Set<AggregationChunk> chunks1 = new HashSet<>();
@@ -88,7 +88,7 @@ public class ConsolidationChunkSelectionTest {
 
 	@Test
 	public void testSizeFixStrategy() {
-		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
+		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
 		int optimalChunkSize = 5;
@@ -117,7 +117,7 @@ public class ConsolidationChunkSelectionTest {
 
 	@Test
 	public void testGroupingByPartition() {
-		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong()).withKey("key", ofInt());
+		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong()).withKey("key", ofInt());
 		AggregationState state = new AggregationState(structure);
 
 		Set<AggregationChunk> chunks1 = new HashSet<>();

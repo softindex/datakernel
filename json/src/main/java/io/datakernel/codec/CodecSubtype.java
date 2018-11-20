@@ -18,7 +18,6 @@ package io.datakernel.codec;
 
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.Tuple2;
 
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -52,21 +51,24 @@ public final class CodecSubtype<T> implements Initializable<CodecSubtype<T>>, St
 	@SuppressWarnings({"unchecked"})
 	@Override
 	public void encode(StructuredOutput out, T value) {
-		StructuredOutput.MapWriter mapWriter = out.mapWriter(false);
-		String field = subtypesToNames.get(value.getClass());
-		StructuredCodec<T> codec = (StructuredCodec<T>) namesToAdapters.get(field);
-		codec.encode(mapWriter.next(field), value);
-		mapWriter.close();
+		out.writeObject(() -> {
+			String field = subtypesToNames.get(value.getClass());
+			StructuredCodec<T> codec = (StructuredCodec<T>) namesToAdapters.get(field);
+			out.writeKey(field);
+			codec.encode(out, value);
+		});
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public T decode(StructuredInput in) throws ParseException {
-		StructuredInput.MapReader mapReader = in.mapReader(false);
-		Tuple2<String, StructuredInput> entry = mapReader.next();
-		StructuredCodec<? extends T> codec = namesToAdapters.get(entry.getValue1());
-		T result = codec.decode(entry.getValue2());
-		mapReader.close();
-		return result;
+		return in.readObject($ -> {
+			String key = in.readKey();
+			StructuredCodec<? extends T> codec = namesToAdapters.get(key);
+			if (codec == null) {
+				throw new ParseException("Could not find codec for: " + key);
+			}
+			return codec.decode(in);
+		});
 	}
 }

@@ -106,7 +106,7 @@ public final class CubeTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
 		List<DataItemResult> expected = singletonList(new DataItemResult(1, 3, 10, 30, 20));
@@ -142,7 +142,7 @@ public final class CubeTest {
 		RemoteFsServer remoteFsServer1 = startServer(executor, serverStorage);
 
 		RemoteFsClient storage = RemoteFsClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress("localhost", LISTEN_PORT));
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(newCachedThreadPool(), classLoader, chunkStorage);
 
 		List<DataItemResult> expected = singletonList(new DataItemResult(1, 3, 10, 30, 20));
@@ -171,7 +171,7 @@ public final class CubeTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
 		List<DataItemResult> expected = asList(
@@ -201,7 +201,7 @@ public final class CubeTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
 		List<DataItemResult> expected = asList(
@@ -236,7 +236,7 @@ public final class CubeTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
@@ -273,7 +273,7 @@ public final class CubeTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newSophisticatedCube(executor, classLoader, chunkStorage);
 
 		List<DataItemResult3> expected = singletonList(new DataItemResult3(5, 77, 50, 20, 56, 0, 88, 98));
@@ -305,7 +305,7 @@ public final class CubeTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
 		List<DataItemResult2> expected = asList(
@@ -335,7 +335,7 @@ public final class CubeTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
 		List<DataItemResult> expected = singletonList(new DataItemResult(1, 3, 10, 30, 20));
@@ -361,7 +361,7 @@ public final class CubeTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
 		List<DataItemResult> expected = singletonList(new DataItemResult(1, 4, 0, 30, 60));
@@ -474,7 +474,7 @@ public final class CubeTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
 		cube.consume(DataItem1.class,
@@ -489,7 +489,7 @@ public final class CubeTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
 		LocalFsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
-		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdScheme.ofLong(), new IdGeneratorStub(), storage);
+		AggregationChunkStorage<Long> chunkStorage = RemoteFsChunkStorage.create(Eventloop.getCurrentEventloop(), ChunkIdCodec.ofLong(), new IdGeneratorStub(), storage);
 		Cube cube = newCube(executor, classLoader, chunkStorage);
 
 		cube.consume(DataItem1.class,

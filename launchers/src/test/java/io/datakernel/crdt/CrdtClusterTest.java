@@ -183,7 +183,7 @@ public final class CrdtClusterTest {
 
 		PromiseStats uploadStat = PromiseStats.create(Duration.ofSeconds(5));
 
-		StructuredCodec<CrdtData<String, Integer>> codec = record(CrdtData::new,
+		StructuredCodec<CrdtData<String, Integer>> codec = tuple(CrdtData::new,
 				CrdtData::getKey, STRING_CODEC,
 				CrdtData::getState, INT_CODEC);
 

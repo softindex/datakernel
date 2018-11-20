@@ -18,7 +18,6 @@ package io.datakernel.remotefs;
 
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
 
 import java.util.Map;
 
@@ -28,20 +27,20 @@ import static io.datakernel.codec.StructuredCodecs.*;
 public final class RemoteFsCommands {
 
 	static final StructuredCodec<FsCommand> CODEC = CodecSubtype.<FsCommand>create()
-			.with(Upload.class, StructuredCodecs.recordAsMap(Upload::new,
+			.with(Upload.class, object(Upload::new,
 					"fileName", Upload::getFileName, STRING_CODEC,
 					"offset", Upload::getOffset, LONG_CODEC))
-			.with(Download.class, StructuredCodecs.recordAsMap(Download::new,
+			.with(Download.class, object(Download::new,
 					"filePath", Download::getFileName, STRING_CODEC,
 					"offset", Download::getOffset, LONG_CODEC,
 					"length", Download::getLength, LONG_CODEC))
-			.with(Move.class, StructuredCodecs.recordAsMap(Move::new,
-					"changes", Move::getChanges, ofMap(STRING_CODEC)))
-			.with(Copy.class, StructuredCodecs.recordAsMap(Copy::new,
-					"changes", Copy::getChanges, ofMap(STRING_CODEC)))
-			.with(List.class, StructuredCodecs.recordAsMap(List::new,
+			.with(Move.class, object(Move::new,
+					"changes", Move::getChanges, ofMap(STRING_CODEC, STRING_CODEC)))
+			.with(Copy.class, object(Copy::new,
+					"changes", Copy::getChanges, ofMap(STRING_CODEC, STRING_CODEC)))
+			.with(List.class, object(List::new,
 					"glob", List::getGlob, STRING_CODEC))
-			.with(Delete.class, StructuredCodecs.recordAsMap(Delete::new,
+			.with(Delete.class, object(Delete::new,
 					"glob", Delete::getGlob, STRING_CODEC));
 
 	public static abstract class FsCommand {

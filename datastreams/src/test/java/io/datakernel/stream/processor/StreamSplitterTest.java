@@ -138,7 +138,8 @@ public class StreamSplitterTest {
 	public void testNoOutputs() throws ExecutionException, InterruptedException {
 		StreamSplitter<Integer> splitter = StreamSplitter.create();
 
-		Future<Void> future = StreamSupplier.of(1, 2, 3, 4).streamTo(splitter.getInput())
+		Future<Void> future = StreamSupplier.of(1, 2, 3, 4)
+				.streamTo(splitter.getInput())
 				.toCompletableFuture();
 
 		eventloop.run();

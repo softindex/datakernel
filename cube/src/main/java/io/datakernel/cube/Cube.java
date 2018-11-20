@@ -346,7 +346,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	public Cube addAggregation(AggregationConfig config) {
 		checkArgument(!aggregations.containsKey(config.id), "Aggregation '%s' is already defined", config.id);
 
-		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
+		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
 				.initialize(s -> config.dimensions.forEach(dimensionId ->
 						s.withKey(dimensionId, dimensionTypes.get(dimensionId))))
 				.initialize(s -> config.measures.forEach(measureId ->

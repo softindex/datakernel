@@ -16,15 +16,18 @@
 
 package io.datakernel.cube.http;
 
-import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
-import io.datakernel.cube.*;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.registry.CodecFactory;
+import io.datakernel.cube.CubeQuery;
+import io.datakernel.cube.ICube;
+import io.datakernel.cube.QueryResult;
+import io.datakernel.cube.ReportType;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
-import io.datakernel.json.GsonAdapters.TypeAdapterMapping;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +37,8 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.codec.json.JsonUtils.fromJson;
+import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.cube.http.Utils.*;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN;
@@ -45,11 +50,11 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 	private static final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
 
 	private final ICube cube;
-	private final TypeAdapterMapping mapping;
-	private TypeAdapter<QueryResult> queryResultJson;
-	private TypeAdapter<AggregationPredicate> aggregationPredicateJson;
+	private final CodecFactory mapping;
+	private StructuredCodec<QueryResult> queryResultCodec;
+	private StructuredCodec<AggregationPredicate> aggregationPredicateCodec;
 
-	private ReportingServiceServlet(Eventloop eventloop, ICube cube, TypeAdapterMapping mapping) {
+	private ReportingServiceServlet(Eventloop eventloop, ICube cube, CodecFactory mapping) {
 		super(eventloop);
 		this.cube = cube;
 		this.mapping = mapping;
@@ -61,31 +66,26 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 
 	public static MiddlewareServlet createRootServlet(Eventloop eventloop, ICube cube) {
 		return createRootServlet(
-				ReportingServiceServlet.create(eventloop, cube),
-				(cube instanceof Cube) ? ConsolidationDebugServlet.create(eventloop, (Cube) cube) : null);
+				ReportingServiceServlet.create(eventloop, cube));
 	}
 
-	public static MiddlewareServlet createRootServlet(ReportingServiceServlet reportingServiceServlet,
-			@Nullable ConsolidationDebugServlet consolidationDebugServlet) {
+	public static MiddlewareServlet createRootServlet(ReportingServiceServlet reportingServiceServlet) {
 		return MiddlewareServlet.create()
-				.with(GET, "/", reportingServiceServlet)
-				.with(GET, "/consolidation-debug", consolidationDebugServlet != null ?
-						consolidationDebugServlet :
-						(AsyncServlet) request -> Promise.of(HttpResponse.ofCode(404)));
+				.with(GET, "/", reportingServiceServlet);
 	}
 
-	private TypeAdapter<AggregationPredicate> getAggregationPredicateJson() {
-		if (aggregationPredicateJson == null) {
-			aggregationPredicateJson = AggregationPredicateGsonAdapter.create(mapping, cube.getAttributeTypes(), cube.getMeasureTypes());
+	private StructuredCodec<AggregationPredicate> getAggregationPredicateCodec() {
+		if (aggregationPredicateCodec == null) {
+			aggregationPredicateCodec = AggregationPredicateCodec.create(mapping, cube.getAttributeTypes(), cube.getMeasureTypes());
 		}
-		return aggregationPredicateJson;
+		return aggregationPredicateCodec;
 	}
 
-	private TypeAdapter<QueryResult> getQueryResultJson() {
-		if (queryResultJson == null) {
-			queryResultJson = QueryResultGsonAdapter.create(mapping, cube.getAttributeTypes(), cube.getMeasureTypes());
+	private StructuredCodec<QueryResult> getQueryResultCodec() {
+		if (queryResultCodec == null) {
+			queryResultCodec = QueryResultCodec.create(mapping, cube.getAttributeTypes(), cube.getMeasureTypes());
 		}
-		return queryResultJson;
+		return queryResultCodec;
 	}
 
 	@Override
@@ -94,18 +94,19 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 		try {
 			Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
 			CubeQuery cubeQuery = parseQuery(httpRequest);
-			return cube.query(cubeQuery).thenApply(queryResult -> {
-				Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
-				String json = getQueryResultJson().toJson(queryResult);
-				HttpResponse httpResponse = createResponse(json);
-				logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
-						cubeQuery, totalTimeStopwatch, resultProcessingStopwatch);
-				return httpResponse;
-			});
+			return cube.query(cubeQuery)
+					.thenApply(queryResult -> {
+						Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
+						String json = toJson(getQueryResultCodec(), queryResult);
+						HttpResponse httpResponse = createResponse(json);
+						logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
+								cubeQuery, totalTimeStopwatch, resultProcessingStopwatch);
+						return httpResponse;
+					});
 		} catch (QueryException e) {
 			logger.error("Query exception: " + httpRequest, e);
 			return Promise.of(createErrorResponse(e.getMessage()));
-		} catch (Exception e) {
+		} catch (ParseException e) {
 			logger.error("Parse exception: " + httpRequest, e);
 			return Promise.of(createErrorResponse(e.getMessage()));
 		}
@@ -136,7 +137,7 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 				.collect(toList());
 	}
 
-	public CubeQuery parseQuery(HttpRequest request) throws Exception {
+	public CubeQuery parseQuery(HttpRequest request) throws ParseException {
 		CubeQuery query = CubeQuery.create();
 
 		String parameter;
@@ -150,7 +151,7 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 
 		parameter = request.getQueryParameterOrNull(WHERE_PARAM);
 		if (parameter != null)
-			query.withWhere(getAggregationPredicateJson().fromJson(parameter));
+			query.withWhere(fromJson(getAggregationPredicateCodec(), parameter));
 
 		parameter = request.getQueryParameterOrNull(SORT_PARAM);
 		if (parameter != null)
@@ -158,7 +159,7 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 
 		parameter = request.getQueryParameterOrNull(HAVING_PARAM);
 		if (parameter != null)
-			query.withHaving(getAggregationPredicateJson().fromJson(parameter));
+			query.withHaving(fromJson(getAggregationPredicateCodec(), parameter));
 
 		parameter = request.getQueryParameterOrNull(LIMIT_PARAM);
 		if (parameter != null)

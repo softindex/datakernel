@@ -49,30 +49,29 @@ public final class QueryResult {
 		this.reportType = reportType;
 	}
 
-	public static QueryResult create(RecordScheme recordScheme, List<Record> records, Record totals, int totalCount,
-	                                 List<String> attributes, List<String> measures, List<String> sortedBy,
-	                                 Map<String, Object> filterAttributes, ReportType reportType) {
+	public static QueryResult create(RecordScheme recordScheme, List<String> attributes, List<String> measures, List<String> sortedBy, List<Record> records, Record totals, int totalCount,
+			Map<String, Object> filterAttributes, ReportType reportType) {
 		return new QueryResult(recordScheme, records, totals, totalCount, attributes, measures, sortedBy,
 				filterAttributes, reportType);
 	}
 
 	public static QueryResult createForMetadata(RecordScheme recordScheme, List<String> attributes,
 	                                            List<String> measures) {
-		return create(recordScheme, Collections.emptyList(), Record.create(recordScheme), 0, attributes,
-				measures, Collections.emptyList(), Collections.emptyMap(), ReportType.METADATA);
+		return create(recordScheme, attributes, measures, Collections.emptyList(), Collections.emptyList(), Record.create(recordScheme), 0,
+				Collections.emptyMap(), ReportType.METADATA);
 	}
 
 	public static QueryResult createForData(RecordScheme recordScheme, List<Record> records, List<String> attributes,
 	                                        List<String> measures, List<String> sortedBy,
 	                                        Map<String, Object> filterAttributes) {
-		return create(recordScheme, records, Record.create(recordScheme), 0, attributes, measures, sortedBy,
+		return create(recordScheme, attributes, measures, sortedBy, records, Record.create(recordScheme), 0,
 				filterAttributes, ReportType.DATA);
 	}
 
 	public static QueryResult createForDataWithTotals(RecordScheme recordScheme, List<Record> records, Record totals,
 	                                                  int totalCount, List<String> attributes, List<String> measures,
 	                                                  List<String> sortedBy, Map<String, Object> filterAttributes) {
-		return create(recordScheme, records, totals, totalCount, attributes, measures, sortedBy, filterAttributes,
+		return create(recordScheme, attributes, measures, sortedBy, records, totals, totalCount, filterAttributes,
 				ReportType.DATA_WITH_TOTALS);
 	}
 

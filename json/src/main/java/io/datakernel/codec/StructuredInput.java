@@ -2,15 +2,15 @@ package io.datakernel.codec;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.ParseException;
-import io.datakernel.util.Tuple2;
 
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
 public interface StructuredInput {
+	void readNull() throws ParseException;
+
 	boolean readBoolean() throws ParseException;
 
 	byte readByte() throws ParseException;
@@ -31,54 +31,46 @@ public interface StructuredInput {
 
 	String readString() throws ParseException;
 
-	default Void readNull() throws ParseException {
-		return readNullable(in -> { throw new ParseException();});
-	}
-
 	@Nullable
 	<T> T readNullable(StructuredDecoder<T> decoder) throws ParseException;
 
-	default <T> List<T> readList(StructuredDecoder<T> decoder) throws ParseException {
-		List<T> list = new ArrayList<>();
-		ListReader reader = listReader(true);
-		while (reader.hasNext()) {
-			StructuredInput in = reader.next();
-			list.add(decoder.decode(in));
+	boolean hasNext() throws ParseException;
+
+	String readKey() throws ParseException;
+
+	default void readKey(String expectedName) throws ParseException {
+		String actualName = readKey();
+		if (!expectedName.equals(actualName)) {
+			throw new ParseException("Expected field: " + expectedName + ", but was: " + actualName);
 		}
-		reader.close();
-		return list;
 	}
 
-	default <T> Map<String, T> readMap(StructuredDecoder<T> decoder) throws ParseException {
-		Map<String, T> map = new LinkedHashMap<>();
-		MapReader reader = mapReader(true);
-		while (reader.hasNext()) {
-			Tuple2<String, StructuredInput> entry = reader.next();
-			map.put(entry.getValue1(), decoder.decode(entry.getValue2()));
-		}
-		reader.close();
-		return map;
+	<T> List<T> readList(StructuredDecoder<T> decoder) throws ParseException;
+
+	<K, V> Map<K, V> readMap(StructuredDecoder<K> keyDecoder, StructuredDecoder<V> valueDecoder) throws ParseException;
+
+	<T> T readTuple(StructuredDecoder<T> decoder) throws ParseException;
+
+	<T> T readObject(StructuredDecoder<T> decoder) throws ParseException;
+
+	@FunctionalInterface
+	interface ParserRunnable {
+		void run() throws ParseException;
 	}
 
-	interface ListReader {
-		boolean hasNext() throws ParseException;
-
-		StructuredInput next() throws ParseException;
-
-		void close() throws ParseException;
+	default void readTuple(ParserRunnable decoder) throws ParseException {
+		readTuple(in -> {decoder.run(); return null;});
 	}
 
-	interface MapReader {
-		boolean hasNext() throws ParseException;
-
-		Tuple2<String, StructuredInput> next() throws ParseException;
-
-		void close() throws ParseException;
+	default void readObject(ParserRunnable decoder) throws ParseException {
+		readObject(in -> {decoder.run(); return null;});
 	}
-
-	ListReader listReader(boolean selfDelimited) throws ParseException;
-
-	MapReader mapReader(boolean selfDelimited) throws ParseException;
 
 	<T> T readCustom(Type type) throws ParseException;
+
+	enum Token {
+		NULL, BOOLEAN, BYTE, INT, LONG, FLOAT, DOUBLE, STRING, BYTES, LIST, MAP, TUPLE, OBJECT
+	}
+
+	EnumSet<Token> getNext() throws ParseException;
 }

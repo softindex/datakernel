@@ -16,9 +16,10 @@
 
 package io.datakernel.cube.http;
 
-import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.async.Promise;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.ICube;
 import io.datakernel.cube.QueryResult;
@@ -27,16 +28,16 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.http.IAsyncHttpClient;
-import io.datakernel.json.GsonAdapters.TypeAdapterMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static io.datakernel.codec.json.JsonUtils.fromJson;
+import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.cube.http.Utils.*;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -47,13 +48,13 @@ public final class CubeHttpClient implements ICube {
 
 	private final String url;
 	private final IAsyncHttpClient httpClient;
-	private final TypeAdapterMapping mapping;
-	private TypeAdapter<QueryResult> queryResultJson;
-	private TypeAdapter<AggregationPredicate> aggregationPredicateJson;
+	private final CodecFactory mapping;
+	private StructuredCodec<QueryResult> queryResultCodec;
+	private StructuredCodec<AggregationPredicate> aggregationPredicateCodec;
 	private final Map<String, Type> attributeTypes = new LinkedHashMap<>();
 	private final Map<String, Type> measureTypes = new LinkedHashMap<>();
 
-	private CubeHttpClient(IAsyncHttpClient httpClient, String url, TypeAdapterMapping mapping) {
+	private CubeHttpClient(IAsyncHttpClient httpClient, String url, CodecFactory mapping) {
 		this.url = url.replaceAll("/$", "");
 		this.httpClient = httpClient;
 		this.mapping = mapping;
@@ -77,18 +78,18 @@ public final class CubeHttpClient implements ICube {
 		return this;
 	}
 
-	private TypeAdapter<AggregationPredicate> getAggregationPredicateJson() {
-		if (aggregationPredicateJson == null) {
-			aggregationPredicateJson = AggregationPredicateGsonAdapter.create(mapping, attributeTypes, measureTypes);
+	private StructuredCodec<AggregationPredicate> getAggregationPredicateCodec() {
+		if (aggregationPredicateCodec == null) {
+			aggregationPredicateCodec = AggregationPredicateCodec.create(mapping, attributeTypes, measureTypes);
 		}
-		return aggregationPredicateJson;
+		return aggregationPredicateCodec;
 	}
 
-	private TypeAdapter<QueryResult> getQueryResultJson() {
-		if (queryResultJson == null) {
-			queryResultJson = QueryResultGsonAdapter.create(mapping, attributeTypes, measureTypes);
+	private StructuredCodec<QueryResult> getQueryResultCodec() {
+		if (queryResultCodec == null) {
+			queryResultCodec = QueryResultCodec.create(mapping, attributeTypes, measureTypes);
 		}
-		return queryResultJson;
+		return queryResultCodec;
 	}
 
 	@Override
@@ -114,8 +115,8 @@ public final class CubeHttpClient implements ICube {
 
 					QueryResult result;
 					try {
-						result = getQueryResultJson().fromJson(response);
-					} catch (IOException e) {
+						result = fromJson(getQueryResultCodec(), response);
+					} catch (ParseException e) {
 						return Promise.ofException(new ParseException(CubeHttpClient.class, "Cube HTTP query failed. Invalid data received", e));
 					}
 					return Promise.of(result);
@@ -128,9 +129,9 @@ public final class CubeHttpClient implements ICube {
 
 		urlParams.put(ATTRIBUTES_PARAM, String.join(",", query.getAttributes()));
 		urlParams.put(MEASURES_PARAM, String.join(",", query.getMeasures()));
-		urlParams.put(WHERE_PARAM, getAggregationPredicateJson().toJson(query.getWhere()));
+		urlParams.put(WHERE_PARAM, toJson(getAggregationPredicateCodec(), query.getWhere()));
 		urlParams.put(SORT_PARAM, formatOrderings(query.getOrderings()));
-		urlParams.put(HAVING_PARAM, getAggregationPredicateJson().toJson(query.getHaving()));
+		urlParams.put(HAVING_PARAM, toJson(getAggregationPredicateCodec(), query.getHaving()));
 		if (query.getLimit() != null)
 			urlParams.put(LIMIT_PARAM, query.getLimit().toString());
 		if (query.getOffset() != null)

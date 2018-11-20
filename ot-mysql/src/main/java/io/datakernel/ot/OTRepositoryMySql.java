@@ -16,16 +16,16 @@
 
 package io.datakernel.ot;
 
-import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.PromiseStats;
-import io.datakernel.json.GsonAdapters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,8 +37,8 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Stream;
 
-import static io.datakernel.json.GsonAdapters.indent;
-import static io.datakernel.json.GsonAdapters.ofList;
+import static io.datakernel.codec.StructuredCodecs.indent;
+import static io.datakernel.codec.StructuredCodecs.ofList;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -61,7 +61,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	private final OTSystem<D> otSystem;
 
 	private final DataSource dataSource;
-	private final TypeAdapter<List<D>> diffsAdapter;
+	private final StructuredCodec<List<D>> diffsAdapter;
 
 	private Duration deleteMargin = DEFAULT_DELETE_MARGIN;
 
@@ -80,7 +80,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	private final PromiseStats promiseLoadSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseSaveSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private OTRepositoryMySql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, TypeAdapter<List<D>> diffsAdapter,
+	private OTRepositoryMySql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, StructuredCodec<List<D>> diffsAdapter,
 			DataSource dataSource) {
 		this.eventloop = eventloop;
 		this.executor = executor;
@@ -89,8 +89,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 		this.diffsAdapter = diffsAdapter;
 	}
 
-	public static <D> OTRepositoryMySql<D> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, TypeAdapter<D> diffAdapter) {
-		TypeAdapter<List<D>> listAdapter = indent(ofList(diffAdapter), "\t");
+	public static <D> OTRepositoryMySql<D> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, StructuredCodec<D> diffAdapter) {
+		StructuredCodec<List<D>> listAdapter = indent(ofList(diffAdapter), "\t");
 		return new OTRepositoryMySql<>(eventloop, executor, otSystem, listAdapter, dataSource);
 	}
 
@@ -115,7 +115,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 		return dataSource;
 	}
 
-	public TypeAdapter<List<D>> getDiffsAdapter() {
+	public StructuredCodec<List<D>> getDiffsAdapter() {
 		return diffsAdapter;
 	}
 
@@ -176,11 +176,11 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	}
 
 	private String toJson(List<D> diffs) {
-		return GsonAdapters.toJson(diffsAdapter, diffs);
+		return JsonUtils.toJson(diffsAdapter, diffs);
 	}
 
 	private List<D> fromJson(String json) throws ParseException {
-		return GsonAdapters.fromJson(diffsAdapter, json);
+		return JsonUtils.fromJson(diffsAdapter, json);
 	}
 
 	@Override

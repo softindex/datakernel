@@ -92,15 +92,15 @@ public class HttpDataFormats {
 		}
 	}
 
-	public static final StructuredCodec<SaveTuple> SAVE_JSON = recordAsMap(SaveTuple::new,
+	public static final StructuredCodec<SaveTuple> SAVE_JSON = object(SaveTuple::new,
 			"commits", SaveTuple::getCommits, ofMap(COMMIT_ID_JSON, COMMIT_JSON),
 			"heads", SaveTuple::getHeads, ofSet(SIGNED_COMMIT_HEAD_JSON));
 
-	public static final StructuredCodec<HeadsInfo> HEADS_INFO_JSON = recordAsMap(HeadsInfo::new,
+	public static final StructuredCodec<HeadsInfo> HEADS_INFO_JSON = object(HeadsInfo::new,
 			"bases", HeadsInfo::getBases, ofSet(COMMIT_ID_JSON),
 			"heads", HeadsInfo::getHeads, ofSet(COMMIT_ID_JSON));
 
-	public static final StructuredCodec<Heads> HEADS_DELTA_JSON = recordAsMap(Heads::new,
+	public static final StructuredCodec<Heads> HEADS_DELTA_JSON = object(Heads::new,
 			"newHeads", Heads::getNewHeads, ofSet(SIGNED_COMMIT_HEAD_JSON),
 			"excludedHeads", Heads::getExcludedHeads, ofSet(COMMIT_ID_JSON));
 

@@ -5,16 +5,21 @@ import com.google.gson.stream.JsonToken;
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.exception.ParseException;
-import io.datakernel.util.Tuple2;
+import io.datakernel.exception.UncheckedException;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.Base64;
+import java.util.*;
+
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.codec.StructuredInput.Token.*;
 
 public final class JsonStructuredInput implements StructuredInput {
 	private final JsonReader reader;
 
-	public JsonStructuredInput(JsonReader reader) {this.reader = reader;}
+	public JsonStructuredInput(JsonReader reader) {
+		this.reader = reader;
+	}
 
 	@Override
 	public boolean readBoolean() throws ParseException {
@@ -112,6 +117,17 @@ public final class JsonStructuredInput implements StructuredInput {
 	}
 
 	@Override
+	public void readNull() throws ParseException {
+		try {
+			reader.nextNull();
+		} catch (IOException e) {
+			throw new AssertionError();
+		} catch (IllegalStateException e) {
+			throw new ParseException(e);
+		}
+	}
+
+	@Override
 	public <T> T readNullable(StructuredDecoder<T> decoder) throws ParseException {
 		try {
 			if (reader.peek() == JsonToken.NULL) {
@@ -127,98 +143,144 @@ public final class JsonStructuredInput implements StructuredInput {
 	}
 
 	@Override
-	public ListReader listReader(boolean selfDelimited) throws ParseException {
+	public <T> T readTuple(StructuredDecoder<T> decoder) throws ParseException {
 		try {
 			reader.beginArray();
+			T result = decoder.decode(this);
+			reader.endArray();
+			return result;
 		} catch (IOException e) {
 			throw new AssertionError();
 		} catch (IllegalStateException e) {
 			throw new ParseException(e);
 		}
-
-		return new ListReader() {
-			@Override
-			public boolean hasNext() throws ParseException {
-				try {
-					return reader.peek() != JsonToken.END_ARRAY;
-				} catch (IOException e) {
-					throw new AssertionError();
-				} catch (IllegalStateException e) {
-					throw new ParseException(e);
-				}
-			}
-
-			@Override
-			public StructuredInput next() throws ParseException {
-				return JsonStructuredInput.this;
-			}
-
-			@Override
-			public void close() throws ParseException {
-				try {
-					reader.endArray();
-				} catch (IOException e) {
-					throw new AssertionError();
-				} catch (IllegalStateException e) {
-					throw new ParseException(e);
-				}
-			}
-		};
 	}
 
 	@Override
-	public MapReader mapReader(boolean selfDelimited) throws ParseException {
+	public <T> T readObject(StructuredDecoder<T> decoder) throws ParseException {
 		try {
 			reader.beginObject();
+			T result = decoder.decode(this);
+			reader.endObject();
+			return result;
+		} catch (IOException e) {
+			throw new AssertionError();
+		} catch (IllegalStateException e) {
+			throw new ParseException(e);
+		} catch (UncheckedException e) {
+			throw e.propagate(ParseException.class);
+		}
+	}
+
+	@Override
+	public <T> List<T> readList(StructuredDecoder<T> decoder) throws ParseException {
+		try {
+			List<T> list = new ArrayList<>();
+			reader.beginArray();
+			while (reader.hasNext()) {
+				T item = decoder.decode(this);
+				list.add(item);
+			}
+			reader.endArray();
+			return list;
+		} catch (IOException e) {
+			throw new AssertionError();
+		} catch (IllegalStateException e) {
+			throw new ParseException(e);
+		} catch (UncheckedException e) {
+			throw e.propagate(ParseException.class);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public <K, V> Map<K, V> readMap(StructuredDecoder<K> keyDecoder, StructuredDecoder<V> valueDecoder) throws ParseException {
+		try {
+			Map<K, V> map = new LinkedHashMap<>();
+			if (keyDecoder == STRING_CODEC) {
+				reader.beginObject();
+				while (reader.hasNext()) {
+					K key = (K) reader.nextName();
+					V value = valueDecoder.decode(this);
+					map.put(key, value);
+				}
+				reader.endObject();
+			} else {
+				reader.beginArray();
+				while (reader.hasNext()) {
+					reader.beginArray();
+					K key = keyDecoder.decode(this);
+					V value = valueDecoder.decode(this);
+					map.put(key, value);
+					reader.endArray();
+				}
+				reader.endArray();
+			}
+			return map;
+		} catch (IOException e) {
+			throw new AssertionError();
+		} catch (IllegalStateException e) {
+			throw new ParseException(e);
+		} catch (UncheckedException e) {
+			throw e.propagate(ParseException.class);
+		}
+	}
+
+	@Override
+	public boolean hasNext() throws ParseException {
+		try {
+			JsonToken token = reader.peek();
+			return token != JsonToken.END_ARRAY && token != JsonToken.END_OBJECT;
 		} catch (IOException e) {
 			throw new AssertionError();
 		} catch (IllegalStateException e) {
 			throw new ParseException(e);
 		}
+	}
 
-		return new MapReader() {
-			JsonStructuredInput in;
-
-			@Override
-			public boolean hasNext() throws ParseException {
-				try {
-					return reader.peek() != JsonToken.END_OBJECT;
-				} catch (IOException e) {
-					throw new AssertionError();
-				} catch (IllegalStateException e) {
-					throw new ParseException(e);
-				}
-			}
-
-			@Override
-			public Tuple2<String, StructuredInput> next() throws ParseException {
-				in = new JsonStructuredInput(reader);
-				String field;
-				try {
-					field = reader.nextName();
-				} catch (IOException e) {
-					throw new AssertionError();
-				} catch (IllegalStateException e) {
-					throw new ParseException(e);
-				}
-				return new Tuple2<>(field, in);
-			}
-
-			@Override
-			public void close() throws ParseException {
-				try {
-					reader.endObject();
-				} catch (IOException e) {
-					throw new AssertionError();
-				} catch (IllegalStateException e) {
-					throw new ParseException(e);
-				}
-			}
-		};
+	@Override
+	public String readKey() throws ParseException {
+		try {
+			return reader.nextName();
+		} catch (IOException e) {
+			throw new AssertionError();
+		} catch (IllegalStateException e) {
+			throw new ParseException(e);
+		}
 	}
 
 	@Override
 	public <T> T readCustom(Type type) throws ParseException {
 		throw new UnsupportedOperationException();
 	}
+
+	@Override
+	public EnumSet<Token> getNext() throws ParseException {
+		JsonToken jsonToken;
+		try {
+			jsonToken = reader.peek();
+		} catch (IOException e) {
+			throw new AssertionError();
+		} catch (IllegalStateException e) {
+			throw new ParseException(e);
+		}
+
+		switch (jsonToken) {
+			case NULL:
+				return EnumSet.of(NULL);
+			case BOOLEAN:
+				return EnumSet.of(BOOLEAN);
+			case NUMBER:
+				return EnumSet.of(BYTE, INT, LONG, FLOAT, DOUBLE);
+			case STRING:
+				return EnumSet.of(STRING, BYTES);
+			case BEGIN_ARRAY:
+				return EnumSet.of(LIST, TUPLE);
+			case BEGIN_OBJECT:
+				return EnumSet.of(MAP, OBJECT);
+			default:
+				throw new ParseException("Invalid token: " + jsonToken);
+		}
+	}
+
 }

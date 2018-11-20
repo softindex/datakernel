@@ -72,8 +72,8 @@ public class OTMergeAlgorithmTest {
 		OTRepositoryStub<String, TestOp> repository = OTRepositoryStub.create();
 		repository.setGraph(graphBuilder);
 		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		CompletableFuture<OTLoadedGraph<String, TestOp>> future =
-				algorithms.loadGraph(heads).toCompletableFuture();
+		CompletableFuture<OTLoadedGraph<String, TestOp>> future = algorithms.loadGraph(heads)
+				.toCompletableFuture();
 		eventloop.run();
 		OTLoadedGraph<String, TestOp> graph = future.get();
 		Map<String, List<TestOp>> merge;

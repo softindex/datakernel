@@ -16,18 +16,17 @@
 
 package io.datakernel.cube.http;
 
+import io.datakernel.codec.registry.CodecFactory;
+import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.cube.CubeQuery.Ordering;
 import io.datakernel.exception.ParseException;
-import io.datakernel.json.GsonAdapters.TypeAdapterMapping;
-import io.datakernel.json.GsonAdapters.TypeAdapterMappingImpl;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static io.datakernel.json.GsonAdapters.LOCAL_DATE_JSON;
-import static io.datakernel.json.GsonAdapters.PRIMITIVES_MAP;
+import static io.datakernel.aggregation.fieldtype.FieldTypes.LOCAL_DATE_CODEC;
 import static java.util.stream.Collectors.toList;
 
 class Utils {
@@ -79,6 +78,6 @@ class Utils {
 		return result;
 	}
 
-	public static TypeAdapterMapping CUBE_TYPES = TypeAdapterMappingImpl.from(PRIMITIVES_MAP)
-		.withAdapter(LocalDate.class, LOCAL_DATE_JSON);
+	public static CodecFactory CUBE_TYPES = CodecRegistry.createDefault()
+			.with(LocalDate.class, LOCAL_DATE_CODEC);
 }

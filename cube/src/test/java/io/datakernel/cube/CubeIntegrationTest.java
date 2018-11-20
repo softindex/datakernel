@@ -17,11 +17,11 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.Aggregation;
-import io.datakernel.aggregation.ChunkIdScheme;
+import io.datakernel.aggregation.ChunkIdCodec;
 import io.datakernel.aggregation.RemoteFsChunkStorage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.ot.CubeDiff;
-import io.datakernel.cube.ot.CubeDiffJson;
+import io.datakernel.cube.ot.CubeDiffCodec;
 import io.datakernel.cube.ot.CubeOT;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.LocalFsLogFileSystem;
@@ -76,7 +76,7 @@ public class CubeIntegrationTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		RemoteFsChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
+		RemoteFsChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", ofLocalDate())
 				.withDimension("advertiser", ofInt())
@@ -100,7 +100,7 @@ public class CubeIntegrationTest {
 
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
+		OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, LogDiffCodec.create(CubeDiffCodec.create(cube)));
 		repository.truncateTables();
 		repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 		eventloop.run();
@@ -147,7 +147,8 @@ public class CubeIntegrationTest {
 						.thenApply($ -> logDiff))
 				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
-				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
+				.thenCompose(OTStateManager::commitAndPush)
+				.toCompletableFuture();
 		eventloop.run();
 		future.get();
 
@@ -157,7 +158,8 @@ public class CubeIntegrationTest {
 						.thenApply($ -> logDiff))
 				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
-				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
+				.thenCompose(OTStateManager::commitAndPush)
+				.toCompletableFuture();
 		eventloop.run();
 		future.get();
 
@@ -173,7 +175,8 @@ public class CubeIntegrationTest {
 						.thenApply($ -> logDiff))
 				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
-				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
+				.thenCompose(OTStateManager::commitAndPush)
+				.toCompletableFuture();
 		eventloop.run();
 		future.get();
 
@@ -189,16 +192,20 @@ public class CubeIntegrationTest {
 						.thenApply($ -> logDiff))
 				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
-				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
+				.thenCompose(OTStateManager::commitAndPush)
+				.toCompletableFuture();
 		eventloop.run();
 		future.get();
 
-		future = aggregationChunkStorage.backup("backup1", (Set) cube.getAllChunks()).toCompletableFuture();
+		future = aggregationChunkStorage.backup("backup1", (Set) cube.getAllChunks())
+				.toCompletableFuture();
 		eventloop.run();
 		future.get();
 
 		Future<List<LogItem>> futureResult = cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
-				LogItem.class, DefiningClassLoader.create(classLoader)).toList().toCompletableFuture();
+				LogItem.class, DefiningClassLoader.create(classLoader))
+				.toList()
+				.toCompletableFuture();
 		eventloop.run();
 
 		// Aggregate manually

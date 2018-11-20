@@ -17,7 +17,7 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.AggregationChunkStorage;
-import io.datakernel.aggregation.ChunkIdScheme;
+import io.datakernel.aggregation.ChunkIdCodec;
 import io.datakernel.aggregation.RemoteFsChunkStorage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.DataItemResultString;
@@ -60,7 +60,7 @@ public class StringDimensionTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdScheme.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("key1", ofString())
 				.withDimension("key2", ofInt())

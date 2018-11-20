@@ -18,7 +18,6 @@ package io.datakernel.crdt;
 
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 
@@ -28,15 +27,15 @@ public final class CrdtMessaging {
 	}
 
 	public static final StructuredCodec<CrdtMessage> MESSAGE_CODEC = CodecSubtype.<CrdtMessage>create()
-			.with(Download.class, StructuredCodecs.recordAsMap(Download::new,
+			.with(Download.class, object(Download::new,
 					"token", Download::getToken, LONG64_CODEC))
-			.with(CrdtMessages.class, enumAsString(CrdtMessages.class));
+			.with(CrdtMessages.class, ofEnum(CrdtMessages.class));
 
 	public static final StructuredCodec<CrdtResponse> RESPONSE_CODEC = CodecSubtype.<CrdtResponse>create()
-			.with(CrdtResponses.class, enumAsString(CrdtResponses.class))
-			.with(DownloadToken.class, StructuredCodecs.recordAsMap(DownloadToken::new,
+			.with(CrdtResponses.class, ofEnum(CrdtResponses.class))
+			.with(DownloadToken.class, object(DownloadToken::new,
 					"token", DownloadToken::getToken, LONG64_CODEC))
-			.with(ServerError.class, StructuredCodecs.recordAsMap(ServerError::new,
+			.with(ServerError.class, object(ServerError::new,
 					"msg", ServerError::getMsg, STRING_CODEC));
 
 	public interface CrdtMessage {}

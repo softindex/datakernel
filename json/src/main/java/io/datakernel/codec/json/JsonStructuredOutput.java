@@ -1,12 +1,15 @@
 package io.datakernel.codec.json;
 
 import com.google.gson.stream.JsonWriter;
+import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.StructuredOutput;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.Base64;
+import java.util.List;
+import java.util.Map;
 
 public class JsonStructuredOutput implements StructuredOutput {
 	private final JsonWriter writer;
@@ -109,69 +112,90 @@ public class JsonStructuredOutput implements StructuredOutput {
 	}
 
 	@Override
-	public <T> void writeNullable(StructuredEncoder<T> encoder, T value) {
-		if (value == null) {
-			try {
-				writer.nullValue();
-			} catch (IOException e) {
-				throw new AssertionError();
-			}
-		} else {
-			encoder.encode(this, value);
+	public void writeNull() {
+		try {
+			writer.nullValue();
+		} catch (IOException e) {
+			throw new AssertionError();
 		}
 	}
 
 	@Override
-	public ListWriter listWriter(boolean selfDelimited) {
+	public <T> void writeNullable(StructuredEncoder<T> encoder, T value) {
+		if (value != null) {
+			encoder.encode(this, value);
+		} else {
+			writeNull();
+		}
+	}
+
+	@Override
+	public <T> void writeList(StructuredEncoder<T> encoder, List<T> list) {
 		try {
 			writer.beginArray();
+			for (T item : list) {
+				encoder.encode(this, item);
+			}
+			writer.endArray();
 		} catch (IOException e) {
 			throw new AssertionError();
 		}
-		return new ListWriter() {
-			@Override
-			public StructuredOutput next() {
-				return JsonStructuredOutput.this;
-			}
-
-			@Override
-			public void close() {
-				try {
-					writer.endArray();
-				} catch (IOException e) {
-					throw new AssertionError();
-				}
-			}
-		};
 	}
 
 	@Override
-	public MapWriter mapWriter(boolean selfDelimited) {
+	public <K, V> void writeMap(StructuredEncoder<K> keyEncoder, StructuredEncoder<V> valueEncoder, Map<K, V> map) {
 		try {
-			writer.beginObject();
+			if (keyEncoder == StructuredCodecs.STRING_CODEC) {
+				writer.beginObject();
+				for (Map.Entry<K, V> entry : map.entrySet()) {
+					writer.name((String) entry.getKey());
+					valueEncoder.encode(this, entry.getValue());
+				}
+				writer.endObject();
+			} else {
+				writer.beginArray();
+				for (Map.Entry<K, V> entry : map.entrySet()) {
+					writer.beginArray();
+					keyEncoder.encode(this, entry.getKey());
+					valueEncoder.encode(this, entry.getValue());
+					writer.endArray();
+				}
+				writer.endArray();
+			}
 		} catch (IOException e) {
 			throw new AssertionError();
 		}
-		return new MapWriter() {
-			@Override
-			public StructuredOutput next(String field) {
-				try {
-					writer.name(field);
-				} catch (IOException e) {
-					throw new AssertionError();
-				}
-				return JsonStructuredOutput.this;
-			}
+	}
 
-			@Override
-			public void close() {
-				try {
-					writer.endObject();
-				} catch (IOException e) {
-					throw new AssertionError();
-				}
-			}
-		};
+	@Override
+	public <T> void writeTuple(StructuredEncoder<T> encoder, T value) {
+		try {
+			writer.beginArray();
+			encoder.encode(this, value);
+			writer.endArray();
+		} catch (IOException e) {
+			throw new AssertionError();
+		}
+	}
+
+	@Override
+	public <T> void writeObject(StructuredEncoder<T> encoder, T value) {
+		try {
+			writer.beginObject();
+			encoder.encode(this, value);
+			writer.endObject();
+		} catch (IOException e) {
+			throw new AssertionError();
+		}
+	}
+
+	@Override
+	public void writeKey(String field) {
+		try {
+			writer.name(field);
+		} catch (IOException e) {
+			throw new AssertionError();
+		}
 	}
 
 	@Override

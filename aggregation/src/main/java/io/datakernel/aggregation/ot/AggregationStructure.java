@@ -1,6 +1,6 @@
 package io.datakernel.aggregation.ot;
 
-import io.datakernel.aggregation.ChunkIdScheme;
+import io.datakernel.aggregation.ChunkIdCodec;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.util.Initializable;
@@ -11,18 +11,18 @@ import static io.datakernel.util.Preconditions.checkArgument;
 
 @SuppressWarnings("rawtypes")
 public final class AggregationStructure implements Initializable<AggregationStructure> {
-	private final ChunkIdScheme<?> chunkIdScheme;
+	private final ChunkIdCodec<?> chunkIdCodec;
 	private final Map<String, FieldType> keyTypes = new LinkedHashMap<>();
 	private final Map<String, FieldType> measureTypes = new LinkedHashMap<>();
 	private final List<String> partitioningKey = new ArrayList<>();
 	private final Map<String, Measure> measures = new LinkedHashMap<>();
 
-	private AggregationStructure(ChunkIdScheme<?> chunkIdScheme) {
-		this.chunkIdScheme = chunkIdScheme;
+	private AggregationStructure(ChunkIdCodec<?> chunkIdCodec) {
+		this.chunkIdCodec = chunkIdCodec;
 	}
 
-	public static AggregationStructure create(ChunkIdScheme<?> chunkIdScheme) {
-		return new AggregationStructure(chunkIdScheme);
+	public static AggregationStructure create(ChunkIdCodec<?> chunkIdCodec) {
+		return new AggregationStructure(chunkIdCodec);
 	}
 
 	public AggregationStructure withKey(String keyId, FieldType type) {
@@ -49,8 +49,8 @@ public final class AggregationStructure implements Initializable<AggregationStru
 		return this;
 	}
 
-	public ChunkIdScheme<?> getChunkIdScheme() {
-		return chunkIdScheme;
+	public ChunkIdCodec<?> getChunkIdCodec() {
+		return chunkIdCodec;
 	}
 
 	public AggregationStructure withPartitioningKey(String... partitioningKey) {

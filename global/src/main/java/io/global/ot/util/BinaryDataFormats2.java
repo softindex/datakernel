@@ -40,7 +40,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Set;
 
-import static io.datakernel.codec.StructuredCodecs.record;
+import static io.datakernel.codec.StructuredCodecs.tuple;
 
 public final class BinaryDataFormats2 {
 	// region creators
@@ -57,38 +57,38 @@ public final class BinaryDataFormats2 {
 							.transform(BinaryDataFormats2::parseBigInteger, BigInteger::toByteArray))
 
 			.with(ECPoint.class, registry ->
-					record(BinaryDataFormats2::parseECPoint,
+					tuple(BinaryDataFormats2::parseECPoint,
 							point -> point.getXCoord().toBigInteger(), registry.get(BigInteger.class),
 							point -> point.getYCoord().toBigInteger(), registry.get(BigInteger.class)))
 
 			// common
 
 			.with(RawServerId.class, registry ->
-					record(RawServerId::parse,
+					tuple(RawServerId::parse,
 							RawServerId::getInetSocketAddress, registry.get(InetSocketAddress.class)))
 
 			.with(PubKey.class, registry ->
-					record(PubKey::parse,
+					tuple(PubKey::parse,
 							pubKey -> pubKey.getEcPublicKey().getQ(), registry.get(ECPoint.class)))
 
 			.with(PrivKey.class, registry ->
-					record(PrivKey::parse,
+					tuple(PrivKey::parse,
 							privKey -> privKey.getEcPrivateKey().getD(), registry.get(BigInteger.class)))
 
 			.with(Signature.class, registry ->
-					record(Signature::parse,
+					tuple(Signature::parse,
 							Signature::getR, registry.get(BigInteger.class),
 							Signature::getS, registry.get(BigInteger.class)))
 
 			.withGeneric(SignedData.class, (registry, subCodecs) ->
-					record(
+					tuple(
 							(bytes, signature) ->
 									SignedData.parse((StructuredDecoder<?>) subCodecs[0], bytes, signature),
 							SignedData::getBytes, registry.get(byte[].class),
 							SignedData::getSignature, registry.get(Signature.class)))
 
 			.with(EncryptedData.class, registry ->
-					record(EncryptedData::parse,
+					tuple(EncryptedData::parse,
 							EncryptedData::getNonce, registry.get(byte[].class),
 							EncryptedData::getEncryptedBytes, registry.get(byte[].class)))
 
@@ -99,19 +99,19 @@ public final class BinaryDataFormats2 {
 			// discovery
 
 			.with(AnnounceData.class, registry ->
-					record(AnnounceData::parse,
+					tuple(AnnounceData::parse,
 							AnnounceData::getTimestamp, registry.get(long.class),
 							AnnounceData::getServerIds, registry.get(new TypeT<Set<RawServerId>>() {})))
 
 			.with(SharedSimKey.class, registry ->
-					record(SharedSimKey::parse,
+					tuple(SharedSimKey::parse,
 							SharedSimKey::getHash, registry.get(Hash.class),
 							SharedSimKey::getEncrypted, registry.get(byte[].class)))
 
 			// global-ot
 
 			.with(CommitEntry.class, registry ->
-					record(CommitEntry::parse,
+					tuple(CommitEntry::parse,
 							CommitEntry::getCommitId, registry.get(CommitId.class),
 							CommitEntry::getCommit, registry.get(RawCommit.class),
 							CommitEntry::getHead, registry.get(new TypeT<SignedData<RawCommitHead>>() {}).nullable()))
@@ -121,30 +121,30 @@ public final class BinaryDataFormats2 {
 							.transform(CommitId::parse, CommitId::toBytes))
 
 			.with(RepoID.class, registry ->
-					record(RepoID::of,
+					tuple(RepoID::of,
 							RepoID::getOwner, registry.get(PubKey.class),
 							RepoID::getName, registry.get(String.class)))
 
 			.with(RawCommitHead.class, registry ->
-					record(RawCommitHead::parse,
+					tuple(RawCommitHead::parse,
 							RawCommitHead::getRepositoryId, registry.get(RepoID.class),
 							RawCommitHead::getCommitId, registry.get(CommitId.class),
 							RawCommitHead::getTimestamp, registry.get(long.class)))
 
 			.with(RawPullRequest.class, registry ->
-					record(RawPullRequest::parse,
+					tuple(RawPullRequest::parse,
 							RawPullRequest::getRepository, registry.get(RepoID.class),
 							RawPullRequest::getForkRepository, registry.get(RepoID.class)))
 
 			.with(RawSnapshot.class, registry ->
-					record(RawSnapshot::parse,
+					tuple(RawSnapshot::parse,
 							RawSnapshot::getRepositoryId, registry.get(RepoID.class),
 							RawSnapshot::getCommitId, registry.get(CommitId.class),
 							RawSnapshot::getEncryptedDiffs, registry.get(EncryptedData.class),
 							RawSnapshot::getSimKeyHash, registry.get(Hash.class)))
 
 			.with(RawCommit.class, registry ->
-					record(RawCommit::parse,
+					tuple(RawCommit::parse,
 							RawCommit::getParents, registry.get(new TypeT<Set<CommitId>>() {}),
 							RawCommit::getEncryptedDiffs, registry.get(EncryptedData.class),
 							RawCommit::getSimKeyHash, registry.get(Hash.class),
@@ -154,19 +154,19 @@ public final class BinaryDataFormats2 {
 			// global-fs
 
 			.with(FileMetadata.class, registry ->
-					record(FileMetadata::new,
+					tuple(FileMetadata::new,
 							FileMetadata::getFilename, registry.get(String.class),
 							FileMetadata::getSize, registry.get(long.class),
 							FileMetadata::getTimestamp, registry.get(long.class)))
 
 			.with(GlobalFsCheckpoint.class, registry ->
-					record(GlobalFsCheckpoint::parse,
+					tuple(GlobalFsCheckpoint::parse,
 							GlobalFsCheckpoint::getFilename, registry.get(String.class),
 							GlobalFsCheckpoint::getPosition, registry.get(long.class),
 							GlobalFsCheckpoint::getDigestState, registry.get(byte[].class)))
 
 			.with(GlobalFsMetadata.class, registry ->
-					record(GlobalFsMetadata::parse,
+					tuple(GlobalFsMetadata::parse,
 							GlobalFsMetadata::getFilename, registry.get(String.class),
 							GlobalFsMetadata::getSize, registry.get(long.class),
 							GlobalFsMetadata::getRevision, registry.get(long.class),

@@ -27,23 +27,23 @@ import java.util.Set;
 import static io.datakernel.codec.StructuredCodecs.*;
 
 public final class RemoteFsResponses {
-	public static final StructuredCodec<FileMetadata> FILE_META_CODEC = StructuredCodecs.record(FileMetadata::new,
+	public static final StructuredCodec<FileMetadata> FILE_META_CODEC = StructuredCodecs.tuple(FileMetadata::new,
 			FileMetadata::getFilename, STRING_CODEC,
 			FileMetadata::getSize, LONG_CODEC,
 			FileMetadata::getTimestamp, LONG_CODEC);
 
 	static final StructuredCodec<FsResponse> CODEC = CodecSubtype.<FsResponse>create()
-			.with(UploadFinished.class, recordAsMap(UploadFinished::new))
-			.with(DownloadSize.class, recordAsMap(DownloadSize::new,
+			.with(UploadFinished.class, object(UploadFinished::new))
+			.with(DownloadSize.class, object(DownloadSize::new,
 					"size", DownloadSize::getSize, LONG_CODEC))
-			.with(MoveFinished.class, recordAsMap(MoveFinished::new,
+			.with(MoveFinished.class, object(MoveFinished::new,
 					"moved", MoveFinished::getMoved, ofSet(STRING_CODEC)))
-			.with(CopyFinished.class, recordAsMap(CopyFinished::new,
+			.with(CopyFinished.class, object(CopyFinished::new,
 					"copied", CopyFinished::getCopied, ofSet(STRING_CODEC)))
-			.with(ListFinished.class, recordAsMap(ListFinished::new,
+			.with(ListFinished.class, object(ListFinished::new,
 					"files", ListFinished::getFiles, ofList(FILE_META_CODEC)))
-			.with(DeleteFinished.class, recordAsMap(DeleteFinished::new))
-			.with(ServerError.class, recordAsMap(ServerError::new,
+			.with(DeleteFinished.class, object(DeleteFinished::new))
+			.with(ServerError.class, object(ServerError::new,
 					"message", ServerError::getMessage, STRING_CODEC));
 
 	public static abstract class FsResponse {

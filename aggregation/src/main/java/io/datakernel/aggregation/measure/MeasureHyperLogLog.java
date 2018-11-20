@@ -20,13 +20,13 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Context;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Property;
-import io.datakernel.json.GsonAdapters;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenArray;
 import io.datakernel.serializer.asm.SerializerGenByte;
 import io.datakernel.serializer.asm.SerializerGenClass;
 import org.objectweb.asm.Type;
 
+import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codegen.Expressions.*;
 import static java.util.Collections.singletonList;
 
@@ -35,7 +35,7 @@ public final class MeasureHyperLogLog extends Measure {
 
 	private static final class FieldTypeHyperLogLog extends FieldType<Integer> {
 		public FieldTypeHyperLogLog() {
-			super(HyperLogLog.class, int.class, serializerGen(), GsonAdapters.INTEGER_JSON, null);
+			super(HyperLogLog.class, int.class, serializerGen(), INT_CODEC, null);
 		}
 
 		private static SerializerGen serializerGen() {
@@ -72,8 +72,7 @@ public final class MeasureHyperLogLog extends Measure {
 	}
 
 	@Override
-	public Expression initAccumulatorWithAccumulator(Property accumulator,
-	                                                 Expression firstAccumulator) {
+	public Expression initAccumulatorWithAccumulator(Property accumulator, Expression firstAccumulator) {
 		return sequence(
 				set(accumulator, constructor(HyperLogLog.class, value(registers))),
 				call(accumulator, "union", firstAccumulator));

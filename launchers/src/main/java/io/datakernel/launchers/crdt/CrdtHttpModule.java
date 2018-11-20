@@ -33,7 +33,7 @@ import io.datakernel.util.guice.OptionalDependency;
 
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.codec.StructuredCodecs.record;
+import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.datakernel.launchers.Initializers.ofHttpServer;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -62,7 +62,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 		StructuredCodec<K> keyCodec = descriptor.getKeyCodec();
 		StructuredCodec<S> stateCodec = descriptor.getStateCodec();
 
-		StructuredCodec<CrdtData<K, S>> codec = record(CrdtData::new,
+		StructuredCodec<CrdtData<K, S>> codec = tuple(CrdtData::new,
 				CrdtData::getKey, descriptor.getKeyCodec(),
 				CrdtData::getState, descriptor.getStateCodec());
 		MiddlewareServlet servlet = MiddlewareServlet.create()

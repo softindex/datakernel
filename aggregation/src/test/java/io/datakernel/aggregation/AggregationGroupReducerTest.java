@@ -56,7 +56,7 @@ public class AggregationGroupReducerTest {
 	public void test() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		AggregationStructure structure = AggregationStructure.create(ChunkIdScheme.ofLong())
+		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
 				.withKey("word", FieldTypes.ofString())
 				.withMeasure("documents", union(ofInt()));
 
