@@ -144,7 +144,7 @@ public final class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data - 7\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data - 8\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data - 9\n".getBytes())))
-						.streamTo(client.uploadSerial(file, 1)),
+						.streamTo(client.uploader(file, 1)),
 
 				delayed(Arrays.asList(
 						ByteBuf.wrapForReading(" data - 1\n".getBytes()),
@@ -160,7 +160,7 @@ public final class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes())))
-						.streamTo(client.uploadSerial(file, 10)),
+						.streamTo(client.uploader(file, 10)),
 
 				delayed(Arrays.asList(
 						ByteBuf.wrapForReading(" - 1\n".getBytes()),
@@ -176,7 +176,7 @@ public final class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes())))
-						.streamTo(client.uploadSerial(file, 15)),
+						.streamTo(client.uploader(file, 15)),
 
 				delayed(Arrays.asList(
 						ByteBuf.wrapForReading("urrent data - 2\n".getBytes()),
@@ -191,7 +191,7 @@ public final class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes())))
-						.streamTo(client.uploadSerial(file, 24)),
+						.streamTo(client.uploader(file, 24)),
 
 				delayed(Arrays.asList(
 						ByteBuf.wrapForReading(" data - 1\n".getBytes()),
@@ -208,10 +208,10 @@ public final class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data + new line\n".getBytes())))
-						.streamTo(client.uploadSerial(file, 10))
+						.streamTo(client.uploader(file, 10))
 		)
 				.thenCompose($ ->
-						client.downloadSerial(file)
+						client.downloader(file)
 								.streamTo(ChannelConsumer.of(AsyncConsumer.of(buf -> {
 									String actual = buf.asString(UTF_8);
 									String expected = "Concurrent data - 1\n" +

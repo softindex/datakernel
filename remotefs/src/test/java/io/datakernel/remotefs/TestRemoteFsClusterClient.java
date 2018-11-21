@@ -124,7 +124,7 @@ public final class TestRemoteFsClusterClient {
 
 		Files.write(serverStorages[numOfServer].resolve(file), content.getBytes(UTF_8));
 
-		client.downloadSerial(file, 0)
+		client.downloader(file, 0)
 				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(file)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete($ ->
@@ -152,7 +152,7 @@ public final class TestRemoteFsClusterClient {
 
 		String[] files = {"file_1.txt", "file_2.txt", "file_3.txt", "other.txt"};
 
-		Promises.all(Arrays.stream(files).map(f -> ChannelSupplier.of(data.slice()).streamTo(client.uploadSerial(f))))
+		Promises.all(Arrays.stream(files).map(f -> ChannelSupplier.of(data.slice()).streamTo(client.uploader(f))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete($ -> {
 					assertEquals(new String(readAllBytes(serverStorages[1].resolve("file_1.txt")), UTF_8), content);
@@ -169,7 +169,7 @@ public final class TestRemoteFsClusterClient {
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));
 
 		Promises.runSequence(IntStream.range(0, 1000)
-				.mapToObj(i -> ChannelSupplier.of(data.slice()).streamTo(client.uploadSerial("file_uploaded_" + i + ".txt"))))
+				.mapToObj(i -> ChannelSupplier.of(data.slice()).streamTo(client.uploader("file_uploaded_" + i + ".txt"))))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete($ -> {
 					for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
@@ -184,7 +184,7 @@ public final class TestRemoteFsClusterClient {
 	public void testNotEnoughUploads() {
 		client.withReplicationCount(client.getClients().size()); // max possible replication
 
-		ChannelSupplier.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(client.uploadSerial("file_uploaded.txt"))
+		ChannelSupplier.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(client.uploader("file_uploaded.txt"))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, "Didn't connect to enough partitions"));
 	}
@@ -193,7 +193,7 @@ public final class TestRemoteFsClusterClient {
 	public void downloadNonExisting() {
 		String fileName = "i_dont_exist.txt";
 
-		client.downloadSerial(fileName)
+		client.downloader(fileName)
 				.streamTo(ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle)))
 				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertFailure(RemoteFsException.class, fileName));

@@ -164,10 +164,10 @@ public final class GlobalFsTest {
 										"hello, this is a test buffer data #08\n" +
 										"hello, this is a te",
 								buf.asString(UTF_8))))
-				.thenCompose($ -> firstAliceAdapter.downloadSerial("test1.txt", 228, 37).toCollector(ByteBufQueue.collector()))
+				.thenCompose($ -> firstAliceAdapter.downloader("test1.txt", 228, 37).toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf ->
 						assertEquals("hello, this is a test buffer data #07", buf.asString(UTF_8))))
-				.thenCompose($ -> firstAliceAdapter.downloadSerial("test1.txt").toCollector(ByteBufQueue.collector()))
+				.thenCompose($ -> firstAliceAdapter.downloader("test1.txt").toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf -> assertEquals(570, buf.asString(UTF_8).length())));
 	}
 
@@ -216,8 +216,8 @@ public final class GlobalFsTest {
 				.thenCompose(ChannelSupplier.of(wrapUtf8("first line of the content\n"))::streamTo)
 				.thenCompose($ ->
 						ChannelSupplier.of(wrapUtf8("ntent\nsecond line, appended\n"))
-								.streamTo(firstAliceAdapter.uploadSerial("folder/test.txt", 20)))
-				.thenCompose($ -> firstAliceAdapter.downloadSerial("folder/test.txt").toCollector(ByteBufQueue.collector()))
+								.streamTo(firstAliceAdapter.uploader("folder/test.txt", 20)))
+				.thenCompose($ -> firstAliceAdapter.downloader("folder/test.txt").toCollector(ByteBufQueue.collector()))
 				.whenResult(buf -> System.out.println(buf.asString(UTF_8)))
 				.thenCompose($ -> firstAliceAdapter.getMetadata("folder/test.txt"))
 				.whenComplete(assertComplete(meta -> assertEquals(48, meta.getSize())));

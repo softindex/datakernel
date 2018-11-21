@@ -81,18 +81,18 @@ public interface FsClient {
 	 * @param filename name of the file to upload
 	 * @return stream consumer of byte buffers
 	 */
-	default ChannelConsumer<ByteBuf> uploadSerial(String filename) {
+	default ChannelConsumer<ByteBuf> uploader(String filename) {
 		return ChannelConsumer.ofPromise(upload(filename));
 	}
 
-	default ChannelConsumer<ByteBuf> uploadSerial(String filename, long offset) {
+	default ChannelConsumer<ByteBuf> uploader(String filename, long offset) {
 		return ChannelConsumer.ofPromise(upload(filename, offset));
 	}
 
 	/**
 	 * Same shortcut, but for {@link #upload(String, String)}
 	 */
-	default ChannelConsumer<ByteBuf> uploadSerial(String filename, String tempFolder) {
+	default ChannelConsumer<ByteBuf> uploader(String filename, String tempFolder) {
 		return ChannelConsumer.ofPromise(upload(filename, tempFolder));
 	}
 
@@ -138,7 +138,7 @@ public interface FsClient {
 	 *
 	 * @see #download(String, long, long)
 	 */
-	default ChannelSupplier<ByteBuf> downloadSerial(String filename, long offset, long length) {
+	default ChannelSupplier<ByteBuf> downloader(String filename, long offset, long length) {
 		return ChannelSupplier.ofPromise(download(filename, offset, length));
 	}
 
@@ -147,7 +147,7 @@ public interface FsClient {
 	 *
 	 * @see #download(String, long)
 	 */
-	default ChannelSupplier<ByteBuf> downloadSerial(String filename, long offset) {
+	default ChannelSupplier<ByteBuf> downloader(String filename, long offset) {
 		return ChannelSupplier.ofPromise(download(filename, offset));
 	}
 
@@ -157,7 +157,7 @@ public interface FsClient {
 	 * @param filename name of the file to be downloaded
 	 * @see #download(String)
 	 */
-	default ChannelSupplier<ByteBuf> downloadSerial(String filename) {
+	default ChannelSupplier<ByteBuf> downloader(String filename) {
 		return ChannelSupplier.ofPromise(download(filename));
 	}
 

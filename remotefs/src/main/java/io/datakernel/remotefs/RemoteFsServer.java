@@ -114,7 +114,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 			String file = msg.getFileName();
 			logger.trace("receiving data for {}: {}", file, this);
 			return messaging.receiveBinaryStream()
-					.streamTo(client.uploadSerial(file, msg.getOffset()))
+					.streamTo(client.uploader(file, msg.getOffset()))
 					.thenCompose($ -> messaging.send(new UploadFinished()))
 					.thenCompose($ -> messaging.sendEndOfStream())
 					.whenResult($ -> messaging.close())
@@ -149,7 +149,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						return messaging.send(new DownloadSize(fixedLength))
 								.thenCompose($ -> {
 									logger.trace("sending data for {}: {}", repr, this);
-									return client.downloadSerial(fileName, offset, fixedLength)
+									return client.downloader(fileName, offset, fixedLength)
 											.streamTo(messaging.sendBinaryStream())
 											.whenResult($1 -> logger.trace("finished sending data for {}: {}", repr, this));
 								});

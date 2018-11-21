@@ -136,10 +136,10 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 		// });
 
 		// eventloop.execute(() ->
-		// 		storage.downloadSerial(testFile).streamTo(gateway.uploadSerial(testFile, 0))
-		// 				.thenCompose($ -> gateway.downloadSerial(testFile).streamTo(storage.uploadSerial("test2.txt", 0)))
-		// 				.thenCompose($ -> storage.downloadSerial(testFile).toCollector(ByteBufQueue.collector()))
-		// 				.thenCompose(original -> storage.downloadSerial("test2.txt").toCollector(ByteBufQueue.collector())
+		// 		storage.downloader(testFile).streamTo(gateway.uploader(testFile, 0))
+		// 				.thenCompose($ -> gateway.downloader(testFile).streamTo(storage.uploader("test2.txt", 0)))
+		// 				.thenCompose($ -> storage.downloader(testFile).toCollector(ByteBufQueue.collector()))
+		// 				.thenCompose(original -> storage.downloader("test2.txt").toCollector(ByteBufQueue.collector())
 		// 						.whenResult(transfered -> {
 		// 							if (!Arrays.equals(original.asArray(), transfered.asArray())) {
 		// 								throw new AssertionError("Data is not equal!");
@@ -163,7 +163,7 @@ public final class GlobalFsGatewayUsageDemo extends Launcher {
 		// 				}));
 
 		// eventloop.post(() -> {
-		// 	gateway.downloadSerial("folder/test.txt").toCollector(ByteBufQueue.collector())
+		// 	gateway.downloader("folder/test.txt").toCollector(ByteBufQueue.collector())
 		// 			.whenComplete((buf, e) -> {
 		// 				if (e == null) {
 		// 					System.out.println(buf.asString(UTF_8));

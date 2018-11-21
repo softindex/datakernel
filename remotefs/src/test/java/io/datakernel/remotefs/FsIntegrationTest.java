@@ -98,7 +98,7 @@ public final class FsIntegrationTest {
 		int files = 10;
 
 		Promises.all(IntStream.range(0, 10)
-				.mapToObj(i -> ChannelSupplier.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploadSerial("file" + i))))
+				.mapToObj(i -> ChannelSupplier.of(ByteBuf.wrapForReading(CONTENT)).streamTo(client.uploader("file" + i))))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> {
 					for (int i = 0; i < files; i++) {
@@ -157,7 +157,7 @@ public final class FsIntegrationTest {
 				ChannelSupplier.of(ByteBuf.wrapForReading(BIG_FILE)),
 				ChannelSupplier.ofException(new StacklessException(FsIntegrationTest.class, "Test exception")),
 				ChannelSupplier.of(test4))
-				.streamTo(client.uploadSerial(resultFile))
+				.streamTo(client.uploader(resultFile))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(StacklessException.class, "Test exception"));
 
@@ -195,7 +195,7 @@ public final class FsIntegrationTest {
 	@Test
 	public void testDownloadNotExist() {
 		String file = "file_not_exist_downloaded.txt";
-		client.downloadSerial(file).streamTo(ChannelConsumer.of($ -> Promise.complete()))
+		client.downloader(file).streamTo(ChannelConsumer.of($ -> Promise.complete()))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertFailure(RemoteFsException.class, "File not found"));
 	}
@@ -208,7 +208,7 @@ public final class FsIntegrationTest {
 		List<Promise<Void>> tasks = new ArrayList<>();
 
 		for (int i = 0; i < 10; i++) {
-			tasks.add(client.downloadSerial(file).streamTo(ChannelFileWriter.create(executor, storage.resolve("file" + i))));
+			tasks.add(client.downloader(file).streamTo(ChannelFileWriter.create(executor, storage.resolve("file" + i))));
 		}
 
 		Promises.all(tasks)

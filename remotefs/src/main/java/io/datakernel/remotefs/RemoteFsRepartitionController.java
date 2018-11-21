@@ -189,7 +189,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					logger.trace("uploading file {} to partitions {}...", meta, uploadTargets);
 
 					ChannelSplitter<ByteBuf> splitter = ChannelSplitter.<ByteBuf>create()
-							.withInput(localStorage.downloadSerial(name));
+							.withInput(localStorage.downloader(name));
 
 					// recycle original non-slice buffer
 					return Promises.toList(uploadTargets.stream() // upload file to target partitions
@@ -201,7 +201,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 								return getAcknowledgement(cb ->
 										splitter.addOutput()
 												.set(clients.get(partitionId) // upload file to this partition
-														.uploadSerial(name)
+														.uploader(name)
 														.withAcknowledgement(cb)))
 										.whenException(e -> {
 											logger.warn("failed uploading to partition " + partitionId + " (" + e + ')');

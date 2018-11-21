@@ -52,11 +52,11 @@ public class HttpFsClient implements FsClient {
 
 	@Override
 	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
-		return Promise.of(uploadSerial(filename, offset));
+		return Promise.of(uploader(filename, offset));
 	}
 
 	@Override
-	public ChannelConsumer<ByteBuf> uploadSerial(String filename, long offset) {
+	public ChannelConsumer<ByteBuf> uploader(String filename, long offset) {
 		ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
 		Promise<HttpResponse> res = client.request(
 				HttpRequest.put(

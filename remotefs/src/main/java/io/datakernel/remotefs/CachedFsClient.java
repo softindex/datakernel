@@ -191,9 +191,9 @@ public class CachedFsClient implements FsClient, EventloopService {
 							.thenApply($ -> {
 								ChannelSplitter<ByteBuf> splitter = ChannelSplitter.create(supplier);
 								long cacheOffset = sizeInCache == 0 ? -1 : sizeInCache;
-								splitter.addOutput().set(cacheClient.uploadSerial(fileName, cacheOffset));
+								splitter.addOutput().set(cacheClient.uploader(fileName, cacheOffset));
 								ChannelSupplier<ByteBuf> prefix = sizeInCache != 0 ?
-										cacheClient.downloadSerial(fileName, offset, sizeInCache) :
+										cacheClient.downloader(fileName, offset, sizeInCache) :
 										ChannelSupplier.of();
 
 								return ChannelSuppliers.concat(prefix, splitter.addOutput().getSupplier())

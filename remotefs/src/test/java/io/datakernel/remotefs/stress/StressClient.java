@@ -77,7 +77,7 @@ class StressClient {
 				Path file = clientStorage.resolve(fileName);
 
 				ChannelFileReader.readFile(executor, file).withBufferSize(MemSize.kilobytes(16))
-						.streamTo(client.uploadSerial(fileName))
+						.streamTo(client.uploader(fileName))
 						.whenComplete(($, e) -> {
 							if (e == null) {
 								logger.info("Uploaded: " + fileName);

@@ -173,7 +173,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 							Stream<FileMetadata> stream = f.files.stream();
 							(token == 0 ? stream : stream.filter(m -> m.getTimestamp() >= token))
 									.forEach(meta ->
-											client.downloadSerial(meta.getFilename())
+											client.downloader(meta.getFilename())
 													.transformWith(ChannelBinaryDeserializer.create(serializer))
 													.transformWith(StreamDecorator.create(data -> new CrdtReducingData<>(data.getKey(), data.getState(), meta.getTimestamp())))
 													.streamTo(reducer.newInput()));
@@ -181,7 +181,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 							stream = f.tombstones.stream();
 							(token == 0 ? stream : stream.filter(m -> m.getTimestamp() >= token))
 									.forEach(meta ->
-											tombstoneFolderClient.downloadSerial(meta.getFilename())
+											tombstoneFolderClient.downloader(meta.getFilename())
 													.transformWith(ChannelBinaryDeserializer.create(serializer.getKeySerializer()))
 													.transformWith(StreamDecorator.create(key -> new CrdtReducingData<>(key, (S) null, meta.getTimestamp())))
 													.streamTo(reducer.newInput()));
@@ -226,7 +226,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 						Promises.all(list.stream()
 								.filter(meta -> meta.getTimestamp() > barrier)
 								.map(meta ->
-										client.downloadSerial(meta.getFilename())
+										client.downloader(meta.getFilename())
 												.toCollector(ByteBufQueue.collector())
 												.whenResult(byteBuf -> blacklist.addAll(Arrays.asList(byteBuf.asString(UTF_8).split("\n"))))
 												.toVoid())))
@@ -249,7 +249,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 							.thenCompose($ -> download().getStreamPromise())
 							.thenCompose(producer ->
 									producer.transformWith(ChannelBinarySerializer.create(serializer))
-											.streamTo(client.uploadSerial(name)))
+											.streamTo(client.uploader(name)))
 							.thenCompose($ -> tombstoneFolderClient.delete("*"))
 							.thenCompose($ -> consolidationFolderClient.delete(metafile))
 							.thenCompose($ -> Promises.all(files.stream().map(client::delete)));
