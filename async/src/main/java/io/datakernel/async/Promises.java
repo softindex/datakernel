@@ -563,8 +563,8 @@ public final class Promises {
 		return runSequence(transform(promises.iterator(), AsyncSupplier::get));
 	}
 
-	public static Promise<Void> runSequence(Stream<? extends Promise<?>> promises) {
-		return runSequence(promises.iterator());
+	public static Promise<Void> runSequence(Stream<? extends AsyncSupplier<?>> promises) {
+		return runSequence(transform(promises.iterator(), AsyncSupplier::get));
 	}
 
 	/**

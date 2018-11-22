@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -111,7 +112,7 @@ public final class AbstractHttpConnectionTest {
 		checkMaxKeepAlive(5, server, server.getAccepts());
 	}
 
-	private Promise<?> checkRequest(String expectedHeader, int expectedConnectionCount, EventStats connectionCount) {
+	private Promise<HttpResponse> checkRequest(String expectedHeader, int expectedConnectionCount, EventStats connectionCount) {
 		return client.request(HttpRequest.get(URL))
 				.thenCompose(ensureResponseBody())
 				.whenComplete(assertComplete(response -> {
@@ -124,7 +125,7 @@ public final class AbstractHttpConnectionTest {
 	@SuppressWarnings("SameParameterValue")
 	private void checkMaxKeepAlive(int maxKeepAlive, AsyncHttpServer server, EventStats connectionCount) {
 		Promises.runSequence(IntStream.range(0, maxKeepAlive - 1)
-				.mapToObj($ -> checkRequest("keep-alive", 1, connectionCount).post()))
+				.mapToObj($ -> (AsyncSupplier<HttpResponse>) ()-> checkRequest("keep-alive", 1, connectionCount).post()))
 				.thenCompose($ -> checkRequest("close", 1, connectionCount))
 				.post()
 				.thenCompose($ -> checkRequest("keep-alive", 2, connectionCount))

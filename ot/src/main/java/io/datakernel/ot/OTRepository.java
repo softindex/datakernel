@@ -22,7 +22,7 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	default Promise<Void> push(Collection<OTCommit<K, D>> commits) {
 		return runSequence(commits.stream()
 				.sorted(comparingLong(OTCommit::getLevel))
-				.map(this::push));
+				.map(commit -> (AsyncSupplier<Void>) () -> push(commit)));
 	}
 
 	default Promise<Void> push(OTCommit<K, D> commit) {

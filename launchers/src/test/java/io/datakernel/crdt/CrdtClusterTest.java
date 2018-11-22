@@ -20,6 +20,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
@@ -28,6 +29,7 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.launchers.crdt.*;
 import io.datakernel.launchers.http.JmxHttpModule;
@@ -186,7 +188,7 @@ public final class CrdtClusterTest {
 				CrdtData::getState, INT_CODEC);
 
 		Promises.runSequence(IntStream.range(0, 1_000_000)
-				.mapToObj(i ->
+				.mapToObj(i -> (AsyncSupplier<HttpResponse>) () ->
 						client.request(HttpRequest.of(PUT, "http://127.0.0.1:7000")
 								.withBody(JsonUtils.toJson(codec, new CrdtData<>("value_" + i, i)).getBytes(UTF_8)))))
 				.whenException(System.err::println)

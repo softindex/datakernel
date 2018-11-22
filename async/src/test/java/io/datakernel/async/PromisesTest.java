@@ -16,11 +16,13 @@
 
 package io.datakernel.async;
 
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.util.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -37,6 +39,7 @@ import static junit.framework.TestCase.*;
 
 @RunWith(DatakernelRunner.class)
 public final class PromisesTest {
+	private final AtomicInteger counter = new AtomicInteger();
 
 	@Test
 	public void toListEmptyTest() {
@@ -292,5 +295,32 @@ public final class PromisesTest {
 				.whenResult($ -> out.println(counter)))
 				.whenComplete(assertFailure(Exception.class))
 				.whenException(e -> assertEquals(5, counter.get()));
+	}
+
+	@Test
+	public void testRunSequence() {
+		List<Integer> list = asList(1, 2, 3, 4, 5, 6, 7);
+		runSequence(list.stream()
+				.map(n -> (AsyncSupplier<Integer>) () -> getStage(n)));
+	}
+
+	@Test
+	public void testRunSequenceWithSorted() {
+		List<Integer> list = asList(1, 2, 3, 4, 5, 6, 7);
+		runSequence(list.stream()
+				.sorted(Comparator.naturalOrder())
+				.map(n -> (AsyncSupplier<Integer>) () -> getStage(n)));
+	}
+
+	private Promise<Integer> getStage(Integer number) {
+		assertEquals(0, counter.get());
+		counter.incrementAndGet();
+		SettablePromise<Integer> promise = new SettablePromise<>();
+		Eventloop.getCurrentEventloop().post(() -> promise.set(number));
+		return promise
+				.thenCompose(n -> {
+					counter.decrementAndGet();
+					return Promise.of(n);
+				});
 	}
 }
