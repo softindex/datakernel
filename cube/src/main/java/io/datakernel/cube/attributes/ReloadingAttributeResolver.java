@@ -21,6 +21,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.ValueStats;
@@ -29,7 +30,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttributeResolver<K, A> implements EventloopService {
+public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttributeResolver<K, A> implements EventloopService, EventloopJmxMBean {
 	protected final Eventloop eventloop;
 
 	private long timestamp;
@@ -47,6 +48,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		this.eventloop = eventloop;
 	}
 
+	@Nullable
 	@Override
 	protected final A resolveAttributes(K key) {
 		A result = cache.get(key);
@@ -57,13 +59,13 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		return result;
 	}
 
-	protected abstract Stage<Map<K, A>> reload(@Nullable long lastTimestamp);
+	protected abstract Stage<Map<K, A>> reload(long lastTimestamp);
 
 	private void doReload() {
 		reloads++;
 		scheduledRunnable.cancel();
 		long reloadTimestamp = getEventloop().currentTimeMillis();
-		Stage<Map<K, A>> reload = reload(timestamp).whenComplete((result, throwable) -> {
+		reload(timestamp).whenComplete((result, throwable) -> {
 			if (throwable == null) {
 				reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
 				cache.putAll(result);
@@ -146,9 +148,10 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		return resolveErrors;
 	}
 
+	@Nullable
 	@JmxAttribute
-	public K getLastResolveErrorKey() {
-		return lastResolveErrorKey;
+	public String getLastResolveErrorKey() {
+		return lastResolveErrorKey == null ? null : lastResolveErrorKey.toString();
 	}
 
 	@JmxAttribute
