@@ -30,21 +30,25 @@ public class StacklessException extends Exception {
 	public StacklessException() {
 		super();
 		this.component = null;
+		super.fillInStackTrace();
 	}
 
 	public StacklessException(String message) {
 		super(message);
 		this.component = null;
+		super.fillInStackTrace();
 	}
 
 	public StacklessException(String message, Throwable cause) {
 		super(message, cause);
 		this.component = null;
+		super.fillInStackTrace();
 	}
 
 	public StacklessException(Throwable cause) {
 		super(cause);
 		this.component = null;
+		super.fillInStackTrace();
 	}
 
 	public StacklessException(Class<?> component, String message) {
@@ -64,7 +68,7 @@ public class StacklessException extends Exception {
 
 	@Override
 	public final Throwable fillInStackTrace() {
-		return component == null ? super.fillInStackTrace() : this;
+		return this;
 	}
 
 	@Override
