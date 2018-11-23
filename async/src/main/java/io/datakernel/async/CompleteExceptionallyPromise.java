@@ -139,11 +139,6 @@ public final class CompleteExceptionallyPromise<T> implements MaterializedPromis
 		return this;
 	}
 
-	@Override
-	public Promise<T> thenException(Function<? super T, Throwable> fn) {
-		return this;
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	public <U, V> Promise<V> combine(Promise<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {

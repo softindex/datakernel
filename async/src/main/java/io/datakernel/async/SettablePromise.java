@@ -308,19 +308,6 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	}
 
 	@Override
-	public Promise<T> thenException(Function<? super T, Throwable> fn) {
-		if (isComplete()) {
-			if (isResult()) {
-				Throwable maybeException = fn.apply(result);
-				if (maybeException == null) return Promise.of(result);
-				return Promise.ofException(maybeException);
-			}
-			return this;
-		}
-		return super.thenException(fn);
-	}
-
-	@Override
 	public MaterializedPromise<T> async() {
 		if (isComplete()) {
 			SettablePromise<T> result = new SettablePromise<>();

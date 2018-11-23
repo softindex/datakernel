@@ -132,13 +132,6 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 		return this;
 	}
 
-	@Override
-	public final Promise<T> thenException(Function<? super T, Throwable> fn) {
-		Throwable maybeException = fn.apply(getResult());
-		if (maybeException == null) return this;
-		return Promise.ofException(maybeException);
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	public final <U, V> Promise<V> combine(Promise<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {

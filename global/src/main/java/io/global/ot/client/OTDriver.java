@@ -155,7 +155,9 @@ public final class OTDriver {
 	public Promise<Set<CommitId>> getHeads(Set<RepoID> repositoryIds) {
 		return Promises.toList(repositoryIds.stream().map(this::getHeads))
 				.thenApply(commitIds -> commitIds.stream().flatMap(Collection::stream).collect(toSet()))
-				.thenException(heads -> !heads.isEmpty() ? null : new IOException());
+				.thenCompose(result -> !result.isEmpty() ?
+						Promise.of(result) :
+						Promise.ofException(new IOException()));
 	}
 
 	public <D> Promise<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,

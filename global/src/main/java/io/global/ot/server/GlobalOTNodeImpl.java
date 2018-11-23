@@ -220,8 +220,8 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 													queue.add(new RawCommitEntry(head, rawCommit));
 												}
 										))))
-						.<Set<CommitId>>thenCallback(($, cb) ->
-								extractHeadInfoImpl(queue, new HashSet<CommitId>(), cb))
+						.thenCompose(value -> Promise.<Set<CommitId>>ofCallback(cb ->
+								extractHeadInfoImpl(queue, new HashSet<>(), cb)))
 						.whenResult(headsInfo.bases::addAll)
 						.thenApply($ -> headsInfo));
 	}
@@ -323,12 +323,12 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 				.map(head -> commitStorage.loadCommit(head)
 						.whenResult(optional -> optional.ifPresent(rawCommit ->
 								queue.add(new RawCommitEntry(head, rawCommit))))))
-				.<Set<CommitId>>thenCallback(($, cb) ->
+				.thenCompose(value -> Promise.<Set<CommitId>>ofCallback(cb ->
 						doExcludeParents(
 								queue,
 								queue.stream().mapToLong(entry -> entry.rawCommit.getLevel()).min().orElse(0L),
 								new HashSet<>(heads),
-								cb))
+								cb)))
 				.thenApply(filteredHeads -> difference(heads, filteredHeads));
 	}
 

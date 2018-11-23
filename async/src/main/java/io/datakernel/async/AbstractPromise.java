@@ -219,25 +219,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		});
 	}
 
-	@Override
-	public Promise<T> thenException(Function<? super T, Throwable> fn) {
-		return then(new NextPromise<T, T>() {
-			@Override
-			public void accept(T result, Throwable e) {
-				if (e == null) {
-					Throwable maybeException = fn.apply(result);
-					if (maybeException == null) {
-						complete(result);
-					} else {
-						completeExceptionally(maybeException);
-					}
-				} else {
-					completeExceptionally(e);
-				}
-			}
-		});
-	}
-
 	private static final Object NO_RESULT = new Object();
 
 	@SuppressWarnings("unchecked")

@@ -83,8 +83,8 @@ public interface Promise<T> {
 	 * Creates a completed promise from value and throwable variables.
 	 * Useful for {@link #thenComposeEx(BiFunction)} passthroughs (eg. when mapping specific exceptions).
 	 *
-	 * @param value     value to wrap when exception is null
-	 * @param e possibly-null exception, determines type of promise completion
+	 * @param value value to wrap when exception is null
+	 * @param e     possibly-null exception, determines type of promise completion
 	 */
 	static <T> Promise<T> of(@Nullable T value, @Nullable Throwable e) {
 		assert !(value != null && e != null);
@@ -296,14 +296,6 @@ public interface Promise<T> {
 	 */
 	<U> Promise<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Promise<U>> fn);
 
-	default <U> Promise<U> thenCallback(BiConsumer<? super T, SettablePromise<U>> fn) {
-		return thenCompose(value -> {
-			SettablePromise<U> cb = new SettablePromise<>();
-			fn.accept(value, cb);
-			return cb;
-		});
-	}
-
 	/**
 	 * Subscribes given action to be executed after this promise completes
 	 *
@@ -327,8 +319,6 @@ public interface Promise<T> {
 	 * @return this {@code Promise}
 	 */
 	Promise<T> whenException(Consumer<Throwable> action);
-
-	Promise<T> thenException(Function<? super T, Throwable> fn);
 
 	/**
 	 * Combines two {@code Promise} in one using fn.

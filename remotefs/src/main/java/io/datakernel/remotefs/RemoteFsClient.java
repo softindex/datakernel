@@ -148,12 +148,13 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 												.peek(buf -> size[0] += buf.readRemaining())
 												.withEndOfStream(eos -> eos
 														.thenCompose($ -> messaging.sendEndOfStream())
-														.thenException($ -> size[0] != receivingSize ?
-																new RemoteFsException(RemoteFsClient.class, "Invalid stream size for file " + filename +
-																		" (offset " + offset + ", length " + length +
-																		"), expected: " + receivingSize +
-																		" actual: " + size[0]) :
-																null)
+														.thenCompose(result -> size[0] == receivingSize ?
+																Promise.of(result) :
+																Promise.ofException(new RemoteFsException(RemoteFsClient.class,
+																		"Invalid stream size for file " + filename +
+																				" (offset " + offset + ", length " + length + ")," +
+																				" expected: " + receivingSize +
+																				" actual: " + size[0])))
 														.whenComplete(downloadFinishPromise.recordStats())
 														.whenResult($1 -> messaging.close())));
 									}
