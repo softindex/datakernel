@@ -124,8 +124,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 							.thenCompose(size -> {
 								if (offset != -1) {
 									if (size == null) {
-										return Promise.ofException(new StacklessException(LocalFsClient.class,
-												"Trying to append to to file" + filename + " at offset " + offset + " but file does not exist"));
+										return Promise.ofException(FILE_NOT_FOUND);
 									}
 									if (offset > size) {
 										return Promise.ofException(new StacklessException(LocalFsClient.class,
@@ -161,7 +160,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return AsyncFile.size(executor, path)
 				.thenCompose(size -> {
 					if (size == null) {
-						return Promise.ofException(new StacklessException(LocalFsClient.class, "File not found: " + filename));
+						return Promise.ofException(FILE_NOT_FOUND);
 					}
 					String repr = filename + "(size=" + size + (offset != 0 ? ", offset=" + offset : "") + (length != -1 ? ", length=" + length : "") + ")";
 					if (offset > size) {

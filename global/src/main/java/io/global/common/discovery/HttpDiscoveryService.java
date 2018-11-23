@@ -36,6 +36,8 @@ import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
+import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
+import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.common.discovery.DiscoveryServlet.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -92,7 +94,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 				.thenCompose(ensureResponseBody())
 				.thenCompose(response -> Promise.ofTry(
 						tryParseResponse(response, body -> decode(SIGNED_ANNOUNCE, body))
-								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_ANNOUNCE_DATA))));
+								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_ANNOUNCEMENT))));
 	}
 
 	@Override

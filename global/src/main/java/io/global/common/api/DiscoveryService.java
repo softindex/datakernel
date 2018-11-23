@@ -22,16 +22,12 @@ import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
-import io.global.fs.local.RuntimeDiscoveryService;
 
 import java.util.List;
 
 public interface DiscoveryService {
-	StacklessException NO_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Announce data not found");
-	StacklessException NO_SHARED_KEY = new StacklessException(DiscoveryService.class, "No shared key found");
-	StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(RuntimeDiscoveryService.class, "Rejected announce data as outdated");
-	StacklessException CANNOT_VERIFY_ANNOUNCE_DATA = new StacklessException(RuntimeDiscoveryService.class, "Cannot verify announce data");
-	StacklessException CANNOT_VERIFY_SHARED_KEY = new StacklessException(RuntimeDiscoveryService.class, "Cannot verify shared key");
+	StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Rejected announce data as outdated");
+	StacklessException CANNOT_VERIFY_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Cannot verify announce data");
 
 	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
 

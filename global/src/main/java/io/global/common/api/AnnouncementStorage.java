@@ -14,22 +14,17 @@
  * limitations under the License.
  */
 
-package io.global.fs.api;
+package io.global.common.api;
 
 import io.datakernel.async.Promise;
+import io.datakernel.exception.StacklessException;
+import io.global.common.PubKey;
 import io.global.common.SignedData;
 
-import java.util.Arrays;
+public interface AnnouncementStorage {
+	StacklessException NO_ANNOUNCEMENT = new StacklessException(AnnouncementStorage.class, "No announcement found for key");
 
-public interface CheckpointStorage {
-	Promise<Void> store(String filename, SignedData<GlobalFsCheckpoint> checkpoint);
+	Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData);
 
-	Promise<SignedData<GlobalFsCheckpoint>> load(String filename, long position);
-
-	Promise<long[]> loadIndex(String filename);
-
-	default Promise<Long> getLastCheckpoint(String filename) {
-		return loadIndex(filename)
-				.thenApply(positions -> Arrays.stream(positions).max().orElse(0L));
-	}
+	Promise<SignedData<AnnounceData>> load(PubKey space);
 }

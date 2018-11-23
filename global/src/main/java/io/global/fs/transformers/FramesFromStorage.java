@@ -59,7 +59,7 @@ public final class FramesFromStorage extends ByteBufsToFrames {
 		if (nextCheckpointIndex < lastCheckpointIndex) {
 			nextCheckpoint = checkpoints[++nextCheckpointIndex];
 		}
-		return checkpointStorage.loadCheckpoint(fileName, checkpoint)
+		return checkpointStorage.load(fileName, checkpoint)
 				.thenComposeEx((signedCheckpoint, e) -> {
 					if (e != null) {
 						// we are loading a checkpoint from a position that was obtained using getCheckpoints,

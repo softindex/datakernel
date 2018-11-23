@@ -39,9 +39,9 @@ import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.*;
+import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static io.global.fs.util.HttpDataFormats.parseOffset;
 import static io.global.fs.util.HttpDataFormats.parseRange;
-import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
 
 public final class GlobalFsNodeServlet implements AsyncServlet {
 	public static final String UPLOAD = "upload";

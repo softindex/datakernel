@@ -44,6 +44,6 @@ public final class FramesIntoStorage extends FramesToByteBufs {
 
 	@Override
 	protected Promise<Void> receiveCheckpoint(SignedData<GlobalFsCheckpoint> checkpoint) {
-		return checkpointStorage.saveCheckpoint(filename, checkpoint);
+		return checkpointStorage.store(filename, checkpoint);
 	}
 }

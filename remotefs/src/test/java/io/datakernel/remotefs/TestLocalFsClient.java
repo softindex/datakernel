@@ -50,6 +50,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static io.datakernel.csp.file.ChannelFileReader.READ_OPTIONS;
 import static io.datakernel.csp.file.ChannelFileReader.readFile;
 import static io.datakernel.csp.file.ChannelFileWriter.CREATE_OPTIONS;
+import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.set;
@@ -261,11 +262,9 @@ public final class TestLocalFsClient {
 
 	@Test
 	public void testDownloadNonExistingFile() {
-		String fileName = "no_file.txt";
-
-		client.download(fileName)
+		client.download("no_file.txt")
 				.thenCompose(supplier -> supplier.streamTo(ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle))))
-				.whenComplete(assertFailure(StacklessException.class, fileName));
+				.whenComplete(assertFailure(e -> assertSame(FILE_NOT_FOUND, e)));
 	}
 
 	@Test

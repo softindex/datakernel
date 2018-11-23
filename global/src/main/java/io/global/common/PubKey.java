@@ -17,7 +17,6 @@
 package io.global.common;
 
 import io.datakernel.exception.ParseException;
-import io.global.ot.util.BinaryDataFormats2;
 import org.spongycastle.crypto.params.ECPublicKeyParameters;
 import org.spongycastle.math.ec.ECPoint;
 
@@ -39,7 +38,7 @@ public final class PubKey {
 		try {
 			return PubKey.of(q);
 		} catch (IllegalArgumentException | ArithmeticException e) {
-			throw new ParseException(BinaryDataFormats2.class, "Failed to read public key", e);
+			throw new ParseException(BinaryDataFormats.class, "Failed to read public key", e);
 		}
 	}
 

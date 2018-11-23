@@ -19,6 +19,7 @@ package io.global.fs;
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
+import io.datakernel.stream.processor.DatakernelRunner;
 import io.global.common.KeyPair;
 import io.global.common.SignedData;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -27,6 +28,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
@@ -34,25 +36,23 @@ import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
-public class CheckpointStorageTest {
+@RunWith(DatakernelRunner.class)
+public final class CheckpointStorageTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 	private RemoteFsCheckpointStorage storage;
-	private Eventloop eventloop;
 
 	@Before
 	public void setUp() throws IOException {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 		Path path = temporaryFolder.newFolder().toPath();
 
-		eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
-		storage = new RemoteFsCheckpointStorage(LocalFsClient.create(eventloop, executor, path));
+		storage = new RemoteFsCheckpointStorage(LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, path));
 	}
 
 	@Test
@@ -77,18 +77,16 @@ public class CheckpointStorageTest {
 		String filename = "test.txt";
 
 		Promise.complete()
-				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 567, digest1), keys.getPrivKey())))
-				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 123, digest2), keys.getPrivKey())))
-				.thenCompose($ -> storage.saveCheckpoint("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 321, digest3), keys.getPrivKey())))
-				.thenCompose($ -> storage.getCheckpoints("test.txt"))
+				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 567, digest1), keys.getPrivKey())))
+				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 123, digest2), keys.getPrivKey())))
+				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 321, digest3), keys.getPrivKey())))
+				.thenCompose($ -> storage.loadIndex("test.txt"))
 				.whenResult(positions -> assertArrayEquals(new long[]{123, 321, 567}, positions))
-				.thenCompose($ -> storage.loadCheckpoint("test.txt", 321))
+				.thenCompose($ -> storage.load("test.txt", 321))
 				.whenResult(checkpoint -> assertTrue(checkpoint.verify(keys.getPubKey())))
-				.thenCompose($ -> storage.loadCheckpoint("test.txt", 567))
+				.thenCompose($ -> storage.load("test.txt", 567))
 				.whenResult(checkpoint -> assertTrue(checkpoint.verify(keys.getPubKey())))
-				.thenCompose($ -> storage.loadCheckpoint("test.txt", 123))
+				.thenCompose($ -> storage.load("test.txt", 123))
 				.whenResult(checkpoint -> assertTrue(checkpoint.verify(keys.getPubKey())));
-
-		eventloop.run();
 	}
 }

@@ -29,13 +29,13 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 	private Map<String, Map<Long, SignedData<GlobalFsCheckpoint>>> storage = new HashMap<>();
 
 	@Override
-	public Promise<long[]> getCheckpoints(String filename) {
+	public Promise<long[]> loadIndex(String filename) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
 		return Promise.of(checkpoints != null ? checkpoints.keySet().stream().mapToLong(Long::longValue).sorted().toArray() : new long[0]);
 	}
 
 	@Override
-	public Promise<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position) {
+	public Promise<SignedData<GlobalFsCheckpoint>> load(String filename, long position) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
 		return checkpoints != null ?
 				Promise.of(checkpoints.get(position)) :
@@ -43,7 +43,7 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 	}
 
 	@Override
-	public Promise<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
+	public Promise<Void> store(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> fileCheckpoints = storage.computeIfAbsent(filename, $ -> new HashMap<>());
 		long pos = checkpoint.getValue().getPosition();
 		SignedData<GlobalFsCheckpoint> existing = fileCheckpoints.get(pos);

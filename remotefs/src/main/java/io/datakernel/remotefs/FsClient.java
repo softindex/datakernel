@@ -25,10 +25,14 @@ import io.datakernel.exception.StacklessException;
 import java.io.File;
 import java.util.*;
 
+import static io.datakernel.file.FileUtils.escapeGlob;
+
 /**
  * This interface represents a simple filesystem client with upload, download, move, delete and list operations.
  */
 public interface FsClient {
+	StacklessException FILE_NOT_FOUND = new StacklessException(FsClient.class, "File not found");
+
 	/**
 	 * Returns a consumer of bytebufs which are written (or sent) to the file.
 	 * <p>
@@ -266,7 +270,7 @@ public interface FsClient {
 	/**
 	 * Shrtcut to get Promise of {@link FileMetadata} of a single file.
 	 *
-	 * @param filename fileName of a file to fetch its metadata.
+	 * @param filename name of a file to fetch its metadata.
 	 * @return promise of file description or <code>null</code>
 	 */
 	default Promise<FileMetadata> getMetadata(String filename) {
@@ -278,9 +282,20 @@ public interface FsClient {
 	 * Deletes files that are matched by glob. Be sure to escape metachars if your filenames contain them
 	 *
 	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
-	 * @return promise for list of deleted files
+	 * @return marker promise that completes when deletion completes
 	 */
 	Promise<Void> delete(String glob);
+
+	/**
+	 * Shortcut for {@link #delete(String)} for a single file.
+	 * Given filename is glob-escaped, so only one or zero files could be deleted regardless of given string.
+	 *
+	 * @param filename name of the file to be deleted
+	 * @return marker promise that completes when deletion completes
+	 */
+	default Promise<Void> deleteSingle(String filename) {
+		return delete(escapeGlob(filename));
+	}
 
 	/**
 	 * Creates a wrapper which will redirect all calls to it to a specific subfolder as if it was the root.

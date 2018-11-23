@@ -17,14 +17,17 @@
 package io.global.fs.api;
 
 import io.datakernel.async.Promise;
+import io.datakernel.exception.StacklessException;
 import io.global.common.SignedData;
 
 import java.util.List;
 
 public interface MetadataStorage {
+	StacklessException NO_METADATA = new StacklessException(MetadataStorage.class, "No metadata found");
+
 	Promise<Void> store(SignedData<GlobalFsMetadata> signedMetadata);
 
-	Promise<SignedData<GlobalFsMetadata>> load(String fileName);
+	Promise<SignedData<GlobalFsMetadata>> load(String filename);
 
-	Promise<List<SignedData<GlobalFsMetadata>>> list(String glob);
+	Promise<List<SignedData<GlobalFsMetadata>>> loadAll(String glob);
 }

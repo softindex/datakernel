@@ -35,23 +35,22 @@ import java.util.Arrays;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
-import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
-import static io.global.ot.util.BinaryDataFormats2.readBuf;
+import static io.global.fs.util.BinaryDataFormats.REGISTRY;
+import static io.global.fs.util.BinaryDataFormats.readBuf;
 
 public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsCheckpointStorage.class);
-	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
+	private static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC =
+			REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 
-	private final FsClient fsClient;
+	private final FsClient storage;
 
-	// region creators
-	public RemoteFsCheckpointStorage(FsClient fsClient) {
-		this.fsClient = fsClient;
+	public RemoteFsCheckpointStorage(FsClient storage) {
+		this.storage = storage;
 	}
-	// endregion
 
 	private Promise<ByteBuf> download(String filename) {
-		return fsClient.download(filename)
+		return storage.download(filename)
 				.thenCompose(supplier -> supplier
 						.withEndOfStream(eos -> eos
 								.thenComposeEx(($, e) -> {
@@ -65,30 +64,23 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	}
 
 	@Override
-	public Promise<long[]> getCheckpoints(String filename) {
-		return download(filename)
-				.thenCompose(buf -> {
-					long[] array = new long[32];
-					int size = 0;
-					while (buf.canRead()) {
-						try {
-							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
-							if (array.length == size) {
-								array = Arrays.copyOf(array, size * 2);
-							}
-							array[size++] = checkpoint.getValue().getPosition();
-						} catch (ParseException e) {
-							buf.recycle();
-							return Promise.ofException(e);
-						}
+	public Promise<Void> store(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
+		long pos = checkpoint.getValue().getPosition();
+		return load(filename, pos)
+				.thenComposeEx((existing, e) -> {
+					if (e == null) {
+						return checkpoint.equals(existing) ?
+								Promise.complete() :
+								Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Trying to override existing checkpoint at " + pos));
 					}
-					buf.recycle();
-					return Promise.of(Arrays.stream(array).limit(size).sorted().toArray());
+					return storage.getMetadata(filename)
+							.thenCompose(m -> storage.upload(filename, m != null ? m.getSize() : 0))
+							.thenCompose(ChannelSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, checkpoint))::streamTo);
 				});
 	}
 
 	@Override
-	public Promise<SignedData<GlobalFsCheckpoint>> loadCheckpoint(String filename, long position) {
+	public Promise<SignedData<GlobalFsCheckpoint>> load(String filename, long position) {
 		return download(filename)
 				.thenCompose(buf -> {
 					if (buf == null) {
@@ -112,20 +104,26 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	}
 
 	@Override
-	public Promise<Void> saveCheckpoint(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
-		long pos = checkpoint.getValue().getPosition();
-		return loadCheckpoint(filename, pos)
-				.thenComposeEx((existing, e) -> {
-					if (e == null) {
-						return checkpoint.equals(existing) ?
-								Promise.complete() :
-								Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Trying to override existing checkpoint at " + pos));
+	public Promise<long[]> loadIndex(String filename) {
+		return download(filename)
+				.thenCompose(buf -> {
+					long[] array = new long[32];
+					int size = 0;
+					while (buf.canRead()) {
+						try {
+							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
+							if (array.length == size) {
+								array = Arrays.copyOf(array, size * 2);
+							}
+							array[size++] = checkpoint.getValue().getPosition();
+						} catch (ParseException e) {
+							buf.recycle();
+							return Promise.ofException(e);
+						}
 					}
-					return fsClient.getMetadata(filename)
-							.thenCompose(m -> fsClient.upload(filename, m != null ? m.getSize() : 0))
-							.thenCompose(ChannelSupplier.of(encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, checkpoint))::streamTo);
+					buf.recycle();
+					return Promise.of(Arrays.stream(array).limit(size).sorted().toArray());
 				});
 	}
-
 }
 

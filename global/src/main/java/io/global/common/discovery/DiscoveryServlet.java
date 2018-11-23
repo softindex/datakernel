@@ -34,7 +34,7 @@ import java.util.List;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public final class DiscoveryServlet implements AsyncServlet {
 	public static final String ANNOUNCE_ALL = "announceAll";

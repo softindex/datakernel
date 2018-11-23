@@ -16,35 +16,46 @@
 
 package io.global.fs;
 
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
+import io.datakernel.remotefs.FsClient;
+import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.DiscoveryServlet;
 import io.global.common.discovery.HttpDiscoveryService;
-import io.global.fs.local.RuntimeDiscoveryService;
+import io.global.common.discovery.LocalDiscoveryService;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
 
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.common.BinaryDataFormats.REGISTRY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(DatakernelRunner.class)
 public final class DiscoveryHttpTest {
 
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
 	@Test
 	public void test() throws IOException {
-		DiscoveryServlet servlet = new DiscoveryServlet(new RuntimeDiscoveryService());
+		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), Executors.newSingleThreadExecutor(), temporaryFolder.newFolder().toPath());
+		DiscoveryServlet servlet = new DiscoveryServlet(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage));
+
 		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), request -> {
 			try {
 				return servlet.serve(request);

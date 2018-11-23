@@ -31,12 +31,12 @@ import io.datakernel.stream.processor.LoggingRule;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import io.global.common.discovery.LocalDiscoveryService;
 import io.global.fs.api.*;
 import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.LocalGlobalFsNode;
-import io.global.fs.local.RuntimeDiscoveryService;
 import io.global.fs.transformers.FrameSigner;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
@@ -55,9 +55,9 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.common.api.DiscoveryService.NO_SHARED_KEY;
+import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.fs.api.CheckpointPosStrategy.fixed;
-import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
@@ -70,7 +70,7 @@ public final class GlobalFsTest {
 
 	private ExecutorService executor = Executors.newSingleThreadExecutor();
 
-	private DiscoveryService discoveryService = new RuntimeDiscoveryService();
+	private DiscoveryService discoveryService;
 
 	private KeyPair alice = KeyPair.generate();
 	private KeyPair bob = KeyPair.generate();
@@ -90,9 +90,10 @@ public final class GlobalFsTest {
 	public void setUp() throws IOException, InterruptedException {
 		Runtime.getRuntime().exec("rm -r /tmp/TESTS2").waitFor();
 
-		NodeClientFactory clientFactory = new NodeClientFactory() {
-			FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, Paths.get("/tmp/TESTS2/")); //temporaryFolder.newFolder().toPath());
+		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, Paths.get("/tmp/TESTS2/")); //temporaryFolder.newFolder().toPath());
+		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
+		NodeClientFactory clientFactory = new NodeClientFactory() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
 				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverId.getInetSocketAddress().getPort()))

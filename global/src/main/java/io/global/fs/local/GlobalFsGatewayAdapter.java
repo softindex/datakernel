@@ -44,7 +44,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.file.FileUtils.isWildcard;
-import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsGatewayAdapter implements FsClient, Initializable<GlobalFsGatewayAdapter> {

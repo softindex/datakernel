@@ -26,7 +26,7 @@ import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
-import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 
 /**
  * Converts a stream of data into a stream of frames.

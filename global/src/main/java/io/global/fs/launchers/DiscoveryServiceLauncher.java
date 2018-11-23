@@ -27,19 +27,23 @@ import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.remotefs.FsClient;
+import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.DiscoveryServlet;
-import io.global.fs.local.RuntimeDiscoveryService;
+import io.global.common.discovery.LocalDiscoveryService;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.ExecutorService;
 
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.ConfigConverters.ofPath;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -63,6 +67,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(9001)))
+								.with("discovery.storage", "/tmp/TEST/discovery")
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
@@ -77,8 +82,14 @@ public class DiscoveryServiceLauncher extends Launcher {
 
 					@Provides
 					@Singleton
-					DiscoveryService provide() {
-						return new RuntimeDiscoveryService();
+					FsClient provice(Eventloop eventloop, ExecutorService executor, Config config) {
+						return LocalFsClient.create(eventloop, executor, config.get(ofPath(), "discovery.storage"));
+					}
+
+					@Provides
+					@Singleton
+					DiscoveryService provide(Eventloop eventloop, FsClient storage) {
+						return LocalDiscoveryService.create(eventloop, storage);
 					}
 
 					@Provides

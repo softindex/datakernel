@@ -17,7 +17,6 @@
 package io.global.common;
 
 import io.datakernel.exception.ParseException;
-import io.global.ot.util.BinaryDataFormats2;
 import org.spongycastle.crypto.CryptoException;
 import org.spongycastle.crypto.params.ECPrivateKeyParameters;
 
@@ -39,7 +38,7 @@ public final class PrivKey {
 		try {
 			return PrivKey.of(d);
 		} catch (IllegalArgumentException | ArithmeticException e) {
-			throw new ParseException(BinaryDataFormats2.class, "Failed to read private key", e);
+			throw new ParseException(BinaryDataFormats.class, "Failed to read private key", e);
 		}
 	}
 

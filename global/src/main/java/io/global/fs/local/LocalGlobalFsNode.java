@@ -44,6 +44,7 @@ import java.util.stream.Stream;
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.CollectorsEx.toFirst;
 import static io.datakernel.util.LogUtils.toLogger;
+import static io.global.fs.api.MetadataStorage.NO_METADATA;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
@@ -113,12 +114,13 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	@Override
 	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
 		Namespace fs = ensureNamespace(space);
-		return fs.getMetadata(filename)
-				.thenCompose(signedMetadata -> {
-					// TODO anton: analyze how check-then-act here can or can't break stuff
-					if (signedMetadata != null) {
+		return fs.load(filename, offset, limit)
+				.thenComposeEx((supplier, e) -> {
+					if (e == null) {
 						logger.trace("Found own local file at " + filename + " at " + id);
-						return fs.load(filename, offset, limit);
+						return Promise.of(supplier);
+					} else if (e != FsClient.FILE_NOT_FOUND) {
+						return Promise.ofException(e);
 					}
 					logger.trace("Did not found own file at " + filename + " at " + id + ", searching...");
 					return fs.ensureMasterNodes()
@@ -139,8 +141,8 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 														}
 														logger.trace("Trying to download and cache file at " + filename + " from " + node + "...");
 														return node.download(space, filename, offset, limit)
-																.thenApply(supplier -> {
-																	ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(supplier);
+																.thenApply(supplier2 -> {
+																	ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(supplier2);
 
 																	splitter.addOutput().set(ChannelConsumer.ofPromise(fs.save(filename, offset)));
 
@@ -343,11 +345,15 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 										GlobalFsMetadata metadata = signedMetadata.getValue();
 										String filename = metadata.getFilename();
 										return getMetadata(filename)
-												.thenCompose(signedLocalMetadata -> {
+												.thenComposeEx((signedLocalMetadata, e) -> {
 													GlobalFsMetadata localMetadata = null;
 
-													// skip conditions
-													if (signedLocalMetadata != null) {
+													if (e != null) {
+														if (e != NO_METADATA) {
+															return Promise.ofException(e);
+														}
+														logger.trace("found a new file {}", metadata);
+													}else {
 														localMetadata = signedLocalMetadata.getValue();
 														if (!signedLocalMetadata.verify(space)) {
 															logger.warn("received metadata with unverified signature, skipping {}", localMetadata);
@@ -364,8 +370,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 															return Promise.of(false);
 														}
 														logger.trace("found better file {}", metadata);
-													} else {
-														logger.trace("found a new file {}", metadata);
 													}
 
 													if (metadata.isRemoved()) {
@@ -463,7 +467,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 		public Promise<ChannelSupplier<DataFrame>> load(String fileName, long offset, long length) {
 			logger.trace("downloading local copy of {} at {}, offset: {}, length: {}", fileName, space, offset, length);
-			return checkpointStorage.getCheckpoints(fileName)
+			return checkpointStorage.loadIndex(fileName)
 					.thenCompose(checkpoints -> {
 						assert Arrays.equals(checkpoints, Arrays.stream(checkpoints).sorted().toArray()) : "Checkpoint array must be sorted!";
 
@@ -476,7 +480,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		}
 
 		public Promise<List<SignedData<GlobalFsMetadata>>> list(String glob) {
-			return metadataStorage.list(glob);
+			return metadataStorage.loadAll(glob);
 		}
 
 		public Promise<SignedData<GlobalFsMetadata>> getMetadata(String fileName) {

@@ -142,5 +142,4 @@ public final class CodecRegistry implements CodecFactory {
 
 		return (StructuredCodec<T>) fn.apply(this, subCodecs);
 	}
-
 }

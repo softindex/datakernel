@@ -29,7 +29,7 @@ import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
-import static io.global.ot.util.BinaryDataFormats2.REGISTRY;
+import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 
 /**
  * Decodes a stream of byte bufs back into a stream of frames.

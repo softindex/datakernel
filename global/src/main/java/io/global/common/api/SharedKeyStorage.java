@@ -14,22 +14,23 @@
  * limitations under the License.
  */
 
-package io.global.fs.api;
+package io.global.common.api;
 
 import io.datakernel.async.Promise;
+import io.datakernel.exception.StacklessException;
+import io.global.common.Hash;
+import io.global.common.PubKey;
+import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 
-import java.util.Arrays;
+import java.util.List;
 
-public interface CheckpointStorage {
-	Promise<Void> store(String filename, SignedData<GlobalFsCheckpoint> checkpoint);
+public interface SharedKeyStorage {
+	StacklessException NO_SHARED_KEY = new StacklessException(DiscoveryService.class, "No shared key found");
 
-	Promise<SignedData<GlobalFsCheckpoint>> load(String filename, long position);
+	Promise<Void> store(PubKey receiver, SignedData<SharedSimKey> signedSharedSimKey);
 
-	Promise<long[]> loadIndex(String filename);
+	Promise<SignedData<SharedSimKey>> load(PubKey receiver, Hash hash);
 
-	default Promise<Long> getLastCheckpoint(String filename) {
-		return loadIndex(filename)
-				.thenApply(positions -> Arrays.stream(positions).max().orElse(0L));
-	}
+	Promise<List<SignedData<SharedSimKey>>> loadAll(PubKey receiver);
 }
