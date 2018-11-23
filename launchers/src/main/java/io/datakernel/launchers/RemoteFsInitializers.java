@@ -32,7 +32,7 @@ import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.launchers.Initializers.ofAbstractServer;
 import static io.datakernel.util.Preconditions.checkState;
 
-public class RemoteFsInitializers {
+public final class RemoteFsInitializers {
 	private RemoteFsInitializers() {
 	}
 

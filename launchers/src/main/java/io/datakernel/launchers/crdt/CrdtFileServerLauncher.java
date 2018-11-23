@@ -24,6 +24,7 @@ import io.datakernel.crdt.local.FsCrdtClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.launchers.CrdtInitializers;
 import io.datakernel.launchers.Initializers;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.service.ServiceGraphModule;
@@ -112,7 +113,7 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 		@Singleton
 		FsCrdtClient<K, S> provideFsCrdtClient(Eventloop eventloop, LocalFsClient localFsClient, CrdtDescriptor<K, S> descriptor, Config config) {
 			return FsCrdtClient.create(eventloop, localFsClient, descriptor.getCombiner(), descriptor.getSerializer())
-					.initialize(Initializers.ofFsCrdtClient(config.getChild("crdt.files")));
+					.initialize(CrdtInitializers.ofFsCrdtClient(config.getChild("crdt.files")));
 		}
 	}
 }

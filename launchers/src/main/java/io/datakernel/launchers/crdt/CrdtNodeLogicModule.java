@@ -35,7 +35,10 @@ import java.lang.annotation.Target;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
-import static io.datakernel.launchers.Initializers.*;
+import static io.datakernel.launchers.CrdtInitializers.ofCrdtCluster;
+import static io.datakernel.launchers.CrdtInitializers.ofFsCrdtClient;
+import static io.datakernel.launchers.Initializers.ofAbstractServer;
+import static io.datakernel.launchers.Initializers.ofEventloop;
 import static java.util.Collections.singletonMap;
 
 public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends AbstractModule {

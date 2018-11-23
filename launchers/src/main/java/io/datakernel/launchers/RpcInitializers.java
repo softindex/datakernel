@@ -27,7 +27,7 @@ import static io.datakernel.launchers.Initializers.ofAbstractServer;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_INITIAL_BUFFER_SIZE;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_MAX_MESSAGE_SIZE;
 
-public class RpcInitializers {
+public final class RpcInitializers {
 	private RpcInitializers() {
 	}
 
