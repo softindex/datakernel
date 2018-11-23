@@ -42,8 +42,6 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.csp.binary.ByteBufSerializers.ofJson;
-
 /**
  * Server for processing JSON commands.
  */
@@ -76,7 +74,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		this.environment = DatagraphEnvironment.extend(environment)
 				.with(DatagraphServer.class, this);
 		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
-		this.serializer = ofJson(serialization.commandAdapter, serialization.responseAdapter);
+		this.serializer = ByteBufSerializer.ofJsonCodec(serialization.getCommandCodec(), serialization.getResponseCodec());
 	}
 	// endregion
 

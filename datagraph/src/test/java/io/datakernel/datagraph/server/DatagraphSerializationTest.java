@@ -19,12 +19,12 @@ package io.datakernel.datagraph.server;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.*;
 import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
+import io.datakernel.exception.ParseException;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.processor.StreamMap.MapperFilter;
 import io.datakernel.stream.processor.StreamReducers.Reducer;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -33,52 +33,69 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
+import static io.datakernel.codec.StructuredCodec.ofObject;
+import static io.datakernel.codec.json.JsonUtils.fromJson;
+import static io.datakernel.codec.json.JsonUtils.toJson;
+
 public class DatagraphSerializationTest {
 
+	public static class TestComparator implements Comparator<Integer> {
+		@Override
+		public int compare(Integer o1, Integer o2) {
+			return o1.compareTo(o2);
+		}
+	}
+
+	private static class TestReducer implements Reducer<Integer, Integer, Integer, Integer> {
+		@Override
+		public Integer onFirstItem(StreamDataAcceptor<Integer> stream, Integer key, Integer firstValue) {
+			return null;
+		}
+
+		@Override
+		public Integer onNextItem(StreamDataAcceptor<Integer> stream, Integer key, Integer nextValue, Integer accumulator) {
+			return null;
+		}
+
+		@Override
+		public void onComplete(StreamDataAcceptor<Integer> stream, Integer key, Integer accumulator) {}
+	}
+
+	private static class TestFilter extends MapperFilter<String> {
+		@Override
+		protected boolean apply(String input) {
+			return false;
+		}
+	}
+
+	private static class TestIdentityFunction<T> implements Function<T, T> {
+		@Override
+		public T apply(T value) {
+			return value;
+		}
+	}
+
 	@Test
-	public void test2() throws UnknownHostException {
-		DatagraphSerialization serialization = DatagraphSerialization.create();
+	public void test2() throws UnknownHostException, ParseException {
+		DatagraphSerialization serialization = DatagraphSerialization.create()
+				.withCodec(TestComparator.class, ofObject(TestComparator::new))
+				.withCodec(TestReducer.class, ofObject(TestReducer::new))
+				.withCodec(TestFilter.class, ofObject(TestFilter::new))
+				.withCodec(TestIdentityFunction.class, ofObject(TestIdentityFunction::new));
 
-		NodeReduce<Integer, Integer, Integer> reducer = new NodeReduce<>(new Comparator<Integer>() {
-			@Override
-			public int compare(Integer o1, Integer o2) {
-				return o1.compareTo(o2);
-			}
-		});
-		reducer.addInput(new StreamId(), Function.identity(), new Reducer<Integer, Integer, Integer, Integer>() {
-			@Override
-			public Integer onFirstItem(StreamDataAcceptor<Integer> stream, Integer key, Integer firstValue) {
-				return null;
-			}
-
-			@Override
-			public Integer onNextItem(StreamDataAcceptor<Integer> stream, Integer key, Integer nextValue, Integer accumulator) {
-				return null;
-			}
-
-			@Override
-			public void onComplete(StreamDataAcceptor<Integer> stream, Integer key, Integer accumulator) {}
-		});
+		NodeReduce<Integer, Integer, Integer> reducer = new NodeReduce<>(new TestComparator());
+		reducer.addInput(new StreamId(), new TestIdentityFunction<>(), new TestReducer());
 		List<Node> nodes = Arrays.asList(
 				reducer,
-				new NodeMap<>(new MapperFilter<String>() {
-					@Override
-					protected boolean apply(String input) {
-						return false;
-					}
-				}, new StreamId(1)),
+				new NodeMap<>(new TestFilter(), new StreamId(1)),
 				new NodeUpload<>(Integer.class, new StreamId(Long.MAX_VALUE)),
 				new NodeDownload<>(Integer.class, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571), new StreamId(Long.MAX_VALUE))
 		);
 
-		String str = serialization.commandAdapter.toJson(new DatagraphCommandExecute(nodes));
+		String str = toJson(serialization.getCommandCodec(), new DatagraphCommandExecute(nodes));
 		System.out.println(str);
 
-		try {
-			System.out.println(serialization.commandAdapter.fromJson(str));
-		} catch (IOException e) {
-			throw new AssertionError(e);
-		}
+		System.out.println(fromJson(serialization.getCommandCodec(), str));
 	}
 
 }

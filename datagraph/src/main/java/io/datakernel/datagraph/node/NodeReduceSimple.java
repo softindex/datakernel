@@ -38,21 +38,23 @@ import static java.util.Collections.singletonList;
  * @param <A> accumulator type
  */
 public final class NodeReduceSimple<K, I, O, A> implements Node {
-	private Function<I, K> keyFunction;
-	private Comparator<K> keyComparator;
-	private Reducer<K, I, O, A> reducer;
-	private List<StreamId> inputs;
-	private StreamId output;
-
-	public NodeReduceSimple() {
-	}
+	private final Function<I, K> keyFunction;
+	private final Comparator<K> keyComparator;
+	private final Reducer<K, I, O, A> reducer;
+	private final List<StreamId> inputs;
+	private final StreamId output;
 
 	public NodeReduceSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, Reducer<K, I, O, A> reducer) {
+		this(keyFunction, keyComparator, reducer, new ArrayList<>(), new StreamId());
+	}
+
+	public NodeReduceSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, Reducer<K, I, O, A> reducer,
+			List<StreamId> inputs, StreamId output) {
 		this.keyFunction = keyFunction;
 		this.keyComparator = keyComparator;
 		this.reducer = reducer;
-		this.inputs = new ArrayList<>();
-		this.output = new StreamId();
+		this.inputs = inputs;
+		this.output = output;
 	}
 
 	public void addInput(StreamId input) {
@@ -78,40 +80,20 @@ public final class NodeReduceSimple<K, I, O, A> implements Node {
 		return keyFunction;
 	}
 
-	public void setKeyFunction(Function<I, K> keyFunction) {
-		this.keyFunction = keyFunction;
-	}
-
 	public Comparator<K> getKeyComparator() {
 		return keyComparator;
-	}
-
-	public void setKeyComparator(Comparator<K> keyComparator) {
-		this.keyComparator = keyComparator;
 	}
 
 	public Reducer<K, I, O, A> getReducer() {
 		return reducer;
 	}
 
-	public void setReducer(Reducer<K, I, O, A> reducer) {
-		this.reducer = reducer;
-	}
-
 	public List<StreamId> getInputs() {
 		return inputs;
 	}
 
-	public void setInputs(List<StreamId> inputs) {
-		this.inputs = inputs;
-	}
-
 	public StreamId getOutput() {
 		return output;
-	}
-
-	public void setOutput(StreamId output) {
-		this.output = output;
 	}
 }
 

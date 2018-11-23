@@ -32,17 +32,18 @@ import static java.util.Collections.singletonList;
  * @param <O> output items data type
  */
 public final class NodeMap<I, O> implements Node {
-	private Mapper<I, O> mapper;
-	private StreamId input;
-	private StreamId output;
-
-	public NodeMap() {
-	}
+	private final Mapper<I, O> mapper;
+	private final StreamId input;
+	private final StreamId output;
 
 	public NodeMap(Mapper<I, O> mapper, StreamId input) {
+		this(mapper, input, new StreamId());
+	}
+
+	public NodeMap(Mapper<I, O> mapper, StreamId input, StreamId output) {
 		this.mapper = mapper;
 		this.input = input;
-		this.output = new StreamId();
+		this.output = output;
 	}
 
 	@Override
@@ -61,24 +62,12 @@ public final class NodeMap<I, O> implements Node {
 		return mapper;
 	}
 
-	public void setMapper(Mapper<I, O> mapper) {
-		this.mapper = mapper;
-	}
-
 	public StreamId getInput() {
 		return input;
 	}
 
-	public void setInput(StreamId input) {
-		this.input = input;
-	}
-
 	public StreamId getOutput() {
 		return output;
-	}
-
-	public void setOutput(StreamId output) {
-		this.output = output;
 	}
 
 	@Override

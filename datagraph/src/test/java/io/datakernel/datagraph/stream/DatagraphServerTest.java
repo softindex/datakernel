@@ -24,7 +24,6 @@ import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.helper.StreamMergeSorterStorageStub;
 import io.datakernel.datagraph.server.*;
-import io.datakernel.datagraph.stream.DatagraphServerTest.TestItem.KeyFunction;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -41,6 +40,7 @@ import java.util.Comparator;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
@@ -50,48 +50,13 @@ import static org.junit.Assert.assertEquals;
 @RunWith(DatakernelRunner.class)
 public final class DatagraphServerTest {
 
-	public static final class TestItem {
-		@Serialize(order = 0)
-		public final long value;
-
-		public TestItem(@Deserialize("value") long value) {
-			this.value = value;
-		}
-
-		@Override
-		public String toString() {
-			return "TestItem{value=" + value + '}';
-		}
-
-		public static class KeyFunction implements Function<TestItem, Long> {
-			@Override
-			public Long apply(TestItem item) {
-				return item.value;
-			}
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-
-			TestItem testItem = (TestItem) o;
-
-			return value == testItem.value;
-
-		}
-
-		@Override
-		public int hashCode() {
-			return (int) (value ^ (value >>> 32));
-		}
-	}
-
 	private static int testPort = 1511;
 
 	@Test
 	public void testForward() throws Exception {
-		DatagraphSerialization serialization = DatagraphSerialization.create();
+		DatagraphSerialization serialization = DatagraphSerialization.create()
+				.withCodec(TestComparator.class, ofObject(TestComparator::new))
+				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new));
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
@@ -146,7 +111,9 @@ public final class DatagraphServerTest {
 
 	@Test
 	public void testRepartitionAndSort() throws Exception {
-		DatagraphSerialization serialization = DatagraphSerialization.create();
+		DatagraphSerialization serialization = DatagraphSerialization.create()
+				.withCodec(TestComparator.class, ofObject(TestComparator::new))
+				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new));
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
@@ -183,12 +150,7 @@ public final class DatagraphServerTest {
 				asList(partition1, partition2));
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
-				TestItem.class, Long.class, new KeyFunction(), new Comparator<Long>() {
-					@Override
-					public int compare(Long o1, Long o2) {
-						return o1.compareTo(o2);
-					}
-				}));
+				TestItem.class, Long.class, new TestKeyFunction(), new TestComparator()));
 
 		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
 		consumerNode.compileInto(graph);
@@ -211,7 +173,10 @@ public final class DatagraphServerTest {
 
 	@Test
 	public void testFilter() throws Exception {
-		DatagraphSerialization serialization = DatagraphSerialization.create();
+		DatagraphSerialization serialization = DatagraphSerialization.create()
+				.withCodec(TestComparator.class, ofObject(TestComparator::new))
+				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
+				.withCodec(TestPredicate.class, ofObject(TestPredicate::new));
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
@@ -249,21 +214,9 @@ public final class DatagraphServerTest {
 		Partition partition2 = new Partition(client, address2);
 		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
 
-		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class),
-				new Predicate<TestItem>() {
-					@Override
-					public boolean test(TestItem input) {
-						return input.value % 2 == 0;
-					}
-				});
+		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
 
-		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new KeyFunction(), new Comparator<Long>() {
-					@Override
-					public int compare(Long o1, Long o2) {
-						return o1.compareTo(o2);
-					}
-				});
+		LocallySortedDataset<Long, TestItem> sortedDataset = localSort(filterDataset, long.class, new TestKeyFunction(), new TestComparator());
 
 		DatasetListConsumer<?> consumerNode = listConsumer(sortedDataset, "result");
 
@@ -288,7 +241,10 @@ public final class DatagraphServerTest {
 
 	@Test
 	public void testCollector() throws Exception {
-		DatagraphSerialization serialization = DatagraphSerialization.create();
+		DatagraphSerialization serialization = DatagraphSerialization.create()
+				.withCodec(TestComparator.class, ofObject(TestComparator::new))
+				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
+				.withCodec(TestPredicate.class, ofObject(TestPredicate::new));
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
@@ -324,21 +280,10 @@ public final class DatagraphServerTest {
 		Partition partition2 = new Partition(client, address2);
 		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
 
-		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class),
-				new Predicate<TestItem>() {
-					@Override
-					public boolean test(TestItem input) {
-						return input.value % 2 == 0;
-					}
-				});
+		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
 
 		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new KeyFunction(), new Comparator<Long>() {
-					@Override
-					public int compare(Long o1, Long o2) {
-						return o1.compareTo(o2);
-					}
-				});
+				localSort(filterDataset, long.class, new TestKeyFunction(), new TestComparator());
 
 		server1.listen();
 		server2.listen();
@@ -359,5 +304,53 @@ public final class DatagraphServerTest {
 						assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(8), new TestItem(10)), list)));
 
 		graph.execute();
+	}
+
+	public static final class TestItem {
+		@Serialize(order = 0)
+		public final long value;
+
+		public TestItem(@Deserialize("value") long value) {
+			this.value = value;
+		}
+
+		@Override
+		public String toString() {
+			return "TestItem{value=" + value + '}';
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			TestItem other = (TestItem) o;
+			return value == other.value;
+		}
+
+		@Override
+		public int hashCode() {
+			return (int) (value ^ (value >>> 32));
+		}
+	}
+
+	private static class TestComparator implements Comparator<Long> {
+		@Override
+		public int compare(Long o1, Long o2) {
+			return o1.compareTo(o2);
+		}
+	}
+
+	public static class TestKeyFunction implements Function<TestItem, Long> {
+		@Override
+		public Long apply(TestItem item) {
+			return item.value;
+		}
+	}
+
+	private static class TestPredicate implements Predicate<TestItem> {
+		@Override
+		public boolean test(TestItem input) {
+			return input.value % 2 == 0;
+		}
 	}
 }

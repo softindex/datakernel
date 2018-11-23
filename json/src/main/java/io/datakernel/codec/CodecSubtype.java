@@ -53,6 +53,9 @@ public final class CodecSubtype<T> implements Initializable<CodecSubtype<T>>, St
 	public void encode(StructuredOutput out, T value) {
 		out.writeObject(() -> {
 			String field = subtypesToNames.get(value.getClass());
+			if (field == null) {
+				throw new IllegalArgumentException("Unregistered data type: " + value.getClass().getName());
+			}
 			StructuredCodec<T> codec = (StructuredCodec<T>) namesToAdapters.get(field);
 			out.writeKey(field);
 			codec.encode(out, value);

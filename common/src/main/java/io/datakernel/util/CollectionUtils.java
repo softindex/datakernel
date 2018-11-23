@@ -369,4 +369,5 @@ public class CollectionUtils {
 		}
 		throw new IllegalArgumentException("Empty iterable");
 	}
+
 }

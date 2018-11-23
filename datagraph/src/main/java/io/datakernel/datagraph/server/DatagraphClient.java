@@ -34,8 +34,6 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import static io.datakernel.csp.binary.ByteBufSerializers.ofJson;
-
 /**
  * Client for datagraph server.
  * Sends JSON commands for performing certain actions on server.
@@ -54,7 +52,7 @@ public final class DatagraphClient {
 	 */
 	public DatagraphClient(DatagraphSerialization serialization) {
 		this.serialization = serialization;
-		this.serializer = ofJson(serialization.responseAdapter, serialization.commandAdapter);
+		this.serializer = ByteBufSerializer.ofJsonCodec(serialization.getResponseCodec(), serialization.getCommandCodec());
 	}
 
 	public <T> Promise<StreamSupplier<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {

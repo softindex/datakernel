@@ -21,10 +21,7 @@ import io.datakernel.datagraph.node.Node;
 import java.util.List;
 
 public final class DatagraphCommandExecute extends DatagraphCommand {
-	private List<Node> nodes;
-
-	public DatagraphCommandExecute() {
-	}
+	private final List<Node> nodes;
 
 	public DatagraphCommandExecute(List<Node> nodes) {
 		this.nodes = nodes;
@@ -32,10 +29,6 @@ public final class DatagraphCommandExecute extends DatagraphCommand {
 
 	public List<Node> getNodes() {
 		return nodes;
-	}
-
-	public void setNodes(List<Node> nodes) {
-		this.nodes = nodes;
 	}
 
 	@Override

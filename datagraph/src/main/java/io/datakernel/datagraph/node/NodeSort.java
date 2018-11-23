@@ -34,24 +34,25 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeSort<K, T> implements Node {
-	private Function<T, K> keyFunction;
-	private Comparator<K> keyComparator;
-	private boolean deduplicate;
-	private int itemsInMemorySize;
+	private final Function<T, K> keyFunction;
+	private final Comparator<K> keyComparator;
+	private final boolean deduplicate;
+	private final int itemsInMemorySize;
 
-	private StreamId input;
-	private StreamId output;
-
-	public NodeSort() {
-	}
+	private final StreamId input;
+	private final StreamId output;
 
 	public NodeSort(Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate, int itemsInMemorySize, StreamId input) {
+		this(keyFunction, keyComparator, deduplicate, itemsInMemorySize, input, new StreamId());
+	}
+
+	public NodeSort(Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate, int itemsInMemorySize, StreamId input, StreamId output) {
 		this.keyFunction = keyFunction;
 		this.keyComparator = keyComparator;
 		this.deduplicate = deduplicate;
 		this.itemsInMemorySize = itemsInMemorySize;
 		this.input = input;
-		this.output = new StreamId();
+		this.output = output;
 	}
 
 	@Override
@@ -73,47 +74,23 @@ public final class NodeSort<K, T> implements Node {
 		return keyFunction;
 	}
 
-	public void setKeyFunction(Function<T, K> keyFunction) {
-		this.keyFunction = keyFunction;
-	}
-
 	public Comparator<K> getKeyComparator() {
 		return keyComparator;
-	}
-
-	public void setKeyComparator(Comparator<K> keyComparator) {
-		this.keyComparator = keyComparator;
 	}
 
 	public boolean isDeduplicate() {
 		return deduplicate;
 	}
 
-	public void setDeduplicate(boolean deduplicate) {
-		this.deduplicate = deduplicate;
-	}
-
 	public int getItemsInMemorySize() {
 		return itemsInMemorySize;
-	}
-
-	public void setItemsInMemorySize(int itemsInMemorySize) {
-		this.itemsInMemorySize = itemsInMemorySize;
 	}
 
 	public StreamId getInput() {
 		return input;
 	}
 
-	public void setInput(StreamId input) {
-		this.input = input;
-	}
-
 	public StreamId getOutput() {
 		return output;
-	}
-
-	public void setOutput(StreamId output) {
-		this.output = output;
 	}
 }

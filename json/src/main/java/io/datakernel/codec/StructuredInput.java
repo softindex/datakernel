@@ -45,6 +45,11 @@ public interface StructuredInput {
 		}
 	}
 
+	default <T> T readKey(String expectedName, StructuredDecoder<T> decoder) throws ParseException {
+		readKey(expectedName);
+		return decoder.decode(this);
+	}
+
 	<T> List<T> readList(StructuredDecoder<T> decoder) throws ParseException;
 
 	<K, V> Map<K, V> readMap(StructuredDecoder<K> keyDecoder, StructuredDecoder<V> valueDecoder) throws ParseException;

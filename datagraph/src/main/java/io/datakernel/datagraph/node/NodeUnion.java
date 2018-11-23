@@ -26,15 +26,16 @@ import java.util.List;
 import static java.util.Collections.singletonList;
 
 public final class NodeUnion<T> implements Node {
-	private List<StreamId> inputs;
-	private StreamId output;
-
-	public NodeUnion() {
-	}
+	private final List<StreamId> inputs;
+	private final StreamId output;
 
 	public NodeUnion(List<StreamId> inputs) {
+		this(inputs, new StreamId());
+	}
+
+	public NodeUnion(List<StreamId> inputs, StreamId output) {
 		this.inputs = inputs;
-		this.output = new StreamId();
+		this.output = output;
 	}
 
 	@Override
@@ -55,16 +56,8 @@ public final class NodeUnion<T> implements Node {
 		return inputs;
 	}
 
-	public void setInputs(List<StreamId> inputs) {
-		this.inputs = inputs;
-	}
-
 	public StreamId getOutput() {
 		return output;
-	}
-
-	public void setOutput(StreamId output) {
-		this.output = output;
 	}
 
 	@Override

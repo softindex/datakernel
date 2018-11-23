@@ -253,4 +253,5 @@ public class Utils {
 		StackTraceElement caller = Thread.currentThread().getStackTrace()[2];
 		System.out.printf("DEBUG.(%s:%d).%s| %s%n", caller.getFileName(), caller.getLineNumber(), caller.getMethodName(), message);
 	}
+
 }

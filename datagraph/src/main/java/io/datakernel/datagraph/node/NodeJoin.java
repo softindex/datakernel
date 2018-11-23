@@ -36,23 +36,26 @@ import static java.util.Collections.singletonList;
  * @param <V> output stream data type
  */
 public final class NodeJoin<K, L, R, V> implements Node {
-	private StreamId left;
-	private StreamId right;
-	private StreamId output;
-	private Comparator<K> keyComparator;
-	private Function<L, K> leftKeyFunction;
-	private Function<R, K> rightKeyFunction;
-	private Joiner<K, L, R, V> joiner;
-
-	public NodeJoin() {
-	}
+	private final StreamId left;
+	private final StreamId right;
+	private final StreamId output;
+	private final Comparator<K> keyComparator;
+	private final Function<L, K> leftKeyFunction;
+	private final Function<R, K> rightKeyFunction;
+	private final Joiner<K, L, R, V> joiner;
 
 	public NodeJoin(StreamId left, StreamId right,
-					Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
-					Joiner<K, L, R, V> joiner) {
+			Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
+			Joiner<K, L, R, V> joiner) {
+		this(left, right, new StreamId(), keyComparator, leftKeyFunction, rightKeyFunction, joiner);
+	}
+
+	public NodeJoin(StreamId left, StreamId right, StreamId output,
+			Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
+			Joiner<K, L, R, V> joiner) {
 		this.left = left;
 		this.right = right;
-		this.output = new StreamId();
+		this.output = output;
 		this.keyComparator = keyComparator;
 		this.leftKeyFunction = leftKeyFunction;
 		this.rightKeyFunction = rightKeyFunction;
@@ -77,55 +80,27 @@ public final class NodeJoin<K, L, R, V> implements Node {
 		return left;
 	}
 
-	public void setLeft(StreamId left) {
-		this.left = left;
-	}
-
 	public StreamId getRight() {
 		return right;
-	}
-
-	public void setRight(StreamId right) {
-		this.right = right;
 	}
 
 	public StreamId getOutput() {
 		return output;
 	}
 
-	public void setOutput(StreamId output) {
-		this.output = output;
-	}
-
 	public Comparator<K> getKeyComparator() {
 		return keyComparator;
-	}
-
-	public void setKeyComparator(Comparator<K> keyComparator) {
-		this.keyComparator = keyComparator;
 	}
 
 	public Function<L, K> getLeftKeyFunction() {
 		return leftKeyFunction;
 	}
 
-	public void setLeftKeyFunction(Function<L, K> leftKeyFunction) {
-		this.leftKeyFunction = leftKeyFunction;
-	}
-
 	public Function<R, K> getRightKeyFunction() {
 		return rightKeyFunction;
 	}
 
-	public void setRightKeyFunction(Function<R, K> rightKeyFunction) {
-		this.rightKeyFunction = rightKeyFunction;
-	}
-
 	public Joiner<K, L, R, V> getJoiner() {
 		return joiner;
-	}
-
-	public void setJoiner(Joiner<K, L, R, V> joiner) {
-		this.joiner = joiner;
 	}
 }

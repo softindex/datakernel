@@ -23,6 +23,7 @@ import io.datakernel.util.ParserFunction;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public interface StructuredCodec<T> extends StructuredEncoder<T>, StructuredDecoder<T> {
 
@@ -38,6 +39,18 @@ public interface StructuredCodec<T> extends StructuredEncoder<T>, StructuredDeco
 				return decoder.decode(in);
 			}
 		};
+	}
+
+	static <T> StructuredCodec<T> ofObject(StructuredDecoder<T> decoder, StructuredEncoder<T> encoder) {
+		return of(in -> in.readObject(decoder), (out, item) -> out.writeObject(encoder, item));
+	}
+
+	static <T> StructuredCodec<T> ofObject(Supplier<T> supplier) {
+		return ofObject(in -> supplier.get(), (out, item) -> {});
+	}
+
+	static <T> StructuredCodec<T> ofTuple(StructuredDecoder<T> decoder, StructuredEncoder<T> encoder) {
+		return of(in -> in.readTuple(decoder), (out, item) -> out.writeTuple(encoder, item));
 	}
 
 	default StructuredCodec<T> nullable() {

@@ -27,10 +27,7 @@ public final class Sharders {
 	 * Instance of this class shares objects by hashcode to shards
 	 */
 	public static final class HashSharder<K> implements Sharder<K> {
-		private int partitions;
-
-		public HashSharder() {
-		}
+		private final int partitions;
 
 		/**
 		 * Creates the sharder which contains specified number of parts
@@ -56,10 +53,6 @@ public final class Sharders {
 
 		public int getPartitions() {
 			return partitions;
-		}
-
-		public void setPartitions(int partitions) {
-			this.partitions = partitions;
 		}
 	}
 }

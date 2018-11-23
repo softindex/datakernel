@@ -53,5 +53,10 @@ public interface StructuredOutput {
 
 	void writeKey(String field);
 
+	default <T> void writeKey(String field, StructuredEncoder<? super T> encoder, T value) {
+		writeKey(field);
+		encoder.encode(this, value);
+	}
+
 	<T> void writeCustom(Type type, T value);
 }

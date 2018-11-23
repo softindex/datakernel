@@ -175,10 +175,7 @@ public final class StreamReducers {
 		 * @param <A> type of accumulator
 		 */
 		public static final class InputToOutput<K, I, O, A> implements Reducer<K, I, O, A> {
-			private ReducerToResult<K, I, O, A> reducerToResult;
-
-			public InputToOutput() {
-			}
+			private final ReducerToResult<K, I, O, A> reducerToResult;
 
 			/**
 			 * Creates a new instance of InputToOutput with  ReducerToResult from arguments
@@ -189,10 +186,6 @@ public final class StreamReducers {
 
 			public ReducerToResult<K, I, O, A> getReducerToResult() {
 				return reducerToResult;
-			}
-
-			public void setReducerToResult(ReducerToResult<K, I, O, A> reducerToResult) {
-				this.reducerToResult = reducerToResult;
 			}
 
 			/**
@@ -246,17 +239,10 @@ public final class StreamReducers {
 		 * @param <A> type of accumulator
 		 */
 		public static final class InputToAccumulator<K, I, O, A> implements Reducer<K, I, A, A> {
-			private ReducerToResult<K, I, O, A> reducerToResult;
-
-			public InputToAccumulator() {
-			}
+			private final ReducerToResult<K, I, O, A> reducerToResult;
 
 			public ReducerToResult<K, I, O, A> getReducerToResult() {
 				return reducerToResult;
-			}
-
-			public void setReducerToResult(ReducerToResult<K, I, O, A> reducerToResult) {
-				this.reducerToResult = reducerToResult;
 			}
 
 			/**
@@ -335,10 +321,6 @@ public final class StreamReducers {
 				return reducerToResult;
 			}
 
-			public void setReducerToResult(ReducerToResult<K, I, O, A> reducerToResult) {
-				this.reducerToResult = reducerToResult;
-			}
-
 			/**
 			 * Creates accumulator which is first item
 			 *
@@ -390,10 +372,7 @@ public final class StreamReducers {
 		 * @param <A> type of accumulator
 		 */
 		public static final class AccumulatorToAccumulator<K, I, O, A> implements Reducer<K, A, A, A> {
-			private ReducerToResult<K, I, O, A> reducerToResult;
-
-			public AccumulatorToAccumulator() {
-			}
+			private final ReducerToResult<K, I, O, A> reducerToResult;
 
 			public AccumulatorToAccumulator(ReducerToResult<K, I, O, A> reducerToResult) {
 				this.reducerToResult = reducerToResult;
@@ -401,10 +380,6 @@ public final class StreamReducers {
 
 			public ReducerToResult<K, I, O, A> getReducerToResult() {
 				return reducerToResult;
-			}
-
-			public void setReducerToResult(ReducerToResult<K, I, O, A> reducerToResult) {
-				this.reducerToResult = reducerToResult;
 			}
 
 			/**

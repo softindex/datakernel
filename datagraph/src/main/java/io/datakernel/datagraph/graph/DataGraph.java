@@ -16,13 +16,15 @@
 
 package io.datakernel.datagraph.graph;
 
-import com.google.gson.TypeAdapter;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.DatagraphSerialization;
 
 import java.util.*;
 
-import static io.datakernel.json.GsonAdapters.*;
+import static io.datakernel.codec.StructuredCodecs.indent;
+import static io.datakernel.codec.StructuredCodecs.ofList;
+import static io.datakernel.codec.json.JsonUtils.toJson;
 
 /**
  * Represents a graph of partitions, nodes and streams in datagraph system.
@@ -33,12 +35,12 @@ public class DataGraph {
 	private final Map<Node, Partition> nodePartitions = new LinkedHashMap<>();
 	private final Map<StreamId, Node> streams = new LinkedHashMap<>();
 
-	private final TypeAdapter<List<Node>> listNodeAdapter;
+	private final StructuredCodec<List<Node>> listNodeAdapter;
 
 	public DataGraph(DatagraphSerialization serialization, List<Partition> availablePartitions) {
 		this.serialization = serialization;
 		this.availablePartitions = availablePartitions;
-		this.listNodeAdapter = indent(ofList(serialization.nodeAdapter), "  ");
+		this.listNodeAdapter = indent(ofList(serialization.getNodeCodec()), "  ");
 	}
 
 	public List<Partition> getAvailablePartitions() {

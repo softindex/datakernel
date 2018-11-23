@@ -31,16 +31,18 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeFilter<T> implements Node {
-	private Predicate<T> predicate;
-	private StreamId input;
-	private StreamId output = new StreamId();
-
-	public NodeFilter() {
-	}
+	private final Predicate<T> predicate;
+	private final StreamId input;
+	private final StreamId output;
 
 	public NodeFilter(Predicate<T> predicate, StreamId input) {
+		this(predicate, input, new StreamId());
+	}
+
+	public NodeFilter(Predicate<T> predicate, StreamId input, StreamId output) {
 		this.predicate = predicate;
 		this.input = input;
+		this.output = output;
 	}
 
 	@Override
@@ -59,24 +61,12 @@ public final class NodeFilter<T> implements Node {
 		return predicate;
 	}
 
-	public void setPredicate(Predicate<T> predicate) {
-		this.predicate = predicate;
-	}
-
 	public StreamId getInput() {
 		return input;
 	}
 
-	public void setInput(StreamId input) {
-		this.input = input;
-	}
-
 	public StreamId getOutput() {
 		return output;
-	}
-
-	public void setOutput(StreamId output) {
-		this.output = output;
 	}
 
 	@Override

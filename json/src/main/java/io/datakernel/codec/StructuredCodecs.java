@@ -208,21 +208,25 @@ public final class StructuredCodecs {
 		};
 	}
 
-	public static final StructuredCodec<Class<Object>> CLASS_JSON = new StructuredCodec<Class<Object>>() {
+	public static final StructuredCodec<Class<?>> CLASS_CODEC = new StructuredCodec<Class<?>>() {
 		@Override
-		public void encode(StructuredOutput out, Class<Object> value) {
+		public void encode(StructuredOutput out, Class<?> value) {
 			out.writeString(value.getName());
 		}
 
 		@Override
-		public Class<Object> decode(StructuredInput in) throws ParseException {
+		public Class<?> decode(StructuredInput in) throws ParseException {
 			try {
-				return (Class<Object>) Class.forName(in.readString());
+				return (Class<?>) Class.forName(in.readString());
 			} catch (ClassNotFoundException e) {
 				throw new ParseException(e);
 			}
 		}
 	};
+
+	public static <T> StructuredCodec<Class<? extends T>> ofClass() {
+		return (StructuredCodec) CLASS_CODEC;
+	}
 
 	static <T> StructuredCodec<T> ofCustomType(Class<T> type) {
 		return ofCustomType((Type) type);
@@ -485,7 +489,7 @@ public final class StructuredCodecs {
 	}
 
 	public static <R, T1, T2, T3> StructuredCodec<R> object(TupleParser3<T1, T2, T3, R> constructor,
-			String field1, Function<R, T1> getter1, StructuredCodec<T1> codec1,
+			String field1, Function<R, ? extends T1> getter1, StructuredCodec<? extends T1> codec1,
 			String field2, Function<R, T2> getter2, StructuredCodec<T2> codec2,
 			String field3, Function<R, T3> getter3, StructuredCodec<T3> codec3) {
 		return ofObjectMap(map(field1, codec1, field2, codec2, field3, codec3))

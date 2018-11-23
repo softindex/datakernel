@@ -32,9 +32,8 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.stream.LongStream;
 
-import static io.datakernel.csp.binary.ByteBufSerializers.ofJson;
-import static io.datakernel.json.GsonAdapters.INTEGER_JSON;
-import static io.datakernel.json.GsonAdapters.STRING_JSON;
+import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.serializer.asm.BufferSerializers.LONG_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.stream.Collectors.toList;
@@ -45,8 +44,8 @@ public final class MessagingWithBinaryStreamingTest {
 	private static final int LISTEN_PORT = 4821;
 	public static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", LISTEN_PORT);
 
-	private static ByteBufSerializer<Integer, Integer> INTEGER_SERIALIZER = ofJson(INTEGER_JSON);
-	private static ByteBufSerializer<String, String> STRING_SERIALIZER = ofJson(STRING_JSON);
+	private static ByteBufSerializer<Integer, Integer> INTEGER_SERIALIZER = ByteBufSerializer.ofJsonCodec(INT_CODEC, INT_CODEC);
+	private static ByteBufSerializer<String, String> STRING_SERIALIZER = ByteBufSerializer.ofJsonCodec(STRING_CODEC, STRING_CODEC);
 
 	private static void pong(Messaging<Integer, Integer> messaging) {
 		messaging.receive()
@@ -127,7 +126,7 @@ public final class MessagingWithBinaryStreamingTest {
 		List<Long> source = LongStream.range(0, 100).boxed().collect(toList());
 
 		ByteBufSerializer<String, String> serializer =
-				ofJson(STRING_JSON, STRING_JSON);
+				ByteBufSerializer.ofJsonCodec(STRING_CODEC, STRING_CODEC);
 
 		SimpleServer.create(socket -> {
 			MessagingWithBinaryStreaming<String, String> messaging =
@@ -166,7 +165,7 @@ public final class MessagingWithBinaryStreamingTest {
 		List<Long> source = LongStream.range(0, 100).boxed().collect(toList());
 
 		ByteBufSerializer<String, String> serializer =
-				ofJson(STRING_JSON, STRING_JSON);
+				ByteBufSerializer.ofJsonCodec(STRING_CODEC, STRING_CODEC);
 
 		SimpleServer.create(socket -> {
 			MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(socket, serializer);

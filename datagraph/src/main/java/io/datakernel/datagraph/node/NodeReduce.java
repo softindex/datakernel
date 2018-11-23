@@ -39,12 +39,8 @@ import static java.util.Collections.singletonList;
  */
 public final class NodeReduce<K, O, A> implements Node {
 	public static class Input<K, O, A> {
-
-		private Reducer<K, ?, O, A> reducer;
-		private Function<?, K> keyFunction;
-
-		public Input() {
-		}
+		private final Reducer<K, ?, O, A> reducer;
+		private final Function<?, K> keyFunction;
 
 		public Input(Reducer<K, ?, O, A> reducer, Function<?, K> keyFunction) {
 			this.reducer = reducer;
@@ -55,30 +51,25 @@ public final class NodeReduce<K, O, A> implements Node {
 			return reducer;
 		}
 
-		public void setReducer(Reducer<K, ?, O, A> reducer) {
-			this.reducer = reducer;
-		}
-
 		public Function<?, K> getKeyFunction() {
 			return keyFunction;
 		}
-
-		public void setKeyFunction(Function<?, K> keyFunction) {
-			this.keyFunction = keyFunction;
-		}
 	}
 
-	private Comparator<K> keyComparator;
-	private Map<StreamId, Input<K, O, A>> inputs;
-	private StreamId output;
-
-	public NodeReduce() {
-	}
+	private final Comparator<K> keyComparator;
+	private final Map<StreamId, Input<K, O, A>> inputs;
+	private final StreamId output;
 
 	public NodeReduce(Comparator<K> keyComparator) {
+		this(keyComparator, new LinkedHashMap<>(), new StreamId());
+	}
+
+	public NodeReduce(Comparator<K> keyComparator,
+			Map<StreamId, Input<K, O, A>> inputs,
+			StreamId output) {
 		this.keyComparator = keyComparator;
-		this.inputs = new LinkedHashMap<>();
-		this.output = new StreamId();
+		this.inputs = inputs;
+		this.output = output;
 	}
 
 	public <I> void addInput(StreamId streamId, Function<I, K> keyFunction, Reducer<K, I, O, A> reducer) {
@@ -108,24 +99,12 @@ public final class NodeReduce<K, O, A> implements Node {
 		return keyComparator;
 	}
 
-	public void setKeyComparator(Comparator<K> keyComparator) {
-		this.keyComparator = keyComparator;
-	}
-
 	public Map<StreamId, Input<K, O, A>> getInputs() {
 		return inputs;
 	}
 
-	public void setInputs(Map<StreamId, Input<K, O, A>> inputs) {
-		this.inputs = inputs;
-	}
-
 	public StreamId getOutput() {
 		return output;
-	}
-
-	public void setOutput(StreamId output) {
-		this.output = output;
 	}
 }
 

@@ -32,11 +32,8 @@ import java.util.List;
  * @param <T> data items type
  */
 public final class NodeConsumerToList<T> implements Node {
-	private Object listId;
-	private StreamId input;
-
-	public NodeConsumerToList() {
-	}
+	private final Object listId;
+	private final StreamId input;
 
 	/**
 	 * Constructs a new node consumer, which saves data items from the given input stream to the specified list.
@@ -58,15 +55,15 @@ public final class NodeConsumerToList<T> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		Object object = taskContext.environment().get(listId);
-		if(object == null) {
+		if (object == null) {
 			object = new ArrayList<>();
 			taskContext.environment()
 					.with(listId, object);
 		}
 		StreamConsumer<T> consumer;
-		if(object instanceof List) {
+		if (object instanceof List) {
 			consumer = StreamConsumerToList.create((List<T>) object);
-		} else if(object instanceof StreamConsumer) {
+		} else if (object instanceof StreamConsumer) {
 			consumer = (StreamConsumer<T>) object;
 		} else {
 			throw new IllegalArgumentException();
@@ -78,15 +75,8 @@ public final class NodeConsumerToList<T> implements Node {
 		return listId;
 	}
 
-	public void setListId(Object listId) {
-		this.listId = listId;
-	}
-
 	public StreamId getInput() {
 		return input;
 	}
 
-	public void setInput(StreamId input) {
-		this.input = input;
-	}
 }

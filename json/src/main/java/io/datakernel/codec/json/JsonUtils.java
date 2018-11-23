@@ -19,10 +19,10 @@ package io.datakernel.codec.json;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.exception.ParseException;
-import io.datakernel.json.GsonAdapters;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -47,7 +47,7 @@ public class JsonUtils {
 	}
 
 	private static <T> void toJson(StructuredEncoder<T> encoder, T value, Writer writer) {
-		GsonAdapters.JsonWriterEx jsonWriter = new GsonAdapters.JsonWriterEx(writer);
+		JsonWriterEx jsonWriter = new JsonWriterEx(writer);
 		jsonWriter.setLenient(true);
 		jsonWriter.setIndentEx("");
 		jsonWriter.setHtmlSafe(false);
@@ -63,6 +63,31 @@ public class JsonUtils {
 
 	public static <T> void toJson(StructuredEncoder<? super T> encoder, T value, Appendable appendable) {
 		toJson(encoder, value, Streams.writerForAppendable(appendable));
+	}
+
+	public static final class JsonWriterEx extends JsonWriter {
+		final Writer out;
+
+		public JsonWriterEx(Writer out) {
+			super(out);
+			this.out = out;
+		}
+
+		private String indentEx;
+
+		public final void setIndentEx(String indent) {
+			this.indentEx = indent;
+			setIndent(indent);
+		}
+
+		@Override
+		public JsonWriter name(String name) throws IOException {
+			return super.name(name);
+		}
+
+		public final String getIndentEx() {
+			return indentEx;
+		}
 	}
 
 }

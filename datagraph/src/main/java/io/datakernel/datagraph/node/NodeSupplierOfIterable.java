@@ -31,15 +31,16 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeSupplierOfIterable<T> implements Node {
-	private Object iterableId;
-	private StreamId output;
-
-	public NodeSupplierOfIterable() {
-	}
+	private final Object iterableId;
+	private final StreamId output;
 
 	public NodeSupplierOfIterable(Object iterableId) {
+		this(iterableId, new StreamId());
+	}
+
+	public NodeSupplierOfIterable(Object iterableId, StreamId output) {
 		this.iterableId = iterableId;
-		this.output = new StreamId();
+		this.output = output;
 	}
 
 	@Override
@@ -65,15 +66,7 @@ public final class NodeSupplierOfIterable<T> implements Node {
 		return iterableId;
 	}
 
-	public void setIterableId(Object iterableId) {
-		this.iterableId = iterableId;
-	}
-
 	public StreamId getOutput() {
 		return output;
-	}
-
-	public void setOutput(StreamId output) {
-		this.output = output;
 	}
 }
