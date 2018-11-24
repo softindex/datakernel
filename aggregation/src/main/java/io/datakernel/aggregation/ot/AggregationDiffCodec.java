@@ -29,7 +29,7 @@ import java.util.Set;
 
 import static io.datakernel.aggregation.AggregationUtils.getPrimaryKeyCodec;
 import static io.datakernel.codec.StructuredCodecs.ofSet;
-import static io.datakernel.codec.StructuredCodecs.oneline;
+import static io.datakernel.codec.json.JsonUtils.oneline;
 
 public class AggregationDiffCodec implements StructuredCodec<AggregationDiff> {
 	public static final String ADDED = "added";

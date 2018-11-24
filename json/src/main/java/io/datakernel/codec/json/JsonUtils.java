@@ -20,8 +20,7 @@ import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
-import io.datakernel.codec.StructuredDecoder;
-import io.datakernel.codec.StructuredEncoder;
+import io.datakernel.codec.*;
 import io.datakernel.exception.ParseException;
 
 import java.io.IOException;
@@ -30,6 +29,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 
 public class JsonUtils {
+	private JsonUtils() {}
 
 	public static <T> T fromJson(StructuredDecoder<T> decoder, String string) throws ParseException {
 		JsonReader reader = new JsonReader(new StringReader(string));
@@ -40,8 +40,6 @@ public class JsonUtils {
 			}
 		} catch (IOException e) {
 			throw new AssertionError();
-		} catch (ParseException e) {
-			throw e;
 		}
 		return result;
 	}
@@ -65,12 +63,48 @@ public class JsonUtils {
 		toJson(encoder, value, Streams.writerForAppendable(appendable));
 	}
 
-	public static final class JsonWriterEx extends JsonWriter {
-		final Writer out;
+	public static <T> StructuredCodec<T> oneline(StructuredCodec<T> codec) {
+		return indent(codec, "");
+	}
 
-		public JsonWriterEx(Writer out) {
-			super(out);
-			this.out = out;
+	public static <T> StructuredCodec<T> indent(StructuredCodec<T> codec, String indent) {
+		return new StructuredCodec<T>() {
+			@Override
+			public void encode(StructuredOutput out, T item) {
+				if (out instanceof JsonStructuredOutput) {
+					JsonStructuredOutput jsonOut = ((JsonStructuredOutput) out);
+					if (jsonOut.writer instanceof JsonWriterEx) {
+						JsonWriterEx jsonWriterEx = (JsonWriterEx) jsonOut.writer;
+						String previousIndent = jsonWriterEx.getIndentEx();
+						jsonWriterEx.setIndentEx(indent);
+						if (indent.isEmpty()) {
+							try {
+								jsonWriterEx.writer.write('\n');
+							} catch (IOException e) {
+								throw new AssertionError();
+							}
+						}
+						codec.encode(out, item);
+						jsonWriterEx.setIndentEx(previousIndent);
+						return;
+					}
+				}
+				codec.encode(out, item);
+			}
+
+			@Override
+			public T decode(StructuredInput in) throws ParseException {
+				return codec.decode(in);
+			}
+		};
+	}
+
+	public static final class JsonWriterEx extends JsonWriter {
+		final Writer writer;
+
+		public JsonWriterEx(Writer writer) {
+			super(writer);
+			this.writer = writer;
 		}
 
 		private String indentEx;

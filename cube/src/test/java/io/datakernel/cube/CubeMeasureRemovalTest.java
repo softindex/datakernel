@@ -301,9 +301,9 @@ public class CubeMeasureRemovalTest {
 							.withDimensions("date")
 							.withMeasures("impressions", "clicks", "conversions"));
 
-			LogDiffCodec<CubeDiff> diffAdapter1 = LogDiffCodec.create(CubeDiffCodec.create(cube1));
+			LogDiffCodec<CubeDiff> diffCodec1 = LogDiffCodec.create(CubeDiffCodec.create(cube1));
 			OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffAdapter1);
+			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffCodec1);
 			repository.truncateTables();
 			repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 			eventloop.run();
@@ -343,9 +343,9 @@ public class CubeMeasureRemovalTest {
 						.withDimensions("date")
 						.withMeasures("impressions"));
 
-		LogDiffCodec<CubeDiff> diffAdapter2 = LogDiffCodec.create(CubeDiffCodec.create(cube2));
+		LogDiffCodec<CubeDiff> diffCodec2 = LogDiffCodec.create(CubeDiffCodec.create(cube2));
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRepositoryMySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
+		OTRepositoryMySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffCodec2);
 
 		exception.expectCause(instanceOf(ParseException.class));
 		exception.expectCause(hasProperty("message", equalTo("Unknown fields: [clicks, conversions]")));
@@ -379,9 +379,9 @@ public class CubeMeasureRemovalTest {
 							.withDimensions("date")
 							.withMeasures("clicks"));
 
-			LogDiffCodec<CubeDiff> diffAdapter1 = LogDiffCodec.create(CubeDiffCodec.create(cube1));
+			LogDiffCodec<CubeDiff> diffCodec1 = LogDiffCodec.create(CubeDiffCodec.create(cube1));
 			OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffAdapter1);
+			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffCodec1);
 			repository.truncateTables();
 			repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 			eventloop.run();
@@ -422,9 +422,9 @@ public class CubeMeasureRemovalTest {
 						.withDimensions("date")
 						.withMeasures("impressions", "clicks"));
 
-		LogDiffCodec<CubeDiff> diffAdapter2 = LogDiffCodec.create(CubeDiffCodec.create(cube2));
+		LogDiffCodec<CubeDiff> diffCodec2 = LogDiffCodec.create(CubeDiffCodec.create(cube2));
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRepositoryMySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
+		OTRepositoryMySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffCodec2);
 
 		exception.expectCause(instanceOf(ParseException.class));
 		exception.expectCause(hasProperty("message", equalTo("Unknown aggregation: impressionsAggregation")));

@@ -37,8 +37,8 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Stream;
 
-import static io.datakernel.codec.StructuredCodecs.indent;
 import static io.datakernel.codec.StructuredCodecs.ofList;
+import static io.datakernel.codec.json.JsonUtils.indent;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -61,7 +61,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	private final OTSystem<D> otSystem;
 
 	private final DataSource dataSource;
-	private final StructuredCodec<List<D>> diffsAdapter;
+	private final StructuredCodec<List<D>> diffsCodec;
 
 	private Duration deleteMargin = DEFAULT_DELETE_MARGIN;
 
@@ -80,18 +80,18 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	private final PromiseStats promiseLoadSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseSaveSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private OTRepositoryMySql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, StructuredCodec<List<D>> diffsAdapter,
+	private OTRepositoryMySql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, StructuredCodec<List<D>> diffsCodec,
 			DataSource dataSource) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.otSystem = otSystem;
 		this.dataSource = dataSource;
-		this.diffsAdapter = diffsAdapter;
+		this.diffsCodec = diffsCodec;
 	}
 
-	public static <D> OTRepositoryMySql<D> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, StructuredCodec<D> diffAdapter) {
-		StructuredCodec<List<D>> listAdapter = indent(ofList(diffAdapter), "\t");
-		return new OTRepositoryMySql<>(eventloop, executor, otSystem, listAdapter, dataSource);
+	public static <D> OTRepositoryMySql<D> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, StructuredCodec<D> diffCodec) {
+		StructuredCodec<List<D>> listCodec = indent(ofList(diffCodec), "\t");
+		return new OTRepositoryMySql<>(eventloop, executor, otSystem, listCodec, dataSource);
 	}
 
 	public OTRepositoryMySql<D> withDeleteMargin(Duration deleteMargin) {
@@ -115,8 +115,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 		return dataSource;
 	}
 
-	public StructuredCodec<List<D>> getDiffsAdapter() {
-		return diffsAdapter;
+	public StructuredCodec<List<D>> getDiffsCodec() {
+		return diffsCodec;
 	}
 
 	private String sql(String sql) {
@@ -176,11 +176,11 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	}
 
 	private String toJson(List<D> diffs) {
-		return JsonUtils.toJson(diffsAdapter, diffs);
+		return JsonUtils.toJson(diffsCodec, diffs);
 	}
 
 	private List<D> fromJson(String json) throws ParseException {
-		return JsonUtils.fromJson(diffsAdapter, json);
+		return JsonUtils.fromJson(diffsCodec, json);
 	}
 
 	@Override

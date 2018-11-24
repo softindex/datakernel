@@ -57,7 +57,7 @@ import static java.lang.ClassLoader.getSystemClassLoader;
 
 /**
  * Responsible for setting up serialization operations for datagraph.
- * Provides specific complex adapters for datagraph objects.
+ * Provides specific complex codecs for datagraph objects.
  * Maintains the cache of BufferSerializer's.
  */
 @SuppressWarnings({"rawtypes", "unchecked", "WeakerAccess"})

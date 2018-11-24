@@ -62,14 +62,14 @@ final class AggregationPredicateCodec implements StructuredCodec<AggregationPred
 
 	public static AggregationPredicateCodec create(CodecFactory mapping,
 			Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
-		Map<String, StructuredCodec<?>> attributeAdapters = new LinkedHashMap<>();
+		Map<String, StructuredCodec<?>> attributeCodecs = new LinkedHashMap<>();
 		for (String attribute : attributeTypes.keySet()) {
-			attributeAdapters.put(attribute, mapping.get(attributeTypes.get(attribute)).nullable());
+			attributeCodecs.put(attribute, mapping.get(attributeTypes.get(attribute)).nullable());
 		}
 		for (String measure : measureTypes.keySet()) {
-			attributeAdapters.put(measure, mapping.get(measureTypes.get(measure)));
+			attributeCodecs.put(measure, mapping.get(measureTypes.get(measure)));
 		}
-		return new AggregationPredicateCodec(attributeAdapters);
+		return new AggregationPredicateCodec(attributeCodecs);
 	}
 
 	@SuppressWarnings("unchecked")

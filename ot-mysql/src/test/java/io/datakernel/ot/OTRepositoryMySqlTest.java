@@ -62,7 +62,7 @@ public class OTRepositoryMySqlTest {
 	public void before() throws IOException, SQLException {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		otSystem = Utils.createTestOp();
-		repository = OTRepositoryMySql.create(eventloop, Executors.newFixedThreadPool(4), dataSource("test.properties"), otSystem, Utils.OP_ADAPTER);
+		repository = OTRepositoryMySql.create(eventloop, Executors.newFixedThreadPool(4), dataSource("test.properties"), otSystem, Utils.OP_CODEC);
 
 		repository.truncateTables();
 	}
@@ -82,15 +82,15 @@ public class OTRepositoryMySqlTest {
 	public void testJson() throws ParseException {
 		{
 			TestAdd testAdd = new TestAdd(1);
-			String json = toJson(Utils.OP_ADAPTER, testAdd);
-			TestAdd testAdd2 = (TestAdd) fromJson(Utils.OP_ADAPTER, json);
+			String json = toJson(Utils.OP_CODEC, testAdd);
+			TestAdd testAdd2 = (TestAdd) fromJson(Utils.OP_CODEC, json);
 			assertEquals(testAdd.getDelta(), testAdd2.getDelta());
 		}
 
 		{
 			TestSet testSet = new TestSet(0, 4);
-			String json = toJson(Utils.OP_ADAPTER, testSet);
-			TestSet testSet2 = (TestSet) fromJson(Utils.OP_ADAPTER, json);
+			String json = toJson(Utils.OP_CODEC, testSet);
+			TestSet testSet2 = (TestSet) fromJson(Utils.OP_CODEC, json);
 			assertEquals(testSet.getPrev(), testSet2.getPrev());
 			assertEquals(testSet.getNext(), testSet2.getNext());
 		}

@@ -29,7 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.codec.StructuredCodecs.oneline;
+import static io.datakernel.codec.json.JsonUtils.oneline;
 
 public final class LogDiffCodec<D> implements StructuredCodec<LogDiff<D>> {
 	public static final String POSITIONS = "positions";
@@ -67,8 +67,8 @@ public final class LogDiffCodec<D> implements StructuredCodec<LogDiff<D>> {
 		this.opsCodec = opsCodec;
 	}
 
-	public static <D> LogDiffCodec<D> create(StructuredCodec<D> opAdapter) {
-		return new LogDiffCodec<>(StructuredCodecs.ofList(opAdapter));
+	public static <D> LogDiffCodec<D> create(StructuredCodec<D> opCodec) {
+		return new LogDiffCodec<>(StructuredCodecs.ofList(opCodec));
 	}
 
 	@Override

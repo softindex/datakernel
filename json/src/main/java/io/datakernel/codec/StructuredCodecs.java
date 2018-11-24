@@ -489,7 +489,7 @@ public final class StructuredCodecs {
 	}
 
 	public static <R, T1, T2, T3> StructuredCodec<R> object(TupleParser3<T1, T2, T3, R> constructor,
-			String field1, Function<R, ? extends T1> getter1, StructuredCodec<? extends T1> codec1,
+			String field1, Function<R, T1> getter1, StructuredCodec<? extends T1> codec1,
 			String field2, Function<R, T2> getter2, StructuredCodec<T2> codec2,
 			String field3, Function<R, T3> getter3, StructuredCodec<T3> codec3) {
 		return ofObjectMap(map(field1, codec1, field2, codec2, field3, codec3))
@@ -532,14 +532,6 @@ public final class StructuredCodecs {
 				.transform(
 						map -> constructor.create((T1) map.get(field1), (T2) map.get(field2), (T3) map.get(field3), (T4) map.get(field4), (T5) map.get(field5), (T6) map.get(field6)),
 						item -> map(field1, getter1.apply(item), field2, getter2.apply(item), field3, getter3.apply(item), field4, getter4.apply(item), field5, getter5.apply(item), field6, getter6.apply(item)));
-	}
-
-	public static <T> StructuredCodec<T> oneline(StructuredCodec<T> codec) {
-		return codec; // TODO
-	}
-
-	public static <T> StructuredCodec<T> indent(StructuredCodec<T> codec, String indent) {
-		return codec; // TODO
 	}
 
 }

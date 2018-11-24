@@ -22,8 +22,8 @@ import io.datakernel.datagraph.server.DatagraphSerialization;
 
 import java.util.*;
 
-import static io.datakernel.codec.StructuredCodecs.indent;
 import static io.datakernel.codec.StructuredCodecs.ofList;
+import static io.datakernel.codec.json.JsonUtils.indent;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 
 /**
@@ -35,12 +35,12 @@ public class DataGraph {
 	private final Map<Node, Partition> nodePartitions = new LinkedHashMap<>();
 	private final Map<StreamId, Node> streams = new LinkedHashMap<>();
 
-	private final StructuredCodec<List<Node>> listNodeAdapter;
+	private final StructuredCodec<List<Node>> listNodeCodecs;
 
 	public DataGraph(DatagraphSerialization serialization, List<Partition> availablePartitions) {
 		this.serialization = serialization;
 		this.availablePartitions = availablePartitions;
-		this.listNodeAdapter = indent(ofList(serialization.getNodeCodec()), "  ");
+		this.listNodeCodecs = indent(ofList(serialization.getNodeCodec()), "  ");
 	}
 
 	public List<Partition> getAvailablePartitions() {
@@ -81,7 +81,7 @@ public class DataGraph {
 		for (Partition partition : map.keySet()) {
 			List<Node> nodes = map.get(partition);
 			sb.append("--- ").append(partition).append("\n\n");
-			sb.append(toJson(listNodeAdapter, nodes));
+			sb.append(toJson(listNodeCodecs, nodes));
 			sb.append("\n\n");
 		}
 		return sb.toString();

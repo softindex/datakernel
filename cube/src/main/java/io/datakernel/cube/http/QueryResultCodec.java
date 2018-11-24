@@ -44,37 +44,37 @@ final class QueryResultCodec implements StructuredCodec<QueryResult> {
 	private static final String SORTED_BY_FIELD = "sortedBy";
 	private static final String METADATA_FIELD = "metadata";
 
-	private final Map<String, StructuredCodec<?>> attributeAdapters;
-	private final Map<String, StructuredCodec<?>> measureAdapters;
+	private final Map<String, StructuredCodec<?>> attributeCodecs;
+	private final Map<String, StructuredCodec<?>> measureCodecs;
 
 	private final Map<String, Class<?>> attributeTypes;
 	private final Map<String, Class<?>> measureTypes;
 
 	private static final StructuredCodec<List<String>> STRING_CODEC = StructuredCodecs.STRING_CODEC.ofList();
 
-	public QueryResultCodec(Map<String, StructuredCodec<?>> attributeAdapters, Map<String, StructuredCodec<?>> measureAdapters, Map<String, Class<?>> attributeTypes, Map<String, Class<?>> measureTypes) {
-		this.attributeAdapters = attributeAdapters;
-		this.measureAdapters = measureAdapters;
+	public QueryResultCodec(Map<String, StructuredCodec<?>> attributeCodecs, Map<String, StructuredCodec<?>> measureCodecs, Map<String, Class<?>> attributeTypes, Map<String, Class<?>> measureTypes) {
+		this.attributeCodecs = attributeCodecs;
+		this.measureCodecs = measureCodecs;
 		this.attributeTypes = attributeTypes;
 		this.measureTypes = measureTypes;
 	}
 
 	public static QueryResultCodec create(CodecFactory mapping, Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
-		Map<String, StructuredCodec<?>> attributeAdapters = new LinkedHashMap<>();
-		Map<String, StructuredCodec<?>> measureAdapters = new LinkedHashMap<>();
+		Map<String, StructuredCodec<?>> attributeCodecs = new LinkedHashMap<>();
+		Map<String, StructuredCodec<?>> measureCodecs = new LinkedHashMap<>();
 		Map<String, Class<?>> attributeRawTypes = new LinkedHashMap<>();
 		Map<String, Class<?>> measureRawTypes = new LinkedHashMap<>();
 		for (String attribute : attributeTypes.keySet()) {
 			RecursiveType token = RecursiveType.of(attributeTypes.get(attribute));
-			attributeAdapters.put(attribute, mapping.get(token.getType()).nullable());
+			attributeCodecs.put(attribute, mapping.get(token.getType()).nullable());
 			attributeRawTypes.put(attribute, token.getRawType());
 		}
 		for (String measure : measureTypes.keySet()) {
 			RecursiveType token = RecursiveType.of(measureTypes.get(measure));
-			measureAdapters.put(measure, mapping.get(token.getType()));
+			measureCodecs.put(measure, mapping.get(token.getType()));
 			measureRawTypes.put(measure, token.getRawType());
 		}
-		return new QueryResultCodec(attributeAdapters, measureAdapters, attributeRawTypes, measureRawTypes);
+		return new QueryResultCodec(attributeCodecs, measureCodecs, attributeRawTypes, measureRawTypes);
 	}
 
 	@Override
@@ -160,7 +160,7 @@ final class QueryResultCodec implements StructuredCodec<QueryResult> {
 			Record totals = Record.create(recordScheme);
 			for (int i = 0; i < recordScheme.getFields().size(); i++) {
 				String field = recordScheme.getField(i);
-				StructuredCodec<?> fieldStructuredCodec = measureAdapters.get(field);
+				StructuredCodec<?> fieldStructuredCodec = measureCodecs.get(field);
 				if (fieldStructuredCodec == null)
 					continue;
 				Object fieldValue = fieldStructuredCodec.decode(reader);
@@ -175,7 +175,7 @@ final class QueryResultCodec implements StructuredCodec<QueryResult> {
 			Map<String, Object> result = new LinkedHashMap<>();
 			while (reader.hasNext()) {
 				String attribute = reader.readKey();
-				Object value = attributeAdapters.get(attribute).decode(reader);
+				Object value = attributeCodecs.get(attribute).decode(reader);
 				result.put(attribute, value);
 			}
 			return result;
@@ -237,7 +237,7 @@ final class QueryResultCodec implements StructuredCodec<QueryResult> {
 		writer.writeTuple(() -> {
 			for (int i = 0; i < recordScheme.getFields().size(); i++) {
 				String field = recordScheme.getField(i);
-				StructuredCodec<Object> fieldStructuredCodec = (StructuredCodec<Object>) measureAdapters.get(field);
+				StructuredCodec<Object> fieldStructuredCodec = (StructuredCodec<Object>) measureCodecs.get(field);
 				if (fieldStructuredCodec == null)
 					continue;
 				fieldStructuredCodec.encode(writer, totals.get(i));
@@ -251,7 +251,7 @@ final class QueryResultCodec implements StructuredCodec<QueryResult> {
 			for (String attribute : filterAttributes.keySet()) {
 				Object value = filterAttributes.get(attribute);
 				writer.writeKey(attribute);
-				StructuredCodec<Object> codec = (StructuredCodec<Object>) attributeAdapters.get(attribute);
+				StructuredCodec<Object> codec = (StructuredCodec<Object>) attributeCodecs.get(attribute);
 				codec.encode(writer, value);
 			}
 		});
@@ -272,7 +272,7 @@ final class QueryResultCodec implements StructuredCodec<QueryResult> {
 		StructuredCodec<?>[] fieldStructuredCodecs = new StructuredCodec<?>[recordScheme.getFields().size()];
 		for (int i = 0; i < recordScheme.getFields().size(); i++) {
 			String field = recordScheme.getField(i);
-			fieldStructuredCodecs[i] = firstNonNull(attributeAdapters.get(field), measureAdapters.get(field));
+			fieldStructuredCodecs[i] = firstNonNull(attributeCodecs.get(field), measureCodecs.get(field));
 		}
 		return fieldStructuredCodecs;
 	}

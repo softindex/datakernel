@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 public class JsonStructuredOutput implements StructuredOutput {
-	private final JsonWriter writer;
+	final JsonWriter writer;
 
 	public JsonStructuredOutput(JsonWriter writer) {this.writer = writer;}
 
