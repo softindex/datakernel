@@ -45,6 +45,8 @@
 		<module>net</module>
 		<module>csp</module>
 		<module>crdt</module>
+		<module>etl</module>
+		<module>multilog</module>
 	</modules>
 
 	<licenses>
