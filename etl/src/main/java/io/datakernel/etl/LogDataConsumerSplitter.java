@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.logfs.ot;
+package io.datakernel.etl;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;

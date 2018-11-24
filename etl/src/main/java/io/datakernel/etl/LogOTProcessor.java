@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.logfs.ot;
+package io.datakernel.etl;
 
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
@@ -26,10 +26,9 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
-import io.datakernel.logfs.LogFile;
-import io.datakernel.logfs.LogManager;
-import io.datakernel.logfs.LogPosition;
-import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
+import io.datakernel.multilog.LogFile;
+import io.datakernel.multilog.LogPosition;
+import io.datakernel.multilog.Multilog;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.stream.processor.StreamUnion;
@@ -56,7 +55,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	private static final Logger logger = LoggerFactory.getLogger(LogOTProcessor.class);
 
 	private final Eventloop eventloop;
-	private final LogManager<T> logManager;
+	private final Multilog<T> multilog;
 	private final LogDataConsumer<T, D> logStreamConsumer;
 
 	private final String log;
@@ -73,20 +72,20 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	private final PromiseStats promiseSupplier = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats promiseConsumer = PromiseStats.create(Duration.ofMinutes(5));
 
-	private LogOTProcessor(Eventloop eventloop, LogManager<T> logManager, LogDataConsumer<T, D> logStreamConsumer,
+	private LogOTProcessor(Eventloop eventloop, Multilog<T> multilog, LogDataConsumer<T, D> logStreamConsumer,
 			String log, List<String> partitions, LogOTState<D> state) {
 		this.eventloop = eventloop;
-		this.logManager = logManager;
+		this.multilog = multilog;
 		this.logStreamConsumer = logStreamConsumer;
 		this.log = log;
 		this.partitions = partitions;
 		this.state = state;
 	}
 
-	public static <T, D> LogOTProcessor<T, D> create(Eventloop eventloop, LogManager<T> logManager,
+	public static <T, D> LogOTProcessor<T, D> create(Eventloop eventloop, Multilog<T> multilog,
 			LogDataConsumer<T, D> logStreamConsumer,
 			String log, List<String> partitions, LogOTState<D> state) {
-		return new LogOTProcessor<>(eventloop, logManager, logStreamConsumer, log, partitions, state);
+		return new LogOTProcessor<>(eventloop, multilog, logStreamConsumer, log, partitions, state);
 	}
 
 	@Override
@@ -138,7 +137,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 			logger.info("Starting reading '{}' from position {}", logName, logPosition);
 
 			LogPosition logPositionFrom = logPosition;
-			StreamSupplierWithResult<T, LogPosition> supplier = logManager.supplierStream(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
+			StreamSupplierWithResult<T, LogPosition> supplier = multilog.reader(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
 			supplier.getSupplier().streamTo(streamUnion.newInput());
 			result.addPromise(supplier.getResult(), (accumulator, logPositionTo) -> {
 				if (!logPositionTo.equals(logPositionFrom)) {

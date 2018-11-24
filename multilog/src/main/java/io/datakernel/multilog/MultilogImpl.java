@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.logfs;
+package io.datakernel.multilog;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
@@ -51,8 +51,8 @@ import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 
-public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(LogManagerImpl.class);
+public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
+	private static final Logger logger = LoggerFactory.getLogger(MultilogImpl.class);
 
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 
@@ -70,7 +70,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	private final StreamStatsDetailed<ByteBuf> streamReadStats = StreamStats.detailed(forByteBufs());
 	private final StreamStatsDetailed<ByteBuf> streamWriteStats = StreamStats.detailed(forByteBufs());
 
-	private LogManagerImpl(Eventloop eventloop, FsClient client, BufferSerializer<T> serializer,
+	private MultilogImpl(Eventloop eventloop, FsClient client, BufferSerializer<T> serializer,
 			LogNamingScheme namingScheme) {
 		this.eventloop = eventloop;
 		this.client = client;
@@ -78,32 +78,28 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 		this.namingScheme = namingScheme;
 	}
 
-	public static <T> LogManagerImpl<T> create(Eventloop eventloop, FsClient client,
+	public static <T> MultilogImpl<T> create(Eventloop eventloop, FsClient client,
 			BufferSerializer<T> serializer, LogNamingScheme namingScheme) {
-		return new LogManagerImpl<>(eventloop, client, serializer, namingScheme);
+		return new MultilogImpl<>(eventloop, client, serializer, namingScheme);
 	}
 
-	public LogManagerImpl<T> withBufferSize(int bufferSize) {
+	public MultilogImpl<T> withBufferSize(int bufferSize) {
 		this.bufferSize = MemSize.of(bufferSize);
 		return this;
 	}
 
-	public LogManagerImpl<T> withBufferSize(MemSize bufferSize) {
+	public MultilogImpl<T> withBufferSize(MemSize bufferSize) {
 		this.bufferSize = bufferSize;
 		return this;
 	}
 
-	public LogManagerImpl<T> withAutoFlushInterval(Duration autoFlushInterval) {
+	public MultilogImpl<T> withAutoFlushInterval(Duration autoFlushInterval) {
 		this.autoFlushInterval = autoFlushInterval;
 		return this;
 	}
 
-	//
-
-	//
-
 	@Override
-	public Promise<StreamConsumer<T>> consumer(String logPartition) {
+	public Promise<StreamConsumer<T>> write(String logPartition) {
 		validateLogPartition(logPartition);
 
 		return Promise.of(StreamConsumer.<T>ofSupplier(
@@ -120,7 +116,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	@Override
-	public Promise<StreamSupplierWithResult<T, LogPosition>> supplier(String logPartition,
+	public Promise<StreamSupplierWithResult<T, LogPosition>> read(String logPartition,
 			LogFile startLogFile, long startOffset,
 			LogFile endLogFile) {
 		validateLogPartition(logPartition);

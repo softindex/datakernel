@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.logfs;
+package io.datakernel.multilog;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
@@ -24,17 +24,17 @@ import io.datakernel.stream.StreamSupplierWithResult;
 /**
  * Manages persistence of logs.
  */
-public interface LogManager<T> {
+public interface Multilog<T> {
 	/**
 	 * Creates a {@code StreamConsumer} that persists streamed log items to log.
 	 *
 	 * @param logPartition log partition name
 	 * @return StreamConsumer, which will write records, streamed from wired supplier.
 	 */
-	Promise<StreamConsumer<T>> consumer(String logPartition);
+	Promise<StreamConsumer<T>> write(String logPartition);
 
-	default StreamConsumer<T> consumerStream(String logPartition) {
-		return StreamConsumer.ofPromise(consumer(logPartition));
+	default StreamConsumer<T> writer(String logPartition) {
+		return StreamConsumer.ofPromise(write(logPartition));
 	}
 
 	/**
@@ -45,15 +45,15 @@ public interface LogManager<T> {
 	 * @param startPosition position
 	 * @return StreamSupplier, which will stream read items to its wired consumer.
 	 */
-	Promise<StreamSupplierWithResult<T, LogPosition>> supplier(String logPartition,
+	Promise<StreamSupplierWithResult<T, LogPosition>> read(String logPartition,
 			LogFile startLogFile, long startPosition,
 			@Nullable LogFile endLogFile);
 
-	default StreamSupplierWithResult<T, LogPosition> supplierStream(String logPartition,
+	default StreamSupplierWithResult<T, LogPosition> reader(String logPartition,
 			LogFile startLogFile, long startPosition,
 			@Nullable LogFile endLogFile) {
 		return StreamSupplierWithResult.ofPromise(
-				supplier(logPartition, startLogFile, startPosition, endLogFile));
+				read(logPartition, startLogFile, startPosition, endLogFile));
 	}
 
 }

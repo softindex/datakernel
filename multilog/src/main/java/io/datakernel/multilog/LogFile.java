@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.logfs;
+package io.datakernel.multilog;
 
 public final class LogFile implements Comparable<LogFile> {
 	private final String name;
@@ -45,12 +45,9 @@ public final class LogFile implements Comparable<LogFile> {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
-		LogFile logFile = (LogFile) o;
-
-		if (remainder != logFile.remainder) return false;
-		if (!this.name.equals(logFile.name)) return false;
-
+		LogFile that = (LogFile) o;
+		if (remainder != that.remainder) return false;
+		if (!this.name.equals(that.name)) return false;
 		return true;
 	}
 

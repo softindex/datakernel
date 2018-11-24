@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.logfs;
+package io.datakernel.multilog;
 
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
@@ -26,7 +26,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
 
-public final class LogStreamChunker extends AbstractCommunicatingProcess implements ChannelInput<ByteBuf> {
+final class LogStreamChunker extends AbstractCommunicatingProcess implements ChannelInput<ByteBuf> {
 	private final CurrentTimeProvider currentTimeProvider;
 	private final FsClient client;
 	private final LogNamingScheme namingScheme;
@@ -85,8 +85,9 @@ public final class LogStreamChunker extends AbstractCommunicatingProcess impleme
 	}
 
 	private Promise<Void> flush() {
-		if (currentConsumer == null) return Promise.complete();
-		//noinspection AssignmentToNull - consumer is ensured to be not null, later on
+		if (currentConsumer == null) {
+			return Promise.complete();
+		}
 		return currentConsumer.accept(null)
 				.whenResult($ -> currentConsumer = null);
 	}

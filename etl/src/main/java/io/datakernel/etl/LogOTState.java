@@ -1,7 +1,6 @@
-package io.datakernel.logfs.ot;
+package io.datakernel.etl;
 
-import io.datakernel.logfs.LogPosition;
-import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
+import io.datakernel.multilog.LogPosition;
 import io.datakernel.ot.OTState;
 
 import java.util.HashMap;

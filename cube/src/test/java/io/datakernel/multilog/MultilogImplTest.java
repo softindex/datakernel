@@ -1,4 +1,4 @@
-package io.datakernel.logfs;
+package io.datakernel.multilog;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
@@ -17,13 +17,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.logfs.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
+import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
-public class LogManagerImplTest {
+public class MultilogImplTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -36,7 +36,7 @@ public class LogManagerImplTest {
 
 	@Test
 	public void testConsumer() throws ExecutionException, InterruptedException {
-		LogManager<String> logManager = LogManagerImpl.create(eventloop,
+		Multilog<String> multilog = MultilogImpl.create(eventloop,
 				LocalFsClient.create(eventloop, newSingleThreadExecutor(), temporaryFolder.getRoot().toPath()),
 				BufferSerializers.UTF16_SERIALIZER,
 				NAME_PARTITION_REMAINDER_SEQ);
@@ -45,12 +45,12 @@ public class LogManagerImplTest {
 		List<String> values = asList("test1", "test2", "test3");
 
 		StreamSupplier.ofIterable(values)
-				.streamTo(logManager.consumerStream(testPartition));
+				.streamTo(multilog.writer(testPartition));
 
 		eventloop.run();
 
 		StreamConsumerToList<String> listConsumer = StreamConsumerToList.create();
-		logManager.supplierStream(testPartition, new LogFile("", 0), 0, null)
+		multilog.reader(testPartition, new LogFile("", 0), 0, null)
 				.getSupplier()
 				.streamTo(listConsumer);
 

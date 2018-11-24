@@ -21,11 +21,11 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffCodec;
 import io.datakernel.cube.ot.CubeOT;
+import io.datakernel.etl.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.logfs.LogManager;
-import io.datakernel.logfs.LogManagerImpl;
-import io.datakernel.logfs.ot.*;
+import io.datakernel.multilog.Multilog;
+import io.datakernel.multilog.MultilogImpl;
 import io.datakernel.ot.*;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.BufferSerializer;
@@ -54,7 +54,7 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.logfs.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
+import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
@@ -80,7 +80,7 @@ public class CubeMeasureRemovalTest {
 	private DataSource dataSource;
 	private AggregationChunkStorage<Long> aggregationChunkStorage;
 	private BufferSerializer<LogItem> serializer;
-	private LogManager<LogItem> logManager;
+	private Multilog<LogItem> multilog;
 
 	@Before
 	public void before() throws IOException {
@@ -93,7 +93,7 @@ public class CubeMeasureRemovalTest {
 		dataSource = dataSource("test.properties");
 		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
-		logManager = LogManagerImpl.create(eventloop,
+		multilog = MultilogImpl.create(eventloop,
 				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
 				serializer,
 				NAME_PARTITION_REMAINDER_SEQ);
@@ -137,7 +137,7 @@ public class CubeMeasureRemovalTest {
 		repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
 		eventloop.run();
 
-		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
+		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
 				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
@@ -146,7 +146,7 @@ public class CubeMeasureRemovalTest {
 		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
-		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop, logManager,
+		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop, multilog,
 				cube.logStreamConsumer(LogItem.class), "testlog", asList("partitionA"), cubeDiffLogOTState);
 
 		// checkout first (root) revision
@@ -160,7 +160,7 @@ public class CubeMeasureRemovalTest {
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems1 = LogItem.getListOfRandomLogItems(100);
 		StreamSupplier.ofIterable(listOfRandomLogItems1).streamTo(
-				logManager.consumerStream("partitionA"));
+				multilog.writer("partitionA"));
 		eventloop.run();
 
 		OTStateManager<Long, LogDiff<CubeDiff>> finalLogCubeStateManager1 = logCubeStateManager;
@@ -204,7 +204,7 @@ public class CubeMeasureRemovalTest {
 		LogOTState<CubeDiff> cubeDiffLogOTState1 = LogOTState.create(cube);
 		logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState1);
 
-		logOTProcessor = LogOTProcessor.create(eventloop, logManager, cube.logStreamConsumer(LogItem.class),
+		logOTProcessor = LogOTProcessor.create(eventloop, multilog, cube.logStreamConsumer(LogItem.class),
 				"testlog", asList("partitionA"), cubeDiffLogOTState1);
 
 		future = logCubeStateManager.checkout().toCompletableFuture();
@@ -214,7 +214,7 @@ public class CubeMeasureRemovalTest {
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
 		StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
-				logManager.consumerStream("partitionA"));
+				multilog.writer("partitionA"));
 		eventloop.run();
 
 		OTStateManager<Long, LogDiff<CubeDiff>> finalLogCubeStateManager = logCubeStateManager;
@@ -319,13 +319,13 @@ public class CubeMeasureRemovalTest {
 
 			LogDataConsumer<LogItem, CubeDiff> logStreamConsumer1 = cube1.logStreamConsumer(LogItem.class);
 			LogOTProcessor<LogItem, CubeDiff> logOTProcessor1 = LogOTProcessor.create(eventloop,
-					logManager, logStreamConsumer1, "testlog", asList("partitionA"), cubeDiffLogOTState);
+					multilog, logStreamConsumer1, "testlog", asList("partitionA"), cubeDiffLogOTState);
 
 			logCubeStateManager1.checkout();
 			eventloop.run();
 
 			StreamSupplier.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
-					logManager.consumerStream("partitionA"));
+					multilog.writer("partitionA"));
 			eventloop.run();
 
 			logOTProcessor1.processLog()
@@ -396,13 +396,13 @@ public class CubeMeasureRemovalTest {
 			LogDataConsumer<LogItem, CubeDiff> logStreamConsumer1 = cube1.logStreamConsumer(LogItem.class);
 
 			LogOTProcessor<LogItem, CubeDiff> logOTProcessor1 = LogOTProcessor.create(eventloop,
-					logManager, logStreamConsumer1, "testlog", asList("partitionA"), cubeDiffLogOTState);
+					multilog, logStreamConsumer1, "testlog", asList("partitionA"), cubeDiffLogOTState);
 
 			logCubeStateManager1.checkout();
 			eventloop.run();
 
 			StreamSupplier.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
-					logManager.consumerStream("partitionA"));
+					multilog.writer("partitionA"));
 			eventloop.run();
 
 			logOTProcessor1.processLog()

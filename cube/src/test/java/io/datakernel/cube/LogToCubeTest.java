@@ -25,10 +25,10 @@ import io.datakernel.cube.bean.TestPubRequest.TestAdvRequest;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffCodec;
 import io.datakernel.cube.ot.CubeOT;
+import io.datakernel.etl.*;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.logfs.LogManager;
-import io.datakernel.logfs.LogManagerImpl;
-import io.datakernel.logfs.ot.*;
+import io.datakernel.multilog.Multilog;
+import io.datakernel.multilog.MultilogImpl;
 import io.datakernel.ot.*;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
@@ -52,7 +52,7 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
-import static io.datakernel.logfs.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
+import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -106,13 +106,13 @@ public final class LogToCubeTest {
 					OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 					OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
-					LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop,
+					Multilog<TestPubRequest> multilog = MultilogImpl.create(eventloop,
 							LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
 							SerializerBuilder.create(classLoader).build(TestPubRequest.class),
 							NAME_PARTITION_REMAINDER_SEQ);
 
 					LogOTProcessor<TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
-							logManager,
+							multilog,
 							new TestAggregatorSplitter(cube), // TestAggregatorSplitter.create(eventloop, cube),
 							"testlog",
 							asList("partitionA"),
@@ -123,7 +123,7 @@ public final class LogToCubeTest {
 							new TestPubRequest(1001, 2, asList(new TestAdvRequest(10), new TestAdvRequest(20))),
 							new TestPubRequest(1002, 1, asList(new TestAdvRequest(30))),
 							new TestPubRequest(1002, 2, Arrays.asList()))
-							.streamTo(logManager.consumerStream("partitionA"))
+							.streamTo(multilog.writer("partitionA"))
 							.whenComplete(assertComplete())
 							.thenCompose($2 -> logCubeStateManager.checkout())
 							.thenCompose($2 -> logOTProcessor.processLog())

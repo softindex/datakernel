@@ -42,15 +42,15 @@ public interface StructuredCodec<T> extends StructuredEncoder<T>, StructuredDeco
 	}
 
 	static <T> StructuredCodec<T> ofObject(StructuredDecoder<T> decoder, StructuredEncoder<T> encoder) {
-		return of(in -> in.readObject(decoder), (out, item) -> out.writeObject(encoder, item));
+		return of(StructuredDecoder.ofObject(decoder), StructuredEncoder.ofObject(encoder));
 	}
 
 	static <T> StructuredCodec<T> ofObject(Supplier<T> supplier) {
-		return ofObject(in -> supplier.get(), (out, item) -> {});
+		return of(StructuredDecoder.ofObject(supplier), StructuredEncoder.ofObject());
 	}
 
 	static <T> StructuredCodec<T> ofTuple(StructuredDecoder<T> decoder, StructuredEncoder<T> encoder) {
-		return of(in -> in.readTuple(decoder), (out, item) -> out.writeTuple(encoder, item));
+		return of(StructuredDecoder.ofTuple(decoder), StructuredEncoder.ofTuple(encoder));
 	}
 
 	default StructuredCodec<T> nullable() {

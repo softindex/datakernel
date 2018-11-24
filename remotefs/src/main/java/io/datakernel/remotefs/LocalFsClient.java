@@ -186,10 +186,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Set<String>> move(Map<String, String> changes) {
-		return Promises.toList(changes.entrySet().stream().map(entry ->
-				move(entry.getKey(), entry.getValue())
-						.whenException(e -> logger.warn("Failed to move file {} into {}: {}", entry.getKey(), entry.getValue(), e))
-						.thenApplyEx(($, e) -> e != null ? null : entry.getKey())))
+		return Promises.toList(
+				changes.entrySet()
+						.stream()
+						.map(entry ->
+								move(entry.getKey(), entry.getValue())
+										.whenException(e -> logger.warn("Failed to move file {} into {}: {}", entry.getKey(), entry.getValue(), e))
+										.thenApplyEx(($, e) -> e != null ? null : entry.getKey())))
 				.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
 				.whenComplete(toLogger(logger, TRACE, "move", changes, this))
 				.whenComplete(movePromise.recordStats());
@@ -246,10 +249,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Set<String>> copy(Map<String, String> changes) {
-		return Promises.toList(changes.entrySet().stream().map(entry ->
-				copy(entry.getKey(), entry.getValue())
-						.whenException(e -> logger.warn("Failed to copy file {} into {}: {}", entry.getKey(), entry.getValue(), e))
-						.thenApplyEx(($, e) -> e != null ? null : entry.getKey())))
+		return Promises.toList(
+				changes.entrySet()
+						.stream()
+						.map(entry ->
+								copy(entry.getKey(), entry.getValue())
+										.whenException(e -> logger.warn("Failed to copy file {} into {}: {}", entry.getKey(), entry.getValue(), e))
+										.thenApplyEx(($, e) -> e != null ? null : entry.getKey())))
 				.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
 				.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
 				.whenComplete(copyPromise.recordStats());
@@ -291,18 +297,19 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Void> delete(String glob) {
-		return Promise.ofRunnable(executor, () -> {
-			synchronized (this) {
-				try {
-					walkFiles(glob, (meta, path) -> {
-						logger.trace("deleting file: {}: {}", meta, this);
-						Files.delete(path);
-					});
-				} catch (IOException e) {
-					throw new UncheckedException(e);
-				}
-			}
-		})
+		return Promise.ofRunnable(executor,
+				() -> {
+					synchronized (this) {
+						try {
+							walkFiles(glob, (meta, path) -> {
+								logger.trace("deleting file: {}: {}", meta, this);
+								Files.delete(path);
+							});
+						} catch (IOException e) {
+							throw new UncheckedException(e);
+						}
+					}
+				})
 				.whenComplete(toLogger(logger, TRACE, "delete", glob, this))
 				.whenComplete(deletePromise.recordStats());
 	}
@@ -375,7 +382,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					Path path = resolveFilePath(filePath);
 					Files.createDirectories(path.getParent());
 					return path;
-				}).whenComplete(toLogger(logger, TRACE, "ensureDirectory", filePath, this));
+				})
+				.whenComplete(toLogger(logger, TRACE, "ensureDirectory", filePath, this));
 	}
 
 	private void walkFiles(String glob, Walker walker) throws IOException {
@@ -424,7 +432,6 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@FunctionalInterface
 	interface Walker {
-
 		void accept(FileMetadata meta, Path path) throws IOException;
 	}
 

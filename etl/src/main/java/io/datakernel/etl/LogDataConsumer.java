@@ -1,4 +1,4 @@
-package io.datakernel.logfs.ot;
+package io.datakernel.etl;
 
 import io.datakernel.stream.StreamConsumerWithResult;
 

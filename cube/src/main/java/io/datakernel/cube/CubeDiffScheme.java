@@ -1,7 +1,7 @@
 package io.datakernel.cube;
 
 import io.datakernel.cube.ot.CubeDiff;
-import io.datakernel.logfs.ot.LogDiff;
+import io.datakernel.etl.LogDiff;
 
 import java.util.List;
 import java.util.stream.Stream;

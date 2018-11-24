@@ -19,7 +19,7 @@ package io.datakernel.cube;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.cube.bean.TestPubRequest.TestAdvRequest;
 import io.datakernel.cube.ot.CubeDiff;
-import io.datakernel.logfs.ot.LogDataConsumerSplitter;
+import io.datakernel.etl.LogDataConsumerSplitter;
 import io.datakernel.stream.StreamDataAcceptor;
 
 import java.util.HashSet;

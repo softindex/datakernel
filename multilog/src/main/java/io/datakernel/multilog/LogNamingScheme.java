@@ -1,4 +1,4 @@
-package io.datakernel.logfs;
+package io.datakernel.multilog;
 
 import io.datakernel.annotation.Nullable;
 

@@ -14,21 +14,18 @@
  * limitations under the License.
  */
 
-package io.datakernel.logfs.ot;
+package io.datakernel.etl;
 
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
-import io.datakernel.codec.StructuredInput;
-import io.datakernel.codec.StructuredOutput;
+import io.datakernel.codec.*;
 import io.datakernel.exception.ParseException;
-import io.datakernel.logfs.LogFile;
-import io.datakernel.logfs.LogPosition;
-import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
+import io.datakernel.multilog.LogFile;
+import io.datakernel.multilog.LogPosition;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.json.JsonUtils.oneline;
 
 public final class LogDiffCodec<D> implements StructuredCodec<LogDiff<D>> {
@@ -74,46 +71,35 @@ public final class LogDiffCodec<D> implements StructuredCodec<LogDiff<D>> {
 	@Override
 	public void encode(StructuredOutput out, LogDiff<D> multilogDiff) {
 		out.writeObject(() -> {
-			out.writeKey(POSITIONS);
-			out.writeTuple(() -> {
-				for (Map.Entry<String, LogPositionDiff> entry : multilogDiff.getPositions().entrySet()) {
-					out.writeObject(() -> {
-						out.writeKey(LOG);
-						out.writeString(entry.getKey());
-						out.writeKey(FROM);
-						LOG_POSITION_CODEC.encode(out, entry.getValue().from);
-						out.writeKey(TO);
-						LOG_POSITION_CODEC.encode(out, entry.getValue().to);
+			out.writeKey(POSITIONS, StructuredEncoder.ofTuple((out1, multilogDiff1) -> {
+				for (Map.Entry<String, LogPositionDiff> entry : multilogDiff1.getPositions().entrySet()) {
+					out1.writeObject(() -> {
+						out1.writeKey(LOG, STRING_CODEC, entry.getKey());
+						out1.writeKey(FROM, LOG_POSITION_CODEC, entry.getValue().from);
+						out1.writeKey(TO, LOG_POSITION_CODEC, entry.getValue().to);
 					});
 				}
-			});
-			out.writeKey(OPS);
-			opsCodec.encode(out, multilogDiff.getDiffs());
+			}), multilogDiff);
+			out.writeKey(OPS, opsCodec, multilogDiff.getDiffs());
 		});
 	}
 
 	@Override
 	public LogDiff<D> decode(StructuredInput in) throws ParseException {
-		return in.readObject($ -> {
-			Map<String, LogPositionDiff> positions = new LinkedHashMap<>();
-			in.readKey(POSITIONS);
-			in.readTuple(() -> {
-				while (in.hasNext()) {
-					in.readObject(() -> {
-						in.readKey(LOG);
-						String log = in.readString();
-						in.readKey(FROM);
-						LogPosition from = LOG_POSITION_CODEC.decode(in);
-						in.readKey(TO);
-						LogPosition to = LOG_POSITION_CODEC.decode(in);
-						positions.put(log, new LogPositionDiff(from, to));
-					});
-				}
-			});
-			in.readKey(OPS);
-			List<D> ops = opsCodec.decode(in);
-			return LogDiff.of(positions, ops);
-		});
+		return in.readObject($ -> LogDiff.of(
+				in.readKey(POSITIONS, StructuredDecoder.ofTuple(in1 -> {
+					Map<String, LogPositionDiff> positions = new LinkedHashMap<>();
+					while (in1.hasNext()) {
+						in1.readObject(() -> {
+							String log = in1.readKey(LOG, STRING_CODEC);
+							LogPosition from = in1.readKey(FROM, LOG_POSITION_CODEC);
+							LogPosition to = in1.readKey(TO, LOG_POSITION_CODEC);
+							positions.put(log, new LogPositionDiff(from, to));
+						});
+					}
+					return positions;
+				})),
+				in.readKey(OPS, opsCodec)));
 	}
 
 }

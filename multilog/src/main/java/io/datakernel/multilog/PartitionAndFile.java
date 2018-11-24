@@ -1,4 +1,4 @@
-package io.datakernel.logfs;
+package io.datakernel.multilog;
 
 final class PartitionAndFile {
 	private final String logPartition;

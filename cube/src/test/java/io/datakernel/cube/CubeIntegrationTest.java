@@ -23,10 +23,10 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffCodec;
 import io.datakernel.cube.ot.CubeOT;
+import io.datakernel.etl.*;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.logfs.LogManager;
-import io.datakernel.logfs.LogManagerImpl;
-import io.datakernel.logfs.ot.*;
+import io.datakernel.multilog.Multilog;
+import io.datakernel.multilog.MultilogImpl;
 import io.datakernel.ot.*;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
@@ -51,7 +51,7 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.logfs.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
+import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -110,13 +110,13 @@ public class CubeIntegrationTest {
 		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
-		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
+		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
 				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 
 		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
-				logManager,
+				multilog,
 				cube.logStreamConsumer(LogItem.class),
 				"testlog",
 				asList("partitionA"),
@@ -133,7 +133,7 @@ public class CubeIntegrationTest {
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
 		StreamSupplier.ofIterable(listOfRandomLogItems).streamTo(
-				logManager.consumerStream("partitionA"));
+				multilog.writer("partitionA"));
 		eventloop.run();
 		Files.list(logsDir).forEach(System.out::println);
 
@@ -167,7 +167,7 @@ public class CubeIntegrationTest {
 
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
 		StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
-				logManager.consumerStream("partitionA"));
+				multilog.writer("partitionA"));
 		eventloop.run();
 		Files.list(logsDir).forEach(System.out::println);
 
@@ -184,7 +184,7 @@ public class CubeIntegrationTest {
 
 		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
 		StreamSupplier.ofIterable(listOfRandomLogItems3).streamTo(
-				logManager.consumerStream("partitionA"));
+				multilog.writer("partitionA"));
 		eventloop.run();
 		Files.list(logsDir).forEach(System.out::println);
 

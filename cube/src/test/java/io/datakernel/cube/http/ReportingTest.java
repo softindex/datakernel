@@ -28,12 +28,12 @@ import io.datakernel.cube.attributes.AbstractAttributeResolver;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffCodec;
 import io.datakernel.cube.ot.CubeOT;
+import io.datakernel.etl.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.logfs.LogManager;
-import io.datakernel.logfs.LogManagerImpl;
-import io.datakernel.logfs.ot.*;
+import io.datakernel.multilog.Multilog;
+import io.datakernel.multilog.MultilogImpl;
 import io.datakernel.ot.*;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
@@ -71,7 +71,7 @@ import static io.datakernel.cube.ReportType.DATA;
 import static io.datakernel.cube.ReportType.DATA_WITH_TOTALS;
 import static io.datakernel.cube.http.ReportingTest.LogItem.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.logfs.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
+import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.*;
 import static java.util.Arrays.asList;
@@ -320,13 +320,13 @@ public final class ReportingTest {
 		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
-		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
+		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
 				LocalFsClient.create(eventloop, newSingleThreadExecutor(), temporaryFolder.getRoot().toPath()),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 
 		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
-				logManager,
+				multilog,
 				new LogItemSplitter(cube),
 				"testlog",
 				singletonList("partitionA"),
@@ -358,7 +358,7 @@ public final class ReportingTest {
 				new LogItem(3, EXCLUDE_ADVERTISER, EXCLUDE_CAMPAIGN, EXCLUDE_BANNER, 40, 3, 2, 1.0, 0, 1, 4, "site1.com"));
 
 		StreamSupplier.ofIterable(concat(logItemsForAdvertisersAggregations, logItemsForAffiliatesAggregation))
-				.streamTo(logManager.consumerStream("partitionA"));
+				.streamTo(multilog.writer("partitionA"));
 		eventloop.run();
 
 		future = logOTProcessor.processLog()

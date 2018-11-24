@@ -1,6 +1,5 @@
-package io.datakernel.logfs.ot;
+package io.datakernel.etl;
 
-import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
