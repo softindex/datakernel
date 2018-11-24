@@ -31,7 +31,6 @@ import io.datakernel.cube.ot.CubeOT;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.logfs.LocalFsLogFileSystem;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
 import io.datakernel.logfs.ot.*;
@@ -72,10 +71,12 @@ import static io.datakernel.cube.ReportType.DATA;
 import static io.datakernel.cube.ReportType.DATA_WITH_TOTALS;
 import static io.datakernel.cube.http.ReportingTest.LogItem.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.logfs.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -320,8 +321,9 @@ public final class ReportingTest {
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
-				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
-				SerializerBuilder.create(classLoader).build(LogItem.class));
+				LocalFsClient.create(eventloop, newSingleThreadExecutor(), temporaryFolder.getRoot().toPath()),
+				SerializerBuilder.create(classLoader).build(LogItem.class),
+				NAME_PARTITION_REMAINDER_SEQ);
 
 		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
 				logManager,

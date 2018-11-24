@@ -18,11 +18,11 @@ package io.datakernel.logfs;
 
 public final class LogFile implements Comparable<LogFile> {
 	private final String name;
-	private final int n;
+	private final int remainder;
 
-	public LogFile(String name, int n) {
+	public LogFile(String name, int remainder) {
 		this.name = name;
-		this.n = n;
+		this.remainder = remainder;
 	}
 
 	@Override
@@ -30,15 +30,15 @@ public final class LogFile implements Comparable<LogFile> {
 		int i = name.compareTo(o.name);
 		if (i != 0)
 			return i;
-		return Integer.compare(n, o.n);
+		return Integer.compare(remainder, o.remainder);
 	}
 
 	public String getName() {
 		return name;
 	}
 
-	public int getN() {
-		return n;
+	public int getRemainder() {
+		return remainder;
 	}
 
 	@Override
@@ -48,7 +48,7 @@ public final class LogFile implements Comparable<LogFile> {
 
 		LogFile logFile = (LogFile) o;
 
-		if (n != logFile.n) return false;
+		if (remainder != logFile.remainder) return false;
 		if (!this.name.equals(logFile.name)) return false;
 
 		return true;
@@ -57,12 +57,12 @@ public final class LogFile implements Comparable<LogFile> {
 	@Override
 	public int hashCode() {
 		int result = name.hashCode();
-		result = 31 * result + n;
+		result = 31 * result + remainder;
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		return name + (n == 0 ? "" : "_" + n);
+		return name + (remainder == 0 ? "" : "_" + remainder);
 	}
 }

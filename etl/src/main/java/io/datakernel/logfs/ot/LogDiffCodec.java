@@ -45,7 +45,7 @@ public final class LogDiffCodec<D> implements StructuredCodec<LogDiff<D>> {
 		public void encode(StructuredOutput out, LogPosition value) {
 			out.writeTuple(() -> {
 				out.writeString(value.getLogFile().getName());
-				out.writeInt(value.getLogFile().getN());
+				out.writeInt(value.getLogFile().getRemainder());
 				out.writeLong(value.getPosition());
 			});
 		}

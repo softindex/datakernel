@@ -23,7 +23,6 @@ import io.datakernel.cube.ot.CubeDiffCodec;
 import io.datakernel.cube.ot.CubeOT;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.logfs.LocalFsLogFileSystem;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
 import io.datakernel.logfs.ot.*;
@@ -55,10 +54,12 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.logfs.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.*;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -77,9 +78,9 @@ public class CubeMeasureRemovalTest {
 	private ExecutorService executor;
 	private DefiningClassLoader classLoader;
 	private DataSource dataSource;
-	private LocalFsLogFileSystem fileSystem;
 	private AggregationChunkStorage<Long> aggregationChunkStorage;
 	private BufferSerializer<LogItem> serializer;
+	private LogManager<LogItem> logManager;
 
 	@Before
 	public void before() throws IOException {
@@ -90,9 +91,12 @@ public class CubeMeasureRemovalTest {
 		executor = Executors.newCachedThreadPool();
 		classLoader = DefiningClassLoader.create();
 		dataSource = dataSource("test.properties");
-		fileSystem = LocalFsLogFileSystem.create(eventloop, executor, logsDir);
 		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
+		logManager = LogManagerImpl.create(eventloop,
+				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
+				serializer,
+				NAME_PARTITION_REMAINDER_SEQ);
 	}
 
 	@Test
@@ -134,8 +138,9 @@ public class CubeMeasureRemovalTest {
 		eventloop.run();
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
-				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
-				SerializerBuilder.create(classLoader).build(LogItem.class));
+				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
+				SerializerBuilder.create(classLoader).build(LogItem.class),
+				NAME_PARTITION_REMAINDER_SEQ);
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
 		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
@@ -312,8 +317,6 @@ public class CubeMeasureRemovalTest {
 			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 			OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager1 = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
-			LogManager<LogItem> logManager = LogManagerImpl.create(eventloop, fileSystem, serializer);
-
 			LogDataConsumer<LogItem, CubeDiff> logStreamConsumer1 = cube1.logStreamConsumer(LogItem.class);
 			LogOTProcessor<LogItem, CubeDiff> logOTProcessor1 = LogOTProcessor.create(eventloop,
 					logManager, logStreamConsumer1, "testlog", asList("partitionA"), cubeDiffLogOTState);
@@ -390,7 +393,6 @@ public class CubeMeasureRemovalTest {
 			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
 			OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager1 = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
-			LogManager<LogItem> logManager = LogManagerImpl.create(eventloop, fileSystem, serializer);
 			LogDataConsumer<LogItem, CubeDiff> logStreamConsumer1 = cube1.logStreamConsumer(LogItem.class);
 
 			LogOTProcessor<LogItem, CubeDiff> logOTProcessor1 = LogOTProcessor.create(eventloop,

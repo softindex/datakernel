@@ -17,10 +17,7 @@
 package io.datakernel.csp;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.MaterializedPromise;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.*;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.exception.StacklessException;
 
@@ -153,18 +150,23 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	protected final <T> Promise<T> sanitize(Promise<T> promise) {
 		assert !isProcessComplete();
 		return promise
-				.thenComposeEx((value, e) -> {
-					if (isProcessComplete()) {
-						tryRecycle(value);
-						return Promise.ofException(ASYNC_PROCESS_IS_COMPLETE);
-					}
-					if (e == null) {
-						return Promise.of(value);
-					} else {
-						close(e);
-						return Promise.ofException(e);
-					}
-				});
+				.thenComposeEx(this::sanitize);
+	}
+
+	protected <T> Promise<T> sanitize(T value, Throwable e) {
+		if (isProcessComplete()) {
+			tryRecycle(value);
+			if (value instanceof Cancellable) {
+				((Cancellable) value).close(ASYNC_PROCESS_IS_COMPLETE);
+			}
+			return Promise.ofException(ASYNC_PROCESS_IS_COMPLETE);
+		}
+		if (e == null) {
+			return Promise.of(value);
+		} else {
+			close(e);
+			return Promise.ofException(e);
+		}
 	}
 
 }

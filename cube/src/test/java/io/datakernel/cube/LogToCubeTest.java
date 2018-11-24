@@ -26,7 +26,6 @@ import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffCodec;
 import io.datakernel.cube.ot.CubeOT;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.logfs.LocalFsLogFileSystem;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
 import io.datakernel.logfs.ot.*;
@@ -53,9 +52,11 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
+import static io.datakernel.logfs.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
@@ -106,8 +107,9 @@ public final class LogToCubeTest {
 					OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 					LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop,
-							LocalFsLogFileSystem.create(eventloop, executor, logsDir),
-							SerializerBuilder.create(classLoader).build(TestPubRequest.class));
+							LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
+							SerializerBuilder.create(classLoader).build(TestPubRequest.class),
+							NAME_PARTITION_REMAINDER_SEQ);
 
 					LogOTProcessor<TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
 							logManager,

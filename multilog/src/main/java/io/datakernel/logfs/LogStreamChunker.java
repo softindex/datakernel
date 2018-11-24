@@ -23,42 +23,31 @@ import io.datakernel.csp.AbstractCommunicatingProcess;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelInput;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
-
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 
 public final class LogStreamChunker extends AbstractCommunicatingProcess implements ChannelInput<ByteBuf> {
 	private final CurrentTimeProvider currentTimeProvider;
-	private final DateTimeFormatter datetimeFormat;
-	private final LogFileSystem fileSystem;
+	private final FsClient client;
+	private final LogNamingScheme namingScheme;
 	private final String logPartition;
 
 	private ChannelSupplier<ByteBuf> input;
 	private ChannelConsumer<ByteBuf> currentConsumer;
 
-	private String currentChunkName;
+	private LogFile currentChunk;
 
-	private LogStreamChunker(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat, String logPartition) {
+	public LogStreamChunker(CurrentTimeProvider currentTimeProvider, FsClient client, LogNamingScheme namingScheme, String logPartition) {
 		this.currentTimeProvider = currentTimeProvider;
-		this.datetimeFormat = datetimeFormat;
-		this.fileSystem = fileSystem;
+		this.client = client;
+		this.namingScheme = namingScheme;
 		this.logPartition = logPartition;
-	}
-
-	public static LogStreamChunker create(LogFileSystem fileSystem, DateTimeFormatter datetimeFormat, String logPartition) {
-		return create(Eventloop.getCurrentEventloop(), fileSystem, datetimeFormat, logPartition);
-	}
-
-	static LogStreamChunker create(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat, String logPartition) {
-		return new LogStreamChunker(currentTimeProvider, fileSystem, datetimeFormat, logPartition);
 	}
 
 	@Override
 	public MaterializedPromise<Void> set(ChannelSupplier<ByteBuf> input) {
-		this.input = input;
-		if (this.input != null) startProcess();
+		this.input = sanitize(input);
+		startProcess();
 		return getProcessResult();
 	}
 
@@ -66,47 +55,31 @@ public final class LogStreamChunker extends AbstractCommunicatingProcess impleme
 	protected void doProcess() {
 		input.get()
 				.whenResult(buf -> {
-					if (buf != null)
+					if (buf != null) {
 						ensureConsumer()
-								.whenResult($1 ->
-										currentConsumer.accept(buf)
-												.whenResult($2 -> {
-													if (isProcessComplete()) return;
-													doProcess();
-												})
-												.whenException(this::close))
-								.whenException(e -> buf.recycle())
-								.whenException(this::close);
-					else {
-						flush()
-								.whenResult($ -> completeProcess())
-								.whenException(this::close);
+								.thenCompose($ -> currentConsumer.accept(buf))
+								.whenResult($ -> doProcess());
+					} else {
+						flush().whenResult($ -> completeProcess());
 					}
-				})
-				.whenException(this::close);
+				});
 	}
 
 	private Promise<Void> ensureConsumer() {
-		String chunkName = datetimeFormat.format(Instant.ofEpochMilli(currentTimeProvider.currentTimeMillis()));
-		return chunkName.equals(currentChunkName) ?
+		LogFile newChunkName = namingScheme.format(currentTimeProvider.currentTimeMillis());
+		return currentChunk != null && currentChunk.getName().compareTo(newChunkName.getName()) >= 0 ?
 				Promise.complete() :
-				startNewChunk(chunkName);
+				startNewChunk(newChunkName);
 	}
 
-	private Promise<Void> startNewChunk(String chunkName) {
+	private Promise<Void> startNewChunk(LogFile newChunkName) {
 		return flush()
 				.thenCompose($ -> {
-					if (isProcessComplete()) return Promise.complete();
-					currentChunkName = chunkName;
-					return fileSystem.makeUniqueLogFile(logPartition, chunkName)
-							.thenCompose(newLogFile -> fileSystem.write(logPartition, newLogFile)
-									.whenResult(newConsumer -> {
-										if (isProcessComplete()) {
-											newConsumer.cancel();
-											return;
-										}
-										currentConsumer = newConsumer;
-									}))
+					this.currentChunk = (currentChunk == null) ? newChunkName : new LogFile(newChunkName.getName(), 0);
+					return client.upload(namingScheme.path(logPartition, currentChunk))
+							.thenComposeEx(this::sanitize)
+							.whenResult(newConsumer ->
+									this.currentConsumer = sanitize(newConsumer))
 							.toVoid();
 				});
 	}

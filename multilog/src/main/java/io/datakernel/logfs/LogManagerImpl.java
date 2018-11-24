@@ -19,6 +19,7 @@ package io.datakernel.logfs;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.process.ChannelBinaryDeserializer;
 import io.datakernel.csp.process.ChannelBinarySerializer;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
@@ -26,10 +27,15 @@ import io.datakernel.csp.process.ChannelLZ4Decompressor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.remotefs.FileMetadata;
+import io.datakernel.remotefs.FsClient;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.StreamSupplierWithResult;
+import io.datakernel.stream.stats.StreamRegistry;
+import io.datakernel.stream.stats.StreamStats;
+import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
@@ -37,48 +43,44 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
+import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toList;
 
 public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(LogManagerImpl.class);
 
-	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH").withZone(ZoneOffset.UTC);
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 
 	private final Eventloop eventloop;
-	private final LogFileSystem fileSystem;
+	private final FsClient client;
+	private final LogNamingScheme namingScheme;
 	private final BufferSerializer<T> serializer;
-	private final DateTimeFormatter dateTimeFormatter;
 
 	private MemSize bufferSize = DEFAULT_BUFFER_SIZE;
 	private Duration autoFlushInterval = null;
 
-	private LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer) {
-		this(eventloop, fileSystem, serializer, DEFAULT_DATE_TIME_FORMATTER);
-	}
+	private final StreamRegistry<String> streamReads = StreamRegistry.create();
+	private final StreamRegistry<String> streamWrites = StreamRegistry.create();
 
-	private LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
-			DateTimeFormatter dateTimeFormatter) {
+	private final StreamStatsDetailed<ByteBuf> streamReadStats = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed<ByteBuf> streamWriteStats = StreamStats.detailed(forByteBufs());
+
+	private LogManagerImpl(Eventloop eventloop, FsClient client, BufferSerializer<T> serializer,
+			LogNamingScheme namingScheme) {
 		this.eventloop = eventloop;
-		this.fileSystem = fileSystem;
+		this.client = client;
 		this.serializer = serializer;
-		this.dateTimeFormatter = dateTimeFormatter;
+		this.namingScheme = namingScheme;
 	}
 
-	public static <T> LogManagerImpl<T> create(Eventloop eventloop, LogFileSystem fileSystem,
-			BufferSerializer<T> serializer) {
-		return new LogManagerImpl<>(eventloop, fileSystem, serializer);
-	}
-
-	public static <T> LogManagerImpl<T> create(Eventloop eventloop, LogFileSystem fileSystem,
-			BufferSerializer<T> serializer, DateTimeFormatter dateTimeFormatter) {
-		return new LogManagerImpl<>(eventloop, fileSystem, serializer, dateTimeFormatter);
+	public static <T> LogManagerImpl<T> create(Eventloop eventloop, FsClient client,
+			BufferSerializer<T> serializer, LogNamingScheme namingScheme) {
+		return new LogManagerImpl<>(eventloop, client, serializer, namingScheme);
 	}
 
 	public LogManagerImpl<T> withBufferSize(int bufferSize) {
@@ -96,6 +98,10 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 		return this;
 	}
 
+	//
+
+	//
+
 	@Override
 	public Promise<StreamConsumer<T>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
@@ -107,7 +113,9 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 								.withInitialBufferSize(bufferSize)
 								.withSkipSerializationErrors())
 						.transformWith(ChannelLZ4Compressor.createFastCompressor())
-						.bindTo(LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition)))
+						.transformWith(streamWrites.register(logPartition))
+						.transformWith(streamWriteStats)
+						.bindTo(new LogStreamChunker(eventloop, client, namingScheme, logPartition)))
 				.withLateBinding());
 	}
 
@@ -117,85 +125,96 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 			LogFile endLogFile) {
 		validateLogPartition(logPartition);
 		LogPosition startPosition = LogPosition.create(startLogFile, startOffset);
+		return client.list()
+				.thenApply(files ->
+						files.stream()
+								.map(FileMetadata::getFilename)
+								.map(namingScheme::parse)
+								.filter(Objects::nonNull)
+								.filter(partitionAndFile -> partitionAndFile.getLogPartition().equals(logPartition))
+								.map(PartitionAndFile::getLogFile)
+								.collect(toList()))
+				.thenApply(logFiles ->
+						logFiles.stream()
+								.filter(logFile -> isFileInRange(logFile, startPosition, endLogFile))
+								.sorted()
+								.collect(toList()))
+				.thenApply(logFilesToRead -> readLogFiles(logPartition, startPosition, logFilesToRead));
+	}
+
+	private StreamSupplierWithResult<T, LogPosition> readLogFiles(String logPartition, LogPosition startPosition, List<LogFile> logFiles) {
 		SettablePromise<LogPosition> positionPromise = new SettablePromise<>();
-		SettablePromise<StreamSupplierWithResult<T, LogPosition>> resultPromise = new SettablePromise<>();
-		fileSystem.list(logPartition)
-				.whenResult(logFiles -> {
-					List<LogFile> logFilesToRead = logFiles.stream()
-							.filter(logFile -> isFileInRange(logFile, startPosition, endLogFile))
-							.sorted()
-							.collect(Collectors.toList());
 
-					Iterator<LogFile> it = logFilesToRead.iterator();
+		Iterator<StreamSupplier<T>> logFileStreams = new Iterator<StreamSupplier<T>>() {
+			final Stopwatch sw = Stopwatch.createUnstarted();
 
-					Iterator<StreamSupplier<T>> suppliers = new Iterator<StreamSupplier<T>>() {
-						private int n;
+			final Iterator<LogFile> it = logFiles.iterator();
+			int n;
+			LogFile currentLogFile;
+			long inputStreamPosition;
 
-						private LogFile currentLogFile;
-						private long inputStreamPosition;
+			@Override
+			public boolean hasNext() {
+				if (it.hasNext()) return true;
+				positionPromise.set(getLogPosition());
+				return false;
+			}
 
-						final Stopwatch sw = Stopwatch.createUnstarted();
+			LogPosition getLogPosition() {
+				if (currentLogFile == null)
+					return startPosition;
 
-						@Override
-						public boolean hasNext() {
-							if (it.hasNext()) return true;
-							positionPromise.set(getLogPosition());
-							return false;
-						}
+				if (currentLogFile.equals(startPosition.getLogFile()))
+					return LogPosition.create(currentLogFile, startPosition.getPosition() + inputStreamPosition);
 
-						public LogPosition getLogPosition() {
-							if (currentLogFile == null)
-								return startPosition;
+				return LogPosition.create(currentLogFile, inputStreamPosition);
+			}
 
-							if (currentLogFile.equals(startPosition.getLogFile()))
-								return LogPosition.create(currentLogFile, startPosition.getPosition() + inputStreamPosition);
+			@Override
+			public StreamSupplier<T> next() {
+				currentLogFile = it.next();
+				long position = n++ == 0 ? startPosition.getPosition() : 0L;
 
-							return LogPosition.create(currentLogFile, inputStreamPosition);
-						}
+				if (logger.isTraceEnabled())
+					logger.trace("Read log file `{}` from: {}", currentLogFile, position);
 
-						@Override
-						public StreamSupplier<T> next() {
-							currentLogFile = it.next();
-							long position = n++ == 0 ? startPosition.getPosition() : 0L;
+				return StreamSupplier.ofPromise(
+						client.download(namingScheme.path(logPartition, currentLogFile), position)
+								.thenApply(fileStream -> {
+									inputStreamPosition = 0L;
+									sw.reset().start();
+									return fileStream
+											.transformWith(streamReads.register(logPartition + ":" + currentLogFile + "@" + position))
+											.transformWith(streamReadStats)
+											.transformWith(ChannelLZ4Decompressor.create()
+													.withInspector((self, header, inputBuf, outputBuf) ->
+															inputStreamPosition += ChannelLZ4Decompressor.HEADER_LENGTH + header.compressedLen))
+											.transformWith(supplier ->
+													supplier.withEndOfStream(eos ->
+															eos.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
+																	Promise.complete() :
+																	Promise.ofException(e))))
+											.transformWith(ChannelBinaryDeserializer.create(serializer))
+											.withEndOfStream(eos ->
+													eos.whenComplete(($, e) -> log(e)))
+											.withLateBinding();
+								}));
+			}
 
-							if (logger.isTraceEnabled())
-								logger.trace("Read log file `{}` from: {}", currentLogFile, position);
+			private void log(Throwable e) {
+				if (e == null && logger.isTraceEnabled()) {
+					logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
+							sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
+				} else if (e != null && logger.isErrorEnabled()) {
+					logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
+							sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), e);
+				}
+			}
+		};
 
-							return StreamSupplier.ofPromise(fileSystem.read(logPartition, currentLogFile, position)
-									.thenApply(fileStream -> {
-										inputStreamPosition = 0L;
-										sw.reset().start();
-										return fileStream
-												.transformWith(ChannelLZ4Decompressor.create()
-														.withInspector((self, header, inputBuf, outputBuf) -> inputStreamPosition += ChannelLZ4Decompressor.HEADER_LENGTH + header.compressedLen))
-												.transformWith(supplier ->
-														supplier.withEndOfStream(eos ->
-																eos.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
-																		Promise.complete() :
-																		Promise.ofException(e))))
-												.transformWith(ChannelBinaryDeserializer.create(serializer))
-												.withEndOfStream(eos ->
-														eos.whenComplete(($, e) -> log(e)))
-												.withLateBinding();
-									}));
-						}
-
-						private void log(Throwable e) {
-							if (e == null && logger.isTraceEnabled()) {
-								logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
-										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
-							} else if (e != null && logger.isErrorEnabled()) {
-								logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
-										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), e);
-							}
-						}
-					};
-
-					StreamSupplier<T> supplier = StreamSupplier.concat(suppliers).withLateBinding();
-					resultPromise.set(StreamSupplierWithResult.of(supplier, positionPromise));
-				})
-				.whenException(resultPromise::setException);
-		return resultPromise;
+		return StreamSupplierWithResult.of(
+				StreamSupplier.concat(logFileStreams).withLateBinding(),
+				positionPromise);
 	}
 
 	private static void validateLogPartition(String logPartition) {
@@ -209,12 +228,9 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 		return endFile == null || logFile.compareTo(endFile) <= 0;
 	}
 
-	public DateTimeFormatter getDateTimeFormatter() {
-		return dateTimeFormatter;
-	}
-
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
+
 }
