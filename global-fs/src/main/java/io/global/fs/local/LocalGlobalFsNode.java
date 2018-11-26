@@ -55,12 +55,12 @@ import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<LocalGlobalFsNode> {
-	public static final Duration DEFAULT_LATENCY_MARGIN = Duration.ofMinutes(5);
 	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalFsNode.class);
+
+	public static final Duration DEFAULT_LATENCY_MARGIN = Duration.ofMinutes(5);
 
 	private final Set<PubKey> managedPubKeys = new HashSet<>();
 
@@ -157,10 +157,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 					if (isMasterFor(space)) { // check only after ensureMasterNodes because it could've made us master
 						return ns.save(filename, offset);
 					}
-					return Promises.firstSuccessful(masters// ,uploadCallNumber, // TODO anton: wait for it
+					return Promises.nSuccessesOrLess(uploadCallNumber, masters
 							.stream()
 							.map(master -> master.upload(space, filename, offset)))
-							.thenApplyEx((res, e) -> e == null ? singletonList(res) : Collections.<ChannelConsumer<DataFrame>>emptyList())
 							.thenApply(consumers -> {
 								ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<artifactId>datakernel-examples</artifactId>
@@ -10,14 +10,14 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>global-fs-demo</artifactId>
+	<artifactId>global-db-demo</artifactId>
 
-	<name>Global FS Examples: Demo App</name>
+	<name>Global DB Examples: Demo App</name>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>global-fs</artifactId>
+			<artifactId>global-db</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
@@ -35,12 +35,12 @@
 				<version>1.6.0</version>
 				<executions>
 					<execution>
-						<id>GlobalFsDemoApp</id>
+						<id>GlobalDbDemoApp</id>
 						<goals>
 							<goal>java</goal>
 						</goals>
 						<configuration>
-							<mainClass>GlobalFsDemoApp</mainClass>
+							<mainClass>io.global.db.demo.GlobalDbDemoApp</mainClass>
 						</configuration>
 					</execution>
 				</executions>

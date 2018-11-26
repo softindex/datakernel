@@ -94,8 +94,8 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 			outputs.replaceAll(output ->
 					output.withAcknowledgement(ack ->
 							ack.thenComposeEx(($, e) -> {
-								if (lenientExceptions.size() < outputs.size()) {
-									outputs.remove(output);
+								outputs.remove(output);
+								if (!outputs.isEmpty()) {
 									lenientExceptions.add(e);
 									return Promise.complete();
 								}

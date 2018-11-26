@@ -35,9 +35,12 @@ public final class SignedData<T> {
 		this.signature = signature;
 	}
 
+	public static <T> SignedData<T> parse(StructuredEncoder<T> encoder, T value, Signature signature) {
+		return new SignedData<>(value, encode(encoder, value).asArray(), signature);
+	}
+
 	public static <T> SignedData<T> parse(StructuredDecoder<T> decoder, byte[] bytes, Signature signature) throws ParseException {
-		T value = decode(decoder, bytes);
-		return new SignedData<>(value, bytes, signature);
+		return new SignedData<>(decode(decoder, bytes), bytes, signature);
 	}
 
 	public static <T> SignedData<T> sign(StructuredEncoder<T> encoder, T value, PrivKey privKey) {

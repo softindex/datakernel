@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.global.fs.demo;
+package io.global.db.demo;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
@@ -23,7 +23,6 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
@@ -31,46 +30,48 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.remotefs.FsClient;
-import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
-import io.global.fs.api.CheckpointPosStrategy;
-import io.global.fs.api.GlobalFsNode;
-import io.global.fs.http.HttpGlobalFsNode;
-import io.global.fs.local.GlobalFsDriver;
+import io.global.db.Blob;
+import io.global.db.DbItem;
+import io.global.db.GlobalDbDriver;
+import io.global.db.api.DbClient;
+import io.global.db.api.DbStorage;
+import io.global.db.api.GlobalDbNode;
+import io.global.db.http.HttpGlobalDbNode;
+import io.global.db.stub.RuntimeDbStorageStub;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.config.Config.ofProperties;
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.ConfigConverters.getExecutor;
+import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 import static java.lang.Boolean.parseBoolean;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 
-public final class GlobalFsDemoApp extends Launcher {
+public final class GlobalDbDemoApp extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
-	public static final String PROPERTIES_FILE = "globalfs-app.properties";
+	public static final String PROPERTIES_FILE = "globaldb-app.properties";
 
 	@Inject
 	Eventloop eventloop;
 
 	@Inject
-	FsClient storage;
-
-	@Inject
 	@Named("alice")
-	FsClient alice;
+	DbClient alice;
 
 	@Inject
 	@Named("alice")
@@ -120,14 +121,14 @@ public final class GlobalFsDemoApp extends Launcher {
 
 					@Provides
 					@Singleton
-					FsClient provide(Config config, Eventloop eventloop, ExecutorService executor) {
-						return LocalFsClient.create(eventloop, executor, config.get(ofPath(), "app.storage"));
+					DbStorage provideStorage(Config config) {
+						return new RuntimeDbStorageStub();
 					}
 
 					@Provides
 					@Singleton
-					GlobalFsNode provide(IAsyncHttpClient httpClient, Config config) {
-						return HttpGlobalFsNode.create(config.get("app.globalFsId"), httpClient);
+					GlobalDbNode provide(IAsyncHttpClient httpClient, Config config) {
+						return HttpGlobalDbNode.create(config.get("app.globalDbId"), httpClient);
 					}
 
 					@Provides
@@ -139,8 +140,8 @@ public final class GlobalFsDemoApp extends Launcher {
 
 					@Provides
 					@Singleton
-					GlobalFsDriver provide(GlobalFsNode node, PrivateKeyStorage pks, Config config) {
-						return GlobalFsDriver.create(node, pks, CheckpointPosStrategy.of(16 * 1024));
+					GlobalDbDriver provide(GlobalDbNode node, PrivateKeyStorage pks) {
+						return GlobalDbDriver.create(node, pks);
 					}
 
 					@Provides
@@ -153,7 +154,7 @@ public final class GlobalFsDemoApp extends Launcher {
 					@Provides
 					@Singleton
 					@Named("alice")
-					FsClient provideAlice(GlobalFsDriver driver, @Named("alice") KeyPair keys) {
+					DbClient provideAlice(GlobalDbDriver driver, @Named("alice") KeyPair keys) {
 						return driver.gatewayFor(keys.getPubKey());
 					}
 
@@ -161,21 +162,23 @@ public final class GlobalFsDemoApp extends Launcher {
 					@Singleton
 					SignedData<AnnounceData> provideAnnounceData(Config config) {
 						return SignedData.sign(BinaryDataFormats.REGISTRY.get(AnnounceData.class), AnnounceData.of(System.currentTimeMillis(),
-								set(config.get(ofRawServerId(), "app.globalFsId"))), aliceKeys.getPrivKey());
+								set(config.get(ofRawServerId(), "app.globalDbId"))), aliceKeys.getPrivKey());
 					}
 				});
 	}
 
 	@Override
 	protected void run() throws Exception {
-		String testFile = "test.txt";
+
+		List<DbItem> dbItems = new ArrayList<>();
+		for (int i = 0; i < 10; i++) {
+			dbItems.add(DbItem.of(("value_" + i).getBytes(UTF_8), Blob.of(System.currentTimeMillis(), ("data_" + i).getBytes(UTF_8))));
+		}
 
 		eventloop.post(() ->
 				discoveryService.announce(aliceKeys.getPubKey(), announceData)
-						.thenCompose($ -> storage.upload(testFile))
-						.thenCompose(ChannelSupplier.of(wrapUtf8("thats some test data right in that file!\n"))::streamTo)
-						.thenCompose($ -> ChannelSupplier.ofPromise(storage.download(testFile))
-								.streamTo(ChannelConsumer.ofPromise(alice.upload(testFile))))
+						.thenCompose($ -> alice.upload("test_table"))
+						.thenCompose(ChannelSupplier.ofIterable(dbItems)::streamTo)
 						.whenException(Throwable::printStackTrace)
 						.whenComplete(($, e) -> shutdown())
 		);
@@ -183,6 +186,6 @@ public final class GlobalFsDemoApp extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalFsDemoApp().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
+		new GlobalDbDemoApp().launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }

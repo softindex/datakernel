@@ -20,14 +20,12 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.CollectListener.CollectCanceller;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.AsyncTimeoutException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.util.*;
 
 import java.lang.reflect.Array;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.function.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -993,4 +991,57 @@ public final class Promises {
 		return transformIterator((Iterator<AsyncSupplier<T>>)tasks, AsyncSupplier::get);
 	}
 
+	public static <T> Promise<List<T>> nSuccesses(int n, Stream<Promise<T>> promises) {
+		return nSuccesses(n, promises.iterator());
+	}
+
+	public static <T> Promise<List<T>> nSuccesses(int n, Iterator<Promise<T>> promises) {
+		SettablePromise<List<T>> result = new SettablePromise<>();
+		for (int i = 0; i < n; i++) {
+			oneSuccessInto(promises, n, result, new ArrayList<>(), new ArrayList<>());
+		}
+		return result;
+	}
+
+	public static <T> Promise<List<T>> nSuccessesOrLess(int n, Stream<Promise<T>> promises) {
+		return nSuccessesOrLess(n, promises.iterator());
+	}
+
+	public static <T> Promise<List<T>> nSuccessesOrLess(int n, Iterator<Promise<T>> promises) {
+		SettablePromise<List<T>> result = new SettablePromise<>();
+		for (int i = 0; i < n; i++) {
+			oneSuccessInto(promises, n, result, new ArrayList<>(), null);
+		}
+		return result;
+	}
+
+	private static <T> void oneSuccessInto(Iterator<Promise<T>> promises, int n, SettablePromise<List<T>> result, List<T> results, @Nullable List<Throwable> errors) {
+		if (!promises.hasNext()) {
+			if (errors == null) {
+				result.set(results);
+			} else {
+				if (!results.isEmpty() && results.get(0) instanceof Cancellable) {
+					results.forEach(r -> ((Cancellable) r).cancel());
+				}
+				StacklessException e = new StacklessException(Promises.class, "Not enough successes");
+				errors.forEach(e::addSuppressed);
+				result.setException(e);
+			}
+			return;
+		}
+		promises.next()
+				.whenComplete((res, e) -> {
+					if (e != null) {
+						if (errors != null) {
+							errors.add(e);
+						}
+						oneSuccessInto(promises, n, result, results, errors);
+						return;
+					}
+					results.add(res);
+					if (results.size() >= n) {
+						result.set(results);
+					}
+				});
+	}
 }

@@ -201,6 +201,10 @@ public final class CryptoUtils {
 		return Arrays.copyOf(sha1(string.getBytes(UTF_8)), 16);
 	}
 
+	public static byte[] nonceFromBytes(byte[] bytes) {
+		return Arrays.copyOf(sha1(bytes), 16);
+	}
+
 	public static byte[] generateNonce() {
 		byte[] nonce = new byte[BLOCK_SIZE];
 		SECURE_RANDOM.nextBytes(nonce);

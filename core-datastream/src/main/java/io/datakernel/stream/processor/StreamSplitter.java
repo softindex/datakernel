@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ import static io.datakernel.util.Preconditions.checkState;
  *
  * @param <T>
  */
-@SuppressWarnings("unchecked")
 public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, StreamDataAcceptor<T> {
 	private final Input input;
 	private final List<Output> outputs = new ArrayList<>();
@@ -41,8 +40,9 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 	private StreamDataAcceptor<T>[] dataAcceptors = new StreamDataAcceptor[0];
 	private int suspended = 0;
 
+	private boolean lenient = false;
+	private List<Throwable> lenientExceptions = new ArrayList<>();
 
-	// region creators
 	private StreamSplitter() {
 		input = new Input();
 	}
@@ -50,7 +50,11 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 	public static <T> StreamSplitter<T> create() {
 		return new StreamSplitter<>();
 	}
-	//endregion
+
+	public StreamSplitter<T> lenient() {
+		lenient = true;
+		return this;
+	}
 
 	public StreamSupplier<T> newOutput() {
 		Output output = new Output(outputs.size());
@@ -72,13 +76,14 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 
 	@Override
 	public void accept(T item) {
-		//noinspection ForLoopReplaceableByForEach
-		for (int i = 0; i < dataAcceptors.length; i++) {
-			dataAcceptors[i].accept(item);
+		for (StreamDataAcceptor<T> dataAcceptor : dataAcceptors) {
+			if (dataAcceptor != null) {
+				dataAcceptor.accept(item);
+			}
 		}
 	}
 
-	protected final class Input extends AbstractStreamConsumer<T> {
+	final class Input extends AbstractStreamConsumer<T> {
 		@Override
 		protected void onStarted() {
 			checkState(!outputs.isEmpty(), "Splitter has no outputs");
@@ -95,8 +100,9 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 		}
 	}
 
-	protected final class Output extends AbstractStreamSupplier<T> {
+	final class Output extends AbstractStreamSupplier<T> {
 		private final int index;
+		private boolean isSuspended = false;
 
 		Output(int index) {
 			this.index = index;
@@ -110,6 +116,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 		@Override
 		protected void onSuspended() {
 			suspended++;
+			isSuspended = true;
 			assert input.getSupplier() != null;
 			input.getSupplier().suspend();
 		}
@@ -117,6 +124,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 		@Override
 		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
 			dataAcceptors[index] = dataAcceptor;
+			isSuspended = false;
 			if (--suspended == 0) {
 				assert input.getSupplier() != null;
 				input.getSupplier().resume(StreamSplitter.this);
@@ -125,6 +133,20 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 
 		@Override
 		protected void onError(Throwable e) {
+			if (!lenient) {
+				input.close(e);
+				return;
+			}
+			dataAcceptors[index] = null;
+			if (isSuspended) {
+				suspended--;
+			}
+			outputs.remove(this);
+			if (!outputs.isEmpty()) {
+				lenientExceptions.add(e);
+				return;
+			}
+			lenientExceptions.forEach(e::addSuppressed);
 			input.close(e);
 		}
 	}

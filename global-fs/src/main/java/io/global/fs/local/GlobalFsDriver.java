@@ -50,7 +50,7 @@ public final class GlobalFsDriver {
 	}
 
 	public FsClient gatewayFor(PubKey pubKey) {
-		PrivKey privKey = privateKeyStorage.getKeys().get(pubKey);
+		PrivKey privKey = privateKeyStorage.getManagedKey(pubKey);
 		if (privKey == null) {
 			throw new IllegalArgumentException("No private key stored for " + pubKey);
 		}

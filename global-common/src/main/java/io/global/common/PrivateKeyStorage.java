@@ -18,12 +18,13 @@ package io.global.common;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
 import io.global.common.api.DiscoveryService;
 import org.spongycastle.crypto.CryptoException;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 
 public final class PrivateKeyStorage {
 	private final Map<Hash, SimKey> keyMap = new HashMap<>();
@@ -43,8 +44,9 @@ public final class PrivateKeyStorage {
 		this(null, keys);
 	}
 
-	public Map<PubKey, PrivKey> getKeys() {
-		return keys;
+	@Nullable
+	public PrivKey getManagedKey(PubKey pubKey) {
+		return keys.get(pubKey);
 	}
 
 	public Promise<SimKey> getKey(PubKey receiver, @Nullable Hash simKeyHash) {
@@ -63,7 +65,7 @@ public final class PrivateKeyStorage {
 					SharedSimKey sharedSimKey = signedSharedSimKey.getValue();
 					PrivKey privKey = keys.get(receiver);
 					if (privKey == null) {
-						return Promise.ofException(new StacklessException(PrivateKeyStorage.class, "No private key stored for " + receiver));
+						return Promise.ofException(NO_SHARED_KEY);
 					}
 					try {
 						SimKey newKey = sharedSimKey.decryptSimKey(privKey);

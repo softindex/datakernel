@@ -16,13 +16,10 @@
 
 package io.global.fs;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.http.HttpResponse;
+import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
@@ -59,7 +56,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static io.datakernel.http.AsyncHttpServer.DEFAULT_ERROR_FORMATTER;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.stream.processor.ByteBufRule.IgnoreLeaks;
 import static io.datakernel.util.CollectionUtils.list;
@@ -77,8 +73,8 @@ import static org.junit.Assert.*;
 public final class GlobalFsTest {
 	public static final String FILENAME = "folder/test.txt";
 	public static final String SIMPLE_CONTENT = "hello world, this is some string of bytes for Global-FS testing";
-	private static final RawServerId FIRST_ID = new RawServerId("127.0.0.1:1001");
-	private static final RawServerId SECOND_ID = new RawServerId("127.0.0.1:1002");
+	private static final RawServerId FIRST_ID = new RawServerId("http://127.0.0.1:1001");
+	private static final RawServerId SECOND_ID = new RawServerId("http://127.0.0.1:1002");
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -108,7 +104,7 @@ public final class GlobalFsTest {
 	private FsClient bobGateway;
 
 	private static String folderFor(RawServerId serverId) {
-		return "server_" + serverId.getServerIdString().split(":")[1];
+		return "server_" + serverId.getServerIdString().split(":")[2];
 	}
 
 	@Before
@@ -124,8 +120,9 @@ public final class GlobalFsTest {
 		clientFactory = new NodeFactory<GlobalFsNode>() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
-				return wrapWithHttpInterface(nodes.computeIfAbsent(serverId, id ->
-						LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder(folderFor(id)))), serverId);
+				GlobalFsNode node = nodes.computeIfAbsent(serverId, id -> LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder(folderFor(id))));
+				StubHttpClient client = StubHttpClient.of(GlobalFsNodeServlet.create(node));
+				return HttpGlobalFsNode.create(serverId.getServerIdString(), client);
 			}
 		};
 		firstClient = clientFactory.create(FIRST_ID);
@@ -140,31 +137,10 @@ public final class GlobalFsTest {
 		firstAliceAdapter = firstDriver.gatewayFor(alice.getPubKey());
 		secondAliceAdapter = secondDriver.gatewayFor(alice.getPubKey());
 
-		cachingNode = clientFactory.create(new RawServerId("127.0.0.1:1003"));
+		cachingNode = clientFactory.create(new RawServerId("http://127.0.0.1:1003"));
 		driver = GlobalFsDriver.create(cachingNode, discoveryService, asList(alice, bob), CheckpointPosStrategy.of(16));
 		aliceGateway = driver.gatewayFor(alice.getPubKey());
 		bobGateway = driver.gatewayFor(bob.getPubKey());
-	}
-
-	@SuppressWarnings("Duplicates") // stolen piece from HttpServerConnection
-	private GlobalFsNode wrapWithHttpInterface(GlobalFsNode node, RawServerId serverId) {
-		GlobalFsNodeServlet servlet = GlobalFsNodeServlet.create(node);
-		return HttpGlobalFsNode.create("http://" + serverId.getServerIdString(), request -> {
-			Promise<HttpResponse> servletResult;
-			try {
-				servletResult = servlet.serve(request);
-			} catch (UncheckedException u) {
-				servletResult = Promise.ofException(u.getCause());
-			} catch (ParseException e) {
-				servletResult = Promise.ofException(e);
-			}
-			return servletResult.thenComposeEx((res, e) -> {
-				if (e == null) {
-					return Promise.of(res);
-				}
-				return Promise.of(DEFAULT_ERROR_FORMATTER.formatException(e));
-			});
-		});
 	}
 
 	private void announce(KeyPair keys, Set<RawServerId> rawServerIds) {
@@ -243,7 +219,7 @@ public final class GlobalFsTest {
 	public void announcedUpload() {
 		announce(alice, set(FIRST_ID, SECOND_ID));
 
-		// simply upload straight to the first node (no masters so it'll cache)
+		// upload to the caching node, it'll cache and also forward to one of the masters
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(aliceGateway.upload(FILENAME))));
 
 		int found = 0;
@@ -414,7 +390,7 @@ public final class GlobalFsTest {
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
 
 		// just ping the second node with alice's pubkey so it would check if it it's master
-		await(secondAliceAdapter.list("**"));
+		await(secondAliceAdapter.list(""));
 
 		// // second node never even heard of alice to know it is it's master
 		// rawSecondClient.withManagedPubKeys(set(alice.getPubKey()));

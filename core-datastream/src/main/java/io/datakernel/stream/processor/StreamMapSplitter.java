@@ -29,7 +29,7 @@ import static io.datakernel.util.Preconditions.checkState;
 
 public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs, StreamDataAcceptor<I> {
 	private final Input input;
-	private final List<Output<?>> outputs = new ArrayList<>();
+	private final List<Output> outputs = new ArrayList<>();
 	private final BiConsumer<I, StreamDataAcceptor<Object>[]> action;
 
 	@SuppressWarnings("unchecked")
@@ -45,12 +45,13 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 		return new StreamMapSplitter<>(action);
 	}
 
+	@SuppressWarnings("unchecked")
 	public <O> StreamSupplier<O> newOutput() {
-		Output<O> output = new Output<>(outputs.size());
+		Output output = new Output(outputs.size());
 		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
 		suspended++;
 		outputs.add(output);
-		return output;
+		return (StreamSupplier<O>) output;
 	}
 
 	@Override
@@ -68,7 +69,7 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 		action.accept(item, dataAcceptors);
 	}
 
-	private final class Input extends AbstractStreamConsumer<I> {
+	final class Input extends AbstractStreamConsumer<I> {
 		@Override
 		protected void onStarted() {
 			checkState(!outputs.isEmpty(), "Empty outputs");
@@ -85,8 +86,8 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 		}
 	}
 
-	private final class Output<O> extends AbstractStreamSupplier<O> {
-		private final int index;
+	final class Output extends AbstractStreamSupplier<Object> {
+		final int index;
 
 		Output(int index) {
 			this.index = index;
@@ -103,10 +104,9 @@ public final class StreamMapSplitter<I> implements StreamInput<I>, StreamOutputs
 			input.getSupplier().suspend();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
-		protected void onProduce(StreamDataAcceptor<O> dataAcceptor) {
-			dataAcceptors[index] = (StreamDataAcceptor<Object>) dataAcceptor;
+		protected void onProduce(StreamDataAcceptor<Object> dataAcceptor) {
+			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
 				input.getSupplier().resume(StreamMapSplitter.this);
 			}
