@@ -75,11 +75,11 @@ public final class GlobalFsSetup {
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		DiscoveryService discoveryService = HttpDiscoveryService.create(new InetSocketAddress(9001), client);
 
-		RawServerId first = new RawServerId(new InetSocketAddress(8001));
-		RawServerId second = new RawServerId(new InetSocketAddress(8002));
+		RawServerId first = new RawServerId("127.0.0.1:8001");
+		RawServerId second = new RawServerId("127.0.0.1:8002");
 
-		GlobalFsNode firstClient = new HttpGlobalFsNode(client, first.getInetSocketAddress());
-		GlobalFsNode secondClient = new HttpGlobalFsNode(client, second.getInetSocketAddress());
+		GlobalFsNode firstClient = new HttpGlobalFsNode(client, new InetSocketAddress(Integer.parseInt(first.getServerIdString().split(":")[1])));
+		GlobalFsNode secondClient = new HttpGlobalFsNode(client, new InetSocketAddress(Integer.parseInt(second.getServerIdString().split(":")[1])));
 
 		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, discoveryService, list(alice), fixed(5));
 		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, discoveryService, list(alice), fixed(6));
@@ -113,7 +113,7 @@ public final class GlobalFsSetup {
 		Set<RawServerId> servers = new HashSet<>();
 
 		for (int i = 1; i <= parseInt(getProperty("globalfs.testing.numOfServers")); i++) {
-			servers.add(new RawServerId(new InetSocketAddress(8000 + i)));
+			servers.add(new RawServerId("127.0.0.1:" + (8000 + i)));
 		}
 
 		Promises.all(

@@ -2,21 +2,19 @@ package io.global.common;
 
 import io.datakernel.exception.ParseException;
 
-import java.net.InetSocketAddress;
-
 public final class RawServerId {
-	private final InetSocketAddress inetSocketAddress;
+	private final String serverIdString;
 
-	public RawServerId(InetSocketAddress inetSocketAddress) {
-		this.inetSocketAddress = inetSocketAddress;
+	public RawServerId(String serverIdString) {
+		this.serverIdString = serverIdString;
 	}
 
-	public static RawServerId parse(InetSocketAddress inetSocketAddress) throws ParseException {
+	public static RawServerId parse(String inetSocketAddress) throws ParseException {
 		return new RawServerId(inetSocketAddress); // TODO
 	}
 
-	public InetSocketAddress getInetSocketAddress() {
-		return inetSocketAddress;
+	public String getServerIdString() {
+		return serverIdString;
 	}
 
 	@Override
@@ -26,16 +24,16 @@ public final class RawServerId {
 
 		RawServerId that = (RawServerId) o;
 
-		return inetSocketAddress.equals(that.inetSocketAddress);
+		return serverIdString.equals(that.serverIdString);
 	}
 
 	@Override
 	public int hashCode() {
-		return inetSocketAddress.hashCode();
+		return serverIdString.hashCode();
 	}
 
 	@Override
 	public String toString() {
-		return "RawServerId{" + inetSocketAddress + '}';
+		return "RawServerId{" + serverIdString + '}';
 	}
 }

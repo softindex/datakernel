@@ -75,8 +75,8 @@ public final class GlobalFsTest {
 	private KeyPair alice = KeyPair.generate();
 	private KeyPair bob = KeyPair.generate();
 
-	private RawServerId firstId = new RawServerId(new InetSocketAddress(123));
-	private RawServerId secondId = new RawServerId(new InetSocketAddress(124));
+	private RawServerId firstId = new RawServerId("127.0.0.1:1234");
+	private RawServerId secondId = new RawServerId("127.0.0.1:1235");
 
 	private LocalGlobalFsNode rawFirstClient;
 	private LocalGlobalFsNode rawSecondClient;
@@ -96,7 +96,7 @@ public final class GlobalFsTest {
 		NodeClientFactory clientFactory = new NodeClientFactory() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
-				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverId.getInetSocketAddress().getPort()))
+				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverId.getServerIdString().split(":")[1]))
 						.withManagedPubKeys(set(alice.getPubKey(), bob.getPubKey()));
 			}
 		};

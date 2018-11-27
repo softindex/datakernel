@@ -60,7 +60,7 @@ public final class BinaryDataFormats {
 
 				.with(RawServerId.class, registry ->
 						tuple(RawServerId::parse,
-								RawServerId::getInetSocketAddress, registry.get(InetSocketAddress.class)))
+								RawServerId::getServerIdString, registry.get(String.class)))
 
 				.with(PubKey.class, registry ->
 						tuple(PubKey::parse,

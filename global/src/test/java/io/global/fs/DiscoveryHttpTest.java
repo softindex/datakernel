@@ -72,7 +72,7 @@ public final class DiscoveryHttpTest {
 
 		InetAddress localhost = InetAddress.getLocalHost();
 
-		AnnounceData testAnnounce = AnnounceData.of(123, set(new RawServerId(new InetSocketAddress(localhost, 123))));
+		AnnounceData testAnnounce = AnnounceData.of(123, set(new RawServerId("127.0.0.1:1234")));
 
 		clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), testAnnounce, alice.getPrivKey()))
 				.thenCompose($ -> clientService.announce(bob.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), testAnnounce, bob.getPrivKey())))

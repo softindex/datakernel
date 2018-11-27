@@ -32,6 +32,7 @@ import io.global.fs.api.NodeClientFactory;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.LocalGlobalFsNode;
 
+import java.net.InetSocketAddress;
 import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.*;
@@ -61,13 +62,16 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 	@Provides
 	@Singleton
 	NodeClientFactory provide(AsyncHttpClient httpClient) {
-		return serverId -> new HttpGlobalFsNode(httpClient, serverId.getInetSocketAddress());
+		return serverId -> {
+			int port = Integer.parseInt(serverId.getServerIdString().split(":")[1]);
+			return new HttpGlobalFsNode(httpClient, new InetSocketAddress(port));
+		};
 	}
 
 	@Provides
 	@Singleton
 	LocalGlobalFsNode provide(Config config, DiscoveryService discoveryService, NodeClientFactory nodeClientFactory, FsClient storage) {
-		RawServerId id = new RawServerId(config.get(ofInetSocketAddress(), "globalfs.http.listenAddresses"));
+		RawServerId id = new RawServerId(config.get(ofString(), "globalfs.http.listenAddresses"));
 		return LocalGlobalFsNode.create(id, discoveryService, nodeClientFactory, storage)
 				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "globalfs.managedPubKeys")))
 				.withDownloadCaching(config.get(ofBoolean(), "globalfs.caching.download", true))

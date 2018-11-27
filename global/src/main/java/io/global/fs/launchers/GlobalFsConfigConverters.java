@@ -23,7 +23,8 @@ import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.ot.api.RepoID;
 
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.ConfigConverters.ofMemSizeAsLong;
+import static io.datakernel.config.ConfigConverters.ofString;
 import static io.global.fs.api.CheckpointPosStrategy.*;
 
 public final class GlobalFsConfigConverters {
@@ -32,7 +33,7 @@ public final class GlobalFsConfigConverters {
 	}
 
 	public static ConfigConverter<RawServerId> ofRawServerId() {
-		return ofInetSocketAddress().transform(RawServerId::new, RawServerId::getInetSocketAddress);
+		return ofString().transform(RawServerId::new, RawServerId::getServerIdString);
 	}
 
 	public static ConfigConverter<RepoID> ofRepoID() {
