@@ -25,6 +25,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.util.Initializable;
 import io.global.common.*;
 import io.global.common.api.DiscoveryService;
 import io.global.ot.api.*;
@@ -38,29 +39,40 @@ import static io.datakernel.async.AsyncSuppliers.resubscribe;
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.toSet;
 
-public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
+public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
+	public static final Duration DEFAULT_LATENCY_MARGIN = Duration.ofMinutes(5);
 	private final Eventloop eventloop;
 	private final DiscoveryService discoveryService;
 	private final CommitStorage commitStorage;
 	private final RawServerFactory rawServerFactory;
 
-	private Duration latencyMargin;
+	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
 
 	private final Map<PubKey, PubKeyEntry> pubKeys = new HashMap<>();
 	private final Map<PubKey, Map<Hash, SignedData<SharedSimKey>>> sharedKeysDb = new HashMap<>();
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public GlobalOTNodeImpl(Eventloop eventloop, DiscoveryService discoveryService, CommitStorage commitStorage, RawServerFactory rawServerFactory) {
-		this.eventloop = eventloop;
-		this.discoveryService = discoveryService;
-		this.commitStorage = commitStorage;
-		this.rawServerFactory = rawServerFactory;
+	private GlobalOTNodeImpl(Eventloop eventloop, DiscoveryService discoveryService, CommitStorage commitStorage, RawServerFactory rawServerFactory) {
+		this.eventloop = checkNotNull(eventloop);
+		this.discoveryService = checkNotNull(discoveryService);
+		this.commitStorage = checkNotNull(commitStorage);
+		this.rawServerFactory = checkNotNull(rawServerFactory);
+	}
+
+	public static GlobalOTNodeImpl create(Eventloop eventloop, DiscoveryService discoveryService, CommitStorage commitStorage, RawServerFactory rawServerFactory) {
+		return new GlobalOTNodeImpl(eventloop, discoveryService, commitStorage, rawServerFactory);
+	}
+
+	public GlobalOTNodeImpl withLatencyMargin(Duration latencyMargin) {
+		this.latencyMargin = latencyMargin;
+		return this;
 	}
 
 	private PubKeyEntry ensurePubKey(PubKey pubKey) {
@@ -90,7 +102,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService {
 
 	@Override
 	public Promise<Void> start() {
-		return null;
+		return Promise.complete();
 	}
 
 	@Override

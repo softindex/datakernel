@@ -22,13 +22,12 @@ import io.datakernel.ot.OTRepository;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RepoID;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import static io.datakernel.util.CollectionUtils.union;
 import static java.util.Collections.singleton;
+import static java.util.Comparator.comparingLong;
+import static java.util.stream.Collectors.toCollection;
 
 public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 	private final OTDriver driver;
@@ -48,8 +47,12 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 	}
 
 	@Override
-	public Promise<Void> push(OTCommit<CommitId, D> commit) {
-		return driver.push(myRepositoryId, commit);
+	public Promise<Void> push(Collection<OTCommit<CommitId, D>> otCommits) {
+		return driver.push(
+				myRepositoryId,
+				otCommits.stream()
+						.collect(toCollection(() -> new TreeSet<>(comparingLong(OTCommit::getLevel))))
+		);
 	}
 
 	@Override

@@ -344,6 +344,11 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		return checkNotNull(revision, "Internal state has been invalidated");
 	}
 
+	@Nullable
+	public K getFetchedRevisionOrNull() {
+		return fetchedRevision;
+	}
+
 	public List<D> getWorkingDiffs() {
 		return workingDiffs;
 	}

@@ -16,6 +16,7 @@
 
 package io.global.ot.client;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
@@ -23,7 +24,6 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.util.Tuple2;
 import io.datakernel.util.TypeT;
 import io.global.common.*;
 import io.global.ot.api.*;
@@ -34,6 +34,7 @@ import java.util.*;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.util.CollectionUtils.getLast;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.global.common.CryptoUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
@@ -52,6 +53,8 @@ public final class OTDriver {
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	private Map<Hash, SimKey> simKeys = new HashMap<>();
+
+	@Nullable
 	private SimKey currentSimKey;
 
 	public OTDriver(GlobalOTNode service, List<RepoID> originRepositoryIds, RepoID myRepositoryId) {
@@ -128,17 +131,32 @@ public final class OTDriver {
 
 	public <D> Promise<Void> push(MyRepositoryId<D> myRepositoryId,
 			OTCommit<CommitId, D> commit) {
-		Tuple2<RawCommit, byte[]> serializedData = (Tuple2<RawCommit, byte[]>) commit.getSerializedData();
+		return push(myRepositoryId, singleton(commit));
+	}
+
+	public <D> Promise<Void> push(MyRepositoryId<D> myRepositoryId,
+			Collection<OTCommit<CommitId, D>> commits) {
+		Map<CommitId, RawCommit> rawCommits = new LinkedHashMap<>();
+
+		for (OTCommit<CommitId, D> commit : commits) {
+			try {
+				rawCommits.put(commit.getId(), decode(COMMIT_CODEC, (byte[]) commit.getSerializedData()));
+			} catch (ParseException e) {
+				return Promise.ofException(e);
+			}
+		}
+
+		OTCommit<CommitId, D> lastCommit = getLast(commits);
 		return service.save(
 				myRepositoryId.getRepositoryId(),
-				serializedData.getValue1(),
-				SignedData.sign(
+				rawCommits,
+				singleton(SignedData.sign(
 						COMMIT_HEAD_CODEC,
 						RawCommitHead.of(
 								myRepositoryId.getRepositoryId(),
-								commit.getId(),
-								commit.getTimestamp()),
-						myRepositoryId.getPrivKey())
+								lastCommit.getId(),
+								lastCommit.getTimestamp()),
+						myRepositoryId.getPrivKey()))
 		);
 	}
 
@@ -157,7 +175,7 @@ public final class OTDriver {
 				.thenApply(commitIds -> commitIds.stream().flatMap(Collection::stream).collect(toSet()))
 				.thenCompose(result -> !result.isEmpty() ?
 						Promise.of(result) :
-						Promise.ofException(new IOException()));
+						Promise.ofException(new IOException("No heads found")));
 	}
 
 	public <D> Promise<OTCommit<CommitId, D>> loadCommit(MyRepositoryId<D> myRepositoryId,
@@ -238,4 +256,10 @@ public final class OTDriver {
 						myRepositoryId.getPrivKey()));
 	}
 
+	public void changeCurrentSimKey(@Nullable SimKey currentSimKey) {
+		this.currentSimKey = currentSimKey;
+		if (currentSimKey != null) {
+			simKeys.put(Hash.sha1(currentSimKey.getBytes()), currentSimKey);
+		}
+	}
 }
