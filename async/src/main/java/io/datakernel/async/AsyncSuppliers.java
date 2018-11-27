@@ -39,6 +39,7 @@ public final class AsyncSuppliers {
 					runningPromise = new SettablePromise<>();
 					runningPromise.whenComplete((result, e) -> {
 						runningPromise = subscribePromise;
+						if (runningPromise == null) return;
 						subscribePromise = null;
 						actual.get().async().whenComplete(runningPromise::set);
 					});

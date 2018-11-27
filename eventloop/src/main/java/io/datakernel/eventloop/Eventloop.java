@@ -326,7 +326,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		lastExternalTasksCount = externalTasksCount.get();
 		return !localTasks.isEmpty() || !scheduledTasks.isEmpty() || !concurrentTasks.isEmpty()
 				|| lastExternalTasksCount > 0
-				|| keepAlive || (selector != null && selector.keys().size() - cancelledKeys > 0);
+				|| keepAlive || (selector != null && selector.isOpen() && selector.keys().size() - cancelledKeys > 0);
 	}
 
 	@Nullable
@@ -399,7 +399,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 		logger.info("{} finished", this);
 		eventloopThread = null;
-		if (selector.keys().stream().anyMatch(SelectionKey::isValid)) {
+		if (selector != null && selector.isOpen() && selector.keys().stream().anyMatch(SelectionKey::isValid)) {
 			logger.warn("Selector is still open, because event loop {} has {} keys", this, selector.keys());
 			return;
 		}
@@ -1163,7 +1163,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		if (tick != 0) {
 			sb.append(", tick=").append(tick);
 		}
-		if (selector != null) {
+		if (selector != null && selector.isOpen()) {
 			int selectorKeys = selector.keys().size() - cancelledKeys;
 			if (selectorKeys != 0) {
 				sb.append(", selectorKeys=").append(selectorKeys);
