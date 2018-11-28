@@ -37,8 +37,6 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
@@ -383,51 +381,38 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				.whenComplete(downloadStartPromise.recordStats());
 	}
 
-	private Promise<Set<String>> bulkMethod(Map<String, String> mapping, BiFunction<FsClient, Map<String, String>, Promise<Set<String>>> fn, String fnName) {
-		return Promises.toList(aliveClients.entrySet().stream()
-				.map(e -> fn.apply(e.getValue(), mapping)
-						.thenComposeEx(wrapDeath(e.getKey()))
-						.toTry()))
-				.thenCompose(tries -> {
-					if (tries.stream().noneMatch(Try::isSuccess)) {
-						return ofFailure("Couldn't " + fnName + " on any partition", tries);
-					}
-
-					return Promise.of(tries.stream()
-							.filter(Try::isSuccess) // extract successes
-							.map(Try::getOrNull)
-							.flatMap(Set::stream)  // collapse list of sets into one stream
-							.collect(groupingBy(Function.identity(), Collectors.counting())) // map strings to their frequencies
-							.entrySet()
-							.stream()
-							.filter(e -> e.getValue() >= replicationCount) // and filter these which were moved at least replicationCount times
-							.map(Map.Entry::getKey)
-							.collect(toSet()));
-				});
-	}
-
 	@Override
-	public Promise<Set<String>> move(Map<String, String> changes) {
+	public Promise<Void> moveBulk(Map<String, String> changes) {
 		checkNotNull(changes, "changes");
 
-		return bulkMethod(changes, FsClient::move, "move")
+		if (deadClients.size() >= replicationCount) {
+			return ofFailure("There are more dead partitions than replication count(" +
+					deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", emptyList());
+		}
+
+		return Promises.all(aliveClients.entrySet().stream().map(e -> e.getValue().moveBulk(changes).thenComposeEx(wrapDeath(e.getKey()))))
 				.whenComplete(movePromise.recordStats());
 	}
 
 	@Override
-	public Promise<Set<String>> copy(Map<String, String> changes) {
+	public Promise<Void> copyBulk(Map<String, String> changes) {
 		checkNotNull(changes, "changes");
 
-		return bulkMethod(changes, FsClient::copy, "copy")
-				.whenComplete(movePromise.recordStats());
+		if (deadClients.size() >= replicationCount) {
+			return ofFailure("There are more dead partitions than replication count(" +
+					deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", emptyList());
+		}
+
+		return Promises.all(aliveClients.entrySet().stream().map(e -> e.getValue().copyBulk(changes).thenComposeEx(wrapDeath(e.getKey()))))
+				.whenComplete(copyPromise.recordStats());
 	}
 
 	@Override
-	public Promise<Void> delete(String glob) {
+	public Promise<Void> deleteBulk(String glob) {
 		checkNotNull(glob, "glob");
 
 		return Promises.toList(aliveClients.entrySet().stream()
-				.map(e -> e.getValue().delete(glob)
+				.map(e -> e.getValue().deleteBulk(glob)
 						.thenComposeEx(wrapDeath(e.getKey()))
 						.toTry()))
 				.thenCompose(tries -> {

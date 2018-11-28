@@ -22,7 +22,6 @@ import io.datakernel.codec.StructuredCodecs;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 
@@ -34,17 +33,12 @@ public final class RemoteFsResponses {
 
 	static final StructuredCodec<FsResponse> CODEC = CodecSubtype.<FsResponse>create()
 			.with(UploadFinished.class, object(UploadFinished::new))
-			.with(DownloadSize.class, object(DownloadSize::new,
-					"size", DownloadSize::getSize, LONG_CODEC))
-			.with(MoveFinished.class, object(MoveFinished::new,
-					"moved", MoveFinished::getMoved, ofSet(STRING_CODEC)))
-			.with(CopyFinished.class, object(CopyFinished::new,
-					"copied", CopyFinished::getCopied, ofSet(STRING_CODEC)))
-			.with(ListFinished.class, object(ListFinished::new,
-					"files", ListFinished::getFiles, ofList(FILE_META_CODEC)))
+			.with(DownloadSize.class, object(DownloadSize::new, "size", DownloadSize::getSize, LONG_CODEC))
+			.with(MoveFinished.class, object(MoveFinished::new))
+			.with(CopyFinished.class, object(CopyFinished::new))
 			.with(DeleteFinished.class, object(DeleteFinished::new))
-			.with(ServerError.class, object(ServerError::new,
-					"message", ServerError::getMessage, STRING_CODEC));
+			.with(ListFinished.class, object(ListFinished::new, "files", ListFinished::getFiles, ofList(FILE_META_CODEC)))
+			.with(ServerError.class, object(ServerError::new, "message", ServerError::getMessage, STRING_CODEC));
 
 	public static abstract class FsResponse {
 	}
@@ -74,36 +68,22 @@ public final class RemoteFsResponses {
 	}
 
 	public static class MoveFinished extends FsResponse {
-		private final Set<String> moved;
-
-		public MoveFinished(Set<String> moved) {
-			this.moved = moved;
-		}
-
-		public Set<String> getMoved() {
-			return moved;
+		public MoveFinished() {
 		}
 
 		@Override
 		public String toString() {
-			return "MoveFinished{moved=" + moved + '}';
+			return "MoveFinished{}";
 		}
 	}
 
 	public static class CopyFinished extends FsResponse {
-		private final Set<String> copied;
-
-		public CopyFinished(Set<String> copied) {
-			this.copied = copied;
-		}
-
-		public Set<String> getCopied() {
-			return copied;
+		public CopyFinished() {
 		}
 
 		@Override
 		public String toString() {
-			return "CopyFinished{copied=" + copied + '}';
+			return "CopyFinished{}";
 		}
 	}
 
@@ -126,9 +106,6 @@ public final class RemoteFsResponses {
 
 	public static class DeleteFinished extends FsResponse {
 		public DeleteFinished() {
-		}
-
-		public DeleteFinished(Void $) { // so we can use lambda-constructor
 		}
 
 		@Override

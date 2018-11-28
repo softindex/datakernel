@@ -41,7 +41,9 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.file.FileUtils.isWildcard;
@@ -53,7 +55,6 @@ import static java.nio.file.FileVisitResult.CONTINUE;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.*;
-import static java.util.stream.Collectors.toSet;
 
 /**
  * An implementation of {@link FsClient} which operates on a real underlying filesystem, no networking involved.
@@ -185,15 +186,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Set<String>> move(Map<String, String> changes) {
-		return Promises.toList(
+	public Promise<Void> moveBulk(Map<String, String> changes) {
+		return Promises.all(
 				changes.entrySet()
 						.stream()
 						.map(entry ->
 								move(entry.getKey(), entry.getValue())
 										.whenException(e -> logger.warn("Failed to move file {} into {}: {}", entry.getKey(), entry.getValue(), e))
 										.thenApplyEx(($, e) -> e != null ? null : entry.getKey())))
-				.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
 				.whenComplete(toLogger(logger, TRACE, "move", changes, this))
 				.whenComplete(movePromise.recordStats());
 	}
@@ -207,16 +207,13 @@ public final class LocalFsClient implements FsClient, EventloopService {
 							Path filePath = resolveFilePath(filename);
 							Path targetPath = resolveFilePath(targetName);
 
-							if (Files.isDirectory(filePath)) {
-								if (Files.exists(targetPath)) {
-									throw new StacklessException(LocalFsClient.class, "Trying to move directory " + filename + " into existing file " + targetName);
-								}
-							} else {
+							if (!Files.isDirectory(filePath)) {
 								long fileSize = Files.isRegularFile(filePath) ? Files.size(filePath) : -1;
 								long targetSize = Files.isRegularFile(targetPath) ? Files.size(targetPath) : -1;
 
+								// moving 'nothing' into 'nothing', this is a noop
 								if (fileSize == -1 && targetSize == -1) {
-									throw new StacklessException(LocalFsClient.class, "No file " + filename + ", neither file " + targetName + " were found");
+									return;
 								}
 
 								// assuming it did move in a possible previous erroneous attempt
@@ -226,6 +223,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 									}
 									return;
 								}
+							} else if (Files.exists(targetPath)) {
+								throw new StacklessException(LocalFsClient.class, "Trying to move directory " + filename + " into existing file " + targetName);
 							}
 
 							// explicitly set timestamp to eventloop time source
@@ -248,15 +247,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Set<String>> copy(Map<String, String> changes) {
-		return Promises.toList(
+	public Promise<Void> copyBulk(Map<String, String> changes) {
+		return Promises.all(
 				changes.entrySet()
 						.stream()
 						.map(entry ->
 								copy(entry.getKey(), entry.getValue())
 										.whenException(e -> logger.warn("Failed to copy file {} into {}: {}", entry.getKey(), entry.getValue(), e))
 										.thenApplyEx(($, e) -> e != null ? null : entry.getKey())))
-				.thenApply(res -> res.stream().filter(Objects::nonNull).collect(toSet()))
 				.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
 				.whenComplete(copyPromise.recordStats());
 	}
@@ -270,11 +268,14 @@ public final class LocalFsClient implements FsClient, EventloopService {
 							Path filePath = resolveFilePath(filename);
 							Path copyPath = resolveFilePath(copyName);
 
+							// copying 'nothing' into target equals deleting the target
 							if (!Files.isRegularFile(filePath)) {
-								throw new StacklessException(LocalFsClient.class, "No file " + filename + " were found");
+								Files.deleteIfExists(copyPath);
+								return;
 							}
+							// copying anything into existing file replaces that file with the thing that we copied
 							if (Files.isRegularFile(copyPath)) {
-								throw new StacklessException(LocalFsClient.class, "File " + copyName + " already exists!");
+								Files.deleteIfExists(copyPath);
 							}
 
 							// not using ensureDirectory so we have only one executor task
@@ -284,9 +285,9 @@ public final class LocalFsClient implements FsClient, EventloopService {
 								Files.createLink(copyPath, filePath);
 							} catch (UnsupportedOperationException | SecurityException e) {
 								// if couldnt, then just actually copy it
-								Files.copy(filePath, copyPath);
+								Files.copy(filePath, copyPath, REPLACE_EXISTING);
 							}
-						} catch (IOException | StacklessException e) {
+						} catch (IOException e) {
 							throw new UncheckedException(e);
 						}
 					}
@@ -296,7 +297,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Void> delete(String glob) {
+	public Promise<Void> deleteBulk(String glob) {
 		return Promise.ofRunnable(executor,
 				() -> {
 					synchronized (this) {

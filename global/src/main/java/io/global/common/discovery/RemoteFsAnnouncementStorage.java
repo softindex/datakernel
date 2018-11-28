@@ -54,7 +54,7 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 	public Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData) {
 		logger.trace("storing {}", announceData);
 		String file = getFilenameFor(space);
-		return storage.deleteSingle(file)
+		return storage.delete(file)
 				.thenCompose($ -> storage.upload(file, 0))
 				.thenCompose(ChannelSupplier.of(encode(ANNOUNCEMENT_CODEC, announceData))::streamTo);
 	}

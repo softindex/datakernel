@@ -225,7 +225,7 @@ public final class FsIntegrationTest {
 		String file = "file.txt";
 		Files.write(storage.resolve(file), CONTENT);
 
-		client.delete(file)
+		client.deleteBulk(file)
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> assertFalse(Files.exists(storage.resolve(file)))));
 	}
@@ -234,7 +234,7 @@ public final class FsIntegrationTest {
 	public void testDeleteMissingFile() {
 		String file = "no_file.txt";
 
-		client.delete(file)
+		client.deleteBulk(file)
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
 	}

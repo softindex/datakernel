@@ -30,7 +30,6 @@ import io.datakernel.remotefs.FsClient;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static io.datakernel.http.IAsyncHttpClient.ensureOk200;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
@@ -87,7 +86,7 @@ public class HttpFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Set<String>> move(Map<String, String> changes) {
+	public Promise<Void> moveBulk(Map<String, String> changes) {
 		return client.request(
 				HttpRequest.post(
 						UrlBuilder.http()
@@ -96,17 +95,11 @@ public class HttpFsClient implements FsClient {
 								.build())
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
 				.thenCompose(ensureOk200())
-				.thenCompose(response -> {
-					try {
-						return Promise.of(JsonUtils.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				});
+				.toVoid();
 	}
 
 	@Override
-	public Promise<Set<String>> copy(Map<String, String> changes) {
+	public Promise<Void> copyBulk(Map<String, String> changes) {
 		return client.request(
 				HttpRequest.post(
 						UrlBuilder.http()
@@ -115,13 +108,7 @@ public class HttpFsClient implements FsClient {
 								.build())
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
 				.thenCompose(ensureOk200())
-				.thenCompose(response -> {
-					try {
-						return Promise.of(JsonUtils.fromJson(STRING_SET, response.getBody().asString(UTF_8)));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				});
+				.toVoid();
 	}
 
 	@Override
@@ -144,7 +131,7 @@ public class HttpFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> delete(String glob) {
+	public Promise<Void> deleteBulk(String glob) {
 		return client.request(
 				HttpRequest.post(
 						UrlBuilder.http()

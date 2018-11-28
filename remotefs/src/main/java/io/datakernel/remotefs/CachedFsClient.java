@@ -209,13 +209,13 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Set<String>> move(Map<String, String> changes) {
-		return mainClient.move(changes);
+	public Promise<Void> moveBulk(Map<String, String> changes) {
+		return mainClient.moveBulk(changes);
 	}
 
 	@Override
-	public Promise<Set<String>> copy(Map<String, String> changes) {
-		return mainClient.copy(changes);
+	public Promise<Void> copyBulk(Map<String, String> changes) {
+		return mainClient.copyBulk(changes);
 	}
 
 	/**
@@ -244,14 +244,14 @@ public class CachedFsClient implements FsClient, EventloopService {
 	 * @return promise of {@link Void} that represents succesfull deletion
 	 */
 	@Override
-	public Promise<Void> delete(String glob) {
+	public Promise<Void> deleteBulk(String glob) {
 		return Promises.all(cacheClient.list(glob)
 						.whenResult(listOfMeta -> listOfMeta.forEach(meta -> cacheStats.remove(meta.getFilename())))
 						.thenApply(listOfMeta -> listOfMeta.stream().mapToLong(FileMetadata::getSize).sum())
-						.thenCompose(size -> cacheClient.delete(glob)
+						.thenCompose(size -> cacheClient.deleteBulk(glob)
 								.thenApply($ -> size))
 						.whenResult(size -> totalCacheSize -= size),
-				mainClient.delete(glob));
+				mainClient.deleteBulk(glob));
 	}
 
 	@Override
@@ -295,7 +295,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 						}))
 				.thenCompose(filesToDelete -> Promises.all(filesToDelete
 						.map(fullCacheStat -> cacheClient
-								.delete(fullCacheStat.getFileMetadata().getFilename())
+								.deleteBulk(fullCacheStat.getFileMetadata().getFilename())
 								.whenResult($ -> {
 									totalCacheSize -= fullCacheStat.getFileMetadata().getSize();
 									cacheStats.remove(fullCacheStat.getFileMetadata().getFilename());

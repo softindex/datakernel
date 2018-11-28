@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -189,7 +189,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	@Override
 	public Promise<Void> finish(Set<C> chunkIds) {
 		finishChunks = chunkIds.size();
-		return client.strictMove(chunkIds.stream().collect(toMap(this::getTempPath, this::getPath)))
+		return client.moveBulk(chunkIds.stream().collect(toMap(this::getTempPath, this::getPath)))
 				.whenComplete(promiseFinishChunks.recordStats());
 	}
 
@@ -249,7 +249,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 										lastModifiedTime, lastModifiedTime.toMillis());
 							}
 							deleted[0]++;
-							return client.delete(file.getFilename());
+							return client.deleteBulk(file.getFilename());
 						}))
 						.whenResult($ -> {
 							cleanupPreservedFiles = preserveChunks.size();

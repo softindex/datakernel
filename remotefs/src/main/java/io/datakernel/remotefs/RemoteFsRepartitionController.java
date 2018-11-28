@@ -174,7 +174,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					String name = meta.getFilename();
 					if (uploadTargets.isEmpty()) { // everybody had the file
 						logger.trace("deleting file {} locally", meta);
-						return localStorage.delete(name) // so we delete the copy which does not belong to local partition
+						return localStorage.deleteBulk(name) // so we delete the copy which does not belong to local partition
 								.thenApply($ -> {
 									logger.info("handled file {} (ensured on {})", meta, selected);
 									return true;
@@ -223,7 +223,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 								}
 
 								logger.trace("deleting file {} on {}", meta, localPartitionId);
-								return localStorage.delete(name)
+								return localStorage.deleteBulk(name)
 										.thenApply($ -> {
 											logger.info("handled file {} (ensured on {}, uploaded to {})", meta, selected, uploadTargets);
 											return true;

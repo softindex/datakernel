@@ -54,7 +54,7 @@ public class RemoteFsMetadataStorage implements MetadataStorage {
 	public Promise<Void> store(SignedData<GlobalFsMetadata> signedMetadata) {
 		logger.trace("storing {}", signedMetadata);
 		String path = signedMetadata.getValue().getFilename();
-		return storage.deleteSingle(path)
+		return storage.delete(path)
 				.thenCompose($ -> storage.upload(path, 0)) // offset 0 because this file could be concurrently uploaded atst
 				.thenCompose(ChannelSupplier.of(encode(SIGNED_METADATA_CODEC, signedMetadata))::streamTo);
 	}

@@ -448,7 +448,7 @@ public final class TestCachedFsClient {
 
 		cache.list()
 				.whenComplete(assertComplete(list -> assertEquals(4, list.size())))
-				.thenCompose($ -> cacheRemote.delete("toDelete*"))
+				.thenCompose($ -> cacheRemote.deleteBulk("toDelete*"))
 				.thenCompose($ -> cache.list())
 				.whenComplete(assertComplete(list -> {
 					assertEquals(2, list.size());

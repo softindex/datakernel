@@ -326,7 +326,7 @@ public final class GlobalFsTest {
 		announce(alice, set(secondId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
 				.thenCompose(ChannelSupplier.of(wrapUtf8("some string of bytes to test"))::streamTo)
-				.thenCompose($ -> secondAliceAdapter.delete("test.txt"))
+				.thenCompose($ -> secondAliceAdapter.deleteBulk("test.txt"))
 				.thenCompose($ -> rawFirstClient.fetch())
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
 				.thenCompose(ChannelSupplier.of(wrapUtf8("another string of bytes to test"))::streamTo)

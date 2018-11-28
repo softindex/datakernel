@@ -374,7 +374,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 													if (metadata.isRemoved()) {
 														logger.trace("removing our file as remote tombstone had bigger revision {}", localMetadata);
-														return folder.delete(metadata.getFilename())
+														return folder.deleteBulk(metadata.getFilename())
 																.thenCompose($ -> pushMetadata(signedMetadata))
 																.thenApply($ -> true);
 													}

@@ -66,7 +66,7 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 	public Promise<Void> store(PubKey receiver, SignedData<SharedSimKey> signedSharedSimKey) {
 		logger.trace("storing {}", signedSharedSimKey);
 		String file = getFilenameFor(receiver, signedSharedSimKey.getValue().getHash());
-		return storage.deleteSingle(file)
+		return storage.delete(file)
 				.thenCompose($ -> storage.upload(file, 0))
 				.thenCompose(ChannelSupplier.of(encode(SHARED_KEY_CODEC, signedSharedSimKey))::streamTo);
 	}

@@ -156,10 +156,10 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					})
 					.whenComplete(downloadPromise.recordStats());
 		});
-		simpleHandler(Move.class, Move::getChanges, FsClient::move, MoveFinished::new, movePromise);
-		simpleHandler(Copy.class, Copy::getChanges, FsClient::copy, CopyFinished::new, copyPromise);
+		simpleHandler(Move.class, Move::getChanges, FsClient::moveBulk, $ -> new MoveFinished(), movePromise);
+		simpleHandler(Copy.class, Copy::getChanges, FsClient::copyBulk, $ -> new CopyFinished(), copyPromise);
+		simpleHandler(Delete.class, Delete::getGlob, FsClient::deleteBulk, $ -> new DeleteFinished(), deletePromise);
 		simpleHandler(List.class, List::getGlob, FsClient::list, ListFinished::new, listPromise);
-		simpleHandler(Delete.class, Delete::getGlob, FsClient::delete, DeleteFinished::new, deletePromise);
 	}
 
 	private <T extends FsCommand, E, R> void simpleHandler(Class<T> cls,

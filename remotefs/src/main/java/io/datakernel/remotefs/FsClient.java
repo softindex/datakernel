@@ -23,7 +23,9 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
 
 import java.io.File;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import static io.datakernel.file.FileUtils.escapeGlob;
 
@@ -68,7 +70,7 @@ public interface FsClient {
 	 * @param tempFolder name of the temporary folder
 	 * @return stream consumer of byte buffers
 	 */
-	default Promise<ChannelConsumer<ByteBuf>> upload(String filename, String tempFolder) {
+	default Promise<ChannelConsumer<ByteBuf>> uploadAtomic(String filename, String tempFolder) {
 		String tempName = tempFolder + File.separator + filename;
 		return upload(tempName)
 				.thenApply(consumer ->
@@ -94,10 +96,10 @@ public interface FsClient {
 	}
 
 	/**
-	 * Same shortcut, but for {@link #upload(String, String)}
+	 * Same shortcut, but for {@link #uploadAtomic(String, String)}
 	 */
 	default ChannelConsumer<ByteBuf> uploader(String filename, String tempFolder) {
-		return ChannelConsumer.ofPromise(upload(filename, tempFolder));
+		return ChannelConsumer.ofPromise(uploadAtomic(filename, tempFolder));
 	}
 
 	/**
@@ -169,73 +171,37 @@ public interface FsClient {
 	 * Renames files by a given mapping.
 	 *
 	 * @param changes mapping from old file names to new file names
-	 * @return promise of set of successfully moved files (using their original names)
 	 */
-	Promise<Set<String>> move(Map<String, String> changes);
+	Promise<Void> moveBulk(Map<String, String> changes);
 
 	/**
-	 * Shortcut for {@link #move} which will error if any of the files were not moved.
-	 *
-	 * @return marker promise as on success the returned set from move will always be same as <code>changes.keySet()</code>
-	 */
-	default Promise<Void> strictMove(Map<String, String> changes) {
-		return move(changes)
-				.thenCompose(res -> {
-					if (res.size() < changes.size()) {
-						Set<String> set = new HashSet<>(changes.keySet());
-						set.removeAll(res);
-						return Promise.ofException(new StacklessException(FsClient.class, "Those files were not moved: " + set));
-					}
-					return Promise.complete();
-				});
-	}
-
-	/**
-	 * Shortcut for {@link #strictMove} for a single file.
+	 * Shortcut for {@link #moveBulk} for a single file.
 	 * By default is is equivalent to calling strictMove(Collections.singletonMap(fileName, newFileName))
 	 *
 	 * @param filename    file to be moved
 	 * @param newFilename new file name
 	 */
 	default Promise<Void> move(String filename, String newFilename) {
-		return strictMove(Collections.singletonMap(filename, newFilename));
+		return moveBulk(Collections.singletonMap(filename, newFilename));
 	}
 
 	/**
 	 * Copies files by a given mapping.
 	 *
 	 * @param changes mapping from old file names to copy file names
-	 * @return promise of set of successfully copied files (using their original names)
 	 * @implNote RemoteFS is considered as an immutable fs, so at first copy will try to create a hard link instead.
 	 */
-	Promise<Set<String>> copy(Map<String, String> changes);
+	Promise<Void> copyBulk(Map<String, String> changes);
 
 	/**
-	 * Shortcut for {@link #copy} which will error if any of the files were not copied.
-	 *
-	 * @return marker promise as on success the returned set from move will always be same as <code>changes.keySet()</code>
-	 */
-	default Promise<Void> strictCopy(Map<String, String> changes) {
-		return copy(changes)
-				.thenCompose(res -> {
-					if (res.size() < changes.size()) {
-						Set<String> set = new HashSet<>(changes.keySet());
-						set.removeAll(res);
-						return Promise.ofException(new StacklessException(FsClient.class, "Those files were not copied: " + set));
-					}
-					return Promise.complete();
-				});
-	}
-
-	/**
-	 * Shortcut for {@link #strictCopy} for a single file.
+	 * Shortcut for {@link #copyBulk} for a single file.
 	 * By default is is equivalent to calling strictCopy(Collections.singletonMap(fileName, newFileName))
 	 *
 	 * @param filename    file to be moved
 	 * @param newFilename new file name
 	 */
 	default Promise<Void> copy(String filename, String newFilename) {
-		return strictCopy(Collections.singletonMap(filename, newFilename));
+		return copyBulk(Collections.singletonMap(filename, newFilename));
 	}
 
 	/**
@@ -284,17 +250,17 @@ public interface FsClient {
 	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
 	 * @return marker promise that completes when deletion completes
 	 */
-	Promise<Void> delete(String glob);
+	Promise<Void> deleteBulk(String glob);
 
 	/**
-	 * Shortcut for {@link #delete(String)} for a single file.
+	 * Shortcut for {@link #deleteBulk(String)} for a single file.
 	 * Given filename is glob-escaped, so only one or zero files could be deleted regardless of given string.
 	 *
 	 * @param filename name of the file to be deleted
 	 * @return marker promise that completes when deletion completes
 	 */
-	default Promise<Void> deleteSingle(String filename) {
-		return delete(escapeGlob(filename));
+	default Promise<Void> delete(String filename) {
+		return deleteBulk(escapeGlob(filename));
 	}
 
 	/**

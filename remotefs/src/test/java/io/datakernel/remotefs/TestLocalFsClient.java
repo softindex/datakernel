@@ -24,7 +24,6 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
@@ -269,14 +268,14 @@ public final class TestLocalFsClient {
 
 	@Test
 	public void testDeleteFile() {
-		client.delete("2/3/a.txt")
+		client.deleteBulk("2/3/a.txt")
 				.whenComplete(assertComplete($ ->
 						assertFalse(Files.exists(storagePath.resolve("2/3/a.txt")))));
 	}
 
 	@Test
 	public void testDeleteNonExistingFile() {
-		client.delete("no_file.txt")
+		client.deleteBulk("no_file.txt")
 				.whenComplete(assertComplete());
 	}
 
@@ -351,7 +350,7 @@ public final class TestLocalFsClient {
 	@Test
 	public void testMoveNothingIntoNothing() {
 		client.move("i_do_not_exist.txt", "neither_am_i.txt")
-				.whenComplete(assertFailure(StacklessException.class, "No file .*?, neither file .*? were found", e -> {
+				.whenComplete(assertComplete($ -> {
 					assertFalse(Files.exists(storagePath.resolve("i_do_not_exist.txt")));
 					assertFalse(Files.exists(storagePath.resolve("neither_am_i.txt")));
 				}));

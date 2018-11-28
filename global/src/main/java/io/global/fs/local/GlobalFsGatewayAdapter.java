@@ -41,7 +41,6 @@ import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static io.datakernel.file.FileUtils.isWildcard;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
@@ -161,7 +160,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 	}
 
 	@Override
-	public Promise<Void> delete(String glob) {
+	public Promise<Void> deleteBulk(String glob) {
 		if (isWildcard(glob)) {
 			return node.list(pubKey, glob)
 					.thenCompose(list ->
@@ -174,12 +173,12 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 	}
 
 	@Override
-	public Promise<Set<String>> move(Map<String, String> changes) {
+	public Promise<Void> moveBulk(Map<String, String> changes) {
 		throw new UnsupportedOperationException("No file moving in GlobalFS yet");
 	}
 
 	@Override
-	public Promise<Set<String>> copy(Map<String, String> changes) {
+	public Promise<Void> copyBulk(Map<String, String> changes) {
 		throw new UnsupportedOperationException("No file copying in GlobalFS yet");
 	}
 }

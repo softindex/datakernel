@@ -83,18 +83,14 @@ public final class RemoteFsServlet implements AsyncServlet {
 										.withBody(toJson(FILE_META_LIST, list).getBytes(UTF_8))
 										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON)))))
 				.with(HttpMethod.DELETE, "/" + DEL, request ->
-						client.delete(request.getQueryParameter("glob"))
+						client.deleteBulk(request.getQueryParameter("glob"))
 								.thenApply($ -> HttpResponse.ok200()))
 				.with(HttpMethod.POST, "/" + COPY, ensureRequestBody(request ->
-						client.copy(request.getPostParameters())
-								.thenApply(set -> HttpResponse.ok200()
-										.withBody(toJson(ofSet(STRING_CODEC), set).getBytes(UTF_8))
-										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON))))))
+						client.copyBulk(request.getPostParameters())
+								.thenApply($ -> HttpResponse.ok200())))
 				.with(HttpMethod.POST, "/" + MOVE, ensureRequestBody(request ->
-						client.move(request.getPostParameters())
-								.thenApply(set -> HttpResponse.ok200()
-										.withBody(toJson(ofSet(STRING_CODEC), set).getBytes(UTF_8))
-										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON))))));
+						client.moveBulk(request.getPostParameters())
+								.thenApply($ -> HttpResponse.ok200())));
 	}
 
 	@Override

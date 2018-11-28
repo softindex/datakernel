@@ -37,7 +37,6 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
@@ -176,25 +175,25 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Set<String>> move(Map<String, String> changes) {
+	public Promise<Void> moveBulk(Map<String, String> changes) {
 		checkNotNull(changes, "changes");
 
-		return simpleCommand(new Move(changes), MoveFinished.class, MoveFinished::getMoved)
+		return simpleCommand(new Move(changes), MoveFinished.class, $ -> (Void) null)
 				.whenComplete(toLogger(logger, TRACE, "move", changes, this))
 				.whenComplete(movePromise.recordStats());
 	}
 
 	@Override
-	public Promise<Set<String>> copy(Map<String, String> changes) {
+	public Promise<Void> copyBulk(Map<String, String> changes) {
 		checkNotNull(changes, "changes");
 
-		return simpleCommand(new Copy(changes), CopyFinished.class, CopyFinished::getCopied)
+		return simpleCommand(new Copy(changes), CopyFinished.class, $ -> (Void) null)
 				.whenComplete(toLogger(logger, TRACE, "copy", changes, this))
 				.whenComplete(copyPromise.recordStats());
 	}
 
 	@Override
-	public Promise<Void> delete(String glob) {
+	public Promise<Void> deleteBulk(String glob) {
 		checkNotNull(glob, "glob");
 
 		return simpleCommand(new Delete(glob), DeleteFinished.class, $ -> (Void) null)

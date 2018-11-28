@@ -250,9 +250,9 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 							.thenCompose(producer ->
 									producer.transformWith(ChannelBinarySerializer.create(serializer))
 											.streamTo(client.uploader(name)))
-							.thenCompose($ -> tombstoneFolderClient.delete("*"))
-							.thenCompose($ -> consolidationFolderClient.delete(metafile))
-							.thenCompose($ -> Promises.all(files.stream().map(client::delete)));
+							.thenCompose($ -> tombstoneFolderClient.deleteBulk("*"))
+							.thenCompose($ -> consolidationFolderClient.deleteBulk(metafile))
+							.thenCompose($ -> Promises.all(files.stream().map(client::deleteBulk)));
 				})
 				.whenComplete(consolidationStats.recordStats());
 	}
