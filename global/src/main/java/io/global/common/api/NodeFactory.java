@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package io.global.fs.api;
+package io.global.common.api;
 
 import io.global.common.RawServerId;
 
 @FunctionalInterface
-public interface NodeClientFactory {
-	GlobalFsNode create(RawServerId serverId);
+public interface NodeFactory<N> {
+
+	N create(RawServerId id);
 }

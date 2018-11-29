@@ -44,14 +44,14 @@ import static io.global.fs.util.HttpDataFormats.parseOffset;
 import static io.global.fs.util.HttpDataFormats.parseRange;
 
 public final class GlobalFsNodeServlet implements AsyncServlet {
-	public static final String UPLOAD = "upload";
-	public static final String DOWNLOAD = "download";
-	public static final String PUSH = "push";
-	public static final String LIST = "list";
-	public static final String DEL = "delete";
-	public static final String COPY = "copy";
-	public static final String MOVE = "move";
-	public static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsMetadata>>() {});
+	static final String UPLOAD = "upload";
+	static final String DOWNLOAD = "download";
+	static final String PUSH = "push";
+	static final String LIST = "list";
+	// static final String COPY = "copy";
+	// static final String MOVE = "move";
+
+	static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsMetadata>>() {});
 
 	private final AsyncServlet servlet;
 

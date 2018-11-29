@@ -31,6 +31,7 @@ import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.DiscoveryService;
+import io.global.common.api.NodeFactory;
 import io.global.fs.api.*;
 import io.global.fs.transformers.FramesFromStorage;
 import io.global.fs.transformers.FramesIntoStorage;
@@ -63,7 +64,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 	private final RawServerId id;
 	private final DiscoveryService discoveryService;
-	private final NodeClientFactory nodeClientFactory;
+	private final NodeFactory<GlobalFsNode> nodeFactory;
 	private final FsClient dataFsClient;
 	private final FsClient metadataFsClient;
 	private final FsClient checkpointFsClient;
@@ -71,18 +72,18 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	// region creators
-	private LocalGlobalFsNode(RawServerId id, DiscoveryService discoveryService, NodeClientFactory nodeClientFactory,
+	private LocalGlobalFsNode(RawServerId id, DiscoveryService discoveryService, NodeFactory<GlobalFsNode> nodeFactory,
 			FsClient dataFsClient, FsClient metadataFsClient, FsClient checkpointFsClient) {
 		this.id = id;
 		this.discoveryService = discoveryService;
-		this.nodeClientFactory = nodeClientFactory;
+		this.nodeFactory = nodeFactory;
 		this.dataFsClient = dataFsClient;
 		this.metadataFsClient = metadataFsClient;
 		this.checkpointFsClient = checkpointFsClient;
 	}
 
-	public static LocalGlobalFsNode create(RawServerId id, DiscoveryService discoveryService, NodeClientFactory nodeClientFactory, FsClient fsClient) {
-		return new LocalGlobalFsNode(id, discoveryService, nodeClientFactory,
+	public static LocalGlobalFsNode create(RawServerId id, DiscoveryService discoveryService, NodeFactory<GlobalFsNode> nodeFactory, FsClient fsClient) {
+		return new LocalGlobalFsNode(id, discoveryService, nodeFactory,
 				fsClient.subfolder("data"), fsClient.subfolder("metadata"), fsClient.subfolder("checkpoints"));
 	}
 
@@ -110,6 +111,45 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		return this;
 	}
 	// endregion
+
+	@Override
+	public Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset) {
+		Namespace fs = ensureNamespace(space);
+		if (managedPubKeys.contains(space)) {
+			return fs.save(filename, offset);
+		}
+		return fs.ensureMasterNodes()
+				.thenCompose(nodes -> {
+					if (!doesUploadCaching) {
+						return Promises.firstSuccessful(nodes
+								.stream()
+								.map(node -> {
+									logger.trace("Trying to upload file at {} at {}", filename, node);
+									return node.upload(space, filename, offset);
+								}));
+					}
+					return Promises.firstSuccessful(nodes
+							.stream()
+							.map(node -> {
+								logger.trace("Trying to upload and cache file at {} at {}", filename, node);
+								return node.upload(space, filename, offset)
+										.thenApply(consumer -> {
+											ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
+
+											ChannelSplitter<DataFrame> splitter = ChannelSplitter.<DataFrame>create()
+													.withInput(buffer.getSupplier());
+
+											splitter.addOutput().set(ChannelConsumer.ofPromise(fs.save(filename, offset)));
+											splitter.addOutput().set(consumer);
+
+											MaterializedPromise<Void> process = splitter.startProcess();
+
+											return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
+										});
+							}));
+				})
+				.whenComplete(toLogger(logger, "download", filename, offset));
+	}
 
 	@Override
 	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
@@ -155,47 +195,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 													}))));
 				})
 				.whenComplete(toLogger(logger, "download", filename, offset, limit));
-	}
-
-	@Override
-	public Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset) {
-		if (managedPubKeys.contains(space)) {
-			return ensureNamespace(space).save(filename, offset);
-		}
-		Namespace fs = ensureNamespace(space);
-		return fs.ensureMasterNodes()
-				.thenCompose(nodes -> {
-					if (!doesUploadCaching) {
-						return Promises.firstSuccessful(nodes
-								.stream()
-								.filter(node -> !node.equals(this))
-								.map(node -> {
-									logger.trace("Trying to upload file at {} at {}", filename, node);
-									return node.upload(space, filename, offset);
-								}));
-					}
-					return Promises.firstSuccessful(nodes
-							.stream()
-							.filter(node -> !node.equals(this))
-							.map(node -> {
-								logger.trace("Trying to upload and cache file at {} at {}", filename, node);
-								return node.upload(space, filename, offset)
-										.thenApply(consumer -> {
-											ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
-
-											ChannelSplitter<DataFrame> splitter = ChannelSplitter.<DataFrame>create()
-													.withInput(buffer.getSupplier());
-
-											splitter.addOutput().set(ChannelConsumer.ofPromise(fs.save(filename, offset)));
-											splitter.addOutput().set(consumer);
-
-											MaterializedPromise<Void> process = splitter.startProcess();
-
-											return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
-										});
-							}));
-				})
-				.whenComplete(toLogger(logger, "download", filename, offset));
 	}
 
 	@Override
@@ -316,7 +315,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 									Stream.empty(),
 							announceServerIds
 									.stream()
-									.map(nodeClientFactory::create))
+									.map(nodeFactory::create))
 							.collect(toList()));
 		}
 

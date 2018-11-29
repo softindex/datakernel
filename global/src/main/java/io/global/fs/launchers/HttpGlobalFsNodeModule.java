@@ -26,9 +26,9 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
+import io.global.common.api.NodeFactory;
 import io.global.common.discovery.HttpDiscoveryService;
 import io.global.fs.api.GlobalFsNode;
-import io.global.fs.api.NodeClientFactory;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.LocalGlobalFsNode;
 
@@ -61,7 +61,7 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	NodeClientFactory provide(AsyncHttpClient httpClient) {
+	NodeFactory<GlobalFsNode> provide(AsyncHttpClient httpClient) {
 		return serverId -> {
 			int port = Integer.parseInt(serverId.getServerIdString().split(":")[1]);
 			return new HttpGlobalFsNode(httpClient, new InetSocketAddress(port));
@@ -70,9 +70,9 @@ public class HttpGlobalFsNodeModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	LocalGlobalFsNode provide(Config config, DiscoveryService discoveryService, NodeClientFactory nodeClientFactory, FsClient storage) {
+	LocalGlobalFsNode provide(Config config, DiscoveryService discoveryService, NodeFactory<GlobalFsNode> nodeFactory, FsClient storage) {
 		RawServerId id = new RawServerId(config.get(ofString(), "globalfs.http.listenAddresses"));
-		return LocalGlobalFsNode.create(id, discoveryService, nodeClientFactory, storage)
+		return LocalGlobalFsNode.create(id, discoveryService, nodeFactory, storage)
 				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "globalfs.managedPubKeys")))
 				.withDownloadCaching(config.get(ofBoolean(), "globalfs.caching.download", true))
 				.withUploadCaching(config.get(ofBoolean(), "globalfs.caching.upload", false))

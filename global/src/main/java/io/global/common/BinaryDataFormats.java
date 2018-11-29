@@ -76,8 +76,7 @@ public final class BinaryDataFormats {
 								Signature::getS, registry.get(BigInteger.class)))
 
 				.withGeneric(SignedData.class, (registry, subCodecs) ->
-						tuple(
-								(bytes, signature) ->
+						tuple((bytes, signature) ->
 										SignedData.parse((StructuredDecoder<?>) subCodecs[0], bytes, signature),
 								SignedData::getBytes, registry.get(byte[].class),
 								SignedData::getSignature, registry.get(Signature.class)))

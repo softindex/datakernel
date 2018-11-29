@@ -19,7 +19,6 @@ package io.global.common;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.global.fs.transformers.ChannelFileCipher;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -31,7 +30,7 @@ import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-public class ChannelFileCipherTest {
+public class CipherTransformerTest {
 
 	@Test
 	public void test() {
@@ -44,14 +43,15 @@ public class ChannelFileCipherTest {
 		);
 
 		SimKey key = SimKey.generate();
+		byte[] nonce = CryptoUtils.nonceFromString("test.txt");
 		long pos = ThreadLocalRandom.current().nextLong(Long.MAX_VALUE >>> 1);
 
 		ChannelSupplier.ofIterable(data)
-				.transformWith(ChannelFileCipher.create(key, "test.txt", pos))
+				.transformWith(CipherTransformer.create(key, nonce, pos))
 				.toList()
 				.whenComplete(assertComplete(enc -> enc.forEach(System.out::println)))
 				.thenCompose(enc -> ChannelSupplier.ofIterable(enc)
-						.transformWith(ChannelFileCipher.create(key, "test.txt", pos))
+						.transformWith(CipherTransformer.create(key, nonce, pos))
 						.toList())
 				.whenComplete(assertComplete(dec -> {
 					dec.forEach(System.out::println);

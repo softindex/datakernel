@@ -14,29 +14,26 @@
  * limitations under the License.
  */
 
-package io.global.fs.transformers;
+package io.global.common;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.ChannelTransformer;
-import io.global.common.CTRAESCipher;
-import io.global.common.CryptoUtils;
-import io.global.common.SimKey;
 
-public final class ChannelFileCipher implements ChannelTransformer<ByteBuf, ByteBuf> {
+public final class CipherTransformer implements ChannelTransformer<ByteBuf, ByteBuf> {
 	private final CTRAESCipher cipher;
 
-	private ChannelFileCipher(CTRAESCipher cipher) {
+	private CipherTransformer(CTRAESCipher cipher) {
 		this.cipher = cipher;
 	}
 
-	public static ChannelTransformer<ByteBuf, ByteBuf> create(@Nullable SimKey key, String filename, long position) {
+	public static ChannelTransformer<ByteBuf, ByteBuf> create(@Nullable SimKey key, byte[] nonce, long position) {
 		if (key == null) {
 			return ChannelTransformer.identity();
 		}
-		return new ChannelFileCipher(CTRAESCipher.create(key.getAesKey(), CryptoUtils.nonceFromString(filename), position));
+		return new CipherTransformer(CTRAESCipher.create(key.getAesKey(), nonce, position));
 	}
 
 	@Override

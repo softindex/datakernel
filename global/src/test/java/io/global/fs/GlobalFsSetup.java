@@ -84,8 +84,8 @@ public final class GlobalFsSetup {
 		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, discoveryService, list(alice), fixed(5));
 		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, discoveryService, list(alice), fixed(6));
 
-		FsClient firstAdapter = firstDriver.createClientFor(alice.getPubKey());
-		FsClient secondAdapter = secondDriver.createClientFor(alice.getPubKey());
+		FsClient firstAdapter = firstDriver.gatewayFor(alice.getPubKey());
+		FsClient secondAdapter = secondDriver.gatewayFor(alice.getPubKey());
 
 		String text1 = "Hello world, this is some bytes ";
 		String text2 = "to be sent through the GlobalFs HTTP interface";

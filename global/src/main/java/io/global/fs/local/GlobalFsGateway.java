@@ -34,7 +34,6 @@ import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsMetadata;
 import io.global.fs.api.GlobalFsNode;
-import io.global.fs.transformers.ChannelFileCipher;
 import io.global.fs.transformers.FrameSigner;
 import io.global.fs.transformers.FrameVerifier;
 import org.spongycastle.crypto.digests.SHA256Digest;
@@ -46,9 +45,10 @@ import static io.datakernel.file.FileUtils.isWildcard;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
-public final class GlobalFsGatewayAdapter implements FsClient, Initializable<GlobalFsGatewayAdapter> {
-	private static final StacklessException METADATA_SIG = new StacklessException(GlobalFsGatewayAdapter.class, "Received metadata signature is not verified");
-	private static final StacklessException CHECKPOINT_SIG = new StacklessException(GlobalFsGatewayAdapter.class, "Received checkpoint signature is not verified");
+public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGateway> {
+	private static final StacklessException METADATA_SIG = new StacklessException(GlobalFsGateway.class, "Received metadata signature is not verified");
+	private static final StacklessException CHECKPOINT_SIG = new StacklessException(GlobalFsGateway.class, "Received checkpoint signature is not verified");
+
 	private static final StructuredCodec<GlobalFsMetadata> METADATA_CODEC = REGISTRY.get(GlobalFsMetadata.class);
 
 	private final GlobalFsDriver driver;
@@ -61,9 +61,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	GlobalFsGatewayAdapter(GlobalFsDriver driver, GlobalFsNode node,
-			PubKey pubKey, PrivKey privKey,
-			CheckpointPosStrategy checkpointPosStrategy) {
+	GlobalFsGateway(GlobalFsDriver driver, GlobalFsNode node, PubKey pubKey, PrivKey privKey, CheckpointPosStrategy checkpointPosStrategy) {
 		this.driver = driver;
 		this.node = node;
 		this.pubKey = pubKey;
@@ -74,13 +72,13 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 	private Promise<ChannelConsumer<ByteBuf>> doUpload(String filename, @Nullable GlobalFsMetadata metadata, long offset, long skip, SHA256Digest startingDigest) {
 		long[] size = {offset + skip};
 		Promise<SimKey> simKey = metadata != null ?
-				driver.getKey(pubKey, metadata.getSimKeyHash()) :
-				Promise.of(driver.getCurrentSimKey());
+				driver.getPrivateKeyStorage().getKey(pubKey, metadata.getSimKeyHash()) :
+				Promise.of(driver.getPrivateKeyStorage().getCurrentSimKey());
 		return simKey.thenCompose(key ->
 				node.upload(pubKey, filename, offset + skip)
 						.thenApply(consumer -> consumer
 								.transformWith(FrameSigner.create(privKey, checkpointPosStrategy, filename, offset + skip, startingDigest))
-								.transformWith(ChannelFileCipher.create(key, filename, offset + skip))
+								.transformWith(CipherTransformer.create(key, CryptoUtils.nonceFromString(filename), offset + skip))
 								.peek(buf -> size[0] += buf.readRemaining())
 								.transformWith(ChannelByteRanger.drop(skip))
 								.withAcknowledgement(ack -> ack
@@ -98,7 +96,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 				.thenCompose(signedMetadata -> {
 					if (signedMetadata == null) {
 						if (offset != -1 && offset != 0) {
-							return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "Trying to upload at offset greater than known file size"));
+							return Promise.ofException(new StacklessException(GlobalFsGateway.class, "Trying to upload at offset greater than known file size"));
 						}
 						return doUpload(filename, null, 0, 0, new SHA256Digest());
 					}
@@ -106,19 +104,19 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 						return Promise.ofException(METADATA_SIG);
 					}
 					if (offset == -1) {
-						return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "File already exists"));
+						return Promise.ofException(new StacklessException(GlobalFsGateway.class, "File already exists"));
 					}
 					GlobalFsMetadata metadata = signedMetadata.getValue();
 					long metaSize = metadata.getSize();
 					if (offset > metaSize) {
-						return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "Trying to upload at offset greater than the file size"));
+						return Promise.ofException(new StacklessException(GlobalFsGateway.class, "Trying to upload at offset greater than the file size"));
 					}
 					long skip = metaSize - offset;
 					return node.download(pubKey, filename, metaSize, 0)
 							.thenCompose(supplier -> supplier.toCollector(toList()))
 							.thenCompose(frames -> {
 								if (frames.size() != 1) {
-									return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "No checkpoint at metadata size position!"));
+									return Promise.ofException(new StacklessException(GlobalFsGateway.class, "No checkpoint at metadata size position!"));
 								}
 								SignedData<GlobalFsCheckpoint> checkpoint = frames.get(0).getCheckpoint();
 								if (!checkpoint.verify(pubKey)) {
@@ -134,7 +132,7 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 		return node.getMetadata(pubKey, filename)
 				.thenCompose(signedMetadata -> {
 					if (signedMetadata == null) {
-						return Promise.ofException(new StacklessException(GlobalFsGatewayAdapter.class, "No file " + filename + " found"));
+						return Promise.ofException(new StacklessException(GlobalFsGateway.class, "No file " + filename + " found"));
 					}
 					return node.download(pubKey, filename, offset, limit)
 							.thenCompose(supplier -> {
@@ -142,10 +140,10 @@ public final class GlobalFsGatewayAdapter implements FsClient, Initializable<Glo
 									return Promise.ofException(METADATA_SIG);
 								}
 								GlobalFsMetadata metadata = signedMetadata.getValue();
-								return driver.getKey(pubKey, metadata.getSimKeyHash())
+								return driver.getPrivateKeyStorage().getKey(pubKey, metadata.getSimKeyHash())
 										.thenApply(key -> supplier
 												.transformWith(FrameVerifier.create(pubKey, filename, offset, limit))
-												.transformWith(ChannelFileCipher.create(key, filename, offset)));
+												.transformWith(CipherTransformer.create(key, CryptoUtils.nonceFromString(filename), offset)));
 							});
 				});
 	}

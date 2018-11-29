@@ -16,37 +16,30 @@
 
 package io.global.fs.local;
 
-import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
-import io.global.common.*;
+import io.global.common.KeyPair;
+import io.global.common.PrivKey;
+import io.global.common.PrivateKeyStorage;
+import io.global.common.PubKey;
 import io.global.common.api.DiscoveryService;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
-import org.spongycastle.crypto.CryptoException;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static java.util.stream.Collectors.toMap;
 
 public final class GlobalFsDriver {
-	private final Map<Hash, SimKey> keyMap = new HashMap<>();
-	private final Map<PubKey, PrivKey> keys = new HashMap<>();
 	private final GlobalFsNode node;
-	private final DiscoveryService discoveryService;
 	private final CheckpointPosStrategy checkpointPosStrategy;
 
-	@Nullable
-	private SimKey currentSimKey;
+	private final PrivateKeyStorage privateKeyStorage;
 
 	private GlobalFsDriver(GlobalFsNode node, DiscoveryService discoveryService, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
 		this.node = node;
-		this.discoveryService = discoveryService;
-		this.keys.putAll(keys);
 		this.checkpointPosStrategy = checkpointPosStrategy;
+		privateKeyStorage = new PrivateKeyStorage(discoveryService, keys);
 	}
 
 	public static GlobalFsDriver create(GlobalFsNode node, DiscoveryService discoveryService, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
@@ -57,52 +50,15 @@ public final class GlobalFsDriver {
 		return new GlobalFsDriver(node, discoveryService, keys.stream().collect(toMap(KeyPair::getPubKey, KeyPair::getPrivKey)), checkpointPosStrategy);
 	}
 
-	public Promise<SimKey> getKey(PubKey receiver, @Nullable Hash simKeyHash) {
-		if (simKeyHash == null) {
-			return Promise.of(null);
-		}
-		SimKey key = keyMap.get(simKeyHash);
-		if (key != null) {
-			return Promise.of(key);
-		}
-		return discoveryService.getSharedKey(receiver, simKeyHash)
-				.thenCompose(signedSharedSimKey -> {
-					SharedSimKey sharedSimKey = signedSharedSimKey.getValue();
-					PrivKey privKey = keys.get(receiver);
-					if (privKey == null) {
-						return Promise.ofException(new StacklessException(GlobalFsDriver.class, "No private key stored for " + receiver));
-					}
-					try {
-						SimKey newKey = sharedSimKey.decryptSimKey(privKey);
-						keyMap.put(sharedSimKey.getHash(), newKey);
-						return Promise.of(newKey);
-					} catch (CryptoException e) {
-						return Promise.ofException(e);
-					}
-				});
-	}
-
-	public FsClient createClientFor(PubKey pubKey) {
-		PrivKey privKey = keys.get(pubKey);
+	public FsClient gatewayFor(PubKey pubKey) {
+		PrivKey privKey = getPrivateKeyStorage().getKeys().get(pubKey);
 		if (privKey == null) {
 			throw new IllegalArgumentException("No private key stored for " + pubKey);
 		}
-		return new GlobalFsGatewayAdapter(this, node, pubKey, privKey, checkpointPosStrategy);
+		return new GlobalFsGateway(this, node, pubKey, privKey, checkpointPosStrategy);
 	}
 
-	@Nullable
-	public SimKey getCurrentSimKey() {
-		return currentSimKey;
-	}
-
-	public void changeCurrentSimKey(@Nullable SimKey currentSimKey) {
-		this.currentSimKey = currentSimKey;
-		if (currentSimKey != null) {
-			keyMap.put(Hash.sha1(currentSimKey.getBytes()), currentSimKey);
-		}
-	}
-
-	public void forget(Hash simKeyHash) {
-		keyMap.remove(simKeyHash);
+	public PrivateKeyStorage getPrivateKeyStorage() {
+		return privateKeyStorage;
 	}
 }

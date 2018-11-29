@@ -59,7 +59,8 @@ public final class CTRAESCipher {
 		long ctr = blockCounter++;
 		int i = 8;
 		while (ctr != 0) {
-			mixedNonce[i] = (byte) (nonce[i] ^ (ctr >>>= i++ << 3));
+			mixedNonce[i] = (byte) (nonce[i++] ^ ctr);
+			ctr >>>= 8;
 		}
 		cipher.processBlock(mixedNonce, 0, cipherBlock, 0);
 	}

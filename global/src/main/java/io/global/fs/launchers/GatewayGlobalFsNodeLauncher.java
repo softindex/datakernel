@@ -41,7 +41,7 @@ import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.RemoteFsServlet;
 import io.global.fs.local.GlobalFsDriver;
-import io.global.fs.local.GlobalFsGatewayAdapter;
+import io.global.fs.local.GlobalFsGateway;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -160,13 +160,13 @@ public class GatewayGlobalFsNodeLauncher extends Launcher {
 
 					@Provides
 					@Singleton
-					GlobalFsGatewayAdapter provide(Config config, GlobalFsNode node) {
+					GlobalFsGateway provide(Config config, GlobalFsNode node) {
 						PrivKey privateKey = config.get(ofPrivKey(), "globalfs.gateway.privateKey");
 						CheckpointPosStrategy checkpointPosStrategy = config.get(ofCheckpointPositionStrategy(), "globalfs.gateway.checkpointPosStrategy");
 
 						// TODO anton: fix all these stubs
 						GlobalFsDriver driver = GlobalFsDriver.create(node, discoveryService, list(privateKey.computeKeys()), checkpointPosStrategy);
-						return (GlobalFsGatewayAdapter) driver.createClientFor(privateKey.computePubKey());
+						return (GlobalFsGateway) driver.gatewayFor(privateKey.computePubKey());
 					}
 
 					@Provides

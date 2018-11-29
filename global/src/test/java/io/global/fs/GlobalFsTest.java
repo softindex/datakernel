@@ -31,8 +31,12 @@ import io.datakernel.stream.processor.LoggingRule;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import io.global.common.api.NodeFactory;
 import io.global.common.discovery.LocalDiscoveryService;
-import io.global.fs.api.*;
+import io.global.fs.api.CheckpointPosStrategy;
+import io.global.fs.api.DataFrame;
+import io.global.fs.api.GlobalFsMetadata;
+import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
@@ -93,7 +97,7 @@ public final class GlobalFsTest {
 		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, Paths.get("/tmp/TESTS2/")); //temporaryFolder.newFolder().toPath());
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
-		NodeClientFactory clientFactory = new NodeClientFactory() {
+		NodeFactory<GlobalFsNode> clientFactory = new NodeFactory<GlobalFsNode>() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
 				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverId.getServerIdString().split(":")[1]))
@@ -110,8 +114,8 @@ public final class GlobalFsTest {
 		firstDriver = GlobalFsDriver.create(firstClient, discoveryService, list(alice, bob), fixed(10));
 		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, discoveryService, list(alice, bob), fixed(15));
 
-		firstAliceAdapter = firstDriver.createClientFor(alice.getPubKey());
-		secondAliceAdapter = secondDriver.createClientFor(alice.getPubKey());
+		firstAliceAdapter = firstDriver.gatewayFor(alice.getPubKey());
+		secondAliceAdapter = secondDriver.gatewayFor(alice.getPubKey());
 	}
 
 	private Promise<Void> announce(KeyPair keys, Set<RawServerId> rawServerIds) {
@@ -174,7 +178,7 @@ public final class GlobalFsTest {
 
 	@Test
 	public void separate() {
-		FsClient firstBobAdapter = firstDriver.createClientFor(bob.getPubKey());
+		FsClient firstBobAdapter = firstDriver.gatewayFor(bob.getPubKey());
 
 		String content = "hello world, i am here!";
 
@@ -296,7 +300,7 @@ public final class GlobalFsTest {
 		SimKey key1 = SimKey.generate();
 		SimKey key2 = SimKey.generate();
 
-		firstDriver.changeCurrentSimKey(key1);
+		firstDriver.getPrivateKeyStorage().changeCurrentSimKey(key1);
 
 		String data = "some plain ASCII data to be uploaded and encrypted";
 
@@ -306,8 +310,8 @@ public final class GlobalFsTest {
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(data.substring(12, 12 + 32), res.asString(UTF_8))))
 				.whenResult($ -> {
-					firstDriver.forget(Hash.sha1(key1.getBytes()));
-					firstDriver.changeCurrentSimKey(key2);
+					firstDriver.getPrivateKeyStorage().forget(Hash.sha1(key1.getBytes()));
+					firstDriver.getPrivateKeyStorage().changeCurrentSimKey(key2);
 				})
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))

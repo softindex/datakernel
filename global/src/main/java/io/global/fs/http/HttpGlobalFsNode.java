@@ -18,19 +18,15 @@ package io.global.fs.http;
 
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
-import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.http.UrlBuilder;
-import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
@@ -43,44 +39,20 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.datakernel.csp.binary.ByteBufsParser.ofVarIntSizePrefixedBytes;
+import static io.datakernel.csp.binary.ByteBufsParser.ofDecoder;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
+import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.fs.http.GlobalFsNodeServlet.*;
-import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {
-	private static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsMetadata>>() {});
-
 	private final InetSocketAddress address;
 	private final IAsyncHttpClient client;
 
-	// region creators
 	public HttpGlobalFsNode(IAsyncHttpClient client, InetSocketAddress address) {
 		this.client = client;
 		this.address = address;
-	}
-	// endregion
-
-	@Override
-	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
-		return client.request(
-				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
-								.appendPathPart(DOWNLOAD)
-								.appendPathPart(space.asString())
-								.appendPath(filename)
-								.appendQuery("range", offset + (limit != -1 ? "-" + (offset + limit) : ""))
-								.build()))
-				.thenApply(response -> {
-					if (response.getCode() != 200) {
-						throw new UncheckedException(new StacklessException(HttpGlobalFsNode.class, "Response code is not 200"));
-					}
-					return response.getBodyStream().transformWith(new FrameDecoder());
-				});
 	}
 
 	@Override
@@ -96,6 +68,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.build())
 				.withBodyStream(buffer.getSupplier().transformWith(new FrameEncoder())))
 				.thenCompose(ensureResponseBody())
+				.thenCompose(ensureStatusCode(200, 201))
 				.materialize();
 		return buffer.getConsumer().withAcknowledgement(ack -> ack.both(request));
 	}
@@ -105,9 +78,23 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 		return Promise.of(uploader(space, filename, offset));
 	}
 
+	@Override
+	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
+		return client.request(
+				HttpRequest.get(
+						UrlBuilder.http()
+								.withAuthority(address)
+								.appendPathPart(DOWNLOAD)
+								.appendPathPart(space.asString())
+								.appendPath(filename)
+								.appendQuery("range", offset + (limit != -1 ? "-" + (offset + limit) : ""))
+								.build()))
+				.thenCompose(ensureStatusCode(200))
+				.thenApply(response -> response.getBodyStream().transformWith(new FrameDecoder()));
+	}
+
 	public static final ByteBufsParser<SignedData<GlobalFsMetadata>> SIGNED_METADATA_PARSER =
-			ofVarIntSizePrefixedBytes()
-					.andThen(buf -> decode(SIGNED_METADATA_CODEC, buf));
+			ofDecoder(SIGNED_METADATA_CODEC);
 
 	private static final Function<HttpResponse, Promise<List<SignedData<GlobalFsMetadata>>>> LIST_RESPONSE_PARSER =
 			response ->
@@ -125,6 +112,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendQuery("glob", glob)
 						.build()))
 				.thenCompose(ensureResponseBody())
+				.thenCompose(ensureStatusCode(200))
 				.thenCompose(LIST_RESPONSE_PARSER);
 	}
 
@@ -139,6 +127,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendQuery("local", "1")
 						.build()))
 				.thenCompose(ensureResponseBody())
+				.thenCompose(ensureStatusCode(200))
 				.thenCompose(LIST_RESPONSE_PARSER);
 	}
 
@@ -151,6 +140,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(pubKey.asString())
 						.build())
 				.withBody(encode(SIGNED_METADATA_CODEC, signedMetadata)))
+				.thenCompose(ensureStatusCode(200))
 				.toVoid();
 	}
 

@@ -57,7 +57,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private Map<String, String> postParameters;
 
 	// region creators
-	// region builders
 	HttpRequest(HttpMethod method, UrlParser url) {
 		this.method = method;
 		this.url = url;
@@ -77,9 +76,10 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public static HttpRequest post(String url) {
 		return HttpRequest.of(POST, url);
 	}
-	// endregion
 
-	// common builder methods
+	public static HttpRequest put(String url) {
+		return HttpRequest.of(PUT, url);
+	}
 
 	public HttpRequest withHeader(HttpHeader header, String value) {
 		setHeader(header, value);
@@ -111,8 +111,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return this;
 	}
 
-	// specific builder methods
-
 	@Override
 	protected List<HttpCookie> doParseCookies() throws ParseException {
 		return parseHeader(COOKIE, HttpHeaderValue::toSimpleCookies);
@@ -142,8 +140,8 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		setBodyGzipCompression();
 		return this;
 	}
+	// endregion
 
-	// region getters
 	public HttpMethod getMethod() {
 		assert !isRecycled();
 		return method;
@@ -152,10 +150,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public InetAddress getRemoteAddress() {
 		assert !isRecycled();
 		return remoteAddress;
-	}
-
-	public static HttpRequest put(String url) {
-		return HttpRequest.of(PUT, url);
 	}
 
 	void setRemoteAddress(InetAddress inetAddress) {
@@ -178,7 +172,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return url;
 	}
 
-	// region setters
 	void setUrl(String url) {
 		assert !isRecycled();
 		this.url = UrlParser.of(url);
@@ -328,8 +321,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return parser.parseOrDefault(getPathParameterOrNull(key), defaultValue);
 	}
 
-	// endregion
-
 	int getPos() {
 		return url.pos;
 	}
@@ -382,5 +373,4 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public String toString() {
 		return getFullUrl();
 	}
-	// endregion
 }
