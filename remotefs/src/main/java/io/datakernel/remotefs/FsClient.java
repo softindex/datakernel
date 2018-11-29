@@ -22,7 +22,6 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
 
-import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -64,21 +63,6 @@ public interface FsClient {
 	}
 
 	/**
-	 * Shortcut for first uploading the folder into a temporary folder and then atomically moving it out.
-	 *
-	 * @param filename   name of the file to upload
-	 * @param tempFolder name of the temporary folder
-	 * @return stream consumer of byte buffers
-	 */
-	default Promise<ChannelConsumer<ByteBuf>> uploadAtomic(String filename, String tempFolder) {
-		String tempName = tempFolder + File.separator + filename;
-		return upload(tempName)
-				.thenApply(consumer ->
-						consumer.withAcknowledgement(ack ->
-								ack.thenCompose($ -> move(tempName, filename))));
-	}
-
-	/**
 	 * Shortcut which unwraps promise of consumer into a consumer that consumes when promise is complete.
 	 * <p>
 	 * It merges connection errors into end-of-stream promise, so on connection failure
@@ -93,13 +77,6 @@ public interface FsClient {
 
 	default ChannelConsumer<ByteBuf> uploader(String filename, long offset) {
 		return ChannelConsumer.ofPromise(upload(filename, offset));
-	}
-
-	/**
-	 * Same shortcut, but for {@link #uploadAtomic(String, String)}
-	 */
-	default ChannelConsumer<ByteBuf> uploader(String filename, String tempFolder) {
-		return ChannelConsumer.ofPromise(uploadAtomic(filename, tempFolder));
 	}
 
 	/**
@@ -220,13 +197,6 @@ public interface FsClient {
 	}
 
 	/**
-	 * Shortcut for {@link #list(String)} to list all files in root directory
-	 */
-	default Promise<List<FileMetadata>> listLocal() {
-		return list("*");
-	}
-
-	/**
 	 * Shortcut for {@link #list(String)} with empty 'ping' list request
 	 */
 	default Promise<Void> ping() {
@@ -240,7 +210,7 @@ public interface FsClient {
 	 * @return promise of file description or <code>null</code>
 	 */
 	default Promise<FileMetadata> getMetadata(String filename) {
-		return list(filename)
+		return list(escapeGlob(filename))
 				.thenApply(list -> list.isEmpty() ? null : list.get(0));
 	}
 

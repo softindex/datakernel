@@ -214,7 +214,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 		long timestamp = instant != null ? instant.toEpochMilli() : -1;
 		int[] skipped = {0};
 		int[] deleted = {0};
-		return client.listLocal()
+		return client.list("*")
 				.thenCompose(list -> Promises.all(list.stream()
 						.filter(file -> {
 							if (!file.getFilename().endsWith(LOG)) {

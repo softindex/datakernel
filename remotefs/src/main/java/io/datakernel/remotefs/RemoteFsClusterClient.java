@@ -145,20 +145,21 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	 * @return promise of the check
 	 */
 	public Promise<Void> checkAllPartitions() {
-		return Promises.all(clients.entrySet().stream()
-				.map(entry -> {
-					Object id = entry.getKey();
-					return entry.getValue()
-							.ping()
-							.thenApplyEx(($, e) -> {
-								if (e == null) {
-									markAlive(id);
-								} else {
-									markDead(id, e);
-								}
-								return null;
-							});
-				}))
+		return Promises.all(
+				clients.entrySet().stream()
+						.map(entry -> {
+							Object id = entry.getKey();
+							return entry.getValue()
+									.ping()
+									.thenApplyEx(($, e) -> {
+										if (e == null) {
+											markAlive(id);
+										} else {
+											markDead(id, e);
+										}
+										return null;
+									});
+						}))
 				.whenComplete(toLogger(logger, "checkAllPartitions"));
 	}
 
@@ -170,15 +171,16 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	 * @return promise of the check
 	 */
 	public Promise<Void> checkDeadPartitions() {
-		return Promises.all(deadClients.entrySet().stream()
-				.map(entry -> entry.getValue()
-						.ping()
-						.thenApplyEx(($, e) -> {
-							if (e == null) {
-								markAlive(entry.getKey());
-							}
-							return null;
-						})))
+		return Promises.all(
+				deadClients.entrySet().stream()
+						.map(entry -> entry.getValue()
+								.ping()
+								.thenApplyEx(($, e) -> {
+									if (e == null) {
+										markAlive(entry.getKey());
+									}
+									return null;
+								})))
 				.whenComplete(toLogger(logger, "checkDeadPartitions"));
 	}
 
@@ -333,10 +335,12 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 		return Promises.toList(
 				aliveClients.entrySet().stream()
-						.map(e -> {
-							Object partitionId = e.getKey();
-							return e.getValue().list(filename) //   ↓ use null's as file non-existense indicators
-									.thenApply(res -> res.isEmpty() ? null : new PartitionIdWithFileSize(partitionId, res.get(0).getSize()))
+						.map(entry -> {
+							Object partitionId = entry.getKey();
+							return entry.getValue().getMetadata(filename) //   ↓ use null's as file non-existense indicators
+									.thenApply(res -> res != null ?
+											new PartitionIdWithFileSize(partitionId, res.getSize()) :
+											null)
 									.thenComposeEx(wrapDeath(partitionId))
 									.toTry();
 						}))
@@ -411,10 +415,11 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	public Promise<Void> deleteBulk(String glob) {
 		checkNotNull(glob, "glob");
 
-		return Promises.toList(aliveClients.entrySet().stream()
-				.map(e -> e.getValue().deleteBulk(glob)
-						.thenComposeEx(wrapDeath(e.getKey()))
-						.toTry()))
+		return Promises.toList(
+				aliveClients.entrySet().stream()
+						.map(entry -> entry.getValue().deleteBulk(glob)
+								.thenComposeEx(wrapDeath(entry.getKey()))
+								.toTry()))
 				.thenCompose(tries -> {
 					if (tries.stream().anyMatch(Try::isSuccess)) { // connected at least to somebody
 						return Promise.complete();
@@ -434,10 +439,11 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 		}
 
 		// this all is the same as delete, but with list of lists of results, flattened and unified
-		return Promises.toList(aliveClients.entrySet().stream()
-				.map(e -> e.getValue().list(glob)
-						.thenComposeEx(wrapDeath(e.getKey()))
-						.toTry()))
+		return Promises.toList(
+				aliveClients.entrySet().stream()
+						.map(entry -> entry.getValue().list(glob)
+								.thenComposeEx(wrapDeath(entry.getKey()))
+								.toTry()))
 				.<List<FileMetadata>>thenCompose(tries -> {
 					// recheck if our list request marked any partitions as dead
 					if (deadClients.size() >= replicationCount) {

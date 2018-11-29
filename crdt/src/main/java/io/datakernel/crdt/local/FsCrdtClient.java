@@ -165,7 +165,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 	@Override
 	public CrdtStreamSupplierWithToken<K, S> download(long token) {
 		return new CrdtStreamSupplierWithToken<>(
-				Promises.toTuple(FileLists::new, client.listLocal(), tombstoneFolderClient.listLocal())
+				Promises.toTuple(FileLists::new, client.list("*"), tombstoneFolderClient.list("*"))
 						.thenApply(f -> {
 							StreamReducerSimple<K, CrdtReducingData<K, S>, CrdtData<K, S>, CrdtAccumulator<K, S>> reducer =
 									StreamReducerSimple.create(crd -> crd.key, Comparator.naturalOrder(), new CrdtReducer<>(combiner));
@@ -221,7 +221,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 		long barrier = eventloop.currentInstant().minus(consolidationMargin).toEpochMilli();
 		Set<String> blacklist = new HashSet<>();
 
-		return consolidationFolderClient.listLocal()
+		return consolidationFolderClient.list("*")
 				.thenCompose(list ->
 						Promises.all(list.stream()
 								.filter(meta -> meta.getTimestamp() > barrier)
@@ -230,7 +230,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 												.toCollector(ByteBufQueue.collector())
 												.whenResult(byteBuf -> blacklist.addAll(Arrays.asList(byteBuf.asString(UTF_8).split("\n"))))
 												.toVoid())))
-				.thenCompose($ -> client.listLocal())
+				.thenCompose($ -> client.list("*"))
 				.thenCompose(list -> {
 					String name = namingStrategy.apply("bin");
 					List<String> files = list.stream()
