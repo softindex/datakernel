@@ -26,10 +26,7 @@ import io.datakernel.util.Initializable;
 import io.datakernel.util.ParserFunction;
 
 import java.net.InetAddress;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
@@ -112,11 +109,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	@Override
-	protected List<HttpCookie> doParseCookies() throws ParseException {
-		return parseHeader(COOKIE, HttpHeaderValue::toSimpleCookies);
-	}
-
-	@Override
 	public void setCookies(List<HttpCookie> cookies) {
 		setHeader(COOKIE, new HttpHeaderValueOfSimpleCookies(cookies));
 	}
@@ -194,6 +186,28 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public String getPathAndQuery() {
 		assert !isRecycled();
 		return url.getPathAndQuery();
+	}
+
+	private Map<String, String> parsedCookies;
+
+	public Map<String, String> getCookies() throws ParseException {
+		if (parsedCookies != null) return parsedCookies;
+		Map<String, String> cookies = new LinkedHashMap<>();
+		for (HttpCookie cookie : parseHeader(COOKIE, HttpHeaderValue::toSimpleCookies)) {
+			cookies.put(cookie.getName(), cookie.getValue());
+		}
+		return this.parsedCookies = cookies;
+	}
+
+	public String getCookie(String cookie) throws ParseException {
+		String httpCookie = getCookies().get(cookie);
+		if (httpCookie != null) return httpCookie;
+		throw new ParseException(HttpMessage.class, "There is no cookie: " + cookie);
+	}
+
+	@Nullable
+	public String getCookieOrNull(String cookie) throws ParseException {
+		return getCookies().get(cookie);
 	}
 
 	public String getQuery() {

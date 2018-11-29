@@ -23,7 +23,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfBuf;
+import io.datakernel.http.HttpHeaderValue.ParsedHttpHeaderValue;
 import io.datakernel.http.HttpHeaderValue.ParserIntoList;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
@@ -33,7 +33,6 @@ import java.util.*;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.util.Preconditions.*;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
@@ -41,7 +40,6 @@ import static java.util.Collections.singletonList;
 @SuppressWarnings("unused")
 public abstract class HttpMessage {
 	protected Map<HttpHeader, HttpHeaderValue> headers = new LinkedHashMap<>();
-	protected Map<String, HttpCookie> cookies;
 	protected ChannelSupplier<ByteBuf> bodySupplier;
 	protected ByteBuf body;
 	protected boolean useGzip;
@@ -49,15 +47,11 @@ public abstract class HttpMessage {
 	protected HttpMessage() {
 	}
 
-	public final Map<HttpHeader, HttpHeaderValue> getHeaders() {
-		return headers;
-	}
-
-	void addHeader(HttpHeader header, ByteBuf buf) {
+	void addParsedHeader(HttpHeader header, ByteBuf buf) {
 		assert !isRecycled();
-		HttpHeaderValueOfBuf headerBytes =
-				(HttpHeaderValueOfBuf) headers.computeIfAbsent(header,
-						$ -> new HttpHeaderValueOfBuf());
+		ParsedHttpHeaderValue headerBytes =
+				(ParsedHttpHeaderValue) headers.computeIfAbsent(header,
+						$ -> new ParsedHttpHeaderValue());
 		headerBytes.add(buf);
 	}
 
@@ -78,34 +72,26 @@ public abstract class HttpMessage {
 	}
 
 	@NotNull
-	public ByteBuf getHeaderBuf(HttpHeader header) throws ParseException {
-		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
+	private ByteBuf getHeaderBuf(HttpHeader header) throws ParseException {
+		ParsedHttpHeaderValue headerBuf = (ParsedHttpHeaderValue) headers.get(header);
 		if (headerBuf != null) {
-			if (headerBuf.bufs != null) {
-				throw new ParseException(HttpMessage.class, "Header '" + header + "' has multiple values");
-			}
 			return headerBuf.buf;
 		}
 		throw new ParseException(HttpMessage.class, "There is no header: " + header);
 	}
 
 	@Nullable
-	public ByteBuf getHeaderBufOrNull(HttpHeader header) throws ParseException {
-		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
-		if (headerBuf != null) {
-			if (headerBuf.bufs != null) {
-				throw new ParseException(HttpMessage.class, "Header '" + header + "' has multiple values");
-			}
-			return headerBuf.buf;
-		}
-		return null;
+	private ByteBuf getHeaderBufOrNull(HttpHeader header) throws ParseException {
+		ParsedHttpHeaderValue headerBuf = (ParsedHttpHeaderValue) headers.get(header);
+		return headerBuf != null ? headerBuf.buf : null;
 	}
 
-	public List<ByteBuf> getHeaderBufs(HttpHeader header) {
-		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
-		if (headerBuf == null) return emptyList();
-		if (headerBuf.bufs == null) return singletonList(headerBuf.buf);
-		return Arrays.asList(headerBuf.bufs);
+	public final Map<HttpHeader, String[]> getHeaders() {
+		LinkedHashMap<HttpHeader, String[]> map = new LinkedHashMap<>(headers.size() * 3 / 2);
+		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : headers.entrySet()) {
+			map.put(entry.getKey(), ((ParsedHttpHeaderValue) entry.getValue()).toStrings());
+		}
+		return map;
 	}
 
 	@NotNull
@@ -132,7 +118,7 @@ public abstract class HttpMessage {
 	}
 
 	public <T> List<T> parseHeader(HttpHeader header, ParserIntoList<T> parser) throws ParseException {
-		HttpHeaderValueOfBuf headerBuf = (HttpHeaderValueOfBuf) headers.get(header);
+		ParsedHttpHeaderValue headerBuf = (ParsedHttpHeaderValue) headers.get(header);
 		if (headerBuf == null) return emptyList();
 		List<T> list = new ArrayList<>();
 		if (headerBuf.bufs == null) {
@@ -145,8 +131,6 @@ public abstract class HttpMessage {
 		return list;
 	}
 
-	protected abstract List<HttpCookie> doParseCookies() throws ParseException;
-
 	public abstract void setCookies(List<HttpCookie> cookies);
 
 	public void setCookies(HttpCookie... cookie) {
@@ -155,29 +139,6 @@ public abstract class HttpMessage {
 
 	public void setCookie(HttpCookie cookie) {
 		setCookies(Collections.singletonList(cookie));
-	}
-
-	public Map<String, HttpCookie> getCookies() throws ParseException {
-		if (cookies != null) return cookies;
-		Map<String, HttpCookie> cookies = new LinkedHashMap<>();
-		for (HttpCookie cookie : doParseCookies()) {
-			cookies.put(cookie.getName(), cookie);
-		}
-		this.cookies = cookies;
-		return cookies;
-	}
-
-	public HttpCookie getCookie(String cookie) throws ParseException {
-		HttpCookie httpCookie = getCookies().get(cookie);
-		if (httpCookie != null) return httpCookie;
-		throw new ParseException(HttpMessage.class, "There is no cookie: " + cookie);
-	}
-
-	@Nullable
-	public HttpCookie getCookieOrNull(String cookie) throws ParseException {
-		HttpCookie httpCookie = getCookies().get(cookie);
-		if (httpCookie != null) return httpCookie;
-		return null;
 	}
 
 	public void setBodyGzipCompression() {

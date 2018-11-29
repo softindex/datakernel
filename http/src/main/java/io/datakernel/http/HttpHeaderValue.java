@@ -28,7 +28,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static java.util.Arrays.asList;
 
 public abstract class HttpHeaderValue {
-
 	abstract int estimateSize();
 
 	abstract void writeTo(ByteBuf buf);
@@ -360,7 +359,7 @@ public abstract class HttpHeaderValue {
 		}
 	}
 
-	static final class HttpHeaderValueOfBuf extends HttpHeaderValue {
+	static final class ParsedHttpHeaderValue extends HttpHeaderValue {
 		int size;
 		ByteBuf buf;
 		ByteBuf[] bufs;
@@ -402,6 +401,17 @@ public abstract class HttpHeaderValue {
 				}
 			}
 			buf = null;
+		}
+
+		public String[] toStrings() {
+			assert size != 0;
+			String[] strings = new String[size];
+			strings[0] = decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining());
+			for (int i = 1; i < size; i++) {
+				ByteBuf buf = bufs[i - 1];
+				strings[i] = decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining());
+			}
+			return strings;
 		}
 
 		@Override

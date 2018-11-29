@@ -195,7 +195,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			}
 		}
 		if (request.headers.size() >= MAX_HEADERS) throw TOO_MANY_HEADERS;
-		request.addHeader(header, value);
+		request.addParsedHeader(header, value);
 	}
 
 	private void writeHttpResponse(HttpResponse httpResponse) {

@@ -158,7 +158,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		super.onHeader(header, buf);
 		assert response != null;
 		if (response.headers.size() >= MAX_HEADERS) throw TOO_MANY_HEADERS;
-		response.addHeader(header, buf);
+		response.addParsedHeader(header, buf);
 	}
 
 	@Override

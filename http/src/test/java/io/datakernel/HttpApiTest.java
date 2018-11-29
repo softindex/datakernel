@@ -38,6 +38,7 @@ import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.time.ZoneOffset.UTC;
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
@@ -152,7 +153,7 @@ public final class HttpApiTest {
 		assertEquals(dateIMS, request.parseHeader(IF_MODIFIED_SINCE, HttpHeaderValue::toInstant));
 		assertEquals(dateIUMS, request.parseHeader(IF_UNMODIFIED_SINCE, HttpHeaderValue::toInstant));
 		assertEquals(requestContentType, request.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
-		assertEquals(requestCookies, new ArrayList<>(request.getCookies().values()));
+		assertEquals(requestCookies.stream().map(HttpCookie::getValue).collect(toList()), new ArrayList<>(request.getCookies().values()));
 	}
 
 	private static Instant createDate(int year, int month, int day) {
