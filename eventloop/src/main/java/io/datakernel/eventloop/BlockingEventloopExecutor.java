@@ -16,17 +16,16 @@
 
 package io.datakernel.eventloop;
 
-
 import io.datakernel.exception.UncheckedException;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Supplier;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public final class BlockingEventloopExecutor implements EventloopExecutor {
 	private final Eventloop eventloop;
@@ -133,28 +132,24 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public <T> CompletableFuture<T> submit(Supplier<CompletionStage<T>> computation) {
+	public <T> CompletableFuture<T> submit(Consumer<BiConsumer<T, Throwable>> callbackConsumer) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		post(() -> {
-			CompletionStage<T> completionStage;
 			try {
-				completionStage = computation.get();
+				callbackConsumer.accept((result, e) -> {
+					if (e == null) {
+						future.complete(result);
+					} else {
+						future.completeExceptionally(e);
+					}
+				});
 			} catch (UncheckedException u) {
 				future.completeExceptionally(u.getCause());
-				return;
 			} catch (RuntimeException e) {
 				throw e;
 			} catch (Exception e) {
 				future.completeExceptionally(e);
-				return;
 			}
-			completionStage.whenComplete((result, e) -> {
-				if (e == null) {
-					future.complete(result);
-				} else {
-					future.completeExceptionally(e);
-				}
-			});
 		}, future);
 		return future;
 	}

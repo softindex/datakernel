@@ -44,10 +44,10 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -1015,32 +1015,25 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return future;
 	}
 
-	/**
-	 * Works the same as {@link Eventloop#submit(Runnable)} except for {@code CompletionStage}
-	 */
 	@Override
-	public <T> CompletableFuture<T> submit(Supplier<CompletionStage<T>> computation) {
+	public <T> CompletableFuture<T> submit(Consumer<BiConsumer<T, Throwable>> callbackConsumer) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		execute(() -> {
-			CompletionStage<T> completionStage;
 			try {
-				completionStage = computation.get();
+				callbackConsumer.accept((result, e) -> {
+					if (e == null) {
+						future.complete(result);
+					} else {
+						future.completeExceptionally(e);
+					}
+				});
 			} catch (UncheckedException u) {
 				future.completeExceptionally(u.getCause());
-				return;
 			} catch (RuntimeException e) {
 				throw e;
 			} catch (Exception e) {
 				future.completeExceptionally(e);
-				return;
 			}
-			completionStage.whenComplete((result, e) -> {
-				if (e == null) {
-					future.complete(result);
-				} else {
-					future.completeExceptionally(e);
-				}
-			});
 		});
 		return future;
 	}

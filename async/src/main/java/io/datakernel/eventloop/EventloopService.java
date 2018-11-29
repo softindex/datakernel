@@ -30,7 +30,7 @@ public interface EventloopService {
 	Promise<Void> start();
 
 	default CompletableFuture<Void> startFuture() {
-		return getEventloop().submit(() -> start().toCompletableFuture());
+		return getEventloop().submit(cb -> start().whenComplete(cb));
 	}
 
 	/**
@@ -40,6 +40,6 @@ public interface EventloopService {
 	Promise<Void> stop();
 
 	default CompletableFuture<Void> stopFuture() {
-		return getEventloop().submit(() -> stop().toCompletableFuture());
+		return getEventloop().submit(cb -> stop().whenComplete(cb));
 	}
 }

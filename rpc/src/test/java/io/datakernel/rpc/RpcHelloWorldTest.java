@@ -112,10 +112,10 @@ public final class RpcHelloWorldTest {
 		@Override
 		public String hello(String name) throws Exception {
 			try {
-				return rpcClient.getEventloop().submit(
-						() -> rpcClient
+				return rpcClient.getEventloop().<HelloResponse>submit(
+						cb -> rpcClient
 								.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-								.toCompletableFuture())
+								.whenComplete(cb))
 						.get().message;
 			} catch (ExecutionException e) {
 				//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - cause is rethrown
@@ -175,7 +175,7 @@ public final class RpcHelloWorldTest {
 	@Test
 	public void testBlocking2Clients() throws Exception {
 		try (BlockingHelloClient client1 = new BlockingHelloClient(Eventloop.getCurrentEventloop());
-				BlockingHelloClient client2 = new BlockingHelloClient(Eventloop.getCurrentEventloop())) {
+			 BlockingHelloClient client2 = new BlockingHelloClient(Eventloop.getCurrentEventloop())) {
 			assertEquals("Hello, John!", client2.hello("John"));
 			assertEquals("Hello, World!", client1.hello("World"));
 		} finally {
@@ -200,7 +200,7 @@ public final class RpcHelloWorldTest {
 		int requestCount = 10;
 
 		try (BlockingHelloClient client1 = new BlockingHelloClient(Eventloop.getCurrentEventloop());
-				BlockingHelloClient client2 = new BlockingHelloClient(Eventloop.getCurrentEventloop())) {
+			 BlockingHelloClient client2 = new BlockingHelloClient(Eventloop.getCurrentEventloop())) {
 			CountDownLatch latch = new CountDownLatch(2 * requestCount);
 
 			for (int i = 0; i < requestCount; i++) {
