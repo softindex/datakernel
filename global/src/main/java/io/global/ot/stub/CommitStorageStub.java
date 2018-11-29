@@ -96,8 +96,7 @@ public class CommitStorageStub implements CommitStorage {
 
 	@Override
 	public Promise<Boolean> savePullRequest(SignedData<RawPullRequest> pullRequest) {
-		pullRequests.computeIfAbsent(pullRequest.getValue().repository, $ -> new HashSet<>()).add(pullRequest);
-		return null;
+		return Promise.of(pullRequests.computeIfAbsent(pullRequest.getValue().repository, $ -> new HashSet<>()).add(pullRequest));
 	}
 
 	@Override

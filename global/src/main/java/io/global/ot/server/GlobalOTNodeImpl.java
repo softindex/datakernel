@@ -16,6 +16,7 @@
 
 package io.global.ot.server;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
@@ -24,9 +25,11 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Initializable;
 import io.global.common.*;
+import io.global.common.api.AnnouncementStorage;
 import io.global.common.api.DiscoveryService;
 import io.global.ot.api.*;
 import io.global.ot.server.GlobalOTNodeImpl.PubKeyEntry.RepositoryEntry;
@@ -40,7 +43,6 @@ import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.toSet;
@@ -51,27 +53,35 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	private final DiscoveryService discoveryService;
 	private final CommitStorage commitStorage;
 	private final RawServerFactory rawServerFactory;
-
-	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
+	private final RawServerId rawServerId;
+	private final Set<PubKey> managedPubKeys = new HashSet<>();
 
 	private final Map<PubKey, PubKeyEntry> pubKeys = new HashMap<>();
 	private final Map<PubKey, Map<Hash, SignedData<SharedSimKey>>> sharedKeysDb = new HashMap<>();
 
+	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
+
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	private GlobalOTNodeImpl(Eventloop eventloop, DiscoveryService discoveryService, CommitStorage commitStorage, RawServerFactory rawServerFactory) {
+	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId rawServerId, DiscoveryService discoveryService, @Nullable CommitStorage commitStorage, RawServerFactory rawServerFactory) {
 		this.eventloop = checkNotNull(eventloop);
+		this.rawServerId = rawServerId;
 		this.discoveryService = checkNotNull(discoveryService);
 		this.commitStorage = checkNotNull(commitStorage);
 		this.rawServerFactory = checkNotNull(rawServerFactory);
 	}
 
-	public static GlobalOTNodeImpl create(Eventloop eventloop, DiscoveryService discoveryService, CommitStorage commitStorage, RawServerFactory rawServerFactory) {
-		return new GlobalOTNodeImpl(eventloop, discoveryService, commitStorage, rawServerFactory);
+	public static GlobalOTNodeImpl create(Eventloop eventloop, RawServerId rawServerId, DiscoveryService discoveryService, CommitStorage commitStorage, RawServerFactory rawServerFactory) {
+		return new GlobalOTNodeImpl(eventloop, rawServerId, discoveryService, commitStorage, rawServerFactory);
 	}
 
 	public GlobalOTNodeImpl withLatencyMargin(Duration latencyMargin) {
 		this.latencyMargin = latencyMargin;
+		return this;
+	}
+
+	public GlobalOTNodeImpl withManagedPubKeys(Set<PubKey> managedPubKeys) {
+		this.managedPubKeys.addAll(managedPubKeys);
 		return this;
 	}
 
@@ -133,13 +143,26 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 								excludedHeads.addAll(intersection(thisHeads.keySet(), rawCommit.getParents()));
 							}
 							return applyHeads(repositoryId, new Heads(newHeads, excludedHeads));
-						}));
+						}))
+				.thenCompose($ -> isMasterFor(repositoryId) ?
+						Promise.complete() :
+						ensureServers(repositoryId)
+								.thenCompose(servers -> Promises.firstSuccessful(servers.stream()
+										.map(node -> node.save(repositoryId, newCommits, newHeads)))));
 	}
 
 	@Override
 	public Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 		return commitStorage.loadCommit(id)
-				.thenCompose(Promise::ofOptional);
+				.thenCompose(commit -> commit.isPresent() || isMasterFor(repositoryId) ?
+						Promise.ofOptional(commit) :
+						ensureServers(repositoryId)
+								.thenCompose(servers -> Promises.firstSuccessful(
+										servers.stream()
+												.map(node -> node.loadCommit(repositoryId, id))))
+								.thenCompose(rawCommit -> commitStorage.saveCommit(id, rawCommit)
+										.thenApply($ -> rawCommit))
+				);
 	}
 
 	@Override
@@ -156,24 +179,6 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 												queue.add(new RawCommitEntry(commitId, rawCommit))))
 								))
 						.thenApply($ -> AsyncSupplier.of(() -> getNextStreamEntry(queue, skipCommits, bases, heads)))
-						.thenApply(supplier -> supplier.transform(
-								entry -> new CommitEntry(entry.commitId, entry.rawCommit, thisHeads.get(entry.commitId))))
-						.thenApply(ChannelSupplier::of));
-	}
-
-	public Promise<ChannelSupplier<CommitEntry>> getCommitsSupplier(RepoID repositoryId, Set<CommitId> thatBases, Set<CommitId> thatHeads) {
-		checkArgument(!hasIntersection(thatBases, thatHeads), "Bases and heads cannot have intersections");
-		Set<CommitId> skipCommits = new HashSet<>(thatHeads);
-		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
-		return commitStorage.getHeads(repositoryId)
-				.thenCompose(thisHeads -> Promises.all(
-						union(thisHeads.keySet(), thatBases, thatHeads)
-								.stream()
-								.map(commitId -> commitStorage.loadCommit(commitId)
-										.whenResult(maybeRawCommit -> maybeRawCommit.ifPresent(rawCommit ->
-												queue.add(new RawCommitEntry(commitId, rawCommit))))
-								))
-						.thenApply($ -> AsyncSupplier.of(() -> getNextStreamEntry(queue, skipCommits, thatBases, thatHeads)))
 						.thenApply(supplier -> supplier.transform(
 								entry -> new CommitEntry(entry.commitId, entry.rawCommit, thisHeads.get(entry.commitId))))
 						.thenApply(ChannelSupplier::of));
@@ -220,7 +225,9 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
 		HeadsInfo headsInfo = new HeadsInfo(new HashSet<>(), new HashSet<>());
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
-		return commitStorage.getHeads(repositoryId)
+		return ensureRepository(repositoryId)
+				.updateHeads()
+				.thenCompose($ -> commitStorage.getHeads(repositoryId))
 				.thenApply(Map::keySet)
 				.thenCompose(thisHeads -> Promises.all(
 						thisHeads
@@ -232,7 +239,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 													queue.add(new RawCommitEntry(head, rawCommit));
 												}
 										))))
-						.thenCompose(value -> Promise.<Set<CommitId>>ofCallback(cb ->
+						.thenCompose($ -> Promise.<Set<CommitId>>ofCallback(cb ->
 								extractHeadInfoImpl(queue, new HashSet<>(), cb)))
 						.whenResult(headsInfo.bases::addAll)
 						.thenApply($ -> headsInfo));
@@ -298,35 +305,37 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	@Override
 	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return commitStorage.saveSnapshot(encryptedSnapshot)
-				.thenCompose(saved -> saved ?
+				.thenCompose(saved -> saved && !isMasterFor(repositoryId) ?
 						ensureServers(repositoryId)
-								.thenCompose(servers -> Promises.any(servers.stream()
+								.thenCompose(servers -> Promises.firstSuccessful(servers.stream()
 										.map(server -> server.saveSnapshot(repositoryId, encryptedSnapshot)))) :
 						Promise.complete());
 	}
 
 	@Override
 	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
-		return Promises.firstSuccessful(
-				() -> commitStorage.loadSnapshot(repositoryId, commitId)
-						.thenCompose(Promise::ofOptional),
-				() -> ensureServers(repositoryId)
-						.thenCompose(servers -> Promises.firstSuccessful(
-								servers.stream()
-										.map(server -> server.loadSnapshot(repositoryId, commitId)
-												.thenCompose(Promise::ofOptional)))))
-				.thenApplyEx((maybeResult, e) -> e == null ? Optional.of(maybeResult) : Optional.empty());
+		return commitStorage.loadSnapshot(repositoryId, commitId)
+				.thenCompose(maybeSnapshot -> (maybeSnapshot.isPresent() || isMasterFor(repositoryId)) ?
+						Promise.of(maybeSnapshot) :
+						ensureServers(repositoryId)
+								.thenCompose(servers -> Promises.firstSuccessful(
+										servers.stream()
+												.map(server -> server.loadSnapshot(repositoryId, commitId)
+														.thenCompose(Promise::ofOptional)))
+										.thenCompose(snapshot -> commitStorage.saveSnapshot(snapshot)
+												.thenApply($ -> snapshot)))
+								.thenApplyEx((snapshot, e) -> e == null ? Optional.of(snapshot) : Optional.empty()));
 	}
 
 	@Override
 	public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
-		return commitStorage.getHeads(repositoryId)
-				.thenCompose(heads -> excludeParents(union(heads.keySet(), remoteHeads))
-						.thenApply(excludedHeads -> new Heads(
-								difference(heads.keySet(), union(remoteHeads, excludedHeads)).stream()
-										.map(heads::get)
-										.collect(toSet()),
-								excludedHeads)));
+		return ensureRepository(repositoryId)
+				.updateHeads()
+				.thenCompose($ -> commitStorage.getHeads(repositoryId))
+				.thenCompose(heads -> Promise.of(new Heads(difference(heads.keySet(), remoteHeads).stream()
+						.map(heads::get)
+						.collect(toSet()), emptySet()))
+				);
 	}
 
 	public Promise<Set<CommitId>> excludeParents(Set<CommitId> heads) {
@@ -383,19 +392,22 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	@Override
 	public Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
 		return commitStorage.savePullRequest(pullRequest)
-				.thenCompose(saveStatus -> saveStatus ?
+				.thenCompose(saveStatus -> (saveStatus && !isMasterFor(pullRequest.getValue().getRepository())) ?
 						ensureServers(pullRequest.getValue().repository)
 								.thenCompose(servers -> Promises.any(
-										servers.stream().map(server -> server.sendPullRequest(pullRequest))
-								)) :
+										servers.stream().map(server -> server.sendPullRequest(pullRequest)))) :
 						Promise.complete());
 	}
 
 	@Override
 	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
 		return ensureRepository(repositoryId)
-				.update()
+				.updatePullRequests()
 				.thenCompose($ -> commitStorage.getPullRequests(repositoryId));
+	}
+
+	private boolean isMasterFor(RepoID repositoryId) {
+		return managedPubKeys.contains(repositoryId.getOwner());
 	}
 
 	class PubKeyEntry {
@@ -424,17 +436,20 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				return Promise.of(getServers());
 			}
 			return discoveryService.find(pubKey)
-					.whenResult(announceData -> {
-						Set<RawServerId> newServerIds = announceData.getValue().getServerIds();
-						difference(servers.keySet(), newServerIds).forEach(servers::remove);
-						for (RawServerId newServerId : newServerIds) {
-							if (servers.containsKey(newServerId)) continue;
-							servers.put(newServerId,
-									rawServerFactory.create(newServerId));
+					.thenApplyEx((announceData, e) -> {
+						if (e != null) {
+							if (e != AnnouncementStorage.NO_ANNOUNCEMENT) {
+								throw new UncheckedException(e);
+							}
+						} else if (announceData.verify(pubKey)) {
+							Set<RawServerId> newServerIds = new HashSet<>(announceData.getValue().getServerIds());
+							servers.keySet().removeIf(id -> !newServerIds.contains(id));
+							newServerIds.remove(rawServerId);
+							newServerIds.forEach(id -> servers.computeIfAbsent(id, rawServerFactory::create));
+							updateServersTimestamp = now.currentTimeMillis();
 						}
-					})
-					.whenResult($ -> updateServersTimestamp = currentTimeMillis())
-					.thenApply($ -> getServers());
+						return getServers();
+					});
 		}
 
 		public Promise<Void> forEach(Function<RepositoryEntry, Promise<Void>> fn) {
@@ -449,6 +464,8 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 			private final RepoID repositoryId;
 
 			private long updateTimestamp;
+			private long updateHeadsTimestamp;
+			private long updatePullRequestsTimestamp;
 
 			private final AsyncSupplier<Void> update = reuse(this::doUpdate);
 			private final AsyncSupplier<Void> updateHeads = reuse(this::doUpdateHeads);
@@ -499,20 +516,32 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 			}
 
 			private Promise<Void> doUpdateHeads() {
+				if (updateHeadsTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
+					return Promise.complete();
+				}
 				return ensureServers()
-						.thenCompose(servers -> commitStorage.getHeads(repositoryId)
-								.thenCompose(heads -> Promises.firstSuccessful(
-										servers.stream().map(server -> server.getHeads(repositoryId, heads.keySet()))))
-								.thenCompose(headsDelta ->
-										commitStorage.applyHeads(repositoryId, headsDelta.newHeads, headsDelta.excludedHeads)));
+						.thenCompose(servers -> servers.isEmpty() ?
+								Promise.complete() :
+								commitStorage.getHeads(repositoryId)
+										.thenCompose(heads -> Promises.firstSuccessful(
+												servers.stream().map(server -> server.getHeads(repositoryId, heads.keySet()))))
+										.thenCompose(headsDelta ->
+												commitStorage.applyHeads(repositoryId, headsDelta.newHeads, headsDelta.excludedHeads)))
+						.whenResult($ -> updateHeadsTimestamp = now.currentTimeMillis());
 			}
 
 			private Promise<Void> doUpdatePullRequests() {
+				if (updatePullRequestsTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
+					return Promise.complete();
+				}
 				return ensureServers()
-						.thenCompose(servers -> Promises.firstSuccessful(
-								servers.stream().map(server -> server.getPullRequests(repositoryId))))
-						.thenCompose(pullRequests -> Promises.all(
-								pullRequests.stream().map(commitStorage::savePullRequest)))
+						.thenCompose(servers -> servers.isEmpty() ?
+								Promise.complete() :
+								Promises.firstSuccessful(
+										servers.stream().map(server -> server.getPullRequests(repositoryId)))
+										.thenCompose(pullRequests -> Promises.all(
+												pullRequests.stream().map(commitStorage::savePullRequest))))
+						.whenResult($ -> updatePullRequestsTimestamp = now.currentTimeMillis())
 						.toVoid();
 			}
 
@@ -524,7 +553,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 			private Promise<Void> doFetch(GlobalOTNode server) {
 				return getHeadsInfo(repositoryId)
 						.thenCompose(headsInfo -> server.downloader(repositoryId, headsInfo.bases, headsInfo.heads)
-								.streamTo(ChannelConsumer.ofPromise(upload(repositoryId))));
+								.streamTo(uploader(repositoryId)));
 			}
 
 			private Promise<Void> doCatchUp() {
@@ -560,11 +589,9 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 			private Promise<Void> doPush(GlobalOTNode server) {
 				return server.getHeadsInfo(repositoryId)
-						.thenCompose(headsInfo -> ChannelSupplier.ofPromise(
-								getCommitsSupplier(repositoryId, headsInfo.bases, headsInfo.heads))
+						.thenCompose(headsInfo -> downloader(repositoryId, headsInfo.bases, headsInfo.heads)
 								.streamTo(server.uploader(repositoryId)));
 			}
-
 		}
 	}
 }

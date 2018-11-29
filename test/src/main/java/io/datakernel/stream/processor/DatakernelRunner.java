@@ -65,7 +65,7 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
 		return new LambdaStatement(() -> {
 			root.evaluate();
-			if (method.getClass().getAnnotation(SkipEventloopRun.class) == null
+			if (method.getDeclaringClass().getAnnotation(SkipEventloopRun.class) == null
 					&& method.getAnnotation(SkipEventloopRun.class) == null) {
 				eventloop.run();
 			}
