@@ -58,6 +58,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 										return Promise.complete();
 									}
 									logger.warn("Failed to read checkpoint data for {}", filename);
+									// TODO anton: make below exception constant
 									return Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Failed to read checkpoint data for " + filename));
 								}))
 						.toCollector(ByteBufQueue.collector()));
@@ -83,9 +84,6 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	public Promise<SignedData<GlobalFsCheckpoint>> load(String filename, long position) {
 		return download(filename)
 				.thenCompose(buf -> {
-					if (buf == null) {
-						return Promise.of(null);
-					}
 					while (buf.canRead()) {
 						try {
 							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));

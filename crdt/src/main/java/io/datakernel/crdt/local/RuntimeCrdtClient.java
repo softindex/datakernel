@@ -136,17 +136,17 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 
 	@Override
 	public Promise<Void> ping() {
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
 	@Override
 	public Promise<Void> start() {
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
 	@Override
 	public Promise<Void> stop() {
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
 	public void put(K key, S state) {

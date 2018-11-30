@@ -285,17 +285,17 @@ public final class CrdtClusterClient<I extends Comparable<I>, K extends Comparab
 
 	@Override
 	public Promise<Void> ping() {
-		return Promise.of(null);  // Promises.all(aliveClients.values().stream().map(CrdtClient::ping));
+		return Promise.complete();  // Promises.all(aliveClients.values().stream().map(CrdtClient::ping));
 	}
 
 	@Override
 	public Promise<Void> start() {
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
 	@Override
 	public Promise<Void> stop() {
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
 	// region JMX

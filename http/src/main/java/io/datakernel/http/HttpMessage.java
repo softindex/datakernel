@@ -81,7 +81,7 @@ public abstract class HttpMessage {
 	}
 
 	@Nullable
-	private ByteBuf getHeaderBufOrNull(HttpHeader header) throws ParseException {
+	private ByteBuf getHeaderBufOrNull(HttpHeader header) {
 		ParsedHttpHeaderValue headerBuf = (ParsedHttpHeaderValue) headers.get(header);
 		return headerBuf != null ? headerBuf.buf : null;
 	}
@@ -172,7 +172,7 @@ public abstract class HttpMessage {
 	}
 
 	public final Promise<Void> ensureBody(int maxBodySize) {
-		if (body != null) return Promise.of(null);
+		if (body != null) return Promise.complete();
 		ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		if (bodySupplier != null) {
 			this.bodySupplier = null;
@@ -180,13 +180,13 @@ public abstract class HttpMessage {
 					.thenComposeEx((buf, e) -> {
 						if (e == null) {
 							this.body = buf;
-							return Promise.of(null);
+							return Promise.complete();
 						} else {
 							return Promise.ofException(e);
 						}
 					});
 		}
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
 	public ChannelSupplier<ByteBuf> getBodyStream() {

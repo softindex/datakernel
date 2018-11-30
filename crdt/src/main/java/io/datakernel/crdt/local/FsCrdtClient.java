@@ -209,12 +209,12 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 
 	@Override
 	public Promise<Void> start() {
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
 	@Override
 	public Promise<Void> stop() {
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
 	public Promise<Void> consolidate() {
@@ -251,8 +251,8 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 									producer.transformWith(ChannelBinarySerializer.create(serializer))
 											.streamTo(client.uploader(name)))
 							.thenCompose($ -> tombstoneFolderClient.deleteBulk("*"))
-							.thenCompose($ -> consolidationFolderClient.deleteBulk(metafile))
-							.thenCompose($ -> Promises.all(files.stream().map(client::deleteBulk)));
+							.thenCompose($ -> consolidationFolderClient.delete(metafile))
+							.thenCompose($ -> Promises.all(files.stream().map(client::delete)));
 				})
 				.whenComplete(consolidationStats.recordStats());
 	}

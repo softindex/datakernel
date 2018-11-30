@@ -172,12 +172,12 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 
 	@Override
 	public Promise<Void> start() {
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
 	@Override
 	public Promise<Void> stop() {
-		return Promise.of(null);
+		return Promise.complete();
 	}
 
 	private Function<CrdtResponse, Promise<Void>> simpleHandler(CrdtResponse expected) {
