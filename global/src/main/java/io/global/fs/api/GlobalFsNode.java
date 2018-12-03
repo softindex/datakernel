@@ -49,12 +49,6 @@ public interface GlobalFsNode {
 		return ChannelSupplier.ofPromise(download(space, filename, offset, limit));
 	}
 
-	Promise<List<SignedData<GlobalFsMetadata>>> listLocal(PubKey space, String glob);
-
-	default Promise<SignedData<GlobalFsMetadata>> getLocalMetadata(PubKey space, String filename) {
-		return listLocal(space, escapeGlob(filename)).thenApply(res -> res.size() == 1 ? res.get(0) : null);
-	}
-
 	Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob);
 
 	default Promise<SignedData<GlobalFsMetadata>> getMetadata(PubKey space, String filename) {

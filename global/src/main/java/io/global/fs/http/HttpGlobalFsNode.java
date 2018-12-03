@@ -117,21 +117,6 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public Promise<List<SignedData<GlobalFsMetadata>>> listLocal(PubKey space, String glob) {
-		return client.request(HttpRequest.get(
-				UrlBuilder.http()
-						.withAuthority(address)
-						.appendPathPart(LIST)
-						.appendPathPart(space.asString())
-						.appendQuery("glob", glob)
-						.appendQuery("local", "1")
-						.build()))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(ensureStatusCode(200))
-				.thenCompose(LIST_RESPONSE_PARSER);
-	}
-
-	@Override
 	public Promise<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata) {
 		return client.request(HttpRequest.post(
 				UrlBuilder.http()

@@ -91,8 +91,8 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 
 	@Override
 	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
-		// cut off the part of the file that is already on the local node
-		return node.getLocalMetadata(pubKey, filename)
+		// cut off the part of the file that is already there
+		return node.getMetadata(pubKey, filename)
 				.thenCompose(signedMetadata -> {
 					if (signedMetadata == null) {
 						if (offset != -1 && offset != 0) {
@@ -159,15 +159,16 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 
 	@Override
 	public Promise<Void> deleteBulk(String glob) {
-		if (isWildcard(glob)) {
-			return node.list(pubKey, glob)
-					.thenCompose(list ->
-							Promises.all(list.stream()
-									.filter(signedMeta -> !signedMeta.getValue().isRemoved() && signedMeta.verify(pubKey))
-									.map(signedMeta ->
-											node.pushMetadata(pubKey, SignedData.sign(METADATA_CODEC, signedMeta.getValue().toRemoved(now.currentTimeMillis()), privKey)))));
-		}
-		return node.pushMetadata(pubKey, SignedData.sign(METADATA_CODEC, GlobalFsMetadata.ofRemoved(glob, now.currentTimeMillis()), privKey));
+		return isWildcard(glob) ?
+				node.list(pubKey, glob)
+						.thenCompose(list ->
+								Promises.all(list.stream()
+										.filter(signedMeta -> !signedMeta.getValue().isRemoved() && signedMeta.verify(pubKey))
+										.map(signedMeta -> {
+											GlobalFsMetadata removed = signedMeta.getValue().toRemoved(now.currentTimeMillis());
+											return node.pushMetadata(pubKey, SignedData.sign(METADATA_CODEC, removed, privKey));
+										}))) :
+				node.pushMetadata(pubKey, SignedData.sign(METADATA_CODEC, GlobalFsMetadata.ofRemoved(glob, now.currentTimeMillis()), privKey));
 	}
 
 	@Override
