@@ -19,7 +19,6 @@ package io.datakernel.async;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 
 /**
  * This interface represents asynchronous consumer that consumes data items.
@@ -48,8 +47,8 @@ public interface AsyncConsumer<T> {
 		};
 	}
 
-	default AsyncConsumer<T> with(UnaryOperator<AsyncConsumer<T>> modifier) {
-		return modifier.apply(this);
+	default <R> R transformWith(Function<AsyncConsumer<T>, R> fn) {
+		return fn.apply(this);
 	}
 
 	default AsyncConsumer<T> async() {

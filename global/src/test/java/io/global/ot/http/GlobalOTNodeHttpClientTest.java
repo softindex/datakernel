@@ -166,7 +166,7 @@ public class GlobalOTNodeHttpClientTest {
 			}
 		};
 
-		GlobalOTNodeHttpClient client = new GlobalOTNodeHttpClient(httpClient, "http://localhost/");
+		GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(httpClient, "http://localhost/");
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 

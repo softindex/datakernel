@@ -16,7 +16,10 @@
 
 package io.datakernel.async;
 
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * This interface represents asynchronous supplier that returns {@link Promise} of some data.
@@ -41,8 +44,8 @@ public interface AsyncSupplier<T> {
 		return supplier::get;
 	}
 
-	default AsyncSupplier<T> with(UnaryOperator<AsyncSupplier<T>> modifier) {
-		return modifier.apply(this);
+	default <R> R transformWith(Function<AsyncSupplier<T>, R> fn) {
+		return fn.apply(this);
 	}
 
 	/**

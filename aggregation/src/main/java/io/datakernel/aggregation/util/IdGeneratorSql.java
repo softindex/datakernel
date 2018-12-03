@@ -32,7 +32,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 
 	private final PromiseStats promiseCreateId = PromiseStats.create(Duration.ofMinutes(5));
 
-	private final AsyncSupplier<Void> reserveId = reuse(this::doReserveId).with(promiseCreateId::wrapper);
+	private final AsyncSupplier<Void> reserveId = reuse(this::doReserveId).transformWith(promiseCreateId::wrapper);
 
 	private IdGeneratorSql(Eventloop eventloop, ExecutorService executor, DataSource dataSource, SqlAtomicSequence sequence) {
 		this.eventloop = eventloop;
