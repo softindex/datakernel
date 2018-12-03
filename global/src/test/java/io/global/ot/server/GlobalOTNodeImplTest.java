@@ -23,8 +23,7 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.util.CollectionUtils.*;
 import static io.global.common.TestUtils.await;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.lang.System.currentTimeMillis;
@@ -140,7 +139,7 @@ public class GlobalOTNodeImplTest {
 		addCommits(3, 3, masterNode);    // Head with id - 12
 
 		HeadsInfo headsInfo = await(intermediateNode.getHeadsInfo(REPO_ID));
-		assertEquals(getCommitIds(5, 9, 12), headsInfo.heads);
+		assertEquals(getCommitIds(5, 9, 12), headsInfo.getRequired());
 	}
 
 	@Test
@@ -150,12 +149,12 @@ public class GlobalOTNodeImplTest {
 		addCommits(3, 3, intermediateNode); // 3 Heads with ids - 5, 9, 12
 
 		HeadsInfo headsInfo = await(intermediateNode.getHeadsInfo(REPO_ID));
-		assertEquals(getCommitIds(5, 9, 12), headsInfo.heads);
+		assertEquals(getCommitIds(5, 9, 12), headsInfo.getExisting());
 
 		addSingleCommit(set(5, 9, 12), intermediateNode); // Single head with id 13
 
 		headsInfo = await(intermediateNode.getHeadsInfo(REPO_ID));
-		assertEquals(set(getCommitId(13)), headsInfo.heads);
+		assertEquals(set(getCommitId(13)), headsInfo.getExisting());
 	}
 
 	@Test
@@ -207,7 +206,7 @@ public class GlobalOTNodeImplTest {
 
 		HeadsInfo headsInfo = await(masterNode.getHeadsInfo(REPO_ID));
 
-		List<CommitEntry> commitEntries = await(masterNode.downloader(REPO_ID, headsInfo.bases, headsInfo.heads).toList());
+		List<CommitEntry> commitEntries = await(masterNode.downloader(REPO_ID, set(getCommitId(15)), emptySet()).toList());
 		Set<CommitId> heads = commitEntries.stream()
 				.filter(CommitEntry::hasHead)
 				.map(entry -> entry.getHead().getValue().getCommitId())
@@ -241,8 +240,9 @@ public class GlobalOTNodeImplTest {
 		addCommits(null, 5, masterNode); //id - 1, 2, 3, 4, 5(head)
 		addCommits(null, 4, masterNode); //id - 6, 7, 8, 9 (head)
 
-		HeadsInfo headsInfo = await(masterNode.getHeadsInfo(REPO_ID));
-		await(masterNode.downloader(REPO_ID, headsInfo.bases, headsInfo.heads)
+		HeadsInfo headsInfoMaster = await(masterNode.getHeadsInfo(REPO_ID));
+		HeadsInfo headsInfoIntermediate = await(intermediateNode.getHeadsInfo(REPO_ID));
+		await(masterNode.downloader(REPO_ID, union(headsInfoMaster.getExisting(), headsInfoIntermediate.getRequired()), headsInfoIntermediate.getExisting())
 				.streamTo(intermediateNode.uploader(REPO_ID)));
 
 		assertHeads(5, 9);
@@ -268,7 +268,6 @@ public class GlobalOTNodeImplTest {
 		assertEquals(set(signedData), requests);
 		assertPullRequests(signedData);
 	}
-
 
 	// region helpers
 	private void saveSnapshotsOn(GlobalOTNode globalOTNode, int numberOfSnapshots) {

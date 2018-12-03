@@ -132,7 +132,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
+	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> required, Set<CommitId> existing) {
 		throw new UnsupportedOperationException();
 	}
 

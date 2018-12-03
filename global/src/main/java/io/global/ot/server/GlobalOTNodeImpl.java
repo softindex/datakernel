@@ -139,10 +139,10 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 								.map(entry -> commitStorage.saveCommit(entry.getKey(), entry.getValue())))
 						.thenCompose($ -> {
 							Set<CommitId> excludedHeads = new HashSet<>();
-							for (RawCommit rawCommit : newCommits.values()) {
-								excludedHeads.addAll(intersection(thisHeads.keySet(), rawCommit.getParents()));
+							for (RawCommit commit : newCommits.values()) {
+								excludedHeads.addAll(intersection(thisHeads.keySet(), commit.getParents()));
 							}
-							return applyHeads(repositoryId, new Heads(newHeads, excludedHeads));
+							return updateHeads(repositoryId, new Heads(newHeads, excludedHeads));
 						}))
 				.thenCompose($ -> isMasterFor(repositoryId) ?
 						Promise.complete() :
@@ -154,43 +154,43 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	@Override
 	public Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 		return commitStorage.loadCommit(id)
-				.thenCompose(commit -> commit.isPresent() || isMasterFor(repositoryId) ?
-						Promise.ofOptional(commit) :
+				.thenCompose(maybeCommit -> maybeCommit.isPresent() || isMasterFor(repositoryId) ?
+						Promise.ofOptional(maybeCommit) :
 						ensureServers(repositoryId)
 								.thenCompose(servers -> Promises.firstSuccessful(
 										servers.stream()
 												.map(node -> node.loadCommit(repositoryId, id))))
-								.thenCompose(rawCommit -> commitStorage.saveCommit(id, rawCommit)
-										.thenApply($ -> rawCommit))
+								.thenCompose(commit -> commitStorage.saveCommit(id, commit)
+										.thenApply($ -> commit))
 				);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> bases, Set<CommitId> heads) {
-		checkArgument(!hasIntersection(bases, heads), "Bases and heads cannot have intersections");
-		Set<CommitId> skipCommits = new HashSet<>(heads);
+	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> required, Set<CommitId> existing) {
+		checkArgument(!hasIntersection(required, existing), "Required heads and existing heads cannot have intersections");
+		Set<CommitId> skipCommits = new HashSet<>(existing);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return commitStorage.getHeads(repositoryId)
 				.thenCompose(thisHeads -> Promises.all(
-						union(thisHeads.keySet(), bases, heads)
+						union(thisHeads.keySet(), required, existing)
 								.stream()
 								.map(commitId -> commitStorage.loadCommit(commitId)
-										.whenResult(maybeRawCommit -> maybeRawCommit.ifPresent(rawCommit ->
-												queue.add(new RawCommitEntry(commitId, rawCommit))))
-								))
-						.thenApply($ -> AsyncSupplier.of(() -> getNextStreamEntry(queue, skipCommits, bases, heads)))
-						.thenApply(supplier -> supplier.transform(
-								entry -> new CommitEntry(entry.commitId, entry.rawCommit, thisHeads.get(entry.commitId))))
-						.thenApply(ChannelSupplier::of));
+										.whenResult(maybeCommit -> maybeCommit.ifPresent(commit ->
+												queue.add(new RawCommitEntry(commitId, commit))))))
+						.thenApply($ -> AsyncSupplier.of(() -> getNextStreamEntry(queue, skipCommits, required, existing)))
+						.thenApply(ChannelSupplier::of)
+						.thenApply(supplier -> supplier.map(
+								entry -> new CommitEntry(entry.commitId, entry.commit, thisHeads.get(entry.commitId))))
+				);
 	}
 
 	private Promise<RawCommitEntry> getNextStreamEntry(PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
-			Set<CommitId> thatBases, Set<CommitId> thatHeads) {
-		return Promise.ofCallback(cb -> getNextStreamEntry(queue, skipCommits, thatBases, thatHeads, cb));
+			Set<CommitId> required, Set<CommitId> existing) {
+		return Promise.ofCallback(cb -> getNextStreamEntry(queue, skipCommits, required, existing, cb));
 	}
 
 	private void getNextStreamEntry(PriorityQueue<RawCommitEntry> queue, Set<CommitId> skipCommits,
-			Set<CommitId> thatBases, Set<CommitId> thatHeads,
+			Set<CommitId> required, Set<CommitId> existing,
 			SettablePromise<RawCommitEntry> cb) {
 		if (queue.isEmpty() || queue.stream().map(RawCommitEntry::getCommitId).allMatch(skipCommits::contains)) {
 			cb.set(null);
@@ -198,75 +198,78 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 		}
 		RawCommitEntry entry = queue.poll();
 		boolean skipped = skipCommits.remove(entry.commitId);
-		Set<CommitId> nextCommitIds = entry.getRawCommit().getParents();
+		Set<CommitId> nextCommitIds = entry.getCommit().getParents();
 		Promises.all(
 				nextCommitIds
 						.stream()
-						.filter(nextCommitId -> !thatHeads.contains(nextCommitId))
+						.filter(nextCommitId -> !existing.contains(nextCommitId))
 						.filter(nextCommitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(nextCommitId::equals))
 						.map(nextCommitId -> commitStorage.loadCommit(nextCommitId)
-								.whenResult(maybeNextRawCommit -> maybeNextRawCommit.ifPresent(nextRawCommit -> {
-									if (skipped && !thatBases.contains(nextCommitId)) {
+								.whenResult(maybeNextCommit -> maybeNextCommit.ifPresent(nextCommit -> {
+									if (skipped && !required.contains(nextCommitId)) {
 										skipCommits.add(nextCommitId);
 									}
-									queue.add(new RawCommitEntry(nextCommitId, nextRawCommit));
+									queue.add(new RawCommitEntry(nextCommitId, nextCommit));
 								}))))
 				.whenResult($ -> {
 					if (!skipped) {
 						cb.set(entry);
 						return;
 					}
-					getNextStreamEntry(queue, skipCommits, thatBases, thatHeads, cb);
+					getNextStreamEntry(queue, skipCommits, required, existing, cb);
 				})
 				.whenException(cb::setException);
 	}
 
 	@Override
 	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
-		HeadsInfo headsInfo = new HeadsInfo(new HashSet<>(), new HashSet<>());
+		HashSet<CommitId> existing = new HashSet<>();
+		HashSet<CommitId> required = new HashSet<>();
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return ensureRepository(repositoryId)
 				.updateHeads()
 				.thenCompose($ -> commitStorage.getHeads(repositoryId))
 				.thenApply(Map::keySet)
-				.thenCompose(thisHeads -> Promises.all(
-						thisHeads
-								.stream()
-								.map(head -> commitStorage.loadCommit(head)
-										.whenResult(maybeRawCommit -> maybeRawCommit.ifPresent(
-												rawCommit -> {
-													headsInfo.heads.add(head);
-													queue.add(new RawCommitEntry(head, rawCommit));
-												}
-										))))
-						.thenCompose($ -> Promise.<Set<CommitId>>ofCallback(cb ->
-								extractHeadInfoImpl(queue, new HashSet<>(), cb)))
-						.whenResult(headsInfo.bases::addAll)
-						.thenApply($ -> headsInfo));
+				.thenCompose(heads -> Promises.all(
+						heads.stream()
+								.map(headId -> commitStorage.loadCommit(headId)
+										.whenResult(maybeCommit -> {
+											if (maybeCommit.isPresent()) {
+												existing.add(headId);
+												queue.add(new RawCommitEntry(headId, maybeCommit.get()));
+											} else {
+												required.add(headId);
+											}
+										})))
+						.thenCompose($ -> Promise.ofCallback((SettablePromise<Set<CommitId>> cb) ->
+								findMissingParents(queue, new HashSet<>(), cb)))
+						.whenResult(required::addAll)
+						.thenApply($ -> new HeadsInfo(existing, required)));
 	}
 
-	private void extractHeadInfoImpl(PriorityQueue<RawCommitEntry> queue, Set<CommitId> bases, SettablePromise<Set<CommitId>> cb) {
+	private void findMissingParents(PriorityQueue<RawCommitEntry> queue, Set<CommitId> missingParents, SettablePromise<Set<CommitId>> cb) {
 		RawCommitEntry entry = queue.poll();
 		if (entry == null) {
-			cb.set(bases);
+			cb.set(missingParents);
 			return;
 		}
 		Promises.all(
-				entry.rawCommit.getParents()
+				entry.commit.getParents()
 						.stream()
 						.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
 						.map(parentId -> commitStorage.isCompleteCommit(parentId)
 								.thenCompose(isCompleteCommit -> isCompleteCommit ?
-										Promise.of(null) :
+										Promise.complete() :
 										commitStorage.loadCommit(parentId)
-												.whenResult(optional -> {
-													if (optional.isPresent()) {
-														queue.add(new RawCommitEntry(parentId, optional.get()));
+												.whenResult(maybeCommit -> {
+													if (maybeCommit.isPresent()) {
+														queue.add(new RawCommitEntry(parentId, maybeCommit.get()));
 													} else {
-														bases.add(parentId);
+														missingParents.add(parentId);
 													}
-												}))))
-				.whenResult($ -> extractHeadInfoImpl(queue, bases, cb))
+												})
+												.toVoid())))
+				.whenResult($ -> findMissingParents(queue, missingParents, cb))
 				.whenException(cb::setException);
 	}
 
@@ -274,13 +277,13 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId) {
 		return commitStorage.getHeads(repositoryId)
 				.thenApply(Map::keySet)
-				.thenApply(thisHeads -> {
+				.thenApply(heads -> {
 					Set<CommitId> excludedHeads = new HashSet<>();
 					Set<SignedData<RawCommitHead>> addedHeads = new HashSet<>();
 					return ChannelConsumer.of(
 							(CommitEntry entry) -> {
 								for (CommitId parentId : entry.getCommit().getParents()) {
-									if (thisHeads.contains(parentId)) {
+									if (heads.contains(parentId)) {
 										excludedHeads.add(parentId);
 									}
 								}
@@ -291,12 +294,12 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 							})
 							.withAcknowledgement(ack -> ack
 									.thenCompose($ -> commitStorage.markCompleteCommits())
-									.thenCompose($ -> applyHeads(repositoryId, new Heads(addedHeads, excludedHeads))));
+									.thenCompose($ -> updateHeads(repositoryId, new Heads(addedHeads, excludedHeads))));
 				});
 	}
 
-	private Promise<Void> applyHeads(RepoID repositoryId, Heads heads) {
-		return commitStorage.applyHeads(repositoryId, heads.newHeads, heads.excludedHeads)
+	private Promise<Void> updateHeads(RepoID repositoryId, Heads heads) {
+		return commitStorage.updateHeads(repositoryId, heads.newHeads, heads.excludedHeads)
 				.whenResult($ -> {
 					if (!heads.newHeads.isEmpty()) ensureRepository(repositoryId).filterHeads();
 				});
@@ -332,9 +335,11 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 		return ensureRepository(repositoryId)
 				.updateHeads()
 				.thenCompose($ -> commitStorage.getHeads(repositoryId))
-				.thenCompose(heads -> Promise.of(new Heads(difference(heads.keySet(), remoteHeads).stream()
-						.map(heads::get)
-						.collect(toSet()), emptySet()))
+				.thenCompose(heads -> Promise.of(new Heads(
+						difference(heads.keySet(), remoteHeads)
+								.stream()
+								.map(heads::get)
+								.collect(toSet()), emptySet()))
 				);
 	}
 
@@ -342,12 +347,12 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
 		return Promises.all(heads.stream()
 				.map(head -> commitStorage.loadCommit(head)
-						.whenResult(optional -> optional.ifPresent(rawCommit ->
-								queue.add(new RawCommitEntry(head, rawCommit))))))
+						.whenResult(optional -> optional.ifPresent(commit ->
+								queue.add(new RawCommitEntry(head, commit))))))
 				.thenCompose(value -> Promise.<Set<CommitId>>ofCallback(cb ->
 						doExcludeParents(
 								queue,
-								queue.stream().mapToLong(entry -> entry.rawCommit.getLevel()).min().orElse(0L),
+								queue.stream().mapToLong(entry -> entry.commit.getLevel()).min().orElse(0L),
 								new HashSet<>(heads),
 								cb)))
 				.thenApply(filteredHeads -> difference(heads, filteredHeads));
@@ -357,13 +362,13 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 			Set<CommitId> resultHeads,
 			SettablePromise<Set<CommitId>> cb) {
 		RawCommitEntry entry = queue.poll();
-		if (entry == null || entry.rawCommit.getLevel() < minLevel) {
+		if (entry == null || entry.commit.getLevel() < minLevel) {
 			cb.set(resultHeads);
 			return;
 		}
-		resultHeads.removeAll(entry.rawCommit.getParents());
+		resultHeads.removeAll(entry.commit.getParents());
 		Promises.all(
-				entry.rawCommit.getParents()
+				entry.commit.getParents()
 						.stream()
 						.filter(commitId -> queue.stream().map(RawCommitEntry::getCommitId).noneMatch(commitId::equals))
 						.map(parentId ->
@@ -526,7 +531,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 										.thenCompose(heads -> Promises.firstSuccessful(
 												servers.stream().map(server -> server.getHeads(repositoryId, heads.keySet()))))
 										.thenCompose(headsDelta ->
-												commitStorage.applyHeads(repositoryId, headsDelta.newHeads, headsDelta.excludedHeads)))
+												commitStorage.updateHeads(repositoryId, headsDelta.newHeads, headsDelta.excludedHeads)))
 						.whenResult($ -> updateHeadsTimestamp = now.currentTimeMillis());
 			}
 
@@ -552,7 +557,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 			private Promise<Void> doFetch(GlobalOTNode server) {
 				return getHeadsInfo(repositoryId)
-						.thenCompose(headsInfo -> server.downloader(repositoryId, headsInfo.bases, headsInfo.heads)
+						.thenCompose(headsInfo -> server.downloader(repositoryId, headsInfo.getRequired(), headsInfo.getExisting())
 								.streamTo(uploader(repositoryId)));
 			}
 
@@ -578,7 +583,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 			private Promise<Void> doFilterHeads() {
 				return commitStorage.getHeads(repositoryId)
 						.thenCompose(heads -> excludeParents(heads.keySet())
-								.thenCompose(excludedHeadIds -> commitStorage.applyHeads(repositoryId, emptySet(), excludedHeadIds)))
+								.thenCompose(excludedHeadIds -> commitStorage.updateHeads(repositoryId, emptySet(), excludedHeadIds)))
 						.toVoid();
 			}
 
@@ -589,7 +594,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 			private Promise<Void> doPush(GlobalOTNode server) {
 				return server.getHeadsInfo(repositoryId)
-						.thenCompose(headsInfo -> downloader(repositoryId, headsInfo.bases, headsInfo.heads)
+						.thenCompose(headsInfo -> downloader(repositoryId, headsInfo.getRequired(), headsInfo.getExisting())
 								.streamTo(server.uploader(repositoryId)));
 			}
 		}

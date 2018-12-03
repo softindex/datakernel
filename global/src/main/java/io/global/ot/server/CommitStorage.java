@@ -27,7 +27,7 @@ import java.util.Set;
 public interface CommitStorage {
 	Promise<Map<CommitId, SignedData<RawCommitHead>>> getHeads(RepoID repositoryId);
 
-	Promise<Void> applyHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads);
+	Promise<Void> updateHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads);
 
 	Promise<Boolean> hasCommit(CommitId commitId);
 

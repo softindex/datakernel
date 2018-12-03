@@ -60,11 +60,11 @@ public interface AsyncConsumer<T> {
 		return value -> asyncExecutor.execute(() -> accept(value));
 	}
 
-	default <V> AsyncConsumer<V> transform(Function<? super V, ? extends T> fn) {
+	default <V> AsyncConsumer<V> map(Function<? super V, ? extends T> fn) {
 		return value -> accept(fn.apply(value));
 	}
 
-	default <V> AsyncConsumer<V> transformAsync(Function<? super V, ? extends Promise<T>> fn) {
+	default <V> AsyncConsumer<V> mapAsync(Function<? super V, ? extends Promise<T>> fn) {
 		return value -> fn.apply(value).thenCompose(this::accept);
 	}
 

@@ -97,8 +97,8 @@ public class HttpDataFormats {
 			"heads", SaveTuple::getHeads, ofSet(SIGNED_COMMIT_HEAD_JSON));
 
 	public static final StructuredCodec<HeadsInfo> HEADS_INFO_JSON = object(HeadsInfo::new,
-			"bases", HeadsInfo::getBases, ofSet(COMMIT_ID_JSON),
-			"heads", HeadsInfo::getHeads, ofSet(COMMIT_ID_JSON));
+			"existing", HeadsInfo::getExisting, ofSet(COMMIT_ID_JSON),
+			"required", HeadsInfo::getRequired, ofSet(COMMIT_ID_JSON));
 
 	public static final StructuredCodec<Heads> HEADS_DELTA_JSON = object(Heads::new,
 			"newHeads", Heads::getNewHeads, ofSet(SIGNED_COMMIT_HEAD_JSON),

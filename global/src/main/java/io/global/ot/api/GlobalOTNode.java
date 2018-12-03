@@ -44,20 +44,20 @@ public interface GlobalOTNode {
 	Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id);
 
 	final class HeadsInfo {
-		public final Set<CommitId> bases;
-		public final Set<CommitId> heads;
+		private final Set<CommitId> existing;
+		private final Set<CommitId> required;
 
-		public HeadsInfo(Set<CommitId> bases, Set<CommitId> heads) {
-			this.bases = bases;
-			this.heads = heads;
+		public HeadsInfo(Set<CommitId> existing, Set<CommitId> required) {
+			this.required = required;
+			this.existing = existing;
 		}
 
-		public Set<CommitId> getBases() {
-			return bases;
+		public Set<CommitId> getExisting() {
+			return existing;
 		}
 
-		public Set<CommitId> getHeads() {
-			return heads;
+		public Set<CommitId> getRequired() {
+			return required;
 		}
 
 		@Override
@@ -65,14 +65,16 @@ public interface GlobalOTNode {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 			HeadsInfo that = (HeadsInfo) o;
-			if (!bases.equals(that.bases)) return false;
-			return heads.equals(that.heads);
+			if (!existing.equals(that.existing)) return false;
+			if (!required.equals(that.required)) return false;
+			return true;
 		}
 
 		@Override
 		public int hashCode() {
-			int result = bases.hashCode();
-			result = 31 * result + heads.hashCode();
+			int result = 0;
+			result = 31 * result + existing.hashCode();
+			result = 31 * result + required.hashCode();
 			return result;
 		}
 	}
@@ -167,11 +169,11 @@ public interface GlobalOTNode {
 	}
 
 	Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId,
-			Set<CommitId> bases, Set<CommitId> heads);
+			Set<CommitId> required, Set<CommitId> existing);
 
 	default ChannelSupplier<CommitEntry> downloader(RepoID repositoryId,
-			Set<CommitId> bases, Set<CommitId> heads) {
-		return ChannelSupplier.ofPromise(download(repositoryId, bases, heads));
+			Set<CommitId> required, Set<CommitId> existing) {
+		return ChannelSupplier.ofPromise(download(repositoryId, required, existing));
 	}
 
 	Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId);

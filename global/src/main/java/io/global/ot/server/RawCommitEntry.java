@@ -21,23 +21,23 @@ import io.global.ot.api.RawCommit;
 
 final class RawCommitEntry implements Comparable<RawCommitEntry> {
 	public final CommitId commitId;
-	public final RawCommit rawCommit;
+	public final RawCommit commit;
 
-	public RawCommitEntry(CommitId commitId, RawCommit rawCommit) {
+	public RawCommitEntry(CommitId commitId, RawCommit commit) {
 		this.commitId = commitId;
-		this.rawCommit = rawCommit;
+		this.commit = commit;
 	}
 
 	public CommitId getCommitId() {
 		return commitId;
 	}
 
-	public RawCommit getRawCommit() {
-		return rawCommit;
+	public RawCommit getCommit() {
+		return commit;
 	}
 
 	@Override
 	public int compareTo(RawCommitEntry other) {
-		return Long.compare(this.rawCommit.getLevel(), other.rawCommit.getLevel());
+		return Long.compare(this.commit.getLevel(), other.commit.getLevel());
 	}
 }

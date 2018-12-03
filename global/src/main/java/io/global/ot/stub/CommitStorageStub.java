@@ -41,9 +41,11 @@ public class CommitStorageStub implements CommitStorage {
 	}
 
 	@Override
-	public Promise<Void> applyHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
-		Map<CommitId, SignedData<RawCommitHead>> map = heads.computeIfAbsent(repositoryId, repositoryId1 -> new HashMap<>());
-		newHeads.forEach(head -> map.put(head.getValue().commitId, head));
+	public Promise<Void> updateHeads(RepoID repositoryId, Set<SignedData<RawCommitHead>> newHeads, Set<CommitId> excludedHeads) {
+		Map<CommitId, SignedData<RawCommitHead>> map = heads.computeIfAbsent(repositoryId, $ -> new HashMap<>());
+		for (SignedData<RawCommitHead> head : newHeads) {
+			map.put(head.getValue().commitId, head);
+		}
 		excludedHeads.forEach(map::remove);
 		return Promise.complete();
 	}
@@ -71,7 +73,7 @@ public class CommitStorageStub implements CommitStorage {
 			parentToChildren.computeIfAbsent(parentId, $ -> new HashSet<>()).add(commitId);
 		}
 		int incompleteParents = (int) rawCommit.getParents().stream()
-				.filter(parentId -> incompleteParentsCount.get(parentId) != 0)
+				.filter(parentId -> incompleteParentsCount.getOrDefault(parentId, 0) != 0)
 				.count();
 		incompleteParentsCount.put(commitId, incompleteParents);
 		if (incompleteParents == 0) {
@@ -107,20 +109,17 @@ public class CommitStorageStub implements CommitStorage {
 	@Override
 	public Promise<Void> markCompleteCommits() {
 		while (!pendingCompleteCommits.isEmpty()) {
-			pendingCompleteCommits.forEach(this::markCompleteCommit);
-		}
-		return Promise.complete();
-	}
-
-	@SuppressWarnings("ConstantConditions")
-	void markCompleteCommit(CommitId completeCommitId) {
-		assert pendingCompleteCommits.contains(completeCommitId);
-		pendingCompleteCommits.remove(completeCommitId);
-		for (CommitId childId : parentToChildren.get(completeCommitId)) {
-			if (incompleteParentsCount.computeIfPresent(childId, ($, incompleteCount) -> incompleteCount - 1) == 0) {
-				pendingCompleteCommits.add(childId);
+			for (CommitId completeCommitId : new ArrayList<>(pendingCompleteCommits)) {
+				assert pendingCompleteCommits.contains(completeCommitId);
+				pendingCompleteCommits.remove(completeCommitId);
+				for (CommitId childId : parentToChildren.getOrDefault(completeCommitId, emptySet())) {
+					if (incompleteParentsCount.computeIfPresent(childId, ($, incompleteCount) -> incompleteCount - 1) == 0) {
+						pendingCompleteCommits.add(childId);
+					}
+				}
 			}
 		}
+		return Promise.complete();
 	}
 
 	@Override

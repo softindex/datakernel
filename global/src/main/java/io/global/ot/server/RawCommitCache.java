@@ -64,10 +64,10 @@ final class RawCommitCache implements AsyncConsumer<RawCommitEntry> {
 	public Promise<Void> accept(RawCommitEntry entry) {
 		SettablePromise<RawCommit> pendingPromise = pendingPromises.remove(entry.commitId);
 		if (pendingPromise != null) {
-			pendingPromise.set(entry.rawCommit);
+			pendingPromise.set(entry.commit);
 			return Promise.complete();
 		}
-		preloadedCommits.put(entry.commitId, entry.rawCommit);
+		preloadedCommits.put(entry.commitId, entry.commit);
 		if (acceptPromise != null) {
 			acceptPromise = new SettablePromise<>();
 		}
