@@ -35,9 +35,13 @@ public final class PrivateKeyStorage {
 	@Nullable
 	private SimKey currentSimKey;
 
-	public PrivateKeyStorage(DiscoveryService discoveryService, Map<PubKey, PrivKey> keys) {
+	public PrivateKeyStorage(@Nullable DiscoveryService discoveryService, Map<PubKey, PrivKey> keys) {
 		this.discoveryService = discoveryService;
 		this.keys = new HashMap<>(keys);
+	}
+
+	public PrivateKeyStorage(Map<PubKey, PrivKey> keys) {
+		this(null, keys);
 	}
 
 	public Map<PubKey, PrivKey> getKeys() {
@@ -51,6 +55,9 @@ public final class PrivateKeyStorage {
 		SimKey key = keyMap.get(simKeyHash);
 		if (key != null) {
 			return Promise.of(key);
+		}
+		if (discoveryService == null) {
+			return Promise.of(null);
 		}
 		return discoveryService.getSharedKey(receiver, simKeyHash)
 				.thenCompose(signedSharedSimKey -> {

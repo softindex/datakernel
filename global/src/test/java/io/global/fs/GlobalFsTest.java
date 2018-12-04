@@ -48,7 +48,6 @@ import org.junit.runner.RunWith;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.file.Paths;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -358,6 +357,6 @@ public final class GlobalFsTest {
 			} catch (ParseException e) {
 				throw new AssertionError(e);
 			}
-		}, new InetSocketAddress(123));
+		}, "http://127.0.0.1:3333/");
 	}
 }

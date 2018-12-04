@@ -35,7 +35,6 @@ import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
 
-import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.function.Function;
 
@@ -47,20 +46,19 @@ import static io.global.fs.http.GlobalFsNodeServlet.*;
 import static java.util.stream.Collectors.toList;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {
-	private final InetSocketAddress address;
+	private final String url;
 	private final IAsyncHttpClient client;
 
-	public HttpGlobalFsNode(IAsyncHttpClient client, InetSocketAddress address) {
+	public HttpGlobalFsNode(IAsyncHttpClient client, String url) {
 		this.client = client;
-		this.address = address;
+		this.url = url;
 	}
 
 	@Override
 	public ChannelConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
 		ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
 		MaterializedPromise<HttpResponse> request = client.request(HttpRequest.put(
-				UrlBuilder.http()
-						.withAuthority(address)
+				url + UrlBuilder.relative()
 						.appendPathPart(UPLOAD)
 						.appendPathPart(space.asString())
 						.appendPath(filename)
@@ -82,8 +80,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
 		return client.request(
 				HttpRequest.get(
-						UrlBuilder.http()
-								.withAuthority(address)
+						url + UrlBuilder.relative()
 								.appendPathPart(DOWNLOAD)
 								.appendPathPart(space.asString())
 								.appendPath(filename)
@@ -105,8 +102,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	@Override
 	public Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob) {
 		return client.request(HttpRequest.get(
-				UrlBuilder.http()
-						.withAuthority(address)
+				url + UrlBuilder.relative()
 						.appendPathPart(LIST)
 						.appendPathPart(space.asString())
 						.appendQuery("glob", glob)
@@ -119,8 +115,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	@Override
 	public Promise<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata) {
 		return client.request(HttpRequest.post(
-				UrlBuilder.http()
-						.withAuthority(address)
+				url + UrlBuilder.relative()
 						.appendPathPart(PUSH)
 						.appendPathPart(pubKey.asString())
 						.build())

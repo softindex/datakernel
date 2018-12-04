@@ -26,32 +26,31 @@ import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
 
 import java.util.List;
-import java.util.Map;
 
 import static java.util.stream.Collectors.toMap;
 
 public final class GlobalFsDriver {
 	private final GlobalFsNode node;
+	private final PrivateKeyStorage privateKeyStorage;
 	private final CheckpointPosStrategy checkpointPosStrategy;
 
-	private final PrivateKeyStorage privateKeyStorage;
-
-	private GlobalFsDriver(GlobalFsNode node, DiscoveryService discoveryService, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
+	private GlobalFsDriver(GlobalFsNode node, PrivateKeyStorage privateKeyStorage, CheckpointPosStrategy checkpointPosStrategy) {
 		this.node = node;
 		this.checkpointPosStrategy = checkpointPosStrategy;
-		privateKeyStorage = new PrivateKeyStorage(discoveryService, keys);
+		this.privateKeyStorage = privateKeyStorage;
 	}
 
-	public static GlobalFsDriver create(GlobalFsNode node, DiscoveryService discoveryService, Map<PubKey, PrivKey> keys, CheckpointPosStrategy checkpointPosStrategy) {
-		return new GlobalFsDriver(node, discoveryService, keys, checkpointPosStrategy);
+	public static GlobalFsDriver create(GlobalFsNode node, PrivateKeyStorage privateKeyStorage, CheckpointPosStrategy checkpointPosStrategy) {
+		return new GlobalFsDriver(node, privateKeyStorage, checkpointPosStrategy);
 	}
 
 	public static GlobalFsDriver create(GlobalFsNode node, DiscoveryService discoveryService, List<KeyPair> keys, CheckpointPosStrategy checkpointPosStrategy) {
-		return new GlobalFsDriver(node, discoveryService, keys.stream().collect(toMap(KeyPair::getPubKey, KeyPair::getPrivKey)), checkpointPosStrategy);
+		PrivateKeyStorage pks = new PrivateKeyStorage(discoveryService, keys.stream().collect(toMap(KeyPair::getPubKey, KeyPair::getPrivKey)));
+		return new GlobalFsDriver(node, pks, checkpointPosStrategy);
 	}
 
 	public FsClient gatewayFor(PubKey pubKey) {
-		PrivKey privKey = getPrivateKeyStorage().getKeys().get(pubKey);
+		PrivKey privKey = privateKeyStorage.getKeys().get(pubKey);
 		if (privKey == null) {
 			throw new IllegalArgumentException("No private key stored for " + pubKey);
 		}

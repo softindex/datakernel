@@ -44,13 +44,20 @@ public class UrlBuilder {
 	@Nullable
 	private String fragment;
 
-	// region creators
 	private UrlBuilder(@Nullable String scheme) {
 		this.scheme = scheme;
 	}
 
 	public static UrlBuilder of(String scheme) {
 		return new UrlBuilder(scheme);
+	}
+
+	public static UrlBuilder http() {
+		return new UrlBuilder("http");
+	}
+
+	public static UrlBuilder https() {
+		return new UrlBuilder("https");
 	}
 
 	public UrlBuilder withAuthority(String userInfo, InetSocketAddress address) {
@@ -65,15 +72,6 @@ public class UrlBuilder {
 			}
 		}
 		return withAuthority(userInfo, host, address.getPort());
-	}
-	// endregion
-
-	public static UrlBuilder http() {
-		return new UrlBuilder("http");
-	}
-
-	public static UrlBuilder https() {
-		return new UrlBuilder("https");
 	}
 
 	public UrlBuilder withAuthority(String host) {
