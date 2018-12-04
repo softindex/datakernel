@@ -63,6 +63,7 @@ import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.fs.api.CheckpointPosStrategy.fixed;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
 
@@ -89,15 +90,18 @@ public final class GlobalFsTest {
 	private GlobalFsDriver firstDriver;
 	private FsClient firstAliceAdapter;
 	private FsClient secondAliceAdapter;
+	private FsClient storage;
+	private NodeFactory<GlobalFsNode> clientFactory;
 
 	@Before
 	public void setUp() throws IOException, InterruptedException {
 		Runtime.getRuntime().exec("rm -r /tmp/TESTS2").waitFor();
 
-		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, Paths.get("/tmp/TESTS2/")); //temporaryFolder.newFolder().toPath());
+		//temporaryFolder.newFolder().toPath());
+		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, Paths.get("/tmp/TESTS2/"));
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
-		NodeFactory<GlobalFsNode> clientFactory = new NodeFactory<GlobalFsNode>() {
+		clientFactory = new NodeFactory<GlobalFsNode>() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
 				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverId.getServerIdString().split(":")[1]))
@@ -245,27 +249,36 @@ public final class GlobalFsTest {
 
 		announce(alice, set(firstId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(ChannelSupplier.of(wrapUtf8(first))::streamTo)
+				.thenCompose(consumer -> ChannelSupplier.of(wrapUtf8(first)).streamTo(consumer))
 				.thenCompose($ -> firstAliceAdapter.getMetadata("test.txt"))
 				.thenCompose(meta -> firstAliceAdapter.upload("test.txt", meta.getSize() - 6))
 				.thenCompose(ChannelSupplier.of(wrapUtf8("bytes " + second))::streamTo)
 				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(first + second, res.asString(UTF_8))));
+
 	}
 
 	@Test
 	public void downloadFromOther() {
 		String string = "hello, this is a test little string of bytes";
+
+		RawServerId serverId = new RawServerId("localhost:432");
+		GlobalFsNode other = LocalGlobalFsNode.create(serverId, discoveryService, clientFactory,
+				storage.subfolder("server_" + serverId.getServerIdString().split(":")[1]));
+		GlobalFsDriver otherDriver = GlobalFsDriver.create(other, discoveryService, singletonList(alice), fixed(7));
+		FsClient otherClient = otherDriver.gatewayFor(alice.getPubKey());
+
 		announce(alice, set(firstId, secondId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
 				.thenCompose(ChannelSupplier.of(wrapUtf8(string))::streamTo)
-				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
+				.thenCompose($ -> otherClient.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(string, res.asString(UTF_8))));
 	}
 
 	@Test
+	@LoggingRule.Enable
 	public void fetch() {
 		String string = "hello, this is a test little string of bytes";
 		announce(alice, set(firstId, secondId))

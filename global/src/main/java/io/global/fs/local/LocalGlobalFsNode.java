@@ -23,6 +23,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
@@ -30,6 +31,7 @@ import io.datakernel.util.Initializable;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
+import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.api.NodeFactory;
 import io.global.fs.api.*;
@@ -44,8 +46,8 @@ import java.util.function.Function;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.LogUtils.toLogger;
+import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 import static io.global.fs.api.MetadataStorage.NO_METADATA;
-import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 
 public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<LocalGlobalFsNode> {
@@ -181,7 +183,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 								if (!remoteMetadata.verify(space)) {
 									return Promise.ofException(CANT_VERIFY_METADATA);
 								}
-								if (localMetadata.getValue().compareTo(remoteMetadata.getValue()) >= 0) {
+								if (localMetadata != null && localMetadata.getValue().compareTo(remoteMetadata.getValue()) >= 0) {
 									return ns.load(filename, offset, limit);
 								}
 								return ns.ensureMasterNodes()
@@ -297,9 +299,11 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		private final MetadataStorage metadataStorage;
 		private final CheckpointStorage checkpointStorage;
 
-		private final AsyncSupplier<Void> doRefreshAnnouncement = reuse(this::doRefreshAnnouncement);
+
+		private final AsyncSupplier<List<GlobalFsNode>> ensureMasterNodes = reuse(this::doEnsureMasterNodes);
+		private final Map<RawServerId, GlobalFsNode> masterNodes = new HashMap<>();
+		private long updateNodesTimestamp;
 		private long announceTimestamp;
-		private Set<RawServerId> announceServerIds;
 
 		Namespace(PubKey space, FsClient folder, MetadataStorage metadataStorage, CheckpointStorage checkpointStorage) {
 			this.space = space;
@@ -308,35 +312,39 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 			this.checkpointStorage = checkpointStorage;
 		}
 
-		public Promise<Void> refreshAnnouncements() {
-			return now.currentTimeMillis() <= announceTimestamp + 10000L ?
-					Promise.complete() :
-					doRefreshAnnouncement.get();
-		}
-
-		private Promise<Void> doRefreshAnnouncement() {
-			return discoveryService.find(space)
-					.thenComposeEx((announcement, e) -> {
-						if (e == null) {
-							if (announcement.getValue().getTimestamp() > announceTimestamp) {
-								announceTimestamp = announcement.getValue().getTimestamp();
-								announceServerIds = new HashSet<>(announcement.getValue().getServerIds());
-								announceServerIds.remove(id);
-							}
-						} else {
-							announceServerIds = emptySet(); // TODO anton: we dont know any masters for this space, this is bad
-						}
-						return Promise.complete();
-					})
-					.toVoid();
-		}
-
 		public Promise<List<GlobalFsNode>> ensureMasterNodes() {
-			return refreshAnnouncements()
-					.thenApply($ -> announceServerIds
-							.stream()
-							.map(nodeFactory::create)
-							.collect(toList()));
+			return ensureMasterNodes.get();
+		}
+
+		private Promise<List<GlobalFsNode>> doEnsureMasterNodes() {
+			if (updateNodesTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
+				return Promise.of(getMasterNodes());
+			}
+			return discoveryService.find(space)
+					.thenApplyEx((announceData, e) -> {
+						if (e != null) {
+							if (e != NO_ANNOUNCEMENT) {
+								throw new UncheckedException(e);
+							}
+						} else if (announceData.verify(space)) {
+							AnnounceData announce = announceData.getValue();
+							if (announce.getTimestamp() >= announceTimestamp) {
+								Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());
+								masterNodes.keySet().removeIf(id -> !newServerIds.contains(id));
+								if (newServerIds.remove(id)) { // ensure that we are master for the space if it was announced
+									managedPubKeys.add(space);
+								}
+								newServerIds.forEach(id -> masterNodes.computeIfAbsent(id, nodeFactory::create));
+								updateNodesTimestamp = now.currentTimeMillis();
+								announceTimestamp = announce.getTimestamp();
+							}
+						}
+						return getMasterNodes();
+					});
+		}
+
+		public List<GlobalFsNode> getMasterNodes() {
+			return new ArrayList<>(masterNodes.values());
 		}
 
 		public Promise<Boolean> fetch() {
@@ -348,10 +356,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		}
 
 		public Promise<Boolean> fetch(GlobalFsNode node) {
-			if (node.equals(LocalGlobalFsNode.this)) {
-				return Promise.of(false);
-			}
-
 			logger.trace("{} fetching from {}", space, node);
 			return node.list(space, "**")
 					.thenCompose(files ->
@@ -422,6 +426,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 																.thenCompose(supplier ->
 																		save(filename, 0)
 																				.thenCompose(supplier::streamTo))
+																.thenCompose($ -> pushMetadata(signedMetadata))
 																.thenApply($ -> true);
 													}
 

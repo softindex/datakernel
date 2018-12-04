@@ -26,6 +26,7 @@ import io.global.common.SignedData;
 import java.util.List;
 
 import static io.datakernel.file.FileUtils.escapeGlob;
+import static io.global.fs.api.MetadataStorage.NO_METADATA;
 
 /**
  * This component handles one of the GlobalFS nodes.
@@ -52,7 +53,7 @@ public interface GlobalFsNode {
 	Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob);
 
 	default Promise<SignedData<GlobalFsMetadata>> getMetadata(PubKey space, String filename) {
-		return list(space, escapeGlob(filename)).thenApply(res -> res.size() == 1 ? res.get(0) : null);
+		return list(space, escapeGlob(filename)).thenCompose(res -> res.size() == 1 ? Promise.of(res.get(0)) : Promise.ofException(NO_METADATA));
 	}
 
 	Promise<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata);

@@ -22,7 +22,6 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
@@ -35,6 +34,7 @@ import java.util.Arrays;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
+import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static io.global.fs.util.BinaryDataFormats.readBuf;
 
@@ -51,17 +51,12 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 
 	private Promise<ByteBuf> download(String filename) {
 		return storage.download(filename)
-				.thenCompose(supplier -> supplier
-						.withEndOfStream(eos -> eos
-								.thenComposeEx(($, e) -> {
-									if (e == null) {
-										return Promise.complete();
-									}
-									logger.warn("Failed to read checkpoint data for {}", filename);
-									// TODO anton: make below exception constant
-									return Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Failed to read checkpoint data for " + filename));
-								}))
-						.toCollector(ByteBufQueue.collector()));
+				.thenComposeEx((supplier, e) -> {
+					if (e != null) {
+						return Promise.ofException(e == FILE_NOT_FOUND ? NO_CHECKPOINT : e);
+					}
+					return supplier.toCollector(ByteBufQueue.collector());
+				});
 	}
 
 	@Override
@@ -72,7 +67,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					if (e == null) {
 						return checkpoint.equals(existing) ?
 								Promise.complete() :
-								Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "Trying to override existing checkpoint at " + pos));
+								Promise.ofException(OVERRIDING);
 					}
 					return storage.getMetadata(filename)
 							.thenCompose(m -> storage.upload(filename, m != null ? m.getSize() : 0))
@@ -97,7 +92,7 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 						}
 					}
 					buf.recycle();
-					return Promise.ofException(new StacklessException(RemoteFsCheckpointStorage.class, "No checkpoint found on position " + position));
+					return Promise.ofException(NO_CHECKPOINT);
 				});
 	}
 

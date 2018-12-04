@@ -58,7 +58,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	@Override
 	public ChannelConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
 		ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
-		MaterializedPromise<HttpResponse> request = client.request(HttpRequest.post(
+		MaterializedPromise<HttpResponse> request = client.request(HttpRequest.put(
 				UrlBuilder.http()
 						.withAuthority(address)
 						.appendPathPart(UPLOAD)

@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.file.FileUtils.isWildcard;
+import static io.global.fs.api.MetadataStorage.NO_METADATA;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
@@ -93,12 +94,14 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
 		// cut off the part of the file that is already there
 		return node.getMetadata(pubKey, filename)
-				.thenCompose(signedMetadata -> {
-					if (signedMetadata == null) {
-						if (offset != -1 && offset != 0) {
-							return Promise.ofException(new StacklessException(GlobalFsGateway.class, "Trying to upload at offset greater than known file size"));
+				.thenComposeEx((signedMetadata, e) -> {
+					if (e != null) {
+						if (e != NO_METADATA) {
+							return Promise.ofException(e);
 						}
-						return doUpload(filename, null, 0, 0, new SHA256Digest());
+						return offset == -1 || offset == 0 ?
+								doUpload(filename, null, 0, 0, new SHA256Digest()) :
+								Promise.ofException(new StacklessException(GlobalFsGateway.class, "Trying to upload at offset greater than known file size"));
 					}
 					if (!signedMetadata.verify(pubKey)) {
 						return Promise.ofException(METADATA_SIG);
@@ -130,9 +133,9 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 	@Override
 	public Promise<ChannelSupplier<ByteBuf>> download(String filename, long offset, long limit) {
 		return node.getMetadata(pubKey, filename)
-				.thenCompose(signedMetadata -> {
-					if (signedMetadata == null) {
-						return Promise.ofException(new StacklessException(GlobalFsGateway.class, "No file " + filename + " found"));
+				.thenComposeEx((signedMetadata, e) -> {
+					if (e != null) {
+						return Promise.ofException(e == NO_METADATA ? FILE_NOT_FOUND : e);
 					}
 					return node.download(pubKey, filename, offset, limit)
 							.thenCompose(supplier -> {

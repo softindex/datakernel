@@ -39,6 +39,7 @@ import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.*;
+import static io.global.fs.api.MetadataStorage.NO_METADATA;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static io.global.fs.util.HttpDataFormats.parseOffset;
 import static io.global.fs.util.HttpDataFormats.parseRange;
@@ -73,10 +74,15 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 					long offset = parseOffset(request);
 					ChannelSupplier<ByteBuf> body = request.getBodyStream();
 					return node.getMetadata(PubKey.fromString(request.getPathParameter("owner")), request.getPathParameter("path"))
-							.thenCompose(meta ->
-									node.upload(pubKey, path, offset)
+							.thenComposeEx((meta, e) -> {
+								boolean newFile = e == NO_METADATA;
+								if (e == null || newFile) {
+									return node.upload(pubKey, path, offset)
 											.thenCompose(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
-											.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
+											.thenApply($ -> newFile ? HttpResponse.ok201() : HttpResponse.ok200());
+								}
+								return Promise.ofException(e);
+							});
 				})
 				.with(POST, "/" + PUSH + "/:owner", ensureRequestBody(request -> {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
@@ -86,7 +92,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 				}))
 				.with(GET, "/" + LIST + "/:owner/:name", request -> {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-					return (node.list(pubKey, request.getQueryParameter("glob")))
+					return node.list(pubKey, request.getQueryParameter("glob"))
 							.thenApply(list -> HttpResponse.ok200()
 									.withBodyStream(
 											ChannelSupplier.ofStream(
