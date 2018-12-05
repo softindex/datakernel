@@ -21,7 +21,7 @@ import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.csp.process.*;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.util.MemSize;
@@ -57,7 +57,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	private static final AtomicInteger PARTITION = new AtomicInteger();
 
 	private final ExecutorService executorService;
-	private final BufferSerializer<T> serializer;
+	private final BinarySerializer<T> serializer;
 	private final Path path;
 
 	private String filePattern = DEFAULT_FILE_PATTERN;
@@ -66,7 +66,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	private int compressionLevel = 0;
 
 	// region creators
-	private StreamSorterStorageImpl(ExecutorService executorService, BufferSerializer<T> serializer,
+	private StreamSorterStorageImpl(ExecutorService executorService, BinarySerializer<T> serializer,
 			Path path) {
 		this.executorService = executorService;
 		this.serializer = serializer;
@@ -81,7 +81,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 * @param path            path in which will store received data
 	 */
 	public static <T> StreamSorterStorageImpl<T> create(ExecutorService executorService,
-			BufferSerializer<T> serializer, Path path) {
+			BinarySerializer<T> serializer, Path path) {
 		checkArgument(!path.getFileName().toString().contains("%d"), "Filename should not contain '%d'");
 		try {
 			Files.createDirectories(path);
@@ -129,7 +129,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{WRITE, CREATE_NEW, APPEND})
 				.thenApply(file -> StreamConsumer.<T>ofSupplier(
 						supplier -> supplier
-								.transformWith(ChannelBinarySerializer.create(serializer))
+								.transformWith(ChannelSerializer.create(serializer))
 								.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
 								.transformWith(ChannelLZ4Compressor.create(compressionLevel))
 								.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
@@ -149,7 +149,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
 				.thenApply(file -> ChannelFileReader.readFile(file).withBufferSize(readBlockSize)
 						.transformWith(ChannelLZ4Decompressor.create())
-						.transformWith(ChannelBinaryDeserializer.create(serializer))
+						.transformWith(ChannelDeserializer.create(serializer))
 						.withLateBinding());
 	}
 

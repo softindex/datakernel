@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.bytebuf;
+package io.datakernel.serializer.util;
 
 import java.nio.charset.StandardCharsets;
 
-public final class SerializationUtils {
-	private SerializationUtils() {
+public final class BinaryOutputUtils {
+	private BinaryOutputUtils() {
 	}
 
 	public static int write(byte[] buf, int off, byte[] bytes) {
@@ -73,25 +73,25 @@ public final class SerializationUtils {
 			buf[off] = (byte) v;
 			return off + 1;
 		}
-		buf[off] = (byte) ((v & 0x7F) | 0x80);
+		buf[off] = (byte) (v | 0x80);
 		v >>>= 7;
 		if ((v & ~0x7F) == 0) {
 			buf[off + 1] = (byte) v;
 			return off + 2;
 		}
-		buf[off + 1] = (byte) ((v & 0x7F) | 0x80);
+		buf[off + 1] = (byte) (v | 0x80);
 		v >>>= 7;
 		if ((v & ~0x7F) == 0) {
 			buf[off + 2] = (byte) v;
 			return off + 3;
 		}
-		buf[off + 2] = (byte) ((v & 0x7F) | 0x80);
+		buf[off + 2] = (byte) (v | 0x80);
 		v >>>= 7;
 		if ((v & ~0x7F) == 0) {
 			buf[off + 3] = (byte) v;
 			return off + 4;
 		}
-		buf[off + 3] = (byte) ((v & 0x7F) | 0x80);
+		buf[off + 3] = (byte) (v | 0x80);
 		v >>>= 7;
 		buf[off + 4] = (byte) v;
 		return off + 5;
@@ -99,52 +99,27 @@ public final class SerializationUtils {
 
 	public static int writeVarLong(byte[] buf, int off, long v) {
 		if ((v & ~0x7F) == 0) {
-			return writeByte(buf, off, (byte) v);
-		} else {
-			off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
-			v >>>= 7;
-			if ((v & ~0x7F) == 0) {
+			buf[off] = (byte) v;
+			return off + 1;
+		}
+		buf[off] = (byte) (v | 0x80);
+		v >>>= 7;
+		if ((v & ~0x7F) == 0) {
+			buf[off + 1] = (byte) v;
+			return off + 2;
+		}
+		buf[off + 1] = (byte) (v | 0x80);
+		v >>>= 7;
+		off += 2;
+		for (; ; ) {
+			if ((v & ~0x7FL) == 0) {
 				off = writeByte(buf, off, (byte) v);
+				return off;
 			} else {
-				off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
+				off = writeByte(buf, off, (byte) (v | 0x80));
 				v >>>= 7;
-				if ((v & ~0x7F) == 0) {
-					off = writeByte(buf, off, (byte) v);
-				} else {
-					off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
-					v >>>= 7;
-					if ((v & ~0x7F) == 0) {
-						off = writeByte(buf, off, (byte) v);
-					} else {
-						off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
-						v >>>= 7;
-						if ((v & ~0x7F) == 0) {
-							off = writeByte(buf, off, (byte) v);
-						} else {
-							off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
-							v >>>= 7;
-							if ((v & ~0x7F) == 0) {
-								off = writeByte(buf, off, (byte) v);
-							} else {
-								off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
-								v >>>= 7;
-
-								for (; ; ) {
-									if ((v & ~0x7FL) == 0) {
-										off = writeByte(buf, off, (byte) v);
-										return off;
-									} else {
-										off = writeByte(buf, off, (byte) (((int) v & 0x7F) | 0x80));
-										v >>>= 7;
-									}
-								}
-							}
-						}
-					}
-				}
 			}
 		}
-		return off;
 	}
 
 	public static int writeFloat(byte[] buf, int off, float v) {
@@ -184,14 +159,14 @@ public final class SerializationUtils {
 		return off;
 	}
 
-	public static int writeJavaUTF8(byte[] buf, int off, String s) {
+	public static int writeUTF8(byte[] buf, int off, String s) {
 		byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
 		off = writeVarInt(buf, off, bytes.length);
 		return write(buf, off, bytes);
 
 	}
 
-	public static int writeJavaUTF8Nullable(byte[] buf, int off, String s) {
+	public static int writeUTF8Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
 			return writeByte(buf, off, (byte) 0);
 		}
@@ -200,8 +175,7 @@ public final class SerializationUtils {
 		return write(buf, off, bytes);
 	}
 
-	@Deprecated
-	public static int writeCustomUTF8(byte[] buf, int off, String s) {
+	public static int writeUTF8mb3(byte[] buf, int off, String s) {
 		int length = s.length();
 		off = writeVarInt(buf, off, length);
 		for (int i = 0; i < length; i++) {
@@ -215,8 +189,7 @@ public final class SerializationUtils {
 		return off;
 	}
 
-	@Deprecated
-	public static int writeCustomUTF8Nullable(byte[] buf, int off, String s) {
+	public static int writeUTF8mb3Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
 			return writeByte(buf, off, (byte) 0);
 		}
@@ -233,7 +206,6 @@ public final class SerializationUtils {
 		return off;
 	}
 
-	@Deprecated
 	private static int writeUtfChar(byte[] buf, int off, int c) {
 		if (c <= 0x07FF) {
 			buf[off] = (byte) (0xC0 | c >> 6 & 0x1F);

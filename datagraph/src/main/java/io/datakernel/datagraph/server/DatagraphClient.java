@@ -19,7 +19,7 @@ package io.datakernel.datagraph.server;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
-import io.datakernel.csp.process.ChannelBinaryDeserializer;
+import io.datakernel.csp.process.ChannelDeserializer;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.command.DatagraphCommand;
@@ -63,7 +63,7 @@ public final class DatagraphClient {
 
 					return messaging.send(commandDownload)
 							.thenApply($ -> messaging.receiveBinaryStream()
-									.transformWith(ChannelBinaryDeserializer.create(serialization.getSerializer(type)))
+									.transformWith(ChannelDeserializer.create(serialization.getSerializer(type)))
 									.withEndOfStream(eos -> eos
 											.whenComplete(($1, e1) -> messaging.close()))
 									.withLateBinding());

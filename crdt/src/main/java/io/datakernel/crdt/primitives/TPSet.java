@@ -16,8 +16,10 @@
 
 package io.datakernel.crdt.primitives;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.AbstractBinarySerializer;
+import io.datakernel.serializer.BinarySerializer;
+import io.datakernel.serializer.util.BinaryInput;
+import io.datakernel.serializer.util.BinaryOutput;
 
 import java.util.*;
 import java.util.stream.Stream;
@@ -139,22 +141,22 @@ public final class TPSet<E> implements Set<E> {
 		return set.toString();
 	}
 
-	public static class Serializer<T> implements BufferSerializer<TPSet<T>> {
-		private final BufferSerializer<GSet<T>> gSetSerializer;
+	public static class Serializer<T> extends AbstractBinarySerializer<TPSet<T>> {
+		private final BinarySerializer<GSet<T>> gSetSerializer;
 
-		public Serializer(BufferSerializer<T> valueSerializer) {
+		public Serializer(BinarySerializer<T> valueSerializer) {
 			gSetSerializer = new GSet.Serializer<>(valueSerializer);
 		}
 
 		@Override
-		public void serialize(ByteBuf output, TPSet<T> item) {
-			gSetSerializer.serialize(output, item.adds);
-			gSetSerializer.serialize(output, item.removes);
+		public void encode(BinaryOutput out, TPSet<T> item) {
+			gSetSerializer.encode(out, item.adds);
+			gSetSerializer.encode(out, item.removes);
 		}
 
 		@Override
-		public TPSet<T> deserialize(ByteBuf input) {
-			return new TPSet<>(gSetSerializer.deserialize(input), gSetSerializer.deserialize(input));
+		public TPSet<T> decode(BinaryInput in) {
+			return new TPSet<>(gSetSerializer.decode(in), gSetSerializer.decode(in));
 		}
 	}
 }

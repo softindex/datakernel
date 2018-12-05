@@ -17,7 +17,6 @@
 package io.datakernel.serializer;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
@@ -39,17 +38,16 @@ public class AsmSerializerTest {
 	private static final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 
 	private static <T> T doTest(Class<T> type, T testData1) {
-		BufferSerializer<T> serializer = SerializerBuilder
+		BinarySerializer<T> serializer = SerializerBuilder
 				.create(definingClassLoader)
 				.build(type);
 		return doTest(testData1, serializer, serializer);
 	}
 
-	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
+	private static <T> T doTest(T testData1, BinarySerializer<T> serializer, BinarySerializer<T> deserializer) {
 		byte[] array = new byte[1000];
-		ByteBuf buf = ByteBuf.wrapForWriting(array);
-		serializer.serialize(buf, testData1);
-		return deserializer.deserialize(buf);
+		serializer.encode(array, 0, testData1);
+		return deserializer.decode(array, 0);
 	}
 
 	public static class TestDataScalars {
@@ -787,9 +785,9 @@ public class AsmSerializerTest {
 	@Test
 	public void testVersions() {
 		SerializerBuilder builder = SerializerBuilder.create(getSystemClassLoader());
-		BufferSerializer<TestDataVersions> serializer0 = builder.withVersion(0).build(TestDataVersions.class);
-		BufferSerializer<TestDataVersions> serializer1 = builder.withVersion(1).build(TestDataVersions.class);
-		BufferSerializer<TestDataVersions> serializer2 = builder.withVersion(2).build(TestDataVersions.class);
+		BinarySerializer<TestDataVersions> serializer0 = builder.withVersion(0).build(TestDataVersions.class);
+		BinarySerializer<TestDataVersions> serializer1 = builder.withVersion(1).build(TestDataVersions.class);
+		BinarySerializer<TestDataVersions> serializer2 = builder.withVersion(2).build(TestDataVersions.class);
 
 		TestDataVersions testData1 = new TestDataVersions();
 		testData1.a = 10;
@@ -859,9 +857,9 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testProfiles() {
-		BufferSerializer<TestDataProfiles> serializer = SerializerBuilder.create(getSystemClassLoader()).build(TestDataProfiles.class);
-		BufferSerializer<TestDataProfiles> serializer1 = SerializerBuilder.create("profile1", getSystemClassLoader()).build(TestDataProfiles.class);
-		BufferSerializer<TestDataProfiles> serializer2 = SerializerBuilder.create("profile2", getSystemClassLoader()).build(TestDataProfiles.class);
+		BinarySerializer<TestDataProfiles> serializer = SerializerBuilder.create(getSystemClassLoader()).build(TestDataProfiles.class);
+		BinarySerializer<TestDataProfiles> serializer1 = SerializerBuilder.create("profile1", getSystemClassLoader()).build(TestDataProfiles.class);
+		BinarySerializer<TestDataProfiles> serializer2 = SerializerBuilder.create("profile2", getSystemClassLoader()).build(TestDataProfiles.class);
 
 		TestDataProfiles testData1 = new TestDataProfiles();
 		testData1.a = 10;
@@ -911,20 +909,20 @@ public class AsmSerializerTest {
 	@Test
 	public void testProfilesVersions() {
 		Class<TestDataProfiles2> type = TestDataProfiles2.class;
-		BufferSerializer<TestDataProfiles2> serializer1 = SerializerBuilder
+		BinarySerializer<TestDataProfiles2> serializer1 = SerializerBuilder
 				.create(getSystemClassLoader())
 				.withVersion(1)
 				.build(type);
-		BufferSerializer<TestDataProfiles2> serializer2 = SerializerBuilder
+		BinarySerializer<TestDataProfiles2> serializer2 = SerializerBuilder
 				.create(getSystemClassLoader())
 				.withVersion(2)
 				.build(type);
 
-		BufferSerializer<TestDataProfiles2> serializer1Profile = SerializerBuilder
+		BinarySerializer<TestDataProfiles2> serializer1Profile = SerializerBuilder
 				.create("profile", getSystemClassLoader())
 				.withVersion(1)
 				.build(type);
-		BufferSerializer<TestDataProfiles2> serializer2Profile = SerializerBuilder
+		BinarySerializer<TestDataProfiles2> serializer2Profile = SerializerBuilder
 				.create("profile", getSystemClassLoader())
 				.withVersion(2)
 				.build(type);
@@ -1047,7 +1045,7 @@ public class AsmSerializerTest {
 		testData1.object1 = 10;
 		testData1.object2 = "object2";
 
-		BufferSerializer<TestDataExtraSubclasses> serializer = SerializerBuilder
+		BinarySerializer<TestDataExtraSubclasses> serializer = SerializerBuilder
 				.create(getSystemClassLoader())
 				.withSubclasses("extraSubclasses1", Integer.class)
 				.build(TestDataExtraSubclasses.class);
@@ -1076,7 +1074,7 @@ public class AsmSerializerTest {
 		TestDataExtraSubclasses2 testData1 = new TestDataExtraSubclasses2();
 		testData1.i = 10;
 
-		BufferSerializer<TestDataExtraSubclassesInterface> serializer = SerializerBuilder
+		BinarySerializer<TestDataExtraSubclassesInterface> serializer = SerializerBuilder
 				.create(getSystemClassLoader())
 				.withSubclasses("extraSubclasses", TestDataExtraSubclasses2.class)
 				.build(TestDataExtraSubclassesInterface.class);
@@ -1142,7 +1140,7 @@ public class AsmSerializerTest {
 		testData1.setDoubleValue(1.23);
 		testData1.setStringValue("test");
 
-		BufferSerializer<TestInheritAnnotationsInterface3> serializer = SerializerBuilder
+		BinarySerializer<TestInheritAnnotationsInterface3> serializer = SerializerBuilder
 				.create(getSystemClassLoader())
 				.build(TestInheritAnnotationsInterface3.class);
 		TestInheritAnnotationsInterface3 testData2 = doTest(testData1, serializer, serializer);
@@ -1151,7 +1149,7 @@ public class AsmSerializerTest {
 		assertEquals(testData1.getDoubleValue(), testData2.getDoubleValue(), Double.MIN_VALUE);
 		assertEquals(testData1.getStringValue(), testData2.getStringValue());
 
-		BufferSerializer<TestInheritAnnotationsInterfacesImpl> serializer2 = SerializerBuilder
+		BinarySerializer<TestInheritAnnotationsInterfacesImpl> serializer2 = SerializerBuilder
 				.create(getSystemClassLoader())
 				.build(TestInheritAnnotationsInterfacesImpl.class);
 		TestInheritAnnotationsInterfacesImpl testData3 = doTest(testData1, serializer2, serializer2);
@@ -1433,18 +1431,15 @@ public class AsmSerializerTest {
 		TestEnum2 testData2 = doTest(TestEnum2.class, testData1);
 		assertEquals(testData1, testData2);
 
-		BufferSerializer<EnumPojo> serializer = SerializerBuilder
+		BinarySerializer<EnumPojo> serializer = SerializerBuilder
 				.create(definingClassLoader)
 				.build(EnumPojo.class);
 
 		byte[] array = new byte[2000];
-		ByteBuf buf = ByteBuf.wrapForWriting(array);
 		EnumPojo enumPojoBefore = new EnumPojo();
 
-		serializer.serialize(buf, enumPojoBefore);
-		assertEquals(buf.writePosition(), 4);
-
-		EnumPojo enumPojoAfter = serializer.deserialize(buf);
+		assertEquals(4, serializer.encode(array, 0, enumPojoBefore));
+		EnumPojo enumPojoAfter = serializer.decode(array, 0);
 
 		assertEquals(enumPojoBefore.enum127NotNullable, enumPojoAfter.enum127NotNullable);
 		assertEquals(enumPojoBefore.enum127Nullable, enumPojoAfter.enum127Nullable);
@@ -1453,11 +1448,8 @@ public class AsmSerializerTest {
 
 		enumPojoBefore.enum127Nullable = TestEnum127.ITEM126;
 		enumPojoBefore.enum128Nullable = TestEnum128.ITEM127;
-		buf.rewind();
-		serializer.serialize(buf, enumPojoBefore);
-		assertEquals(buf.writePosition(), 5);
-
-		EnumPojo enumPojoAfter2 = serializer.deserialize(buf);
+		assertEquals(5, serializer.encode(array, 0, enumPojoBefore));
+		EnumPojo enumPojoAfter2 = serializer.decode(array, 0);
 		assertEquals(enumPojoBefore.enum127NotNullable, enumPojoAfter2.enum127NotNullable);
 		assertEquals(enumPojoBefore.enum127Nullable, enumPojoAfter2.enum127Nullable);
 		assertEquals(enumPojoBefore.enum128NotNullable, enumPojoAfter2.enum128NotNullable);
@@ -1644,11 +1636,11 @@ public class AsmSerializerTest {
 	public void testConstructorWithBoolean() {
 		TestConstructorWithBoolean test = new TestConstructorWithBoolean("abc", true);
 
-		BufferSerializer<TestConstructorWithBoolean> serializer1 = SerializerBuilder
+		BinarySerializer<TestConstructorWithBoolean> serializer1 = SerializerBuilder
 				.create(definingClassLoader)
 				.build(TestConstructorWithBoolean.class);
 
-		BufferSerializer<TestConstructorWithBoolean> serializer2 = SerializerBuilder
+		BinarySerializer<TestConstructorWithBoolean> serializer2 = SerializerBuilder
 				.create(definingClassLoader)
 				.withVersion(1)
 				.build(TestConstructorWithBoolean.class);
@@ -1825,18 +1817,16 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testNullableOpt() {
-		BufferSerializer<NullableOpt> serializer = SerializerBuilder
+		BinarySerializer<NullableOpt> serializer = SerializerBuilder
 				.create(definingClassLoader)
 				.build(NullableOpt.class);
 
 		byte[] array = new byte[2000];
-		ByteBuf buf = ByteBuf.wrapForWriting(array);
 		NullableOpt nullableOpt1 = new NullableOpt();
 
-		serializer.serialize(buf, nullableOpt1);
-		assertEquals(buf.writePosition(), 7);
+		assertEquals(7, serializer.encode(array, 0, nullableOpt1));
 
-		NullableOpt nullableOpt2 = serializer.deserialize(buf);
+		NullableOpt nullableOpt2 = serializer.decode(array, 0);
 
 		assertEquals(nullableOpt1.bytes, nullableOpt2.bytes);
 		assertEquals(nullableOpt1.ints, nullableOpt2.ints);
@@ -1853,11 +1843,8 @@ public class AsmSerializerTest {
 		nullableOpt1.subclass = TestEnum2.ONE;
 		nullableOpt1.testEnum2 = TestEnum2.ONE;
 
-		buf.rewind();
-		serializer.serialize(buf, nullableOpt1);
-		assertEquals(buf.writePosition(), 8);
-
-		NullableOpt nullableOpt3 = serializer.deserialize(buf);
+		assertEquals(8, serializer.encode(array, 0, nullableOpt1));
+		NullableOpt nullableOpt3 = serializer.decode(array, 0);
 
 		assertArrayEquals(nullableOpt1.bytes, nullableOpt3.bytes);
 		assertArrayEquals(nullableOpt1.ints, nullableOpt3.ints);
@@ -1894,7 +1881,7 @@ public class AsmSerializerTest {
 	@Test
 	public void testVersionGetter() {
 		TestGetterVersion test = TestGetterVersion.of("test", asList("a", "b"));
-		BufferSerializer<TestGetterVersion> serializerV1 = SerializerBuilder
+		BinarySerializer<TestGetterVersion> serializerV1 = SerializerBuilder
 				.create(DefiningClassLoader.create())
 				.withVersion(1)
 				.build(TestGetterVersion.class);
@@ -1903,7 +1890,7 @@ public class AsmSerializerTest {
 
 		assertEquals(test.getStr(), _testV1.getStr());
 
-		BufferSerializer<TestGetterVersion> serializerV2 = SerializerBuilder
+		BinarySerializer<TestGetterVersion> serializerV2 = SerializerBuilder
 				.create(DefiningClassLoader.create())
 				.withVersion(2)
 				.build(TestGetterVersion.class);
@@ -1962,7 +1949,7 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testArrayOfCustomClasses() {
-		BufferSerializer<CustomArrayHolder> serializer = SerializerBuilder
+		BinarySerializer<CustomArrayHolder> serializer = SerializerBuilder
 				.create(DefiningClassLoader.create())
 				.build(CustomArrayHolder.class);
 		StringWrapper[] array = {new StringWrapper("str"), new StringWrapper("abc")};
@@ -1994,7 +1981,7 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testOverridenBridgeMethod() {
-		BufferSerializer<Imp> serializer = SerializerBuilder.create(DefiningClassLoader.create()).build(Imp.class);
+		BinarySerializer<Imp> serializer = SerializerBuilder.create(DefiningClassLoader.create()).build(Imp.class);
 		Imp object = new Imp();
 		object.setValue(100);
 		Imp deserialized = doTest(object, serializer, serializer);
@@ -2023,7 +2010,7 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testGenericBridgeMethod() {
-		BufferSerializer<GenericImp> serializer = SerializerBuilder.create(DefiningClassLoader.create()).build(GenericImp.class);
+		BinarySerializer<GenericImp> serializer = SerializerBuilder.create(DefiningClassLoader.create()).build(GenericImp.class);
 		GenericImp object = new GenericImp();
 		object.setValue(100);
 		GenericImp deserialized = doTest(object, serializer, serializer);

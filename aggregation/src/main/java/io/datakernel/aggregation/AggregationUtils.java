@@ -24,7 +24,7 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codegen.*;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
 import io.datakernel.stream.processor.StreamMap.MapperProjection;
@@ -130,16 +130,16 @@ public class AggregationUtils {
 				.build();
 	}
 
-	public static <T> BufferSerializer<T> createBufferSerializer(AggregationStructure aggregation, Class<T> recordClass,
+	public static <T> BinarySerializer<T> createBinarySerializer(AggregationStructure aggregation, Class<T> recordClass,
 			List<String> keys, List<String> fields,
 			DefiningClassLoader classLoader) {
-		return createBufferSerializer(recordClass,
+		return createBinarySerializer(recordClass,
 				keysToMap(keys.stream(), aggregation.getKeyTypes()::get),
 				keysToMap(fields.stream(), aggregation.getMeasureTypes()::get),
 				classLoader);
 	}
 
-	private static <T> BufferSerializer<T> createBufferSerializer(Class<T> recordClass,
+	private static <T> BinarySerializer<T> createBinarySerializer(Class<T> recordClass,
 			Map<String, FieldType> keys, Map<String, FieldType> fields,
 			DefiningClassLoader classLoader) {
 		SerializerGenClass serializerGenClass = new SerializerGenClass(recordClass);

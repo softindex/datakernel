@@ -25,8 +25,8 @@ import io.datakernel.crdt.CrdtClient;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.process.ChannelBinaryDeserializer;
-import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelDeserializer;
+import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -35,7 +35,7 @@ import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.stream.processor.StreamDecorator;
@@ -112,7 +112,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 
 	public static <K extends Comparable<K>, S> FsCrdtClient<K, S> create(
 			Eventloop eventloop, FsClient client, BinaryOperator<S> combiner,
-			BufferSerializer<K> keySerializer, BufferSerializer<S> stateSerializer) {
+			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return create(eventloop, client, combiner, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 
@@ -157,7 +157,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 		return client.upload(namingStrategy.apply("bin"))
 				.thenApply(consumer -> StreamConsumer.<CrdtData<K, S>>ofSupplier(supplier -> supplier
 						.transformWith(detailedStats ? uploadStatsDetailed : uploadStats)
-						.transformWith(ChannelBinarySerializer.create(serializer))
+						.transformWith(ChannelSerializer.create(serializer))
 						.streamTo(consumer))
 						.withLateBinding());
 	}
@@ -174,7 +174,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 							(token == 0 ? stream : stream.filter(m -> m.getTimestamp() >= token))
 									.forEach(meta ->
 											client.downloader(meta.getFilename())
-													.transformWith(ChannelBinaryDeserializer.create(serializer))
+													.transformWith(ChannelDeserializer.create(serializer))
 													.transformWith(StreamDecorator.create(data -> new CrdtReducingData<>(data.getKey(), data.getState(), meta.getTimestamp())))
 													.streamTo(reducer.newInput()));
 
@@ -182,7 +182,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 							(token == 0 ? stream : stream.filter(m -> m.getTimestamp() >= token))
 									.forEach(meta ->
 											tombstoneFolderClient.downloader(meta.getFilename())
-													.transformWith(ChannelBinaryDeserializer.create(serializer.getKeySerializer()))
+													.transformWith(ChannelDeserializer.create(serializer.getKeySerializer()))
 													.transformWith(StreamDecorator.create(key -> new CrdtReducingData<>(key, (S) null, meta.getTimestamp())))
 													.streamTo(reducer.newInput()));
 
@@ -197,7 +197,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 		return tombstoneFolderClient.upload(namingStrategy.apply("tomb"))
 				.thenApply(consumer -> StreamConsumer.<K>ofSupplier(supplier -> supplier
 						.transformWith(detailedStats ? removeStatsDetailed : removeStats)
-						.transformWith(ChannelBinarySerializer.create(serializer.getKeySerializer()))
+						.transformWith(ChannelSerializer.create(serializer.getKeySerializer()))
 						.streamTo(consumer))
 						.withLateBinding());
 	}
@@ -248,7 +248,7 @@ public final class FsCrdtClient<K extends Comparable<K>, S> implements CrdtClien
 											.streamTo(consumer))
 							.thenCompose($ -> download().getStreamPromise())
 							.thenCompose(producer ->
-									producer.transformWith(ChannelBinarySerializer.create(serializer))
+									producer.transformWith(ChannelSerializer.create(serializer))
 											.streamTo(client.uploader(name)))
 							.thenCompose($ -> tombstoneFolderClient.deleteBulk("*"))
 							.thenCompose($ -> consolidationFolderClient.delete(metafile))

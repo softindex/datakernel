@@ -32,7 +32,8 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
+import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.stats.StreamStats;
@@ -50,8 +51,8 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	private final ExecutorService executor;
 	private final RocksDB db;
 	private final BinaryOperator<S> combiner;
-	private final BufferSerializer<K> keySerializer;
-	private final BufferSerializer<S> stateSerializer;
+	private final BinarySerializer<K> keySerializer;
+	private final BinarySerializer<S> stateSerializer;
 
 	private final FlushOptions flushOptions; // } are closed by GC when the client is destroyed
 	private final WriteOptions writeOptions; // }
@@ -76,7 +77,7 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	CurrentTimeProvider currentTimeProvider = CurrentTimeProvider.ofSystem();
 
 	private RocksDBCrdtClient(Eventloop eventloop, ExecutorService executor, RocksDB db, BinaryOperator<S> combiner,
-			BufferSerializer<K> keySerializer, BufferSerializer<S> stateSerializer) {
+			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.db = db;
@@ -93,7 +94,7 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	}
 
 	public static <K extends Comparable<K>, S> RocksDBCrdtClient<K, S> create(Eventloop eventloop, ExecutorService executor, RocksDB db,
-			BinaryOperator<S> combiner, BufferSerializer<K> keySerializer, BufferSerializer<S> stateSerializer) {
+			BinaryOperator<S> combiner, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new RocksDBCrdtClient<>(eventloop, executor, db, combiner, keySerializer, stateSerializer);
 	}
 
@@ -118,7 +119,7 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 
 	private void doPut(K key, S state) {
 		ByteBuf buf = ByteBufPool.allocate(bufferSize);
-		keySerializer.serialize(buf, key);
+		buf.writePosition(keySerializer.encode(buf.array(), buf.writePosition(), key));
 		byte[] keyBytes = buf.getArray();
 		byte[] possibleState;
 		try {
@@ -130,12 +131,12 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 		// custom merge operators in RocksJava are yet to come
 		if (possibleState != null) {
 			ByteBuf stateBuf = ByteBuf.wrap(possibleState, 8, possibleState.length); // 8 is to skip the timestamp
-			state = combiner.apply(state, stateSerializer.deserialize(stateBuf));
+			state = combiner.apply(state, stateSerializer.decode(stateBuf.array(), stateBuf.readPosition()));
 		}
 
 		buf.rewind();
 		buf.writeLong(currentTimeProvider.currentTimeMillis()); // new timestamp
-		stateSerializer.serialize(buf, state);
+		buf.writePosition(stateSerializer.encode(buf.array(), buf.writePosition(), state));
 		try {
 			db.put(writeOptions, keyBytes, buf.asArray());
 		} catch (RocksDBException e) {
@@ -145,7 +146,7 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 
 	private void doRemove(K key) {
 		ByteBuf buf = ByteBufPool.allocate(bufferSize);
-		keySerializer.serialize(buf, key);
+		buf.writePosition(keySerializer.encode(buf.array(), buf.writePosition(), key));
 		try {
 			db.delete(writeOptions, buf.asArray());
 		} catch (RocksDBException e) {
@@ -180,13 +181,13 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 								Promise.ofCallable(executor, () -> {
 									while (iterator.isValid()) {
 										byte[] keyBytes = iterator.key();
-										ByteBuf stateBuf = ByteBuf.wrapForReading(iterator.value());
+										BinaryInput stateBuf = new BinaryInput(iterator.value());
 										iterator.next();
 										long ts = stateBuf.readLong();
 										if (ts > token) {
 											return new CrdtData<>(
-													keySerializer.deserialize(ByteBuf.wrapForReading(keyBytes)),
-													stateSerializer.deserialize(stateBuf)
+													keySerializer.decode(keyBytes, 0),
+													stateSerializer.decode(stateBuf)
 											);
 										}
 									}
@@ -228,13 +229,13 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 	public Promise<S> get(K key) {
 		return Promise.ofCallable(executor, () -> {
 			ByteBuf buf = ByteBufPool.allocate(bufferSize);
-			keySerializer.serialize(buf, key);
+			keySerializer.encode(buf.array(), buf.readPosition(), key);
 			byte[] state = db.get(buf.asArray());
 			if (state == null) {
 				return null;
 			}
-			ByteBuf stateBuf = ByteBuf.wrap(state, 8, state.length); // skip timestamp
-			S res = stateSerializer.deserialize(stateBuf);
+			BinaryInput stateBuf = new BinaryInput(state, 8); // skip timestamp
+			S res = stateSerializer.decode(stateBuf);
 			singleGets.recordEvent();
 			return res;
 		});
@@ -256,15 +257,15 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 
 	public static class KeyComparator<K extends Comparable<K>> extends Comparator {
 		private final ComparatorOptions copt;
-		private final BufferSerializer<K> keySerializer;
+		private final BinarySerializer<K> keySerializer;
 
-		public KeyComparator(ComparatorOptions copt, BufferSerializer<K> keySerializer) {
+		public KeyComparator(ComparatorOptions copt, BinarySerializer<K> keySerializer) {
 			super(copt);
 			this.copt = copt;
 			this.keySerializer = keySerializer;
 		}
 
-		public KeyComparator(BufferSerializer<K> keySerializer) {
+		public KeyComparator(BinarySerializer<K> keySerializer) {
 			this(new ComparatorOptions(), keySerializer);
 		}
 
@@ -275,8 +276,8 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 
 		@Override
 		public int compare(Slice s1, Slice s2) {
-			return keySerializer.deserialize(ByteBuf.wrapForReading(s1.data()))
-					.compareTo(keySerializer.deserialize(ByteBuf.wrapForReading(s2.data())));
+			return keySerializer.decode(s1.data(), 0)
+					.compareTo(keySerializer.decode(s2.data(), 0));
 		}
 
 		@Override

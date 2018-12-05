@@ -24,6 +24,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,15 +46,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BinaryOperator;
 
-import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.asm.BufferSerializers.JAVA_UTF8_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
 @UseParametersRunnerFactory(DatakernelRunner.DatakernelRunnerFactory.class)
 public class CrdtClientAPITest {
-	private static final CrdtDataSerializer<String, Integer> serializer = new CrdtDataSerializer<>(JAVA_UTF8_SERIALIZER, INT_SERIALIZER);
+	private static final CrdtDataSerializer<String, Integer> serializer = new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER);
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -71,6 +72,13 @@ public class CrdtClientAPITest {
 		Path folder = temporaryFolder.newFolder().toPath();
 		Files.createDirectories(folder);
 		client = clientFactory.create(Executors.newSingleThreadExecutor(), folder, Math::max);
+	}
+
+	@After
+	public void tearDown() {
+		if (client instanceof RocksDBCrdtClient) {
+//			((RocksDBCrdtClient) client).getDb().close();
+		}
 	}
 
 	@FunctionalInterface
@@ -94,7 +102,7 @@ public class CrdtClientAPITest {
 						(ICrdtClientFactory<String, Integer>) (executor, testFolder, combiner) -> {
 							Options options = new Options()
 									.setCreateIfMissing(true)
-									.setComparator(new RocksDBCrdtClient.KeyComparator<>(JAVA_UTF8_SERIALIZER));
+									.setComparator(new RocksDBCrdtClient.KeyComparator<>(UTF8_SERIALIZER));
 							RocksDB rocksdb = RocksDB.open(options, testFolder.resolve("rocksdb").normalize().toString());
 							return RocksDBCrdtClient.create(Eventloop.getCurrentEventloop(), executor, rocksdb, combiner, serializer);
 						}

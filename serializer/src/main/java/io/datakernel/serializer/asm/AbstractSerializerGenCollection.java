@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionParameter;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.util.function.Function;
 
@@ -80,11 +80,11 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 
 		if (nullable) {
 			return ifThenElse(isNull(value),
-					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
-					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))), forEach, off));
+					sequence(set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+					sequence(set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))), forEach, off));
 		}
 		return sequence(
-				set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, call(value, "size"))), forEach, off);
+				set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, call(value, "size"))), forEach, off);
 	}
 
 	@Override

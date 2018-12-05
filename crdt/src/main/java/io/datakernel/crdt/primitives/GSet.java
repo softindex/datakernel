@@ -16,8 +16,10 @@
 
 package io.datakernel.crdt.primitives;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.AbstractBinarySerializer;
+import io.datakernel.serializer.BinarySerializer;
+import io.datakernel.serializer.util.BinaryInput;
+import io.datakernel.serializer.util.BinaryOutput;
 
 import java.util.*;
 
@@ -116,27 +118,27 @@ public final class GSet<E> implements Set<E> {
 		return set.toString();
 	}
 
-	public static class Serializer<T> implements BufferSerializer<GSet<T>> {
-		private final BufferSerializer<T> valueSerializer;
+	public static class Serializer<T> extends AbstractBinarySerializer<GSet<T>> {
+		private final BinarySerializer<T> valueSerializer;
 
-		public Serializer(BufferSerializer<T> valueSerializer) {
+		public Serializer(BinarySerializer<T> valueSerializer) {
 			this.valueSerializer = valueSerializer;
 		}
 
 		@Override
-		public void serialize(ByteBuf output, GSet<T> item) {
-			output.writeVarInt(item.set.size());
+		public void encode(BinaryOutput out, GSet<T> item) {
+			out.writeVarInt(item.set.size());
 			for (T t : item.set) {
-				valueSerializer.serialize(output, t);
+				valueSerializer.encode(out, t);
 			}
 		}
 
 		@Override
-		public GSet<T> deserialize(ByteBuf input) {
-			int size = input.readVarInt();
+		public GSet<T> decode(BinaryInput in) {
+			int size = in.readVarInt();
 			Set<T> set = new HashSet<>(size);
 			for (int i = 0; i < size; i++) {
-				set.add(valueSerializer.deserialize(input));
+				set.add(valueSerializer.decode(in));
 			}
 			return new GSet<>(set);
 		}

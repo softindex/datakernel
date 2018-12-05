@@ -19,12 +19,12 @@ package io.datakernel.rpc.protocol;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.process.ChannelBinaryDeserializer;
-import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelDeserializer;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
+import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.AbstractStreamSupplier;
 import io.datakernel.stream.StreamDataAcceptor;
@@ -47,7 +47,7 @@ public final class RpcStream {
 	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;
 
 	public RpcStream(AsyncTcpSocket socket,
-			BufferSerializer<RpcMessage> messageSerializer,
+			BinarySerializer<RpcMessage> messageSerializer,
 			MemSize initialBufferSize, MemSize maxMessageSize,
 			Duration autoFlushInterval, boolean compression, boolean server) {
 
@@ -110,12 +110,12 @@ public final class RpcStream {
 			}
 		};
 
-		ChannelBinarySerializer<RpcMessage> serializer = ChannelBinarySerializer.create(messageSerializer)
+		ChannelSerializer<RpcMessage> serializer = ChannelSerializer.create(messageSerializer)
 				.withInitialBufferSize(initialBufferSize)
 				.withMaxMessageSize(maxMessageSize)
 				.withAutoFlushInterval(autoFlushInterval)
 				.withSkipSerializationErrors();
-		ChannelBinaryDeserializer<RpcMessage> deserializer = ChannelBinaryDeserializer.create(messageSerializer);
+		ChannelDeserializer<RpcMessage> deserializer = ChannelDeserializer.create(messageSerializer);
 
 		if (compression) {
 			ChannelLZ4Decompressor decompressor = ChannelLZ4Decompressor.create();

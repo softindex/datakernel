@@ -22,8 +22,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.crdt.CrdtMessaging.*;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
-import io.datakernel.csp.process.ChannelBinaryDeserializer;
-import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelDeserializer;
+import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
@@ -33,7 +33,7 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
@@ -52,7 +52,7 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 	private final Eventloop eventloop;
 	private final InetSocketAddress address;
 	private final CrdtDataSerializer<K, S> serializer;
-	private final BufferSerializer<K> keySerializer;
+	private final BinarySerializer<K> keySerializer;
 
 	private SocketSettings socketSettings = SocketSettings.create();
 
@@ -82,7 +82,7 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 	}
 
 	public static <K extends Comparable<K>, S> RemoteCrdtClient<K, S> create(Eventloop eventloop, InetSocketAddress address,
-			BufferSerializer<K> keySerializer, BufferSerializer<S> stateSerializer) {
+			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new RemoteCrdtClient<>(eventloop, address, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 
@@ -109,7 +109,7 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 													.thenCompose(simpleHandler(UPLOAD_FINISHED)));
 									return StreamConsumer.<CrdtData<K, S>>ofSupplier(supplier ->
 											supplier.transformWith(detailedStats ? uploadStats : uploadStatsDetailed)
-													.transformWith(ChannelBinarySerializer.create(serializer))
+													.transformWith(ChannelSerializer.create(serializer))
 													.streamTo(consumer))
 											.withLateBinding();
 								}));
@@ -136,7 +136,7 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 						.whenComplete(newToken::set)
 						.thenApply($ ->
 								messaging.receiveBinaryStream()
-										.transformWith(ChannelBinaryDeserializer.create(serializer))
+										.transformWith(ChannelDeserializer.create(serializer))
 										.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
 										.withEndOfStream(eos -> eos
 												.thenCompose($2 -> messaging.sendEndOfStream())
@@ -156,7 +156,7 @@ public final class RemoteCrdtClient<K extends Comparable<K>, S> implements CrdtC
 													.thenCompose(simpleHandler(REMOVE_FINISHED)));
 									return StreamConsumer.<K>ofSupplier(supplier ->
 											supplier.transformWith(detailedStats ? removeStats : removeStatsDetailed)
-													.transformWith(ChannelBinarySerializer.create(keySerializer))
+													.transformWith(ChannelSerializer.create(keySerializer))
 													.streamTo(consumer))
 											.withLateBinding();
 								}));

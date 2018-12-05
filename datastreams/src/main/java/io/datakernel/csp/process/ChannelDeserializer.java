@@ -23,7 +23,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.TruncatedDataException;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.AbstractStreamSupplier;
 
 import static java.lang.String.format;
@@ -34,22 +34,22 @@ import static java.lang.String.format;
  *
  * @param <T> original type of data
  */
-public final class ChannelBinaryDeserializer<T> extends AbstractStreamSupplier<T> implements WithChannelToStream<ChannelBinaryDeserializer<T>, ByteBuf, T> {
-	public static final ParseException HEADER_SIZE_EXCEPTION = new ParseException(ChannelBinaryDeserializer.class, "Header size is too large");
-	public static final ParseException DESERIALIZED_SIZE_EXCEPTION = new InvalidSizeException(ChannelBinaryDeserializer.class, "Deserialized size != parsed data size");
+public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> implements WithChannelToStream<ChannelDeserializer<T>, ByteBuf, T> {
+	public static final ParseException HEADER_SIZE_EXCEPTION = new ParseException(ChannelDeserializer.class, "Header size is too large");
+	public static final ParseException DESERIALIZED_SIZE_EXCEPTION = new InvalidSizeException(ChannelDeserializer.class, "Deserialized size != parsed data size");
 
 	private ChannelSupplier<ByteBuf> input;
-	private final BufferSerializer<T> valueSerializer;
+	private final BinarySerializer<T> valueSerializer;
 
 	private final ByteBufQueue queue = new ByteBufQueue();
 
 	// region creators
-	private ChannelBinaryDeserializer(BufferSerializer<T> valueSerializer) {
+	private ChannelDeserializer(BinarySerializer<T> valueSerializer) {
 		this.valueSerializer = valueSerializer;
 	}
 
-	public static <T> ChannelBinaryDeserializer<T> create(BufferSerializer<T> valueSerializer) {
-		return new ChannelBinaryDeserializer<>(valueSerializer);
+	public static <T> ChannelDeserializer<T> create(BinarySerializer<T> valueSerializer) {
+		return new ChannelDeserializer<>(valueSerializer);
 	}
 
 	@Override
@@ -81,13 +81,11 @@ public final class ChannelBinaryDeserializer<T> extends AbstractStreamSupplier<T
 
 				T item;
 				try {
-					item = valueSerializer.deserialize(buf);
+					item = valueSerializer.decode(buf.array(), buf.readPosition());
 				} catch (Exception e) {
-					throw new ParseException(ChannelBinaryDeserializer.class, "Deserialization error", e);
+					throw new ParseException(ChannelDeserializer.class, "Deserialization error", e);
 				}
 
-				if (buf.canRead())
-					throw DESERIALIZED_SIZE_EXCEPTION;
 				buf.recycle();
 
 				send(item);
@@ -103,7 +101,7 @@ public final class ChannelBinaryDeserializer<T> extends AbstractStreamSupplier<T
 								if (queue.isEmpty()) {
 									sendEndOfStream();
 								} else {
-									close(new TruncatedDataException(ChannelBinaryDeserializer.class, format("Truncated serialized data stream, %s : %s", this, queue)));
+									close(new TruncatedDataException(ChannelDeserializer.class, format("Truncated serialized data stream, %s : %s", this, queue)));
 								}
 							}
 						})

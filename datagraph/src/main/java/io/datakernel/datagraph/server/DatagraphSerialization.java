@@ -25,7 +25,7 @@ import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.*;
 import io.datakernel.datagraph.server.command.*;
 import io.datakernel.exception.ParseException;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.StreamJoin.Joiner;
 import io.datakernel.stream.processor.StreamMap.Mapper;
@@ -383,7 +383,7 @@ public final class DatagraphSerialization implements Initializable<DatagraphSeri
 							"nodeIds", DatagraphResponseExecute::getNodeIds, ofList(INT_CODEC))));
 
 	private final Map<Class<?>, StructuredCodec<?>> userDefinedTypes = new HashMap<>();
-	private final Map<Class<?>, BufferSerializer<?>> serializers = new HashMap<>();
+	private final Map<Class<?>, BinarySerializer<?>> serializers = new HashMap<>();
 
 	private DatagraphSerialization() {
 	}
@@ -397,7 +397,7 @@ public final class DatagraphSerialization implements Initializable<DatagraphSeri
 		return this;
 	}
 
-	public <T> DatagraphSerialization withBufferSerializer(Class<T> type, BufferSerializer<T> serializer) {
+	public <T> DatagraphSerialization withBufferSerializer(Class<T> type, BinarySerializer<T> serializer) {
 		this.serializers.put(type, serializer);
 		return this;
 	}
@@ -415,8 +415,8 @@ public final class DatagraphSerialization implements Initializable<DatagraphSeri
 	}
 
 	@SuppressWarnings("unchecked")
-	public synchronized <T> BufferSerializer<T> getSerializer(Class<T> type) {
-		BufferSerializer<T> serializer = (BufferSerializer<T>) serializers.get(type);
+	public synchronized <T> BinarySerializer<T> getSerializer(Class<T> type) {
+		BinarySerializer<T> serializer = (BinarySerializer<T>) serializers.get(type);
 		if (serializer == null) {
 			logger.info("Creating serializer for {}", type);
 			serializer = SerializerBuilder.create(DefiningClassLoader.create(getSystemClassLoader()))

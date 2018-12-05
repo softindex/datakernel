@@ -36,8 +36,8 @@ import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.asm.BufferSerializers.JAVA_UTF8_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Collections.singletonList;
 
@@ -47,7 +47,7 @@ public final class CrdtNodeExample {
 	static class BusinessLogicModule extends AbstractModule {
 		@Provides
 		CrdtDescriptor<String, Integer> provideDescriptor() {
-			return new CrdtDescriptor<>(Math::max, new CrdtDataSerializer<>(JAVA_UTF8_SERIALIZER, INT_SERIALIZER), STRING_CODEC, INT_CODEC);
+			return new CrdtDescriptor<>(Math::max, new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER), STRING_CODEC, INT_CODEC);
 		}
 
 		@Provides

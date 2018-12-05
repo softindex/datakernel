@@ -16,7 +16,6 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.util.Recyclable;
 import io.datakernel.util.Sliceable;
 import io.datakernel.util.Utils;
@@ -358,20 +357,16 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	// region serialization input
 	public int read(byte[] b) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
 		return read(b, 0, b.length);
 	}
 
 	public int read(byte[] b, int off, int len) {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
 		return drainTo(b, off, len);
 	}
 
 	public byte readByte() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		assert readRemaining() >= 1;
-
 		return array[readPosition++];
 	}
 
@@ -381,8 +376,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	public char readChar() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		assert readRemaining() >= 2;
-
 		char c = (char) (((array[readPosition] & 0xFF) << 8) | (array[readPosition + 1] & 0xFF));
 		readPosition += 2;
 		return c;
@@ -390,20 +383,16 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	public double readDouble() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
 		return Double.longBitsToDouble(readLong());
 	}
 
 	public float readFloat() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
 		return Float.intBitsToFloat(readInt());
 	}
 
 	public int readInt() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		assert readRemaining() >= 4;
-
 		int result = ((array[readPosition] & 0xFF) << 24)
 				| ((array[readPosition + 1] & 0xFF) << 16)
 				| ((array[readPosition + 2] & 0xFF) << 8)
@@ -414,33 +403,27 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	public int readVarInt() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
 		int result;
-		assert readRemaining() >= 1;
 		byte b = array[readPosition];
 		if (b >= 0) {
 			result = b;
 			readPosition += 1;
 		} else {
-			assert readRemaining() >= 2;
 			result = b & 0x7f;
 			if ((b = array[readPosition + 1]) >= 0) {
 				result |= b << 7;
 				readPosition += 2;
 			} else {
-				assert readRemaining() >= 3;
 				result |= (b & 0x7f) << 7;
 				if ((b = array[readPosition + 2]) >= 0) {
 					result |= b << 14;
 					readPosition += 3;
 				} else {
-					assert readRemaining() >= 4;
 					result |= (b & 0x7f) << 14;
 					if ((b = array[readPosition + 3]) >= 0) {
 						result |= b << 21;
 						readPosition += 4;
 					} else {
-						assert readRemaining() >= 5;
 						result |= (b & 0x7f) << 21;
 						if ((b = array[readPosition + 4]) >= 0) {
 							result |= b << 28;
@@ -456,8 +439,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	public long readLong() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		assert readRemaining() >= 8;
-
 		long result = ((long) array[readPosition] << 56)
 				| ((long) (array[readPosition + 1] & 0xFF) << 48)
 				| ((long) (array[readPosition + 2] & 0xFF) << 40)
@@ -466,127 +447,20 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 				| ((array[readPosition + 5] & 0xFF) << 16)
 				| ((array[readPosition + 6] & 0xFF) << 8)
 				| (array[readPosition + 7] & 0xFF);
-
 		readPosition += 8;
 		return result;
 	}
 
 	public short readShort() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		assert readRemaining() >= 2;
-
 		short result = (short) (((array[readPosition] & 0xFF) << 8)
 				| (array[readPosition + 1] & 0xFF));
 		readPosition += 2;
 		return result;
 	}
 
-	public String readIso88591() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
-		int length = readVarInt();
-		return doReadIso88591(length);
-	}
-
-	@Nullable
-	public String readIso88591Nullable() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
-		int length = readVarInt();
-		if (length == 0) {
-			return null;
-		}
-		return doReadIso88591(length - 1);
-	}
-
-	private String doReadIso88591(int length) {
-		if (length == 0)
-			return "";
-		if (length > readRemaining())
-			throw new IllegalArgumentException();
-
-		char[] chars = new char[length];
-		for (int i = 0; i < length; i++) {
-			int c = readByte() & 0xff;
-			chars[i] = (char) c;
-		}
-		return new String(chars, 0, length);
-	}
-
-	@Deprecated
-	public String readCustomUTF8() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
-		int length = readVarInt();
-		return doReadCustomUTF8(length);
-	}
-
-	@Nullable
-	@Deprecated
-	public String readCustomUTF8Nullable() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
-		int length = readVarInt();
-		if (length == 0) {
-			return null;
-		}
-		return doReadCustomUTF8(length - 1);
-	}
-
-	@Deprecated
-	private String doReadCustomUTF8(int length) {
-		if (length == 0)
-			return "";
-		if (length > readRemaining())
-			throw new IllegalArgumentException();
-		char[] chars = new char[length];
-		for (int i = 0; i < length; i++) {
-			int c = readByte() & 0xff;
-			if (c < 0x80) {
-				chars[i] = (char) c;
-			} else if (c < 0xE0) {
-				chars[i] = (char) ((c & 0x1F) << 6 | readByte() & 0x3F);
-			} else {
-				chars[i] = (char) ((c & 0x0F) << 12 | (readByte() & 0x3F) << 6 | (readByte() & 0x3F));
-			}
-		}
-		return new String(chars, 0, length);
-	}
-
-	public String readUTF16() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
-		int length = readVarInt();
-		return doReadUTF16(length);
-	}
-
-	@Nullable
-	public String readUTF16Nullable() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
-		int length = readVarInt();
-		if (length == 0) {
-			return null;
-		}
-		return doReadUTF16(length - 1);
-	}
-
-	private String doReadUTF16(int length) {
-		if (length == 0)
-			return "";
-		if (length * 2 > readRemaining())
-			throw new IllegalArgumentException();
-
-		char[] chars = new char[length];
-		for (int i = 0; i < length; i++) {
-			chars[i] = (char) ((readByte() << 8) + readByte());
-		}
-		return new String(chars, 0, length);
-	}
-
 	public long readVarLong() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
 		long result = 0;
 		for (int offset = 0; offset < 64; offset += 7) {
 			byte b = readByte();
@@ -597,25 +471,9 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		throw new IllegalArgumentException();
 	}
 
-	public String readJavaUTF8() {
+	public String readString() {
 		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
 		int length = readVarInt();
-		return doReadJavaUTF8(length);
-	}
-
-	@Nullable
-	public String readJavaUTF8Nullable() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-
-		int length = readVarInt();
-		if (length == 0) {
-			return null;
-		}
-		return doReadJavaUTF8(length - 1);
-	}
-
-	private String doReadJavaUTF8(int length) {
 		if (length == 0)
 			return "";
 		if (length > readRemaining())
@@ -624,89 +482,147 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 		return new String(array, readPosition - length, length, UTF_8);
 	}
+
 	// endregion
 
 	// region serialization output
 	public void write(byte[] b) {
-		writePosition = SerializationUtils.write(array, writePosition, b);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		write(b, 0, b.length);
 	}
 
 	public void write(byte[] b, int off, int len) {
-		writePosition = SerializationUtils.write(array, writePosition, b, off, len);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		System.arraycopy(b, off, array, writePosition, len);
+		writePosition = writePosition + len;
 	}
 
 	public void writeBoolean(boolean v) {
-		writePosition = SerializationUtils.writeBoolean(array, writePosition, v);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		writeByte(v ? (byte) 1 : 0);
 	}
 
 	public void writeByte(byte v) {
-		writePosition = SerializationUtils.writeByte(array, writePosition, v);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		array[writePosition] = v;
+		writePosition = writePosition + 1;
 	}
 
 	public void writeChar(char v) {
-		writePosition = SerializationUtils.writeChar(array, writePosition, v);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		array[writePosition] = (byte) (v >>> 8);
+		array[writePosition] = (byte) v;
+		writePosition = writePosition + 2;
 	}
 
 	public void writeDouble(double v) {
-		writePosition = SerializationUtils.writeDouble(array, writePosition, v);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		writeLong(Double.doubleToLongBits(v));
 	}
 
 	public void writeFloat(float v) {
-		writePosition = SerializationUtils.writeFloat(array, writePosition, v);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		writeInt(Float.floatToIntBits(v));
 	}
 
 	public void writeInt(int v) {
-		writePosition = SerializationUtils.writeInt(array, writePosition, v);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		array[writePosition] = (byte) (v >>> 24);
+		array[writePosition + 1] = (byte) (v >>> 16);
+		array[writePosition + 2] = (byte) (v >>> 8);
+		array[writePosition + 3] = (byte) v;
+		writePosition = writePosition + 4;
 	}
 
 	public void writeLong(long v) {
-		writePosition = SerializationUtils.writeLong(array, writePosition, v);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		int high = (int) (v >>> 32);
+		int low = (int) v;
+		array[writePosition] = (byte) (high >>> 24);
+		array[writePosition + 1] = (byte) (high >>> 16);
+		array[writePosition + 2] = (byte) (high >>> 8);
+		array[writePosition + 3] = (byte) high;
+		array[writePosition + 4] = (byte) (low >>> 24);
+		array[writePosition + 5] = (byte) (low >>> 16);
+		array[writePosition + 6] = (byte) (low >>> 8);
+		array[writePosition + 7] = (byte) low;
+		writePosition = writePosition + 8;
 	}
 
 	public void writeShort(short v) {
-		writePosition = SerializationUtils.writeShort(array, writePosition, v);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		array[writePosition] = (byte) (v >>> 8);
+		array[writePosition + 1] = (byte) v;
+		writePosition = writePosition + 2;
 	}
 
 	public void writeVarInt(int v) {
-		writePosition = SerializationUtils.writeVarInt(array, writePosition, v);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if ((v & ~0x7F) == 0) {
+			array[writePosition] = (byte) v;
+			writePosition += 1;
+			return;
+		}
+		array[writePosition] = (byte) (v | 0x80);
+		v >>>= 7;
+		if ((v & ~0x7F) == 0) {
+			array[writePosition + 1] = (byte) v;
+			writePosition += 2;
+			return;
+		}
+		array[writePosition + 1] = (byte) (v | 0x80);
+		v >>>= 7;
+		if ((v & ~0x7F) == 0) {
+			array[writePosition + 2] = (byte) v;
+			writePosition += 3;
+			return;
+		}
+		array[writePosition + 2] = (byte) (v | 0x80);
+		v >>>= 7;
+		if ((v & ~0x7F) == 0) {
+			array[writePosition + 3] = (byte) v;
+			writePosition += 4;
+			return;
+		}
+		array[writePosition + 3] = (byte) (v | 0x80);
+		v >>>= 7;
+		array[writePosition + 4] = (byte) v;
+		writePosition += 5;
 	}
 
 	public void writeVarLong(long v) {
-		writePosition = SerializationUtils.writeVarLong(array, writePosition, v);
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if ((v & ~0x7F) == 0) {
+			array[writePosition] = (byte) v;
+			writePosition += 1;
+			return;
+		}
+		array[writePosition] = (byte) (v | 0x80);
+		v >>>= 7;
+		if ((v & ~0x7F) == 0) {
+			array[writePosition + 1] = (byte) v;
+			writePosition += 2;
+			return;
+		}
+		array[writePosition + 1] = (byte) (v | 0x80);
+		v >>>= 7;
+		writePosition += 2;
+		for (; ; ) {
+			if ((v & ~0x7FL) == 0) {
+				writeByte((byte) v);
+				return;
+			} else {
+				writeByte((byte) (v | 0x80));
+				v >>>= 7;
+			}
+		}
 	}
 
-	public void writeIso88591(String s) {
-		writePosition = SerializationUtils.writeIso88591(array, writePosition, s);
-	}
-
-	public void writeIso88591Nullable(String s) {
-		writePosition = SerializationUtils.writeIso88591Nullable(array, writePosition, s);
-	}
-
-	public void writeJavaUTF8(String s) {
-		writePosition = SerializationUtils.writeJavaUTF8(array, writePosition, s);
-	}
-
-	public void writeJavaUTF8Nullable(String s) {
-		writePosition = SerializationUtils.writeJavaUTF8Nullable(array, writePosition, s);
-	}
-
-	@Deprecated
-	public void writeCustomUTF8(String s) {
-		writePosition = SerializationUtils.writeCustomUTF8(array, writePosition, s);
-	}
-
-	@Deprecated
-	public void writeCustomUTF8Nullable(String s) {
-		writePosition = SerializationUtils.writeCustomUTF8Nullable(array, writePosition, s);
-	}
-
-	public final void writeUTF16(String s) {
-		writePosition = SerializationUtils.writeUTF16(array, writePosition, s);
-	}
-
-	public final void writeUTF16Nullable(String s) {
-		writePosition = SerializationUtils.writeUTF16Nullable(array, writePosition, s);
+	public void writeString(String s) {
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		byte[] bytes = s.getBytes(UTF_8);
+		writeVarInt(bytes.length);
+		write(bytes);
 	}
 	// endregion
 

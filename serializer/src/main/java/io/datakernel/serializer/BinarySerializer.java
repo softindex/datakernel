@@ -16,27 +16,15 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.serializer.util.BinaryInput;
+import io.datakernel.serializer.util.BinaryOutput;
 
-import java.util.function.Function;
+public interface BinarySerializer<T> {
+	int encode(byte[] array, int pos, T item);
 
-public interface BufferSerializer<T> {
+	void encode(BinaryOutput out, T item);
 
-	void serialize(ByteBuf output, T item);
+	T decode(byte[] array, int pos);
 
-	T deserialize(ByteBuf input);
-
-	default <U> BufferSerializer<U> transform(Function<U, T> from, Function<T, U> into) {
-		return new BufferSerializer<U>() {
-			@Override
-			public void serialize(ByteBuf output, U item) {
-				BufferSerializer.this.serialize(output, from.apply(item));
-			}
-
-			@Override
-			public U deserialize(ByteBuf input) {
-				return into.apply(BufferSerializer.this.deserialize(input));
-			}
-		};
-	}
+	T decode(BinaryInput in);
 }

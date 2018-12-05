@@ -17,9 +17,8 @@
 package io.datakernel.serializer.examples;
 
 import com.carrotsearch.hppc.*;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -31,21 +30,20 @@ public final class SerializerGenHppc7Example {
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
-	private static <T> T doTest(T testData1, BufferSerializer<T> serializer) {
+	private static <T> T doTest(T testData1, BinarySerializer<T> serializer) {
 		byte[] array = new byte[1000];
-		ByteBuf buf = ByteBuf.wrapForWriting(array);
-		serializer.serialize(buf, testData1);
-		return serializer.deserialize(buf);
+		serializer.encode(array, 0, testData1);
+		return serializer.decode(array, 0);
 	}
 
-	private static <T> BufferSerializer<T> getBufferSerializer(Class<T> collectionType) {
+	private static <T> BinarySerializer<T> getBufferSerializer(Class<T> collectionType) {
 		return SerializerBuilderUtils.createWithHppc7Support(DefiningClassLoader.create())
 				.build(collectionType);
 	}
 
 	@Test
 	public void testIntByteMap() {
-		BufferSerializer<IntByteMap> serializer = getBufferSerializer(IntByteMap.class);
+		BinarySerializer<IntByteMap> serializer = getBufferSerializer(IntByteMap.class);
 
 		IntByteMap testMap1 = new IntByteHashMap();
 
@@ -62,7 +60,7 @@ public final class SerializerGenHppc7Example {
 
 	@Test
 	public void testByteSet() {
-		BufferSerializer<ByteSet> serializer = getBufferSerializer(ByteSet.class);
+		BinarySerializer<ByteSet> serializer = getBufferSerializer(ByteSet.class);
 
 		ByteSet test1 = new ByteHashSet();
 		ByteSet test2 = doTest(test1, serializer);
@@ -79,7 +77,7 @@ public final class SerializerGenHppc7Example {
 
 	@Test
 	public void testIntArrayList() {
-		BufferSerializer<IntArrayList> serializer = getBufferSerializer(IntArrayList.class);
+		BinarySerializer<IntArrayList> serializer = getBufferSerializer(IntArrayList.class);
 
 		IntArrayList test1 = new IntArrayList();
 		IntArrayList test2 = doTest(test1, serializer);

@@ -18,16 +18,17 @@ package io.datakernel.serializer;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.asm.Annotations;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.TypedModsMap.Builder;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
 import io.datakernel.serializer.asm.SerializerGen.VersionsCollector;
 import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
+import io.datakernel.serializer.util.BinaryInput;
+import io.datakernel.serializer.util.BinaryOutput;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 import io.datakernel.util.Preconditions;
 
 import java.lang.annotation.Annotation;
@@ -157,7 +158,6 @@ public final class SerializerBuilder {
 		builder.setSerializer(InetAddress.class, new SerializerGenSubclass(InetAddress.class, addressMap, 0));
 
 		builder.setSerializer(ByteBuffer.class, new SerializerGenByteBuffer());
-		builder.setSerializer(ByteBuf.class, new SerializerGenByteBuf(true, false));
 
 		builder.setAnnotationHandler(SerializerClass.class, SerializerClassEx.class, new SerializerClassHandler());
 		builder.setAnnotationHandler(SerializeFixedSize.class, SerializeFixedSizeEx.class, new SerializeFixedSizeHandler());
@@ -170,8 +170,8 @@ public final class SerializerBuilder {
 	}
 
 	private <A extends Annotation, P extends Annotation> SerializerBuilder setAnnotationHandler(Class<A> annotation,
-	                                                                                            Class<P> annotationPlural,
-	                                                                                            AnnotationHandler<A, P> annotationHandler) {
+			Class<P> annotationPlural,
+			AnnotationHandler<A, P> annotationHandler) {
 		annotationsMap.put(annotation, annotationHandler);
 		if (annotationPlural != null)
 			annotationsExMap.put(annotation, annotationPlural);
@@ -263,16 +263,16 @@ public final class SerializerBuilder {
 	 *
 	 * @return {@code SerializerGen} for the given type token
 	 */
-	public <T> BufferSerializer<T> build(Class<T> type) {
+	public <T> BinarySerializer<T> build(Class<T> type) {
 		SerializerForType[] serializerForTypes = new SerializerForType[0];
 		return build(type, serializerForTypes);
 	}
 
-	public <T> BufferSerializer<T> build(SerializerGen serializerGen) {
+	public <T> BinarySerializer<T> build(SerializerGen serializerGen) {
 		return buildBufferSerializer(serializerGen, version);
 	}
 
-	public <T> BufferSerializer<T> build(Class<?> type, SerializerForType[] generics) {
+	public <T> BinarySerializer<T> build(Class<?> type, SerializerForType[] generics) {
 		return buildBufferSerializer(createSerializerGen(type, generics, Collections.emptyList()), version);
 	}
 
@@ -329,7 +329,7 @@ public final class SerializerBuilder {
 	}
 
 	private SerializerGen createSubclassesSerializer(Class<?> type, LinkedHashSet<Class<?>> subclassesSet,
-	                                                 int startIndex) {
+			int startIndex) {
 		checkNotNull(subclassesSet);
 		check(!subclassesSet.isEmpty(), "Set of subclasses should not be empty");
 		LinkedHashMap<Class<?>, SerializerGen> subclasses = new LinkedHashMap<>();
@@ -337,12 +337,10 @@ public final class SerializerBuilder {
 			check(subclass.getTypeParameters().length == 0, "Subclass should have no type parameters");
 			check(type.isAssignableFrom(subclass), "Unrelated subclass '%s' for '%s'", subclass, type);
 
-			SerializerGen serializer = createSerializerGen(
+			subclasses.put(subclass, createSerializerGen(
 					subclass,
 					new SerializerForType[]{},
-					Collections.emptyList()
-			);
-			subclasses.put(subclass, serializer);
+					Collections.emptyList()));
 		}
 		return new SerializerGenSubclass(type, subclasses, startIndex);
 	}
@@ -743,8 +741,8 @@ public final class SerializerBuilder {
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T> BufferSerializer<T> buildBufferSerializer(SerializerGen serializerGen, int serializeVersion) {
-		return (BufferSerializer<T>) createSerializer(serializerGen, serializeVersion);
+	private <T> BinarySerializer<T> buildBufferSerializer(SerializerGen serializerGen, int serializeVersion) {
+		return (BinarySerializer<T>) createSerializer(serializerGen, serializeVersion);
 	}
 
 	/**
@@ -753,7 +751,7 @@ public final class SerializerBuilder {
 	 * @param serializerGen {@code SerializerGen} that describes the type that is to serialize
 	 * @return buffer serializer for the given {@code SerializerGen}
 	 */
-	private <T> BufferSerializer<T> buildBufferSerializer(SerializerGen serializerGen) {
+	private <T> BinarySerializer<T> buildBufferSerializer(SerializerGen serializerGen) {
 		return buildBufferSerializer(serializerGen, Integer.MAX_VALUE);
 	}
 
@@ -849,7 +847,7 @@ public final class SerializerBuilder {
 	}
 
 	synchronized private Object createSerializer(SerializerGen serializerGen, int serializeVersion) {
-		ClassBuilder<BufferSerializer<?>> asmFactory = ClassBuilder.create(definingClassLoader, BufferSerializer.class);
+		ClassBuilder<BinarySerializer<?>> asmFactory = ClassBuilder.create(definingClassLoader, BinarySerializer.class);
 		if (saveBytecodePath != null) {
 			asmFactory.withBytecodeSaveDir(saveBytecodePath);
 		}
@@ -866,74 +864,90 @@ public final class SerializerBuilder {
 		}
 		Collections.sort(versions);
 		Collections.sort(allVersions);
-		Integer currentVersion = getLatestVersion(versions);
-		if (!allVersions.isEmpty() && currentVersion == null)
-			currentVersion = serializeVersion;
-
-		Expression version = voidExp();
-		if (currentVersion != null) {
-			version = call(arg(0), "writeVarInt", value(currentVersion));
-		}
+		Integer currentVersion = !allVersions.isEmpty() && versions.isEmpty() ?
+				Integer.valueOf(serializeVersion) :
+				getLatestVersion(versions);
 
 		StaticMethods staticMethods = new StaticMethods();
 
-		if (currentVersion == null) currentVersion = 0;
-		serializerGen.prepareSerializeStaticMethods(currentVersion, staticMethods, compatibilityLevel);
+		serializerGen.prepareSerializeStaticMethods(currentVersion != null ? currentVersion : 0,
+				staticMethods, compatibilityLevel);
 		for (StaticMethods.Key key : staticMethods.mapSerialize.keySet()) {
 			StaticMethods.Value value = staticMethods.mapSerialize.get(key);
-			asmFactory = asmFactory.withStaticMethod(value.method,
+			asmFactory.withStaticMethod(value.method,
 					int.class,
 					asList(byte[].class, int.class, key.serializerGen.getRawType()),
 					value.expression);
 		}
-		Variable position = let(call(arg(0), "writePosition"));
-		asmFactory = asmFactory.withMethod("serialize", sequence(version,
-						call(arg(0), "writePosition", serializerGen.serialize(
-								call(arg(0), "array"), position,
-								cast(arg(1), dataType), currentVersion, staticMethods, compatibilityLevel)),
-						call(arg(0), "writePosition")
-				)
+		asmFactory.withMethod("encode", int.class, asList(byte[].class, int.class, Object.class),
+				let(currentVersion == null ?
+								arg(1) :
+								callStatic(BinaryOutputUtils.class, "writeVarInt", arg(0), arg(1), value(currentVersion)),
+						pos ->
+								serializerGen.serialize(
+										arg(0),
+										pos,
+										cast(arg(2), dataType),
+										currentVersion != null ? currentVersion : 0, staticMethods, compatibilityLevel))
 		);
 
-		asmFactory = defineDeserialize(serializerGen, asmFactory, allVersions, staticMethods);
+		defineDeserialize(serializerGen, asmFactory, allVersions, staticMethods);
 		for (StaticMethods.Key key : staticMethods.mapDeserialize.keySet()) {
 			StaticMethods.Value value = staticMethods.mapDeserialize.get(key);
-			asmFactory = asmFactory.withStaticMethod(value.method,
+			asmFactory.withStaticMethod(value.method,
 					key.serializerGen.getRawType(),
-					asList(ByteBuf.class),
+					asList(BinaryInput.class),
 					value.expression);
 		}
+
+		asmFactory.withMethod("encode", void.class, asList(BinaryOutput.class, Object.class),
+				let(call(self(), "encode",
+						call(arg(0), "array"),
+						call(arg(0), "pos"),
+						arg(1)),
+						newPos -> call(arg(0), "pos", newPos)));
+
+		asmFactory.withMethod("decode", Object.class, asList(byte[].class, int.class),
+				call(self(), "decode", constructor(BinaryInput.class, arg(0), arg(1))));
 
 		return asmFactory.buildClassAndCreateNewInstance();
 	}
 
-	private ClassBuilder<BufferSerializer<?>> defineDeserialize(SerializerGen serializerGen,
-			ClassBuilder<BufferSerializer<?>> asmFactory,
-	                                                         List<Integer> allVersions,
-	                                                         StaticMethods staticMethods) {
-		asmFactory = defineDeserializeLatest(serializerGen, asmFactory, getLatestVersion(allVersions), staticMethods);
+	private void defineDeserialize(SerializerGen serializerGen,
+			ClassBuilder<BinarySerializer<?>> asmFactory,
+			List<Integer> allVersions,
+			StaticMethods staticMethods) {
+		defineDeserializeLatest(serializerGen, asmFactory, getLatestVersion(allVersions), staticMethods);
 
-		asmFactory = defineDeserializeEarlierVersion(serializerGen, asmFactory, allVersions, staticMethods);
+		defineDeserializeEarlierVersion(serializerGen, asmFactory, allVersions, staticMethods);
 		for (int i = allVersions.size() - 2; i >= 0; i--) {
 			int version = allVersions.get(i);
-			asmFactory = defineDeserializeVersion(serializerGen, asmFactory, version, staticMethods);
+			defineDeserializeVersion(serializerGen, asmFactory, version, staticMethods);
 		}
-		return asmFactory;
 	}
 
-	private ClassBuilder<BufferSerializer<?>> defineDeserializeVersion(SerializerGen serializerGen,
-			ClassBuilder<BufferSerializer<?>> asmFactory,
-	                                                                int version, StaticMethods staticMethods) {
-		return asmFactory.withMethod("deserializeVersion" + version,
-				serializerGen.getRawType(),
-				asList(ByteBuf.class),
-				sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods, compatibilityLevel)));
+	private void defineDeserializeLatest(SerializerGen serializerGen,
+			ClassBuilder<BinarySerializer<?>> asmFactory,
+			Integer latestVersion,
+			StaticMethods staticMethods) {
+		if (latestVersion == null) {
+			serializerGen.prepareDeserializeStaticMethods(0, staticMethods, compatibilityLevel);
+			asmFactory.withMethod("decode", Object.class, asList(BinaryInput.class),
+					serializerGen.deserialize(serializerGen.getRawType(), 0, staticMethods, compatibilityLevel));
+		} else {
+			serializerGen.prepareDeserializeStaticMethods(latestVersion, staticMethods, compatibilityLevel);
+			asmFactory.withMethod("decode", Object.class, asList(BinaryInput.class),
+					let(call(arg(0), "readVarInt"),
+							version -> ifThenElse(cmpEq(version, value(latestVersion)),
+									serializerGen.deserialize(serializerGen.getRawType(), latestVersion, staticMethods, compatibilityLevel),
+									call(self(), "deserializeEarlierVersions", arg(0), version))));
+		}
 	}
 
-	private ClassBuilder<BufferSerializer<?>> defineDeserializeEarlierVersion(SerializerGen serializerGen,
-			ClassBuilder<BufferSerializer<?>> asmFactory,
-	                                                                       List<Integer> allVersions,
-	                                                                       StaticMethods staticMethods) {
+	private void defineDeserializeEarlierVersion(SerializerGen serializerGen,
+			ClassBuilder<BinarySerializer<?>> asmFactory,
+			List<Integer> allVersions,
+			StaticMethods staticMethods) {
 		List<Expression> listKey = new ArrayList<>();
 		List<Expression> listValue = new ArrayList<>();
 		for (int i = allVersions.size() - 2; i >= 0; i--) {
@@ -942,26 +956,17 @@ public final class SerializerBuilder {
 			serializerGen.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 			listValue.add(call(self(), "deserializeVersion" + version, arg(0)));
 		}
-		return asmFactory.withMethod("deserializeEarlierVersions", serializerGen.getRawType(), asList(ByteBuf.class, int.class),
+		asmFactory.withMethod("deserializeEarlierVersions", serializerGen.getRawType(), asList(BinaryInput.class, int.class),
 				switchForKey(arg(1), listKey, listValue));
 	}
 
-	private ClassBuilder<BufferSerializer<?>> defineDeserializeLatest(SerializerGen serializerGen,
-			ClassBuilder<BufferSerializer<?>> asmFactory,
-	                                                               Integer latestVersion,
-	                                                               StaticMethods staticMethods) {
-		if (latestVersion == null) {
-			serializerGen.prepareDeserializeStaticMethods(0, staticMethods, compatibilityLevel);
-			return asmFactory
-					.withMethod("deserialize", serializerGen.deserialize(
-							serializerGen.getRawType(), 0, staticMethods, compatibilityLevel));
-		} else {
-			serializerGen.prepareDeserializeStaticMethods(latestVersion, staticMethods, compatibilityLevel);
-			Expression version = let(call(arg(0), "readVarInt"));
-			return asmFactory.withMethod("deserialize", sequence(version, ifThenElse(cmpEq(version, value(latestVersion)),
-					serializerGen.deserialize(serializerGen.getRawType(), latestVersion, staticMethods, compatibilityLevel),
-					call(self(), "deserializeEarlierVersions", arg(0), version))));
-		}
+	private void defineDeserializeVersion(SerializerGen serializerGen,
+			ClassBuilder<BinarySerializer<?>> asmFactory,
+			int version, StaticMethods staticMethods) {
+		asmFactory.withMethod("deserializeVersion" + version,
+				serializerGen.getRawType(),
+				asList(BinaryInput.class),
+				sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods, compatibilityLevel)));
 	}
 
 	@Nullable

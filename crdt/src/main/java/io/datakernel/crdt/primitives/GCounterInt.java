@@ -16,13 +16,15 @@
 
 package io.datakernel.crdt.primitives;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.AbstractBinarySerializer;
+import io.datakernel.serializer.BinarySerializer;
+import io.datakernel.serializer.util.BinaryInput;
+import io.datakernel.serializer.util.BinaryOutput;
 
 import static java.lang.Math.max;
 
 public final class GCounterInt {
-	public static final BufferSerializer<GCounterInt> SERIALIZER = new Serializer();
+	public static final BinarySerializer<GCounterInt> SERIALIZER = new Serializer();
 
 	private final int[] state;
 
@@ -60,21 +62,21 @@ public final class GCounterInt {
 		return Integer.toString(value());
 	}
 
-	private static class Serializer implements BufferSerializer<GCounterInt> {
+	private static class Serializer extends AbstractBinarySerializer<GCounterInt> {
 		@Override
-		public void serialize(ByteBuf output, GCounterInt item) {
+		public void encode(BinaryOutput out, GCounterInt item) {
 			int[] state = item.state;
-			output.writeVarInt(state.length);
+			out.writeVarInt(state.length);
 			for (int c : state) {
-				output.writeInt(c);
+				out.writeInt(c);
 			}
 		}
 
 		@Override
-		public GCounterInt deserialize(ByteBuf input) {
-			int[] state = new int[input.readVarInt()];
+		public GCounterInt decode(BinaryInput in) {
+			int[] state = new int[in.readVarInt()];
 			for (int i = 0; i < state.length; i++) {
-				state[i] = input.readInt();
+				state[i] = in.readInt();
 			}
 			return new GCounterInt(state);
 		}

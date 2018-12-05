@@ -35,7 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.stream.TestStreamConsumers.*;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static io.datakernel.test.TestUtils.assertComplete;

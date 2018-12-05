@@ -74,7 +74,7 @@ public final class BinaryStructuredOutput implements StructuredOutput {
 	@Override
 	public void writeString(String value) {
 		buf = ByteBufPool.ensureWriteRemaining(buf, 5 + value.length() * 5);
-		buf.writeJavaUTF8(value);
+		buf.writeString(value);
 	}
 
 	@Override

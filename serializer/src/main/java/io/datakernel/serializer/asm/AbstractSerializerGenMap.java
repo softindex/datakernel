@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionParameter;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.util.function.Function;
 
@@ -79,7 +79,7 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 	@Override
 	public final Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = length(value);
-		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
+		Expression writeLength = set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
 		Expression forEach = mapForEach(value,
 				k -> set(off, keySerializer.serialize(byteArray, off, cast(k, keySerializer.getRawType()), version, staticMethods, compatibilityLevel)),
 				v -> set(off, valueSerializer.serialize(byteArray, off, cast(v, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel)));
@@ -88,7 +88,7 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 			return sequence(writeLength, forEach, off);
 		} else {
 			return ifThenElse(isNull(value),
-					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+					sequence(set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0))), off),
 					sequence(writeLength, forEach, off));
 		}
 	}

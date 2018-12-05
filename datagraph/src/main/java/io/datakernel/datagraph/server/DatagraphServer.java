@@ -20,7 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
-import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.datagraph.graph.StreamId;
@@ -33,7 +33,7 @@ import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.util.MemSize;
 
@@ -115,9 +115,9 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	public <T> StreamConsumer<T> upload(StreamId streamId, Class<T> type) {
-		BufferSerializer<T> serializer = environment.getInstance(DatagraphSerialization.class).getSerializer(type);
+		BinarySerializer<T> serializer = environment.getInstance(DatagraphSerialization.class).getSerializer(type);
 
-		ChannelBinarySerializer<T> streamSerializer = ChannelBinarySerializer.create(serializer)
+		ChannelSerializer<T> streamSerializer = ChannelSerializer.create(serializer)
 				.withInitialBufferSize(MemSize.kilobytes(256))
 				.withAutoFlushInterval(Duration.ofSeconds(1));
 

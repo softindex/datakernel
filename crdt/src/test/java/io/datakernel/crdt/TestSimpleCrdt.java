@@ -28,8 +28,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.asm.BufferSerializers.JAVA_UTF8_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.junit.Assert.assertEquals;
@@ -49,10 +49,10 @@ public final class TestSimpleCrdt {
 		remoteStorage.put("only_remote", 35);
 		remoteStorage.put("only_remote", 4);
 
-		server = CrdtServer.create(getCurrentEventloop(), remoteStorage, JAVA_UTF8_SERIALIZER, INT_SERIALIZER);
+		server = CrdtServer.create(getCurrentEventloop(), remoteStorage, UTF8_SERIALIZER, INT_SERIALIZER);
 		server.withListenAddress(new InetSocketAddress(8080)).listen();
 
-		client = RemoteCrdtClient.create(getCurrentEventloop(), new InetSocketAddress(8080), JAVA_UTF8_SERIALIZER, INT_SERIALIZER);
+		client = RemoteCrdtClient.create(getCurrentEventloop(), new InetSocketAddress(8080), UTF8_SERIALIZER, INT_SERIALIZER);
 	}
 
 	@Test

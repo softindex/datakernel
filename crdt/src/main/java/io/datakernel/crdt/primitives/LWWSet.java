@@ -16,8 +16,10 @@
 
 package io.datakernel.crdt.primitives;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.AbstractBinarySerializer;
+import io.datakernel.serializer.BinarySerializer;
+import io.datakernel.serializer.util.BinaryInput;
+import io.datakernel.serializer.util.BinaryOutput;
 import io.datakernel.time.CurrentTimeProvider;
 
 import java.util.*;
@@ -182,30 +184,30 @@ public final class LWWSet<E> implements Set<E> {
 		}
 	}
 
-	public static class Serializer<T> implements BufferSerializer<LWWSet<T>> {
-		private final BufferSerializer<T> valueSerializer;
+	public static class Serializer<T> extends AbstractBinarySerializer<LWWSet<T>> {
+		private final BinarySerializer<T> valueSerializer;
 
-		public Serializer(BufferSerializer<T> valueSerializer) {
+		public Serializer(BinarySerializer<T> valueSerializer) {
 			this.valueSerializer = valueSerializer;
 		}
 
 		@Override
-		public void serialize(ByteBuf output, LWWSet<T> item) {
-			output.writeVarInt(item.set.size());
+		public void encode(BinaryOutput out, LWWSet<T> item) {
+			out.writeVarInt(item.set.size());
 			for (Map.Entry<T, Timestamps> entry : item.set.entrySet()) {
-				valueSerializer.serialize(output, entry.getKey());
+				valueSerializer.encode(out, entry.getKey());
 				Timestamps timestamps = entry.getValue();
-				output.writeLong(timestamps.added);
-				output.writeLong(timestamps.removed);
+				out.writeLong(timestamps.added);
+				out.writeLong(timestamps.removed);
 			}
 		}
 
 		@Override
-		public LWWSet<T> deserialize(ByteBuf input) {
-			int size = input.readVarInt();
+		public LWWSet<T> decode(BinaryInput in) {
+			int size = in.readVarInt();
 			Map<T, Timestamps> set = new HashMap<>(size);
 			for (int i = 0; i < size; i++) {
-				set.put(valueSerializer.deserialize(input), new Timestamps(input.readLong(), input.readLong()));
+				set.put(valueSerializer.decode(in), new Timestamps(in.readLong(), in.readLong()));
 			}
 			return new LWWSet<>(set);
 		}

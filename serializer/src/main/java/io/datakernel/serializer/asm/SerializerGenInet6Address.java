@@ -16,12 +16,12 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.net.Inet6Address;
 
@@ -52,7 +52,7 @@ public class SerializerGenInet6Address implements SerializerGen {
 
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializationUtils.class, "write", byteArray, off, call(cast(value, getRawType()), "getAddress"));
+		return callStatic(BinaryOutputUtils.class, "write", byteArray, off, call(cast(value, getRawType()), "getAddress"));
 	}
 
 	@Override

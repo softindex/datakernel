@@ -16,11 +16,11 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import static io.datakernel.codegen.Expressions.*;
 
@@ -32,7 +32,7 @@ public final class SerializerGenChar extends SerializerGenPrimitive {
 
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializationUtils.class, "writeChar", byteArray, off, cast(value, char.class));
+		return callStatic(BinaryOutputUtils.class, "writeChar", byteArray, off, cast(value, char.class));
 	}
 
 	@Override

@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.crdt.local.FsCrdtClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
+import io.datakernel.serializer.util.BinarySerializers;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
@@ -34,7 +35,7 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
-import static io.datakernel.serializer.asm.BufferSerializers.*;
+import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.util.CollectionUtils.set;
 
@@ -58,7 +59,8 @@ public final class TestCrdtLocalFileConsolidation {
 
 	@Test
 	public void test() {
-		FsCrdtClient<String, Set<Integer>> client = FsCrdtClient.create(Eventloop.getCurrentEventloop(), fsClient, this::union, JAVA_UTF8_SERIALIZER, ofSet(INT_SERIALIZER));
+		FsCrdtClient<String, Set<Integer>> client = FsCrdtClient.create(Eventloop.getCurrentEventloop(), fsClient, this::union,
+				BinarySerializers.UTF8_SERIALIZER, BinarySerializers.ofSet(INT_SERIALIZER));
 
 		Promise.complete()
 				.thenCompose($ -> StreamSupplier.ofStream(Stream.of(

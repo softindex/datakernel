@@ -54,8 +54,8 @@ import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.http.HttpMethod.PUT;
-import static io.datakernel.serializer.asm.BufferSerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.asm.BufferSerializers.JAVA_UTF8_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -71,7 +71,7 @@ public final class CrdtClusterTest {
 	static class BusinessLogicModule extends AbstractModule {
 		@Provides
 		CrdtDescriptor<String, Integer> provideDescriptor() {
-			return new CrdtDescriptor<>(Math::max, new CrdtDataSerializer<>(JAVA_UTF8_SERIALIZER, INT_SERIALIZER), STRING_CODEC, INT_CODEC);
+			return new CrdtDescriptor<>(Math::max, new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER), STRING_CODEC, INT_CODEC);
 		}
 
 		@Provides
@@ -170,7 +170,7 @@ public final class CrdtClusterTest {
 					@Provides
 					@Singleton
 					CrdtDescriptor<String, Integer> provideDescriptor() {
-						return new CrdtDescriptor<>(Math::max, new CrdtDataSerializer<>(JAVA_UTF8_SERIALIZER, INT_SERIALIZER), STRING_CODEC, INT_CODEC);
+						return new CrdtDescriptor<>(Math::max, new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER), STRING_CODEC, INT_CODEC);
 					}
 				});
 			}
@@ -205,7 +205,7 @@ public final class CrdtClusterTest {
 
 	@Test
 	public void uploadWithStreams() {
-		RemoteCrdtClient<String, Integer> client = RemoteCrdtClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress("localhost", 9000), JAVA_UTF8_SERIALIZER, INT_SERIALIZER);
+		RemoteCrdtClient<String, Integer> client = RemoteCrdtClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress("localhost", 9000), UTF8_SERIALIZER, INT_SERIALIZER);
 
 		PromiseStats uploadStat = PromiseStats.create(Duration.ofSeconds(5));
 
@@ -220,7 +220,7 @@ public final class CrdtClusterTest {
 
 	@Test
 	public void downloadStuff() {
-		RemoteCrdtClient<String, Integer> client = RemoteCrdtClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress(9001), JAVA_UTF8_SERIALIZER, INT_SERIALIZER);
+		RemoteCrdtClient<String, Integer> client = RemoteCrdtClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress(9001), UTF8_SERIALIZER, INT_SERIALIZER);
 
 		client.download()
 				.getStream()

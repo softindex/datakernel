@@ -19,7 +19,8 @@ package io.datakernel.crdt;
 import io.datakernel.crdt.local.RuntimeCrdtClient;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
+import io.datakernel.serializer.util.BinarySerializers;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -31,13 +32,14 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.function.BinaryOperator;
 
-import static io.datakernel.serializer.asm.BufferSerializers.*;
+import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Collections.singleton;
 
 @RunWith(DatakernelRunner.class)
 public final class TestCrdtCluster {
-	private static final BufferSerializer<Set<Integer>> INT_SET_SERIALIZER = ofSet(INT_SERIALIZER);
+	private static final BinarySerializer<Set<Integer>> INT_SET_SERIALIZER = BinarySerializers.ofSet(INT_SERIALIZER);
 
 	@Test
 	public void testUpload() throws IOException {
@@ -49,10 +51,10 @@ public final class TestCrdtCluster {
 		for (int i = 0; i < 10; i++) {
 			RuntimeCrdtClient<String, Integer> storage = RuntimeCrdtClient.create(eventloop, Math::max);
 			InetSocketAddress address = new InetSocketAddress(8080 + i);
-			CrdtServer<String, Integer> server = CrdtServer.create(eventloop, storage, JAVA_UTF8_SERIALIZER, INT_SERIALIZER);
+			CrdtServer<String, Integer> server = CrdtServer.create(eventloop, storage, UTF8_SERIALIZER, INT_SERIALIZER);
 			server.withListenAddresses(address).listen();
 			servers.add(server);
-			clients.put("server_" + i, RemoteCrdtClient.create(eventloop, address, JAVA_UTF8_SERIALIZER, INT_SERIALIZER));
+			clients.put("server_" + i, RemoteCrdtClient.create(eventloop, address, UTF8_SERIALIZER, INT_SERIALIZER));
 			remoteStorages.put("server_" + i, storage);
 		}
 
@@ -92,10 +94,10 @@ public final class TestCrdtCluster {
 			storage.put("test_3", new HashSet<>(singleton(123)));
 
 			InetSocketAddress address = new InetSocketAddress(8080 + i);
-			CrdtServer<String, Set<Integer>> server = CrdtServer.create(eventloop, storage, JAVA_UTF8_SERIALIZER, INT_SET_SERIALIZER);
+			CrdtServer<String, Set<Integer>> server = CrdtServer.create(eventloop, storage, UTF8_SERIALIZER, INT_SET_SERIALIZER);
 			server.withListenAddresses(address).listen();
 			servers.add(server);
-			clients.put("server_" + i, RemoteCrdtClient.create(eventloop, address, JAVA_UTF8_SERIALIZER, INT_SET_SERIALIZER));
+			clients.put("server_" + i, RemoteCrdtClient.create(eventloop, address, UTF8_SERIALIZER, INT_SET_SERIALIZER));
 			remoteStorages.put("server_" + i, storage);
 		}
 

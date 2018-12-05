@@ -18,8 +18,8 @@ package io.datakernel.csp.net;
 
 import io.datakernel.async.Promise;
 import io.datakernel.csp.binary.ByteBufSerializer;
-import io.datakernel.csp.process.ChannelBinaryDeserializer;
-import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelDeserializer;
+import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.stream.StreamSupplier;
@@ -34,7 +34,7 @@ import java.util.stream.LongStream;
 
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
-import static io.datakernel.serializer.asm.BufferSerializers.LONG_SERIALIZER;
+import static io.datakernel.serializer.util.BinarySerializers.LONG_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
@@ -90,19 +90,20 @@ public final class MessagingWithBinaryStreamingTest {
 	public void testMessagingDownload() throws Exception {
 		List<Long> source = LongStream.range(0, 100).boxed().collect(toList());
 
-		SimpleServer.create(socket -> {
-			MessagingWithBinaryStreaming<String, String> messaging =
-					MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
+		SimpleServer.create(
+				socket -> {
+					MessagingWithBinaryStreaming<String, String> messaging =
+							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
 
-			messaging.receive()
-					.thenCompose(msg -> {
-						assertEquals("start", msg);
-						return StreamSupplier.ofIterable(source)
-								.transformWith(ChannelBinarySerializer.create(LONG_SERIALIZER)
-										.withInitialBufferSize(MemSize.of(1)))
-								.streamTo(messaging.sendBinaryStream());
-					});
-		})
+					messaging.receive()
+							.thenCompose(msg -> {
+								assertEquals("start", msg);
+								return StreamSupplier.ofIterable(source)
+										.transformWith(ChannelSerializer.create(LONG_SERIALIZER)
+												.withInitialBufferSize(MemSize.of(1)))
+										.streamTo(messaging.sendBinaryStream());
+							});
+				})
 				.withListenPort(LISTEN_PORT)
 				.withAcceptOnce()
 				.listen();
@@ -115,7 +116,7 @@ public final class MessagingWithBinaryStreamingTest {
 					return messaging.send("start")
 							.thenCompose($ -> messaging.sendEndOfStream())
 							.thenCompose($ -> messaging.receiveBinaryStream()
-									.transformWith(ChannelBinaryDeserializer.create(LONG_SERIALIZER))
+									.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
 									.toList());
 				})
 				.whenComplete(assertComplete(list -> assertEquals(source, list)));
@@ -128,20 +129,21 @@ public final class MessagingWithBinaryStreamingTest {
 		ByteBufSerializer<String, String> serializer =
 				ByteBufSerializer.ofJsonCodec(STRING_CODEC, STRING_CODEC);
 
-		SimpleServer.create(socket -> {
-			MessagingWithBinaryStreaming<String, String> messaging =
-					MessagingWithBinaryStreaming.create(socket, serializer);
+		SimpleServer.create(
+				socket -> {
+					MessagingWithBinaryStreaming<String, String> messaging =
+							MessagingWithBinaryStreaming.create(socket, serializer);
 
-			messaging.receive()
-					.whenResult(msg -> assertEquals("start", msg))
-					.thenCompose($ ->
-							messaging.receiveBinaryStream()
-									.transformWith(ChannelBinaryDeserializer.create(LONG_SERIALIZER))
-									.toList()
-									.thenCompose(list ->
-											messaging.sendEndOfStream().thenApply($2 -> list)))
-					.whenComplete(assertComplete(list -> assertEquals(source, list)));
-		})
+					messaging.receive()
+							.whenResult(msg -> assertEquals("start", msg))
+							.thenCompose($ ->
+									messaging.receiveBinaryStream()
+											.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
+											.toList()
+											.thenCompose(list ->
+													messaging.sendEndOfStream().thenApply($2 -> list)))
+							.whenComplete(assertComplete(list -> assertEquals(source, list)));
+				})
 				.withListenPort(LISTEN_PORT)
 				.withAcceptOnce()
 				.listen();
@@ -154,7 +156,7 @@ public final class MessagingWithBinaryStreamingTest {
 					messaging.send("start");
 
 					StreamSupplier.ofIterable(source)
-							.transformWith(ChannelBinarySerializer.create(LONG_SERIALIZER)
+							.transformWith(ChannelSerializer.create(LONG_SERIALIZER)
 									.withInitialBufferSize(MemSize.of(1)))
 							.streamTo(messaging.sendBinaryStream());
 				});
@@ -167,21 +169,22 @@ public final class MessagingWithBinaryStreamingTest {
 		ByteBufSerializer<String, String> serializer =
 				ByteBufSerializer.ofJsonCodec(STRING_CODEC, STRING_CODEC);
 
-		SimpleServer.create(socket -> {
-			MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
+		SimpleServer.create(
+				socket -> {
+					MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 
-			messaging.receive()
-					.whenResult(msg -> assertEquals("start", msg))
-					.thenCompose(msg ->
-							messaging.receiveBinaryStream()
-									.transformWith(ChannelBinaryDeserializer.create(LONG_SERIALIZER))
-									.toList()
-									.thenCompose(list ->
-											messaging.send("ack")
-													.thenCompose($ -> messaging.sendEndOfStream())
-													.thenApply($ -> list)))
-					.whenComplete(assertComplete(list -> assertEquals(source, list)));
-		})
+					messaging.receive()
+							.whenResult(msg -> assertEquals("start", msg))
+							.thenCompose(msg ->
+									messaging.receiveBinaryStream()
+											.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
+											.toList()
+											.thenCompose(list ->
+													messaging.send("ack")
+															.thenCompose($ -> messaging.sendEndOfStream())
+															.thenApply($ -> list)))
+							.whenComplete(assertComplete(list -> assertEquals(source, list)));
+				})
 				.withListenPort(LISTEN_PORT)
 				.withAcceptOnce()
 				.listen();
@@ -193,7 +196,7 @@ public final class MessagingWithBinaryStreamingTest {
 
 					return messaging.send("start")
 							.thenCompose($ -> StreamSupplier.ofIterable(source)
-									.transformWith(ChannelBinarySerializer.create(LONG_SERIALIZER)
+									.transformWith(ChannelSerializer.create(LONG_SERIALIZER)
 											.withInitialBufferSize(MemSize.of(1)))
 									.streamTo(messaging.sendBinaryStream()))
 							.thenCompose($ -> messaging.receive())
@@ -206,19 +209,20 @@ public final class MessagingWithBinaryStreamingTest {
 	public void testGsonMessagingUpload() throws Exception {
 		List<Long> source = LongStream.range(0, 100).boxed().collect(toList());
 
-		SimpleServer.create(socket -> {
-			MessagingWithBinaryStreaming<String, String> messaging =
-					MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
+		SimpleServer.create(
+				socket -> {
+					MessagingWithBinaryStreaming<String, String> messaging =
+							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
 
-			messaging.receive()
-					.whenResult(msg -> assertEquals("start", msg))
-					.thenCompose(msg -> messaging.sendEndOfStream())
-					.thenCompose(msg ->
-							messaging.receiveBinaryStream()
-									.transformWith(ChannelBinaryDeserializer.create(LONG_SERIALIZER))
-									.toList())
-					.whenComplete(assertComplete(list -> assertEquals(source, list)));
-		})
+					messaging.receive()
+							.whenResult(msg -> assertEquals("start", msg))
+							.thenCompose(msg -> messaging.sendEndOfStream())
+							.thenCompose(msg ->
+									messaging.receiveBinaryStream()
+											.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
+											.toList())
+							.whenComplete(assertComplete(list -> assertEquals(source, list)));
+				})
 				.withListenPort(LISTEN_PORT)
 				.withAcceptOnce()
 				.listen();
@@ -231,7 +235,7 @@ public final class MessagingWithBinaryStreamingTest {
 					messaging.send("start");
 
 					StreamSupplier.ofIterable(source)
-							.transformWith(ChannelBinarySerializer.create(LONG_SERIALIZER)
+							.transformWith(ChannelSerializer.create(LONG_SERIALIZER)
 									.withInitialBufferSize(MemSize.of(1)))
 							.streamTo(messaging.sendBinaryStream());
 				});

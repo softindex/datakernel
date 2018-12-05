@@ -16,12 +16,12 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.StringFormat;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -96,24 +96,24 @@ public class SerializerGenString implements SerializerGen {
 
 		if (format == StringFormat.UTF16) {
 			if (nullable)
-				list.add(callStatic(SerializationUtils.class, "writeUTF16Nullable", byteArray, off, expression));
+				list.add(callStatic(BinaryOutputUtils.class, "writeUTF16Nullable", byteArray, off, expression));
 			else
-				list.add(callStatic(SerializationUtils.class, "writeUTF16", byteArray, off, expression));
+				list.add(callStatic(BinaryOutputUtils.class, "writeUTF16", byteArray, off, expression));
 		} else if (format == StringFormat.ISO_8859_1 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				list.add(callStatic(SerializationUtils.class, "writeIso88591Nullable", byteArray, off, expression));
+				list.add(callStatic(BinaryOutputUtils.class, "writeIso88591Nullable", byteArray, off, expression));
 			else
-				list.add(callStatic(SerializationUtils.class, "writeIso88591", byteArray, off, expression));
+				list.add(callStatic(BinaryOutputUtils.class, "writeIso88591", byteArray, off, expression));
 		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				list.add(callStatic(SerializationUtils.class, "writeJavaUTF8Nullable", byteArray, off, expression));
+				list.add(callStatic(BinaryOutputUtils.class, "writeUTF8Nullable", byteArray, off, expression));
 			else
-				list.add(callStatic(SerializationUtils.class, "writeJavaUTF8", byteArray, off, expression));
+				list.add(callStatic(BinaryOutputUtils.class, "writeUTF8", byteArray, off, expression));
 		} else {
 			if (nullable)
-				list.add(callStatic(SerializationUtils.class, "writeCustomUTF8Nullable", byteArray, off, expression));
+				list.add(callStatic(BinaryOutputUtils.class, "writeUTF8mb3Nullable", byteArray, off, expression));
 			else
-				list.add(callStatic(SerializationUtils.class, "writeCustomUTF8", byteArray, off, expression));
+				list.add(callStatic(BinaryOutputUtils.class, "writeUTF8mb3", byteArray, off, expression));
 		}
 
 		return sequence(list);
@@ -139,14 +139,14 @@ public class SerializerGenString implements SerializerGen {
 				return call(arg(0), "readIso88591");
 		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				return call(arg(0), "readJavaUTF8Nullable");
+				return call(arg(0), "readUTF8Nullable");
 			else
-				return call(arg(0), "readJavaUTF8");
+				return call(arg(0), "readUTF8");
 		} else {
 			if (nullable)
-				return call(arg(0), "readCustomUTF8Nullable");
+				return call(arg(0), "readUTF8mb3Nullable");
 			else
-				return call(arg(0), "readCustomUTF8");
+				return call(arg(0), "readUTF8mb3");
 		}
 	}
 

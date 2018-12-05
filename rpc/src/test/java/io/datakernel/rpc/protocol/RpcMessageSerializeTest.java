@@ -16,8 +16,7 @@
 
 package io.datakernel.rpc.protocol;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -66,14 +65,13 @@ public final class RpcMessageSerializeTest {
 	public void testRpcMessage() {
 		TestRpcMessageData messageData1 = new TestRpcMessageData("TestMessageData");
 		RpcMessage message1 = RpcMessage.of(1, messageData1);
-		BufferSerializer<RpcMessage> serializer = SerializerBuilder.create(getSystemClassLoader())
+		BinarySerializer<RpcMessage> serializer = SerializerBuilder.create(getSystemClassLoader())
 				.withSubclasses(RpcMessage.MESSAGE_TYPES, TestRpcMessageData.class, TestRpcMessageData2.class)
 				.build(RpcMessage.class);
 
-		ByteBuf buf = ByteBuf.wrapForWriting(new byte[1000]);
-		serializer.serialize(buf, message1);
-
-		RpcMessage message2 = serializer.deserialize(buf);
+		byte[] buf = new byte[1000];
+		serializer.encode(buf, 0, message1);
+		RpcMessage message2 = serializer.decode(buf, 0);
 		assertEquals(message1.getCookie(), message2.getCookie());
 		assertTrue(message2.getData() instanceof TestRpcMessageData);
 		TestRpcMessageData messageData2 = (TestRpcMessageData) message2.getData();

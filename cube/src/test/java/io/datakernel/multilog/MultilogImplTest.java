@@ -2,7 +2,7 @@ package io.datakernel.multilog;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.serializer.asm.BufferSerializers;
+import io.datakernel.serializer.util.BinarySerializers;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -38,7 +38,7 @@ public class MultilogImplTest {
 	public void testConsumer() throws ExecutionException, InterruptedException {
 		Multilog<String> multilog = MultilogImpl.create(eventloop,
 				LocalFsClient.create(eventloop, newSingleThreadExecutor(), temporaryFolder.getRoot().toPath()),
-				BufferSerializers.UTF16_SERIALIZER,
+				BinarySerializers.UTF8_SERIALIZER,
 				NAME_PARTITION_REMAINDER_SEQ);
 		String testPartition = "testPartition";
 

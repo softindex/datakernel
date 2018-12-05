@@ -20,16 +20,16 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.csp.process.ChannelBinaryDeserializer;
-import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelDeserializer;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
+import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.StreamSupplierWithResult;
@@ -59,7 +59,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 	private final Eventloop eventloop;
 	private final FsClient client;
 	private final LogNamingScheme namingScheme;
-	private final BufferSerializer<T> serializer;
+	private final BinarySerializer<T> serializer;
 
 	private MemSize bufferSize = DEFAULT_BUFFER_SIZE;
 	private Duration autoFlushInterval = null;
@@ -70,7 +70,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 	private final StreamStatsDetailed<ByteBuf> streamReadStats = StreamStats.detailed(forByteBufs());
 	private final StreamStatsDetailed<ByteBuf> streamWriteStats = StreamStats.detailed(forByteBufs());
 
-	private MultilogImpl(Eventloop eventloop, FsClient client, BufferSerializer<T> serializer,
+	private MultilogImpl(Eventloop eventloop, FsClient client, BinarySerializer<T> serializer,
 			LogNamingScheme namingScheme) {
 		this.eventloop = eventloop;
 		this.client = client;
@@ -79,7 +79,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 	}
 
 	public static <T> MultilogImpl<T> create(Eventloop eventloop, FsClient client,
-			BufferSerializer<T> serializer, LogNamingScheme namingScheme) {
+			BinarySerializer<T> serializer, LogNamingScheme namingScheme) {
 		return new MultilogImpl<>(eventloop, client, serializer, namingScheme);
 	}
 
@@ -104,7 +104,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 
 		return Promise.of(StreamConsumer.<T>ofSupplier(
 				supplier -> supplier
-						.transformWith(ChannelBinarySerializer.create(serializer)
+						.transformWith(ChannelSerializer.create(serializer)
 								.withAutoFlushInterval(autoFlushInterval)
 								.withInitialBufferSize(bufferSize)
 								.withSkipSerializationErrors())
@@ -190,7 +190,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 															eos.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
 																	Promise.complete() :
 																	Promise.ofException(e))))
-											.transformWith(ChannelBinaryDeserializer.create(serializer))
+											.transformWith(ChannelDeserializer.create(serializer))
 											.withEndOfStream(eos ->
 													eos.whenComplete(($, e) -> log(e)))
 											.withLateBinding();

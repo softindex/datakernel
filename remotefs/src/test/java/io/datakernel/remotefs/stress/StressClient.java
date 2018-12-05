@@ -19,10 +19,10 @@ package io.datakernel.remotefs.stress;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
-import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamSupplier;
@@ -184,7 +184,7 @@ class StressClient {
 
 	void uploadSerializedObject(int i) throws UnknownHostException {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		BufferSerializer<TestObject> bufferSerializer = SerializerBuilder
+		BinarySerializer<TestObject> binarySerializer = SerializerBuilder
 				.create(classLoader)
 				.build(TestObject.class);
 
@@ -193,8 +193,8 @@ class StressClient {
 		obj.ip = InetAddress.getLocalHost();
 
 		StreamSupplier<TestObject> supplier = StreamSupplier.ofIterable(Collections.singletonList(obj));
-		ChannelBinarySerializer<TestObject> serializer = ChannelBinarySerializer.create(bufferSerializer)
-				.withInitialBufferSize(ChannelBinarySerializer.MAX_SIZE);
+		ChannelSerializer<TestObject> serializer = ChannelSerializer.create(binarySerializer)
+				.withInitialBufferSize(ChannelSerializer.MAX_SIZE);
 
 //		supplier.with(serializer).streamTo(
 //				client.uploadStream("someName" + i));

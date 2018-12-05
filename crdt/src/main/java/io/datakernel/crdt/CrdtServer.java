@@ -18,13 +18,13 @@ package io.datakernel.crdt;
 
 import io.datakernel.async.Promise;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
-import io.datakernel.csp.process.ChannelBinaryDeserializer;
-import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelDeserializer;
+import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 
 import java.net.InetAddress;
 
@@ -34,7 +34,7 @@ import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer<CrdtServer<K, S>> {
 	private final CrdtClient<K, S> client;
 	private final CrdtDataSerializer<K, S> serializer;
-	private final BufferSerializer<K> keySerializer;
+	private final BinarySerializer<K> keySerializer;
 
 	private CrdtServer(Eventloop eventloop, CrdtClient<K, S> client, CrdtDataSerializer<K, S> serializer) {
 		super(eventloop);
@@ -50,7 +50,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 	}
 
 	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtClient<K, S> client,
-			BufferSerializer<K> keySerializer, BufferSerializer<S> stateSerializer) {
+			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new CrdtServer<>(eventloop, client, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 
@@ -65,7 +65,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 					}
 					if (msg == CrdtMessages.UPLOAD) {
 						return messaging.receiveBinaryStream()
-								.transformWith(ChannelBinaryDeserializer.create(serializer))
+								.transformWith(ChannelDeserializer.create(serializer))
 								.streamTo(client.uploader())
 								.thenCompose($ -> messaging.send(CrdtResponses.UPLOAD_FINISHED))
 								.thenCompose($ -> messaging.sendEndOfStream())
@@ -74,7 +74,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 					}
 					if (msg == CrdtMessages.REMOVE) {
 						return messaging.receiveBinaryStream()
-								.transformWith(ChannelBinaryDeserializer.create(keySerializer))
+								.transformWith(ChannelDeserializer.create(keySerializer))
 								.streamTo(client.remover())
 								.thenCompose($ -> messaging.send(CrdtResponses.REMOVE_FINISHED))
 								.thenCompose($ -> messaging.sendEndOfStream())
@@ -86,7 +86,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 								.thenCompose(token -> messaging.send(new DownloadToken(token)))
 								.thenCompose($ -> download.getStreamPromise())
 								.thenCompose(producer ->
-										producer.transformWith(ChannelBinarySerializer.create(serializer))
+										producer.transformWith(ChannelSerializer.create(serializer))
 												.streamTo(messaging.sendBinaryStream()));
 					}
 					return Promise.ofException(new StacklessException(CrdtServer.class, "Message type was added, but no handling code for it"));

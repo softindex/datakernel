@@ -28,7 +28,7 @@ import io.datakernel.multilog.Multilog;
 import io.datakernel.multilog.MultilogImpl;
 import io.datakernel.ot.*;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
@@ -79,7 +79,7 @@ public class CubeMeasureRemovalTest {
 	private DefiningClassLoader classLoader;
 	private DataSource dataSource;
 	private AggregationChunkStorage<Long> aggregationChunkStorage;
-	private BufferSerializer<LogItem> serializer;
+	private BinarySerializer<LogItem> serializer;
 	private Multilog<LogItem> multilog;
 
 	@Before

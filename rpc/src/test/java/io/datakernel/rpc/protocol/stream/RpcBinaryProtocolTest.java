@@ -18,15 +18,15 @@ package io.datakernel.rpc.protocol.stream;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.csp.process.ChannelBinaryDeserializer;
-import io.datakernel.csp.process.ChannelBinarySerializer;
+import io.datakernel.csp.process.ChannelDeserializer;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
+import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -78,7 +78,7 @@ public final class RpcBinaryProtocolTest {
 
 	@Test
 	public void testCompression() {
-		BufferSerializer<RpcMessage> bufferSerializer = SerializerBuilder.create(getSystemClassLoader())
+		BinarySerializer<RpcMessage> binarySerializer = SerializerBuilder.create(getSystemClassLoader())
 				.withSubclasses(RpcMessage.MESSAGE_TYPES, String.class)
 				.build(RpcMessage.class);
 
@@ -88,12 +88,12 @@ public final class RpcBinaryProtocolTest {
 		List<RpcMessage> sourceList = IntStream.range(0, countRequests).mapToObj(i -> RpcMessage.of(i, testMessage)).collect(toList());
 
 		StreamSupplier.ofIterable(sourceList)
-				.transformWith(ChannelBinarySerializer.create(bufferSerializer)
+				.transformWith(ChannelSerializer.create(binarySerializer)
 						.withInitialBufferSize(MemSize.of(1))
 						.withMaxMessageSize(MemSize.of(64)))
 				.transformWith(ChannelLZ4Compressor.createFastCompressor())
 				.transformWith(ChannelLZ4Decompressor.create())
-				.transformWith(ChannelBinaryDeserializer.create(bufferSerializer))
+				.transformWith(ChannelDeserializer.create(binarySerializer))
 				.toList()
 				.whenComplete(assertComplete(list -> {
 					assertEquals(countRequests, list.size());

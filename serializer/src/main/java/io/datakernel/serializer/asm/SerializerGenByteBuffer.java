@@ -16,12 +16,12 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.nio.ByteBuffer;
 
@@ -70,14 +70,14 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 		Expression array = call(value, "array");
 		Expression position = call(value, "position");
 		Expression remaining = let(call(value, "remaining"));
-		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? remaining : inc(remaining))));
-		Expression write = sequence(writeLength, callStatic(SerializationUtils.class, "write", byteArray, off, array, position, remaining));
+		Expression writeLength = set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, (!nullable ? remaining : inc(remaining))));
+		Expression write = sequence(writeLength, callStatic(BinaryOutputUtils.class, "write", byteArray, off, array, position, remaining));
 
 		if (!nullable) {
 			return write;
 		} else {
 			return ifThenElse(isNull(value),
-					callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0)),
+					callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0)),
 					write);
 		}
 	}
@@ -102,9 +102,9 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 						sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array)));
 			}
 		} else {
-			Expression inputBuffer = call(arg(0), "array");
-			Expression position = let(call(arg(0), "readPosition"));
-			Expression setPosition = call(arg(0), "readPosition", add(position, (!nullable ? length : dec(length))));
+			Expression inputBuffer = property(arg(0), "array");
+			Expression position = let(call(arg(0), "pos"));
+			Expression setPosition = call(arg(0), "pos", add(position, (!nullable ? length : dec(length))));
 
 			if (!nullable) {
 				return sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, length));

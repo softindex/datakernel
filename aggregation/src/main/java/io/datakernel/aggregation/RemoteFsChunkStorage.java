@@ -47,7 +47,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
+import static io.datakernel.aggregation.AggregationUtils.createBinarySerializer;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.toLimitedString;
@@ -157,8 +157,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 						.transformWith(readFile)
 						.transformWith(ChannelLZ4Decompressor.create())
 						.transformWith(readDecompress)
-						.transformWith(ChannelBinaryDeserializer.create(
-								createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader)))
+						.transformWith(ChannelDeserializer.create(
+								createBinarySerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader)))
 						.transformWith((StreamStats<T>) (detailed ? readDeserializeDetailed : readDeserialize))
 						.withLateBinding());
 	}
@@ -173,8 +173,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 				.thenApply(consumer -> StreamConsumer.ofSupplier(
 						supplier -> supplier
 								.transformWith((StreamStats<T>) (detailed ? writeSerializeDetailed : writeSerialize))
-								.transformWith(ChannelBinarySerializer.create(
-										createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader))
+								.transformWith(ChannelSerializer.create(
+										createBinarySerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader))
 										.withInitialBufferSize(bufferSize))
 								.transformWith(writeCompress)
 								.transformWith(ChannelLZ4Compressor.createFastCompressor())

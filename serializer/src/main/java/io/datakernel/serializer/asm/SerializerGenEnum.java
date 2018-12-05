@@ -16,12 +16,12 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -64,16 +64,16 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 		if (isSmallEnum()) {
 			ordinal = cast(ordinal, Type.BYTE_TYPE);
 			return !nullable ?
-					callStatic(SerializationUtils.class, "writeByte", byteArray, off, ordinal) :
+					callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, ordinal) :
 					ifThenElse(isNull(value),
-							callStatic(SerializationUtils.class, "writeByte", byteArray, off, value((byte) 0)),
-							callStatic(SerializationUtils.class, "writeByte", byteArray, off, cast(add(ordinal, value((byte) 1)), Type.BYTE_TYPE)));
+							callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, value((byte) 0)),
+							callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, cast(add(ordinal, value((byte) 1)), Type.BYTE_TYPE)));
 		}
 		return !nullable ?
-				callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, ordinal) :
+				callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, ordinal) :
 				ifThenElse(isNull(value),
-						callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0)),
-						callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, inc(ordinal)));
+						callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0)),
+						callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, inc(ordinal)));
 	}
 
 	@Override

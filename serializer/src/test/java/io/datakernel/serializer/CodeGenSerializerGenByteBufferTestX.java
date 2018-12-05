@@ -16,7 +16,6 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
@@ -26,15 +25,15 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-public class CodeGenSerializerGenByteBufferTest {
+public class CodeGenSerializerGenByteBufferTestX {
 
-	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
+	private static <T> T doTest(T testData1, BinarySerializer<T> serializer, BinarySerializer<T> deserializer) {
 		byte[] array = new byte[1000];
-		ByteBuf buf = ByteBuf.wrapForWriting(array);
-		serializer.serialize(buf, testData1);
-		return deserializer.deserialize(buf);
+		serializer.encode(array, 0, testData1);
+		return deserializer.decode(array, 0);
 	}
 
 	@Test
@@ -45,7 +44,7 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array);
 
-		BufferSerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
+		BinarySerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
 				.build(ByteBuffer.class);
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
@@ -62,7 +61,7 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array);
 
-		BufferSerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
+		BinarySerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
 				.withSerializer(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(true)))
 				.build(ByteBuffer.class);
@@ -81,24 +80,17 @@ public class CodeGenSerializerGenByteBufferTest {
 			array[i] = (byte) i;
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array, 10, 100);
-		ByteBuffer testBuffer2 = ByteBuffer.wrap(array, 110, 100);
 
-		BufferSerializer<ByteBuffer> serializer = SerializerBuilder
+		BinarySerializer<ByteBuffer> serializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
 				.build(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
-		ByteBuf buf = ByteBuf.wrapForWriting(buffer);
-		serializer.serialize(buf, testBuffer1);
-		serializer.serialize(buf, testBuffer2);
-
-		ByteBuffer testBuffer3 = serializer.deserialize(buf);
-		ByteBuffer testBuffer4 = serializer.deserialize(buf);
+		serializer.encode(buffer, 0, testBuffer1);
+		ByteBuffer testBuffer3 = serializer.decode(buffer, 0);
 
 		assertNotNull(testBuffer3);
-		assertNotNull(testBuffer4);
 		assertEquals(testBuffer1, testBuffer3);
-		assertEquals(testBuffer2, testBuffer4);
 
 		int position = testBuffer3.position();
 		assertEquals(10, testBuffer3.get(position));
@@ -114,25 +106,18 @@ public class CodeGenSerializerGenByteBufferTest {
 			array[i] = (byte) i;
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array, 10, 100);
-		ByteBuffer testBuffer2 = ByteBuffer.wrap(array, 110, 100);
 
-		BufferSerializer<ByteBuffer> serializer = SerializerBuilder
+		BinarySerializer<ByteBuffer> serializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
 				.withSerializer(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(true)))
 				.build(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
-		ByteBuf buf = ByteBuf.wrapForWriting(buffer);
-		serializer.serialize(buf, testBuffer1);
-		serializer.serialize(buf, testBuffer2);
-
-		ByteBuffer testBuffer3 = serializer.deserialize(buf);
-		ByteBuffer testBuffer4 = serializer.deserialize(buf);
+		serializer.encode(buffer, 0, testBuffer1);
+		ByteBuffer testBuffer3 = serializer.decode(buffer, 0);
 
 		assertNotNull(testBuffer3);
-		assertNotNull(testBuffer4);
 		assertEquals(testBuffer1, testBuffer3);
-		assertEquals(testBuffer2, testBuffer4);
 
 		int position = testBuffer3.position();
 		assertEquals(10, testBuffer3.get(position));
@@ -166,31 +151,18 @@ public class CodeGenSerializerGenByteBufferTest {
 			array[i] = (byte) i;
 
 		TestByteBufferData testBuffer1 = new TestByteBufferData(ByteBuffer.wrap(array, 10, 2));
-		TestByteBufferData testBuffer0 = new TestByteBufferData(null);
-		TestByteBufferData testBuffer2 = new TestByteBufferData(ByteBuffer.wrap(array, 110, 3));
 
-		BufferSerializer<TestByteBufferData> serializer = SerializerBuilder
+		BinarySerializer<TestByteBufferData> serializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
 				.build(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
-		ByteBuf buf = ByteBuf.wrapForWriting(buffer);
-		serializer.serialize(buf, testBuffer1);
-		serializer.serialize(buf, testBuffer0);
-		serializer.serialize(buf, testBuffer2);
-
-		TestByteBufferData testBuffer3 = serializer.deserialize(buf);
-		TestByteBufferData testBuffer00 = serializer.deserialize(buf);
-		TestByteBufferData testBuffer4 = serializer.deserialize(buf);
+		serializer.encode(buffer, 0, testBuffer1);
+		TestByteBufferData testBuffer3 = serializer.decode(buffer, 0);
 
 		assertNotNull(testBuffer3);
-		assertNotNull(testBuffer00);
-		assertNotNull(testBuffer4);
 		assertNotNull(testBuffer3.getBuffer());
 		assertEquals(testBuffer1.getBuffer(), testBuffer3.getBuffer());
-		assertNull(testBuffer00.getBuffer());
-		assertNotNull(testBuffer4.getBuffer());
-		assertEquals(testBuffer2.getBuffer(), testBuffer4.getBuffer());
 	}
 
 	@Test
@@ -201,32 +173,19 @@ public class CodeGenSerializerGenByteBufferTest {
 			array[i] = (byte) i;
 
 		TestByteBufferData testBuffer1 = new TestByteBufferData(ByteBuffer.wrap(array, 10, 100));
-		TestByteBufferData testBuffer0 = new TestByteBufferData(null);
-		TestByteBufferData testBuffer2 = new TestByteBufferData(ByteBuffer.wrap(array, 110, 100));
 
-		BufferSerializer<TestByteBufferData> serializer = SerializerBuilder
+		BinarySerializer<TestByteBufferData> serializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
 				.withSerializer(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(true)))
 				.build(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
-		ByteBuf buf = ByteBuf.wrapForWriting(buffer);
-		serializer.serialize(buf, testBuffer1);
-		serializer.serialize(buf, testBuffer0);
-		serializer.serialize(buf, testBuffer2);
-
-		TestByteBufferData testBuffer3 = serializer.deserialize(buf);
-		TestByteBufferData testBuffer00 = serializer.deserialize(buf);
-		TestByteBufferData testBuffer4 = serializer.deserialize(buf);
+		serializer.encode(buffer, 0, testBuffer1);
+		TestByteBufferData testBuffer3 = serializer.decode(buffer, 0);
 
 		assertNotNull(testBuffer3);
-		assertNotNull(testBuffer00);
-		assertNotNull(testBuffer4);
 		assertNotNull(testBuffer3.getBuffer());
 		assertEquals(testBuffer1.getBuffer(), testBuffer3.getBuffer());
-		assertNull(testBuffer00.getBuffer());
-		assertNotNull(testBuffer4.getBuffer());
-		assertEquals(testBuffer2.getBuffer(), testBuffer4.getBuffer());
 	}
 
 }

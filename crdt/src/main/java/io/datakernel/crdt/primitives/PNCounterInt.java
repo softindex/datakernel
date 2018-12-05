@@ -16,11 +16,13 @@
 
 package io.datakernel.crdt.primitives;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.AbstractBinarySerializer;
+import io.datakernel.serializer.BinarySerializer;
+import io.datakernel.serializer.util.BinaryInput;
+import io.datakernel.serializer.util.BinaryOutput;
 
 public final class PNCounterInt {
-	public static final BufferSerializer<PNCounterInt> SERIALIZER = new Serializer();
+	public static final BinarySerializer<PNCounterInt> SERIALIZER = new Serializer();
 
 	private final GCounterInt p;
 	private final GCounterInt n;
@@ -56,16 +58,16 @@ public final class PNCounterInt {
 		return Integer.toString(value());
 	}
 
-	private static class Serializer implements BufferSerializer<PNCounterInt> {
+	private static class Serializer extends AbstractBinarySerializer<PNCounterInt> {
 		@Override
-		public void serialize(ByteBuf output, PNCounterInt item) {
-			GCounterInt.SERIALIZER.serialize(output, item.p);
-			GCounterInt.SERIALIZER.serialize(output, item.n);
+		public void encode(BinaryOutput out, PNCounterInt item) {
+			GCounterInt.SERIALIZER.encode(out, item.p);
+			GCounterInt.SERIALIZER.encode(out, item.n);
 		}
 
 		@Override
-		public PNCounterInt deserialize(ByteBuf input) {
-			return new PNCounterInt(GCounterInt.SERIALIZER.deserialize(input), GCounterInt.SERIALIZER.deserialize(input));
+		public PNCounterInt decode(BinaryInput in) {
+			return new PNCounterInt(GCounterInt.SERIALIZER.decode(in), GCounterInt.SERIALIZER.decode(in));
 		}
 	}
 }

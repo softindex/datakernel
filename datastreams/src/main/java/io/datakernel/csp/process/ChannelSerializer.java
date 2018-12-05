@@ -22,7 +22,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
 import io.datakernel.util.MemSize;
@@ -35,8 +35,8 @@ import java.util.ArrayDeque;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Math.max;
 
-public final class ChannelBinarySerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelBinarySerializer<T>, T, ByteBuf> {
-	private static final Logger logger = LoggerFactory.getLogger(ChannelBinarySerializer.class);
+public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelSerializer<T>, T, ByteBuf> {
+	private static final Logger logger = LoggerFactory.getLogger(ChannelSerializer.class);
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
 
@@ -45,7 +45,7 @@ public final class ChannelBinarySerializer<T> extends AbstractStreamConsumer<T> 
 	public static final MemSize MAX_SIZE_3 = MemSize.megabytes(2); // (1 << (3 * 7))
 	public static final MemSize MAX_SIZE = MAX_SIZE_3;
 
-	private final BufferSerializer<T> serializer;
+	private final BinarySerializer<T> serializer;
 	private MemSize initialBufferSize = DEFAULT_INITIAL_BUFFER_SIZE;
 	private MemSize maxMessageSize = MAX_SIZE;
 	@Nullable
@@ -59,7 +59,7 @@ public final class ChannelBinarySerializer<T> extends AbstractStreamConsumer<T> 
 	private boolean flushing;
 
 	// region creators
-	private ChannelBinarySerializer(BufferSerializer<T> serializer) {
+	private ChannelSerializer(BinarySerializer<T> serializer) {
 		this.serializer = serializer;
 		rebuild();
 	}
@@ -74,33 +74,33 @@ public final class ChannelBinarySerializer<T> extends AbstractStreamConsumer<T> 
 	 *
 	 * @param serializer specified BufferSerializer for this type
 	 */
-	public static <T> ChannelBinarySerializer<T> create(BufferSerializer<T> serializer) {
-		return new ChannelBinarySerializer<>(serializer);
+	public static <T> ChannelSerializer<T> create(BinarySerializer<T> serializer) {
+		return new ChannelSerializer<>(serializer);
 	}
 
-	public ChannelBinarySerializer<T> withInitialBufferSize(MemSize bufferSize) {
+	public ChannelSerializer<T> withInitialBufferSize(MemSize bufferSize) {
 		this.initialBufferSize = bufferSize;
 		rebuild();
 		return this;
 	}
 
-	public ChannelBinarySerializer<T> withMaxMessageSize(MemSize maxMessageSize) {
+	public ChannelSerializer<T> withMaxMessageSize(MemSize maxMessageSize) {
 		this.maxMessageSize = maxMessageSize;
 		rebuild();
 		return this;
 	}
 
-	public ChannelBinarySerializer<T> withAutoFlushInterval(@Nullable Duration autoFlushInterval) {
+	public ChannelSerializer<T> withAutoFlushInterval(@Nullable Duration autoFlushInterval) {
 		this.autoFlushInterval = autoFlushInterval;
 		rebuild();
 		return this;
 	}
 
-	public ChannelBinarySerializer<T> withSkipSerializationErrors() {
+	public ChannelSerializer<T> withSkipSerializationErrors() {
 		return withSkipSerializationErrors(true);
 	}
 
-	public ChannelBinarySerializer<T> withSkipSerializationErrors(boolean skipSerializationErrors) {
+	public ChannelSerializer<T> withSkipSerializationErrors(boolean skipSerializationErrors) {
 		this.skipSerializationErrors = skipSerializationErrors;
 		rebuild();
 		return this;
@@ -158,7 +158,7 @@ public final class ChannelBinarySerializer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	private final class Input implements StreamDataAcceptor<T> {
-		private final BufferSerializer<T> serializer;
+		private final BinarySerializer<T> serializer;
 
 		private ByteBuf buf = ByteBuf.empty();
 		private int estimatedMessageSize;
@@ -171,7 +171,7 @@ public final class ChannelBinarySerializer<T> extends AbstractStreamConsumer<T> 
 		private boolean flushPosted;
 		private final boolean skipSerializationErrors;
 
-		public Input(BufferSerializer<T> serializer, int initialBufferSize, int maxMessageSize, @Nullable Duration autoFlushInterval, boolean skipSerializationErrors) {
+		public Input(BinarySerializer<T> serializer, int initialBufferSize, int maxMessageSize, @Nullable Duration autoFlushInterval, boolean skipSerializationErrors) {
 			this.skipSerializationErrors = skipSerializationErrors;
 			this.serializer = checkNotNull(serializer);
 			this.maxMessageSize = maxMessageSize;
@@ -199,7 +199,7 @@ public final class ChannelBinarySerializer<T> extends AbstractStreamConsumer<T> 
 				positionItem = positionBegin + headerSize;
 				buf.writePosition(positionItem);
 				try {
-					serializer.serialize(buf, item);
+					buf.writePosition(serializer.encode(buf.array(), buf.writePosition(), item));
 				} catch (ArrayIndexOutOfBoundsException e) {
 					onUnderEstimate(positionBegin);
 					continue;

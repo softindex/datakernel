@@ -102,7 +102,7 @@ public final class BinaryStructuredInput implements StructuredInput {
 	@Override
 	public String readString() throws ParseException {
 		try {
-			return buf.readJavaUTF8();
+			return buf.readString();
 		} catch (Exception e) {
 			throw new ParseException(e);
 		}

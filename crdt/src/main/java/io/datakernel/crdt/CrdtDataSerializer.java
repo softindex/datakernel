@@ -16,34 +16,36 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.AbstractBinarySerializer;
+import io.datakernel.serializer.BinarySerializer;
+import io.datakernel.serializer.util.BinaryInput;
+import io.datakernel.serializer.util.BinaryOutput;
 
-public final class CrdtDataSerializer<K extends Comparable<K>, S> implements BufferSerializer<CrdtData<K, S>> {
-	private final BufferSerializer<K> keySerializer;
-	private final BufferSerializer<S> stateSerializer;
+public final class CrdtDataSerializer<K extends Comparable<K>, S> extends AbstractBinarySerializer<CrdtData<K,S>> {
+	private final BinarySerializer<K> keySerializer;
+	private final BinarySerializer<S> stateSerializer;
 
-	public CrdtDataSerializer(BufferSerializer<K> keySerializer, BufferSerializer<S> stateSerializer) {
+	public CrdtDataSerializer(BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		this.keySerializer = keySerializer;
 		this.stateSerializer = stateSerializer;
 	}
 
-	public BufferSerializer<K> getKeySerializer() {
+	public BinarySerializer<K> getKeySerializer() {
 		return keySerializer;
 	}
 
-	public BufferSerializer<S> getStateSerializer() {
+	public BinarySerializer<S> getStateSerializer() {
 		return stateSerializer;
 	}
 
 	@Override
-	public void serialize(ByteBuf output, CrdtData<K, S> item) {
-		keySerializer.serialize(output, item.getKey());
-		stateSerializer.serialize(output, item.getState());
+	public void encode(BinaryOutput out, CrdtData<K, S> item) {
+		keySerializer.encode(out, item.getKey());
+		stateSerializer.encode(out, item.getState());
 	}
 
 	@Override
-	public CrdtData<K, S> deserialize(ByteBuf input) {
-		return new CrdtData<>(keySerializer.deserialize(input), stateSerializer.deserialize(input));
+	public CrdtData<K, S> decode(BinaryInput in) {
+		return new CrdtData<>(keySerializer.decode(in), stateSerializer.decode(in));
 	}
 }

@@ -27,7 +27,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.*;
@@ -289,7 +289,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	private <T> StreamSupplier<T> sortStream(StreamSupplier<T> unsortedStream, Class<T> resultClass,
 			List<String> allKeys, List<String> measures, DefiningClassLoader classLoader) {
 		Comparator<T> keyComparator = createKeyComparator(resultClass, allKeys, classLoader);
-		BufferSerializer<T> bufferSerializer = createBufferSerializer(structure, resultClass,
+		BinarySerializer<T> binarySerializer = createBinarySerializer(structure, resultClass,
 				getKeys(), measures, classLoader);
 		if (temporarySortDir == null) {
 			try {
@@ -300,7 +300,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		}
 		return unsortedStream
 				.transformWith(StreamSorter.create(
-						StreamSorterStorageImpl.create(executorService, bufferSerializer, temporarySortDir),
+						StreamSorterStorageImpl.create(executorService, binarySerializer, temporarySortDir),
 						Function.identity(), keyComparator, false, sorterItemsInMemory));
 	}
 

@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -84,9 +84,9 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 				value(fixedSize) :
 				length(castedValue);
 
-		Expression writeBytes = callStatic(SerializationUtils.class, "write", byteArray, off, castedValue);
-		Expression writeZero = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0)));
-		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
+		Expression writeBytes = callStatic(BinaryOutputUtils.class, "write", byteArray, off, castedValue);
+		Expression writeZero = set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0)));
+		Expression writeLength = set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
 		Expression expressionFor = expressionFor(value(0), length,
 				it -> set(off, valueSerializer.serialize(byteArray, off, getArrayItem(castedValue, it), version, staticMethods, compatibilityLevel)));
 
