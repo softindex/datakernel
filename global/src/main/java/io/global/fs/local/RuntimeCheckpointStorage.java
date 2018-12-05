@@ -54,4 +54,10 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 		}
 		return Promise.complete();
 	}
+
+	@Override
+	public Promise<Void> drop(String filename) {
+		storage.remove(filename);
+		return Promise.complete();
+	}
 }

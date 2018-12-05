@@ -118,5 +118,10 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					return Promise.of(Arrays.stream(array).limit(size).sorted().toArray());
 				});
 	}
+
+	@Override
+	public Promise<Void> drop(String filename) {
+		return storage.delete(filename);
+	}
 }
 

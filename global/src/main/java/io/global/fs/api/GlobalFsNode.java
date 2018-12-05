@@ -36,7 +36,6 @@ public interface GlobalFsNode {
 	StacklessException RECURSIVE_UPLOAD_ERROR = new StacklessException(GlobalFsNode.class, "Trying to upload a file to a server that also tries to upload this file.");
 	StacklessException FETCH_DID_NOTHING = new StacklessException(GlobalFsNode.class, "Did not fetch anything from given node.");
 	StacklessException CANT_VERIFY_METADATA = new StacklessException(GlobalFsNode.class, "Failed to verify signature of the metadata.");
-	StacklessException FILE_NOT_FOUND = new StacklessException(GlobalFsNode.class, "Did not found the requested file on given node.");
 
 	Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset);
 

@@ -21,6 +21,8 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
 import io.global.common.Hash;
 
+import java.util.Objects;
+
 public final class GlobalFsMetadata implements Comparable<GlobalFsMetadata> {
 	private final String filename;
 	private final long size;
@@ -110,7 +112,7 @@ public final class GlobalFsMetadata implements Comparable<GlobalFsMetadata> {
 		return size == metadata.size &&
 				revision == metadata.revision &&
 				filename.equals(metadata.filename) &&
-				(simKeyHash != null ? simKeyHash.equals(metadata.simKeyHash) : metadata.simKeyHash == null);
+				Objects.equals(simKeyHash, metadata.simKeyHash);
 	}
 
 	@Override

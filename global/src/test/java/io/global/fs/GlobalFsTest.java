@@ -22,12 +22,10 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.processor.ByteBufRule.IgnoreLeaks;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.LoggingRule;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -42,7 +40,9 @@ import io.global.fs.http.HttpGlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.LocalGlobalFsNode;
 import io.global.fs.transformers.FrameSigner;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.spongycastle.crypto.digests.SHA256Digest;
@@ -53,15 +53,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
+import static io.global.common.TestUtils.await;
+import static io.global.common.TestUtils.awaitException;
 import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.fs.api.CheckpointPosStrategy.fixed;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
 
@@ -99,8 +101,7 @@ public final class GlobalFsTest {
 		clientFactory = new NodeFactory<GlobalFsNode>() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
-				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverId.getServerIdString().split(":")[1]))
-						.withManagedPubKeys(set(alice.getPubKey(), bob.getPubKey()));
+				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverId.getServerIdString().split(":")[1]));
 			}
 		};
 
@@ -228,16 +229,6 @@ public final class GlobalFsTest {
 	}
 
 	@Test
-	public void bbt() {
-		String first = "Hello world, this is some bytes";
-
-		announce(alice, set(firstId))
-				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(ChannelSupplier.of(wrapUtf8(first))::streamTo)
-				.whenComplete(assertComplete());
-	}
-
-	@Test
 	public void append() {
 		String first = "Hello world, this is some bytes ";
 		String second = "to be sent through the GlobalFs HTTP interface";
@@ -258,32 +249,28 @@ public final class GlobalFsTest {
 	public void downloadFromOther() {
 		String string = "hello, this is a test little string of bytes";
 
-		RawServerId serverId = new RawServerId("localhost:432");
-		GlobalFsNode other = LocalGlobalFsNode.create(serverId, discoveryService, clientFactory,
-				storage.subfolder("server_" + serverId.getServerIdString().split(":")[1]));
-		GlobalFsDriver otherDriver = GlobalFsDriver.create(other, discoveryService, singletonList(alice), fixed(7));
-		FsClient otherClient = otherDriver.gatewayFor(alice.getPubKey());
-
-		announce(alice, set(firstId, secondId))
+		announce(alice, set(firstId))
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
 				.thenCompose(ChannelSupplier.of(wrapUtf8(string))::streamTo)
-				.thenCompose($ -> otherClient.download("test.txt"))
+				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(string, res.asString(UTF_8))));
 	}
 
 	@Test
-	@LoggingRule.Enable
 	public void fetch() {
-		String string = "hello, this is a test little string of bytes";
-		announce(alice, set(firstId, secondId))
-				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(ChannelSupplier.of(wrapUtf8(string))::streamTo)
-				.thenCompose($ -> rawSecondClient.fetch())
-				.whenComplete(assertComplete(Assert::assertTrue))
-				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(res -> System.out.println(res.asString(UTF_8))));
+		String data = "hello, this is a test little string of bytes";
+
+		await(announce(alice, set(firstId, secondId)));
+		await(ChannelSupplier.of(wrapUtf8(data)).streamTo(await(firstAliceAdapter.upload("test.txt"))));
+
+		// because we straight up call fetch here, there is no way for it to know that it is a master for alice
+		rawSecondClient.withManagedPubKeys(set(alice.getPubKey()));
+
+		await(rawSecondClient.catchUp());
+
+		String res = await(await(secondAliceAdapter.download("test.txt")).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals(data, res);
 	}
 
 	@Test
@@ -295,8 +282,7 @@ public final class GlobalFsTest {
 				.thenCompose(ChannelSupplier.of(wrapUtf8(part))::streamTo)
 				.thenCompose($ -> firstAliceAdapter.upload("test.txt", 0))
 				.thenCompose(ChannelSupplier.of(wrapUtf8(string))::streamTo)
-				.thenCompose($ -> rawSecondClient.fetch())
-				.whenComplete(assertComplete(res -> assertTrue("Fetch did nothing", res)))
+				.thenCompose($ -> rawSecondClient.catchUp())
 				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
 				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(res -> assertEquals(string, res.asString(UTF_8))));
@@ -310,39 +296,70 @@ public final class GlobalFsTest {
 
 		firstDriver.getPrivateKeyStorage().changeCurrentSimKey(key1);
 
+		String filename = "test.txt";
 		String data = "some plain ASCII data to be uploaded and encrypted";
 
-		firstAliceAdapter.upload("test.txt")
-				.thenCompose(ChannelSupplier.of(wrapUtf8(data))::streamTo)
-				.thenCompose($ -> firstAliceAdapter.download("test.txt", 12, 32))
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(res -> assertEquals(data.substring(12, 12 + 32), res.asString(UTF_8))))
-				.whenResult($ -> {
-					firstDriver.getPrivateKeyStorage().forget(Hash.sha1(key1.getBytes()));
-					firstDriver.getPrivateKeyStorage().changeCurrentSimKey(key2);
-				})
-				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertFailure(StacklessException.class, e -> assertSame(NO_SHARED_KEY, e)))
-				.thenComposeEx(($, e) -> discoveryService.shareKey(alice.getPubKey(),
-						SignedData.sign(REGISTRY.get(SharedSimKey.class), SharedSimKey.of(key1, alice.getPubKey()), alice.getPrivKey())))
-				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(res -> assertEquals(data, res.asString(UTF_8))));
+		// upload on first
+		await(ChannelSupplier.of(wrapUtf8(data)).streamTo(await(firstAliceAdapter.upload(filename))));
+
+		// and download back
+		String res = await(await(firstAliceAdapter.download(filename, 12, 32)).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+
+		// check that encryption-decryption worked
+		assertEquals(data.substring(12, 12 + 32), res);
+
+		// pretend we try to download "someone else's" file
+		firstDriver.getPrivateKeyStorage().forget(Hash.sha1(key1.getBytes()));
+		firstDriver.getPrivateKeyStorage().changeCurrentSimKey(key2);
+		assertSame(NO_SHARED_KEY, awaitException(firstAliceAdapter.download(filename)));
+
+		// share "someone else's" file key with outselves
+		await(discoveryService.shareKey(alice.getPubKey(),
+				SignedData.sign(REGISTRY.get(SharedSimKey.class), SharedSimKey.of(key1, alice.getPubKey()), alice.getPrivKey())));
+
+		// and now we can download
+		res = await(await(firstAliceAdapter.download(filename)).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+
+		// and decryption works
+		assertEquals(data, res);
 	}
 
 	@Test
-	@Ignore("does not work yet for some reason")
-	@LoggingRule.Enable("io.global")
-	public void uploadWhenOldCache() {
-		announce(alice, set(secondId))
-				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(ChannelSupplier.of(wrapUtf8("some string of bytes to test"))::streamTo)
-				.thenCompose($ -> secondAliceAdapter.deleteBulk("test.txt"))
-				.thenCompose($ -> rawFirstClient.fetch())
-				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(ChannelSupplier.of(wrapUtf8("another string of bytes to test"))::streamTo)
-				.whenComplete(assertComplete());
+	public void fetchDeletions() {
+		String filename = "test.txt";
+
+		await(announce(alice, set(firstId, secondId)));
+
+		// uploading one string of bytes to first node
+		await(ChannelSupplier.of(wrapUtf8("some string of bytes to test")).streamTo(await(firstAliceAdapter.upload(filename))));
+
+		// deleting the file on second node
+		await(secondAliceAdapter.delete(filename));
+
+		// fetch on
+		await(rawFirstClient.catchUp());
+
+		await(ChannelSupplier.of(wrapUtf8("another string of bytes to test")).streamTo(await(firstAliceAdapter.upload(filename))));
+	}
+
+	@Test
+	public void cacheUpdate() {
+		String data = "some string of bytes to test";
+
+		await(announce(alice, set(firstId)));
+
+		// upload to first
+		await(ChannelSupplier.of(wrapUtf8(data)).streamTo(await(firstAliceAdapter.upload("test.txt"))));
+
+		// download and cache on second
+		String res = await(await(secondAliceAdapter.download("test.txt")).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals(data, res);
+
+		// delete on first
+		await(firstAliceAdapter.delete("test.txt"));
+
+		// second should check the actual metadata when trying to download
+		assertSame(FILE_NOT_FOUND, awaitException(secondAliceAdapter.download("test.txt")));
 	}
 
 	private GlobalFsNode wrapWithHttpInterface(GlobalFsNode node) {
@@ -353,6 +370,6 @@ public final class GlobalFsTest {
 			} catch (ParseException e) {
 				throw new AssertionError(e);
 			}
-		}, "http://127.0.0.1:3333/");
+		}, "http://127.0.0.1:3333");
 	}
 }

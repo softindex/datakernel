@@ -57,8 +57,8 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	@Override
 	public ChannelConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
 		ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
-		MaterializedPromise<HttpResponse> request = client.request(HttpRequest.put(
-				url + UrlBuilder.relative()
+		MaterializedPromise<HttpResponse> request = client.request(HttpRequest.post(
+				url + '/' + UrlBuilder.relative()
 						.appendPathPart(UPLOAD)
 						.appendPathPart(space.asString())
 						.appendPath(filename)
@@ -78,14 +78,13 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 
 	@Override
 	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
-		return client.request(
-				HttpRequest.get(
-						url + UrlBuilder.relative()
-								.appendPathPart(DOWNLOAD)
-								.appendPathPart(space.asString())
-								.appendPath(filename)
-								.appendQuery("range", offset + (limit != -1 ? "-" + (offset + limit) : ""))
-								.build()))
+		return client.request(HttpRequest.get(
+				url + '/' + UrlBuilder.relative()
+						.appendPathPart(DOWNLOAD)
+						.appendPathPart(space.asString())
+						.appendPath(filename)
+						.appendQuery("range", offset + (limit != -1 ? "-" + (offset + limit) : ""))
+						.build()))
 				.thenCompose(ensureStatusCode(200))
 				.thenApply(response -> response.getBodyStream().transformWith(new FrameDecoder()));
 	}
@@ -102,7 +101,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	@Override
 	public Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob) {
 		return client.request(HttpRequest.get(
-				url + UrlBuilder.relative()
+				url + '/' + UrlBuilder.relative()
 						.appendPathPart(LIST)
 						.appendPathPart(space.asString())
 						.appendQuery("glob", glob)
@@ -115,7 +114,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	@Override
 	public Promise<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata) {
 		return client.request(HttpRequest.post(
-				url + UrlBuilder.relative()
+				url + '/' + UrlBuilder.relative()
 						.appendPathPart(PUSH)
 						.appendPathPart(pubKey.asString())
 						.build())

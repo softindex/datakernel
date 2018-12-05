@@ -66,6 +66,10 @@ public class StacklessException extends Exception {
 		return component;
 	}
 
+	public final boolean isConstant() {
+		return component != null;
+	}
+
 	@Override
 	public final Throwable fillInStackTrace() {
 		return this;

@@ -38,7 +38,8 @@ import io.global.fs.transformers.FrameEncoder;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
-import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.http.HttpMethod.GET;
+import static io.datakernel.http.HttpMethod.POST;
 import static io.global.fs.api.MetadataStorage.NO_METADATA;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static io.global.fs.util.HttpDataFormats.parseOffset;
@@ -59,16 +60,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 	@Inject
 	public GlobalFsNodeServlet(GlobalFsNode node) {
 		this.servlet = MiddlewareServlet.create()
-				.with(GET, "/" + DOWNLOAD + "/:owner/:path*", request -> {
-					long[] range = parseRange(request);
-					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-					String path = request.getPathParameter("path");
-					return node.download(pubKey, path, range[0], range[1])
-							.thenApply(supplier ->
-									HttpResponse.ok200()
-											.withBodyStream(supplier.transformWith(new FrameEncoder())));
-				})
-				.with(PUT, "/" + UPLOAD + "/:owner/:path*", request -> {
+				.with(POST, "/" + UPLOAD + "/:owner/:path*", request -> {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
 					String path = request.getPathParameter("path");
 					long offset = parseOffset(request);
@@ -84,21 +76,31 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 								return Promise.ofException(e);
 							});
 				})
-				.with(POST, "/" + PUSH + "/:owner", ensureRequestBody(request -> {
+				.with(GET, "/" + DOWNLOAD + "/:owner/:path*", request -> {
+					long[] range = parseRange(request);
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-					SignedData<GlobalFsMetadata> signedMeta = decode(SIGNED_METADATA_CODEC, request.getBody());
-					return node.pushMetadata(pubKey, signedMeta)
-							.thenApply($ -> HttpResponse.ok200());
-				}))
+					String path = request.getPathParameter("path");
+					return node.download(pubKey, path, range[0], range[1])
+							.thenApply(supplier ->
+									HttpResponse.ok200()
+											.withBodyStream(supplier.transformWith(new FrameEncoder())));
+				})
 				.with(GET, "/" + LIST + "/:owner/:name", request -> {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
 					return node.list(pubKey, request.getQueryParameter("glob"))
 							.thenApply(list -> HttpResponse.ok200()
 									.withBodyStream(
-											ChannelSupplier.ofStream(
-													list.stream()
-															.map(meta -> encodeWithSizePrefix(SIGNED_METADATA_CODEC, meta)))));
-				});
+											ChannelSupplier.ofStream(list
+													.stream()
+													.map(meta ->
+															encodeWithSizePrefix(SIGNED_METADATA_CODEC, meta)))));
+				})
+				.with(POST, "/" + PUSH + "/:owner", ensureRequestBody(request -> {
+					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
+					SignedData<GlobalFsMetadata> signedMeta = decode(SIGNED_METADATA_CODEC, request.getBody());
+					return node.pushMetadata(pubKey, signedMeta)
+							.thenApply($ -> HttpResponse.ok200());
+				}));
 		// .with(POST, "/" + COPY + "/:owner/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
 		// 		node.copy(parseNamespace(request), request.getPostParameters())
 		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))))

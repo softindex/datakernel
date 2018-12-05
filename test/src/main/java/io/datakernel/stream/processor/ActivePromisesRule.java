@@ -20,6 +20,8 @@ import io.datakernel.test.TestUtils;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link TestRule} that fails if not all active promises have been completed either succesfully or exceptionally.
@@ -27,11 +29,21 @@ import org.junit.runners.model.Statement;
  * listener attached
  */
 public final class ActivePromisesRule implements TestRule {
+	private static final Logger logger = LoggerFactory.getLogger(ActivePromisesRule.class);
+
 	@Override
 	public Statement apply(Statement base, Description description) {
 		return new LambdaStatement(() -> {
 			TestUtils.clearActivePromises();
-			base.evaluate();
+			try {
+				base.evaluate();
+			} catch (Throwable t) {
+				int n = TestUtils.getActivePromises();
+				if (n != 0) {
+					logger.info(n + " promise assertion" + (n == 1 ? " was" : "s were") + " not checked");
+				}
+				throw t;
+			}
 			assert TestUtils.getActivePromises() == 0 : "Some promises have not been completed";
 		});
 	}

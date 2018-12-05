@@ -36,4 +36,6 @@ public interface CheckpointStorage {
 		return loadIndex(filename)
 				.thenApply(positions -> Arrays.stream(positions).max().orElse(0L));
 	}
+
+	Promise<Void> drop(String filename);
 }

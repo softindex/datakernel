@@ -42,12 +42,12 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.file.FileUtils.isWildcard;
+import static io.global.fs.api.GlobalFsNode.CANT_VERIFY_METADATA;
 import static io.global.fs.api.MetadataStorage.NO_METADATA;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGateway> {
-	private static final StacklessException METADATA_SIG = new StacklessException(GlobalFsGateway.class, "Received metadata signature is not verified");
 	private static final StacklessException CHECKPOINT_SIG = new StacklessException(GlobalFsGateway.class, "Received checkpoint signature is not verified");
 
 	private static final StructuredCodec<GlobalFsMetadata> METADATA_CODEC = REGISTRY.get(GlobalFsMetadata.class);
@@ -95,16 +95,16 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 		// cut off the part of the file that is already there
 		return node.getMetadata(pubKey, filename)
 				.thenComposeEx((signedMetadata, e) -> {
-					if (e != null) {
-						if (e != NO_METADATA) {
-							return Promise.ofException(e);
-						}
+					if (e != null && e != NO_METADATA) {
+						return Promise.ofException(e);
+					}
+					if (signedMetadata != null && !signedMetadata.verify(pubKey)) {
+						return Promise.ofException(CANT_VERIFY_METADATA);
+					}
+					if (signedMetadata == null || signedMetadata.getValue().isRemoved()) {
 						return offset == -1 || offset == 0 ?
 								doUpload(filename, null, 0, 0, new SHA256Digest()) :
 								Promise.ofException(new StacklessException(GlobalFsGateway.class, "Trying to upload at offset greater than known file size"));
-					}
-					if (!signedMetadata.verify(pubKey)) {
-						return Promise.ofException(METADATA_SIG);
 					}
 					if (offset == -1) {
 						return Promise.ofException(new StacklessException(GlobalFsGateway.class, "File already exists"));
@@ -137,17 +137,20 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 					if (e != null) {
 						return Promise.ofException(e == NO_METADATA ? FILE_NOT_FOUND : e);
 					}
+					if (!signedMetadata.verify(pubKey)) {
+						return Promise.ofException(CANT_VERIFY_METADATA);
+					}
+					GlobalFsMetadata metadata = signedMetadata.getValue();
+					if (metadata.isRemoved()) {
+						return Promise.ofException(FILE_NOT_FOUND);
+					}
 					return node.download(pubKey, filename, offset, limit)
-							.thenCompose(supplier -> {
-								if (!signedMetadata.verify(pubKey)) {
-									return Promise.ofException(METADATA_SIG);
-								}
-								GlobalFsMetadata metadata = signedMetadata.getValue();
-								return driver.getPrivateKeyStorage().getKey(pubKey, metadata.getSimKeyHash())
-										.thenApply(key -> supplier
-												.transformWith(FrameVerifier.create(pubKey, filename, offset, limit))
-												.transformWith(CipherTransformer.create(key, CryptoUtils.nonceFromString(filename), offset)));
-							});
+							.thenCompose(supplier ->
+									driver.getPrivateKeyStorage()
+											.getKey(pubKey, metadata.getSimKeyHash())
+											.thenApply(key -> supplier
+													.transformWith(FrameVerifier.create(pubKey, filename, offset, limit))
+													.transformWith(CipherTransformer.create(key, CryptoUtils.nonceFromString(filename), offset))));
 				});
 	}
 

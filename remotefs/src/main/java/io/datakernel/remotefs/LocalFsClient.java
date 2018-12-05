@@ -123,7 +123,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 					logger.trace("writing to file: {}: {}", file, this);
 					return file.size()
 							.thenCompose(size -> {
-								if (offset != -1) {
+								if (offset != -1 && offset != 0) {
 									if (size == null) {
 										return Promise.ofException(FILE_NOT_FOUND);
 									}

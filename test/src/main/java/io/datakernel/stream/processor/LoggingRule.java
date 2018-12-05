@@ -23,6 +23,11 @@ import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 import org.slf4j.LoggerFactory;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 /**
  * {@link TestRule} that enables deeper logger levels for specific tests that request it.
  */
@@ -45,6 +50,8 @@ public final class LoggingRule implements TestRule {
 		});
 	}
 
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.METHOD, ElementType.TYPE})
 	public @interface Enable {
 		String value() default Logger.ROOT_LOGGER_NAME;
 
