@@ -23,11 +23,12 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -41,10 +42,12 @@ import static io.datakernel.util.CollectionUtils.set;
 public final class TestCrdtLocalFileConsolidation {
 	private LocalFsClient fsClient;
 
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
 	@Before
-	public void setup() throws IOException, InterruptedException {
-		Runtime.getRuntime().exec("rm -r /tmp/TESTS").waitFor();
-		fsClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), Executors.newSingleThreadExecutor(), Paths.get("/tmp/TESTS"));
+	public void setup() throws IOException {
+		fsClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), Executors.newSingleThreadExecutor(), temporaryFolder.newFolder().toPath());
 	}
 
 	private Set<Integer> union(Set<Integer> first, Set<Integer> second) {

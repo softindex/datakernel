@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -62,8 +61,6 @@ public final class TestRepartitionController {
 
 	@Before
 	public void setup() throws IOException, InterruptedException {
-		Runtime.getRuntime().exec("rm -r /tmp/TESTS").waitFor();
-
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 		ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -71,8 +68,8 @@ public final class TestRepartitionController {
 
 		Map<Object, FsClient> clients = new HashMap<>(CLIENT_SERVER_PAIRS);
 
-		// localStorage = tmpFolder.getRoot().toPath().resolve("local");
-		localStorage = Paths.get("/tmp/TESTS/local");
+		Path storage = tmpFolder.newFolder().toPath();
+		localStorage = storage.resolve("local");
 		Files.createDirectories(localStorage);
 		LocalFsClient localFsClient = LocalFsClient.create(eventloop, executor, localStorage);
 
@@ -82,8 +79,7 @@ public final class TestRepartitionController {
 		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
 			InetSocketAddress address = new InetSocketAddress("localhost", 5560 + i);
 
-			// serverStorages[i] = tmpFolder.getRoot().toPath().resolve("storage_" + i);
-			serverStorages[i] = Paths.get("/tmp/TESTS/storage_" + i);
+			serverStorages[i] = storage.resolve("storage_" + i);
 
 			Files.createDirectories(serverStorages[i]);
 

@@ -48,7 +48,6 @@ import org.junit.runner.RunWith;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -93,11 +92,8 @@ public final class GlobalFsTest {
 	private NodeFactory<GlobalFsNode> clientFactory;
 
 	@Before
-	public void setUp() throws IOException, InterruptedException {
-		Runtime.getRuntime().exec("rm -r /tmp/TESTS2").waitFor();
-
-		//temporaryFolder.newFolder().toPath());
-		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, Paths.get("/tmp/TESTS2/"));
+	public void setUp() throws IOException {
+		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
 		clientFactory = new NodeFactory<GlobalFsNode>() {

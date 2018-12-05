@@ -76,10 +76,6 @@ public final class TestCachedFsClient {
 		cacheStorage = Paths.get(tempFolder.newFolder("cacheStorage").toURI());
 		serverStorage = Paths.get(tempFolder.newFolder("serverStorage").toURI());
 
-		//		cacheStorage = Paths.get("/tmp/TEST/cache");
-		//		serverStorage = Paths.get("/tmp/TEST/server");
-		//		Runtime.getRuntime().exec("rm -r /tmp/TEST").waitFor();
-
 		Files.createDirectories(cacheStorage);
 		Files.createDirectories(serverStorage);
 

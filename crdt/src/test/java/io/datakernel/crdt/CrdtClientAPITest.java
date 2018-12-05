@@ -24,7 +24,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,7 +38,6 @@ import org.rocksdb.RocksDB;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -70,18 +68,9 @@ public class CrdtClientAPITest {
 
 	@Before
 	public void setup() throws Exception {
-		// Path folder = temporaryFolder.newFolder().toPath();
-		Path folder = Paths.get("/tmp/TESTS");
-		Runtime.getRuntime().exec("rm -r /tmp/TESTS").waitFor();
+		Path folder = temporaryFolder.newFolder().toPath();
 		Files.createDirectories(folder);
 		client = clientFactory.create(Executors.newSingleThreadExecutor(), folder, Math::max);
-	}
-
-	@After
-	public void tearDown() {
-		if (client instanceof RocksDBCrdtClient) {
-			((RocksDBCrdtClient) client).getDb().close();
-		}
 	}
 
 	@FunctionalInterface

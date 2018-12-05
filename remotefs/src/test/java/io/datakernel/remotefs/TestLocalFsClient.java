@@ -74,8 +74,6 @@ public final class TestLocalFsClient {
 
 	@Before
 	public void setup() throws IOException {
-		//		Runtime.getRuntime().exec("rm -r /tmp/TEST/").waitFor();
-		//		storagePath = Paths.get("/tmp/TEST");
 		storagePath = Paths.get(tmpFolder.newFolder("storage").toURI());
 		clientPath = Paths.get(tmpFolder.newFolder("client").toURI());
 
