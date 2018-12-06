@@ -125,6 +125,9 @@ public final class CodecRegistry implements CodecFactory {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> StructuredCodec<T> get(Type type) {
+		if (type instanceof Class && (Enum.class.isAssignableFrom((Class) type))) {
+			return ofEnum((Class) type);
+		}
 		return doGet(RecursiveType.of(type));
 	}
 
