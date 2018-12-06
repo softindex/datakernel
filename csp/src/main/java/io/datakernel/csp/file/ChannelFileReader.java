@@ -48,7 +48,6 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
 	private long position = 0;
 	private long limit = Long.MAX_VALUE;
-	private boolean finished = false;
 
 	private ChannelFileReader(AsyncFile asyncFile) {
 		this.asyncFile = asyncFile;
@@ -87,7 +86,7 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 
 	@Override
 	protected Promise<ByteBuf> doGet() {
-		if (finished) {
+		if (limit == 0) {
 			close();
 			return Promise.of(null);
 		}
@@ -98,10 +97,11 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 					if (e != null) {
 						buf.recycle();
 						close(e);
+						//noinspection ConstantConditions - just closed the file with exception, it is not null
 						return Promise.ofException(getException());
 					}
-					int bytesRead = buf.readRemaining(); // bytes written (as they were read from file, thus the name) to be read by a consumer (thus the method)
-					if (bytesRead == 0) { // this happens when file size is exact multiple of buffer size
+					int bytesRead = buf.readRemaining();
+					if (bytesRead == 0) { // no data read, assuming end of file
 						buf.recycle();
 						close();
 						return Promise.of(null);
@@ -109,9 +109,6 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 					position += bytesRead;
 					if (limit != Long.MAX_VALUE) {
 						limit -= bytesRead; // bytesRead is always <= the limit (^ see the min call)
-					}
-					if (limit == 0L || bytesRead < bufSize) { // AsyncFile#read finishes either if file is done or buffer is filled
-						finished = true;
 					}
 					return Promise.of(buf);
 				});
@@ -135,7 +132,7 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 
 	@Override
 	public String toString() {
-		return "SerialFileReader{" + asyncFile +
+		return "ChannelFileReader{" + asyncFile +
 				", pos=" + position +
 				(limit == Long.MAX_VALUE ? "" : ", len=" + limit) +
 				'}';

@@ -36,7 +36,8 @@ public abstract class AbstractChannelSupplier<T> extends AbstractCancellable imp
 
 	@Override
 	public final Promise<T> get() {
-		if (isClosed()) return Promise.ofException(getException());
+		if (isClosed()) //noinspection ConstantConditions - ifClosed() <=> getException() != null
+			return Promise.ofException(getException());
 		return doGet();
 	}
 }

@@ -209,7 +209,7 @@ class StressClient {
 				logger.error("can't download", e);
 			} else {
 //				try {
-//					supplier.streamTo(SerialFileWriter.create(executor, downloads.resolve(name)));
+				//					supplier.streamTo(ChannelFileWriter.create(executor, downloads.resolve(name)));
 //				} catch (IOException e) {
 //					logger.error("can't download", e);
 //				}

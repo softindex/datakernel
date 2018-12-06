@@ -406,26 +406,41 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 										GlobalFsMetadata metadata = signedMetadata.getValue();
 										String filename = metadata.getFilename();
 										return getMetadata(filename)
-												.thenComposeEx(normalizeMeta(space))
-												.thenCompose(localMetadata -> {
+												.thenComposeEx((signedLocalMetadata, e) -> {
+													if (e != null && e != NO_METADATA) {
+														return Promise.ofException(e);
+													}
+													GlobalFsMetadata localMetadata;
+													if (!signedLocalMetadata.verify(space)) {
+														logger.warn("found local metadata with unverified signature, skipping {}", signedLocalMetadata.getValue());
+														return Promise.of(false);
+													} else {
+														localMetadata = signedLocalMetadata.getValue();
+													}
+
 													if (localMetadata != null) {
 														// our file is better
 														if (localMetadata.compareTo(metadata) >= 0) {
 															logger.trace("our file {} is better than remote");
 															return Promise.of(false);
 														}
+														if (metadata.isRemoved()) {
+															logger.trace("remote file {} is a tombstone with higher revision");
+															return pushMetadata(signedMetadata).thenApply($ -> true);
+														}
 														// other file is encrypted with different key
 														// (first condition is because tombstones don't store key hash)
-														if (!metadata.isRemoved() && !Objects.equals(localMetadata.getSimKeyHash(), metadata.getSimKeyHash())) {
+														if (!Objects.equals(localMetadata.getSimKeyHash(), metadata.getSimKeyHash())) {
+															logger.trace("remote file {} is encrypted with different key, ignoring", metadata);
 															return Promise.of(false);
 														}
 														logger.trace("found better file {}", metadata);
 													} else {
+														if (metadata.isRemoved()) {
+															logger.trace("found a new tombstone {}", metadata);
+															return pushMetadata(signedMetadata).thenApply($ -> true);
+														}
 														logger.trace("found a new file {}", metadata);
-													}
-
-													if (metadata.isRemoved()) {
-														return pushMetadata(signedMetadata).thenApply($ -> true);
 													}
 
 													long ourSize = localMetadata != null ? localMetadata.getSize() : 0;

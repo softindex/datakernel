@@ -41,7 +41,6 @@ import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.LocalGlobalFsNode;
 import io.global.fs.transformers.FrameSigner;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -326,7 +325,6 @@ public final class GlobalFsTest {
 	}
 
 	@Test
-	@Ignore
 	public void fetchDeletions() {
 		String filename = "test.txt";
 
@@ -338,9 +336,10 @@ public final class GlobalFsTest {
 		// deleting the file on second node
 		await(secondAliceAdapter.delete(filename));
 
-		// fetch on
+		// make second node catch up
 		await(rawFirstClient.catchUp());
 
+		// uploading on the first node again
 		await(ChannelSupplier.of(wrapUtf8("another string of bytes to test")).streamTo(await(firstAliceAdapter.upload(filename))));
 	}
 

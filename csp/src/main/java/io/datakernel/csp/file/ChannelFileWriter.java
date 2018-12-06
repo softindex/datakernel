@@ -131,6 +131,6 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 
 	@Override
 	public String toString() {
-		return "{" + asyncFile + "}";
+		return "ChannelFileWriter{" + asyncFile + "}";
 	}
 }
