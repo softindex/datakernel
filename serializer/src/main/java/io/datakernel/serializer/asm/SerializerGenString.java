@@ -27,38 +27,30 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.Preconditions.check;
 
 public class SerializerGenString implements SerializerGen {
 	private final StringFormat format;
 	private final boolean nullable;
-	private final int maxLength;
 
-	public SerializerGenString(int maxLength, boolean nullable, StringFormat format) {
-		check(maxLength == -1 || maxLength > 0, "Max length should be either -1 or greater than 0");
-		this.maxLength = maxLength;
+	public SerializerGenString(boolean nullable, StringFormat format) {
 		this.format = format;
 		this.nullable = nullable;
 	}
 
 	public SerializerGenString() {
-		this(-1, false, StringFormat.UTF8);
+		this(false, StringFormat.UTF8);
 	}
 
 	public SerializerGenString(StringFormat format) {
-		this(-1, false, format);
+		this(false, format);
 	}
 
 	public SerializerGenString nullable(boolean nullable) {
-		return new SerializerGenString(maxLength, nullable, format);
+		return new SerializerGenString(nullable, format);
 	}
 
 	public SerializerGenString encoding(StringFormat format) {
-		return new SerializerGenString(maxLength, nullable, format);
-	}
-
-	public SerializerGen maxLength(int maxLength) {
-		return new SerializerGenString(maxLength, nullable, format);
+		return new SerializerGenString(nullable, format);
 	}
 
 	@Override
@@ -84,15 +76,7 @@ public class SerializerGenString implements SerializerGen {
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		List<Expression> list = new ArrayList<>();
 
-		Expression maxLen = value(maxLength);
-		Expression expression;
-		if (maxLength != -1) {
-			expression = ifThenElse(and(isNotNull(value), cmpGe(maxLen, value(0)), cmpGe(call(cast(value, String.class), "length"), value(maxLength + 1))),
-					cast(call(cast(value, String.class), "substring", value(0), maxLen), String.class),
-					cast(value, String.class));
-		} else {
-			expression = cast(value, String.class);
-		}
+		Expression expression = cast(value, String.class);
 
 		if (format == StringFormat.UTF16) {
 			if (nullable)
@@ -158,16 +142,14 @@ public class SerializerGenString implements SerializerGen {
 		SerializerGenString that = (SerializerGenString) o;
 
 		if (nullable != that.nullable) return false;
-		if (maxLength != that.maxLength) return false;
-		return format == that.format;
-
+		if (format != that.format) return false;
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
 		int result = format != null ? format.hashCode() : 0;
 		result = 31 * result + (nullable ? 1 : 0);
-		result = 31 * result + maxLength;
 		return result;
 	}
 }

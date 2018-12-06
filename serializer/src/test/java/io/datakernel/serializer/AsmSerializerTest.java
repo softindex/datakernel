@@ -723,7 +723,7 @@ public class AsmSerializerTest {
 		public List<String> stringsUtf8;
 
 		@Serialize(order = 2)
-		@SerializeStringFormat(value = StringFormat.UTF8_CUSTOM, path = 0)
+		@SerializeStringFormat(value = StringFormat.UTF8_MB3, path = 0)
 		@SerializeNullable(path = 0)
 		public List<String> stringsUtf8Custom;
 
@@ -1157,42 +1157,6 @@ public class AsmSerializerTest {
 		assertEquals(0, testData3.getIntValue());
 		assertEquals(0.0, testData3.getDoubleValue(), Double.MIN_VALUE);
 		assertNull(testData3.getStringValue());
-	}
-
-	public static class TestDataMaxLength {
-		@Serialize(order = 0)
-		@SerializeMaxLength(3)
-		public String s1;
-
-		@Serialize(order = 1)
-		@SerializeNullable
-		@SerializeMaxLength(4)
-		public String s2;
-
-		@Serialize(order = 2)
-		@SerializeNullable
-		@SerializeMaxLength(5)
-		public String s3;
-
-		@Serialize(order = 3)
-		@SerializeNullable
-		@SerializeMaxLength(6)
-		public String s4;
-	}
-
-	@Test
-	public void testMaxLength() {
-		TestDataMaxLength expected = new TestDataMaxLength();
-		expected.s1 = "abcdefg";
-		expected.s2 = "1234";
-		expected.s3 = "QWE";
-		expected.s4 = null;
-
-		TestDataMaxLength actual = doTest(TestDataMaxLength.class, expected);
-		assertEquals(expected.s1.substring(0, 3), actual.s1);
-		assertEquals(expected.s2, actual.s2);
-		assertEquals(expected.s3, actual.s3);
-		assertEquals(expected.s4, actual.s4);
 	}
 
 	public static class TestDataDeserializeFactory0 {

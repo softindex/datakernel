@@ -19,7 +19,6 @@ package io.datakernel.serializer.annotations;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.Helper;
 import io.datakernel.serializer.StringFormat;
-import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenString;
 
@@ -29,7 +28,7 @@ public class SerializeStringFormatHandler implements AnnotationHandler<Serialize
 		return (type, generics, fallback) -> {
 			if (compatibilityLevel == CompatibilityLevel.LEVEL_1) {
 				if (annotation.value() == StringFormat.ISO_8859_1 || annotation.value() == StringFormat.UTF8) {
-					return ((SerializerGenString) fallback).encoding(StringFormat.UTF8_CUSTOM);
+					return ((SerializerGenString) fallback).encoding(StringFormat.UTF8_MB3);
 				}
 			}
 			return ((SerializerGenString) fallback).encoding(annotation.value());
