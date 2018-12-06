@@ -410,12 +410,14 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 													if (e != null && e != NO_METADATA) {
 														return Promise.ofException(e);
 													}
-													GlobalFsMetadata localMetadata;
-													if (!signedLocalMetadata.verify(space)) {
-														logger.warn("found local metadata with unverified signature, skipping {}", signedLocalMetadata.getValue());
-														return Promise.of(false);
-													} else {
-														localMetadata = signedLocalMetadata.getValue();
+													GlobalFsMetadata localMetadata = null;
+													if (signedLocalMetadata != null) {
+														if (!signedLocalMetadata.verify(space)) {
+															logger.warn("found local metadata with unverified signature, skipping {}", signedLocalMetadata.getValue());
+															return Promise.of(false);
+														} else {
+															localMetadata = signedLocalMetadata.getValue();
+														}
 													}
 
 													if (localMetadata != null) {
