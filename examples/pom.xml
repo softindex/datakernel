@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<artifactId>datakernel</artifactId>
+		<groupId>io.datakernel</groupId>
+		<version>2.6.0-SNAPSHOT</version>
+		<relativePath>../pom.xml</relativePath>
+	</parent>
+
+	<artifactId>datakernel-examples</artifactId>
+	<packaging>pom</packaging>
+
+	<name>DataKernel: Examples</name>
+
+	<modules>
+		<module>async</module>
+		<module>boot</module>
+		<module>bytebuf</module>
+		<module>codec</module>
+		<module>codegen</module>
+		<module>crdt</module>
+		<module>datastreams</module>
+		<module>eventloop</module>
+		<module>getting-started</module>
+		<module>http</module>
+		<module>http-helloworld</module>
+		<module>launchers</module>
+		<module>net</module>
+		<module>ot-counter</module>
+		<module>remote-key-value-storage</module>
+		<module>remotefs</module>
+		<module>rpc</module>
+		<module>serial</module>
+		<module>serializer</module>
+		<module>uikernel-integration</module>
+	</modules>
+
+	<dependencies>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+		</dependency>
+	</dependencies>
+</project>

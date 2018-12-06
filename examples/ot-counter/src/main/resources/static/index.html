@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+  <link rel="stylesheet" type="text/css" href="css/style.css">
+  <script src="js/libs/d3.v4.min.js"></script>
+  <script src="js/libs/viz-lite.js" type="javascript/worker"></script>
+  <script src="js/libs/d3-graphviz.min.js"></script>
+  <script src="js/libs/jquery.min.js"></script>
+</head>
+
+<body>
+<div id="control">
+  <input id="toAdd" type="number" step="1">
+  <button id="add">Add</button>
+  <br>
+
+  <button id="commit">Commit</button>
+  <button id="push">Push</button>
+  <br>
+
+  <button id="fetch">Fetch</button>
+  <button id="rebase">Rebase</button>
+  <button id="pull">Pull</button>
+  <br>
+
+  <button id="merge">Merge Heads</button>
+  <button id="reset">Reset</button>
+  <br>
+
+  Current state:
+  <span id="state"></span>
+  <br>
+  Uncommitted operations:
+  <span id="ops"></span>
+  <br>
+  <button id="newManager">New Manager</button>
+  <button id="update">Update</button>
+  <button id="updateGraph">Graph</button>
+  <br>
+</div>
+
+<div id="graph" style="text-align: center;"></div>
+<script src="js/app.js"></script>
+</body>
