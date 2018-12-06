@@ -21,7 +21,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -48,7 +47,7 @@ import static io.datakernel.util.Utils.loadResource;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.*;
 
-public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx, EventloopService {
+public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	public static final Duration DEFAULT_DELETE_MARGIN = Duration.ofHours(1);
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
@@ -126,17 +125,13 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				.replace("{backup}", Objects.toString(tableBackup, ""));
 	}
 
-	private Promise<Void> initialize() {
-		return Promise.<Void>ofCallable(executor,
-				() -> {
-					execute(dataSource, sql(new String(loadResource("sql/ot_diffs.sql"), UTF_8)));
-					execute(dataSource, sql(new String(loadResource("sql/ot_revisions.sql"), UTF_8)));
-					if (tableBackup != null) {
-						execute(dataSource, sql(new String(loadResource("sql/ot_revisions_backup.sql"), UTF_8)));
-					}
-					return null;
-				})
-				.whenComplete(toLogger(logger, thisMethod()));
+	public void initialize() throws IOException, SQLException {
+		logger.trace("Initializing tables");
+		execute(dataSource, sql(new String(loadResource("sql/ot_diffs.sql"), UTF_8)));
+		execute(dataSource, sql(new String(loadResource("sql/ot_revisions.sql"), UTF_8)));
+		if (tableBackup != null) {
+			execute(dataSource, sql(new String(loadResource("sql/ot_revisions_backup.sql"), UTF_8)));
+		}
 	}
 
 	public void truncateTables() throws SQLException {
@@ -410,16 +405,6 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
-	}
-
-	@Override
-	public Promise<Void> start() {
-		return initialize();
-	}
-
-	@Override
-	public Promise<Void> stop() {
-		return Promise.complete();
 	}
 
 	@JmxAttribute

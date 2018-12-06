@@ -63,7 +63,7 @@ public class OTRepositoryMySqlTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		otSystem = Utils.createTestOp();
 		repository = OTRepositoryMySql.create(eventloop, Executors.newFixedThreadPool(4), dataSource("test.properties"), otSystem, Utils.OP_CODEC);
-
+		repository.initialize();
 		repository.truncateTables();
 	}
 
