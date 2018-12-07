@@ -97,7 +97,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		return new ChannelLZ4Compressor(LZ4Factory.fastestInstance().highCompressor(compressionLevel));
 	}
 
-	@SuppressWarnings("ConstantConditions") //check input for clarity
+	//check input for clarity
 	@Override
 	public ChannelInput<ByteBuf> getInput() {
 		return input -> {

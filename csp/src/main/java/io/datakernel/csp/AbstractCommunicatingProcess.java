@@ -153,7 +153,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 				.thenComposeEx(this::sanitize);
 	}
 
-	protected <T> Promise<T> sanitize(T value, Throwable e) {
+	public <T> Promise<T> sanitize(T value, Throwable e) {
 		if (isProcessComplete()) {
 			tryRecycle(value);
 			if (value instanceof Cancellable) {

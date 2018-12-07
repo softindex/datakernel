@@ -16,6 +16,7 @@
 
 package io.datakernel.csp.process;
 
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -27,6 +28,7 @@ import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.dsl.WithBinaryChannelInput;
 import io.datakernel.csp.dsl.WithChannelTransformer;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.TruncatedDataException;
 import net.jpountz.lz4.LZ4Exception;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
@@ -34,6 +36,7 @@ import net.jpountz.util.SafeUtils;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
+import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 import static io.datakernel.csp.process.ChannelLZ4Compressor.*;
 
 public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
@@ -80,7 +83,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 	@Override
 	public BinaryChannelInput getInput() {
 		return input -> {
-			this.input = sanitize(input);
+			this.input = input;
 			this.bufs = input.getBufs();
 			if (this.input != null && this.output != null) startProcess();
 			return getProcessResult();
@@ -106,6 +109,8 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 	public void processHeader() {
 		if (!bufs.hasRemainingBytes(HEADER_LENGTH)) {
 			input.needMoreData()
+					.thenComposeEx(ChannelLZ4Decompressor::checkTruncatedDataException)
+					.thenComposeEx(super::sanitize)
 					.whenResult($ -> processHeader());
 			return;
 		}
@@ -130,6 +135,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 	public void processBody() {
 		if (!bufs.hasRemainingBytes(header.compressedLen)) {
 			input.needMoreData()
+					.thenComposeEx(ChannelLZ4Decompressor::checkTruncatedDataException)
 					.whenResult($ -> processBody());
 			return;
 		}
@@ -221,6 +227,18 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 			throw STREAM_IS_CORRUPTED;
 		}
 		return outputBuf;
+	}
+
+	private static Promise<Void> checkTruncatedDataException(Void $, Throwable e) {
+		if (e == null) {
+			return Promise.complete();
+		} else {
+			if (e == UNEXPECTED_END_OF_STREAM_EXCEPTION) {
+				return Promise.ofException(new TruncatedDataException(ChannelLZ4Decompressor.class, "Unexpected end-of-stream"));
+			} else {
+				return Promise.ofException(e);
+			}
+		}
 	}
 
 }
