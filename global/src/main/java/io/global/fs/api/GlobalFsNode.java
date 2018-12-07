@@ -26,7 +26,7 @@ import io.global.common.SignedData;
 import java.util.List;
 
 import static io.datakernel.file.FileUtils.escapeGlob;
-import static io.global.fs.api.MetadataStorage.NO_METADATA;
+import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
 
 /**
  * This component handles one of the GlobalFS nodes.
@@ -36,6 +36,7 @@ public interface GlobalFsNode {
 	StacklessException RECURSIVE_UPLOAD_ERROR = new StacklessException(GlobalFsNode.class, "Trying to upload a file to a server that also tries to upload this file.");
 	StacklessException FETCH_DID_NOTHING = new StacklessException(GlobalFsNode.class, "Did not fetch anything from given node.");
 	StacklessException CANT_VERIFY_METADATA = new StacklessException(GlobalFsNode.class, "Failed to verify signature of the metadata.");
+	StacklessException UPLOADING_TO_TOMBSTONE = new StacklessException(GlobalFsNode.class, "Trying to upload file which was deleted");
 
 	Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset);
 
@@ -49,11 +50,15 @@ public interface GlobalFsNode {
 		return ChannelSupplier.ofPromise(download(space, filename, offset, limit));
 	}
 
-	Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob);
+	Promise<List<SignedData<GlobalFsCheckpoint>>> list(PubKey space, String glob);
 
-	default Promise<SignedData<GlobalFsMetadata>> getMetadata(PubKey space, String filename) {
-		return list(space, escapeGlob(filename)).thenCompose(res -> res.size() == 1 ? Promise.of(res.get(0)) : Promise.ofException(NO_METADATA));
+	default Promise<SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
+		return list(space, escapeGlob(filename))
+				.thenCompose(res ->
+						res.size() == 1 ?
+								Promise.of(res.get(0)) :
+								Promise.ofException(NO_CHECKPOINT));
 	}
 
-	Promise<Void> pushMetadata(PubKey pubKey, SignedData<GlobalFsMetadata> signedMetadata);
+	Promise<Void> delete(PubKey space, SignedData<GlobalFsCheckpoint> tombstone);
 }

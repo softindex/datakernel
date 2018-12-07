@@ -16,30 +16,56 @@
 
 package io.global.fs.api;
 
+import io.datakernel.annotation.Nullable;
 import io.global.common.CryptoUtils;
+import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.Arrays;
 
-public final class GlobalFsCheckpoint {
+public final class GlobalFsCheckpoint implements Comparable<GlobalFsCheckpoint> {
+	private static final byte[] ZERO_STATE = new byte[0];
+
 	private final String filename;
 	private final long position;
+
+	@Nullable
 	private final SHA256Digest digest;
 
-	private GlobalFsCheckpoint(String filename, long position, SHA256Digest digest) {
+	@Nullable
+	private final Hash simKeyHash;
+
+	private GlobalFsCheckpoint(String filename, long position, @Nullable SHA256Digest digest, @Nullable Hash simKeyHash) {
 		this.filename = filename;
 		this.position = position;
 		this.digest = digest;
+		this.simKeyHash = simKeyHash;
 	}
 
-	public static GlobalFsCheckpoint parse(String filename, long position, byte[] digestState) {
-		return new GlobalFsCheckpoint(filename, position, CryptoUtils.ofSha256PackedState(digestState, position));
+	public static GlobalFsCheckpoint parse(String filename, long position, byte[] digestState, @Nullable Hash simKeyHash) {
+		return digestState.length == 0 ?
+				createTombstone(filename) :
+				new GlobalFsCheckpoint(filename, position, CryptoUtils.ofSha256PackedState(digestState, position), simKeyHash);
 	}
 
-	public static GlobalFsCheckpoint of(String filename, long position, SHA256Digest digest) {
-		return new GlobalFsCheckpoint(filename, position, digest);
+	public static GlobalFsCheckpoint of(String filename, long position, SHA256Digest digest, @Nullable Hash simKeyHash) {
+		return new GlobalFsCheckpoint(filename, position, digest, simKeyHash);
+	}
+
+	public static GlobalFsCheckpoint createTombstone(String filename) {
+		return new GlobalFsCheckpoint(filename, 0, null, null);
+	}
+
+	@Override
+	public int compareTo(@Nullable GlobalFsCheckpoint other) {
+		// existing file is better than non-existing
+		return other == null ? 1 : other.isTombstone() ? -1 : Long.compare(position, other.position);
+	}
+
+	public boolean isTombstone() {
+		return digest == null;
 	}
 
 	public String getFilename() {
@@ -51,11 +77,21 @@ public final class GlobalFsCheckpoint {
 	}
 
 	public SHA256Digest getDigest() {
+		assert digest != null : "Trying to get digest of the tombstone checkpoint";
 		return digest;
 	}
 
+	@Nullable
+	public Hash getSimKeyHash() {
+		return simKeyHash;
+	}
+
 	public byte[] getDigestState() {
-		return CryptoUtils.toSha256PackedState(digest);
+		return digest != null ? CryptoUtils.toSha256PackedState(digest) : ZERO_STATE;
+	}
+
+	public GlobalFsCheckpoint toTombstone() {
+		return createTombstone(filename);
 	}
 
 	public enum CheckpointVerificationResult {
@@ -127,6 +163,8 @@ public final class GlobalFsCheckpoint {
 		GlobalFsCheckpoint that = (GlobalFsCheckpoint) o;
 		if (position != that.position) return false;
 		if (!filename.equals(that.filename)) return false;
+		if (digest == null) return that.digest == null;
+		if (that.digest == null) return false;
 		return Arrays.equals(digest.getEncodedState(), that.digest.getEncodedState());
 	}
 
@@ -134,12 +172,13 @@ public final class GlobalFsCheckpoint {
 	public int hashCode() {
 		int result = filename.hashCode();
 		result = 31 * result + (int) (position ^ (position >>> 32));
-		result = 31 * result + Arrays.hashCode(digest.getEncodedState());
+		result = 31 * result + (digest != null ? Arrays.hashCode(digest.getEncodedState()) : 0);
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		return "GlobalFsCheckpoint{filename='" + filename + '\'' + ", position=" + position + ", digest=@" + Integer.toHexString(Arrays.hashCode(digest.getEncodedState())) + '}';
+		return "GlobalFsCheckpoint{filename='" + filename + '\'' + ", position=" + position +
+				", digest=@" + Integer.toHexString((digest != null ? Arrays.hashCode(digest.getEncodedState()) : 0)) + '}';
 	}
 }

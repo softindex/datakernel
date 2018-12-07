@@ -16,6 +16,7 @@
 
 package io.global.common;
 
+import io.datakernel.annotation.Nullable;
 import io.global.ot.api.EncryptedData;
 import org.spongycastle.asn1.x9.X9ECParameters;
 import org.spongycastle.crypto.*;
@@ -103,7 +104,13 @@ public final class CryptoUtils {
 	}
 
 	// TODO: find something better
-	public static boolean areEqual(SHA256Digest first, SHA256Digest second) {
+	public static boolean areEqual(@Nullable SHA256Digest first, @Nullable SHA256Digest second) {
+		if (first == null) {
+			return second == null;
+		}
+		if (second == null) {
+			return false;
+		}
 		return Arrays.equals(first.getEncodedState(), second.getEncodedState());
 	}
 

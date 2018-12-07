@@ -21,9 +21,12 @@ import io.datakernel.exception.StacklessException;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.GlobalFsCheckpoint;
+import io.global.fs.util.Globs;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Predicate;
+
+import static java.util.stream.Collectors.toList;
 
 public final class RuntimeCheckpointStorage implements CheckpointStorage {
 	private Map<String, Map<Long, SignedData<GlobalFsCheckpoint>>> storage = new HashMap<>();
@@ -39,17 +42,53 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
 		return checkpoints != null ?
 				Promise.of(checkpoints.get(position)) :
-				Promise.ofException(new StacklessException(CheckpointStorage.class, "No checkpoint found on position " + position));
+				Promise.ofException(NO_CHECKPOINT);
 	}
 
 	@Override
-	public Promise<Void> store(String filename, SignedData<GlobalFsCheckpoint> checkpoint) {
+	public Promise<List<SignedData<GlobalFsCheckpoint>>> loadLastCheckpoints(String glob) {
+		Predicate<String> pred = Globs.getGlobStringPredicate(glob);
+		return Promise.of(storage.entrySet()
+				.stream()
+				.filter(e -> pred.test(e.getKey()))
+				.map(e -> e.getValue()
+						.entrySet()
+						.stream()
+						.max(Comparator.comparingLong(Map.Entry::getKey)))
+				.filter(Optional::isPresent)
+				.map(e -> e.get().getValue())
+				.collect(toList()));
+	}
+
+	@Override
+	public Promise<SignedData<GlobalFsCheckpoint>> loadLastCheckpoint(String filename) {
+		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
+		if (checkpoints != null) {
+			Optional<SignedData<GlobalFsCheckpoint>> maybeCheckpoint = checkpoints.entrySet()
+					.stream()
+					.max(Comparator.comparingLong(Map.Entry::getKey))
+					.map(Map.Entry::getValue);
+			if (maybeCheckpoint.isPresent()) {
+				return Promise.of(maybeCheckpoint.get());
+			}
+		}
+		return Promise.ofException(NO_CHECKPOINT);
+	}
+
+	@Override
+	public Promise<Void> store(String filename, SignedData<GlobalFsCheckpoint> signedCheckpoint) {
+		GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
 		Map<Long, SignedData<GlobalFsCheckpoint>> fileCheckpoints = storage.computeIfAbsent(filename, $ -> new HashMap<>());
-		long pos = checkpoint.getValue().getPosition();
+		if (checkpoint.isTombstone()) {
+			fileCheckpoints.clear();
+			fileCheckpoints.put(0L, signedCheckpoint);
+			return Promise.complete();
+		}
+		long pos = checkpoint.getPosition();
 		SignedData<GlobalFsCheckpoint> existing = fileCheckpoints.get(pos);
 		if (existing == null) {
-			fileCheckpoints.put(pos, checkpoint);
-		} else if (!existing.equals(checkpoint)) {
+			fileCheckpoints.put(pos, signedCheckpoint);
+		} else if (!existing.equals(signedCheckpoint)) {
 			return Promise.ofException(new StacklessException(CheckpointStorage.class, "Trying to override existing checkpoint at " + pos));
 		}
 		return Promise.complete();

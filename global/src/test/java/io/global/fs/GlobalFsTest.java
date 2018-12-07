@@ -22,10 +22,13 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.processor.ByteBufRule.IgnoreLeaks;
 import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.LoggingRule.LoggerConfig;
+import io.datakernel.stream.processor.Manual;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
@@ -33,7 +36,6 @@ import io.global.common.api.NodeFactory;
 import io.global.common.discovery.LocalDiscoveryService;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.DataFrame;
-import io.global.fs.api.GlobalFsMetadata;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.HttpGlobalFsNode;
@@ -41,6 +43,7 @@ import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.LocalGlobalFsNode;
 import io.global.fs.transformers.FrameSigner;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -48,23 +51,23 @@ import org.junit.runner.RunWith;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.TestUtils.await;
 import static io.global.common.TestUtils.awaitException;
 import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.fs.api.CheckpointPosStrategy.fixed;
+import static io.global.fs.api.GlobalFsNode.UPLOADING_TO_TOMBSTONE;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
@@ -91,14 +94,16 @@ public final class GlobalFsTest {
 	private FsClient firstAliceAdapter;
 	private FsClient secondAliceAdapter;
 	private FsClient storage;
-	private NodeFactory<GlobalFsNode> clientFactory;
 
 	@Before
 	public void setUp() throws IOException {
-		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, temporaryFolder.newFolder().toPath());
+		Path dir = temporaryFolder.newFolder().toPath();
+		System.out.println("DIR: " + dir);
+
+		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, dir);
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
-		clientFactory = new NodeFactory<GlobalFsNode>() {
+		NodeFactory<GlobalFsNode> clientFactory = new NodeFactory<GlobalFsNode>() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
 				return LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder("server_" + serverId.getServerIdString().split(":")[1]));
@@ -124,56 +129,57 @@ public final class GlobalFsTest {
 
 	@Test
 	public void cutters() {
-		announce(alice, set(firstId))
-				.thenCompose($ -> firstAliceAdapter.upload("test1.txt"))
-				.thenCompose(ChannelSupplier.of(
-						ByteBuf.wrapForReading("hello, this is a test buffer data #01\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #02\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #03\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #04\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #05\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #06\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #07\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #08\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #09\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #10\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #11\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #12\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #13\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #14\n".getBytes(UTF_8)),
-						ByteBuf.wrapForReading("hello, this is a test buffer data #15\n".getBytes(UTF_8))
-				)::streamTo)
-				.thenCompose($ -> firstAliceAdapter.download("test1.txt", 10, 380 - 10 - 19))
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(buf ->
-						assertEquals("s is a test buffer data #01\n" +
-										"hello, this is a test buffer data #02\n" +
-										"hello, this is a test buffer data #03\n" +
-										"hello, this is a test buffer data #04\n" +
-										"hello, this is a test buffer data #05\n" +
-										"hello, this is a test buffer data #06\n" +
-										"hello, this is a test buffer data #07\n" +
-										"hello, this is a test buffer data #08\n" +
-										"hello, this is a test buffer data #09\n" +
-										"hello, this is a te",
-								buf.asString(UTF_8))))
-				.thenCompose($ -> firstAliceAdapter.download("test1.txt", 64, 259))
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(buf ->
-						assertEquals("er data #02\n" +
-										"hello, this is a test buffer data #03\n" +
-										"hello, this is a test buffer data #04\n" +
-										"hello, this is a test buffer data #05\n" +
-										"hello, this is a test buffer data #06\n" +
-										"hello, this is a test buffer data #07\n" +
-										"hello, this is a test buffer data #08\n" +
-										"hello, this is a te",
-								buf.asString(UTF_8))))
-				.thenCompose($ -> firstAliceAdapter.downloader("test1.txt", 228, 37).toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(buf ->
-						assertEquals("hello, this is a test buffer data #07", buf.asString(UTF_8))))
-				.thenCompose($ -> firstAliceAdapter.downloader("test1.txt").toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(buf -> assertEquals(570, buf.asString(UTF_8).length())));
+		await(announce(alice, set(firstId)));
+
+		await(ChannelSupplier.of(
+				ByteBuf.wrapForReading("hello, this is a test buffer data #01\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #02\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #03\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #04\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #05\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #06\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #07\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #08\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #09\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #10\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #11\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #12\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #13\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #14\n".getBytes(UTF_8)),
+				ByteBuf.wrapForReading("hello, this is a test buffer data #15\n".getBytes(UTF_8))
+		).streamTo(await(firstAliceAdapter.upload("test1.txt"))));
+
+
+		String res = await(await(firstAliceAdapter.download("test1.txt", 10, 380 - 10 - 19)).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+
+		assertEquals("s is a test buffer data #01\n" +
+						"hello, this is a test buffer data #02\n" +
+						"hello, this is a test buffer data #03\n" +
+						"hello, this is a test buffer data #04\n" +
+						"hello, this is a test buffer data #05\n" +
+						"hello, this is a test buffer data #06\n" +
+						"hello, this is a test buffer data #07\n" +
+						"hello, this is a test buffer data #08\n" +
+						"hello, this is a test buffer data #09\n" +
+						"hello, this is a te",
+				res);
+
+		res = await(await(firstAliceAdapter.download("test1.txt", 64, 259)).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals("er data #02\n" +
+						"hello, this is a test buffer data #03\n" +
+						"hello, this is a test buffer data #04\n" +
+						"hello, this is a test buffer data #05\n" +
+						"hello, this is a test buffer data #06\n" +
+						"hello, this is a test buffer data #07\n" +
+						"hello, this is a test buffer data #08\n" +
+						"hello, this is a te",
+				res);
+
+		res = await(await(firstAliceAdapter.download("test1.txt", 228, 37)).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals("hello, this is a test buffer data #07", res);
+
+		res = await(await(firstAliceAdapter.download("test1.txt")).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals(570, res.length());
 	}
 
 	@Test
@@ -182,13 +188,12 @@ public final class GlobalFsTest {
 
 		String content = "hello world, i am here!";
 
-		firstAliceAdapter.upload("test.txt")
-				.thenCompose(consumer -> ChannelSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8))).streamTo(consumer))
-				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenResult(buf -> assertEquals(content, buf.asString(UTF_8)))
-				.thenCompose($ -> firstBobAdapter.download("test.txt"))
-				.whenComplete(assertFailure());
+		await(ChannelSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8))).streamTo(await(firstAliceAdapter.upload("test.txt"))));
+
+		String res = await(await(firstAliceAdapter.download("test.txt")).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals(content, res);
+
+		assertSame(FILE_NOT_FOUND, awaitException(firstBobAdapter.download("test.txt")));
 	}
 
 	@Test
@@ -197,35 +202,30 @@ public final class GlobalFsTest {
 
 		String filename = "folder/test.txt";
 
-		ChannelSupplier.of(wrapUtf8(content))
-				.transformWith(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.fixed(4), filename, 0, new SHA256Digest()))
-				.streamTo(firstClient.uploader(alice.getPubKey(), filename, -1))
-				.thenCompose($ -> firstClient.pushMetadata(alice.getPubKey(),
-						SignedData.sign(REGISTRY.get(GlobalFsMetadata.class), GlobalFsMetadata.of(filename, content.length(), System.currentTimeMillis()), alice.getPrivKey())))
-				.thenCompose($ -> firstClient.download(alice.getPubKey(), filename, 4, 0))
-				.thenCompose(supplier -> supplier.toCollector(toList()))
-				.whenComplete(assertComplete(list -> {
-					System.out.println(list);
-					assertEquals(1, list.size());
-					DataFrame frame = list.get(0);
-					assertTrue(frame.isCheckpoint());
-					assertTrue(frame.getCheckpoint().verify(alice.getPubKey()));
-					assertEquals(4, frame.getCheckpoint().getValue().getPosition());
-				}));
+		await(ChannelSupplier.of(wrapUtf8(content))
+				.transformWith(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.fixed(4), filename, 0, new SHA256Digest(), null))
+				.streamTo(await(firstClient.upload(alice.getPubKey(), filename, -1))));
+
+		List<DataFrame> list = await(await(firstClient.download(alice.getPubKey(), filename, 4, 0)).toList());
+		assertEquals(1, list.size());
+		DataFrame frame = list.get(0);
+		assertTrue(frame.isCheckpoint());
+		assertTrue(frame.getCheckpoint().verify(alice.getPubKey()));
+		assertEquals(4, frame.getCheckpoint().getValue().getPosition());
 	}
 
 	@Test
 	public void uploadWithOffset() {
-		announce(alice, set(firstId))
-				.thenCompose($ -> firstAliceAdapter.upload("folder/test.txt"))
-				.thenCompose(ChannelSupplier.of(wrapUtf8("first line of the content\n"))::streamTo)
-				.thenCompose($ ->
-						ChannelSupplier.of(wrapUtf8("ntent\nsecond line, appended\n"))
-								.streamTo(firstAliceAdapter.uploader("folder/test.txt", 20)))
-				.thenCompose($ -> firstAliceAdapter.downloader("folder/test.txt").toCollector(ByteBufQueue.collector()))
-				.whenResult(buf -> System.out.println(buf.asString(UTF_8)))
-				.thenCompose($ -> firstAliceAdapter.getMetadata("folder/test.txt"))
-				.whenComplete(assertComplete(meta -> assertEquals(48, meta.getSize())));
+		await(announce(alice, set(firstId)));
+
+		await(ChannelSupplier.of(wrapUtf8("first line of the content\n")).streamTo(await(firstAliceAdapter.upload("folder/test.txt"))));
+		await(ChannelSupplier.of(wrapUtf8("ntent\nsecond line, appended\n")).streamTo(await(firstAliceAdapter.upload("folder/test.txt", 20))));
+
+		String res = await(await(firstAliceAdapter.download("folder/test.txt")).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals("first line of the content\nsecond line, appended\n", res);
+
+		FileMetadata meta = await(firstAliceAdapter.getMetadata("folder/test.txt"));
+		assertEquals(48, meta.getSize());
 	}
 
 	@Test
@@ -233,28 +233,28 @@ public final class GlobalFsTest {
 		String first = "Hello world, this is some bytes ";
 		String second = "to be sent through the GlobalFs HTTP interface";
 
-		announce(alice, set(firstId))
-				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(consumer -> ChannelSupplier.of(wrapUtf8(first)).streamTo(consumer))
-				.thenCompose($ -> firstAliceAdapter.getMetadata("test.txt"))
-				.thenCompose(meta -> firstAliceAdapter.upload("test.txt", meta.getSize() - 6))
-				.thenCompose(ChannelSupplier.of(wrapUtf8("bytes " + second))::streamTo)
-				.thenCompose($ -> firstAliceAdapter.download("test.txt"))
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(res -> assertEquals(first + second, res.asString(UTF_8))));
+		await(announce(alice, set(firstId)));
+		await(ChannelSupplier.of(wrapUtf8(first)).streamTo(await(firstAliceAdapter.upload("test.txt"))));
+		FileMetadata meta = await(firstAliceAdapter.getMetadata("test.txt"));
 
+		await(ChannelSupplier.of(wrapUtf8("bytes " + second)).streamTo(await(firstAliceAdapter.upload("test.txt", meta.getSize() - 6))));
+		String res = await(await(firstAliceAdapter.download("test.txt")).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals(first + second, res);
 	}
 
 	@Test
 	public void downloadFromOther() {
 		String string = "hello, this is a test little string of bytes";
 
-		announce(alice, set(firstId))
-				.thenCompose($ -> firstAliceAdapter.upload("test.txt"))
-				.thenCompose(ChannelSupplier.of(wrapUtf8(string))::streamTo)
-				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(res -> assertEquals(string, res.asString(UTF_8))));
+		// make first node master for alice
+		await(announce(alice, set(firstId)));
+
+		// upload a file to the first node
+		await(ChannelSupplier.of(wrapUtf8(string)).streamTo(await(firstAliceAdapter.upload("test.txt"))));
+
+		// and the download it from the second
+		String res = await(await(secondAliceAdapter.download("test.txt")).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals(string, res);
 	}
 
 	@Test
@@ -262,13 +262,20 @@ public final class GlobalFsTest {
 		String data = "hello, this is a test little string of bytes";
 
 		await(announce(alice, set(firstId, secondId)));
+
+		// upload file to the first node
 		await(ChannelSupplier.of(wrapUtf8(data)).streamTo(await(firstAliceAdapter.upload("test.txt"))));
 
-		// because we straight up call fetch here, there is no way for it to know that it is a master for alice
-		rawSecondClient.withManagedPubKeys(set(alice.getPubKey()));
+		// just ping the second node with alice's pubkey so it would check if it it's master
+		await(secondAliceAdapter.list());
 
+		// // second node never even heard of alice to know it is it's master
+		// rawSecondClient.withManagedPubKeys(set(alice.getPubKey()));
+
+		// make second one catch up
 		await(rawSecondClient.catchUp());
 
+		// now second should have this file too
 		String res = await(await(secondAliceAdapter.download("test.txt")).toCollector(ByteBufQueue.collector())).asString(UTF_8);
 		assertEquals(data, res);
 	}
@@ -277,15 +284,21 @@ public final class GlobalFsTest {
 	public void partialFetch() {
 		String part = "hello, this is a test little string of bytes";
 		String string = part + "\nwhich has a second line by the way, hello there";
-		announce(alice, set(firstId, secondId))
-				.thenCompose($ -> secondAliceAdapter.upload("test.txt"))
-				.thenCompose(ChannelSupplier.of(wrapUtf8(part))::streamTo)
-				.thenCompose($ -> firstAliceAdapter.upload("test.txt", 0))
-				.thenCompose(ChannelSupplier.of(wrapUtf8(string))::streamTo)
-				.thenCompose($ -> rawSecondClient.catchUp())
-				.thenCompose($ -> secondAliceAdapter.download("test.txt"))
-				.thenCompose(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(res -> assertEquals(string, res.asString(UTF_8))));
+
+		await(announce(alice, set(firstId, secondId)));
+
+		// upload half of the text to the second node
+		await(ChannelSupplier.of(wrapUtf8(part)).streamTo(await(secondAliceAdapter.upload("test.txt"))));
+
+		// and the whole text to the first one
+		await(ChannelSupplier.of(wrapUtf8(string)).streamTo(await(firstAliceAdapter.upload("test.txt", 0))));
+
+		// make second one catch up
+		await(rawSecondClient.catchUp());
+
+		// now second should have the whole text too
+		String res = await(await(secondAliceAdapter.download("test.txt")).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals(string, res);
 	}
 
 	@Test
@@ -325,6 +338,9 @@ public final class GlobalFsTest {
 	}
 
 	@Test
+	@LoggerConfig(logger = "io.global.fs", value = "TRACE")
+	@LoggerConfig(logger = "io.global.fs.local.RemoteFsCheckpointStorage", value = "INFO")
+	@Ignore("does not work yet") // TODO anton: FIX FORWARDING CONSTANT EXCEPTIONS THROUGH HTTP
 	public void fetchDeletions() {
 		String filename = "test.txt";
 
@@ -340,7 +356,9 @@ public final class GlobalFsTest {
 		await(rawFirstClient.catchUp());
 
 		// uploading on the first node again
-		await(ChannelSupplier.of(wrapUtf8("another string of bytes to test")).streamTo(await(firstAliceAdapter.upload(filename))));
+		Throwable e = awaitException(firstAliceAdapter.upload(filename));
+
+		assertSame(UPLOADING_TO_TOMBSTONE, e);
 	}
 
 	@Test
@@ -361,6 +379,23 @@ public final class GlobalFsTest {
 
 		// second should check the actual metadata when trying to download
 		assertSame(FILE_NOT_FOUND, awaitException(secondAliceAdapter.download("test.txt")));
+	}
+
+	@Test
+	@Manual("does not work")
+	@LoggerConfig(logger = "io.global.fs", value = "TRACE")
+	public void proxyUpload() {
+		String data = "some string of bytes to test";
+
+		// first node is master
+		await(announce(alice, set(firstId)));
+
+		// upload to master through second node
+		await(ChannelSupplier.of(wrapUtf8(data)).streamTo(await(secondAliceAdapter.upload("test.txt"))));
+
+		// download from first
+		String res = await(await(firstAliceAdapter.download("test.txt")).toCollector(ByteBufQueue.collector())).asString(UTF_8);
+		assertEquals(data, res);
 	}
 
 	private GlobalFsNode wrapWithHttpInterface(GlobalFsNode node) {

@@ -35,7 +35,10 @@ import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.api.NodeFactory;
-import io.global.fs.api.*;
+import io.global.fs.api.CheckpointStorage;
+import io.global.fs.api.DataFrame;
+import io.global.fs.api.GlobalFsCheckpoint;
+import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FramesFromStorage;
 import io.global.fs.transformers.FramesIntoStorage;
 import org.slf4j.Logger;
@@ -50,7 +53,7 @@ import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
-import static io.global.fs.api.MetadataStorage.NO_METADATA;
+import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
 import static java.util.stream.Collectors.toList;
 
 public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<LocalGlobalFsNode> {
@@ -69,7 +72,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	private final DiscoveryService discoveryService;
 	private final NodeFactory<GlobalFsNode> nodeFactory;
 	private final Function<PubKey, FsClient> storageFactory;
-	private final Function<PubKey, MetadataStorage> metaStorageFactory;
 	private final Function<PubKey, CheckpointStorage> checkpointStorageFactory;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
@@ -78,22 +80,19 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	private LocalGlobalFsNode(RawServerId id, DiscoveryService discoveryService,
 			NodeFactory<GlobalFsNode> nodeFactory,
 			Function<PubKey, FsClient> storageFactory,
-			Function<PubKey, MetadataStorage> metaStorageFactory,
 			Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
 		this.id = id;
 		this.discoveryService = discoveryService;
 		this.nodeFactory = nodeFactory;
 		this.storageFactory = storageFactory;
-		this.metaStorageFactory = metaStorageFactory;
 		this.checkpointStorageFactory = checkpointStorageFactory;
 	}
 
 	public static LocalGlobalFsNode create(RawServerId id, DiscoveryService discoveryService,
 			NodeFactory<GlobalFsNode> nodeFactory,
 			Function<PubKey, FsClient> storageFactory,
-			Function<PubKey, MetadataStorage> metaStorageFactory,
 			Function<PubKey, CheckpointStorage> checkpointStorageFactory) {
-		return new LocalGlobalFsNode(id, discoveryService, nodeFactory, storageFactory, metaStorageFactory, checkpointStorageFactory);
+		return new LocalGlobalFsNode(id, discoveryService, nodeFactory, storageFactory, checkpointStorageFactory);
 	}
 
 	public static LocalGlobalFsNode create(RawServerId id, DiscoveryService discoveryService, NodeFactory<GlobalFsNode> nodeFactory, FsClient fsClient) {
@@ -102,7 +101,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		FsClient checkpoints = fsClient.subfolder("checkpoints");
 		return new LocalGlobalFsNode(id, discoveryService, nodeFactory,
 				key -> data.subfolder(key.asString()),
-				key -> new RemoteFsMetadataStorage(metadata.subfolder(key.asString())),
 				key -> new RemoteFsCheckpointStorage(checkpoints.subfolder(key.asString())));
 	}
 
@@ -131,18 +129,18 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	}
 	// endregion
 
-	private static BiFunction<SignedData<GlobalFsMetadata>, Throwable, Promise<GlobalFsMetadata>> normalizeMeta(PubKey space) {
+	private static BiFunction<SignedData<GlobalFsCheckpoint>, Throwable, Promise<GlobalFsCheckpoint>> normalizeMeta(PubKey space) {
 		return (signedMeta, e) -> {
 			if (e != null) {
-				return e == NO_METADATA ?
+				return e == NO_CHECKPOINT ?
 						Promise.of(null) :
 						Promise.ofException(e);
 			}
 			if (!signedMeta.verify(space)) {
 				return Promise.ofException(CANT_VERIFY_METADATA);
 			}
-			GlobalFsMetadata meta = signedMeta.getValue();
-			if (meta.isRemoved()) {
+			GlobalFsCheckpoint meta = signedMeta.getValue();
+			if (meta.isTombstone()) {
 				return Promise.of(null);
 			}
 			return Promise.of(meta);
@@ -162,6 +160,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 						return ns.save(filename, offset);
 					} else if (nodes.isEmpty()) {
 						logger.warn("no masters found for {}, caching {}", space, filename);
+						ns.tempMasterMark = true;
 						return ns.save(filename, offset);
 					}
 					if (!doesUploadCaching) {
@@ -192,7 +191,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 										});
 							}));
 				})
-				.whenComplete(toLogger(logger, "download", filename, offset));
+				.whenComplete(toLogger(logger, "upload", space, filename, offset, this));
 	}
 
 	@Override
@@ -200,16 +199,16 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		Namespace ns = ensureNamespace(space);
 		return ns.getMetadata(filename)
 				.thenComposeEx((signedLocalMeta, e) -> {
-					if (e != null && e != NO_METADATA) {
+					if (e != null && e != NO_CHECKPOINT) {
 						return Promise.ofException(e);
 					}
 					return getMetadata(space, filename)
 							.thenComposeEx(normalizeMeta(space))
 							.thenCompose(remoteMeta -> {
 								if (signedLocalMeta != null) { // if we have cached..
-									GlobalFsMetadata localMeta = signedLocalMeta.getValue();
+									GlobalFsCheckpoint localMeta = signedLocalMeta.getValue();
 									if (localMeta.compareTo(remoteMeta) >= 0) { // ..and it is same or better than remote
-										return localMeta.isRemoved() ?
+										return localMeta.isTombstone() ?
 												Promise.ofException(FILE_NOT_FOUND) :
 												ns.load(filename, offset, limit); // then we return it
 									}
@@ -239,70 +238,72 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 																				return splitter.addOutput()
 																						.getSupplier()
-																						.withEndOfStream(eos -> eos
-																								.both(splitter.getProcessResult())
-																								.thenCompose($ -> ns.pushMetadata(signedMeta)));
+																						.withEndOfStream(eos -> eos.both(splitter.getProcessResult()));
 																			});
 																}))));
 							});
 				})
-				.whenComplete(toLogger(logger, "download", filename, offset, limit));
+				.whenComplete(toLogger(logger, "download", space, filename, offset, limit, this));
 	}
 
 	@Override
-	public Promise<List<SignedData<GlobalFsMetadata>>> list(PubKey space, String glob) {
+	public Promise<List<SignedData<GlobalFsCheckpoint>>> list(PubKey space, String glob) {
 		Namespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.thenCompose(nodes ->
 						isMasterFor(space) || nodes.isEmpty() ?
 								ns.list(glob) :
 								Promises.firstSuccessful(nodes.stream()
-												.map(node -> node.list(space, glob))));
+										.map(node -> node.list(space, glob))))
+				.whenComplete(toLogger(logger, "list", space, glob, this));
 	}
 
 	@Override
-	public Promise<SignedData<GlobalFsMetadata>> getMetadata(PubKey space, String filename) {
+	public Promise<SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
 		Namespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.thenCompose(nodes ->
 						isMasterFor(space) || nodes.isEmpty() ?
 								ns.getMetadata(filename) :
 								Promises.firstSuccessful(nodes.stream()
-												.map(node -> node.getMetadata(space, filename))));
+										.map(node -> node.getMetadata(space, filename))))
+				.whenComplete(toLogger(logger, "getMetadata", space, filename, this));
 	}
 
 	@Override
-	public Promise<Void> pushMetadata(PubKey space, SignedData<GlobalFsMetadata> signedMetadata) {
-		if (!signedMetadata.verify(space)) {
-			return Promise.ofException(CANT_VERIFY_METADATA);
-		}
-		return ensureNamespace(space)
-				.pushMetadata(signedMetadata);
+	public Promise<Void> delete(PubKey space, SignedData<GlobalFsCheckpoint> tombstone) {
+		Namespace ns = ensureNamespace(space);
+		return ns.ensureMasterNodes()
+				.thenCompose(nodes ->
+						isMasterFor(space) || nodes.isEmpty() ?
+								ns.drop(tombstone) :
+								Promises.firstSuccessful(nodes.stream()
+										.map(node -> node.delete(space, tombstone))))
+				.whenComplete(toLogger(logger, "delete", space, tombstone, this));
 	}
 
 	private Namespace ensureNamespace(PubKey space) {
-		return namespaces.computeIfAbsent(space, key ->
-				new Namespace(key,
-						storageFactory.apply(key),
-						metaStorageFactory.apply(key),
-						checkpointStorageFactory.apply(key)));
+		return namespaces.computeIfAbsent(space, key -> new Namespace(key, storageFactory.apply(key), checkpointStorageFactory.apply(key)));
 	}
 
 	public Promise<Boolean> fetch(PubKey space) {
 		logger.trace("fetching from {}", space);
-		return ensureNamespace(space).fetch();
+		return ensureNamespace(space).fetch()
+				.whenComplete(toLogger(logger, "fetch", space, this));
 	}
 
 	public Promise<Boolean> fetch() {
 		logger.info("fetching from managed repos");
 		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), managedPubKeys.stream().map(pk -> fetch(pk).toTry()))
-				.thenCompose(Promise::ofTry);
+				.thenCompose(Promise::ofTry)
+				.whenComplete(toLogger(logger, "fetch", this));
 	}
 
 	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpIteration));
 
 	public Promise<Void> catchUp() {
-		return catchUpImpl.get();
+		return catchUpImpl.get()
+				.whenComplete(toLogger(logger, "catchUp", this));
 	}
 
 	private void catchUpIteration(SettablePromise<Void> cb) {
@@ -327,7 +328,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		final PubKey space;
 
 		final FsClient storage;
-		final MetadataStorage metadataStorage;
 		final CheckpointStorage checkpointStorage;
 
 		final AsyncSupplier<List<GlobalFsNode>> ensureMasterNodes = reuse(this::doEnsureMasterNodes);
@@ -335,10 +335,11 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		long updateNodesTimestamp;
 		long announceTimestamp;
 
-		Namespace(PubKey space, FsClient storage, MetadataStorage metadataStorage, CheckpointStorage checkpointStorage) {
+		boolean tempMasterMark = false;
+
+		Namespace(PubKey space, FsClient storage, CheckpointStorage checkpointStorage) {
 			this.space = space;
 			this.storage = storage;
-			this.metadataStorage = metadataStorage;
 			this.checkpointStorage = checkpointStorage;
 		}
 
@@ -365,11 +366,11 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 								masterNodes.keySet().removeIf(id -> !newServerIds.contains(id));
 								if (newServerIds.remove(id)) { // ensure that we are master for the space if it was announced
 									if (managedPubKeys.add(space)) {
-										logger.info("became a master for {}: {}", space, LocalGlobalFsNode.this);
+										logger.trace("became a master for {}: {}", space, LocalGlobalFsNode.this);
 									}
 								} else {
 									if (managedPubKeys.remove(space)) {
-										logger.info("stopped being a master for {}: {}", space, LocalGlobalFsNode.this);
+										logger.trace("stopped being a master for {}: {}", space, LocalGlobalFsNode.this);
 									}
 								}
 								newServerIds.forEach(id -> masterNodes.computeIfAbsent(id, nodeFactory::create));
@@ -403,14 +404,14 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 											logger.warn("received metadata with unverified signature, skipping {}", signedMetadata.getValue());
 											return Promise.of(false).toTry();
 										}
-										GlobalFsMetadata metadata = signedMetadata.getValue();
+										GlobalFsCheckpoint metadata = signedMetadata.getValue();
 										String filename = metadata.getFilename();
 										return getMetadata(filename)
 												.thenComposeEx((signedLocalMetadata, e) -> {
-													if (e != null && e != NO_METADATA) {
+													if (e != null && e != NO_CHECKPOINT) {
 														return Promise.ofException(e);
 													}
-													GlobalFsMetadata localMetadata = null;
+													GlobalFsCheckpoint localMetadata = null;
 													if (signedLocalMetadata != null) {
 														if (!signedLocalMetadata.verify(space)) {
 															logger.warn("found local metadata with unverified signature, skipping {}", signedLocalMetadata.getValue());
@@ -421,48 +422,39 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 													}
 
 													if (localMetadata != null) {
-														// our file is better
-														if (localMetadata.compareTo(metadata) >= 0) {
-															logger.trace("our file {} is better than remote");
+														if (localMetadata.isTombstone()) {
 															return Promise.of(false);
 														}
-														if (metadata.isRemoved()) {
-															logger.trace("remote file {} is a tombstone with higher revision");
-															return pushMetadata(signedMetadata).thenApply($ -> true);
+														if (metadata.isTombstone()) {
+															logger.trace("remote file {} is a tombstone", metadata.getFilename());
+															return drop(signedMetadata).thenApply($ -> true);
+														}
+														// our file is better
+														if (localMetadata.compareTo(metadata) >= 0) {
+															logger.trace("our file {} is better than remote", localMetadata.getFilename());
+															return Promise.of(false);
 														}
 														// other file is encrypted with different key
 														// (first condition is because tombstones don't store key hash)
 														if (!Objects.equals(localMetadata.getSimKeyHash(), metadata.getSimKeyHash())) {
-															logger.trace("remote file {} is encrypted with different key, ignoring", metadata);
+															logger.trace("remote file {} is encrypted with different key, ignoring", metadata.getFilename());
 															return Promise.of(false);
 														}
-														logger.trace("found better file {}", metadata);
+														logger.trace("found better version of {}", metadata.getFilename());
 													} else {
-														if (metadata.isRemoved()) {
-															logger.trace("found a new tombstone {}", metadata);
-															return pushMetadata(signedMetadata).thenApply($ -> true);
+														if (metadata.isTombstone()) {
+															logger.trace("found a new tombstone for {}", metadata.getFilename());
+															return drop(signedMetadata).thenApply($ -> true);
 														}
-														logger.trace("found a new file {}", metadata);
+														logger.trace("found a new file {}", metadata.getFilename());
 													}
 
-													long ourSize = localMetadata != null ? localMetadata.getSize() : 0;
-													long partSize = metadata.getSize() - ourSize;
+													long ourSize = localMetadata != null ? localMetadata.getPosition() : 0;
+													long partSize = metadata.getPosition() - ourSize;
 
 													// meta is newer but our size is bigger - someone truncated his file?
-													if (partSize <= 0) {
+													if (partSize < 0) {
 														return Promise.ofException(new StacklessException(Namespace.class, "pushMetadata truncations are disallowed!"));
-														// return node.download(space, filename, metadata.getSize(), 0)
-														// 		.thenCompose(supplier -> supplier.toCollector(toList()))
-														// 		// making sure that last frame is a checkpoint
-														// 		.thenCompose(frames -> {
-														// 			assert frames.size() == 1;
-														// 			return save(filename, metadata.getSize())
-														// 					.thenCompose(ChannelSupplier.of(frames.get(0))::streamTo);
-														// 		})
-														// 		// override our metadata
-														// 		// TO_DO anton: for file truncations to work, lazyOverrides in LocalFsClient should be disabled
-														// 		.thenCompose($ -> pushMetadata(signedMetadata))
-														// 		.thenApply($ -> true);
 													}
 
 													if (ourSize == 0) {
@@ -470,13 +462,11 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 																.thenCompose(supplier ->
 																		save(filename, 0)
 																				.thenCompose(supplier::streamTo))
-																.thenCompose($ -> pushMetadata(signedMetadata))
 																.thenApply($ -> true);
 													}
 
 													// download missing part of the whole file
 													return downloadMissingPart(node, filename, ourSize, partSize, filename)
-															.thenCompose($ -> pushMetadata(signedMetadata))
 															.thenApply($ -> true);
 												})
 												.toTry();
@@ -529,8 +519,17 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 		Promise<ChannelConsumer<DataFrame>> save(String filename, long offset) {
 			logger.trace("uploading to local storage {}, offset: {}", filename, offset);
-			return storage.upload(filename, offset)
-					.thenApply(consumer -> consumer.transformWith(FramesIntoStorage.create(filename, space, checkpointStorage)));
+			return getMetadata(filename)
+					.thenComposeEx((checkpoint, e) -> {
+						if (e != null && e != NO_CHECKPOINT) {
+							return Promise.ofException(e);
+						}
+						if (checkpoint != null && checkpoint.getValue().isTombstone()) {
+							return Promise.ofException(UPLOADING_TO_TOMBSTONE);
+						}
+						return storage.upload(filename, offset)
+								.thenApply(consumer -> consumer.transformWith(FramesIntoStorage.create(filename, space, checkpointStorage)));
+					});
 		}
 
 		Promise<ChannelSupplier<DataFrame>> load(String fileName, long offset, long length) {
@@ -547,25 +546,20 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 					});
 		}
 
-		Promise<List<SignedData<GlobalFsMetadata>>> list(String glob) {
-			return metadataStorage.loadAll(glob);
+		Promise<Void> drop(SignedData<GlobalFsCheckpoint> tombstone) {
+			assert tombstone.getValue().isTombstone() : "trying to drop file with non-tombstone checkpoint";
+			String filename = tombstone.getValue().getFilename();
+			return checkpointStorage.drop(filename)
+					.thenCompose($ ->
+							Promises.all(storage.delete(filename), checkpointStorage.store(filename, tombstone)));
 		}
 
-		Promise<SignedData<GlobalFsMetadata>> getMetadata(String fileName) {
-			return metadataStorage.load(fileName);
+		Promise<List<SignedData<GlobalFsCheckpoint>>> list(String glob) {
+			return checkpointStorage.loadLastCheckpoints(glob);
 		}
 
-		Promise<Void> pushMetadata(SignedData<GlobalFsMetadata> signedMeta) {
-			GlobalFsMetadata meta = signedMeta.getValue();
-			if (meta.isRemoved()) {
-				logger.trace("pushing tombstone metadata {}, removing local file", signedMeta);
-				return Promises.all(
-						metadataStorage.store(signedMeta),
-						storage.delete(meta.getFilename()),
-						checkpointStorage.drop(meta.getFilename())
-				);
-			}
-			return metadataStorage.store(signedMeta);
+		Promise<SignedData<GlobalFsCheckpoint>> getMetadata(String fileName) {
+			return checkpointStorage.loadLastCheckpoint(fileName);
 		}
 	}
 }

@@ -30,17 +30,15 @@ import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.fs.api.GlobalFsMetadata;
+import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
 
-import static io.datakernel.codec.binary.BinaryUtils.decode;
-import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
-import static io.datakernel.http.AsyncServlet.ensureRequestBody;
+import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.global.fs.api.MetadataStorage.NO_METADATA;
+import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static io.global.fs.util.HttpDataFormats.parseOffset;
 import static io.global.fs.util.HttpDataFormats.parseRange;
@@ -48,12 +46,13 @@ import static io.global.fs.util.HttpDataFormats.parseRange;
 public final class GlobalFsNodeServlet implements AsyncServlet {
 	static final String UPLOAD = "upload";
 	static final String DOWNLOAD = "download";
-	static final String PUSH = "push";
 	static final String LIST = "list";
+	static final String GET_METADATA = "getMetadata";
+	static final String DELETE = "delete";
 	// static final String COPY = "copy";
 	// static final String MOVE = "move";
 
-	static final StructuredCodec<SignedData<GlobalFsMetadata>> SIGNED_METADATA_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsMetadata>>() {});
+	static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 
 	private final AsyncServlet servlet;
 
@@ -67,7 +66,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 					ChannelSupplier<ByteBuf> body = request.getBodyStream();
 					return node.getMetadata(PubKey.fromString(request.getPathParameter("owner")), request.getPathParameter("path"))
 							.thenComposeEx((meta, e) -> {
-								boolean newFile = e == NO_METADATA;
+								boolean newFile = e == NO_CHECKPOINT;
 								if (e == null || newFile) {
 									return node.upload(pubKey, path, offset)
 											.thenCompose(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
@@ -93,14 +92,32 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 											ChannelSupplier.ofStream(list
 													.stream()
 													.map(meta ->
-															encodeWithSizePrefix(SIGNED_METADATA_CODEC, meta)))));
+															encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, meta)))));
 				})
-				.with(POST, "/" + PUSH + "/:owner", ensureRequestBody(request -> {
+				.with(GET, "/" + GET_METADATA + "/:owner/:path*", request -> {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-					SignedData<GlobalFsMetadata> signedMeta = decode(SIGNED_METADATA_CODEC, request.getBody());
-					return node.pushMetadata(pubKey, signedMeta)
-							.thenApply($ -> HttpResponse.ok200());
-				}));
+					return node.getMetadata(pubKey, request.getPathParameter("path"))
+							.thenComposeEx((meta, e) -> {
+								if (e == null) {
+									return Promise.of(HttpResponse.ok200().withBody(encode(SIGNED_CHECKPOINT_CODEC, meta)));
+								}
+								if (e == NO_CHECKPOINT) {
+									return Promise.of(HttpResponse.ofCode(404));
+								}
+								return Promise.ofException(e);
+							});
+				})
+				.with(POST, "/" + DELETE + "/:owner", request -> {
+					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
+					return request.getBodyPromise(Integer.SIZE)
+							.thenCompose(body -> {
+								try {
+									return node.delete(pubKey, decode(SIGNED_CHECKPOINT_CODEC, body)).thenApply(list -> HttpResponse.ok200());
+								} catch (ParseException e) {
+									return Promise.<HttpResponse>ofException(e);
+								}
+							});
+				});
 		// .with(POST, "/" + COPY + "/:owner/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
 		// 		node.copy(parseNamespace(request), request.getPostParameters())
 		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))))

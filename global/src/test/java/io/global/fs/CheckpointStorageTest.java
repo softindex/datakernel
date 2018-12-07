@@ -77,9 +77,9 @@ public final class CheckpointStorageTest {
 		String filename = "test.txt";
 
 		Promise.complete()
-				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 567, digest1), keys.getPrivKey())))
-				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 123, digest2), keys.getPrivKey())))
-				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 321, digest3), keys.getPrivKey())))
+				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 567, digest1, null), keys.getPrivKey())))
+				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 123, digest2, null), keys.getPrivKey())))
+				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 321, digest3, null), keys.getPrivKey())))
 				.thenCompose($ -> storage.loadIndex("test.txt"))
 				.whenResult(positions -> assertArrayEquals(new long[]{123, 321, 567}, positions))
 				.thenCompose($ -> storage.load("test.txt", 321))

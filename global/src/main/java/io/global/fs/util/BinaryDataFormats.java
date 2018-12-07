@@ -22,7 +22,6 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.remotefs.FileMetadata;
 import io.global.common.Hash;
 import io.global.fs.api.GlobalFsCheckpoint;
-import io.global.fs.api.GlobalFsMetadata;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.global.common.BinaryDataFormats.createGlobal;
@@ -44,14 +43,8 @@ public final class BinaryDataFormats {
 					tuple(GlobalFsCheckpoint::parse,
 							GlobalFsCheckpoint::getFilename, registry.get(String.class),
 							GlobalFsCheckpoint::getPosition, registry.get(long.class),
-							GlobalFsCheckpoint::getDigestState, registry.get(byte[].class)))
-
-			.with(GlobalFsMetadata.class, registry ->
-					tuple(GlobalFsMetadata::parse,
-							GlobalFsMetadata::getFilename, registry.get(String.class),
-							GlobalFsMetadata::getSize, registry.get(long.class),
-							GlobalFsMetadata::getRevision, registry.get(long.class),
-							GlobalFsMetadata::getSimKeyHash, registry.get(Hash.class).nullable()));
+							GlobalFsCheckpoint::getDigestState, registry.get(byte[].class),
+							GlobalFsCheckpoint::getSimKeyHash, registry.get(Hash.class).nullable()));
 
 	public static ByteBuf readBuf(ByteBuf buf) throws ParseException {
 		int size;

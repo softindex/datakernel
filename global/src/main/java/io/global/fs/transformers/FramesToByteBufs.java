@@ -34,12 +34,16 @@ import org.spongycastle.crypto.digests.SHA256Digest;
  * It's counterpart is the {@link FrameSigner}.
  */
 abstract class FramesToByteBufs extends AbstractChannelTransformer<FramesToByteBufs, DataFrame, ByteBuf> {
+	static final StacklessException FRAMES_AFTER_TOMBSTONE = new StacklessException(FramesToByteBufs.class, "Received unexpected frame after tombstone");
+	static final StacklessException UNEXPECTED_TOMBSTONE = new StacklessException(FramesToByteBufs.class, "Received unexpected tombstone after other frames");
+
 	private final PubKey pubKey;
 	private final String filename;
 
 	protected long position = 0;
 
 	private boolean first = true;
+	private boolean tombstone = false;
 	private SHA256Digest digest = null;
 
 	FramesToByteBufs(PubKey pubKey, String filename) {
@@ -57,14 +61,23 @@ abstract class FramesToByteBufs extends AbstractChannelTransformer<FramesToByteB
 
 	@Override
 	protected Promise<Void> onItem(DataFrame frame) {
+		if (tombstone) {
+			return Promise.ofException(FRAMES_AFTER_TOMBSTONE);
+		}
 		if (first) {
 			first = false;
 			if (!frame.isCheckpoint()) {
 				return Promise.ofException(new StacklessException(getClass(), "First dataframe is not a checkpoint!"));
 			}
-			GlobalFsCheckpoint data = frame.getCheckpoint().getValue();
-			position = data.getPosition();
-			digest = new SHA256Digest(data.getDigest());
+			SignedData<GlobalFsCheckpoint> signedCheckpoint = frame.getCheckpoint();
+			GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
+			position = checkpoint.getPosition();
+			if (checkpoint.isTombstone()) {
+				tombstone = true;
+				return receiveCheckpoint(signedCheckpoint);
+			} else {
+				digest = new SHA256Digest(checkpoint.getDigest());
+			}
 		}
 		if (frame.isBuf()) {
 			ByteBuf buf = frame.getBuf();
@@ -73,12 +86,15 @@ abstract class FramesToByteBufs extends AbstractChannelTransformer<FramesToByteB
 			digest.update(buf.array(), buf.readPosition(), size);
 			return receiveByteBuf(buf);
 		}
-		SignedData<GlobalFsCheckpoint> checkpoint = frame.getCheckpoint();
-		CheckpointVerificationResult result = GlobalFsCheckpoint.verify(checkpoint, pubKey, filename, position, digest);
+		SignedData<GlobalFsCheckpoint> signedCheckpoint = frame.getCheckpoint();
+		CheckpointVerificationResult result = GlobalFsCheckpoint.verify(signedCheckpoint, pubKey, filename, position, digest);
 		if (result != CheckpointVerificationResult.SUCCESS) {
 			return Promise.ofException(new StacklessException(getClass(), "Checkpoint verification failed: " + result.message));
 		}
+		if (signedCheckpoint.getValue().isTombstone()) {
+			return Promise.ofException(UNEXPECTED_TOMBSTONE);
+		}
 		// return output.post(ByteBuf.wrapForReading(new byte[]{124}));
-		return receiveCheckpoint(checkpoint);
+		return receiveCheckpoint(signedCheckpoint);
 	}
 }
