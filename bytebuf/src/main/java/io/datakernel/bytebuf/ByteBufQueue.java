@@ -166,6 +166,25 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 		return result;
 	}
 
+	public void consume(int size, ByteBufConsumer consumer) {
+		assert hasRemainingBytes(size);
+		ByteBuf buf = bufs[first];
+		if (buf.readRemaining() >= size) {
+			int newPos = buf.readPosition() + size;
+			consumer.accept(buf);
+			buf.readPosition(newPos);
+			if (!buf.canRead()) {
+				first = next(first);
+				buf.recycle();
+			}
+		} else {
+			buf = ByteBufPool.allocate(size);
+			drainTo(buf, size);
+			consumer.accept(buf);
+			buf.recycle();
+		}
+	}
+
 	/**
 	 * Creates and returns ByteBuf with all remaining bytes from queue
 	 *
