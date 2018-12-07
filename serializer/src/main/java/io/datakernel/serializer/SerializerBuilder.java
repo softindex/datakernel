@@ -44,7 +44,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static java.lang.Character.toUpperCase;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 
@@ -239,7 +238,8 @@ public final class SerializerBuilder {
 		setSerializer(type, subclassesSerializer);
 	}
 
-	public <T> void setSubclasses(Class<T> type, Class<? extends T>... subclasses) {
+	@SafeVarargs
+	public final <T> void setSubclasses(Class<T> type, Class<? extends T>... subclasses) {
 		setSubclasses(type, Arrays.asList(subclasses));
 	}
 
@@ -248,13 +248,10 @@ public final class SerializerBuilder {
 		return this;
 	}
 
-	public <T> SerializerBuilder withSubclasses(Class<T> type, Class<? extends T>... subclasses) {
+	@SafeVarargs
+	public final <T> SerializerBuilder withSubclasses(Class<T> type, Class<? extends T>... subclasses) {
 		setSubclasses(type, subclasses);
 		return this;
-	}
-
-	private static String capitalize(String str) {
-		return toUpperCase(str.charAt(0)) + str.substring(1);
 	}
 
 	/**

@@ -61,8 +61,6 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		void onCommand(MessagingWithBinaryStreaming<I, O> messaging, I command);
 	}
 
-	// region builders
-
 	/**
 	 * Constructs a datagraph server with the given environment that runs in the specified event loop.
 	 *
@@ -76,7 +74,6 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
 		this.serializer = ByteBufSerializer.ofJsonCodec(serialization.getCommandCodec(), serialization.getResponseCodec());
 	}
-	// endregion
 
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
 		@Override
@@ -151,13 +148,13 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				});
 	}
 
+	@SuppressWarnings("unchecked")
 	private void doRead(MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
 		CommandHandler handler = handlers.get(command.getClass());
 		if (handler == null) {
 			messaging.close();
 			logger.error("missing handler for " + command);
 		} else {
-			//noinspection unchecked
 			handler.onCommand(messaging, command);
 		}
 	}

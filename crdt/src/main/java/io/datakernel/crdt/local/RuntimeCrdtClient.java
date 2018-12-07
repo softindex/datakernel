@@ -86,6 +86,7 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 		return Promise.of(uploader());
 	}
 
+	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Override
 	public StreamConsumer<CrdtData<K, S>> uploader() {
 		long timestamp = eventloop.currentTimeMillis();
@@ -120,6 +121,7 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 		return Promise.of(remover());
 	}
 
+	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Override
 	public StreamConsumer<K> remover() {
 		return StreamConsumer.<K>of(key -> {

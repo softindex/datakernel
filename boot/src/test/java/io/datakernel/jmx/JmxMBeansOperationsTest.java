@@ -186,6 +186,7 @@ public final class JmxMBeansOperationsTest {
 				description.appendText("has key \"" + key.toString() + "\"");
 			}
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public boolean matches(Object item) {
 				if (item == null) {

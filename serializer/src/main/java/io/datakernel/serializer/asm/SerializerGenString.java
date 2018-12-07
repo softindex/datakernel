@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +72,7 @@ public class SerializerGenString implements SerializerGen {
 
 	}
 
+	@SuppressWarnings("deprecation") // compatibility
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		List<Expression> list = new ArrayList<>();
@@ -109,6 +110,7 @@ public class SerializerGenString implements SerializerGen {
 
 	}
 
+	@SuppressWarnings("deprecation") // compatibility
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (format == StringFormat.UTF16) {
@@ -142,8 +144,7 @@ public class SerializerGenString implements SerializerGen {
 		SerializerGenString that = (SerializerGenString) o;
 
 		if (nullable != that.nullable) return false;
-		if (format != that.format) return false;
-		return true;
+		return format == that.format;
 	}
 
 	@Override

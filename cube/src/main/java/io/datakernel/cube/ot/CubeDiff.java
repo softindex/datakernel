@@ -20,6 +20,7 @@ import io.datakernel.aggregation.ot.AggregationDiff;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -70,6 +71,7 @@ public class CubeDiff {
 		return diffs.isEmpty();
 	}
 
+	@SuppressWarnings("unchecked")
 	public <C> Stream<C> addedChunks() {
 		return diffs.values().stream()
 				.flatMap(aggregationDiff -> aggregationDiff.getAddedChunks().stream())
@@ -83,7 +85,7 @@ public class CubeDiff {
 
 		CubeDiff cubeDiff = (CubeDiff) o;
 
-		return diffs != null ? diffs.equals(cubeDiff.diffs) : cubeDiff.diffs == null;
+		return Objects.equals(diffs, cubeDiff.diffs);
 	}
 
 	@Override

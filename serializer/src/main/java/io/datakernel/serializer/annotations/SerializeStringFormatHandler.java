@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenString;
 
 public class SerializeStringFormatHandler implements AnnotationHandler<SerializeStringFormat, SerializeStringFormatEx> {
+	@SuppressWarnings("deprecation") // compatibility
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeStringFormat annotation, CompatibilityLevel compatibilityLevel) {
 		return (type, generics, fallback) -> {

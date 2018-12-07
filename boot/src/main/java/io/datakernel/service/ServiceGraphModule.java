@@ -19,7 +19,6 @@ package io.datakernel.service;
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.Dependency;
-import com.google.inject.spi.DependencyAndSource;
 import com.google.inject.spi.HasDependencies;
 import com.google.inject.spi.ProvisionListener;
 import io.datakernel.annotation.Nullable;
@@ -363,6 +362,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	}
 
 	@Override
+	@SuppressWarnings("deprecation") // TODO update this to Guice 4.4 compatible code
 	protected void configure() {
 		install(new WorkerPoolModule());
 		bindListener(new AbstractMatcher<Binding<?>>() {
@@ -381,7 +381,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 					if (provision.provision() != null) {
 						workerKeys.add(provision.getBinding().getKey());
 					}
-					List<DependencyAndSource> chain = provision.getDependencyChain();
+					List<com.google.inject.spi.DependencyAndSource> chain = provision.getDependencyChain();
 					if (chain.size() >= 2) {
 						Key<?> key = chain.get(chain.size() - 2).getDependency().getKey();
 						Key<T> dependencyKey = provision.getBinding().getKey();

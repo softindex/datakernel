@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package io.datakernel.trigger;
 
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
-import com.google.inject.spi.DependencyAndSource;
 import com.google.inject.spi.ProvisionListener;
 import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.service.BlockingService;
@@ -213,7 +212,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 						return;
 					}
 					@SuppressWarnings("deprecation")
-					List<DependencyAndSource> dependencyChain = provision.getDependencyChain();
+					List<com.google.inject.spi.DependencyAndSource> dependencyChain = provision.getDependencyChain();
 					for (int i = dependencyChain.size() - 1; i >= 0; i--) {
 						Key<?> key = dependencyChain.get(i).getDependency().getKey();
 						if (currentlyProvidingSingletonKeys.contains(key)) {

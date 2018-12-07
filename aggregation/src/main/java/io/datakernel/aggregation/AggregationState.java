@@ -48,9 +48,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	private final Map<Object, AggregationChunk> chunks = new LinkedHashMap<>();
 	private RangeTree<PrimaryKey, AggregationChunk>[] prefixRanges;
 
-	private static final Comparator<AggregationChunk> MIN_KEY_ASCENDING_COMPARATOR = (chunk1, chunk2) -> chunk1.getMinPrimaryKey().compareTo(chunk2.getMinPrimaryKey());
+	private static final Comparator<AggregationChunk> MIN_KEY_ASCENDING_COMPARATOR = Comparator.comparing(AggregationChunk::getMinPrimaryKey);
 
-	@SuppressWarnings("unchecked")
 	AggregationState(AggregationStructure aggregation) {
 		this.aggregation = aggregation;
 		initIndex();
@@ -108,6 +107,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	void initIndex() {
 		prefixRanges = new RangeTree[aggregation.getKeys().size() + 1];
 		for (int size = 0; size <= aggregation.getKeys().size(); size++) {
@@ -280,7 +280,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	private List<AggregationChunk> findChunksForPartitioning(int partitioningKeyLength, int maxChunks) {
 		List<AggregationChunk> chunksForPartitioning = new ArrayList<>();
 		List<AggregationChunk> allChunks = new ArrayList<>(prefixRanges[0].getAll());
-		Collections.sort(allChunks, MIN_KEY_ASCENDING_COMPARATOR);
+		allChunks.sort(MIN_KEY_ASCENDING_COMPARATOR);
 
 		for (AggregationChunk chunk : allChunks) {
 			if (chunksForPartitioning.size() == maxChunks)
@@ -356,7 +356,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	private static List<AggregationChunk> trimChunks(List<AggregationChunk> chunks, int maxChunks) {
-		Collections.sort(chunks, MIN_KEY_ASCENDING_COMPARATOR);
+		chunks.sort(MIN_KEY_ASCENDING_COMPARATOR);
 		return chunks.subList(0, maxChunks);
 	}
 
@@ -477,7 +477,6 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		return true;
 	}
 
-	@SuppressWarnings("unchecked")
 	public List<AggregationChunk> findChunks(AggregationPredicate predicate, List<String> fields) {
 		Set<String> requestedFields = new HashSet<>(fields);
 

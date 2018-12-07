@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,6 +90,7 @@ public final class IntrusiveConcurrentStack<E extends IntrusiveConcurrentStack.N
 				return node != null;
 			}
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public E next() {
 				E result = (E) node;

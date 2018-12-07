@@ -32,7 +32,7 @@ import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 
-@SuppressWarnings("rawtypes")
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class AggregationPredicates {
 	private AggregationPredicates() {
 	}
@@ -618,7 +618,6 @@ public class AggregationPredicates {
 			return singletonMap(key, value);
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			return (fields.get(key) == null)
@@ -683,7 +682,6 @@ public class AggregationPredicates {
 			return emptyMap();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			return (fields.get(key) == null)
@@ -748,7 +746,6 @@ public class AggregationPredicates {
 			return emptyMap();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			Property property = property(record, key.replace('.', '$'));
@@ -812,7 +809,6 @@ public class AggregationPredicates {
 			return emptyMap();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			Property field = property(record, key.replace('.', '$'));
@@ -876,7 +872,6 @@ public class AggregationPredicates {
 			return emptyMap();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			Property property = property(record, key.replace('.', '$'));
@@ -940,7 +935,6 @@ public class AggregationPredicates {
 			return emptyMap();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			Property property = property(record, key.replace('.', '$'));
@@ -998,7 +992,6 @@ public class AggregationPredicates {
 			return emptyMap();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			return fields.containsKey(key) ? Expressions.alwaysTrue() : Expressions.alwaysFalse();
@@ -1180,6 +1173,7 @@ public class AggregationPredicates {
 			return to;
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public AggregationPredicate simplify() {
 			return (from.compareTo(to) > 0) ? alwaysFalse() : (from.equals(to) ? AggregationPredicates.eq(key, from) : this);
@@ -1255,7 +1249,7 @@ public class AggregationPredicates {
 			boolean simplified;
 			do {
 				simplified = false;
-				HashSet<AggregationPredicate> newPredicates = new HashSet<>();
+				Set<AggregationPredicate> newPredicates = new HashSet<>();
 				L:
 				for (AggregationPredicate newPredicate : simplifiedPredicates) {
 					for (AggregationPredicate simplifiedPredicate : newPredicates) {
@@ -1463,10 +1457,12 @@ public class AggregationPredicates {
 		return new PredicateHas(key);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static AggregationPredicate in(String key, Collection values) {
 		return values.size() == 1 ? new PredicateEq(key, values.toArray()[0]) : new PredicateIn(key, new TreeSet(values));
 	}
 
+	@SuppressWarnings("unchecked")
 	public static AggregationPredicate in(String key, Comparable... values) {
 		return values.length == 1 ? new PredicateEq(key, values[0]) : new PredicateIn(key, new TreeSet(asList(values)));
 	}
@@ -1535,6 +1531,7 @@ public class AggregationPredicates {
 				: Expressions.isNull(field);
 	}
 
+	@SuppressWarnings("unchecked")
 	private static Object toInternalValue(Map<String, FieldType> fields, String key, Object value) {
 		return fields.containsKey(key) ? fields.get(key).toInternalValue(value) : value;
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,6 @@ public final class WorkerPool {
 		return index;
 	}
 
-	@SuppressWarnings("unchecked")
 	public <T> T getCurrentInstance(Key<T> key) {
 		Integer localWorkerId = getLocalWorkerId();
 		checkState(localWorkerId != null, "No instance of %s is associated with current thread", key);
@@ -132,13 +131,13 @@ public final class WorkerPool {
 	}
 	// endregion
 
+	@SuppressWarnings("unchecked")
 	public synchronized <T> List<T> getExistingInstances(Key<T> key) {
 		checkState(injector != null && poolScope != null, "WorkerPool has not been initialized, make sure Boot module and ServiceGraph is used");
 		checkArgument(injector.getExistingBinding(key) != null, "Binding for %s not found", key);
 		return (List<T>) pool.get(key);
 	}
 
-	@SuppressWarnings("unchecked")
 	Object getOrAdd(Key<?> key, int workerId, Provider<?> unscoped) {
 		List<Object> instances = pool.computeIfAbsent(key, $ -> Arrays.asList(new Object[workers]));
 		Object instance = instances.get(workerId);

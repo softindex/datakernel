@@ -218,6 +218,7 @@ public final class CrdtClusterTest {
 				}));
 	}
 
+	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Test
 	public void downloadStuff() {
 		RemoteCrdtClient<String, Integer> client = RemoteCrdtClient.create(Eventloop.getCurrentEventloop(), new InetSocketAddress(9001), UTF8_SERIALIZER, INT_SERIALIZER);

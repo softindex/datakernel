@@ -83,6 +83,7 @@ public final class TestSimpleCrdt {
 				}));
 	}
 
+	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Test
 	public void testDownload() {
 		RuntimeCrdtClient<String, Integer> localStorage = RuntimeCrdtClient.create(getCurrentEventloop(), Integer::max);

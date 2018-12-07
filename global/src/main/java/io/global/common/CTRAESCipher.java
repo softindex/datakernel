@@ -18,13 +18,12 @@ package io.global.common;
 
 import io.datakernel.bytebuf.ByteBuf;
 import org.spongycastle.crypto.CipherParameters;
-import org.spongycastle.crypto.engines.AESFastEngine;
 
 import java.util.Arrays;
 
 public final class CTRAESCipher {
 	@SuppressWarnings("deprecation") // just a warning about bad AESFastEngine impl, we're okay with that
-	private final AESFastEngine cipher = new AESFastEngine();
+	private final org.spongycastle.crypto.engines.AESFastEngine cipher = new org.spongycastle.crypto.engines.AESFastEngine();
 
 	private final byte[] nonce;
 	private final byte[] mixedNonce;
