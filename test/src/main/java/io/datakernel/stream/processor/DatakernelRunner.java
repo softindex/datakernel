@@ -16,6 +16,8 @@
 
 package io.datakernel.stream.processor;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
@@ -31,6 +33,7 @@ import org.junit.runners.model.TestClass;
 import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
 import org.junit.runners.parameterized.ParametersRunnerFactory;
 import org.junit.runners.parameterized.TestWithParameters;
+import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.*;
 import java.util.List;
@@ -62,7 +65,13 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 	}
 
 	private static Statement addEventloop(FrameworkMethod method, Statement root) {
-		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create()
+				.withCurrentThread()
+				.withFatalErrorHandler(rethrowOnAnyError());
+
+		// set eventloop logger level to WARN so that await calls do not spam with eventloop running and finishing each time
+		((Logger) LoggerFactory.getLogger(Eventloop.class.getName())).setLevel(Level.WARN);
+
 		return new LambdaStatement(() -> {
 			root.evaluate();
 			if (method.getDeclaringClass().getAnnotation(SkipEventloopRun.class) == null
@@ -144,6 +153,12 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 		super.filter(filter);
 	}
 
+	@Override
+	protected boolean isIgnored(FrameworkMethod child) {
+		// allow manually running ignored tests like with IntelliJ's default runner does
+		return super.isIgnored(child) && !manualRun;
+	}
+
 	/**
 	 * For use with {@link org.junit.runners.Parameterized} runner.
 	 */
@@ -189,6 +204,11 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 				public void filter(Filter filter) throws NoTestsRemainException {
 					manualRun |= isManualRun(filter);
 					super.filter(filter);
+				}
+
+				@Override
+				protected boolean isIgnored(FrameworkMethod child) {
+					return super.isIgnored(child) && !manualRun;
 				}
 			};
 		}

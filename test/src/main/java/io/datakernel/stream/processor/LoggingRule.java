@@ -23,10 +23,7 @@ import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 import org.slf4j.LoggerFactory;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * {@link TestRule} that enables deeper logger levels for specific tests that request it.
@@ -34,27 +31,49 @@ import java.lang.annotation.Target;
 public final class LoggingRule implements TestRule {
 	@Override
 	public Statement apply(Statement base, Description description) {
-		Enable info = description.getAnnotation(Enable.class);
-		if (info == null) {
-			return base;
+		LoggerConfig[] clauses;
+		LoggerConfig single = description.getAnnotation(LoggerConfig.class);
+		if (single == null) {
+			LoggerConfig.Container container = description.getAnnotation(LoggerConfig.Container.class);
+			if (container == null) {
+				return base;
+			}
+			clauses = container.value();
+		} else {
+			clauses = new LoggerConfig[]{single};
 		}
 		return new LambdaStatement(() -> {
-			Logger logger = (Logger) LoggerFactory.getLogger(info.value());
-			Level oldLevel = logger.getLevel();
-			logger.setLevel(Level.toLevel(info.level()));
+			Level[] oldLevels = new Level[clauses.length];
+			Logger[] loggers = new Logger[clauses.length];
+			for (int i = 0; i < clauses.length; i++) {
+				LoggerConfig clause = clauses[i];
+				Logger logger = (Logger) LoggerFactory.getLogger(clause.logger());
+				oldLevels[i] = logger.getLevel();
+				loggers[i] = logger;
+				logger.setLevel(Level.toLevel(clause.value()));
+			}
 			try {
 				base.evaluate();
 			} finally {
-				logger.setLevel(oldLevel);
+				for (int i = 0; i < loggers.length; i++) {
+					loggers[i].setLevel(oldLevels[i]);
+				}
 			}
 		});
 	}
 
+	@Repeatable(LoggerConfig.Container.class)
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.TYPE})
-	public @interface Enable {
-		String value() default Logger.ROOT_LOGGER_NAME;
+	public @interface LoggerConfig {
+		String logger() default Logger.ROOT_LOGGER_NAME;
 
-		String level() default "TRACE";
+		String value();
+
+		@Retention(RetentionPolicy.RUNTIME)
+		@Target({ElementType.METHOD, ElementType.TYPE})
+		@interface Container {
+			LoggerConfig[] value();
+		}
 	}
 }
