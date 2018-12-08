@@ -57,38 +57,40 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 		onProcessStart()
 				.whenComplete(($, e) -> {
 					if (e == null) {
-						iterate();
+						loop();
 					} else {
 						close(e);
 					}
 				});
 	}
 
-	private void iterate() {
+	private void loop() {
 		input.get()
 				.thenCompose(item ->
 						item != null ?
 								onItem(item)
-										.whenResult($ -> iterate()) :
+										.whenResult($ -> loop()) :
 								onProcessFinish()
 										.whenResult($ -> completeProcess()))
 				.whenException(this::close);
 	}
 
+	@SuppressWarnings("ConstantConditions")
 	@Override
 	public ChannelInput<I> getInput() {
 		return input -> {
 			this.input = sanitize(input);
-			if (output != null) startProcess();
+			if (this.input != null && this.output != null) startProcess();
 			return getProcessResult();
 		};
 	}
 
+	@SuppressWarnings("ConstantConditions")
 	@Override
 	public ChannelOutput<O> getOutput() {
 		return output -> {
 			this.output = sanitize(output);
-			if (input != null) startProcess();
+			if (this.input != null && this.output != null) startProcess();
 		};
 	}
 

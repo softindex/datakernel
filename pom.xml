@@ -41,7 +41,10 @@
 		<module>cloud-lsmt-db</module>
 		<module>cloud-etl</module>
 		<module>cloud-dataflow</module>
-		<module>global</module>
+		<module>global-launchers</module>
+		<module>global-common</module>
+		<module>global-fs</module>
+		<module>global-ot</module>
 		<module>common</module>
 		<module>boot</module>
 		<module>uikernel</module>
@@ -67,7 +70,6 @@
 			<id>dvolvach</id>
 			<name>Dmitry Volvach</name>
 			<email>dmitry@datakernel.io</email>
-			<timezone>UTC+2</timezone>
 			<roles>
 				<role>owner</role>
 				<role>developer</role>
