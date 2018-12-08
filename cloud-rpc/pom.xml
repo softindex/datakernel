@@ -10,38 +10,28 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>datakernel-global</artifactId>
+	<artifactId>datakernel-rpc</artifactId>
+
+	<name>DataKernel: RPC</name>
+	<description>
+		High-performance and fault-tolerant remote procedure call module for building distributed applications.
+	</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-ot</artifactId>
+			<artifactId>datakernel-net</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-fs</artifactId>
+			<artifactId>datakernel-datastream</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+
 		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-http</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-boot</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-json</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<optional>true</optional>
+			<groupId>net.jpountz.lz4</groupId>
+			<artifactId>lz4</artifactId>
 		</dependency>
 
 		<dependency>
@@ -50,11 +40,5 @@
 			<version>${project.version}</version>
 			<scope>test</scope>
 		</dependency>
-
-		<dependency>
-			<groupId>com.madgag.spongycastle</groupId>
-			<artifactId>core</artifactId>
-		</dependency>
 	</dependencies>
-
 </project>

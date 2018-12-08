@@ -10,50 +10,40 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>datakernel-global</artifactId>
+	<artifactId>datakernel-fs</artifactId>
+
+	<name>DataKernel: FS</name>
+	<description>
+		Basis for building efficient, scalable remote file servers.
+	</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-ot</artifactId>
+			<artifactId>datakernel-net</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-fs</artifactId>
+			<artifactId>datakernel-csp</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-http</artifactId>
+			<artifactId>datakernel-serializer</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-boot</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-json</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<optional>true</optional>
-		</dependency>
-
 		<dependency>
 			<groupId>io.datakernel</groupId>
 			<artifactId>datakernel-test</artifactId>
 			<version>${project.version}</version>
 			<scope>test</scope>
 		</dependency>
-
 		<dependency>
-			<groupId>com.madgag.spongycastle</groupId>
-			<artifactId>core</artifactId>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-datastream</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 

@@ -10,35 +10,28 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>datakernel-uikernel</artifactId>
+	<artifactId>datakernel-codegen</artifactId>
 
-	<name>DataKernel: UiKernel</name>
+	<name>DataKernel: Codegen</name>
 	<description>
-		Integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets.
+		Dynamic class and method bytecode generator on top of ObjectWeb ASM.
+		An expression-based fluent API abstracts the complexity of direct bytecode manipulation.
 	</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-eventloop</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-http</artifactId>
+			<artifactId>datakernel-common</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 
 		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-test</artifactId>
-			<version>${project.version}</version>
-			<scope>test</scope>
+			<groupId>org.ow2.asm</groupId>
+			<artifactId>asm</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.google.code.gson</groupId>
-			<artifactId>gson</artifactId>
+			<groupId>org.ow2.asm</groupId>
+			<artifactId>asm-commons</artifactId>
 		</dependency>
 	</dependencies>
-
 </project>

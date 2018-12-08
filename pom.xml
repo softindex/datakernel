@@ -6,7 +6,7 @@
 
 	<groupId>io.datakernel</groupId>
 	<artifactId>datakernel</artifactId>
-	<version>2.6.0-SNAPSHOT</version>
+	<version>3.0.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<name>DataKernel</name>
@@ -21,32 +21,32 @@
 	</properties>
 
 	<modules>
-		<module>async</module>
-		<module>aggregation</module>
-		<module>boot</module>
-		<module>bytebuf</module>
-		<module>codegen</module>
-		<module>cube</module>
-		<module>datagraph</module>
-		<module>datastreams</module>
-		<module>eventloop</module>
-		<module>http</module>
-		<module>json</module>
-		<module>remotefs</module>
-		<module>rpc</module>
-		<module>serializer</module>
-		<module>uikernel</module>
-		<module>ot</module>
-		<module>ot-mysql</module>
+		<module>core-eventloop</module>
+		<module>core-bytebuf</module>
+		<module>core-codegen</module>
+		<module>core-serializer</module>
+		<module>core-json</module>
+		<module>core-promise</module>
+		<module>core-csp</module>
+		<module>core-net</module>
+		<module>core-datastream</module>
+		<module>core-http</module>
+		<module>cloud-rpc</module>
+		<module>cloud-fs</module>
+		<module>cloud-multilog</module>
+		<module>cloud-crdt</module>
+		<module>cloud-ot</module>
+		<module>cloud-ot-mysql</module>
+		<module>cloud-lsmt-table</module>
+		<module>cloud-lsmt-db</module>
+		<module>cloud-etl</module>
+		<module>cloud-dataflow</module>
 		<module>global</module>
 		<module>common</module>
-		<module>test</module>
+		<module>boot</module>
+		<module>uikernel</module>
 		<module>launchers</module>
-		<module>net</module>
-		<module>csp</module>
-		<module>crdt</module>
-		<module>etl</module>
-		<module>multilog</module>
+		<module>test</module>
 	</modules>
 
 	<licenses>
@@ -145,7 +145,11 @@
 				<groupId>org.ow2.asm</groupId>
 				<artifactId>asm-commons</artifactId>
 				<version>6.2.1</version>
-
+			</dependency>
+			<dependency>
+				<groupId>mysql</groupId>
+				<artifactId>mysql-connector-java</artifactId>
+				<version>5.1.36</version>
 			</dependency>
 			<dependency>
 				<groupId>com.madgag.spongycastle</groupId>

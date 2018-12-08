@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>io.datakernel</groupId>
@@ -10,22 +10,17 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>datakernel-global</artifactId>
+	<artifactId>datakernel-crdt</artifactId>
+
+	<name>DataKernel: CRDT</name>
+	<description>
+		Conflict-free replicated data type implementation for DataKernel Framework.
+	</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-ot</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-fs</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-http</artifactId>
+			<artifactId>datakernel-common</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
@@ -35,15 +30,20 @@
 		</dependency>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-json</artifactId>
+			<artifactId>datakernel-eventloop</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-datastream</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-fs</artifactId>
+			<version>${project.version}</version>
 			<optional>true</optional>
 		</dependency>
-
 		<dependency>
 			<groupId>io.datakernel</groupId>
 			<artifactId>datakernel-test</artifactId>
@@ -52,9 +52,14 @@
 		</dependency>
 
 		<dependency>
-			<groupId>com.madgag.spongycastle</groupId>
-			<artifactId>core</artifactId>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
 		</dependency>
-	</dependencies>
+		<dependency>
+			<groupId>org.rocksdb</groupId>
+			<artifactId>rocksdbjni</artifactId>
+			<version>5.13.2</version>
+		</dependency>
 
+	</dependencies>
 </project>

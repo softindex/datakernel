@@ -10,25 +10,19 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>datakernel-uikernel</artifactId>
+	<artifactId>datakernel-serializer</artifactId>
 
-	<name>DataKernel: UiKernel</name>
+	<name>DataKernel: Serializer</name>
 	<description>
-		Integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets.
+		Extremely fast and space-efficient serializers, crafted using bytecode engineering.
 	</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-eventloop</artifactId>
+			<artifactId>datakernel-codegen</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-http</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-
 		<dependency>
 			<groupId>io.datakernel</groupId>
 			<artifactId>datakernel-test</artifactId>
@@ -36,9 +30,19 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.google.code.gson</groupId>
-			<artifactId>gson</artifactId>
+			<groupId>com.carrotsearch</groupId>
+			<artifactId>hppc</artifactId>
+			<version>0.7.0</version>
+			<classifier>esoteric</classifier>
+			<optional>true</optional>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.carrotsearch</groupId>
+			<artifactId>hppc</artifactId>
+			<version>0.7.0</version>
+			<optional>true</optional>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
-
 </project>

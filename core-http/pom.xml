@@ -10,51 +10,41 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>datakernel-global</artifactId>
+	<artifactId>datakernel-http</artifactId>
+
+	<name>DataKernel: HTTP</name>
+	<description>
+		High-performance asynchronous HTTP client and server.
+	</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-ot</artifactId>
+			<artifactId>datakernel-net</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-fs</artifactId>
+			<artifactId>datakernel-csp</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-http</artifactId>
-			<version>${project.version}</version>
+			<groupId>org.openjdk.jmh</groupId>
+			<artifactId>jmh-core</artifactId>
+			<version>1.12</version>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-boot</artifactId>
-			<version>${project.version}</version>
+			<groupId>org.openjdk.jmh</groupId>
+			<artifactId>jmh-generator-annprocess</artifactId>
+			<version>1.12</version>
+			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-json</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<optional>true</optional>
-		</dependency>
-
 		<dependency>
 			<groupId>io.datakernel</groupId>
 			<artifactId>datakernel-test</artifactId>
 			<version>${project.version}</version>
 			<scope>test</scope>
 		</dependency>
-
-		<dependency>
-			<groupId>com.madgag.spongycastle</groupId>
-			<artifactId>core</artifactId>
-		</dependency>
 	</dependencies>
-
 </project>
