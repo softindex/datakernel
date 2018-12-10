@@ -12,6 +12,8 @@
 
 	<artifactId>getting-started</artifactId>
 
+	<name>Datakernel Examples: Getting started</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

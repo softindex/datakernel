@@ -12,6 +12,8 @@
 
 	<artifactId>datastreams-examples</artifactId>
 
+	<name>Datakernel Examples: DataStreams</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

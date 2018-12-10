@@ -16,12 +16,12 @@
 	<name>DataKernel: Examples</name>
 
 	<modules>
-		<module>async</module>
 		<module>boot</module>
 		<module>bytebuf</module>
 		<module>codec</module>
 		<module>codegen</module>
 		<module>crdt</module>
+		<module>csp</module>
 		<module>datastreams</module>
 		<module>eventloop</module>
 		<module>getting-started</module>
@@ -31,10 +31,10 @@
 		<module>http-helloworld</module>
 		<module>launchers</module>
 		<module>net</module>
+		<module>promise</module>
 		<module>remote-key-value-storage</module>
 		<module>remotefs</module>
 		<module>rpc</module>
-		<module>serial</module>
 		<module>serializer</module>
 		<module>uikernel-integration</module>
 	</modules>

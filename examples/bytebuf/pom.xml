@@ -12,6 +12,8 @@
 
 	<artifactId>bytebuf-examples</artifactId>
 
+	<name>Datakernel Examples: ByteBuf</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

@@ -12,6 +12,8 @@
 
 	<artifactId>http-helloworld</artifactId>
 
+	<name>Datakernel Examples: Hello World</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

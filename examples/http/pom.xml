@@ -12,6 +12,8 @@
 
 	<artifactId>http-examples</artifactId>
 
+	<name>Datakernel Examples: HTTP</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

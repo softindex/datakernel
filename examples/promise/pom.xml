@@ -10,7 +10,9 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>async-examples</artifactId>
+	<artifactId>promises-examples</artifactId>
+
+	<name>Datakernel Examples: Promises</name>
 
 	<dependencies>
 		<dependency>

@@ -12,6 +12,8 @@
 
 	<artifactId>crdt-examples</artifactId>
 
+	<name>Datakernel Examples: CRDT</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

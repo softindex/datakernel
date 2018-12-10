@@ -12,6 +12,8 @@
 
 	<artifactId>net-examples</artifactId>
 
+	<name>Datakernel Examples: Net</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

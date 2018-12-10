@@ -12,6 +12,8 @@
 
 	<artifactId>boot-examples</artifactId>
 
+	<name>Datakernel Examples: Boot</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

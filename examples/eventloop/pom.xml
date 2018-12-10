@@ -12,6 +12,8 @@
 
 	<artifactId>eventloop-examples</artifactId>
 
+	<name>Datakernel Examples: Eventloop</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

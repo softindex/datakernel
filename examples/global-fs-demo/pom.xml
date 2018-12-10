@@ -12,6 +12,8 @@
 
 	<artifactId>global-fs-demo</artifactId>
 
+	<name>Global FS Examples: Demo App</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

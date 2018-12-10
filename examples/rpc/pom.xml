@@ -12,6 +12,8 @@
 
 	<artifactId>rpc-examples</artifactId>
 
+	<name>Datakernel Examples: RPC</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

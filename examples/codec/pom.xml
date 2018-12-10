@@ -12,6 +12,8 @@
 
 	<artifactId>codec-examples</artifactId>
 
+	<name>Datakernel Examples: Codec</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

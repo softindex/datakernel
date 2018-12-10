@@ -12,6 +12,8 @@
 
 	<artifactId>remote-key-value-storage</artifactId>
 
+	<name>Datakernel Examples: Remote Key Value Storage</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

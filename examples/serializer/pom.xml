@@ -12,6 +12,8 @@
 
 	<artifactId>serializer-examples</artifactId>
 
+	<name>Datakernel Examples: Serializer</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

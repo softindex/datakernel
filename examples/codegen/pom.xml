@@ -12,6 +12,8 @@
 
 	<artifactId>codegen-examples</artifactId>
 
+	<name>Datakernel Examples: Codegen</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

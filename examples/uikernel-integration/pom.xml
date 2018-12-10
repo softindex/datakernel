@@ -11,6 +11,8 @@
 
 	<artifactId>uikernel-integration</artifactId>
 
+	<name>Datakernel Examples: UIKernel integration</name>
+
 	<properties>
 		<datakernel.version>3.0.0</datakernel.version>
 		<main.class>io.datakernel.examples.UIKernelWebAppLauncher</main.class>

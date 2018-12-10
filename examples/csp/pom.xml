@@ -10,7 +10,9 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>serial-examples</artifactId>
+	<artifactId>csp-examples</artifactId>
+
+	<name>Datakernel Examples: CSP</name>
 
 	<dependencies>
 		<dependency>

@@ -12,6 +12,8 @@
 
 	<artifactId>remotefs-examples</artifactId>
 
+	<name>Datakernel Examples: FS</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

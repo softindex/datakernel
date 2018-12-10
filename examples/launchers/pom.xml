@@ -10,7 +10,9 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>launchers</artifactId>
+	<artifactId>launchers-examples</artifactId>
+
+	<name>Datakernel Examples: Launchers</name>
 
 	<dependencies>
 		<dependency>

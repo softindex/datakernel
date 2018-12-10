@@ -12,6 +12,8 @@
 
 	<artifactId>global-ot-demo</artifactId>
 
+	<name>Global OT Examples: Demo App</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
