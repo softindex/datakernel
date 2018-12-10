@@ -9,6 +9,7 @@ import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.api.EncryptedData;
+import io.global.common.api.NodeFactory;
 import io.global.common.stub.DiscoveryServiceStub;
 import io.global.ot.api.*;
 import io.global.ot.api.GlobalOTNode.CommitEntry;
@@ -223,13 +224,13 @@ public class GlobalOTNodeImplTest {
 	@Test
 	public void testUpload() {
 		List<CommitEntry> entries = new ArrayList<>();
-		entries.add(createCommitEntry(emptySet(), 0, false));   // id - 1
-		entries.add(createCommitEntry(set(1), 1, false)); // id - 2
-		entries.add(createCommitEntry(set(2), 2, false)); // id - 3
-		entries.add(createCommitEntry(set(3), 3, true));  // id - 4, head
-		entries.add(createCommitEntry(emptySet(), 0, false));   // id - 5
-		entries.add(createCommitEntry(set(1), 1, false)); // id - 6
-		entries.add(createCommitEntry(set(2), 2, true));  // id - 7, head
+		entries.add(createCommitEntry(emptySet(), 0, false));  // id - 1
+		entries.add(createCommitEntry(set(1), 1, false));      // id - 2
+		entries.add(createCommitEntry(set(2), 2, false));      // id - 3
+		entries.add(createCommitEntry(set(3), 3, true));       // id - 4, head
+		entries.add(createCommitEntry(emptySet(), 0, false));  // id - 5
+		entries.add(createCommitEntry(set(1), 1, false));      // id - 6
+		entries.add(createCommitEntry(set(2), 2, true));       // id - 7, head
 
 		await(ChannelSupplier.ofIterable(entries).streamTo(masterNode.uploader(REPO_ID)));
 		assertHeads(masterStorage, 4, 7);
@@ -346,7 +347,7 @@ public class GlobalOTNodeImplTest {
 		return commitIds;
 	}
 
-	private RawServerFactory createFactory() {
+	private NodeFactory<GlobalOTNode> createFactory() {
 		return rawServerId -> {
 			if (rawServerId.getServerIdString().equals("master")) {
 				return masterNode;

@@ -16,16 +16,13 @@
 
 package io.global.ot.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.process.ChannelByteChunker;
-import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.WithMiddleware;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 import io.datakernel.util.TypeT;
@@ -55,7 +52,7 @@ import static io.global.ot.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toSet;
 
-public final class RawServerServlet implements AsyncServlet {
+public final class RawServerServlet implements WithMiddleware {
 	public static final MemSize DEFAULT_CHUNK_SIZE = MemSize.kilobytes(128);
 
 	private static final ParserFunction<String, Set<CommitId>> COMMIT_IDS_PARSER = s ->
@@ -66,19 +63,17 @@ public final class RawServerServlet implements AsyncServlet {
 	private static final StructuredCodec<CommitEntry> COMMIT_ENTRY_STRUCTURED_CODEC = REGISTRY.get(CommitEntry.class);
 	private static final StructuredCodec<SignedData<RawSnapshot>> SIGNED_SNAPSHOT_CODEC = REGISTRY.get(new TypeT<SignedData<RawSnapshot>>() {});
 
-	private final GlobalOTNode node;
 	private final MiddlewareServlet middlewareServlet;
 
 	private RawServerServlet(GlobalOTNode node) {
-		this.node = node;
-		this.middlewareServlet = servlet();
+		this.middlewareServlet = servlet(node);
 	}
 
-	public static RawServerServlet create(GlobalOTNode service) {
-		return new RawServerServlet(service);
+	public static RawServerServlet create(GlobalOTNode node) {
+		return new RawServerServlet(node);
 	}
 
-	private MiddlewareServlet servlet() {
+	private MiddlewareServlet servlet(GlobalOTNode node) {
 		return MiddlewareServlet.create()
 				.with(GET, "/" + LIST + "/:pubKey", req ->
 						node.list(req.parsePathParameter("pubKey", HttpDataFormats::urlDecodePubKey))
@@ -147,7 +142,7 @@ public final class RawServerServlet implements AsyncServlet {
 	}
 
 	@Override
-	public Promise<HttpResponse> serve(HttpRequest request) throws ParseException {
-		return middlewareServlet.serve(request);
+	public MiddlewareServlet getMiddlewareServlet() {
+		return middlewareServlet;
 	}
 }

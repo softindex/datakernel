@@ -21,11 +21,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.WithMiddleware;
 import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -42,7 +40,7 @@ import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static io.global.fs.util.HttpDataFormats.parseOffset;
 import static io.global.fs.util.HttpDataFormats.parseRange;
 
-public final class GlobalFsNodeServlet implements AsyncServlet {
+public final class GlobalFsNodeServlet implements WithMiddleware {
 	static final String UPLOAD = "upload";
 	static final String DOWNLOAD = "download";
 	static final String LIST = "list";
@@ -53,10 +51,18 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 
 	static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 
-	private final AsyncServlet servlet;
+	private final MiddlewareServlet servlet;
 
-	public GlobalFsNodeServlet(GlobalFsNode node) {
-		this.servlet = MiddlewareServlet.create()
+	private GlobalFsNodeServlet(GlobalFsNode node){
+		this.servlet = servlet(node);
+	}
+
+	public static GlobalFsNodeServlet create(GlobalFsNode node){
+		return new GlobalFsNodeServlet(node);
+	}
+
+	private MiddlewareServlet servlet(GlobalFsNode node) {
+		return MiddlewareServlet.create()
 				.with(POST, "/" + UPLOAD + "/:owner/:path*", request -> {
 					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
 					String path = request.getPathParameter("path");
@@ -125,7 +131,7 @@ public final class GlobalFsNodeServlet implements AsyncServlet {
 	}
 
 	@Override
-	public Promise<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException {
-		return servlet.serve(request);
+	public MiddlewareServlet getMiddlewareServlet() {
+		return servlet;
 	}
 }

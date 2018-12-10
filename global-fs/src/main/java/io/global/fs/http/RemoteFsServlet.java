@@ -16,12 +16,9 @@
 
 package io.global.fs.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
@@ -36,7 +33,7 @@ import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_CODEC;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public final class RemoteFsServlet implements AsyncServlet {
+public final class RemoteFsServlet implements WithMiddleware {
 	public static final String UPLOAD = "upload";
 	public static final String DOWNLOAD = "download";
 	public static final String LIST = "list";
@@ -47,10 +44,18 @@ public final class RemoteFsServlet implements AsyncServlet {
 	static final StructuredCodec<Set<String>> STRING_SET = ofSet(STRING_CODEC);
 	static final StructuredCodec<List<FileMetadata>> FILE_META_LIST = ofList(FILE_META_CODEC);
 
-	private final AsyncServlet servlet;
+	private final MiddlewareServlet servlet;
 
-	public RemoteFsServlet(FsClient client) {
-		servlet = MiddlewareServlet.create()
+	private RemoteFsServlet(FsClient client){
+		this.servlet = servlet(client);
+	}
+
+	public RemoteFsServlet create(FsClient client){
+		return new RemoteFsServlet(client);
+	}
+
+	private MiddlewareServlet servlet(FsClient client) {
+		return MiddlewareServlet.create()
 				.with(HttpMethod.GET, "/" + DOWNLOAD + "/:path*", request -> {
 					String path = request.getRelativePath();
 					long[] range = HttpDataFormats.parseRange(request);
@@ -92,7 +97,7 @@ public final class RemoteFsServlet implements AsyncServlet {
 	}
 
 	@Override
-	public Promise<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException {
-		return servlet.serve(request);
+	public MiddlewareServlet getMiddlewareServlet() {
+		return servlet;
 	}
 }

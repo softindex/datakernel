@@ -34,7 +34,6 @@ import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.api.NodeFactory;
 import io.global.common.discovery.LocalDiscoveryService;
-import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsNodeServlet;
@@ -61,7 +60,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.common.TestUtils.*;
 import static io.global.common.TestUtils.await;
 import static io.global.common.TestUtils.awaitException;
 import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
@@ -400,7 +398,7 @@ public final class GlobalFsTest {
 	}
 
 	private GlobalFsNode wrapWithHttpInterface(GlobalFsNode node) {
-		GlobalFsNodeServlet servlet = new GlobalFsNodeServlet(node);
+		GlobalFsNodeServlet servlet = GlobalFsNodeServlet.create(node);
 		return new HttpGlobalFsNode(request -> {
 			try {
 				return servlet.serve(request);

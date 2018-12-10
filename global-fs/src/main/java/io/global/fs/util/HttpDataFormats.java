@@ -32,9 +32,10 @@ public final class HttpDataFormats {
 		long[] range = {0, -1};
 		String[] parts = param.split("-");
 		switch (parts.length) {
-			case 0:
-				return range;
 			case 1:
+				if (param.isEmpty()) {
+					return range;
+				}
 				try {
 					range[0] = Long.parseUnsignedLong(param);
 					return range;

@@ -54,7 +54,7 @@ public final class DiscoveryHttpTest {
 	@Test
 	public void test() throws IOException {
 		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), Executors.newSingleThreadExecutor(), temporaryFolder.newFolder().toPath());
-		DiscoveryServlet servlet = new DiscoveryServlet(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage));
+		DiscoveryServlet servlet = DiscoveryServlet.create(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage));
 
 		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), request -> {
 			try {

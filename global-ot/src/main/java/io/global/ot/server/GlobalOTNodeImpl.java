@@ -31,6 +31,7 @@ import io.datakernel.util.Initializable;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import io.global.common.api.NodeFactory;
 import io.global.ot.api.*;
 import io.global.ot.server.GlobalOTNodeImpl.PubKeyEntry.RepositoryEntry;
 
@@ -53,7 +54,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	private final Eventloop eventloop;
 	private final DiscoveryService discoveryService;
 	private final CommitStorage commitStorage;
-	private final RawServerFactory rawServerFactory;
+	private final NodeFactory<GlobalOTNode> nodeFactory;
 	private final RawServerId id;
 	private final Set<PubKey> managedPubKeys = new HashSet<>();
 
@@ -64,16 +65,16 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId id, DiscoveryService discoveryService, @Nullable CommitStorage commitStorage, RawServerFactory rawServerFactory) {
+	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId id, DiscoveryService discoveryService, @Nullable CommitStorage commitStorage, NodeFactory<GlobalOTNode> nodeFactory) {
 		this.eventloop = checkNotNull(eventloop);
 		this.id = checkNotNull(id);
 		this.discoveryService = checkNotNull(discoveryService);
 		this.commitStorage = checkNotNull(commitStorage);
-		this.rawServerFactory = checkNotNull(rawServerFactory);
+		this.nodeFactory = checkNotNull(nodeFactory);
 	}
 
-	public static GlobalOTNodeImpl create(Eventloop eventloop, RawServerId id, DiscoveryService discoveryService, CommitStorage commitStorage, RawServerFactory rawServerFactory) {
-		return new GlobalOTNodeImpl(eventloop, id, discoveryService, commitStorage, rawServerFactory);
+	public static GlobalOTNodeImpl create(Eventloop eventloop, RawServerId id, DiscoveryService discoveryService, CommitStorage commitStorage, NodeFactory<GlobalOTNode> nodeFactory) {
+		return new GlobalOTNodeImpl(eventloop, id, discoveryService, commitStorage, nodeFactory);
 	}
 
 	public GlobalOTNodeImpl withLatencyMargin(Duration latencyMargin) {
@@ -466,7 +467,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 								} else {
 									managedPubKeys.remove(pubKey);
 								}
-								newServerIds.forEach(id -> masterNodes.computeIfAbsent(id, rawServerFactory::create));
+								newServerIds.forEach(id -> masterNodes.computeIfAbsent(id, nodeFactory::create));
 								updateNodesTimestamp = now.currentTimeMillis();
 								announceTimestamp = announce.getTimestamp();
 							}

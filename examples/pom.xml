@@ -25,11 +25,12 @@
 		<module>datastreams</module>
 		<module>eventloop</module>
 		<module>getting-started</module>
+		<module>global-fs-demo</module>
+		<module>global-ot-demo</module>
 		<module>http</module>
 		<module>http-helloworld</module>
 		<module>launchers</module>
 		<module>net</module>
-		<module>ot-counter</module>
 		<module>remote-key-value-storage</module>
 		<module>remotefs</module>
 		<module>rpc</module>

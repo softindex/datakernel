@@ -115,6 +115,7 @@ public class MiddlewareServlet implements AsyncServlet {
 		return processed;
 	}
 
+	@Nullable
 	protected Promise<HttpResponse> tryServeAsync(HttpRequest request) throws ParseException {
 		int introPosition = request.getPos();
 		String urlPart = request.pollUrlPart();
@@ -176,6 +177,8 @@ public class MiddlewareServlet implements AsyncServlet {
 	private void apply(@Nullable HttpMethod method, AsyncServlet servlet) {
 		if (servlet instanceof MiddlewareServlet) {
 			merge(this, (MiddlewareServlet) servlet);
+		} else if (servlet instanceof WithMiddleware) {
+			merge(this, ((WithMiddleware) servlet).getMiddlewareServlet());
 		} else if (method == null && rootServlet == null) {
 			rootServlet = servlet;
 		} else if (rootServlets.get(method) == null) {

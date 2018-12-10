@@ -19,7 +19,6 @@ package io.global.common.discovery;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
@@ -35,7 +34,7 @@ import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 
-public final class DiscoveryServlet implements AsyncServlet {
+public final class DiscoveryServlet implements WithMiddleware {
 	public static final String ANNOUNCE_ALL = "announceAll";
 	public static final String ANNOUNCE = "announce";
 	public static final String FIND = "find";
@@ -44,14 +43,22 @@ public final class DiscoveryServlet implements AsyncServlet {
 	public static final String GET_SHARED_KEY = "getSharedKey";
 	public static final String GET_SHARED_KEYS = "getSharedKeys";
 
-	private final AsyncServlet servlet;
+	private final MiddlewareServlet servlet;
 
 	static final StructuredCodec<SignedData<AnnounceData>> SIGNED_ANNOUNCE = REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
 	static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_SIM_KEY = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
 	static final StructuredCodec<List<SignedData<SharedSimKey>>> LIST_OF_SIGNED_SHARED_SIM_KEYS = REGISTRY.get(new TypeT<List<SignedData<SharedSimKey>>>() {});
 
-	public DiscoveryServlet(DiscoveryService discoveryService) {
-		servlet = MiddlewareServlet.create()
+	private DiscoveryServlet(DiscoveryService discoveryService){
+		this.servlet = servlet(discoveryService);
+	}
+
+	public static DiscoveryServlet create(DiscoveryService discoveryService){
+		return new DiscoveryServlet(discoveryService);
+	}
+
+	private MiddlewareServlet servlet(DiscoveryService discoveryService) {
+		return MiddlewareServlet.create()
 				.with(HttpMethod.PUT, "/" + ANNOUNCE_ALL + "/:owner", request -> {
 					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
 					return request.getBodyPromise(Integer.MAX_VALUE)
@@ -102,7 +109,7 @@ public final class DiscoveryServlet implements AsyncServlet {
 	}
 
 	@Override
-	public Promise<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException {
-		return servlet.serve(request);
+	public MiddlewareServlet getMiddlewareServlet() {
+		return servlet;
 	}
 }

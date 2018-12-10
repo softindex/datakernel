@@ -245,7 +245,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	}
 
 	private static <T> Promise<T> processResult(HttpResponse r, @Nullable StructuredCodec<T> json) {
-		if (r.getCode() != 200) Promise.ofException(HttpException.ofCode(r.getCode()));
+		if (r.getCode() != 200) return Promise.ofException(HttpException.ofCode(r.getCode()));
 		try {
 			return Promise.of(json != null ? fromJson(json, r.getBody().asString(UTF_8)) : null);
 		} catch (ParseException e) {

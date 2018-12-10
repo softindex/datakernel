@@ -9,8 +9,8 @@ public final class RawServerId {
 		this.serverIdString = serverIdString;
 	}
 
-	public static RawServerId parse(String inetSocketAddress) throws ParseException {
-		return new RawServerId(inetSocketAddress); // TODO
+	public static RawServerId parse(String serverIdString) throws ParseException {
+		return new RawServerId(serverIdString); // TODO
 	}
 
 	public String getServerIdString() {
