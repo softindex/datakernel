@@ -38,7 +38,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final Duration DEFAULT_KEEP_ALIVE = Duration.ofSeconds(30);
 
-	private static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = e -> {
+	public static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = e -> {
 		HttpResponse response;
 		if (e instanceof HttpException) {
 			int code = ((HttpException) e).getCode();

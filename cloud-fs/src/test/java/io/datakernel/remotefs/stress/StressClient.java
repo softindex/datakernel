@@ -196,9 +196,9 @@ class StressClient {
 		ChannelSerializer<TestObject> serializer = ChannelSerializer.create(binarySerializer)
 				.withInitialBufferSize(ChannelSerializer.MAX_SIZE);
 
-//		supplier.with(serializer).streamTo(
-//				client.uploadStream("someName" + i));
-//		eventloop.run();
+		//		supplier.with(serializer).streamTo(
+		//				client.uploadStream("someName" + i));
+		//		eventloop.run();
 		throw new UnsupportedOperationException("TODO");
 	}
 
@@ -208,11 +208,11 @@ class StressClient {
 			if (e != null) {
 				logger.error("can't download", e);
 			} else {
-//				try {
+				//				try {
 				//					supplier.streamTo(ChannelFileWriter.create(executor, downloads.resolve(name)));
-//				} catch (IOException e) {
-//					logger.error("can't download", e);
-//				}
+				//				} catch (IOException e) {
+				//					logger.error("can't download", e);
+				//				}
 				throw new UnsupportedOperationException("TODO");
 			}
 		});

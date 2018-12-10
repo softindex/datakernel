@@ -44,10 +44,6 @@ public class DiscoveryServiceStub implements DiscoveryService {
 	@Override
 	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
 		logger.info("received {} for {}", announceData, space);
-		if (!announceData.verify(space)) {
-			logger.warn("failed to verify: {}", announceData);
-			return Promise.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
-		}
 		SignedData<AnnounceData> signedAnnounceData = announced.get(space);
 		if (signedAnnounceData != null && signedAnnounceData.getValue().getTimestamp() >= announceData.getValue().getTimestamp()) {
 			logger.info("rejected as outdated: {}", announceData);

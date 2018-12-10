@@ -32,10 +32,7 @@ import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
  * This component handles one of the GlobalFS nodes.
  */
 public interface GlobalFsNode {
-	StacklessException RECURSIVE_DOWNLOAD_ERROR = new StacklessException(GlobalFsNode.class, "Trying to download a file from a server that also tries to download this file.");
-	StacklessException RECURSIVE_UPLOAD_ERROR = new StacklessException(GlobalFsNode.class, "Trying to upload a file to a server that also tries to upload this file.");
-	StacklessException FETCH_DID_NOTHING = new StacklessException(GlobalFsNode.class, "Did not fetch anything from given node.");
-	StacklessException CANT_VERIFY_METADATA = new StacklessException(GlobalFsNode.class, "Failed to verify signature of the metadata.");
+	StacklessException UNEXPECTED_TOMBSTONE = new StacklessException(GlobalFsNode.class, "Tombstones are not allowed to be streamed");
 	StacklessException UPLOADING_TO_TOMBSTONE = new StacklessException(GlobalFsNode.class, "Trying to upload file which was deleted");
 
 	Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset);

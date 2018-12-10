@@ -22,8 +22,6 @@ import io.global.common.SignedData;
 
 import java.util.List;
 
-import static io.datakernel.file.FileUtils.escapeGlob;
-
 public interface CheckpointStorage {
 	StacklessException NO_CHECKPOINT = new StacklessException(CheckpointStorage.class, "No checkpoint found");
 	StacklessException OVERRIDING = new StacklessException(CheckpointStorage.class, "Trying to override existing checkpoint with different one");
@@ -32,12 +30,9 @@ public interface CheckpointStorage {
 
 	Promise<SignedData<GlobalFsCheckpoint>> load(String filename, long position);
 
-	Promise<List<SignedData<GlobalFsCheckpoint>>> loadLastCheckpoints(String glob);
+	Promise<List<String>> listMetaCheckpoints(String glob);
 
-	default Promise<SignedData<GlobalFsCheckpoint>> loadLastCheckpoint(String filename) {
-		return loadLastCheckpoints(escapeGlob(filename))
-				.thenCompose(list -> list.isEmpty() ? Promise.ofException(NO_CHECKPOINT) : Promise.of(list.get(0)));
-	}
+	Promise<SignedData<GlobalFsCheckpoint>> loadMetaCheckpoint(String filename);
 
 	Promise<long[]> loadIndex(String filename);
 

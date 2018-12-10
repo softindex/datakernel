@@ -40,11 +40,14 @@ import java.util.function.BiFunction;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
+import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsSharedKeyStorage.class);
+
 	private static final StructuredCodec<SignedData<SharedSimKey>> SHARED_KEY_CODEC =
 			REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
 
@@ -64,11 +67,11 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 
 	@Override
 	public Promise<Void> store(PubKey receiver, SignedData<SharedSimKey> signedSharedSimKey) {
-		logger.trace("storing {}", signedSharedSimKey);
 		String file = getFilenameFor(receiver, signedSharedSimKey.getValue().getHash());
 		return storage.delete(file)
 				.thenCompose($ -> storage.upload(file, 0))
-				.thenCompose(ChannelSupplier.of(encode(SHARED_KEY_CODEC, signedSharedSimKey))::streamTo);
+				.thenCompose(ChannelSupplier.of(encode(SHARED_KEY_CODEC, signedSharedSimKey))::streamTo)
+				.whenComplete(toLogger(logger, TRACE, "store", receiver, signedSharedSimKey, this));
 	}
 
 	private static final BiFunction<ChannelSupplier<ByteBuf>, Throwable, Promise<SignedData<SharedSimKey>>> LOAD_SHARED_KEY =
@@ -86,7 +89,9 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 
 	@Override
 	public Promise<SignedData<SharedSimKey>> load(PubKey receiver, Hash hash) {
-		return storage.download(getFilenameFor(receiver, hash)).thenComposeEx(LOAD_SHARED_KEY);
+		return storage.download(getFilenameFor(receiver, hash))
+				.thenComposeEx(LOAD_SHARED_KEY)
+				.whenComplete(toLogger(logger, TRACE, "load", receiver, hash, this));
 	}
 
 	@Override
@@ -95,6 +100,12 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 				.thenCompose(files ->
 						Promises.collectSequence(toList(), files.stream()
 								.map(meta -> storage.download(meta.getFilename())
-										.thenComposeEx(LOAD_SHARED_KEY))));
+										.thenComposeEx(LOAD_SHARED_KEY))))
+				.whenComplete(toLogger(logger, TRACE, "loadAll", receiver, this));
+	}
+
+	@Override
+	public String toString() {
+		return "RemoteFsSharedKeyStorage{storage=" + storage + '}';
 	}
 }

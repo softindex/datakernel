@@ -61,36 +61,36 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 		return new GlobalFsNodeServlet(node);
 	}
 
-	private MiddlewareServlet servlet(GlobalFsNode node) {
+	private static MiddlewareServlet servlet(GlobalFsNode node) {
 		return MiddlewareServlet.create()
-				.with(POST, "/" + UPLOAD + "/:owner/:path*", request -> {
-					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
+				.with(POST, "/" + UPLOAD + "/:space/:path*", request -> {
+					PubKey space = PubKey.fromString(request.getPathParameter("space"));
 					String path = request.getPathParameter("path");
 					long offset = parseOffset(request);
 					ChannelSupplier<ByteBuf> body = request.getBodyStream();
-					return node.getMetadata(PubKey.fromString(request.getPathParameter("owner")), request.getPathParameter("path"))
+					return node.getMetadata(space, path)
 							.thenComposeEx((meta, e) -> {
 								boolean newFile = e == NO_CHECKPOINT;
 								if (e == null || newFile) {
-									return node.upload(pubKey, path, offset)
+									return node.upload(space, path, offset)
 											.thenCompose(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
 											.thenApply($ -> newFile ? HttpResponse.ok201() : HttpResponse.ok200());
 								}
 								return Promise.ofException(e);
 							});
 				})
-				.with(GET, "/" + DOWNLOAD + "/:owner/:path*", request -> {
+				.with(GET, "/" + DOWNLOAD + "/:space/:path*", request -> {
 					long[] range = parseRange(request);
-					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
+					PubKey space = PubKey.fromString(request.getPathParameter("space"));
 					String path = request.getPathParameter("path");
-					return node.download(pubKey, path, range[0], range[1])
+					return node.download(space, path, range[0], range[1])
 							.thenApply(supplier ->
 									HttpResponse.ok200()
 											.withBodyStream(supplier.transformWith(new FrameEncoder())));
 				})
-				.with(GET, "/" + LIST + "/:owner/:name", request -> {
-					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-					return node.list(pubKey, request.getQueryParameter("glob"))
+				.with(GET, "/" + LIST + "/:space/:name", request -> {
+					PubKey space = PubKey.fromString(request.getPathParameter("space"));
+					return node.list(space, request.getQueryParameter("glob"))
 							.thenApply(list -> HttpResponse.ok200()
 									.withBodyStream(
 											ChannelSupplier.ofStream(list
@@ -98,9 +98,9 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 													.map(meta ->
 															encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, meta)))));
 				})
-				.with(GET, "/" + GET_METADATA + "/:owner/:path*", request -> {
-					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
-					return node.getMetadata(pubKey, request.getPathParameter("path"))
+				.with(GET, "/" + GET_METADATA + "/:space/:path*", request -> {
+					PubKey space = PubKey.fromString(request.getPathParameter("space"));
+					return node.getMetadata(space, request.getPathParameter("path"))
 							.thenComposeEx((meta, e) -> {
 								if (e == null) {
 									return Promise.of(HttpResponse.ok200().withBody(encode(SIGNED_CHECKPOINT_CODEC, meta)));
@@ -111,21 +111,21 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 								return Promise.ofException(e);
 							});
 				})
-				.with(POST, "/" + DELETE + "/:owner", request -> {
-					PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
+				.with(POST, "/" + DELETE + "/:space", request -> {
+					PubKey space = PubKey.fromString(request.getPathParameter("space"));
 					return request.getBodyPromise(Integer.SIZE)
 							.thenCompose(body -> {
 								try {
-									return node.delete(pubKey, decode(SIGNED_CHECKPOINT_CODEC, body)).thenApply(list -> HttpResponse.ok200());
+									return node.delete(space, decode(SIGNED_CHECKPOINT_CODEC, body)).thenApply(list -> HttpResponse.ok200());
 								} catch (ParseException e) {
 									return Promise.<HttpResponse>ofException(e);
 								}
 							});
 				});
-		// .with(POST, "/" + COPY + "/:owner/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
+		// .with(POST, "/" + COPY + "/:space/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
 		// 		node.copy(parseNamespace(request), request.getPostParameters())
 		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))))
-		// .with(POST, "/" + MOVE + "/:owner/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
+		// .with(POST, "/" + MOVE + "/:space/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
 		// 		node.move(parseNamespace(request), request.getPostParameters())
 		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))));
 	}

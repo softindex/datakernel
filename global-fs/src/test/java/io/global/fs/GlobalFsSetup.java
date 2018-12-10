@@ -51,7 +51,7 @@ import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.SignedData.sign;
-import static io.global.fs.api.CheckpointPosStrategy.fixed;
+import static io.global.fs.api.CheckpointPosStrategy.of;
 import static java.lang.Integer.parseInt;
 import static java.lang.System.getProperty;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -83,8 +83,8 @@ public final class GlobalFsSetup {
 		GlobalFsNode firstClient = new HttpGlobalFsNode(client, firstAddress);
 		GlobalFsNode secondClient = new HttpGlobalFsNode(client, secondAddress);
 
-		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, discoveryService, list(alice), fixed(5));
-		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, discoveryService, list(alice), fixed(6));
+		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, discoveryService, list(alice), of(5));
+		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, discoveryService, list(alice), of(6));
 
 		FsClient firstAdapter = firstDriver.gatewayFor(alice.getPubKey());
 		FsClient secondAdapter = secondDriver.gatewayFor(alice.getPubKey());

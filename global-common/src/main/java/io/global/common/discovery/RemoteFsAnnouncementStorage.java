@@ -33,6 +33,8 @@ import org.slf4j.LoggerFactory;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
+import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
@@ -51,12 +53,12 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 	}
 
 	@Override
-	public Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData) {
-		logger.trace("storing {}", announceData);
+	public Promise<Void> store(PubKey space, SignedData<AnnounceData> signedAnnounceData) {
 		String file = getFilenameFor(space);
 		return storage.delete(file)
 				.thenCompose($ -> storage.upload(file, 0))
-				.thenCompose(ChannelSupplier.of(encode(ANNOUNCEMENT_CODEC, announceData))::streamTo);
+				.thenCompose(ChannelSupplier.of(encode(ANNOUNCEMENT_CODEC, signedAnnounceData))::streamTo)
+				.whenComplete(toLogger(logger, TRACE, "store", signedAnnounceData, this));
 	}
 
 	@Override
@@ -72,6 +74,12 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 					} catch (ParseException e1) {
 						return Promise.ofException(e1);
 					}
-				});
+				})
+				.whenComplete(toLogger(logger, TRACE, "load", space, this));
+	}
+
+	@Override
+	public String toString() {
+		return "RemoteFsAnnouncementStorage{storage=" + storage + '}';
 	}
 }

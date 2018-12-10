@@ -17,12 +17,12 @@
 package io.global.fs.local;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
+import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.TypeT;
 import io.global.common.SignedData;
@@ -105,19 +105,19 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					}
 					buf.recycle();
 					return Promise.ofException(NO_CHECKPOINT);
-				});
+				})
+				.whenComplete(toLogger(logger, TRACE, "load", filename, position, this));
 	}
 
 	@Override
-	public Promise<List<SignedData<GlobalFsCheckpoint>>> loadLastCheckpoints(String glob) {
+	public Promise<List<String>> listMetaCheckpoints(String glob) {
 		return storage.list(glob)
-				.thenCompose(list ->
-						Promises.collectSequence(toList(), list.stream()
-								.map(meta -> loadLastCheckpoint(meta.getFilename()))));
+				.thenApply(list -> list.stream().map(FileMetadata::getFilename).collect(toList()))
+				.whenComplete(toLogger(logger, TRACE, "listMetaCheckpoints", glob, this));
 	}
 
 	@Override
-	public Promise<SignedData<GlobalFsCheckpoint>> loadLastCheckpoint(String filename) {
+	public Promise<SignedData<GlobalFsCheckpoint>> loadMetaCheckpoint(String filename) {
 		return download(filename)
 				.thenCompose(buf -> {
 					SignedData<GlobalFsCheckpoint> max = null;
@@ -134,7 +134,8 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					}
 					buf.recycle();
 					return max != null ? Promise.of(max) : Promise.ofException(NO_CHECKPOINT);
-				});
+				})
+				.whenComplete(toLogger(logger, TRACE, "loadMetaCheckpoints", filename, this));
 	}
 
 	@Override
@@ -157,12 +158,14 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 					}
 					buf.recycle();
 					return Promise.of(Arrays.stream(array).limit(size).sorted().toArray());
-				});
+				})
+				.whenComplete(toLogger(logger, TRACE, "loadIndex", filename, this));
 	}
 
 	@Override
 	public Promise<Void> drop(String filename) {
-		return storage.delete(filename);
+		return storage.delete(filename)
+				.whenComplete(toLogger(logger, TRACE, "drop", filename, this));
 	}
 
 	@Override

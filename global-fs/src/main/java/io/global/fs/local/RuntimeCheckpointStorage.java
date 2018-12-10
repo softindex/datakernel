@@ -46,7 +46,7 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 	}
 
 	@Override
-	public Promise<List<SignedData<GlobalFsCheckpoint>>> loadLastCheckpoints(String glob) {
+	public Promise<List<String>> listMetaCheckpoints(String glob) {
 		Predicate<String> pred = Globs.getGlobStringPredicate(glob);
 		return Promise.of(storage.entrySet()
 				.stream()
@@ -56,12 +56,12 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 						.stream()
 						.max(Comparator.comparingLong(Map.Entry::getKey)))
 				.filter(Optional::isPresent)
-				.map(e -> e.get().getValue())
+				.map(e -> e.get().getValue().getValue().getFilename())
 				.collect(toList()));
 	}
 
 	@Override
-	public Promise<SignedData<GlobalFsCheckpoint>> loadLastCheckpoint(String filename) {
+	public Promise<SignedData<GlobalFsCheckpoint>> loadMetaCheckpoint(String filename) {
 		Map<Long, SignedData<GlobalFsCheckpoint>> checkpoints = storage.get(filename);
 		if (checkpoints != null) {
 			Optional<SignedData<GlobalFsCheckpoint>> maybeCheckpoint = checkpoints.entrySet()

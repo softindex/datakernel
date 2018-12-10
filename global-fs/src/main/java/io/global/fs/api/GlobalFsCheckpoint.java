@@ -61,7 +61,16 @@ public final class GlobalFsCheckpoint implements Comparable<GlobalFsCheckpoint> 
 	@Override
 	public int compareTo(@Nullable GlobalFsCheckpoint other) {
 		// existing file is better than non-existing
-		return other == null ? 1 : other.isTombstone() ? -1 : Long.compare(position, other.position);
+		// but tombstone is better than existing
+		return other == null ?
+				1 :
+				other.isTombstone() ?
+						isTombstone() ?
+								0 :
+								-1 :
+						isTombstone() ?
+								1 :
+								Long.compare(position, other.position);
 	}
 
 	public boolean isTombstone() {

@@ -27,7 +27,6 @@ import java.util.List;
 
 public interface DiscoveryService {
 	StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Rejected announce data as outdated");
-	StacklessException CANNOT_VERIFY_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Cannot verify announce data");
 
 	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
 

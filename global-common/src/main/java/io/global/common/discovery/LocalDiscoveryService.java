@@ -33,6 +33,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 
 public final class LocalDiscoveryService implements DiscoveryService, EventloopService {
@@ -61,44 +63,44 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 
 	@Override
 	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
-		logger.info("received {} for {}", announceData, space);
-		if (!announceData.verify(space)) {
-			logger.warn("failed to verify: {}", announceData);
-			return Promise.ofException(CANNOT_VERIFY_ANNOUNCE_DATA);
-		}
 		return announcementStorage.load(space)
 				.thenComposeEx((signedAnnounceData, e) -> {
 					if (e == null) {
 						if (signedAnnounceData.getValue().getTimestamp() >= announceData.getValue().getTimestamp()) {
-							logger.info("rejected as outdated: {}", announceData);
+							logger.info("rejected as outdated: {} : {}", announceData, this);
 							return Promise.ofException(REJECTED_OUTDATED_ANNOUNCE_DATA);
 						}
 					} else if (e != NO_ANNOUNCEMENT) {
 						return Promise.ofException(e);
 					}
 					return announcementStorage.store(space, announceData);
-				});
+				})
+				.whenComplete(toLogger(logger, "announce", space, announceData, this));
 	}
 
 	@Override
 	public Promise<SignedData<AnnounceData>> find(PubKey space) {
-		return announcementStorage.load(space);
+		return announcementStorage.load(space)
+				.whenComplete(toLogger(logger, TRACE, "find", space, this));
 	}
 
 	@Override
 	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
 		// should be signed by sender, so we do not verify signature with receiver's key like in announce
-		return sharedKeyStorage.store(receiver, simKey);
+		return sharedKeyStorage.store(receiver, simKey)
+				.whenComplete(toLogger(logger, "shareKey", receiver, simKey, this));
 	}
 
 	@Override
 	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash) {
-		return sharedKeyStorage.load(receiver, hash);
+		return sharedKeyStorage.load(receiver, hash)
+				.whenComplete(toLogger(logger, TRACE, "getSharedKey", receiver, hash, this));
 	}
 
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
-		return sharedKeyStorage.loadAll(receiver);
+		return sharedKeyStorage.loadAll(receiver)
+				.whenComplete(toLogger(logger, TRACE, "getSharedKeys", receiver, this));
 	}
 
 	@Override
@@ -114,5 +116,10 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 	@Override
 	public Promise<Void> stop() {
 		return Promise.complete();
+	}
+
+	@Override
+	public String toString() {
+		return "LocalDiscoveryService{announcementStorage=" + announcementStorage + ", sharedKeyStorage=" + sharedKeyStorage + '}';
 	}
 }

@@ -34,19 +34,25 @@ import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.transformers.FrameSigner;
 import io.global.fs.transformers.FrameVerifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.file.FileUtils.isWildcard;
+import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
-import static io.global.fs.api.GlobalFsNode.CANT_VERIFY_METADATA;
+import static io.global.fs.api.GlobalFsNode.UPLOADING_TO_TOMBSTONE;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGateway> {
-	private static final StacklessException CHECKPOINT_SIG = new StacklessException(GlobalFsGateway.class, "Received checkpoint signature is not verified");
+	private static final Logger logger = LoggerFactory.getLogger(GlobalFsGateway.class);
+
+	public static final StacklessException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new StacklessException(GlobalFsGateway.class, "Trying to upload at offset greater than known file size");
 
 	private static final StructuredCodec<GlobalFsCheckpoint> METADATA_CODEC = REGISTRY.get(GlobalFsCheckpoint.class);
 
@@ -87,40 +93,30 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
 		// cut off the part of the file that is already there
 		return node.getMetadata(space, filename)
-				.thenComposeEx((signedMetadata, e) -> {
+				.thenComposeEx((signedCheckpoint, e) -> {
 					if (e != null && e != NO_CHECKPOINT) {
 						return Promise.ofException(e);
 					}
-					if (signedMetadata != null && !signedMetadata.verify(space)) {
-						return Promise.ofException(CANT_VERIFY_METADATA);
-					}
-					if (signedMetadata == null || signedMetadata.getValue().isTombstone()) {
+					if (signedCheckpoint == null) {
 						return offset == -1 || offset == 0 ?
 								doUpload(filename, null, 0, 0, new SHA256Digest()) :
-								Promise.ofException(new StacklessException(GlobalFsGateway.class, "Trying to upload at offset greater than known file size"));
+								Promise.ofException(UPLOAD_OFFSET_EXCEEDS_FILE_SIZE);
+					}
+					if (signedCheckpoint.getValue().isTombstone()) {
+						return Promise.ofException(UPLOADING_TO_TOMBSTONE);
 					}
 					if (offset == -1) {
 						return Promise.ofException(new StacklessException(GlobalFsGateway.class, "File already exists"));
 					}
-					GlobalFsCheckpoint metadata = signedMetadata.getValue();
-					long metaSize = metadata.getPosition();
+					GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
+					long metaSize = checkpoint.getPosition();
 					if (offset > metaSize) {
-						return Promise.ofException(new StacklessException(GlobalFsGateway.class, "Trying to upload at offset greater than the file size"));
+						return Promise.ofException(UPLOAD_OFFSET_EXCEEDS_FILE_SIZE);
 					}
 					long skip = metaSize - offset;
-					return node.download(space, filename, metaSize, 0)
-							.thenCompose(supplier -> supplier.toCollector(toList()))
-							.thenCompose(frames -> {
-								if (frames.size() != 1) {
-									return Promise.ofException(new StacklessException(GlobalFsGateway.class, "No checkpoint at metadata size position!"));
-								}
-								SignedData<GlobalFsCheckpoint> checkpoint = frames.get(0).getCheckpoint();
-								if (!checkpoint.verify(space)) {
-									return Promise.ofException(CHECKPOINT_SIG);
-								}
-								return doUpload(filename, metadata, offset, skip, checkpoint.getValue().getDigest());
-							});
-				});
+					return doUpload(filename, checkpoint, offset, skip, checkpoint.getDigest());
+				})
+				.whenComplete(toLogger(logger, "upload", filename, offset, this));
 	}
 
 	@Override
@@ -129,9 +125,6 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 				.thenComposeEx((signedMetadata, e) -> {
 					if (e != null) {
 						return Promise.ofException(e == NO_CHECKPOINT ? FILE_NOT_FOUND : e);
-					}
-					if (!signedMetadata.verify(space)) {
-						return Promise.ofException(CANT_VERIFY_METADATA);
 					}
 					GlobalFsCheckpoint metadata = signedMetadata.getValue();
 					if (metadata.isTombstone()) {
@@ -144,19 +137,30 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 											.thenApply(key -> supplier
 													.transformWith(FrameVerifier.create(space, filename, offset, limit))
 													.transformWith(CipherTransformer.create(key, CryptoUtils.nonceFromString(filename), offset))));
-				});
+				})
+				.whenComplete(toLogger(logger, "download", filename, offset, limit, this));
 	}
 
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return node.list(space, glob)
 				.thenApply(res -> res.stream()
-						.filter(signedMeta -> signedMeta.verify(space))
 						.map(signedMeta -> {
 							GlobalFsCheckpoint value = signedMeta.getValue();
 							return new FileMetadata(value.getFilename(), value.getPosition(), 0);
 						})
-						.collect(toList()));
+						.collect(toList()))
+				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
+	}
+
+	@Override
+	public Promise<FileMetadata> getMetadata(String filename) {
+		return node.getMetadata(space, filename)
+				.thenCompose(signedMeta -> {
+					GlobalFsCheckpoint value = signedMeta.getValue();
+					return Promise.of(new FileMetadata(value.getFilename(), value.getPosition(), 0));
+				})
+				.whenComplete(toLogger(logger, TRACE, "getMetadata", filename, this));
 	}
 
 	@Override
@@ -165,14 +169,16 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 				node.list(space, glob)
 						.thenCompose(list ->
 								Promises.all(list.stream()
-										.filter(signedMeta -> !signedMeta.getValue().isTombstone() && signedMeta.verify(space))
-										.map(signedMeta -> delete(signedMeta.getValue().getFilename())))) :
+										.filter(signedMeta -> !signedMeta.getValue().isTombstone())
+										.map(signedMeta -> delete(signedMeta.getValue().getFilename()))))
+						.whenComplete(toLogger(logger, TRACE, "deleteBulk", glob, this)) :
 				delete(glob);
 	}
 
 	@Override
 	public Promise<Void> delete(String filename) {
-		return node.delete(space, SignedData.sign(METADATA_CODEC, GlobalFsCheckpoint.createTombstone(filename), privKey));
+		return node.delete(space, SignedData.sign(METADATA_CODEC, GlobalFsCheckpoint.createTombstone(filename), privKey))
+				.whenComplete(toLogger(logger, TRACE, "delete", filename, this));
 	}
 
 	@Override

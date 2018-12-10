@@ -23,8 +23,6 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.functional.Try;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
@@ -48,12 +46,15 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
+import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<LocalGlobalFsNode> {
@@ -97,7 +98,6 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 	public static LocalGlobalFsNode create(RawServerId id, DiscoveryService discoveryService, NodeFactory<GlobalFsNode> nodeFactory, FsClient fsClient) {
 		FsClient data = fsClient.subfolder("data");
-		FsClient metadata = fsClient.subfolder("metadata");
 		FsClient checkpoints = fsClient.subfolder("checkpoints");
 		return new LocalGlobalFsNode(id, discoveryService, nodeFactory,
 				key -> data.subfolder(key.asString()),
@@ -129,22 +129,15 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	}
 	// endregion
 
-	private static BiFunction<SignedData<GlobalFsCheckpoint>, Throwable, Promise<GlobalFsCheckpoint>> normalizeMeta(PubKey space) {
-		return (signedMeta, e) -> {
-			if (e != null) {
-				return e == NO_CHECKPOINT ?
-						Promise.of(null) :
-						Promise.ofException(e);
-			}
-			if (!signedMeta.verify(space)) {
-				return Promise.ofException(CANT_VERIFY_METADATA);
-			}
-			GlobalFsCheckpoint meta = signedMeta.getValue();
-			if (meta.isTombstone()) {
-				return Promise.of(null);
-			}
-			return Promise.of(meta);
-		};
+	private static BiFunction<SignedData<GlobalFsCheckpoint>, Throwable, Promise<GlobalFsCheckpoint>> sanitizeMeta() {
+		return (signedCheckpoint, e) ->
+				e != null && e != NO_CHECKPOINT ?
+						Promise.ofException(e) :
+						Promise.of(signedCheckpoint != null ? signedCheckpoint.getValue() : null);
+	}
+
+	private Namespace ensureNamespace(PubKey space) {
+		return namespaces.computeIfAbsent(space, key -> new Namespace(key, storageFactory.apply(key), checkpointStorageFactory.apply(key)));
 	}
 
 	private boolean isMasterFor(PubKey space) {
@@ -155,148 +148,146 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	public Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset) {
 		Namespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
-				.thenCompose(nodes -> {
+				.thenCompose(masters -> {
 					if (isMasterFor(space)) { // check only after ensureMasterNodes because it could've made us master
 						return ns.save(filename, offset);
-					} else if (nodes.isEmpty()) {
-						logger.warn("no masters found for {}, caching {}", space, filename);
-						ns.tempMasterMark = true;
-						return ns.save(filename, offset);
 					}
-					if (!doesUploadCaching) {
-						return Promises.firstSuccessful(nodes
-								.stream()
-								.map(node -> {
-									logger.trace("Trying to upload file at {} at {}", filename, node);
-									return node.upload(space, filename, offset);
-								}));
-					}
-					return Promises.firstSuccessful(nodes
+					// TODO anton: wait for firstNSuccessful, and make N a config or something
+					return Promises.firstSuccessful(masters
 							.stream()
-							.map(node -> {
-								logger.trace("Trying to upload and cache file at {} at {}", filename, node);
-								return node.upload(space, filename, offset)
-										.thenApply(consumer -> {
-											ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
+							.map(master -> master.upload(space, filename, offset)))
+							.thenApplyEx((res, e) -> e == null ? singletonList(res) : Collections.<ChannelConsumer<DataFrame>>emptyList())
+							.thenApply(consumers -> {
+								ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
 
-											ChannelSplitter<DataFrame> splitter = ChannelSplitter.<DataFrame>create()
-													.withInput(buffer.getSupplier());
+								ChannelSplitter<DataFrame> splitter = ChannelSplitter.<DataFrame>create()
+										.withInput(buffer.getSupplier())
+										.lenient();
 
-											splitter.addOutput().set(ChannelConsumer.ofPromise(ns.save(filename, offset)));
-											splitter.addOutput().set(consumer);
+								// if (doesUploadCaching || consumers.isEmpty()) {
+								splitter.addOutput().set(ChannelConsumer.ofPromise(ns.save(filename, offset))
+										.withAcknowledgement(ack -> ack.whenException(splitter::close)));
+								// }
 
-											MaterializedPromise<Void> process = splitter.startProcess();
+								int minSuccesses = 1; // TODO anton: make this a config or something
+								// int minSuccesses = 0;
+								int[] up = {consumers.size()};
 
-											return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
-										});
-							}));
+								consumers.forEach(output -> splitter.addOutput().set(output
+										.withAcknowledgement(ack -> ack.whenException(e -> {
+											if (e != null && --up[0] < minSuccesses) {
+												splitter.close(e);
+											}
+										}))));
+
+								MaterializedPromise<Void> process = splitter.startProcess();
+
+								return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
+							});
 				})
 				.whenComplete(toLogger(logger, "upload", space, filename, offset, this));
 	}
 
 	@Override
-	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit) {
+	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long length) {
 		Namespace ns = ensureNamespace(space);
 		return ns.getMetadata(filename)
-				.thenComposeEx((signedLocalMeta, e) -> {
-					if (e != null && e != NO_CHECKPOINT) {
-						return Promise.ofException(e);
-					}
-					return getMetadata(space, filename)
-							.thenComposeEx(normalizeMeta(space))
-							.thenCompose(remoteMeta -> {
-								if (signedLocalMeta != null) { // if we have cached..
-									GlobalFsCheckpoint localMeta = signedLocalMeta.getValue();
-									if (localMeta.compareTo(remoteMeta) >= 0) { // ..and it is same or better than remote
-										return localMeta.isTombstone() ?
-												Promise.ofException(FILE_NOT_FOUND) :
-												ns.load(filename, offset, limit); // then we return it
-									}
-								}
-								if (remoteMeta == null) {
-									return Promise.ofException(FILE_NOT_FOUND);
-								}
-								return ns.ensureMasterNodes()
-										.thenCompose(nodes ->
-												Promises.firstSuccessful(nodes
-														.stream()
-														.map(node -> node.getMetadata(space, filename)
-																.thenCompose(signedMeta -> {
-																	if (!signedMeta.verify(space)) {
-																		return Promise.ofException(CANT_VERIFY_METADATA);
-																	}
-																	if (!doesDownloadCaching) {
-																		logger.trace("Trying to download file at " + filename + " from " + node + "...");
-																		return node.download(space, filename, offset, limit);
-																	}
-																	logger.trace("Trying to download and cache file at " + filename + " from " + node + "...");
-																	return node.download(space, filename, offset, limit)
-																			.thenApply(supplier2 -> {
-																				ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(supplier2);
+				.thenComposeEx(sanitizeMeta())
+				.thenCompose(localMeta ->
+						getMetadata(space, filename)
+								.thenComposeEx(sanitizeMeta())
+								.thenCompose(remoteMeta ->
+										// if we have cached file and it is same as or better than remote
+										localMeta != null && localMeta.compareTo(remoteMeta) >= 0 ?
+												localMeta.isTombstone() ?
+														Promise.ofException(FILE_NOT_FOUND) :
+														ns.load(filename, offset, length) :
+												remoteMeta == null || remoteMeta.isTombstone() ?
+														Promise.ofException(FILE_NOT_FOUND) :
+														ns.ensureMasterNodes()
+																.thenCompose(nodes -> Promises.firstSuccessful(nodes
+																		.stream()
+																		.map(node -> node.download(space, filename, offset, length)
+																				.thenApply(supplier -> {
+																					if (!doesDownloadCaching) {
+																						logger.trace("Trying to download file at " + filename + " from " + node + "...");
+																						return supplier;
+																					}
+																					logger.trace("Trying to download and cache file at " + filename + " from " + node + "...");
 
-																				splitter.addOutput().set(ChannelConsumer.ofPromise(ns.save(filename, offset)));
+																					ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(supplier);
 
-																				return splitter.addOutput()
-																						.getSupplier()
-																						.withEndOfStream(eos -> eos.both(splitter.getProcessResult()));
-																			});
-																}))));
-							});
-				})
-				.whenComplete(toLogger(logger, "download", space, filename, offset, limit, this));
+																					splitter.addOutput().set(ChannelConsumer.ofPromise(ns.save(filename, offset)));
+
+																					return splitter.addOutput()
+																							.getSupplier()
+																							.withEndOfStream(eos -> eos.both(splitter.getProcessResult()));
+																				}))))))
+				.whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
+	}
+
+	private <T> Promise<T> simpleMethod(PubKey space, Function<GlobalFsNode, Promise<T>> self, Function<Namespace, Promise<T>> local) {
+		Namespace ns = ensureNamespace(space);
+		return ns.ensureMasterNodes()
+				.thenCompose(nodes ->
+						isMasterFor(space) ?
+								local.apply(ns) :
+								Promises.firstSuccessful(Stream.concat(nodes.stream().map(self), Stream.generate(() -> local.apply(ns)).limit(1))));
 	}
 
 	@Override
 	public Promise<List<SignedData<GlobalFsCheckpoint>>> list(PubKey space, String glob) {
-		Namespace ns = ensureNamespace(space);
-		return ns.ensureMasterNodes()
-				.thenCompose(nodes ->
-						isMasterFor(space) || nodes.isEmpty() ?
-								ns.list(glob) :
-								Promises.firstSuccessful(nodes.stream()
-										.map(node -> node.list(space, glob))))
-				.whenComplete(toLogger(logger, "list", space, glob, this));
+		return simpleMethod(space, node -> node.list(space, glob), ns -> ns.list(glob))
+				.whenComplete(toLogger(logger, TRACE, "list", space, glob, this));
 	}
 
 	@Override
 	public Promise<SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
-		Namespace ns = ensureNamespace(space);
-		return ns.ensureMasterNodes()
-				.thenCompose(nodes ->
-						isMasterFor(space) || nodes.isEmpty() ?
-								ns.getMetadata(filename) :
-								Promises.firstSuccessful(nodes.stream()
-										.map(node -> node.getMetadata(space, filename))))
-				.whenComplete(toLogger(logger, "getMetadata", space, filename, this));
+		return simpleMethod(space, node -> node.getMetadata(space, filename), ns -> ns.getMetadata(filename))
+				.thenComposeEx((res, e) -> e != null ? Promise.ofException(NO_CHECKPOINT) : Promise.of(res))
+				.whenComplete(toLogger(logger, TRACE, "getMetadata", space, filename, this));
 	}
 
 	@Override
 	public Promise<Void> delete(PubKey space, SignedData<GlobalFsCheckpoint> tombstone) {
-		Namespace ns = ensureNamespace(space);
-		return ns.ensureMasterNodes()
-				.thenCompose(nodes ->
-						isMasterFor(space) || nodes.isEmpty() ?
-								ns.drop(tombstone) :
-								Promises.firstSuccessful(nodes.stream()
-										.map(node -> node.delete(space, tombstone))))
+		return simpleMethod(space, node -> node.delete(space, tombstone), ns -> ns.drop(tombstone))
 				.whenComplete(toLogger(logger, "delete", space, tombstone, this));
 	}
 
-	private Namespace ensureNamespace(PubKey space) {
-		return namespaces.computeIfAbsent(space, key -> new Namespace(key, storageFactory.apply(key), checkpointStorageFactory.apply(key)));
+	public Promise<Boolean> push() {
+		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), namespaces.values().stream()
+				.map(ns -> push(ns).toTry()))
+				.thenCompose(Promise::ofTry)
+				.whenComplete(toLogger(logger, "push", this));
 	}
 
-	public Promise<Boolean> fetch(PubKey space) {
-		logger.trace("fetching from {}", space);
-		return ensureNamespace(space).fetch()
-				.whenComplete(toLogger(logger, "fetch", space, this));
+	public Promise<Boolean> push(PubKey space) {
+		return push(ensureNamespace(space));
+	}
+
+	private Promise<Boolean> push(Namespace ns) {
+		return ns.ensureMasterNodes()
+				.thenCompose(nodes ->
+						Promises.collectSequence(Try.reducer(false, (a, b) -> a || b),
+								nodes.stream().map(node -> ns.push(node, "**").toTry())))
+				.thenCompose(Promise::ofTry)
+				.whenComplete(toLogger(logger, "push", ns.space, this));
 	}
 
 	public Promise<Boolean> fetch() {
-		logger.info("fetching from managed repos");
 		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), managedPubKeys.stream().map(pk -> fetch(pk).toTry()))
 				.thenCompose(Promise::ofTry)
 				.whenComplete(toLogger(logger, "fetch", this));
+	}
+
+	public Promise<Boolean> fetch(PubKey space) {
+		Namespace ns = ensureNamespace(space);
+		return ns.ensureMasterNodes()
+				.thenCompose(nodes ->
+						Promises.collectSequence(Try.reducer(false, (a, b) -> a || b),
+								nodes.stream().map(node -> ns.fetch(node, "**").toTry())))
+				.thenCompose(Promise::ofTry)
+				.whenComplete(toLogger(logger, "fetch", space, this));
 	}
 
 	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpIteration));
@@ -335,15 +326,13 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		long updateNodesTimestamp;
 		long announceTimestamp;
 
-		boolean tempMasterMark = false;
-
 		Namespace(PubKey space, FsClient storage, CheckpointStorage checkpointStorage) {
 			this.space = space;
 			this.storage = storage;
 			this.checkpointStorage = checkpointStorage;
 		}
 
-		public Promise<List<GlobalFsNode>> ensureMasterNodes() {
+		Promise<List<GlobalFsNode>> ensureMasterNodes() {
 			return ensureMasterNodes.get();
 		}
 
@@ -355,11 +344,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 			}
 			return discoveryService.find(space)
 					.thenApplyEx((announceData, e) -> {
-						if (e != null) {
-							if (e != NO_ANNOUNCEMENT) {
-								throw new UncheckedException(e);
-							}
-						} else if (announceData.verify(space)) {
+						if (e == null) {
 							AnnounceData announce = announceData.getValue();
 							if (announce.getTimestamp() >= announceTimestamp) {
 								Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());
@@ -377,140 +362,156 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 								updateNodesTimestamp = now.currentTimeMillis();
 								announceTimestamp = announce.getTimestamp();
 							}
+						} else if (e != NO_ANNOUNCEMENT) {
+							logger.warn("discovery service error", e);
 						}
 						return getMasterNodes();
 					});
 		}
 
-		public List<GlobalFsNode> getMasterNodes() {
+		List<GlobalFsNode> getMasterNodes() {
 			return new ArrayList<>(masterNodes.values());
 		}
 
-		public Promise<Boolean> fetch() {
-			return ensureMasterNodes()
-					.thenCompose(nodes ->
-							Promises.collectSequence(Try.reducer(false, (a, b) -> a || b),
-									nodes.stream().map(node -> fetch(node).toTry())))
-					.thenCompose(Promise::ofTry);
-		}
-
-		public Promise<Boolean> fetch(GlobalFsNode node) {
-			logger.trace("{} fetching from {}", space, node);
-			return node.list(space, "**")
+		@SuppressWarnings("SameParameterValue")
+		Promise<Boolean> push(GlobalFsNode node, String glob) {
+			return list(glob)
 					.thenCompose(files ->
 							Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), files.stream()
-									.map(signedMetadata -> {
-										if (!signedMetadata.verify(space)) {
-											logger.warn("received metadata with unverified signature, skipping {}", signedMetadata.getValue());
-											return Promise.of(false).toTry();
-										}
-										GlobalFsCheckpoint metadata = signedMetadata.getValue();
-										String filename = metadata.getFilename();
-										return getMetadata(filename)
-												.thenComposeEx((signedLocalMetadata, e) -> {
-													if (e != null && e != NO_CHECKPOINT) {
-														return Promise.ofException(e);
+									.map(signedLocalMeta -> {
+										GlobalFsCheckpoint localMeta = signedLocalMeta.getValue();
+										String filename = localMeta.getFilename();
+
+										return node.getMetadata(space, filename)
+												.thenComposeEx(sanitizeMeta())
+												.thenComposeEx((remoteMeta, e) -> {
+													if (localMeta.compareTo(remoteMeta) < 0) {
+														return Promise.of(false);
 													}
-													GlobalFsCheckpoint localMetadata = null;
-													if (signedLocalMetadata != null) {
-														if (!signedLocalMetadata.verify(space)) {
-															logger.warn("found local metadata with unverified signature, skipping {}", signedLocalMetadata.getValue());
+													if (localMeta.isTombstone()) {
+														if (remoteMeta != null && remoteMeta.isTombstone()) {
+															logger.trace("both local and remote files {} are tombstones", remoteMeta.getFilename());
 															return Promise.of(false);
 														} else {
-															localMetadata = signedLocalMetadata.getValue();
+															logger.info("local file {} is a tombstone, removing remote", localMeta.getFilename());
+															return node.delete(space, signedLocalMeta)
+																	.thenApply($ -> true);
 														}
+													} else {
+														if (remoteMeta != null && remoteMeta.isTombstone()) {
+															logger.info("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
+															return drop(signedLocalMeta)
+																	.thenApply($ -> true);
+														}
+														logger.info("pushing local file {} to node {}", localMeta.getFilename(), node);
+														return streamDataFrames(LocalGlobalFsNode.this, node, filename, remoteMeta != null ? remoteMeta.getPosition() : 0)
+																.thenApply($ -> true);
 													}
+												}).toTry();
+									})))
+					.thenCompose(Promise::ofTry)
+					.whenComplete(toLogger(logger, TRACE, "push", space, node, LocalGlobalFsNode.this));
+		}
 
-													if (localMetadata != null) {
-														if (localMetadata.isTombstone()) {
+		@SuppressWarnings("SameParameterValue")
+		Promise<Boolean> fetch(GlobalFsNode node, String glob) {
+			return node.list(space, glob)
+					.thenCompose(files ->
+							Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), files.stream()
+									.map(signedRemoteMeta -> {
+										GlobalFsCheckpoint remoteMeta = signedRemoteMeta.getValue();
+										String filename = remoteMeta.getFilename();
+										return getMetadata(filename)
+												.thenComposeEx(sanitizeMeta())
+												.thenCompose(localMeta -> {
+													if (localMeta != null) {
+														if (localMeta.isTombstone()) {
 															return Promise.of(false);
 														}
-														if (metadata.isTombstone()) {
-															logger.trace("remote file {} is a tombstone", metadata.getFilename());
-															return drop(signedMetadata).thenApply($ -> true);
+														if (remoteMeta.isTombstone()) {
+															logger.info("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
+															return drop(signedRemoteMeta).thenApply($ -> true);
 														}
 														// our file is better
-														if (localMetadata.compareTo(metadata) >= 0) {
-															logger.trace("our file {} is better than remote", localMetadata.getFilename());
+														if (localMeta.compareTo(remoteMeta) >= 0) {
+															logger.trace("local file {} is better than remote", localMeta.getFilename());
 															return Promise.of(false);
 														}
 														// other file is encrypted with different key
-														// (first condition is because tombstones don't store key hash)
-														if (!Objects.equals(localMetadata.getSimKeyHash(), metadata.getSimKeyHash())) {
-															logger.trace("remote file {} is encrypted with different key, ignoring", metadata.getFilename());
+														if (!Objects.equals(localMeta.getSimKeyHash(), remoteMeta.getSimKeyHash())) {
+															logger.trace("remote file {} is encrypted with different key, ignoring", remoteMeta.getFilename());
 															return Promise.of(false);
 														}
-														logger.trace("found better version of {}", metadata.getFilename());
+														logger.info("remove file {} is better than local", remoteMeta.getFilename());
 													} else {
-														if (metadata.isTombstone()) {
-															logger.trace("found a new tombstone for {}", metadata.getFilename());
-															return drop(signedMetadata).thenApply($ -> true);
+														if (remoteMeta.isTombstone()) {
+															logger.trace("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
+															return drop(signedRemoteMeta)
+																	.thenApply($ -> true);
 														}
-														logger.trace("found a new file {}", metadata.getFilename());
+														logger.trace("found a new file {}", remoteMeta.getFilename());
 													}
 
-													long ourSize = localMetadata != null ? localMetadata.getPosition() : 0;
-													long partSize = metadata.getPosition() - ourSize;
+													long ourSize = localMeta != null ? localMeta.getPosition() : 0;
 
-													// meta is newer but our size is bigger - someone truncated his file?
-													if (partSize < 0) {
-														return Promise.ofException(new StacklessException(Namespace.class, "pushMetadata truncations are disallowed!"));
-													}
+													assert remoteMeta.getPosition() >= ourSize : "Remote meta position is cannot be less than our size at this point";
 
-													if (ourSize == 0) {
-														return node.download(space, filename, 0, partSize)
-																.thenCompose(supplier ->
-																		save(filename, 0)
-																				.thenCompose(supplier::streamTo))
-																.thenApply($ -> true);
-													}
-
-													// download missing part of the whole file
-													return downloadMissingPart(node, filename, ourSize, partSize, filename)
+													return streamDataFrames(node, LocalGlobalFsNode.this, filename, ourSize)
 															.thenApply($ -> true);
 												})
 												.toTry();
 									})))
-					.thenCompose(Promise::ofTry);
+					.thenCompose(Promise::ofTry)
+					.whenComplete(toLogger(logger, TRACE, "fetch", space, node, LocalGlobalFsNode.this));
 		}
 
-		Promise<Void> downloadMissingPart(GlobalFsNode node, String fileName, long ourSize, long partSize, String filename) {
-			return node.download(space, filename, ourSize, 0)
+		Promise<Void> streamDataFrames(GlobalFsNode from, GlobalFsNode to, String filename, long position) {
+			// shortcut for when we need to stream the whole file
+			if (position == 0) {
+				return from.download(space, filename, position, -1)
+						.thenCompose(supplier ->
+								to.upload(space, filename, position)
+										.thenCompose(supplier::streamTo));
+			}
+			return from.download(space, filename, position, 0)
 					.thenCompose(supplier -> supplier.toCollector(toList()))
 					.thenCompose(frames -> {
-						// either we landed right on an existing checkpoint, then we receive just it
+						// shortcut for when we landed exactly on the checkpoint
 						if (frames.size() == 1) {
-							return node.download(space, filename, ourSize, partSize)
+							return from.download(space, filename, position, -1)
 									.thenCompose(supplier ->
-											save(filename, ourSize)
+											to.upload(space, filename, position)
 													.thenCompose(supplier::streamTo));
 						}
-						// or we landed in between two and received three frames - checkpoint, buf and checkpoint
-						assert frames.size() == 3;
-						DataFrame firstFrame = frames.get(0);
-						DataFrame secondFrame = frames.get(1);
-						DataFrame thirdFrame = frames.get(2);
+						// or we landed in between two and received some buf frames surrounded with checkpoints
+						SignedData<GlobalFsCheckpoint> signedStartCheckpoint = frames.get(0).getCheckpoint();
+						List<DataFrame> bufs = frames.subList(1, frames.size() - 1);
+						SignedData<GlobalFsCheckpoint> signedEndCheckpoint = frames.get(frames.size() - 1).getCheckpoint();
 
-						return load(fileName, ourSize, 0)
-								.thenCompose(supplier -> supplier.toCollector(toList()))
-								.thenCompose(frames2 -> {
-									// here we MUST land on a checkpoint or everything is broken
-									assert frames2.size() == 1;
+						GlobalFsCheckpoint startCheckpoint = signedStartCheckpoint.getValue();
+						GlobalFsCheckpoint endCheckpoint = signedEndCheckpoint.getValue();
 
-									DataFrame ourLastFrame = frames2.get(0);
+						return getMetadata(filename)
+								.thenCompose(signedCheckpoint -> {
+									int offset = (int) (position - startCheckpoint.getPosition());
 
-									GlobalFsCheckpoint before = firstFrame.getCheckpoint().getValue();
+									Iterator<DataFrame> iterator = bufs.iterator();
+									ByteBuf partialBuf = iterator.next().getBuf();
+									while (partialBuf.readRemaining() < offset && iterator.hasNext()) {
+										offset -= partialBuf.readRemaining();
+										partialBuf.recycle();
+										partialBuf = iterator.next().getBuf();
+									}
 
-									ByteBuf buf = secondFrame.getBuf();
-									int delta = (int) (ourSize - before.getPosition());
+									partialBuf.moveReadPosition(offset);
+									ByteBuf finalBuf = partialBuf;
 
-									buf.moveReadPosition(delta);
-
-									return node.download(space, fileName, thirdFrame.getCheckpoint().getValue().getPosition(), partSize - buf.readRemaining())
+									return from.download(space, filename, endCheckpoint.getPosition(), -1)
 											.thenCompose(supplier ->
-													save(filename, ourSize)
+													to.upload(space, filename, position)
 															.thenCompose(ChannelSuppliers.concat(
-																	ChannelSupplier.of(ourLastFrame, DataFrame.of(buf)),
+																	ChannelSupplier.of(DataFrame.of(signedCheckpoint), DataFrame.of(finalBuf)),
+																	ChannelSupplier.ofIterator(iterator),
 																	supplier
 															)::streamTo));
 								});
@@ -520,11 +521,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		Promise<ChannelConsumer<DataFrame>> save(String filename, long offset) {
 			logger.trace("uploading to local storage {}, offset: {}", filename, offset);
 			return getMetadata(filename)
-					.thenComposeEx((checkpoint, e) -> {
-						if (e != null && e != NO_CHECKPOINT) {
-							return Promise.ofException(e);
-						}
-						if (checkpoint != null && checkpoint.getValue().isTombstone()) {
+					.thenComposeEx(sanitizeMeta())
+					.thenCompose(meta -> {
+						if (meta != null && meta.isTombstone()) {
 							return Promise.ofException(UPLOADING_TO_TOMBSTONE);
 						}
 						return storage.upload(filename, offset)
@@ -555,11 +554,12 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		}
 
 		Promise<List<SignedData<GlobalFsCheckpoint>>> list(String glob) {
-			return checkpointStorage.loadLastCheckpoints(glob);
+			return checkpointStorage.listMetaCheckpoints(glob)
+					.thenCompose(list -> Promises.collectSequence(toList(), list.stream().map(checkpointStorage::loadMetaCheckpoint)));
 		}
 
 		Promise<SignedData<GlobalFsCheckpoint>> getMetadata(String fileName) {
-			return checkpointStorage.loadLastCheckpoint(fileName);
+			return checkpointStorage.loadMetaCheckpoint(fileName);
 		}
 	}
 }

@@ -16,29 +16,12 @@
 
 package io.global.fs.api;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 @FunctionalInterface
 public interface CheckpointPosStrategy {
 
 	long nextPosition(long position);
 
-	static CheckpointPosStrategy fixed(long offset) {
-		return pos -> pos + offset;
-	}
-
-	static CheckpointPosStrategy randRange(long min, long max) {
-		return pos -> pos + ThreadLocalRandom.current().nextLong(min, max);
-	}
-
-	static CheckpointPosStrategy alterating(long first, long second) {
-		return new CheckpointPosStrategy() {
-			boolean state = false;
-
-			@Override
-			public long nextPosition(long pos) {
-				return pos + ((state ^= true) ? first : second);
-			}
-		};
+	static CheckpointPosStrategy of(long range) {
+		return pos -> pos + range;
 	}
 }

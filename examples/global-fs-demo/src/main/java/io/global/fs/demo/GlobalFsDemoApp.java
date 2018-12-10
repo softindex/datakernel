@@ -139,7 +139,7 @@ public final class GlobalFsDemoApp extends Launcher {
 					@Provides
 					@Singleton
 					GlobalFsDriver provide(GlobalFsNode node, PrivateKeyStorage pks, Config config) {
-						return GlobalFsDriver.create(node, pks, CheckpointPosStrategy.randRange(16 * 1024, 1024 * 1024));
+						return GlobalFsDriver.create(node, pks, CheckpointPosStrategy.of(16 * 1024));
 					}
 
 					@Provides

@@ -21,8 +21,9 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverter;
 import io.global.fs.api.CheckpointPosStrategy;
 
+import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.ConfigConverters.ofMemSizeAsLong;
-import static io.global.fs.api.CheckpointPosStrategy.*;
+import static io.global.fs.api.CheckpointPosStrategy.of;
 
 public final class GlobalFsConfigConverters {
 	private GlobalFsConfigConverters() {
@@ -34,16 +35,7 @@ public final class GlobalFsConfigConverters {
 
 			@Override
 			public CheckpointPosStrategy get(Config config) {
-				switch (config.getValue()) {
-					case "fixed":
-						return fixed(config.get(ofMemSizeAsLong(), "offset"));
-					case "randRange":
-						return randRange(config.get(ofMemSizeAsLong(), "min"), config.get(ofMemSizeAsLong(), "max"));
-					case "alterating":
-						return alterating(config.get(ofMemSizeAsLong(), "first"), config.get(ofMemSizeAsLong(), "second"));
-					default:
-						throw new IllegalArgumentException("No checkpoint position strategy named " + config.getValue() + " exists!");
-				}
+				return of(config.get(ofMemSizeAsLong(), THIS));
 			}
 
 			@Nullable
