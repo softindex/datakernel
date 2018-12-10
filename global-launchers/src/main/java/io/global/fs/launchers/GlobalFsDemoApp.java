@@ -16,7 +16,10 @@
 
 package io.global.fs.launchers;
 
-import com.google.inject.*;
+import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -46,6 +49,7 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.fs.launchers.GlobalFsConfigConverters.ofPrivKey;
 import static java.lang.Boolean.parseBoolean;
@@ -70,7 +74,7 @@ public final class GlobalFsDemoApp extends Launcher {
 	FsClient bob;
 
 	@Override
-	protected Collection<Module> getModules() {
+	protected Collection<com.google.inject.Module> getModules() {
 		return asList(ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
@@ -89,7 +93,7 @@ public final class GlobalFsDemoApp extends Launcher {
 					@Singleton
 					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
 						return Eventloop.create()
-								.initialize(Initializers.ofEventloop(config.getChild("eventloop")))
+								.initialize(ofEventloop(config.getChild("eventloop")))
 								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
 					}
 

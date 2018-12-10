@@ -16,56 +16,27 @@
 
 package io.global.fs.launchers;
 
-import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.util.Initializer;
+import io.global.fs.local.LocalGlobalFsNode;
 
-import java.time.Duration;
+import java.util.HashSet;
 
 import static io.datakernel.config.ConfigConverters.*;
+import static io.global.fs.launchers.GlobalFsConfigConverters.ofPubKey;
+import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
+import static java.util.Collections.emptyList;
 
-public final class Initializers {
+public class Initializers {
 	private Initializers() {
-		throw new AssertionError("nope.");
+		throw new AssertionError();
 	}
 
-	public static Initializer<Eventloop> ofEventloop(Config config) {
-		return eventloop -> eventloop
-				.withFatalErrorHandler(config.get(ofFatalErrorHandler(), "fatalErrorHandler", eventloop.getFatalErrorHandler()))
-				.withIdleInterval(config.get(ofDuration(), "idleInterval", eventloop.getIdleInterval()))
-				.withThreadPriority(config.get(ofInteger(), "threadPriority", eventloop.getThreadPriority()));
-	}
-
-	public static Initializer<EventloopTaskScheduler> ofEventloopTaskScheduler(Config config) {
-		return scheduler -> {
-			scheduler.setEnabled(!config.get(ofBoolean(), "disabled", false));
-			scheduler.withAbortOnError(config.get(ofBoolean(), "abortOnError", false))
-					.withInitialDelay(config.get(ofDuration(), "initialDelay", Duration.ZERO))
-					.withSchedule(config.get(ofEventloopTaskSchedule(), "schedule", null))
-					.withRetryPolicy(config.get(ofRetryPolicy(), "retryPolicy"));
-		};
-	}
-
-	public static <T extends AbstractServer<T>> Initializer<T> ofAbstractServer(Config config) {
-		return server -> server
-				.withListenAddresses(config.get(ofList(ofInetSocketAddress()), "listenAddresses"))
-				.withAcceptOnce(config.get(ofBoolean(), "acceptOnce", false))
-				.withSocketSettings(config.get(ofSocketSettings(), "socketSettings", server.getSocketSettings()))
-				.withServerSocketSettings(config.get(ofServerSocketSettings(), "serverSocketSettings", server.getServerSocketSettings()));
-	}
-
-	public static Initializer<AsyncHttpServer> ofHttpServer(Config config) {
-		return server -> server
-				.initialize(ofAbstractServer(config))
-				.initialize(ofHttpWorker(config));
-	}
-
-	public static Initializer<AsyncHttpServer> ofHttpWorker(Config config) {
-		return server -> server
-				.withKeepAliveTimeout(config.get(ofDuration(), "keepAliveTimeout", server.getKeepAliveTimeout()))
-				.withReadWriteTimeout(config.get(ofDuration(), "readWriteTimeout", server.getReadWriteTimeout()));
+	public static Initializer<LocalGlobalFsNode> ofLocalGlobalFsNode(Config config) {
+		return node -> node
+				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
+				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching"))
+				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching"))
+				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));
 	}
 }

@@ -11,39 +11,23 @@
 	</parent>
 
 	<artifactId>datakernel-launchers</artifactId>
+	<packaging>pom</packaging>
 
 	<name>DataKernel: Launchers</name>
+
+	<modules>
+		<module>common</module>
+		<module>crdt</module>
+		<module>http</module>
+		<module>remotefs</module>
+		<module>rpc</module>
+	</modules>
 
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
 			<artifactId>datakernel-boot</artifactId>
 			<version>${project.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-http</artifactId>
-			<version>${project.version}</version>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-rpc</artifactId>
-			<version>${project.version}</version>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-lsmt-db</artifactId>
-			<version>${project.version}</version>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-crdt</artifactId>
-			<version>${project.version}</version>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
@@ -58,4 +42,5 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
 </project>

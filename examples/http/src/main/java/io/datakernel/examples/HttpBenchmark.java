@@ -36,7 +36,7 @@ import java.util.concurrent.ExecutionException;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.launchers.Initializers.ofHttpServer;
+import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings("unused")

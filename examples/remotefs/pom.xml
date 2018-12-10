@@ -30,7 +30,7 @@
 		</dependency>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>datakernel-launchers</artifactId>
+			<artifactId>remotefs-launchers</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
