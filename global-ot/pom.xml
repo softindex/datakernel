@@ -12,6 +12,11 @@
 
 	<artifactId>global-ot</artifactId>
 
+	<name>Global: OT</name>
+	<description>
+		A distributed Git-like graph of immutable content-addressable commits, encrypted and signed by data owner.
+	</description>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

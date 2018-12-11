@@ -13,6 +13,10 @@
 	<artifactId>datakernel-promise</artifactId>
 
 	<name>DataKernel: Promises</name>
+	<description>
+		Introduces promises as a convenient way to organize asynchronous code. Promises are similar to those of
+		JavaScript or to Java's CompletionStage but are more efficient.
+	</description>
 
 	<dependencies>
 		<dependency>

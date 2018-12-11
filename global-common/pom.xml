@@ -12,6 +12,12 @@
 
 	<artifactId>global-common</artifactId>
 
+	<name>Global: Common</name>
+	<description>
+		A foundation for other global componenents. Contains a DiscoveryService as well as cryptography tools and
+		common classes.
+	</description>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

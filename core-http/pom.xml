@@ -14,7 +14,8 @@
 
 	<name>DataKernel: HTTP</name>
 	<description>
-		High-performance asynchronous HTTP client and server.
+		High-performance asynchronous HTTP client and server. Contains a built-in servlets for request dispatching,
+		loading of a static content.
 	</description>
 
 	<dependencies>

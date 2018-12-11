@@ -13,6 +13,9 @@
 	<artifactId>datakernel-json</artifactId>
 
 	<name>DataKernel: Json</name>
+	<description>
+		Tools for encoding/decoding of primitives and objects.
+	</description>
 
 	<dependencies>
 		<dependency>

@@ -14,7 +14,9 @@
 
 	<name>DataKernel: ByteBuf</name>
 	<description>
-		Memory-efficient, recyclable byte buffers
+		Memory-efficient byte buffer, somewhat similar to Java's  ByteBuffer class. It is useful for fast low-level
+		I/O operations like working with files or transfering data over the internet. The module also
+		contains handy utility classes.
 	</description>
 
 	<dependencies>

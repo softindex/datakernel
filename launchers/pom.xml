@@ -14,6 +14,9 @@
 	<packaging>pom</packaging>
 
 	<name>DataKernel: Launchers</name>
+	<description>
+		A set of predefined launchers as well as some common initializers for services.
+	</description>
 
 	<modules>
 		<module>common</module>

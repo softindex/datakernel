@@ -11,6 +11,9 @@
 	</parent>
 
 	<artifactId>global-launchers</artifactId>
+	<description>
+		Launchers for a DiscoveryService and a launcher for global nodes (FS, OT and DB).
+	</description>
 
 	<dependencies>
 		<dependency>

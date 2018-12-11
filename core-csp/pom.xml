@@ -13,6 +13,10 @@
 	<artifactId>datakernel-csp</artifactId>
 
 	<name>DataKernel: CSP</name>
+	<description>
+		Communicating sequential process via channels, similar to that of the Go Lang.
+		A channel can be seen as a pipe that connects some processes.
+	</description>
 
 	<dependencies>
 		<dependency>

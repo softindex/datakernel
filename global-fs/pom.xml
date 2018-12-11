@@ -12,6 +12,11 @@
 
 	<artifactId>global-fs</artifactId>
 
+	<name>Global: FS</name>
+	<description>
+		A distributed file system that is an alternative for IPFS and BitTorrent.
+	</description>
+
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>

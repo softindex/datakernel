@@ -13,6 +13,9 @@
 	<artifactId>datakernel-ot-mysql</artifactId>
 
 	<name>DataKernel: OT-MySql</name>
+	<description>
+		A binding of an OT repository to a MySql database.
+	</description>
 
 	<dependencies>
 		<dependency>
