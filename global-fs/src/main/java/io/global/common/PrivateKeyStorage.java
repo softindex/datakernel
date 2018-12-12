@@ -88,6 +88,10 @@ public final class PrivateKeyStorage {
 		}
 	}
 
+	public void forget(SimKey simKey) {
+		keyMap.remove(Hash.sha1(simKey.getBytes()));
+	}
+
 	public void forget(Hash simKeyHash) {
 		keyMap.remove(simKeyHash);
 	}

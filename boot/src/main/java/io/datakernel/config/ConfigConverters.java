@@ -49,10 +49,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.*;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_KEYS_PER_SECOND;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_THROTTLING;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Utils.apply;
-import static io.datakernel.util.Utils.applyIfNotNull;
-import static java.lang.Integer.parseInt;
+import static io.datakernel.util.Utils.*;
 import static java.util.Collections.emptyList;
 import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.joining;
@@ -338,26 +335,11 @@ public final class ConfigConverters {
 		return new SimpleConfigConverter<InetSocketAddress>() {
 			@Override
 			public InetSocketAddress fromString(String addressPort) {
-				int portPos = addressPort.lastIndexOf(':');
-				if (portPos == -1) {
-					return new InetSocketAddress(Integer.parseInt(addressPort));
+				try {
+					return parseInetSocketAddress(addressPort);
+				} catch (ParseException e) {
+					throw new IllegalArgumentException(e);
 				}
-				String addressStr = addressPort.substring(0, portPos);
-				String portStr = addressPort.substring(portPos + 1);
-				int port = parseInt(portStr);
-				checkArgument(port > 0 && port < 65536, "Invalid address. Port is not in range (0, 65536) " + addressStr);
-				InetSocketAddress socketAddress;
-				if ("*".equals(addressStr)) {
-					socketAddress = new InetSocketAddress(port);
-				} else {
-					try {
-						InetAddress address = InetAddress.getByName(addressStr);
-						socketAddress = new InetSocketAddress(address, port);
-					} catch (UnknownHostException e) {
-						throw new IllegalArgumentException(e);
-					}
-				}
-				return socketAddress;
 			}
 
 			@Override

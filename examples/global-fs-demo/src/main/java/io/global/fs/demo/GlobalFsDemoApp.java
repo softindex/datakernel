@@ -126,7 +126,7 @@ public final class GlobalFsDemoApp extends Launcher {
 					@Provides
 					@Singleton
 					GlobalFsNode provide(IAsyncHttpClient httpClient, Config config) {
-						return new HttpGlobalFsNode(httpClient, config.get("app.globalFsId"));
+						return HttpGlobalFsNode.create(config.get("app.globalFsId"), httpClient);
 					}
 
 					@Provides

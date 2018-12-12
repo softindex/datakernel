@@ -23,6 +23,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.functional.Try;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
@@ -62,8 +63,12 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalFsNode.class);
 
 	private final Set<PubKey> managedPubKeys = new HashSet<>();
+
+	private int uploadCallNumber = 1;
+	private int uploadSuccessNumber = 0;
+
 	private boolean doesDownloadCaching = true;
-	private boolean doesUploadCaching = false;
+	private boolean doesUploadCaching = true;
 
 	private final Map<PubKey, Namespace> namespaces = new HashMap<>();
 
@@ -152,8 +157,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 					if (isMasterFor(space)) { // check only after ensureMasterNodes because it could've made us master
 						return ns.save(filename, offset);
 					}
-					// TODO anton: wait for firstNSuccessful, and make N a config or something
-					return Promises.firstSuccessful(masters
+					return Promises.firstSuccessful(masters// ,uploadCallNumber, // TODO anton: wait for it
 							.stream()
 							.map(master -> master.upload(space, filename, offset)))
 							.thenApplyEx((res, e) -> e == null ? singletonList(res) : Collections.<ChannelConsumer<DataFrame>>emptyList())
@@ -164,25 +168,31 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 										.withInput(buffer.getSupplier())
 										.lenient();
 
-								// if (doesUploadCaching || consumers.isEmpty()) {
-								splitter.addOutput().set(ChannelConsumer.ofPromise(ns.save(filename, offset))
-										.withAcknowledgement(ack -> ack.whenException(splitter::close)));
-								// }
+								if (doesUploadCaching || consumers.isEmpty()) {
+									splitter.addOutput().set(ChannelConsumer.ofPromise(ns.save(filename, offset))
+											.withAcknowledgement(ack -> ack.whenException(splitter::close)));
+								}
 
-								int minSuccesses = 1; // TODO anton: make this a config or something
-								// int minSuccesses = 0;
 								int[] up = {consumers.size()};
 
 								consumers.forEach(output -> splitter.addOutput().set(output
 										.withAcknowledgement(ack -> ack.whenException(e -> {
-											if (e != null && --up[0] < minSuccesses) {
+											if (e != null && --up[0] < uploadSuccessNumber) {
 												splitter.close(e);
 											}
 										}))));
 
 								MaterializedPromise<Void> process = splitter.startProcess();
 
-								return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
+								return buffer.getConsumer()
+										.withAcknowledgement(ack -> ack
+												.both(process)
+												.thenCompose($ -> {
+													if (up[0] >= uploadSuccessNumber) {
+														return Promise.complete();
+													}
+													return Promise.ofException(new StacklessException(LocalGlobalFsNode.class, "Not enough successes"));
+												}));
 							});
 				})
 				.whenComplete(toLogger(logger, "upload", space, filename, offset, this));

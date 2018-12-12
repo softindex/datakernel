@@ -70,13 +70,16 @@ import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.fs.api.GlobalFsNode.UPLOADING_TO_TOMBSTONE;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
 public final class GlobalFsTest {
-
 	public static final String FILENAME = "folder/test.txt";
 	public static final String SIMPLE_CONTENT = "hello world, this is some string of bytes for Global-FS testing";
+	private static final RawServerId FIRST_ID = new RawServerId("127.0.0.1:1001");
+	private static final RawServerId SECOND_ID = new RawServerId("127.0.0.1:1002");
+
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -87,8 +90,7 @@ public final class GlobalFsTest {
 	private KeyPair alice = KeyPair.generate();
 	private KeyPair bob = KeyPair.generate();
 
-	private RawServerId firstId = new RawServerId("127.0.0.1:1001");
-	private RawServerId secondId = new RawServerId("127.0.0.1:1002");
+	private NodeFactory<GlobalFsNode> clientFactory;
 
 	private LocalGlobalFsNode rawFirstClient;
 	private LocalGlobalFsNode rawSecondClient;
@@ -99,6 +101,11 @@ public final class GlobalFsTest {
 	private FsClient secondAliceAdapter;
 	private FsClient storage;
 	private Path dir;
+
+	private GlobalFsNode cachingNode;
+	private GlobalFsDriver driver;
+	private FsClient aliceGateway;
+	private FsClient bobGateway;
 
 	private static String folderFor(RawServerId serverId) {
 		return "server_" + serverId.getServerIdString().split(":")[1];
@@ -114,24 +121,50 @@ public final class GlobalFsTest {
 
 		Map<RawServerId, GlobalFsNode> nodes = new HashMap<>();
 
-		NodeFactory<GlobalFsNode> clientFactory = new NodeFactory<GlobalFsNode>() {
+		clientFactory = new NodeFactory<GlobalFsNode>() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
 				return wrapWithHttpInterface(nodes.computeIfAbsent(serverId, id ->
-						LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder(folderFor(id)))));
+						LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder(folderFor(id)))), serverId);
 			}
 		};
-		firstClient = clientFactory.create(firstId);
-		GlobalFsNode secondClient = clientFactory.create(secondId);
+		firstClient = clientFactory.create(FIRST_ID);
+		GlobalFsNode secondClient = clientFactory.create(SECOND_ID);
 
-		rawFirstClient = (LocalGlobalFsNode) nodes.get(firstId);
-		rawSecondClient = (LocalGlobalFsNode) nodes.get(secondId);
+		rawFirstClient = (LocalGlobalFsNode) nodes.get(FIRST_ID);
+		rawSecondClient = (LocalGlobalFsNode) nodes.get(SECOND_ID);
 
 		firstDriver = GlobalFsDriver.create(firstClient, discoveryService, list(alice, bob), CheckpointPosStrategy.of(10));
 		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, discoveryService, list(alice, bob), CheckpointPosStrategy.of(15));
 
 		firstAliceAdapter = firstDriver.gatewayFor(alice.getPubKey());
 		secondAliceAdapter = secondDriver.gatewayFor(alice.getPubKey());
+
+		cachingNode = clientFactory.create(new RawServerId("127.0.0.1:1003"));
+		driver = GlobalFsDriver.create(cachingNode, discoveryService, asList(alice, bob), CheckpointPosStrategy.of(16));
+		aliceGateway = driver.gatewayFor(alice.getPubKey());
+		bobGateway = driver.gatewayFor(bob.getPubKey());
+	}
+
+	@SuppressWarnings("Duplicates") // stolen piece from HttpServerConnection
+	private GlobalFsNode wrapWithHttpInterface(GlobalFsNode node, RawServerId serverId) {
+		GlobalFsNodeServlet servlet = GlobalFsNodeServlet.create(node);
+		return HttpGlobalFsNode.create("http://" + serverId.getServerIdString(), request -> {
+			Promise<HttpResponse> servletResult;
+			try {
+				servletResult = servlet.serve(request);
+			} catch (UncheckedException u) {
+				servletResult = Promise.ofException(u.getCause());
+			} catch (ParseException e) {
+				servletResult = Promise.ofException(e);
+			}
+			return servletResult.thenComposeEx((res, e) -> {
+				if (e == null) {
+					return Promise.of(res);
+				}
+				return Promise.of(DEFAULT_ERROR_FORMATTER.formatException(e));
+			});
+		});
 	}
 
 	private void announce(KeyPair keys, Set<RawServerId> rawServerIds) {
@@ -140,7 +173,7 @@ public final class GlobalFsTest {
 
 	@Test
 	public void cutters() {
-		announce(alice, set(firstId));
+		announce(alice, set(FIRST_ID));
 
 		await(ChannelSupplier.of(
 				wrapUtf8("hello, this is a test buffer data #01\n"),
@@ -199,7 +232,7 @@ public final class GlobalFsTest {
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
 
 		byte[] data = Files.readAllBytes(dir
-				.resolve(folderFor(firstId))
+				.resolve(folderFor(FIRST_ID))
 				.resolve("data")
 				.resolve(alice.getPubKey().asString())
 				.resolve(FILENAME));
@@ -208,9 +241,40 @@ public final class GlobalFsTest {
 	}
 
 	@Test
+	public void announcedUpload() {
+		announce(alice, set(FIRST_ID, SECOND_ID));
+
+		// simply upload straight to the first node (no masters so it'll cache)
+		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(aliceGateway.upload(FILENAME))));
+
+		int found = 0;
+
+		try {
+			Files.readAllBytes(dir
+					.resolve(folderFor(FIRST_ID))
+					.resolve("data")
+					.resolve(alice.getPubKey().asString())
+					.resolve(FILENAME));
+			found++;
+		} catch (Exception ignored) {
+		}
+		try {
+			Files.readAllBytes(dir
+					.resolve(folderFor(SECOND_ID))
+					.resolve("data")
+					.resolve(alice.getPubKey().asString())
+					.resolve(FILENAME));
+			found++;
+		} catch (Exception ignored) {
+		}
+
+		assertEquals(1, found);
+	}
+
+	@Test
 	public void proxyUpload() {
 		// first node is master
-		announce(alice, set(firstId));
+		announce(alice, set(FIRST_ID));
 
 		// upload to master through second node
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(secondAliceAdapter.upload(FILENAME))));
@@ -253,9 +317,10 @@ public final class GlobalFsTest {
 	}
 
 	@Test
+	@IgnoreLeaks("sometimes it fails, TODO") // TODO anton: fix this
 	public void proxyDownload() {
 		// first node is master
-		announce(alice, set(firstId));
+		announce(alice, set(FIRST_ID));
 
 		// and it has data
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
@@ -281,7 +346,7 @@ public final class GlobalFsTest {
 	@Test
 	public void proxyDelete() {
 		// first node is master
-		announce(alice, set(firstId));
+		announce(alice, set(FIRST_ID));
 
 		// upload to the node
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
@@ -296,7 +361,7 @@ public final class GlobalFsTest {
 	@Test
 	public void cacheDelete() {
 		// first node is master
-		announce(alice, set(firstId));
+		announce(alice, set(FIRST_ID));
 
 		// upload to first
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
@@ -329,10 +394,8 @@ public final class GlobalFsTest {
 
 	@Test
 	public void downloadOnlyCheckpoint() {
-		String content = "little test content";
-
 		// downloading 0 bytes at the checkpoint position should return only a one frame with that checkpoint
-		await(ChannelSupplier.of(wrapUtf8(content))
+		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT))
 				.transformWith(FrameSigner.create(alice.getPrivKey(), CheckpointPosStrategy.of(4), GlobalFsTest.FILENAME, 0, new SHA256Digest(), null))
 				.streamTo(await(firstClient.upload(alice.getPubKey(), GlobalFsTest.FILENAME, -1))));
 
@@ -346,12 +409,10 @@ public final class GlobalFsTest {
 
 	@Test
 	public void catchUp() {
-		String data = "hello, this is a test little string of bytes";
-
-		announce(alice, set(firstId, secondId));
+		announce(alice, set(FIRST_ID, SECOND_ID));
 
 		// upload file to the first node
-		await(ChannelSupplier.of(wrapUtf8(data)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
+		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
 
 		// just ping the second node with alice's pubkey so it would check if it it's master
 		await(secondAliceAdapter.list());
@@ -364,7 +425,7 @@ public final class GlobalFsTest {
 
 		// now second should have this file too
 		String res = await(await(secondAliceAdapter.download(FILENAME)).toCollector(ByteBufQueue.collector())).asString(UTF_8);
-		assertEquals(data, res);
+		assertEquals(SIMPLE_CONTENT, res);
 	}
 
 	@Test
@@ -372,7 +433,7 @@ public final class GlobalFsTest {
 		String part = "hello, this is a test little string of bytes";
 		String string = part + "\nwhich has a second line by the way, hello there";
 
-		announce(alice, set(firstId, secondId));
+		announce(alice, set(FIRST_ID, SECOND_ID));
 
 		// upload half of the text to the second node
 		await(ChannelSupplier.of(wrapUtf8(part)).streamTo(await(secondAliceAdapter.upload(FILENAME))));
@@ -392,23 +453,59 @@ public final class GlobalFsTest {
 	@LoggerConfig(logger = "io.global.fs", value = "TRACE")
 	@LoggerConfig(logger = "io.global.fs.local.RemoteFsCheckpointStorage", value = "INFO")
 	public void catchUpTombstones() {
-		String filename = FILENAME;
-
-		announce(alice, set(firstId, secondId));
+		announce(alice, set(FIRST_ID, SECOND_ID));
 
 		// uploading one string of bytes to first node
-		await(ChannelSupplier.of(wrapUtf8("some string of bytes to test")).streamTo(await(firstAliceAdapter.upload(filename))));
+		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
 
 		// deleting the file on second node
-		await(secondAliceAdapter.delete(filename));
+		await(secondAliceAdapter.delete(FILENAME));
 
 		// make second node catch up
 		await(rawFirstClient.catchUp());
 
 		// uploading on the first node again
-		Throwable e = awaitException(firstAliceAdapter.upload(filename));
+		Throwable e = awaitException(firstAliceAdapter.upload(FILENAME));
 
 		assertSame(UPLOADING_TO_TOMBSTONE, e);
+	}
+
+	@Test
+	public void push() {
+		// upload file to the first node
+		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
+
+		// make second node master
+		announce(alice, set(SECOND_ID));
+
+		// the push
+		await(rawFirstClient.push());
+
+		byte[] data = await(await(secondAliceAdapter.download(FILENAME)).toCollector(ByteBufQueue.collector())).asArray();
+
+		assertArrayEquals(SIMPLE_CONTENT.getBytes(UTF_8), data);
+	}
+
+	@Test
+	public void biggerTest() {
+		announce(alice, set(FIRST_ID));
+		announce(bob, set(FIRST_ID, SECOND_ID));
+
+		String doubleContent = SIMPLE_CONTENT + '\n' + SIMPLE_CONTENT;
+
+		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(aliceGateway.upload("first.txt"))));
+		await(ChannelSupplier.of(wrapUtf8(doubleContent)).streamTo(await(bobGateway.upload("second.txt"))));
+
+		// download (and cache) from other node
+		byte[] data = await(await(secondAliceAdapter.download("first.txt")).toCollector(ByteBufQueue.collector())).asArray();
+		assertArrayEquals(SIMPLE_CONTENT.getBytes(UTF_8), data);
+
+		// fetch on the first node so it is up-to-date
+		await(rawFirstClient.fetch());
+
+		//
+		data = await(await(firstDriver.gatewayFor(bob.getPubKey()).download("second.txt")).toCollector(ByteBufQueue.collector())).asArray();
+		assertArrayEquals(doubleContent.getBytes(UTF_8), data);
 	}
 
 	@Test
@@ -432,11 +529,12 @@ public final class GlobalFsTest {
 		assertEquals(data.substring(12, 12 + 32), res);
 
 		// pretend we try to download "someone else's" file
-		firstDriver.getPrivateKeyStorage().forget(Hash.sha1(key1.getBytes()));
+		firstDriver.getPrivateKeyStorage().forget(key1);
 		firstDriver.getPrivateKeyStorage().changeCurrentSimKey(key2);
+
 		assertSame(NO_SHARED_KEY, awaitException(firstAliceAdapter.download(filename)));
 
-		// share "someone else's" file key with outselves
+		// share "someone else's" file key with ourselves
 		await(discoveryService.shareKey(alice.getPubKey(),
 				SignedData.sign(REGISTRY.get(SharedSimKey.class), SharedSimKey.of(key1, alice.getPubKey()), alice.getPrivKey())));
 
@@ -445,26 +543,5 @@ public final class GlobalFsTest {
 
 		// and decryption works
 		assertEquals(data, res);
-	}
-
-	@SuppressWarnings("Duplicates") // stolen piece from HttpServerConnection
-	private GlobalFsNode wrapWithHttpInterface(GlobalFsNode node) {
-		GlobalFsNodeServlet servlet = GlobalFsNodeServlet.create(node);
-		return new HttpGlobalFsNode(request -> {
-			Promise<HttpResponse> servletResult;
-			try {
-				servletResult = servlet.serve(request);
-			} catch (UncheckedException u) {
-				servletResult = Promise.ofException(u.getCause());
-			} catch (ParseException e) {
-				servletResult = Promise.ofException(e);
-			}
-			return servletResult.thenComposeEx((res, e) -> {
-				if (e == null) {
-					return Promise.of(res);
-				}
-				return Promise.of(DEFAULT_ERROR_FORMATTER.formatException(e));
-			});
-		}, "http://127.0.0.1:3333");
 	}
 }

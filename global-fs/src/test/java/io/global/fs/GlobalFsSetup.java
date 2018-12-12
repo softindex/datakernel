@@ -80,8 +80,8 @@ public final class GlobalFsSetup {
 		RawServerId first = new RawServerId(firstAddress);
 		RawServerId second = new RawServerId(secondAddress);
 
-		GlobalFsNode firstClient = new HttpGlobalFsNode(client, firstAddress);
-		GlobalFsNode secondClient = new HttpGlobalFsNode(client, secondAddress);
+		GlobalFsNode firstClient = HttpGlobalFsNode.create(firstAddress, client);
+		GlobalFsNode secondClient = HttpGlobalFsNode.create(secondAddress, client);
 
 		GlobalFsDriver firstDriver = GlobalFsDriver.create(firstClient, discoveryService, list(alice), of(5));
 		GlobalFsDriver secondDriver = GlobalFsDriver.create(secondClient, discoveryService, list(alice), of(6));

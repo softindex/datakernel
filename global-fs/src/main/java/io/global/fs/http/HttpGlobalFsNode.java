@@ -52,9 +52,13 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	private final String url;
 	private final IAsyncHttpClient client;
 
-	public HttpGlobalFsNode(IAsyncHttpClient client, String url) {
-		this.client = client;
+	private HttpGlobalFsNode(String url, IAsyncHttpClient client) {
 		this.url = url.endsWith("/") ? url : url + '/';
+		this.client = client;
+	}
+
+	public static HttpGlobalFsNode create(String url, IAsyncHttpClient client) {
+		return new HttpGlobalFsNode(url, client);
 	}
 
 	@Override

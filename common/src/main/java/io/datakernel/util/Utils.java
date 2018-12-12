@@ -17,11 +17,15 @@
 package io.datakernel.util;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.exception.ParseException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
@@ -122,16 +126,16 @@ public class Utils {
 		return string != null ? string : "";
 	}
 
-	public static <T, V> void set(Consumer<? super V> op, V value) {
+	public static <V> void set(Consumer<? super V> op, V value) {
 		op.accept(value);
 	}
 
-	public static <T, V> void setIf(Consumer<? super V> op, V value, Predicate<? super V> predicate) {
+	public static <V> void setIf(Consumer<? super V> op, V value, Predicate<? super V> predicate) {
 		if (!predicate.test(value)) return;
 		op.accept(value);
 	}
 
-	public static <T, V> void setIfNotNull(Consumer<? super V> op, V value) {
+	public static <V> void setIfNotNull(Consumer<? super V> op, V value) {
 		setIf(op, value, Objects::nonNull);
 	}
 
@@ -235,7 +239,39 @@ public class Utils {
 		return loadResource(resource);
 	}
 
-	private static final boolean launchedByIntellij = System.getProperty("java.class.path").contains("idea_rt.jar");
+	public static InetSocketAddress parseInetSocketAddress(String addressAndPort) throws ParseException {
+		int portPos = addressAndPort.lastIndexOf(':');
+		if (portPos == -1) {
+			try {
+				return new InetSocketAddress(Integer.parseInt(addressAndPort));
+			} catch (NumberFormatException nfe) {
+				throw new ParseException(nfe);
+			}
+		}
+		String addressStr = addressAndPort.substring(0, portPos);
+		String portStr = addressAndPort.substring(portPos + 1);
+		int port;
+		try {
+			port = Integer.parseInt(portStr);
+		} catch (NumberFormatException nfe) {
+			throw new ParseException(nfe);
+		}
+
+		if (port <= 0 || port >= 65536) {
+			throw new ParseException("Invalid address. Port is not in range (0, 65536) " + addressStr);
+		}
+		if ("*".equals(addressStr)) {
+			return new InetSocketAddress(port);
+		}
+		try {
+			InetAddress address = InetAddress.getByName(addressStr);
+			return new InetSocketAddress(address, port);
+		} catch (UnknownHostException e) {
+			throw new ParseException(e);
+		}
+	}
+
+	private static final boolean launchedByIntellij = System.getProperty("java.class.path", "").contains("idea_rt.jar");
 
 	/**
 	 * Debug method which outputs messages with file name and line where it was called,

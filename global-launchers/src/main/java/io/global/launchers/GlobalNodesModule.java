@@ -119,7 +119,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	NodeFactory<GlobalFsNode> provideFsNodeFactory(IAsyncHttpClient client) {
-		return id -> new HttpGlobalFsNode(client, id.getServerIdString());
+		return id -> HttpGlobalFsNode.create(id.getServerIdString(), client);
 	}
 
 	@Provides
