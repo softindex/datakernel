@@ -134,7 +134,7 @@ public final class HttpApiTest {
 				.withHeader(CONTENT_TYPE, ofContentType(requestContentType))
 				.withHeader(IF_MODIFIED_SINCE, ofInstant(dateIMS))
 				.withHeader(IF_UNMODIFIED_SINCE, ofInstant(dateIUMS))
-				.withCookies(requestCookies);
+				.initialize(httpRequest -> requestCookies.forEach(httpRequest::addCookie));
 	}
 
 	private void testResponse(HttpResponse response) throws ParseException {

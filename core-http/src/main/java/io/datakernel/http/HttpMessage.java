@@ -132,14 +132,18 @@ public abstract class HttpMessage {
 		return list;
 	}
 
-	public abstract void setCookies(List<HttpCookie> cookies);
+	public abstract void addCookies(List<HttpCookie> cookies);
 
-	public void setCookies(HttpCookie... cookie) {
-		setCookies(Arrays.asList(cookie));
+	public void addCookies(HttpCookie... cookies) {
+		ArrayList<HttpCookie> list = new ArrayList<>(cookies.length);
+		Collections.addAll(list, cookies);
+		addCookies(list);
 	}
 
-	public void setCookie(HttpCookie cookie) {
-		setCookies(Collections.singletonList(cookie));
+	public void addCookie(HttpCookie cookie) {
+		ArrayList<HttpCookie> list = new ArrayList<>(1);
+		list.add(cookie);
+		addCookies(list);
 	}
 
 	public void setBodyGzipCompression() {

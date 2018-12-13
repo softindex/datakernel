@@ -93,22 +93,27 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	@Override
-	public void setCookies(List<HttpCookie> cookies) {
-		setHeader(SET_COOKIE, new HttpHeaderValueOfFullCookies(cookies));
+	public void addCookies(List<HttpCookie> cookies) {
+		assert !isRecycled();
+		HttpHeaderValue existingHeaders = headers.putIfAbsent(SET_COOKIE, new HttpHeaderValueOfFullCookies(cookies));
+		if (existingHeaders != null) {
+			HttpHeaderValueOfFullCookies existingCookies = (HttpHeaderValueOfFullCookies) existingHeaders;
+			existingCookies.cookies.addAll(cookies);
+		}
 	}
 
 	public HttpResponse withCookies(List<HttpCookie> cookies) {
-		setCookies(cookies);
+		addCookies(cookies);
 		return this;
 	}
 
 	public HttpResponse withCookies(HttpCookie... cookies) {
-		setCookies(cookies);
+		addCookies(cookies);
 		return this;
 	}
 
 	public HttpResponse withCookie(HttpCookie cookie) {
-		setCookie(cookie);
+		addCookie(cookie);
 		return this;
 	}
 

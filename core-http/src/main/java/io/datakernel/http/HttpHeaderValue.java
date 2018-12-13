@@ -167,7 +167,7 @@ public abstract class HttpHeaderValue {
 	}
 
 	static final class HttpHeaderValueOfSimpleCookies extends HttpHeaderValue {
-		private final List<HttpCookie> cookies;
+		final List<HttpCookie> cookies;
 
 		HttpHeaderValueOfSimpleCookies(List<HttpCookie> cookies) {
 			this.cookies = cookies;
@@ -198,7 +198,7 @@ public abstract class HttpHeaderValue {
 	}
 
 	static final class HttpHeaderValueOfFullCookies extends HttpHeaderValue {
-		private final List<HttpCookie> cookies;
+		final List<HttpCookie> cookies;
 
 		HttpHeaderValueOfFullCookies(List<HttpCookie> cookies) {
 			this.cookies = cookies;
