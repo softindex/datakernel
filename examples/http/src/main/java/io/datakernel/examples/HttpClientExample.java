@@ -102,7 +102,7 @@ public class HttpClientExample extends Launcher {
 			httpClient.request(request)
 					.whenComplete((result, e) -> {
 						if (e == null) {
-							System.out.println("Server response: " + result.getBody().asString(UTF_8));
+							System.out.println("Server response: " + result.getBody().getString(UTF_8));
 						} else {
 							System.err.println("Server error: " + e);
 						}

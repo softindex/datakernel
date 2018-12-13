@@ -72,13 +72,14 @@ public final class SimpleProxyServerTest {
 						.withDatagramSocketSetting(DatagramSocketSettings.create())
 						.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"))));
 
-		AsyncHttpServer proxyServer = AsyncHttpServer.create(eventloop2, request -> {
-			String path = ECHO_SERVER_PORT + request.getUrl().getPath();
-			return httpClient.request(HttpRequest.get("http://127.0.0.1:" + path))
-					.thenCompose(ensureResponseBody())
-					.thenApply(result -> HttpResponse.ofCode(result.getCode())
-							.withBody(encodeAscii("FORWARDED: " + result.getBody().asString(UTF_8))));
-		})
+		AsyncHttpServer proxyServer = AsyncHttpServer.create(eventloop2,
+				request -> {
+					String path = ECHO_SERVER_PORT + request.getUrl().getPath();
+					return httpClient.request(HttpRequest.get("http://127.0.0.1:" + path))
+							.thenCompose(ensureResponseBody())
+							.thenApply(result -> HttpResponse.ofCode(result.getCode())
+									.withBody(encodeAscii("FORWARDED: " + result.getBody().getString(UTF_8))));
+				})
 				.withListenPort(PROXY_SERVER_PORT);
 		proxyServer.listen();
 

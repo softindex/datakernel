@@ -81,7 +81,7 @@ public final class RawServerServlet implements WithMiddleware {
 										.withBody(toJson(ofSet(STRING_CODEC), names).getBytes(UTF_8))
 								))
 				.with(POST, "/" + SAVE + "/:pubKey/:name", ensureRequestBody(req -> {
-					SaveTuple saveTuple = fromJson(SAVE_JSON, req.getBody().asString(UTF_8));
+					SaveTuple saveTuple = fromJson(SAVE_JSON, req.getBody().getString(UTF_8));
 					return node.save(urlDecodeRepositoryId(req), saveTuple.commits, saveTuple.heads)
 							.thenApply($ -> HttpResponse.ok200());
 				}))
@@ -99,7 +99,7 @@ public final class RawServerServlet implements WithMiddleware {
 										.withBody(toJson(HEADS_INFO_JSON, headsInfo).getBytes(UTF_8))
 								))
 				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", ensureRequestBody(req -> {
-					SignedData<RawSnapshot> snapshot = decode(SIGNED_SNAPSHOT_CODEC, req.getBody().asArray());
+					SignedData<RawSnapshot> snapshot = decode(SIGNED_SNAPSHOT_CODEC, req.takeBody());
 					return node.saveSnapshot(snapshot.getValue().repositoryId, snapshot)
 							.thenApply($ -> HttpResponse.ok200());
 				}))
@@ -119,7 +119,7 @@ public final class RawServerServlet implements WithMiddleware {
 								.withBody(toJson(HEADS_DELTA_JSON, heads).getBytes(UTF_8))
 						))
 				.with(POST, "/" + SHARE_KEY + "/:owner", ensureRequestBody(req ->
-						node.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SIGNED_SHARED_KEY_JSON, req.getBody().asString(UTF_8)))
+						node.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SIGNED_SHARED_KEY_JSON, req.getBody().getString(UTF_8)))
 								.thenApply($ -> HttpResponse.ok200())))
 				.with(GET, "/" + DOWNLOAD, req -> node.download(
 						urlDecodeRepositoryId(req),

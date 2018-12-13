@@ -107,7 +107,7 @@ public final class CubeHttpClient implements ICube {
 		return httpClient.request(buildRequest(query))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(httpResponse -> {
-					String response = httpResponse.getBody().asString(UTF_8);
+					String response = httpResponse.getBody().getString(UTF_8);
 
 					if (httpResponse.getCode() != 200) {
 						return Promise.ofException(new ParseException(CubeHttpClient.class, "Cube HTTP query failed. Response code: " + httpResponse.getCode() + " Body: " + response));

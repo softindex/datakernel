@@ -37,7 +37,6 @@ import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
 
 import java.util.List;
-import java.util.function.Function;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
@@ -98,12 +97,6 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 
 	public static final ByteBufsParser<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_PARSER = ofDecoder(SIGNED_CHECKPOINT_CODEC);
 
-	private static final Function<HttpResponse, Promise<List<SignedData<GlobalFsCheckpoint>>>> LIST_RESPONSE_PARSER =
-			response ->
-					BinaryChannelSupplier.of(response.getBodyStream())
-							.parseStream(SIGNED_CHECKPOINT_PARSER)
-							.toCollector(toList());
-
 	@Override
 	public Promise<List<SignedData<GlobalFsCheckpoint>>> list(PubKey space, String glob) {
 		return client.request(HttpRequest.get(
@@ -112,9 +105,11 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(space.asString())
 						.appendQuery("glob", glob)
 						.build()))
-				.thenCompose(ensureResponseBody())
 				.thenCompose(ensureStatusCode(200))
-				.thenCompose(LIST_RESPONSE_PARSER);
+				.thenCompose(response ->
+						BinaryChannelSupplier.of(response.getBodyStream())
+								.parseStream(SIGNED_CHECKPOINT_PARSER)
+								.toCollector(toList()));
 	}
 
 	@Override
@@ -132,7 +127,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						return Promise.ofException(NO_CHECKPOINT);
 					}
 					try {
-						return Promise.of(decode(SIGNED_CHECKPOINT_CODEC, response.getBody()));
+						return Promise.of(decode(SIGNED_CHECKPOINT_CODEC, response.takeBody()));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

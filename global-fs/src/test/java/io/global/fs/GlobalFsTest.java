@@ -193,7 +193,6 @@ public final class GlobalFsTest {
 				wrapUtf8("hello, this is a test buffer data #15\n")
 		).streamTo(await(firstAliceAdapter.upload("test1.txt"))));
 
-
 		String res = await(await(firstAliceAdapter.download("test1.txt", 10, 380 - 10 - 19)).toCollector(ByteBufQueue.collector())).asString(UTF_8);
 
 		assertEquals("s is a test buffer data #01\n" +

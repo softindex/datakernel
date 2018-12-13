@@ -158,24 +158,26 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 
 	@Override
 	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId id) {
-		//noinspection RedundantTypeArguments - IntelliJ thinks its redundant, but it's Java compiler does not
 		return httpClient.request(request(GET, LOAD_SNAPSHOT,
 				apiQuery(repositoryId, map(
 						"id", urlEncodeCommitId(id)))))
 				.thenCompose(ensureResponseBody())
-				.<Optional<SignedData<RawSnapshot>>>thenCompose(r -> {
+				.thenCompose(r -> {
 					if (r.getCode() != 200)
 						return Promise.ofException(HttpException.ofCode(r.getCode()));
-					try (ByteBuf body = r.getBody()) {
+					ByteBuf body = r.takeBody();
+					try {
 						if (!body.canRead()) {
 							return Promise.of(Optional.empty());
 						}
 						try {
 							return Promise.of(Optional.of(
-									decode(SIGNED_SNAPSHOT_CODEC, body.getArray())));
+									decode(SIGNED_SNAPSHOT_CODEC, body)));
 						} catch (ParseException e) {
 							return Promise.ofException(e);
 						}
+					} finally {
+						body.recycle();
 					}
 				});
 	}
@@ -247,7 +249,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	private static <T> Promise<T> processResult(HttpResponse r, @Nullable StructuredCodec<T> json) {
 		if (r.getCode() != 200) return Promise.ofException(HttpException.ofCode(r.getCode()));
 		try {
-			return Promise.of(json != null ? fromJson(json, r.getBody().asString(UTF_8)) : null);
+			return Promise.of(json != null ? fromJson(json, r.getBody().getString(UTF_8)) : null);
 		} catch (ParseException e) {
 			return Promise.ofException(e);
 		}

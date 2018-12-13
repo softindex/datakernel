@@ -44,9 +44,9 @@ public interface AsyncServlet {
 
 	static AsyncServlet ensureRequestBody(AsyncServlet delegate, int maxBodySize) {
 		return request -> request.ensureBody(maxBodySize)
-				.thenCompose($ -> {
+				.thenCompose(requestWithBody -> {
 					try {
-						return delegate.serve(request);
+						return delegate.serve(requestWithBody);
 					} catch (UncheckedException u) {
 						return Promise.ofException(u.getCause());
 					} catch (ParseException e) {

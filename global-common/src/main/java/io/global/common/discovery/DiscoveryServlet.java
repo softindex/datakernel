@@ -18,7 +18,6 @@ package io.global.common.discovery;
 
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
@@ -32,6 +31,7 @@ import java.util.List;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public final class DiscoveryServlet implements WithMiddleware {
@@ -49,29 +49,22 @@ public final class DiscoveryServlet implements WithMiddleware {
 	static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_SIM_KEY = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
 	static final StructuredCodec<List<SignedData<SharedSimKey>>> LIST_OF_SIGNED_SHARED_SIM_KEYS = REGISTRY.get(new TypeT<List<SignedData<SharedSimKey>>>() {});
 
-	private DiscoveryServlet(DiscoveryService discoveryService){
+	private DiscoveryServlet(DiscoveryService discoveryService) {
 		this.servlet = servlet(discoveryService);
 	}
 
-	public static DiscoveryServlet create(DiscoveryService discoveryService){
+	public static DiscoveryServlet create(DiscoveryService discoveryService) {
 		return new DiscoveryServlet(discoveryService);
 	}
 
 	private MiddlewareServlet servlet(DiscoveryService discoveryService) {
 		return MiddlewareServlet.create()
-				.with(HttpMethod.PUT, "/" + ANNOUNCE_ALL + "/:owner", request -> {
+				.with(HttpMethod.PUT, "/" + ANNOUNCE_ALL + "/:owner", ensureRequestBody(request -> {
 					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
-					return request.getBodyPromise(Integer.MAX_VALUE)
-							.thenCompose(body -> {
-								try {
-									return discoveryService.announce(owner, decode(SIGNED_ANNOUNCE, body));
-								} catch (ParseException e) {
-									return Promise.ofException(e);
-								}
-							})
+					SignedData<AnnounceData> announceData = decode(SIGNED_ANNOUNCE, request.takeBody());
+					return discoveryService.announce(owner, announceData)
 							.thenApply($ -> HttpResponse.ok201());
-
-				})
+				}))
 				.with(HttpMethod.GET, "/" + FIND_ALL + "/:owner", request ->
 						discoveryService.find(PubKey.fromString(request.getPathParameter("owner")))
 								.thenComposeEx((data, e) ->
@@ -79,18 +72,12 @@ public final class DiscoveryServlet implements WithMiddleware {
 												Promise.of(HttpResponse.ok200()
 														.withBody(encode(SIGNED_ANNOUNCE, data))) :
 												Promise.ofException(HttpException.notFound404())))
-				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", request -> {
+				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", ensureRequestBody(request -> {
 					PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
-					return request.getBodyPromise(Integer.MAX_VALUE)
-							.thenCompose(body -> {
-								try {
-									return discoveryService.shareKey(receiver, decode(SIGNED_SHARED_SIM_KEY, body));
-								} catch (ParseException e) {
-									return Promise.ofException(e);
-								}
-							})
+					SignedData<SharedSimKey> simKey = decode(SIGNED_SHARED_SIM_KEY, request.takeBody());
+					return discoveryService.shareKey(receiver, simKey)
 							.thenApply($ -> HttpResponse.ok201());
-				})
+				}))
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEY + "/:receiver/:hash", request -> {
 					PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
 					Hash simKeyHash = Hash.parseString(request.getPathParameter("hash"));

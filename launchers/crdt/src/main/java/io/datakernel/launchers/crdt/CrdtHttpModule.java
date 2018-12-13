@@ -67,7 +67,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 				CrdtData::getState, descriptor.getStateCodec());
 		MiddlewareServlet servlet = MiddlewareServlet.create()
 				.with(HttpMethod.POST, "/", request -> {
-					K key = JsonUtils.fromJson(keyCodec, request.getBody().asString(UTF_8));
+					K key = JsonUtils.fromJson(keyCodec, request.getBody().getString(UTF_8));
 					S state = client.get(key);
 					if (state != null) {
 						return Promise.of(HttpResponse.ok200()
@@ -77,11 +77,11 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 							.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
 				})
 				.with(HttpMethod.PUT, "/", request -> {
-					client.put(JsonUtils.fromJson(codec, request.getBody().asString(UTF_8)));
+					client.put(JsonUtils.fromJson(codec, request.getBody().getString(UTF_8)));
 					return Promise.of(HttpResponse.ok200());
 				})
 				.with(HttpMethod.DELETE, "/", request -> {
-					K key = JsonUtils.fromJson(keyCodec, request.getBody().asString(UTF_8));
+					K key = JsonUtils.fromJson(keyCodec, request.getBody().getString(UTF_8));
 					if (client.remove(key)) {
 						return Promise.of(HttpResponse.ok200());
 					}

@@ -20,7 +20,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
@@ -33,6 +32,7 @@ import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
 
 import static io.datakernel.codec.binary.BinaryUtils.*;
+import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
@@ -53,11 +53,11 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 
 	private final MiddlewareServlet servlet;
 
-	private GlobalFsNodeServlet(GlobalFsNode node){
+	private GlobalFsNodeServlet(GlobalFsNode node) {
 		this.servlet = servlet(node);
 	}
 
-	public static GlobalFsNodeServlet create(GlobalFsNode node){
+	public static GlobalFsNodeServlet create(GlobalFsNode node) {
 		return new GlobalFsNodeServlet(node);
 	}
 
@@ -103,7 +103,8 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 					return node.getMetadata(space, request.getPathParameter("path"))
 							.thenComposeEx((meta, e) -> {
 								if (e == null) {
-									return Promise.of(HttpResponse.ok200().withBody(encode(SIGNED_CHECKPOINT_CODEC, meta)));
+									return Promise.of(HttpResponse.ok200()
+											.withBody(encode(SIGNED_CHECKPOINT_CODEC, meta)));
 								}
 								if (e == NO_CHECKPOINT) {
 									return Promise.of(HttpResponse.ofCode(404));
@@ -111,17 +112,12 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 								return Promise.ofException(e);
 							});
 				})
-				.with(POST, "/" + DELETE + "/:space", request -> {
+				.with(POST, "/" + DELETE + "/:space", ensureRequestBody(request -> {
 					PubKey space = PubKey.fromString(request.getPathParameter("space"));
-					return request.getBodyPromise(Integer.SIZE)
-							.thenCompose(body -> {
-								try {
-									return node.delete(space, decode(SIGNED_CHECKPOINT_CODEC, body)).thenApply(list -> HttpResponse.ok200());
-								} catch (ParseException e) {
-									return Promise.<HttpResponse>ofException(e);
-								}
-							});
-				});
+					SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, request.takeBody());
+					return node.delete(space, checkpoint)
+							.thenApply(list -> HttpResponse.ok200());
+				}));
 		// .with(POST, "/" + COPY + "/:space/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
 		// 		node.copy(parseNamespace(request), request.getPostParameters())
 		// 				.thenApply(set -> HttpResponse.ok200().withBody(wrapUtf8(STRING_SET.toJson(set))))))

@@ -31,7 +31,8 @@ import io.datakernel.util.ParserFunction;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.emptyList;
 
 /**
@@ -145,56 +146,43 @@ public abstract class HttpMessage {
 		this.useGzip = true;
 	}
 
-	public ByteBuf getBody() {
-		ByteBuf body = checkNotNull(this.body);
+	public final ByteBuf getBody() {
+		return this.body;
+	}
+
+	public final ByteBuf takeBody() {
+		ByteBuf body = this.body;
 		this.body = null;
 		return body;
 	}
 
-	public Promise<ByteBuf> getBodyPromise(MemSize maxBodySize) {
-		return getBodyPromise(maxBodySize.toInt());
+	protected final Promise<? extends HttpMessage> doEnsureBody(MemSize maxBodySize) {
+		return doEnsureBody(maxBodySize.toInt());
 	}
 
-	public Promise<ByteBuf> getBodyPromise(int maxBodySize) {
-		checkState(body != null ^ bodySupplier != null, "Either body or body supplier should be present, but not both");
-		if (body != null) {
-			ByteBuf body = this.body;
-			this.body = null;
-			return Promise.of(body);
-		}
-		ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
-		this.bodySupplier = null;
-		return bodySupplier.toCollector(ByteBufQueue.collector(maxBodySize));
-	}
-
-	public final Promise<Void> ensureBody(MemSize maxBodySize) {
-		return ensureBody(maxBodySize.toInt());
-	}
-
-	public final Promise<Void> ensureBody(int maxBodySize) {
-		if (body != null) return Promise.complete();
-		ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
+	protected final Promise<? extends HttpMessage> doEnsureBody(int maxBodySize) {
+		if (body != null) return Promise.of(this);
 		if (bodySupplier != null) {
+			ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 			this.bodySupplier = null;
 			return bodySupplier.toCollector(ByteBufQueue.collector(maxBodySize))
 					.thenComposeEx((buf, e) -> {
 						if (e == null) {
 							this.body = buf;
-							return Promise.complete();
+							return Promise.of(this);
 						} else {
 							return Promise.ofException(e);
 						}
 					});
 		}
-		return Promise.complete();
+		this.body = ByteBuf.empty();
+		return Promise.of(this);
 	}
 
 	public ChannelSupplier<ByteBuf> getBodyStream() {
 		checkState(body != null || bodySupplier != null, "Either body or body supplier should be present");
 		if (body != null) {
-			ByteBuf body = this.body;
-			this.body = null;
-			return ChannelSupplier.of(body);
+			return ChannelSupplier.of(body.slice());
 		}
 		ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		this.bodySupplier = null;

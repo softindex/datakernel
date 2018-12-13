@@ -29,15 +29,15 @@ public interface IAsyncHttpClient {
 			ApplicationSettings.getInt(AsyncHttpClient.class, "maxResponseBody", 1024 * 1024));
 
 	static Function<HttpResponse, Promise<HttpResponse>> ensureResponseBody() {
-		return response -> response.ensureBody(DEFAULT_MAX_RESPONSE_BODY).thenApply($ -> response);
+		return response -> response.ensureBody(DEFAULT_MAX_RESPONSE_BODY);
 	}
 
 	static Function<HttpResponse, Promise<HttpResponse>> ensureResponseBody(int maxBodySize) {
-		return response -> response.ensureBody(maxBodySize).thenApply($ -> response);
+		return response -> response.ensureBody(maxBodySize);
 	}
 
 	static Function<HttpResponse, Promise<HttpResponse>> ensureResponseBody(MemSize maxBodySize) {
-		return response -> response.ensureBody(maxBodySize).thenApply($ -> response);
+		return response -> response.ensureBody(maxBodySize);
 	}
 
 	static Function<HttpResponse, Promise<HttpResponse>> ensureOk200() {

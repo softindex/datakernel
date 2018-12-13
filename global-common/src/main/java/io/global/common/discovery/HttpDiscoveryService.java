@@ -72,7 +72,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 		switch (response.getCode()) {
 			case 200:
 				try {
-					return Try.of(from.parse(response.getBody()));
+					return Try.of(from.parse(response.takeBody()));
 				} catch (ParseException e) {
 					return Try.ofException(e);
 				}

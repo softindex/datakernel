@@ -18,11 +18,13 @@ package io.datakernel.http;
 
 import io.datakernel.annotation.NotNull;
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 
 import java.net.InetAddress;
@@ -133,6 +135,16 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return this;
 	}
 	// endregion
+
+	@SuppressWarnings("unchecked")
+	public Promise<HttpRequest> ensureBody(MemSize maxBodySize) {
+		return (Promise<HttpRequest>) doEnsureBody(maxBodySize);
+	}
+
+	@SuppressWarnings("unchecked")
+	public Promise<HttpRequest> ensureBody(int maxBodySize) {
+		return (Promise<HttpRequest>) doEnsureBody(maxBodySize);
+	}
 
 	public HttpMethod getMethod() {
 		assert !isRecycled();

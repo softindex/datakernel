@@ -73,8 +73,7 @@ public final class AsyncHttpClientTest {
 		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenCompose(ensureResponseBody())
-				.thenApply(HttpMessage::getBody)
-				.whenComplete(assertComplete(buf -> assertEquals(decodeAscii(HELLO_WORLD), buf.asString(UTF_8))));
+				.whenComplete(assertComplete(response -> assertEquals(decodeAscii(HELLO_WORLD), response.getBody().getString(UTF_8))));
 	}
 
 	@Test

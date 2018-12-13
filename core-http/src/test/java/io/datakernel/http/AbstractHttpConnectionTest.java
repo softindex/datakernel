@@ -65,7 +65,7 @@ public final class AbstractHttpConnectionTest {
 				.thenCompose(ensureResponseBody())
 				.whenComplete(assertComplete(result -> {
 					assertEquals("text/           html", result.getHeaderOrNull(CONTENT_TYPE));
-					assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", result.getBody().asString(UTF_8));
+					assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", result.getBody().getString(UTF_8));
 				}));
 	}
 
@@ -85,7 +85,7 @@ public final class AbstractHttpConnectionTest {
 				.thenCompose(ensureResponseBody())
 				.whenComplete(assertComplete(response -> {
 					assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING));
-					assertEquals("Test message", response.getBody().asString(UTF_8));
+					assertEquals("Test message", response.getBody().getString(UTF_8));
 				}));
 	}
 

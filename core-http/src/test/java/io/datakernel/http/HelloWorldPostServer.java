@@ -32,7 +32,7 @@ public final class HelloWorldPostServer {
 		return AsyncHttpServer.create(primaryEventloop,
 				ensureRequestBody(request -> Promise.of(
 						HttpResponse.ok200()
-								.withBody(encodeAscii(HELLO_WORLD + request.getBody().asString(UTF_8))))))
+								.withBody(encodeAscii(HELLO_WORLD + request.getBody().getString(UTF_8))))))
 				.withListenPort(port);
 	}
 

@@ -78,7 +78,7 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncServlet create(GridModel<K, R> model, Gson gson) {
 		return request -> {
 			try {
-				String json = request.getBody().asString(UTF_8);
+				String json = request.getBody().getString(UTF_8);
 				R obj = fromJson(gson, json, model.getRecordType());
 				return model.create(obj).thenApply(response ->
 						createResponse(response.toJson(gson, model.getIdType())));
@@ -91,7 +91,7 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncServlet update(GridModel<K, R> model, Gson gson) {
 		return request -> {
 			try {
-				String json = request.getBody().asString(UTF_8);
+				String json = request.getBody().getString(UTF_8);
 				List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
 				return model.update(list).thenApply(result ->
 						createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));

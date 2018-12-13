@@ -123,7 +123,7 @@ public class HttpFsClient implements FsClient {
 				.thenCompose(ensureOk200())
 				.thenCompose(response -> {
 					try {
-						return Promise.of(JsonUtils.fromJson(FILE_META_LIST, response.getBody().asString(UTF_8)));
+						return Promise.of(JsonUtils.fromJson(FILE_META_LIST, response.getBody().getString(UTF_8)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

@@ -31,8 +31,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 import org.junit.runners.Parameterized.UseParametersRunnerFactory;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -43,7 +41,6 @@ import java.util.Random;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import static io.datakernel.bytebuf.ByteBufStrings.asAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.GzipProcessorUtils.fromGzip;
@@ -111,8 +108,7 @@ public final class TestGzipProcessorUtils {
 
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
 				ensureRequestBody(request -> {
-					ByteBuf buf = request.getBody();
-					String receivedData = asAscii(buf);
+					String receivedData = request.getBody().getString(UTF_8);
 					assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
 					assertEquals("gzip", request.getHeader(HttpHeaders.ACCEPT_ENCODING));
 					assertEquals(text, receivedData);
@@ -137,9 +133,9 @@ public final class TestGzipProcessorUtils {
 					server.close();
 					client.stop();
 				})
-				.whenComplete(assertComplete(result -> {
-					assertEquals("gzip", result.getHeaderOrNull(HttpHeaders.CONTENT_ENCODING));
-					assertEquals(text, asAscii(result.getBody()));
+				.whenComplete(assertComplete(response -> {
+					assertEquals("gzip", response.getHeaderOrNull(HttpHeaders.CONTENT_ENCODING));
+					assertEquals(text, response.getBody().getString(UTF_8));
 				}));
 	}
 

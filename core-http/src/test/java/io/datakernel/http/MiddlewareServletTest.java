@@ -43,7 +43,7 @@ public final class MiddlewareServletTest {
 		assertTrue(promise.isComplete());
 		if (promise.isResult()) {
 			HttpResponse result = promise.materialize().getResult();
-			assertEquals(expectedBody, result.getBody().asString(UTF_8));
+			assertEquals(expectedBody, result.getBody().getString(UTF_8));
 			assertEquals(expectedCode, result.getCode());
 			result.recycle();
 		} else {
