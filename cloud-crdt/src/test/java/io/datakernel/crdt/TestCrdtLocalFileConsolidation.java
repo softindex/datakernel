@@ -79,9 +79,9 @@ public final class TestCrdtLocalFileConsolidation {
 						new CrdtData<>("12_test_2", set(12, 13))
 				).sorted())
 						.streamTo(client.uploader()))
-				.thenCompose($ -> fsClient.list().whenResult(System.out::println))
+				.thenCompose($ -> fsClient.list("**").whenResult(System.out::println))
 				.thenCompose($ -> client.consolidate())
-				.thenCompose($ -> fsClient.list().whenResult(System.out::println))
+				.thenCompose($ -> fsClient.list("**").whenResult(System.out::println))
 				.whenComplete(assertComplete());
 	}
 }

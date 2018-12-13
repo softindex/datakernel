@@ -55,7 +55,7 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 	}
 
 	public static LocalDiscoveryService create(Eventloop eventloop, FsClient storage) {
-		return new LocalDiscoveryService(eventloop,
+		return create(eventloop,
 				new RemoteFsAnnouncementStorage(storage.subfolder("announcements")),
 				new RemoteFsSharedKeyStorage(storage.subfolder("keys"))
 		);

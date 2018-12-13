@@ -391,9 +391,10 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						try (PreparedStatement statement = connection.prepareStatement(
-								sql("INSERT INTO {backup}(`id`, `snapshot`) VALUES (?, ?)"))) {
+								sql("INSERT INTO {backup}(`id`, `level`, `snapshot`) VALUES (?, ?, ?)"))) {
 							statement.setLong(1, commit.getId());
-							statement.setString(2, toJson(snapshot));
+							statement.setLong(2, commit.getLevel());
+							statement.setString(3, toJson(snapshot));
 							statement.executeUpdate();
 							return (Void) null;
 						}

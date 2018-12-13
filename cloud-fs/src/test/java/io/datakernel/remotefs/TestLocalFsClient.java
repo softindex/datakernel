@@ -287,7 +287,7 @@ public final class TestLocalFsClient {
 				"2/b/e.txt"
 		);
 
-		client.list()
+		client.list("**")
 				.whenComplete(assertComplete(list ->
 						assertEquals(expected, list.stream().map(FileMetadata::getFilename).collect(toSet()))));
 	}

@@ -16,10 +16,10 @@
 
 package io.datakernel.etl;
 
+import io.datakernel.async.AsyncCollector;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -126,7 +126,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	}
 
 	private StreamSupplierWithResult<T, Map<String, LogPositionDiff>> getSupplier() {
-		PromisesAccumulator<Map<String, LogPositionDiff>> result = PromisesAccumulator.create(new HashMap<>());
+		AsyncCollector<Map<String, LogPositionDiff>> logPositionsCollector = AsyncCollector.create(new HashMap<>());
 		StreamUnion<T> streamUnion = StreamUnion.create();
 		for (String partition : partitions) {
 			String logName = logName(partition);
@@ -139,7 +139,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 			LogPosition logPositionFrom = logPosition;
 			StreamSupplierWithResult<T, LogPosition> supplier = multilog.reader(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
 			supplier.getSupplier().streamTo(streamUnion.newInput());
-			result.addPromise(supplier.getResult(), (accumulator, logPositionTo) -> {
+			logPositionsCollector.addPromise(supplier.getResult(), (accumulator, logPositionTo) -> {
 				if (!logPositionTo.equals(logPositionFrom)) {
 					accumulator.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));
 				}
@@ -148,7 +148,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		return StreamSupplierWithResult.of(
 				streamUnion.getOutput()
 						.transformWith(detailed ? streamStatsDetailed : streamStatsBasic),
-				result.get());
+				logPositionsCollector.run().get());
 	}
 
 	private String logName(String partition) {

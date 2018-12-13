@@ -262,7 +262,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	}
 
 	public Promise<Set<Long>> list(Predicate<String> filter, Predicate<Long> lastModified) {
-		return client.list()
+		return client.list("*")
 				.thenApply(list ->
 						list.stream()
 								.filter(file -> lastModified.test(file.getTimestamp()))

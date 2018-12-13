@@ -33,9 +33,7 @@ import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class Initializers {
-	private Initializers() {
-		throw new AssertionError();
-	}
+	private Initializers() {}
 
 	public static Initializer<RemoteFsServer> ofRemoteFsServer(Config config) {
 		return server -> server

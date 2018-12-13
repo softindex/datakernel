@@ -89,7 +89,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	public Promise<MemSize> getTotalCacheSize() {
-		return cacheClient.list()
+		return cacheClient.list("**")
 				.thenCompose(list -> Promise.of(MemSize.of(list.stream().mapToLong(FileMetadata::getSize).sum())));
 	}
 
@@ -279,7 +279,7 @@ public class CachedFsClient implements FsClient, EventloopService {
 			return Promise.complete();
 		}
 		long[] sizeAccum = {0};
-		return cacheClient.list()
+		return cacheClient.list("**")
 				.thenApply(list -> list
 						.stream()
 						.map(metadata -> {

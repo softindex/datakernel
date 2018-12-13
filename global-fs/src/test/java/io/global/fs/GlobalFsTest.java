@@ -415,7 +415,7 @@ public final class GlobalFsTest {
 		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
 
 		// just ping the second node with alice's pubkey so it would check if it it's master
-		await(secondAliceAdapter.list());
+		await(secondAliceAdapter.list("**"));
 
 		// // second node never even heard of alice to know it is it's master
 		// rawSecondClient.withManagedPubKeys(set(alice.getPubKey()));

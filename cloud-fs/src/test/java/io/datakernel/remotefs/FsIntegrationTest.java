@@ -252,7 +252,7 @@ public final class FsIntegrationTest {
 			Files.write(storage.resolve(filename), CONTENT);
 		}
 
-		client.list()
+		client.list("**")
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete(list ->
 						assertEquals(expected, list.stream()
@@ -284,8 +284,7 @@ public final class FsIntegrationTest {
 		expected2.add("subsubfolder/file1.txt");
 		expected2.add("subsubfolder/first file.txt");
 
-
-		Promises.toTuple(client.subfolder("subfolder1").list(), client.subfolder("subfolder2").list())
+		Promises.toTuple(client.subfolder("subfolder1").list("**"), client.subfolder("subfolder2").list("**"))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete(tuple -> {
 					assertEquals(expected1, tuple.getValue1().stream().map(FileMetadata::getFilename).collect(toSet()));

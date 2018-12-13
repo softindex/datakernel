@@ -190,13 +190,6 @@ public interface FsClient {
 	Promise<List<FileMetadata>> list(String glob);
 
 	/**
-	 * Shortcut for {@link #list(String)} to list all files
-	 */
-	default Promise<List<FileMetadata>> list() {
-		return list("**");
-	}
-
-	/**
 	 * Shortcut for {@link #list(String)} with empty 'ping' list request
 	 */
 	default Promise<Void> ping() {

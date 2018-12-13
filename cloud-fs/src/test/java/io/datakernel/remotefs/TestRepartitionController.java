@@ -149,7 +149,7 @@ public final class TestRepartitionController {
 					scheduler.stop();
 					double ms = (System.nanoTime() - start2) / 1e6;
 					System.out.println(String.format("Done repartitioning in %.2f ms", ms));
-					Promises.toList(cluster.getAliveClients().values().stream().map(fsClient -> fsClient.list().toTry()))
+					Promises.toList(cluster.getAliveClients().values().stream().map(fsClient -> fsClient.list("**").toTry()))
 							.thenApply(lss -> lss.stream().mapToLong(ls -> {
 								List<FileMetadata> mss = ls.getOrNull();
 								return mss == null ? 0 : mss.stream().mapToLong(FileMetadata::getSize).sum();

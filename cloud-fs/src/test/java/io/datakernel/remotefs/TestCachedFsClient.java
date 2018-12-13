@@ -217,7 +217,7 @@ public final class TestCachedFsClient {
 		// Adding 1 new file, tottal is 9
 		Files.write(serverStorage.resolve("newFile.txt"), "New data".getBytes());
 
-		cacheRemote.list()
+		cacheRemote.list("**")
 				.whenResult(list -> assertEquals(list.size(), 9))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete());
@@ -364,7 +364,7 @@ public final class TestCachedFsClient {
 		initializeFiles(20, "newTestFile_");
 		downloadFiles(20, 1, "newTestFile_");
 
-		cache.list()
+		cache.list("**")
 				.whenResult(list -> list.forEach(val -> assertTrue(val.getFilename().startsWith("new"))));
 	}
 
@@ -381,7 +381,7 @@ public final class TestCachedFsClient {
 		// 10 KB
 		initializeCacheDownloadFiles(2, "newTestFile_");
 
-		cache.list()
+		cache.list("**")
 				.whenResult(list -> assertEquals(1, list.stream().filter(fileMetadata -> fileMetadata.getFilename().startsWith("new")).count()));
 	}
 
@@ -405,7 +405,7 @@ public final class TestCachedFsClient {
 		// 1 file
 		initializeCacheDownloadFiles(1, "testFile_");
 
-		cache.list()
+		cache.list("**")
 				.whenResult(list ->
 						list.forEach(value -> {
 							System.out.println(value);
@@ -442,10 +442,10 @@ public final class TestCachedFsClient {
 
 		server.listen();
 
-		cache.list()
+		cache.list("**")
 				.whenComplete(assertComplete(list -> assertEquals(4, list.size())))
 				.thenCompose($ -> cacheRemote.deleteBulk("toDelete*"))
-				.thenCompose($ -> cache.list())
+				.thenCompose($ -> cache.list("**"))
 				.whenComplete(assertComplete(list -> {
 					assertEquals(2, list.size());
 					list.forEach(file -> assertTrue(file.getFilename().startsWith("test")));

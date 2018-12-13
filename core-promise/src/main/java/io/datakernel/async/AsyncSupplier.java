@@ -16,14 +16,17 @@
 
 package io.datakernel.async;
 
+import java.util.Iterator;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
+
+import static io.datakernel.async.Utils.loopImpl;
 
 /**
  * This interface represents asynchronous supplier that returns {@link Promise} of some data.
- *
  */
 @FunctionalInterface
 public interface AsyncSupplier<T> {
@@ -34,14 +37,56 @@ public interface AsyncSupplier<T> {
 	 */
 	Promise<T> get();
 
-	/**
-	 * Wrapper around standard Java's {@link Supplier} interface.
-	 *
-	 * @param supplier - Java's {@link Supplier} of Promises
-	 * @return {@link AsyncSupplier} that works on top of standard Java's {@link Supplier} interface
-	 */
 	static <T> AsyncSupplier<T> of(Supplier<? extends Promise<T>> supplier) {
 		return supplier::get;
+	}
+
+	static <T> AsyncSupplier<T> ofValue(T value) {
+		return () -> Promise.of(value);
+	}
+
+	static <T> AsyncSupplier<T> ofSupplier(Supplier<? extends T> supplier) {
+		return () -> Promise.of(supplier.get());
+	}
+
+	static <T> AsyncSupplier<T> ofIterator(Iterator<? extends T> iterator) {
+		return () -> Promise.of(iterator.hasNext() ? iterator.next() : null);
+	}
+
+	static <T> AsyncSupplier<T> ofStream(Stream<? extends T> stream) {
+		return ofIterator(stream.iterator());
+	}
+
+	static <T> AsyncSupplier<T> ofIterable(Iterable<? extends T> iterable) {
+		return ofIterator(iterable.iterator());
+	}
+
+	static <T> AsyncSupplier<T> ofPromise(Promise<T> promise) {
+		return () -> promise;
+	}
+
+	static <T> AsyncSupplier<T> ofPromiseIterator(Iterator<? extends Promise<T>> iterator) {
+		return () -> iterator.hasNext() ? iterator.next() : Promise.of(null);
+	}
+
+	static <T> AsyncSupplier<T> ofPromiseIterable(Iterable<? extends Promise<T>> iterable) {
+		return ofPromiseIterator(iterable.iterator());
+	}
+
+	static <T> AsyncSupplier<T> ofPromiseStream(Stream<? extends Promise<T>> stream) {
+		return ofPromiseIterator(stream.iterator());
+	}
+
+	static <T> AsyncSupplier<T> ofAsyncSupplierIterator(Iterator<? extends AsyncSupplier<T>> iterator) {
+		return () -> iterator.hasNext() ? iterator.next().get() : Promise.of(null);
+	}
+
+	static <T> AsyncSupplier<T> ofAsyncSupplierIterable(Iterable<? extends AsyncSupplier<T>> iterable) {
+		return ofAsyncSupplierIterator(iterable.iterator());
+	}
+
+	static <T> AsyncSupplier<T> ofAsyncSupplierStream(Stream<? extends AsyncSupplier<T>> stream) {
+		return ofAsyncSupplierIterator(stream.iterator());
 	}
 
 	default <R> R transformWith(Function<AsyncSupplier<T>, R> fn) {
@@ -51,8 +96,8 @@ public interface AsyncSupplier<T> {
 	/**
 	 * Method to ensure that supplied promise will complete asynchronously.
 	 *
-	 * @see Promise#async()
 	 * @return {@link AsyncSupplier} of promises that will be completed asynchronously
+	 * @see Promise#async()
 	 */
 	default AsyncSupplier<T> async() {
 		return () -> get().async();
@@ -60,6 +105,14 @@ public interface AsyncSupplier<T> {
 
 	default AsyncSupplier<T> withExecutor(AsyncExecutor asyncExecutor) {
 		return () -> asyncExecutor.execute(this);
+	}
+
+	default Promise<Void> forEachRemaining(Consumer<T> consumer) {
+		return forEachRemainingAsync(AsyncConsumer.of(consumer));
+	}
+
+	default Promise<Void> forEachRemainingAsync(AsyncConsumer<T> consumer) {
+		return Promise.ofCallback(cb -> loopImpl(this, consumer, cb));
 	}
 
 	/**
@@ -75,7 +128,7 @@ public interface AsyncSupplier<T> {
 	/**
 	 * Applies function to the result of supplied promise.
 	 *
-	 * @param fn - function to be applied to result of promise
+	 * @param fn  - function to be applied to result of promise
 	 * @param <V>
 	 * @return
 	 */

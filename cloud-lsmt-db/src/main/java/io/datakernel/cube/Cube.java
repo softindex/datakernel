@@ -23,10 +23,10 @@ import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.AsyncCollector;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.codegen.*;
 import io.datakernel.cube.CubeQuery.Ordering;
 import io.datakernel.cube.asm.MeasuresFunction;
@@ -496,7 +496,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 		StreamSplitter<T> streamSplitter = StreamSplitter.create();
 
-		PromisesAccumulator<Map<String, AggregationDiff>> tracker = PromisesAccumulator.create(new HashMap<>());
+		AsyncCollector<Map<String, AggregationDiff>> diffsCollector = AsyncCollector.create(new HashMap<>());
 		Map<String, AggregationPredicate> compatibleAggregations = getCompatibleAggregationsForDataInput(dimensionFields, measureFields, dataPredicate);
 		if (compatibleAggregations.size() == 0) {
 			throw new IllegalArgumentException(format("No compatible aggregation for " +
@@ -520,9 +520,9 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 						.transformWith(StreamFilter.create(filterPredicate));
 			}
 			Promise<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
-			tracker.addPromise(consume, (accumulator, diff) -> accumulator.put(aggregationId, diff));
+			diffsCollector.addPromise(consume, (accumulator, diff) -> accumulator.put(aggregationId, diff));
 		}
-		return StreamConsumerWithResult.of(streamSplitter.getInput(), tracker.get().thenApply(CubeDiff::of));
+		return StreamConsumerWithResult.of(streamSplitter.getInput(), diffsCollector.run().get().thenApply(CubeDiff::of));
 	}
 
 	Map<String, AggregationPredicate> getCompatibleAggregationsForDataInput(Map<String, String> dimensionFields,

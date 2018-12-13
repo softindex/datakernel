@@ -34,9 +34,7 @@ import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class Initializers {
-	private Initializers() {
-		throw new AssertionError();
-	}
+	private Initializers() {}
 
 	public static <K extends Comparable<K>, S> Initializer<FsCrdtClient<K, S>> ofFsCrdtClient(Config config) {
 		return fsCrdtClient ->

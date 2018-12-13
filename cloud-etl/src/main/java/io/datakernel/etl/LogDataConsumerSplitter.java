@@ -17,9 +17,9 @@
 package io.datakernel.etl;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.AsyncCollector;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
@@ -40,16 +40,16 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			createSplitter(); // recording scheme
 			checkState(!logDataConsumers.isEmpty(), "addOutput() should be called at least once");
 		}
-		PromisesAccumulator<List<D>> resultsReducer = PromisesAccumulator.create(new ArrayList<>());
+		AsyncCollector<List<D>> diffsCollector = AsyncCollector.create(new ArrayList<>());
 		Splitter splitter = new Splitter();
 		for (LogDataConsumer<?, D> logDataConsumer : logDataConsumers) {
 			StreamConsumerWithResult<?, List<D>> consumer = logDataConsumer.consume();
-			resultsReducer.addPromise(consumer.getResult(), List::addAll);
+			diffsCollector.addPromise(consumer.getResult(), List::addAll);
 			Splitter.Output<Object> output = splitter.new Output<>();
 			splitter.outputs.add(output);
 			output.streamTo((StreamConsumer<Object>) consumer.getConsumer());
 		}
-		return StreamConsumerWithResult.of(splitter.getInput(), resultsReducer.get());
+		return StreamConsumerWithResult.of(splitter.getInput(), diffsCollector.run().get());
 	}
 
 	protected abstract StreamDataAcceptor<T> createSplitter();

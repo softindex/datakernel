@@ -70,8 +70,12 @@ public class AsyncExecutors {
 		};
 	}
 
-	public static AsyncExecutor buffered() {
+	public static AsyncExecutor sequential() {
 		return buffered(1, Integer.MAX_VALUE);
+	}
+
+	public static AsyncExecutor buffered(int maxParallelCalls) {
+		return buffered(maxParallelCalls, Integer.MAX_VALUE);
 	}
 
 	public static AsyncExecutor buffered(int maxParallelCalls, int maxBufferedCalls) {
@@ -95,9 +99,9 @@ public class AsyncExecutors {
 
 			@Override
 			public <T> Promise<T> execute(AsyncSupplier<T> supplier) throws RejectedExecutionException {
-				if (pendingCalls <= maxParallelCalls) {
+				if (pendingCalls < maxParallelCalls) {
 					pendingCalls++;
-					return supplier.get().async().whenComplete(($, e) -> {
+					return supplier.get().whenComplete(($, e) -> {
 						pendingCalls--;
 						processBuffer();
 					});
@@ -160,4 +164,5 @@ public class AsyncExecutors {
 			}
 		};
 	}
+
 }

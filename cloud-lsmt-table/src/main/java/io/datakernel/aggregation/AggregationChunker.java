@@ -18,8 +18,8 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
+import io.datakernel.async.AsyncCollector;
 import io.datakernel.async.MaterializedPromise;
-import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.*;
@@ -36,7 +36,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 	private final Class<T> recordClass;
 	private final PartitionPredicate<T> partitionPredicate;
 	private final AggregationChunkStorage<C> storage;
-	private final PromisesAccumulator<List<AggregationChunk>> chunksAccumulator;
+	private final AsyncCollector<? extends List<AggregationChunk>> chunksCollector;
 	private final DefiningClassLoader classLoader;
 
 	private final int chunkSize;
@@ -55,10 +55,10 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		this.partitionPredicate = partitionPredicate;
 		this.storage = storage;
 		this.classLoader = classLoader;
-		this.chunksAccumulator = PromisesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withPromise(switcher.getAcknowledgement(), (accumulator, $) -> {});
+		(this.chunksCollector = AsyncCollector.create(new ArrayList<>()))
+				.run(switcher.getAcknowledgement());
 		this.chunkSize = chunkSize;
-		chunksAccumulator.get().whenComplete(result::trySet);
+		chunksCollector.get().whenComplete(result::trySet);
 		getAcknowledgement().whenException(result::trySetException);
 	}
 
@@ -145,7 +145,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 								.thenApply(streamConsumer -> {
 									ChunkWriter chunkWriter = new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate);
 
-									chunksAccumulator.addPromise(
+									chunksCollector.addPromise(
 											chunkWriter.getResult(),
 											(accumulator, newChunk) -> {
 												if (newChunk != null && newChunk.getCount() != 0) {

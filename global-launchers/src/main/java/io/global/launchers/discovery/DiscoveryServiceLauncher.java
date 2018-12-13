@@ -16,25 +16,24 @@
 
 package io.global.launchers.discovery;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
+import com.google.inject.*;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.guice.OptionalDependency;
+import io.global.common.api.AnnouncementStorage;
 import io.global.common.api.DiscoveryService;
+import io.global.common.api.SharedKeyStorage;
 import io.global.common.discovery.DiscoveryServlet;
 import io.global.common.discovery.LocalDiscoveryService;
+import io.global.common.discovery.RemoteFsAnnouncementStorage;
+import io.global.common.discovery.RemoteFsSharedKeyStorage;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -57,54 +56,65 @@ public class DiscoveryServiceLauncher extends Launcher {
 	AsyncHttpServer httpServer;
 
 	@Override
-	protected final Collection<com.google.inject.Module> getModules() {
+	protected final Collection<Module> getModules() {
 		return Collections.singletonList(override(getBaseModules()).with(getOverrideModules()));
 	}
 
-	private Collection<com.google.inject.Module> getBaseModules() {
+	private Collection<Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				ConfigModule.create(() ->
 						ofProperties(PROPERTIES_FILE)
-								.override(ofProperties(System.getProperties()).getChild("config")))
+								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
 				new AbstractModule() {
 					@Provides
 					@Singleton
-					Eventloop provide(Config config, OptionalDependency<ThrottlingController> maybeThrottlingController) {
+					Eventloop eventloop(Config config) {
 						return Eventloop.create()
-								.initialize(ofEventloop(config.getChild("eventloop")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withInspector));
+								.initialize(ofEventloop(config.getChild("eventloop")));
 					}
 
 					@Provides
 					@Singleton
-					FsClient provice(Eventloop eventloop, ExecutorService executor, Config config) {
+					DiscoveryService discoveryService(Eventloop eventloop, AnnouncementStorage announcementStorage, SharedKeyStorage sharedKeyStorage) {
+						return LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
+					}
+
+					@Provides
+					@Singleton
+					AnnouncementStorage announcementStorage(FsClient storage) {
+						return new RemoteFsAnnouncementStorage(storage.subfolder("announcements"));
+					}
+
+					@Provides
+					@Singleton
+					SharedKeyStorage sharedKeyStorage(FsClient storage) {
+						return new RemoteFsSharedKeyStorage(storage.subfolder("keys"));
+					}
+
+					@Provides
+					@Singleton
+					FsClient fsClient(Eventloop eventloop, ExecutorService executor, Config config) {
 						return LocalFsClient.create(eventloop, executor, config.get(ofPath(), "discovery.storage"));
 					}
 
 					@Provides
 					@Singleton
-					DiscoveryService provide(Eventloop eventloop, FsClient storage) {
-						return LocalDiscoveryService.create(eventloop, storage);
-					}
-
-					@Provides
-					@Singleton
-					DiscoveryServlet provide(DiscoveryService discoveryService){
+					DiscoveryServlet discoveryServlet(DiscoveryService discoveryService){
 						return DiscoveryServlet.create(discoveryService);
 					}
 
 					@Provides
 					@Singleton
-					AsyncHttpServer provide(Eventloop eventloop, DiscoveryServlet servlet, Config config) {
+					AsyncHttpServer httpServer(Eventloop eventloop, DiscoveryServlet servlet, Config config) {
 						return AsyncHttpServer.create(eventloop, servlet).initialize(ofHttpServer(config.getChild("http")));
 					}
 
 					@Provides
 					@Singleton
-					public ExecutorService provide(Config config) {
+					public ExecutorService executor(Config config) {
 						return ConfigConverters.getExecutor(config.getChild("fs.executor"));
 					}
 
@@ -115,7 +125,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 	/**
 	 * Override this method to override base modules supplied in launcher.
 	 */
-	protected Collection<com.google.inject.Module> getOverrideModules() {
+	protected Collection<Module> getOverrideModules() {
 		return emptyList();
 	}
 

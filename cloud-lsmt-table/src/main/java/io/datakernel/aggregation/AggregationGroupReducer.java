@@ -18,9 +18,9 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
+import io.datakernel.async.AsyncCollector;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
-import io.datakernel.async.PromisesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataAcceptor;
@@ -46,17 +46,17 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 	private final Class<T> recordClass;
 	private final Function<T, K> keyFunction;
 	private final Aggregate<T, Object> aggregate;
-	private final PromisesAccumulator<List<AggregationChunk>> resultsTracker;
+	private final AsyncCollector<List<AggregationChunk>> chunksCollector;
 	private final DefiningClassLoader classLoader;
 	private final int chunkSize;
 
 	private final HashMap<K, Object> map = new HashMap<>();
 
 	public AggregationGroupReducer(AggregationChunkStorage<C> storage,
-	                               AggregationStructure aggregation, List<String> measures,
+			AggregationStructure aggregation, List<String> measures,
 			Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
 			Function<T, K> keyFunction, Aggregate<T, Object> aggregate,
-	                               int chunkSize, DefiningClassLoader classLoader) {
+			int chunkSize, DefiningClassLoader classLoader) {
 		this.storage = checkNotNull(storage, "Cannot create AggregationGroupReducer with AggregationChunkStorage that is null");
 		this.measures = checkNotNull(measures, "Cannot create AggregationGroupReducer with measures that is null");
 		this.partitionPredicate = checkNotNull(partitionPredicate, "Cannot create AggregationGroupReducer with PartitionPredicate that is null");
@@ -65,13 +65,12 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 		this.aggregate = checkNotNull(aggregate, "Cannot create AggregationGroupReducer with Aggregate that is null");
 		this.chunkSize = chunkSize;
 		this.aggregation = checkNotNull(aggregation, "Cannot create AggregationGroupReducer with AggregationStructure that is null");
-		this.resultsTracker = PromisesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withPromise(this.getEndOfStream(), (accumulator, $) -> {});
+		this.chunksCollector = AsyncCollector.create(new ArrayList<>());
 		this.classLoader = checkNotNull(classLoader, "Cannot create AggregationGroupReducer with ClassLoader that is null");
 	}
 
 	public MaterializedPromise<List<AggregationChunk>> getResult() {
-		return resultsTracker.get().materialize();
+		return chunksCollector.get();
 	}
 
 	@Override
@@ -120,7 +119,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 		AggregationChunker<C, T> chunker = AggregationChunker.create(aggregation, measures, recordClass,
 				partitionPredicate, storage, classLoader, chunkSize);
 
-		resultsTracker.addPromise(
+		chunksCollector.addPromise(
 				supplier.streamTo(chunker)
 						.thenCompose($ -> chunker.getResult()),
 				List::addAll)
@@ -128,7 +127,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 	}
 
 	private void suspendOrResume() {
-		if (resultsTracker.getActivePromises() > 2) {
+		if (chunksCollector.getActivePromises() > 2) {
 			logger.trace("Suspend group reduce: {}", this);
 			getSupplier().suspend();
 		} else {
@@ -140,11 +139,12 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 	@Override
 	protected Promise<Void> onEndOfStream() {
 		doFlush();
-		return resultsTracker.get().toVoid();
+		return chunksCollector.run().get().toVoid();
 	}
 
 	@Override
 	protected void onError(Throwable e) {
+		chunksCollector.close(e);
 	}
 
 	// jmx

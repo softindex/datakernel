@@ -45,11 +45,4 @@ public class KeyPair {
 	public PubKey getPubKey() {
 		return pubKey;
 	}
-
-	@SuppressWarnings("UseOfSystemOutOrSystemErr")
-	public static void main(String[] args) {
-		KeyPair keys = KeyPair.generate();
-		System.out.println("PK = " + keys.getPubKey().asString());
-		System.out.println("SK = " + keys.getPrivKey().asString());
-	}
 }

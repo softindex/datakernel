@@ -135,7 +135,7 @@ class StressClient {
 		});
 
 		// list file
-		operations.add(() -> client.list().whenComplete((strings, e) -> {
+		operations.add(() -> client.list("**").whenComplete((strings, e) -> {
 			if (e == null) {
 				logger.info("Listed: " + strings.size());
 			} else {

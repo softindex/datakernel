@@ -28,9 +28,7 @@ import static io.global.launchers.GlobalConfigConverters.ofPubKey;
 import static java.util.Collections.emptyList;
 
 public class Initializers {
-	private Initializers() {
-		throw new AssertionError();
-	}
+	private Initializers() {}
 
 	public static Initializer<LocalGlobalFsNode> ofLocalGlobalFsNode(Config config) {
 		return node -> node

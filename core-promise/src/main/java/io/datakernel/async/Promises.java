@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.CollectionUtils.asIterator;
-import static io.datakernel.util.CollectionUtils.transform;
+import static io.datakernel.util.CollectionUtils.transformIterator;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
@@ -215,7 +215,7 @@ public final class Promises {
 	 * @param <A>       type of accumulator
 	 * @param <R>       type of result
 	 * @param collector reducer which is used for combining {@code Promise} results into one value
-	 * @param promises    collection of {@code Promise}s
+	 * @param promises  collection of {@code Promise}s
 	 * @return {@code Promise} with accumulated result
 	 * @see IndexedCollector
 	 */
@@ -560,11 +560,11 @@ public final class Promises {
 	 * @see Promises#runSequence(Iterator)
 	 */
 	public static Promise<Void> runSequence(Iterable<? extends AsyncSupplier<?>> promises) {
-		return runSequence(transform(promises.iterator(), AsyncSupplier::get));
+		return runSequence(asPromises(promises.iterator()));
 	}
 
 	public static Promise<Void> runSequence(Stream<? extends AsyncSupplier<?>> promises) {
-		return runSequence(transform(promises.iterator(), AsyncSupplier::get));
+		return runSequence(asPromises(promises.iterator()));
 	}
 
 	/**
@@ -601,7 +601,7 @@ public final class Promises {
 	 * @see Promises#collectSequence(Collector, Iterator)
 	 */
 	public static <T, A, R> Promise<R> collectSequence(Collector<T, A, R> collector, Iterable<? extends AsyncSupplier<? extends T>> promises) {
-		return collectSequence(collector, transform(promises.iterator(), AsyncSupplier::get));
+		return collectSequence(collector, asPromises(promises.iterator()));
 	}
 
 	/**
@@ -683,7 +683,7 @@ public final class Promises {
 
 	public static <T> Promise<T> first(BiPredicate<? super T, ? super Throwable> predicate,
 			Iterable<? extends AsyncSupplier<? extends T>> promises) {
-		return first(predicate, transform(promises.iterator(), AsyncSupplier::get));
+		return first(predicate, asPromises(promises.iterator()));
 	}
 
 	public static <T> Promise<T> first(BiPredicate<? super T, ? super Throwable> predicate,
@@ -987,5 +987,10 @@ public final class Promises {
 		}
 	}
 	// endregion
+
+	@SuppressWarnings("unchecked")
+	public static <T> Iterator<Promise<T>> asPromises(Iterator<? extends AsyncSupplier<? extends T>> tasks) {
+		return transformIterator((Iterator<AsyncSupplier<T>>)tasks, AsyncSupplier::get);
+	}
 
 }

@@ -260,7 +260,7 @@ public class CollectionUtils {
 		};
 	}
 
-	public static <T, R> Iterator<R> transform(Iterator<? extends T> iterator, Function<? super T, ? extends R> fn) {
+	public static <T, R> Iterator<R> transformIterator(Iterator<T> iterator, Function<T, R> fn) {
 		return new Iterator<R>() {
 			@Override
 			public boolean hasNext() {

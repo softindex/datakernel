@@ -121,7 +121,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 			LogFile endLogFile) {
 		validateLogPartition(logPartition);
 		LogPosition startPosition = LogPosition.create(startLogFile, startOffset);
-		return client.list()
+		return client.list("**")
 				.thenApply(files ->
 						files.stream()
 								.map(FileMetadata::getFilename)
