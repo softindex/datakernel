@@ -14,307 +14,194 @@ ad targeting, and also web crawlers that perform content indexing on a large sca
 
 ## Core components 
 
-### [ByteBuf](http://datakernel.io/docs/modules/bytebuf.html)
+### [ByteBuf](https://github.com/softindex/datakernel/tree/master/core-bytebuf)
 ByteBuf is a memory-efficient byte buffer, somewhat similar to Java's  `ByteBuffer` class. It is useful for fast 
 low-level I/O operations like working with files or transferring data over the internet. Apart from ByteBuf itself, the 
 module contains handy utility classes.
 
-* Represents a wrapper over a byte buffer with separate read and write indices.
-* Has a pooling support for better memory efficiency.
-* `ByteBufQueue` class provides effective management of multiple ByteBufs.
-* Utility classes manage resizing of underlying byte buffer, `String` conversions, etc.
-
 [ByteBuf examples](https://github.com/softindex/datakernel/tree/master/examples/bytebuf)
 
-### [Eventloop](http://datakernel.io/docs/modules/eventloop.html)
+### [Eventloop](https://github.com/softindex/datakernel/tree/master/core-eventloop)
 
 Eventloop provides efficient non-blocking network and file I/O, for building Node.js-like client/server applications 
-with high performance requirements. It is somewhat similar to Event Loop in Node.js. It is an `Executor` that executes 
-tasks in a loop, hence the name. Although Eventloop runs in a single thread, multiple Eventloops can run at the same 
-time allowing for efficient CPU usage.
-
-* Eventloop utilizes Java's NIO to allow for asynchronous computations and I/O operations.
-* Eventloop has an ability to schedule/delay certain tasks for later execution or background execution.
-* Because Eventloop is single-threaded it doesn't have to deal with concurrency overhead.
+with high performance requirements. It resembles Event Loop in Node.js. Although Eventloop runs in a single thread, 
+multiple Eventloops can run at the same time providing efficient CPU usage.
 
 [Eventloop examples](https://github.com/softindex/datakernel/tree/master/examples/eventloop)
 
-### [Net](http://datakernel.io/docs/modules/net.html)
+### [Net](https://github.com/softindex/datakernel/tree/master/core-net)
 
-Net module handles low-level asynchronous socket I/O (TCP/UDP). Provides an ability to create servers that run on an 
-eventloop. 
-
-* Support for SSL
-* I/O is based on memory-efficient ByteBufs
+Net module handles low-level asynchronous socket I/O (TCP/UDP) based on ByteBuf. Provides ability to create servers that utilize 
+Eventloop and support SSL.
 
 [Net examples](https://github.com/softindex/datakernel/tree/master/examples/net)
 
-### [CSP](http://datakernel.io/docs/modules/csp.html)
+### [CSP](https://github.com/softindex/datakernel/tree/master/core-csp)
 
-CSP stands for Communicating Sequential Processes. This module introduces sequential communication between processes via 
-channels, similar to that of the Go Lang. A channel can be seen as a pipe that connects some processes. A value can be 
-sent to a channel via `ChannelConsumer` and received from a channel by a `ChannelSupplier`.
-
-* Support for file I/O using channels.
-* Ability to handle exceptions and appropriately close channels, releasing resources and propagating exceptions through 
-communication pipeline.
-* Rich DSL that allows to write concise easy-to-read code.
+CSP stands for Communicating Sequential Processes. This module provides sequential communication between processes via 
+channels similarly to the Go Lang.
 
 [CSP examples](https://github.com/softindex/datakernel/tree/master/examples/csp)
 
-### [Promise](http://datakernel.io/docs/modules/async.html)
+### [Promise](https://github.com/softindex/datakernel/tree/master/core-promise)
 
-Promise module introduces promises similar to those of JavaScript or to Java's CompletionStage. It is a convenient way 
-to organize asynchronous code. A promise represents some computation that can be a part of some larger computation. A 
-promise will fulfill (or fail) at some unspecified time and you have to chain method calls that will be executed in case 
-of promise being fulfilled or failed. These methods basically convert one promise into another.
-
-* Compared to JavaScript, these promises are heavily optimized - intermediate promises are stateless and the promise 
-graph executes with minimal garbage and overhead.
-* Because Eventloop is single-threaded, so are promises. That is why promises are much more efficient comparing to Java's 
-CompletableFutures.
-* Promise module also contains utility classes that help to collect results of promises, add loops and conditional logic 
-to promises execution.
+Promise module is similar to JavaScript Promise and is alternative to Java's CompletionStage and allows to organize 
+asynchronous code in convenient way. 
 
 [Promise examples](https://github.com/softindex/datakernel/tree/master/examples/promise)
 
-### [Codegen](http://datakernel.io/docs/modules/codegen.html)
+### [Codegen](https://github.com/softindex/datakernel/tree/master/core-codegen)
 
 Dynamic class and method bytecode generator on top of ObjectWeb ASM. An expression-based fluent API abstracts the 
-complexity of direct bytecode manipulation. You can use it to create custom classes on the fly by providing a class 
+complexity of direct bytecode manipulation, so you can use it to create custom classes on the fly by providing a class 
 description. It is useful for situations when you have to adjust class behavior in the runtime, based on some external
 factors.
 
-* Bytecode generation ensures that the business logic is as fast as possible.
-* Expression-based API allows to write concise instructions to generate bytecode.
-* Implements basic relational algebra operations.
-
 [Codegen examples](https://github.com/softindex/datakernel/tree/master/examples/codegen)
 
-### [Serializer](http://datakernel.io/docs/modules/serializer.html)
+### [Serializer](https://github.com/softindex/datakernel/tree/master/core-serializer)
 
-Extremely fast and space-efficient serializers, crafted using bytecode engineering. Introduces schema-less approach for 
-maximum performance. A common usage for a serializer is to pass some serialized class instances through the network to 
-remote machines for further processing. This approach is used in RPC, Dataflow and LSMT-DB modules.
-
-* Compatible with dynamically created classes.
-* Serialization process can be configured via annotations.
-* No overhead in typed values.
-* Utilizes Codegen bytecode generator.
+Extremely fast and space-efficient serializers created using bytecode engineering. Introduces schema-less approach for 
+best performance.
 
 [Serializer examples](https://github.com/softindex/datakernel/tree/master/examples/serializer)  
 [Benchmark](http://datakernel.io/docs/modules/serializer.html#benchmark)
 
-### [Datastream](http://datakernel.io/docs/modules/streams.html)
+### [Datastream](https://github.com/softindex/datakernel/tree/master/core-datastream)
 
-Composable asynchronous/reactive streams with powerful data processing capabilities. Useful for transferring high-volumes 
+Composable asynchronous/reactive streams with powerful data processing capabilities. Useful for transferring high volumes 
 of lightweight values.
 
-* Stream based I/O on top of an Eventloop module.
-* Support for composable stream operations (mappers, reducers, splitters, serialization).
-* Compatibility with CSP module.
-
 [Datastream examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams)  
-[Benchmark](http://datakernel.io/docs/modules/streams.html#benchmark)
+[Benchmark](http://datakernel.io/docs/modules/datastream.html#benchmark)
 
-### [Http](http://datakernel.io/docs/modules/http.html)
+### [HTTP](https://github.com/softindex/datakernel/tree/master/core-http)
 
-High-performance asynchronous HTTP client and server. Contains a built-in servlets for request dispatching, loading of a 
-static content. 
+High-performance asynchronous HTTP client and server. Contains a built-in servlets for request dispatching and static 
+content loading.  
 
-* GC pressure is low because HTTP connections are managed in a pool and recyclable ByteBufs are used to wrap HTTP messages.
-* Supports requests with streaming request body (using CSP).
-* Contains a DNS client that can be used to cache results of a DNS queries.
-* AsyncServlet represents a functional interface which allows for easy custom servlet creation without overhead.
-* RFC conformity
-
-[Http examples](https://github.com/softindex/datakernel/tree/master/examples/http)  
+[HTTP examples](https://github.com/softindex/datakernel/tree/master/examples/http)  
 [Benchmark](http://datakernel.io/docs/modules/http.html#benchmark)
 
-### [JSON](http://datakernel.io/docs/modules/json.html)
+### [JSON](https://github.com/softindex/datakernel/tree/master/core-json)
 
-Contains tools for encoding/decoding of primitives and objects. The process is somewhat similar to serialization. 
-
-* Can be used to convert objects to a custom representation.
-* Built-in support for conversion to/from JSON and ByteBuf.
-* Codec registry allows to easily access pre-defined codecs.
+Contains tools for encoding/decoding primitives and objects with built-in support of conversion to/from JSON and ByteBuf. 
+The process resembles serialization and can be used to convert objects to a custom representation.
 
 [JSON examples](https://github.com/softindex/datakernel/tree/master/examples/codec)  
 
 ## Cloud components
 
-### [RPC](http://datakernel.io/docs/modules/rpc.html)
+### [RPC](https://github.com/softindex/datakernel/tree/master/cloud-rpc)
 
-High-performance and fault-tolerant remote procedure call module for building distributed applications. Provides a 
-high-performance asynchronous binary RPC streaming protocol.
-
-* Can be used to create near-realtime servers with application specific business logic.
-* Provides consistent distribution strategies.
-* Utilizes Serialization module for fast RPC message transferring.
-* Fault tolerance is achieved by reconnections to fallback and replica servers.
+High-performance and fault-tolerant remote procedure call module for building distributed applications with an extremely
+efficient asynchronous binary RPC streaming protocol.
 
 [RPC examples](https://github.com/softindex/datakernel/tree/master/examples/rpc)  
 
-### [FS](http://datakernel.io/docs/modules/remotefs.html)
+### [FS](https://github.com/softindex/datakernel/tree/master/cloud-fs)
 
-Basis for building efficient, scalable remote file servers. Utilizes CSP for fast and reliable file transfer.
-
-* Ability to create clustered network of file servers.
-* Fast asynchronous file I/O based on Java's NIO.
-* Ability to cache downloaded files.
+Basis for building efficient, scalable remote file servers with implementation of caching and fast asynchronous file I/O 
+based on Java NIO. Utilizes CSP for fast and reliable file transfer.
 
 [FS examples](https://github.com/softindex/datakernel/tree/master/examples/remotefs)  
 
-### [OT](http://datakernel.io/docs/modules/ot.html)
+### [OT](https://github.com/softindex/datakernel/tree/master/cloud-ot)
 
-Implementation of operational transformation technology which allows to build collaborative software systems. Represents 
-a graph of commits where each commit contains some number of operations. To create an OT system, user has to provide a 
-set of rules for handling operation transformation, conflict resolution, etc.
+This module allows to build collaborative software systems based on Git-like approach and with automatic conflict 
+resolution utilizing a special algorithm for operational transformations.
 
-* Structure is somewhat similar to Git.
-* Efficient algorithms for managing graph of commits.
-* Ability to save/load snapshots and create backups.
-* State manager allows to monitor current state of an OT system.
+### [OT-MySql](https://github.com/softindex/datakernel/tree/master/cloud-ot-mysql)
 
-### [OT-MySql](http://datakernel.io/docs/modules/ot-mysql.html)
+Enables binding OT repositories to MySQL (or any other) database. You can even store `OTRepository` commits in-memory or 
+as files on a disk.
 
-A binding of an OT repository to a MySql database. Introduces a persistent OT commit storage, useful for managing high 
-loads of commits.
+### [LSMT Table](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-table)
 
-* Although, here MySql is used as a database of choice, nothing stops you from implementing `OTRepository` interface 
-based on any other database. You can even store commits in-memory or as files on a disk.
+Log-structured merge-tree table which stores aggregate functions and designed for OLAP workload.
 
-### [LSMT Table](http://datakernel.io/docs/modules/aggregation.html)
-
-Log-structured merge-tree table with fields representing aggregate functions, designed for OLAP workload. Provides you 
-with an ability to build almost any kind of database by defining your own aggregation functions.
-
-* Utilizes log-structured merge-tree data structure, so databases built on top of this table can easily handle high 
-insert volume data (e.g. transactional logs).
-* Aggregations can be stored on a distributed file system.
-
-### [LSMT Database](http://datakernel.io/docs/modules/cube.html)
+### [LSMT Database](https://github.com/softindex/datakernel/tree/master/cloud-lsmt-db)
 
 Multidimensional OLAP (Online Analytical Processing) database with predefined set of dimensions, measures, and 
 log-structured merge-tree tables containing pre-aggregated data. LSMT database efficiently executes multi-dimensional 
-analytical queries. Dimension here can be seen as a category while a measure is a value of some kind. 
+analytical queries.
 
-* Utilizes FS and OT modules which allows database to be truly asynchronous and distributed.
-
-### [Dataflow](http://datakernel.io/docs/modules/datagraph.html)
+### [Dataflow](https://github.com/softindex/datakernel/tree/master/cloud-dataflow)
 
 Distributed stream-based batch processing engine for Big Data applications. Represents a set of tools to work with 
-datasets which can span multiple partitions. User can write a tasks to be executed on a dataset. The task is then 
-compiled into an execution graphs and passed as a JSON commands to a corresponding worker servers to be executed.
+data sets which can span multiple partitions.
 
-* Data graph consists of nodes that correspond to certain operations (e.g. Download, Filter, Map, Reduce, Sort, etc).
-* User can define custom predicates, mapping functions, reducers to be executed on datasets.
-* Nodes in a data graph have inputs and outputs which are identified by a unique StreamId. This allows for an 
-inter-partition data computation.
-* Since nodes are stateless by itself, computation is similar to passing data items through a pipeline, applying certain 
-operations in the process.
+### [CRDT](https://github.com/softindex/datakernel/tree/master/cloud-crdt)
 
-### [CRDT](http://datakernel.io/docs/modules/crdt.html)
-
-Conflict-free replicated data type implementation. More specifically, implementation of state-based CRDT. Contains tools 
-to create collaborative editing applications using CRDT approach. 
-
-* Automatically resolves all conflicts that arise with concurrent data manipulation.
-* Merges data that comes from multiple nodes into a single CRDT structure.
+Conflict-free replicated data type (specifically, state-based CRDT) implementation. Contains tools to create 
+collaborative editing applications using CRDT approach merging data that comes from multiple nodes into a single CRDT 
+structure. 
 
 [CRDT examples](https://github.com/softindex/datakernel/tree/master/examples/crdt)
 
-### Multilog
+### [Multilog](https://github.com/softindex/datakernel/tree/master/cloud-multilog)
 
-Manages persistence of logs. Having logs saved on a distributed file system, this module manages integrity of log files 
-and allows to work with them as if they were stored in a single place.
+This module manages integrity of log files stored in distributed file system and allows to work with them as if they 
+were stored in a single place.
 
-* Utilizes FS module to operate on logs stored on different partitions.
-* Log data is transferred using Datastream module which is perfect for large amount of lightweight items (just like logs).
-* Uses LZ4 compression algorithm which is fast and allows to save storage space.
+### [ETL](https://github.com/softindex/datakernel/tree/master/cloud-etl)
 
-### ETL
-
-Processes logs using operational transformations. Uses OT module to persist logs and resolve conflicts that arise when 
-processing logs.
-
-* This module is used as a part of LSMT Database.
+Processes logs using operational transformations. Uses OT module to persist logs and resolve conflicts.
 
 ## Global components
 
-Global components are meant to be used distributively across the whole global network. Global network consists of 
+Global components are designed to be used distributively across the whole global network. Global network consists of 
 interconnected nodes (or servers) and discovery services that help route one node with another. To achieve this and 
-preserve data integrity between global nodes, components have to share some qualities:
+preserve data integrity between global nodes, all the components have the following features:
 
-* Fault tolerance. This allows you to work with local node if you do not have current connection to a master server. 
-Changes made locally will be pushed to a master node as soon as connection is re-established.
-* Cryptography. Data transferred between nodes is cryptographically signed, so it cannot be tempered with by third parties.
+* Fault tolerance. This allows you to work with local node in disconnected mode.
+* Cryptography. Data transferred between nodes is cryptographically signed, so it cannot be tempered by third parties.
 * Different operating modes. A global node can work in proxy mode (as a router), in caching mode (locally saving data 
-that it downloads/uploads) 
-or in pre-fetching mode (uploading data from master nodes in advance).
+that it downloads/uploads) or in pre-fetching mode (uploading data from master nodes in advance).
 
-### Global Common
+### [Global Common](https://github.com/softindex/datakernel/tree/master/global-common)
 
 A foundation for other global components. Contains a `DiscoveryService` that is like a DNS for other global nodes. This 
 module also contains cryptography tools and some common classes. Cryptography allows nodes to work with non-trusted 
 servers. 
 
-### [Global FS](http://datakernel.io/docs/modules/global-fs.html)
+### [Global FS](https://github.com/softindex/datakernel/tree/master/global-fs)
 
 A framework to create file sharing systems alternative to IPFS / BitTorrent technologies. It is fault tolerant, 
 distributed and can work with non-trusted servers due to implementation of cryptographic data authenticity.
 
 [Global FS Demo](https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo)
 
-### [Global OT](http://datakernel.io/docs/modules/global-ot.html)
+### [Global OT](https://github.com/softindex/datakernel/tree/master/global-ot)
 
 A framework which extends both OT technology and blockchain technology (representing the data as Git-like graph of 
-individual immutable content-addressable commits, encrypted and signed with private key of its owner). It is suitable 
-for solutions on the scale of the Internet and not bound to proprietary data centers. Global-OT can work with non-trusted 
-servers, which is provided by implementation of digital signatures and encryption. 
+individual immutable content-addressable commits, encrypted and signed with private key of its owner). Global-OT can 
+work with non-trusted servers. 
 
 [Global OT Demo](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo)
 
 ## Integration components
 
-### [Boot](http://datakernel.io/docs/modules/boot.html)
+### [Boot](https://github.com/softindex/datakernel/tree/master/boot)
 
 An intelligent way of booting complex applications and services according to their dependencies. Component contains 
-several modules that help to easily configure and launch an application. The main component is a `ServiceGraphModule` 
-which builds dependency graph based on Guice's object graph. It is used to start or stop services concurrently, 
-according to their dependencies. 
-
-* Although, Guice is used here as a dependency injector tool, it is not the main component of a module and can be 
-swapped out with some other tool.
-* `ConfigModule` helps to configure services in a simple way. There is a rich set of config converters that can be used 
-to set up your application.
-* `WorkerPoolModule` introduces a worker pool, which is a container for other services. It is an easy way to utilize all 
-of available cores by running a worker `Eventloop` on each core.
-* `JmxModule` enables tools to monitor a component's lifecycle via `JmxAttribute`s or even interfere with it by the 
-means of `JmxOperation`s
-* `TriggersModule` adds the ability to place certain triggers on a module that will fire as soon as some condition 
-fulfills. These triggers can be monitored via JMX.
-* Boot module introduces a concept of a `Launcher`, which can be seen as a basic application. It uses `ServiceGraph` to 
-properly boot all of provided dependencies.
+several modules that help to easily configure and launch an application.
 
 [Boot examples](https://github.com/softindex/datakernel/tree/master/examples/boot)
 
-### [Launchers](http://datakernel.io/docs/modules/launchers.html)
+### [Launchers](https://github.com/softindex/datakernel/tree/master/launchers)
 
-Module contains a set of predefined launchers as well as some common initializers for services. When a user wants to 
-create his own application, he should either extend one of proposed launchers or use it as a reference for his custom 
-launcher.
-
-Contains standard launchers for:  
-* CRDT module
-* HTTP module
-* FS module
-* RPC module
+Module contains a set of predefined launchers as well as some common initializers for services. 
+Contains standard launchers for CRDT, HTTP, FS and RPC modules.
 
 [Launchers examples](https://github.com/softindex/datakernel/tree/master/examples/launchers)
 
-### [UIKernel](http://datakernel.io/docs/modules/uikernel.html)
-This module represents a integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets. 
+### [UIKernel](https://github.com/softindex/datakernel/tree/master/uikernel)
+This module represents integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets. 
 Using this module you can build a server application that will be compatible with UIKernel JS library. 
 
 [UIKernel integration example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration)
+
+##Getting started
+In [this guide](https://github.com/softindex/datakernel/tree/gh-pages/examples/getting-started) you can create a simple 
+“Hello World” application using Eventloop, which is the core component of Datakernel Framework.
