@@ -25,6 +25,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Tuple3;
+import io.global.fs.api.CheckpointPosStrategy;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -44,7 +45,7 @@ public final class GlobalFsDownload implements Callable<Void> {
 	private static final OpenOption[] OPEN_OPTIONS = new OpenOption[]{WRITE, CREATE, TRUNCATE_EXISTING};
 
 	@Mixin
-	private GlobalFsTarget target;
+	private GlobalFsCommon common;
 
 	@Parameters(index = "2", paramLabel = "<file>", description = "File to download")
 	private String file;
@@ -60,7 +61,7 @@ public final class GlobalFsDownload implements Callable<Void> {
 
 	@Override
 	public Void call() throws Exception {
-		Tuple3<ExecutorService, Eventloop, FsClient> tuple = target.init();
+		Tuple3<ExecutorService, Eventloop, FsClient> tuple = common.init(CheckpointPosStrategy.of(8096)); // cps in not used for list
 
 		ExecutorService executor = tuple.getValue1();
 		Eventloop eventloop = tuple.getValue2();
@@ -87,7 +88,7 @@ public final class GlobalFsDownload implements Callable<Void> {
 						info(file + " download finished");
 						return;
 					}
-					err(file + " download finished with error " + e.getLocalizedMessage());
+					err("Download '" + file + "' finished with exception " + e);
 				});
 
 		eventloop.run();

@@ -19,6 +19,7 @@ package io.global.fs.cli;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Tuple3;
+import io.global.fs.api.CheckpointPosStrategy;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Parameters;
@@ -33,14 +34,14 @@ import static io.global.fs.cli.GlobalFs.info;
 public final class GlobalFsDelete implements Callable<Void> {
 
 	@Mixin
-	private GlobalFsTarget target;
+	private GlobalFsCommon common;
 
 	@Parameters(index = "2..*", arity = "1..*", paramLabel = "<file>", description = "File(s) to delete")
 	private String[] files;
 
 	@Override
 	public Void call() {
-		Tuple3<ExecutorService, Eventloop, FsClient> tuple = target.init();
+		Tuple3<ExecutorService, Eventloop, FsClient> tuple = common.init(CheckpointPosStrategy.of(8096)); // cps in not used for list
 
 		ExecutorService executor = tuple.getValue1();
 		Eventloop eventloop = tuple.getValue2();
@@ -54,7 +55,7 @@ public final class GlobalFsDelete implements Callable<Void> {
 							info(file + " delete finished");
 							return;
 						}
-						err(file + " delete finished with exception " + e);
+						err("Delete '" + file + "' finished with exception " + e);
 					});
 		}
 

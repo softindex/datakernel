@@ -16,23 +16,24 @@
 
 package io.global.fs.cli;
 
+import io.datakernel.exception.ParseException;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.StringFormatUtils;
 import io.datakernel.util.Utils;
 import io.global.common.PrivKey;
 import picocli.CommandLine;
-import picocli.CommandLine.Command;
-import picocli.CommandLine.DefaultExceptionHandler;
-import picocli.CommandLine.Option;
-import picocli.CommandLine.RunLast;
+import picocli.CommandLine.*;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
 
 @Command(name = "globalfs", description = "Basic command line utility for interacting with Global-FS",
-		subcommands = {GlobalFsUpload.class, GlobalFsDownload.class, GlobalFsDelete.class})
+		subcommands = {GlobalFsUpload.class, GlobalFsDownload.class, GlobalFsDelete.class, GlobalFsList.class, GlobalFsAlias.class})
 public final class GlobalFs {
 	static boolean loggingEnabled = true;
+	static Preferences keyStorage = Preferences.userRoot().node("globalfs/keys");
 
 	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	static void info(String msg) {
@@ -52,11 +53,27 @@ public final class GlobalFs {
 	private boolean helpRequested;
 
 	public static void main(String[] args) {
-		new CommandLine(GlobalFs.class)
+		CommandLine commandLine = new CommandLine(GlobalFs.class);
+
+		commandLine
 				.registerConverter(InetSocketAddress.class, Utils::parseInetSocketAddress)
-				.registerConverter(PrivKey.class, PrivKey::fromString)
+				.registerConverter(PrivKey.class, str -> {
+					PrivKey privKey;
+					try {
+						privKey = PrivKey.fromString(keyStorage.get(str, str));
+					} catch (ParseException e) {
+						throw new ParameterException(commandLine, "Private key is not a stored alias nor a valid key", e, null, str);
+					}
+					return privKey;
+				})
 				.registerConverter(MemSize.class, StringFormatUtils::parseMemSize)
 
 				.parseWithHandlers(new RunLast(), new DefaultExceptionHandler<List<Object>>().andExit(1), args.length == 0 ? new String[]{"-h"} : args);
+
+		try {
+			keyStorage.flush();
+		} catch (BackingStoreException e) {
+			err("Failed flushing the key storage for some reason: " + e);
+		}
 	}
 }

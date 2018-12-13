@@ -24,7 +24,9 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
+import io.datakernel.util.MemSize;
 import io.datakernel.util.Tuple3;
+import io.global.fs.api.CheckpointPosStrategy;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -37,16 +39,21 @@ import java.util.concurrent.ExecutorService;
 
 import static io.global.fs.cli.GlobalFs.err;
 import static io.global.fs.cli.GlobalFs.info;
+import static picocli.CommandLine.Help.Visibility.ALWAYS;
 
 @Command(name = "upload", description = "Upload file to the Global-FS")
 public final class GlobalFsUpload implements Callable<Void> {
 
 	@Mixin
-	private GlobalFsTarget target;
+	private GlobalFsCommon common;
 
 	@Parameters(index = "2", arity = "0..1", paramLabel = "<file>",
 			description = "File to upload. Can be empty for reading from stdin, but the -r option will be required")
 	private String file;
+
+	@Option(names = {"-c", "--checkpoint-interval"}, paramLabel = "<checkpoint interval>", defaultValue = "8kb", showDefaultValue = ALWAYS,
+			description = "Number of bytes between checkpoints. Allows suffixes")
+	private MemSize checkpointInterval;
 
 	@Option(names = {"--offset"}, defaultValue = "-1", description = "Offset in bytes from which to start uploading the file. Allows suffixes.")
 	private long offset;
@@ -56,7 +63,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 
 	@Override
 	public Void call() throws Exception {
-		Tuple3<ExecutorService, Eventloop, FsClient> tuple = target.init();
+		Tuple3<ExecutorService, Eventloop, FsClient> tuple = common.init(CheckpointPosStrategy.of(checkpointInterval.toLong()));
 
 		ExecutorService executor = tuple.getValue1();
 		Eventloop eventloop = tuple.getValue2();
@@ -102,7 +109,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 						info(name + " upload finished");
 						return;
 					}
-					err(name + " upload finished with error: " + e.getLocalizedMessage());
+					err("Upload '" + name + "' finished with exception " + e);
 				});
 
 		eventloop.run();

@@ -19,7 +19,6 @@ package io.global.fs.cli;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.MemSize;
 import io.datakernel.util.Tuple3;
 import io.global.common.PrivKey;
 import io.global.common.PrivateKeyStorage;
@@ -37,10 +36,9 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.CollectionUtils.map;
-import static picocli.CommandLine.Help.Visibility.ALWAYS;
 
 @Command
-public final class GlobalFsTarget {
+public final class GlobalFsCommon {
 
 	@Parameters(index = "0", description = "Global-FS endpoint URL")
 	private URL endpoint;
@@ -48,17 +46,13 @@ public final class GlobalFsTarget {
 	@Parameters(index = "1", paramLabel = "<private key>", description = "Private key of the namespace to work with")
 	private PrivKey privKey;
 
-	@Option(names = {"-c", "--checkpoint-interval"}, paramLabel = "<checkpoint interval>", defaultValue = "8kb", showDefaultValue = ALWAYS,
-			description = "Number of bytes between checkpoints. Allows suffixes")
-	private MemSize checkpointInterval;
-
 	@Option(names = {"-q", "--quiet"}, description = "Suppresses all informational output to standard error stream")
 	private boolean quiet;
 
 	@Option(names = {"-h", "--help"}, usageHelp = true, description = "Displays this help message")
 	private boolean helpRequested;
 
-	public Tuple3<ExecutorService, Eventloop, FsClient> init() {
+	public Tuple3<ExecutorService, Eventloop, FsClient> init(CheckpointPosStrategy checkpointPosStrategy) {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 		Eventloop eventloop = Eventloop.create()
 				.withCurrentThread()
@@ -70,8 +64,7 @@ public final class GlobalFsTarget {
 
 		GlobalFsNode node = HttpGlobalFsNode.create(endpoint.toString(), AsyncHttpClient.create(eventloop));
 		PrivateKeyStorage pks = new PrivateKeyStorage(map(privKey.computePubKey(), privKey));
-		CheckpointPosStrategy cps = CheckpointPosStrategy.of(checkpointInterval.toLong());
 
-		return new Tuple3<>(executor, eventloop, GlobalFsDriver.create(node, pks, cps).gatewayFor(privKey.computePubKey()));
+		return new Tuple3<>(executor, eventloop, GlobalFsDriver.create(node, pks, checkpointPosStrategy).gatewayFor(privKey.computePubKey()));
 	}
 }

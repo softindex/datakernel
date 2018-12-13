@@ -45,6 +45,7 @@ import static io.datakernel.file.FileUtils.isWildcard;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
+import static io.global.fs.api.GlobalFsNode.FILE_ALREADY_EXISTS;
 import static io.global.fs.api.GlobalFsNode.UPLOADING_TO_TOMBSTONE;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
@@ -106,7 +107,7 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 						return Promise.ofException(UPLOADING_TO_TOMBSTONE);
 					}
 					if (offset == -1) {
-						return Promise.ofException(new StacklessException(GlobalFsGateway.class, "File already exists"));
+						return Promise.ofException(FILE_ALREADY_EXISTS);
 					}
 					GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
 					long metaSize = checkpoint.getPosition();
@@ -147,7 +148,7 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 				.thenApply(res -> res.stream()
 						.map(signedMeta -> {
 							GlobalFsCheckpoint value = signedMeta.getValue();
-							return new FileMetadata(value.getFilename(), value.getPosition(), 0);
+							return new FileMetadata(value.getFilename(), value.isTombstone() ? -1 : value.getPosition(), 0);
 						})
 						.collect(toList()))
 				.whenComplete(toLogger(logger, TRACE, "list", glob, this));
@@ -158,7 +159,7 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 		return node.getMetadata(space, filename)
 				.thenCompose(signedMeta -> {
 					GlobalFsCheckpoint value = signedMeta.getValue();
-					return Promise.of(new FileMetadata(value.getFilename(), value.getPosition(), 0));
+					return Promise.of(new FileMetadata(value.getFilename(), value.isTombstone() ? -1 : value.getPosition(), 0));
 				})
 				.whenComplete(toLogger(logger, TRACE, "getMetadata", filename, this));
 	}

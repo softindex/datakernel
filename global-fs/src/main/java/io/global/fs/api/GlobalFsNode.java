@@ -33,7 +33,8 @@ import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
  */
 public interface GlobalFsNode {
 	StacklessException UNEXPECTED_TOMBSTONE = new StacklessException(GlobalFsNode.class, "Tombstones are not allowed to be streamed");
-	StacklessException UPLOADING_TO_TOMBSTONE = new StacklessException(GlobalFsNode.class, "Trying to upload file which was deleted");
+	StacklessException UPLOADING_TO_TOMBSTONE = new StacklessException(GlobalFsNode.class, "Trying to upload to a file which was deleted");
+	StacklessException FILE_ALREADY_EXISTS = new StacklessException(GlobalFsNode.class, "File already exists");
 
 	Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset);
 
