@@ -36,19 +36,12 @@ import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
+import static io.global.fs.api.FsCommand.*;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static io.global.fs.util.HttpDataFormats.parseOffset;
 import static io.global.fs.util.HttpDataFormats.parseRange;
 
 public final class GlobalFsNodeServlet implements WithMiddleware {
-	static final String UPLOAD = "upload";
-	static final String DOWNLOAD = "download";
-	static final String LIST = "list";
-	static final String GET_METADATA = "getMetadata";
-	static final String DELETE = "delete";
-	// static final String COPY = "copy";
-	// static final String MOVE = "move";
-
 	static final StructuredCodec<SignedData<GlobalFsCheckpoint>> SIGNED_CHECKPOINT_CODEC = REGISTRY.get(new TypeT<SignedData<GlobalFsCheckpoint>>() {});
 
 	private final MiddlewareServlet servlet;

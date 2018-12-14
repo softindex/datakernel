@@ -14,17 +14,13 @@
  * limitations under the License.
  */
 
-package io.global.common.api;
+package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
+/**
+ * Marker interface to be implemented by enums that store commands to be appended to HTTP request path
+ */
+public interface HttpPathPart {
 
-public interface DiscoveryService extends SharedKeyManager {
-	StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Rejected announce data as outdated");
-
-	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
-
-	Promise<SignedData<AnnounceData>> find(PubKey space);
+	@Override
+	String toString();
 }

@@ -33,7 +33,8 @@ import java.util.Map;
 
 import static io.datakernel.http.IAsyncHttpClient.ensureOk200;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
-import static io.global.fs.http.RemoteFsServlet.*;
+import static io.global.fs.api.FsCommand.*;
+import static io.global.fs.http.RemoteFsServlet.FILE_META_LIST;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class HttpFsClient implements FsClient {
@@ -136,7 +137,7 @@ public class HttpFsClient implements FsClient {
 				HttpRequest.post(
 						UrlBuilder.http()
 								.withAuthority(address)
-								.appendPathPart(DEL)
+								.appendPathPart(DELETE)
 								.appendQuery("glob", glob)
 								.build()))
 				.thenCompose(ensureOk200())

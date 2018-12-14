@@ -31,16 +31,10 @@ import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_CODEC;
+import static io.global.fs.api.FsCommand.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class RemoteFsServlet implements WithMiddleware {
-	public static final String UPLOAD = "upload";
-	public static final String DOWNLOAD = "download";
-	public static final String LIST = "list";
-	public static final String DEL = "delete";
-	public static final String COPY = "copy";
-	public static final String MOVE = "move";
-
 	static final StructuredCodec<Set<String>> STRING_SET = ofSet(STRING_CODEC);
 	static final StructuredCodec<List<FileMetadata>> FILE_META_LIST = ofList(FILE_META_CODEC);
 
@@ -85,7 +79,7 @@ public final class RemoteFsServlet implements WithMiddleware {
 								.thenApply(list -> HttpResponse.ok200()
 										.withBody(toJson(FILE_META_LIST, list).getBytes(UTF_8))
 										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON)))))
-				.with(HttpMethod.DELETE, "/" + DEL, request ->
+				.with(HttpMethod.DELETE, "/" + DELETE, request ->
 						client.deleteBulk(request.getQueryParameter("glob"))
 								.thenApply($ -> HttpResponse.ok200()))
 				.with(HttpMethod.POST, "/" + COPY, ensureRequestBody(request ->

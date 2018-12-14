@@ -59,7 +59,6 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	private final Set<PubKey> managedPubKeys = new HashSet<>();
 
 	private final Map<PubKey, PubKeyEntry> pubKeys = new HashMap<>();
-	private final Map<PubKey, Map<Hash, SignedData<SharedSimKey>>> sharedKeysDb = new HashMap<>();
 
 	private Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
 
@@ -93,10 +92,6 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 	private RepositoryEntry ensureRepository(RepoID repositoryId) {
 		return ensurePubKey(repositoryId.getOwner()).ensureRepository(repositoryId);
-	}
-
-	private Map<Hash, SignedData<SharedSimKey>> ensureSharedKeysDb(PubKey receiver) {
-		return sharedKeysDb.computeIfAbsent(receiver, $ -> new HashMap<>());
 	}
 
 	private Promise<List<GlobalOTNode>> ensureMasterNodes(PubKey pubKey) {
@@ -389,13 +384,17 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 	@Override
 	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
-		ensureSharedKeysDb(receiver).put(simKey.getValue().getHash(), simKey);
-		return Promise.complete();
+		return discoveryService.shareKey(receiver, simKey);
 	}
 
 	@Override
-	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey receiver, Hash simKeyHash) {
-		return Promise.of(Optional.ofNullable(ensureSharedKeysDb(receiver).get(simKeyHash)));
+	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash) {
+		return discoveryService.getSharedKey(receiver, hash);
+	}
+
+	@Override
+	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
+		return discoveryService.getSharedKeys(receiver);
 	}
 
 	@Override

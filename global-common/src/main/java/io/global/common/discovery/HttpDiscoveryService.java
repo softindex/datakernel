@@ -37,6 +37,7 @@ import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
+import static io.global.common.api.DiscoveryCommand.*;
 import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.common.discovery.DiscoveryServlet.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -60,7 +61,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 				HttpRequest.of(HttpMethod.PUT,
 						UrlBuilder.http()
 								.withAuthority(address)
-								.appendPathPart(ANNOUNCE_ALL)
+								.appendPathPart(ANNOUNCE)
 								.appendPathPart(space.asString())
 								.build())
 						.withBody(encode(SIGNED_ANNOUNCE, announceData)))
@@ -88,7 +89,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 		return client.request(HttpRequest.get(
 				UrlBuilder.http()
 						.withAuthority(address)
-						.appendPathPart(FIND_ALL)
+						.appendPathPart(FIND)
 						.appendPathPart(space.asString())
 						.build()))
 				.thenCompose(ensureResponseBody())

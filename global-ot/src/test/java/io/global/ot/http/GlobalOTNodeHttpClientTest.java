@@ -20,38 +20,35 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.IAsyncHttpClient;
+import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import io.global.common.*;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
-import io.global.ot.api.GlobalOTNode.Heads;
-import io.global.ot.api.GlobalOTNode.HeadsInfo;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.*;
 
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.CollectionUtils.set;
+import static io.global.common.TestUtils.await;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
+import static java.util.Collections.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(DatakernelRunner.class)
+@SkipEventloopRun
 public class GlobalOTNodeHttpClientTest {
+	private final LinkedList<Object> params = new LinkedList<>();
 
 	@Test
-	public void test1() throws ExecutionException, InterruptedException {
+	public void test1() {
 		KeyPair keys = KeyPair.generate();
 		PrivKey privKey = keys.getPrivKey();
 		PubKey pubKey = keys.getPubKey();
@@ -69,12 +66,11 @@ public class GlobalOTNodeHttpClientTest {
 		RawCommitHead rawCommitHead = RawCommitHead.of(repository, rootCommitId, 123L);
 		SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(REGISTRY.get(RawCommitHead.class), rawCommitHead, privKey);
 
-		LinkedList<Object> parameters = new LinkedList<>();
 
 		RawServerServlet servlet = RawServerServlet.create(new GlobalOTNode() {
 			<T> Promise<T> resultOf(@Nullable T result, Object... args) {
-				parameters.add(result);
-				parameters.addAll(asList(args));
+				params.add(result);
+				params.addAll(asList(args));
 				return Promise.of(result);
 			}
 
@@ -135,13 +131,18 @@ public class GlobalOTNodeHttpClientTest {
 
 			@Override
 			public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> signedSimKey) {
-				return resultOf(null, signedSimKey);
+				return resultOf(null, receiver, signedSimKey);
 			}
 
 			@Override
-			public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey receiver, Hash simKeyHash) {
+			public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash simKeyHash) {
 				SharedSimKey sharedSimKey = SharedSimKey.of(simKey, receiver);
-				return resultOf(Optional.of(SignedData.sign(REGISTRY.get(SharedSimKey.class), sharedSimKey, privKey)), receiver, simKeyHash);
+				return resultOf(SignedData.sign(REGISTRY.get(SharedSimKey.class), sharedSimKey, privKey), receiver, simKeyHash);
+			}
+
+			@Override
+			public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
+				return resultOf(emptyList(), receiver);
 			}
 
 			@Override
@@ -169,38 +170,15 @@ public class GlobalOTNodeHttpClientTest {
 
 		GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(httpClient, "http://localhost/");
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		doTest(client.list(pubKey), pubKey);
 
-		CompletableFuture<Set<String>> listFuture = client.list(pubKey)
-				.toCompletableFuture();
-		eventloop.run();
-		assertEquals(parameters.remove(), listFuture.get());
-		assertEquals(pubKey, parameters.remove());
-		assertTrue(parameters.isEmpty());
+		Map<CommitId, RawCommit> commits = map(rootCommitId, rootCommit);
+		Set<SignedData<RawCommitHead>> heads = singleton(signedRawCommitHead);
+		doTest(client.save(repository, commits, heads), repository, commits, heads);
 
-		CompletableFuture<Void> saveFuture = client.save(repository, map(rootCommitId, rootCommit), singleton(signedRawCommitHead))
-				.toCompletableFuture();
-		eventloop.run();
-		assertEquals(parameters.remove(), saveFuture.get());
-		assertEquals(repository, parameters.remove());
-		assertEquals(map(rootCommitId, rootCommit), parameters.remove());
-		assertEquals(singleton(signedRawCommitHead), parameters.remove());
-		assertTrue(parameters.isEmpty());
+		doTest(client.loadCommit(repository, rootCommitId), repository, rootCommitId);
 
-		CompletableFuture<RawCommit> loadCommitFuture = client.loadCommit(repository, rootCommitId).toCompletableFuture()
-				.toCompletableFuture();
-		eventloop.run();
-		assertEquals(parameters.remove(), loadCommitFuture.get());
-		assertEquals(repository, parameters.remove());
-		assertEquals(rootCommitId, parameters.remove());
-		assertTrue(parameters.isEmpty());
-
-		CompletableFuture<HeadsInfo> getHeadsInfoFuture = client.getHeadsInfo(repository).toCompletableFuture()
-				.toCompletableFuture();
-		eventloop.run();
-		assertEquals(parameters.remove(), getHeadsInfoFuture.get());
-		assertEquals(repository, parameters.remove());
-		assertTrue(parameters.isEmpty());
+		doTest(client.getHeadsInfo(repository), repository);
 
 		SignedData<RawSnapshot> signedSnapshot = SignedData.sign(
 				REGISTRY.get(RawSnapshot.class),
@@ -210,49 +188,39 @@ public class GlobalOTNodeHttpClientTest {
 						EncryptedData.encrypt(new byte[100], simKey),
 						Hash.sha1(simKey.getBytes())),
 				privKey);
+		doTest(client.saveSnapshot(repository, signedSnapshot), repository, signedSnapshot);
 
-		CompletableFuture<Void> saveSnapshotFuture = client.saveSnapshot(
-				repository,
-				signedSnapshot)
-				.toCompletableFuture();
-		eventloop.run();
-		assertEquals(parameters.remove(), saveSnapshotFuture.get());
-		assertEquals(repository, parameters.remove());
-		assertEquals(signedSnapshot, parameters.remove());
-		assertTrue(parameters.isEmpty());
+		doTest(client.loadSnapshot(repository, rootCommitId), repository, rootCommitId);
 
-		CompletableFuture<Optional<SignedData<RawSnapshot>>> loadSnapshotFuture = client.loadSnapshot(
-				repository,
-				rootCommitId)
-				.toCompletableFuture();
-		eventloop.run();
-		assertEquals(parameters.remove(), loadSnapshotFuture.get());
-		assertEquals(repository, parameters.remove());
-		assertEquals(rootCommitId, parameters.remove());
-		assertTrue(parameters.isEmpty());
-
-		CompletableFuture<Heads> getHeadsFuture = client.getHeads(
-				repository,
-				set(rootCommitId))
-				.toCompletableFuture();
-		eventloop.run();
-		assertEquals(parameters.remove(), getHeadsFuture.get());
-		assertEquals(repository, parameters.remove());
-		assertEquals(set(rootCommitId), parameters.remove());
-		assertTrue(parameters.isEmpty());
+		Set<CommitId> commitSet = set(rootCommitId);
+		doTest(client.getHeads(repository, commitSet), repository, commitSet);
 
 		SharedSimKey sharedSimKey = SharedSimKey.of(simKey, pubKey);
 		SignedData<SharedSimKey> signedSharedSimKey = SignedData.sign(
 				REGISTRY.get(SharedSimKey.class),
 				sharedSimKey,
 				privKey);
+		doTest(client.shareKey(pubKey, signedSharedSimKey), pubKey, signedSharedSimKey);
 
-		CompletableFuture<Void> shareKeyFuture = client.shareKey(pubKey, signedSharedSimKey)
-				.toCompletableFuture();
 
-		eventloop.run();
-		assertEquals(parameters.remove(), shareKeyFuture.get());
-		assertEquals(signedSharedSimKey, parameters.remove());
-		assertTrue(parameters.isEmpty());
+		Hash hash = sharedSimKey.getHash();
+		doTest(client.getSharedKey(pubKey, hash), pubKey, hash);
+
+		doTest(client.getSharedKeys(pubKey), pubKey);
+
+		RawPullRequest pullRequest = RawPullRequest.of(repository, RepoID.of(pubKey, "Fork"));
+		SignedData<RawPullRequest> signedPullRequest = SignedData.sign(REGISTRY.get(RawPullRequest.class), pullRequest, privKey);
+		doTest(client.sendPullRequest(signedPullRequest), signedPullRequest);
+
+		doTest(client.getPullRequests(repository), repository);
+	}
+
+	private <T> void doTest(Promise<T> promise, Object... parameters) {
+		T result = await(promise);
+		assertEquals(params.remove(), result);
+		for (Object param : parameters) {
+			assertEquals(params.remove(), param);
+		}
+		assertTrue(params.isEmpty());
 	}
 }

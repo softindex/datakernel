@@ -17,14 +17,17 @@
 package io.global.common.api;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
+import io.global.common.Hash;
 import io.global.common.PubKey;
+import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 
-public interface DiscoveryService extends SharedKeyManager {
-	StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Rejected announce data as outdated");
+import java.util.List;
 
-	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
+public interface SharedKeyManager {
+	Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey);
 
-	Promise<SignedData<AnnounceData>> find(PubKey space);
+	Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash);
+
+	Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver);
 }

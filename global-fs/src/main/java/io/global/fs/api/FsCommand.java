@@ -14,17 +14,27 @@
  * limitations under the License.
  */
 
-package io.global.common.api;
+package io.global.fs.api;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
+import io.datakernel.http.HttpPathPart;
 
-public interface DiscoveryService extends SharedKeyManager {
-	StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Rejected announce data as outdated");
+public enum FsCommand implements HttpPathPart {
+	UPLOAD("upload"),
+	DOWNLOAD("download"),
+	LIST("list"),
+	GET_METADATA("getMetadata"),
+	DELETE("delete"),
+	COPY("copy"),
+	MOVE("move");
 
-	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
+	private final String pathPart;
 
-	Promise<SignedData<AnnounceData>> find(PubKey space);
+	FsCommand(String pathPart) {
+		this.pathPart = pathPart;
+	}
+
+	@Override
+	public String toString() {
+		return pathPart;
+	}
 }

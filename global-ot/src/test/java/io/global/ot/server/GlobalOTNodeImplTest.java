@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.global.ot.server;
 
 import io.datakernel.annotation.Nullable;
@@ -45,7 +61,7 @@ public class GlobalOTNodeImplTest {
 	private static final PubKey PUB_KEY = KEYS.getPubKey();
 	private static final PrivKey PRIV_KEY = KEYS.getPrivKey();
 	private static final SimKey SIM_KEY = SimKey.generate();
-	public static final String REPOSITORY_NAME = "Test repository";
+	private static final String REPOSITORY_NAME = "Test repository";
 	private static final RepoID REPO_ID = RepoID.of(PUB_KEY, REPOSITORY_NAME);
 	private static final byte[] DATA = {1, 2, 3, 4, 5, 6};
 

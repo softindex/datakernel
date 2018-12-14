@@ -25,7 +25,10 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.TypeT;
-import io.global.common.*;
+import io.global.common.Hash;
+import io.global.common.PubKey;
+import io.global.common.SignedData;
+import io.global.common.SimKey;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
 import org.spongycastle.crypto.CryptoException;
@@ -91,30 +94,28 @@ public final class OTDriver {
 	public Promise<Optional<SimKey>> getSharedKey(MyRepositoryId<?> myRepositoryId,
 			PubKey senderPubKey, Hash simKeyHash) {
 		return service.getSharedKey(myRepositoryId.getRepositoryId().getOwner(), simKeyHash)
-				.thenApply(maybeSignedSimKey -> {
-					if (!maybeSignedSimKey.isPresent()) {
+				.thenApplyEx((signedSimKey, e) -> {
+					if (e == null) {
+						if (!signedSimKey.verify(myRepositoryId.getRepositoryId().getOwner())) {
+							return Optional.empty();
+						}
+
+						SimKey simKey;
+						try {
+							simKey = signedSimKey.getValue().decryptSimKey(myRepositoryId.getPrivKey());
+						} catch (CryptoException ignored) {
+							return Optional.empty();
+						}
+
+						if (!Arrays.equals(sha1(simKey.getBytes()), simKeyHash.getBytes())) {
+							return Optional.empty();
+						}
+
+						simKeys.put(simKeyHash, simKey);
+						return Optional.of(simKey);
+					} else {
 						return Optional.empty();
 					}
-
-					SignedData<SharedSimKey> signedSimKey = maybeSignedSimKey.get();
-
-					if (!signedSimKey.verify(myRepositoryId.getRepositoryId().getOwner())) {
-						return Optional.empty();
-					}
-
-					SimKey simKey;
-					try {
-						simKey = signedSimKey.getValue().decryptSimKey(myRepositoryId.getPrivKey());
-					} catch (CryptoException ignored) {
-						return Optional.empty();
-					}
-
-					if (!Arrays.equals(sha1(simKey.getBytes()), simKeyHash.getBytes())) {
-						return Optional.empty();
-					}
-
-					simKeys.put(simKeyHash, simKey);
-					return Optional.of(simKey);
 				});
 	}
 

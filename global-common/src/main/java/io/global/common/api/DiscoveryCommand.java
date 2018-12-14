@@ -16,15 +16,23 @@
 
 package io.global.common.api;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
+import io.datakernel.http.HttpPathPart;
 
-public interface DiscoveryService extends SharedKeyManager {
-	StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Rejected announce data as outdated");
+public enum DiscoveryCommand implements HttpPathPart {
+	ANNOUNCE("announce"),
+	FIND("find"),
+	SHARE_KEY("shareKey"),
+	GET_SHARED_KEY("getSharedKey"),
+	GET_SHARED_KEYS("getSharedKeys");
 
-	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
+	private final String pathPart;
 
-	Promise<SignedData<AnnounceData>> find(PubKey space);
+	DiscoveryCommand(String pathPart) {
+		this.pathPart = pathPart;
+	}
+
+	@Override
+	public String toString() {
+		return pathPart;
+	}
 }

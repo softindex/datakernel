@@ -20,7 +20,6 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.StacklessException;
 import io.global.common.api.DiscoveryService;
-import io.global.fs.local.GlobalFsDriver;
 import org.spongycastle.crypto.CryptoException;
 
 import java.util.HashMap;
@@ -64,7 +63,7 @@ public final class PrivateKeyStorage {
 					SharedSimKey sharedSimKey = signedSharedSimKey.getValue();
 					PrivKey privKey = keys.get(receiver);
 					if (privKey == null) {
-						return Promise.ofException(new StacklessException(GlobalFsDriver.class, "No private key stored for " + receiver));
+						return Promise.ofException(new StacklessException(PrivateKeyStorage.class, "No private key stored for " + receiver));
 					}
 					try {
 						SimKey newKey = sharedSimKey.decryptSimKey(privKey);

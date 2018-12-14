@@ -21,10 +21,9 @@ import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
-import io.global.common.Hash;
 import io.global.common.PubKey;
-import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
+import io.global.common.api.SharedKeyManager;
 
 import java.util.Map;
 import java.util.Optional;
@@ -32,7 +31,7 @@ import java.util.Set;
 
 import static java.util.Collections.*;
 
-public interface GlobalOTNode {
+public interface GlobalOTNode extends SharedKeyManager {
 	Promise<Set<String>> list(PubKey pubKey);
 
 	Promise<Void> save(RepoID repositoryId, Map<CommitId, RawCommit> commits, Set<SignedData<RawCommitHead>> heads);
@@ -125,10 +124,6 @@ public interface GlobalOTNode {
 		return getHeads(repositoryId, emptySet())
 				.thenApply(headsDelta -> headsDelta.newHeads);
 	}
-
-	Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey);
-
-	Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey receiver, Hash simKeyHash);
 
 	Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest);
 

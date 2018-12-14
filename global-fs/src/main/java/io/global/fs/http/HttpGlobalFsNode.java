@@ -44,7 +44,8 @@ import static io.datakernel.csp.binary.ByteBufsParser.ofDecoder;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
-import static io.global.fs.http.GlobalFsNodeServlet.*;
+import static io.global.fs.api.FsCommand.*;
+import static io.global.fs.http.GlobalFsNodeServlet.SIGNED_CHECKPOINT_CODEC;
 import static java.util.stream.Collectors.toList;
 
 public final class HttpGlobalFsNode implements GlobalFsNode {

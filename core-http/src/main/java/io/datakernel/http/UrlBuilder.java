@@ -115,6 +115,11 @@ public class UrlBuilder {
 		return this;
 	}
 
+	public UrlBuilder appendPathPart(HttpPathPart pathPart) {
+		path.add(pathPart.toString());
+		return this;
+	}
+
 	public UrlBuilder appendPath(String pathTail) {
 		path.addAll(Arrays.asList(pathTail.split("/")));
 		return this;

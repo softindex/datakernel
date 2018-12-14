@@ -28,10 +28,8 @@ import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.process.ChannelByteChunker;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.ToDoException;
 import io.datakernel.http.*;
 import io.datakernel.util.Initializer;
-import io.datakernel.util.TypeT;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -39,12 +37,12 @@ import io.global.common.SignedData;
 import io.global.ot.api.*;
 import io.global.ot.util.HttpDataFormats;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
-import static io.datakernel.codec.StructuredCodecs.ofSet;
+import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
@@ -57,16 +55,13 @@ import static io.datakernel.http.IAsyncHttpClient.ensureOk200;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.util.CollectionUtils.map;
+import static io.global.ot.api.OTCommand.*;
 import static io.global.ot.http.RawServerServlet.DEFAULT_CHUNK_SIZE;
-import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static io.global.ot.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 
 public class GlobalOTNodeHttpClient implements GlobalOTNode {
-	private static final StructuredCodec<CommitEntry> COMMIT_ENTRY_STRUCTURED_CODEC = REGISTRY.get(CommitEntry.class);
-	private static final StructuredCodec<SignedData<RawSnapshot>> SIGNED_SNAPSHOT_CODEC = REGISTRY.get(new TypeT<SignedData<RawSnapshot>>() {});
-
 	private final IAsyncHttpClient httpClient;
 	private final String url;
 
@@ -127,7 +122,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 				.thenApply(res ->
 						BinaryChannelSupplier.of(res.getBodyStream())
 								.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
-										.andThen(buf -> decode(COMMIT_ENTRY_STRUCTURED_CODEC, buf)))
+										.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
 				);
 	}
 
@@ -139,7 +134,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 				request(POST, UPLOAD, apiQuery(repositoryId))
 						.withBodyStream(
 								queue.getSupplier()
-										.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_STRUCTURED_CODEC, commitEntry))
+										.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
 										.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
 						))
 				.thenCompose(ensureOk200())
@@ -172,7 +167,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 						}
 						try {
 							return Promise.of(Optional.of(
-									decode(SIGNED_SNAPSHOT_CODEC, body)));
+									decode(SIGNED_SNAPSHOT_CODEC, body.getArray())));
 						} catch (ParseException e) {
 							return Promise.ofException(e);
 						}
@@ -200,29 +195,59 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	@Override
 	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
 		return httpClient.request(
-				request(POST, SHARE_KEY + "/" + receiver.asString(),
-						apiQuery((RepoID) null))
+				request(POST, SHARE_KEY, receiver.asString())
 						.initialize(withJson(SIGNED_SHARED_KEY_JSON, simKey)))
 				.thenCompose(ensureResponseBody())
 				.thenCompose(r -> processResult(r, null));
 	}
 
 	@Override
-	public Promise<Optional<SignedData<SharedSimKey>>> getSharedKey(PubKey receiver, Hash simKeyHash) {
-		throw new ToDoException();
+	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash simKeyHash) {
+		return httpClient.request(
+				request(GET, GET_SHARED_KEY, urlEncodePubKey(receiver) + "/" + simKeyHash.asString()))
+				.thenCompose(ensureResponseBody())
+				.thenCompose(r -> processResult(r, SIGNED_SHARED_KEY_JSON));
+	}
+
+	@Override
+	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
+		return httpClient.request(
+				request(GET, GET_SHARED_KEYS, urlEncodePubKey(receiver)))
+				.thenCompose(ensureResponseBody())
+				.thenCompose(r -> processResult(r, ofList(SIGNED_SHARED_KEY_JSON)));
 	}
 
 	@Override
 	public Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
-		throw new ToDoException();
+		return httpClient.request(
+				request(POST, SEND_PULL_REQUEST, "")
+						.withBody(encode(SIGNED_PULL_REQUEST_CODEC, pullRequest)))
+				.thenCompose(ensureResponseBody())
+				.thenCompose(r -> processResult(r, null));
 	}
 
 	@Override
 	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
-		throw new ToDoException();
+		return httpClient.request(request(GET, GET_PULL_REQUESTS, apiQuery(repositoryId)))
+				.thenCompose(ensureResponseBody())
+				.thenCompose(r -> {
+					if (r.getCode() != 200)
+						return Promise.ofException(HttpException.ofCode(r.getCode()));
+					ByteBuf body = r.takeBody();
+					try {
+						try {
+							return Promise.of(
+									decode(ofSet(SIGNED_PULL_REQUEST_CODEC), body.getArray()));
+						} catch (ParseException e) {
+							return Promise.ofException(e);
+						}
+					} finally {
+						body.recycle();
+					}
+				});
 	}
 
-	private HttpRequest request(HttpMethod httpMethod, @Nullable String apiMethod, String apiQuery) {
+	private HttpRequest request(HttpMethod httpMethod, @Nullable OTCommand apiMethod, String apiQuery) {
 		return HttpRequest.of(httpMethod, url + (apiMethod != null ? apiMethod : "") + (apiQuery != null ? "/" + apiQuery : ""));
 	}
 

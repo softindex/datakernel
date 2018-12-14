@@ -16,7 +16,6 @@
 
 package io.global.ot.http;
 
-import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.process.ChannelByteChunker;
@@ -25,21 +24,16 @@ import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
-import io.datakernel.util.TypeT;
+import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import io.global.ot.api.CommitId;
-import io.global.ot.api.GlobalOTNode;
-import io.global.ot.api.GlobalOTNode.CommitEntry;
-import io.global.ot.api.RawSnapshot;
-import io.global.ot.api.RepoID;
+import io.global.ot.api.*;
 import io.global.ot.util.HttpDataFormats;
 
 import java.util.Arrays;
 import java.util.Set;
 
-import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
-import static io.datakernel.codec.StructuredCodecs.ofSet;
+import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
@@ -47,7 +41,7 @@ import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.util.ParserFunction.asFunction;
-import static io.global.ot.util.BinaryDataFormats.REGISTRY;
+import static io.global.ot.api.OTCommand.*;
 import static io.global.ot.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toSet;
@@ -59,9 +53,6 @@ public final class RawServerServlet implements WithMiddleware {
 			Arrays.stream(s.split(","))
 					.map(asFunction(HttpDataFormats::urlDecodeCommitId))
 					.collect(toSet());
-
-	private static final StructuredCodec<CommitEntry> COMMIT_ENTRY_STRUCTURED_CODEC = REGISTRY.get(CommitEntry.class);
-	private static final StructuredCodec<SignedData<RawSnapshot>> SIGNED_SNAPSHOT_CODEC = REGISTRY.get(new TypeT<SignedData<RawSnapshot>>() {});
 
 	private final MiddlewareServlet middlewareServlet;
 
@@ -121,13 +112,32 @@ public final class RawServerServlet implements WithMiddleware {
 				.with(POST, "/" + SHARE_KEY + "/:owner", ensureRequestBody(req ->
 						node.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SIGNED_SHARED_KEY_JSON, req.getBody().getString(UTF_8)))
 								.thenApply($ -> HttpResponse.ok200())))
+				.with(GET, "/" + GET_SHARED_KEY + "/:owner/:hash", req -> node.getSharedKey(
+						req.parsePathParameter("owner", HttpDataFormats::urlDecodePubKey),
+						req.parsePathParameter("hash", Hash::parseString))
+						.thenApply(sharedSimKey -> HttpResponse.ok200()
+								.withBody(toJson(SIGNED_SHARED_KEY_JSON, sharedSimKey).getBytes(UTF_8))
+						))
+				.with(GET, "/" + GET_SHARED_KEYS + "/:owner", req -> node.getSharedKeys(
+						req.parsePathParameter("owner", HttpDataFormats::urlDecodePubKey))
+						.thenApply(sharedSimKeys -> HttpResponse.ok200()
+								.withBody(toJson(ofList(SIGNED_SHARED_KEY_JSON), sharedSimKeys).getBytes(UTF_8))
+						))
+				.with(POST, "/" + SEND_PULL_REQUEST, ensureRequestBody(req -> {
+					SignedData<RawPullRequest> pullRequest = decode(SIGNED_PULL_REQUEST_CODEC, req.takeBody());
+					return node.sendPullRequest(pullRequest)
+							.thenApply($ -> HttpResponse.ok200());
+				}))
+				.with(GET, "/" + GET_PULL_REQUESTS + "/:pubKey/:name", req -> node.getPullRequests(urlDecodeRepositoryId(req))
+						.thenApply(pullRequests -> HttpResponse.ok200()
+								.withBody(encode(ofSet(SIGNED_PULL_REQUEST_CODEC), pullRequests))))
 				.with(GET, "/" + DOWNLOAD, req -> node.download(
 						urlDecodeRepositoryId(req),
 						req.parseQueryParameter("required", COMMIT_IDS_PARSER),
 						req.parseQueryParameter("existing", COMMIT_IDS_PARSER))
 						.thenApply(downloader -> HttpResponse.ok200()
 								.withBodyStream(downloader
-										.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_STRUCTURED_CODEC, commitEntry))
+										.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
 										.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
 								)
 						))
@@ -135,7 +145,7 @@ public final class RawServerServlet implements WithMiddleware {
 					RepoID repoID = urlDecodeRepositoryId(req);
 					return BinaryChannelSupplier.of(req.getBodyStream())
 							.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
-									.andThen(buf -> decode(COMMIT_ENTRY_STRUCTURED_CODEC, buf)))
+									.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
 							.streamTo(node.uploader(repoID))
 							.thenApply($ -> HttpResponse.ok200());
 				});

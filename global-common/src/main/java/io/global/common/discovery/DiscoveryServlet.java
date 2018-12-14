@@ -33,16 +33,9 @@ import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.global.common.BinaryDataFormats.REGISTRY;
+import static io.global.common.api.DiscoveryCommand.*;
 
 public final class DiscoveryServlet implements WithMiddleware {
-	public static final String ANNOUNCE_ALL = "announceAll";
-	public static final String ANNOUNCE = "announce";
-	public static final String FIND = "find";
-	public static final String FIND_ALL = "findAll";
-	public static final String SHARE_KEY = "shareKey";
-	public static final String GET_SHARED_KEY = "getSharedKey";
-	public static final String GET_SHARED_KEYS = "getSharedKeys";
-
 	private final MiddlewareServlet servlet;
 
 	static final StructuredCodec<SignedData<AnnounceData>> SIGNED_ANNOUNCE = REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
@@ -59,13 +52,13 @@ public final class DiscoveryServlet implements WithMiddleware {
 
 	private MiddlewareServlet servlet(DiscoveryService discoveryService) {
 		return MiddlewareServlet.create()
-				.with(HttpMethod.PUT, "/" + ANNOUNCE_ALL + "/:owner", ensureRequestBody(request -> {
+				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", ensureRequestBody(request -> {
 					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
 					SignedData<AnnounceData> announceData = decode(SIGNED_ANNOUNCE, request.takeBody());
 					return discoveryService.announce(owner, announceData)
 							.thenApply($ -> HttpResponse.ok201());
 				}))
-				.with(HttpMethod.GET, "/" + FIND_ALL + "/:owner", request ->
+				.with(HttpMethod.GET, "/" + FIND + "/:owner", request ->
 						discoveryService.find(PubKey.fromString(request.getPathParameter("owner")))
 								.thenComposeEx((data, e) ->
 										e == null ?

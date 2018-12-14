@@ -25,12 +25,9 @@ import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
-import io.global.ot.api.CommitId;
+import io.global.ot.api.*;
 import io.global.ot.api.GlobalOTNode.Heads;
 import io.global.ot.api.GlobalOTNode.HeadsInfo;
-import io.global.ot.api.RawCommit;
-import io.global.ot.api.RawCommitHead;
-import io.global.ot.api.RepoID;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
@@ -45,18 +42,9 @@ import static io.datakernel.http.HttpUtils.urlEncode;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 
 public class HttpDataFormats {
-	private HttpDataFormats() {}
-
-	public static final String LIST = "list";
-	public static final String SAVE = "save";
-	public static final String LOAD_COMMIT = "loadCommit";
-	public static final String GET_HEADS_INFO = "getHeadsInfo";
-	public static final String SAVE_SNAPSHOT = "saveSnapshot";
-	public static final String LOAD_SNAPSHOT = "loadSnapshot";
-	public static final String GET_HEADS = "getHeads";
-	public static final String SHARE_KEY = "shareKey";
-	public static final String DOWNLOAD = "download";
-	public static final String UPLOAD = "upload";
+	private HttpDataFormats() {
+		throw new AssertionError();
+	}
 
 	private static final StructuredCodec<SignedData<RawCommitHead>> SIGNED_COMMIT_HEAD_CODEC = REGISTRY.get(new TypeT<SignedData<RawCommitHead>>() {});
 	private static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_KEY_CODEC = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
@@ -69,6 +57,9 @@ public class HttpDataFormats {
 				item -> encode(binaryCodec, item).asArray());
 	}
 
+	public static final StructuredCodec<SignedData<RawPullRequest>> SIGNED_PULL_REQUEST_CODEC = REGISTRY.get(new TypeT<SignedData<RawPullRequest>>() {});
+	public static final StructuredCodec<SignedData<RawSnapshot>> SIGNED_SNAPSHOT_CODEC = REGISTRY.get(new TypeT<SignedData<RawSnapshot>>() {});
+	public static final StructuredCodec<GlobalOTNode.CommitEntry> COMMIT_ENTRY_CODEC = REGISTRY.get(GlobalOTNode.CommitEntry.class);
 	public static final StructuredCodec<SignedData<RawCommitHead>> SIGNED_COMMIT_HEAD_JSON = ofBinaryCodec(SIGNED_COMMIT_HEAD_CODEC);
 	public static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_KEY_JSON = ofBinaryCodec(SIGNED_SHARED_KEY_CODEC);
 	public static final StructuredCodec<RawCommit> COMMIT_JSON = ofBinaryCodec(COMMIT_CODEC);
