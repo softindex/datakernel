@@ -1,0 +1,2 @@
+1. [CRDT example](https://github.com/softindex/datakernel/blob/master/examples/crdt/src/main/java/io/datakernel/examples/CrdtExample.java) - 
+an example of conflict-free merging of two modified replicas.

@@ -5,3 +5,5 @@ sent to a channel via `ChannelConsumer` and received from a channel by `ChannelS
 * Ability to handle exceptions and appropriately close channels, releasing resources and propagating exceptions through 
 communication pipeline.
 * Rich DSL that allows to write concise easy-to-read code.
+
+You can explore CSP examples [here](https://github.com/softindex/datakernel/tree/master/examples/csp).

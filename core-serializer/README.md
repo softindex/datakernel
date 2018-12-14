@@ -1,4 +1,4 @@
-Serializers module is a bytecode generator of extremely fast and space efficient serializers, which are used for 
+Serializer module is a bytecode generator of extremely fast and space efficient serializers, which are used for 
 transferring data over wire or persisting it into a file system or database.
 
 * Schema-less approach - for maximum performance and compactness (unlike other serializers, there is no overhead 
@@ -10,44 +10,7 @@ A common usage for a serializer is to pass some serialized class instances throu
 remote machines for further processing. This approach is used in RPC, Dataflow and LSMT-Database modules. Serialization 
 process can be configured via annotations.
 
-## Examples
-
-1. [Simple Object Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/SimpleObjectSerializationExample.java) - serialization and deserialization of a simple object.
-2. [Complex Object Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/ComplexObjectSerializationExample.java) - serialization and deserialization of a more complex object, which contains nullable fields, map, list and a two-dimensional array.
-3. [Fixed Size Fields Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/FixedSizeFieldsSerializationExample.java) -
-4. [Generics & Interfaces Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/GenericsAndInterfacesSerializationExample.java) -
-
-To run the example, you should execute these lines in the console in appropriate folder:
-{% highlight bash %}
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/serializer
-$ mvn clean compile exec:java@SimpleObjectSerializationExample
-$ # OR
-$ mvn clean compile exec:java@ComplexObjectSerializationExample
-$ # OR
-$ mvn clean compile exec:java@FixedSizeFieldsSerializationExample
-$ # OR
-$ mvn clean compile exec:java@GenericsAndInterfacesSerializationExample
-{% endhighlight %}
-
-If you run the first example, you'll get the following output:
-{% highlight bash %}
-10 10
-abc abc
-20 20
-30 30
-40 40
-123 123
-{% endhighlight %}
-* The first column represents values of a test object 1, while the second one shows values of test object 2, which was created with the help of serialization and then deserialization of the test object 1.
-* The same logic for output of Complex Object Serialization and Generics and Interfaces Serialization examples.
-
-If you run Fixed Size Fields Serialization Example, you'll get the following output:
-{% highlight bash %}
-[abc, null, 123, superfluous] [abc, null, 123]
-[1, 2, 3, 4] [1, 2, 3, 4]
-{% endhighlight %}
-Since SerializeFixedSize for String array was set at value 3, "superfluous" was removed while serialization.
+### You can explore Serializer examples [here](https://github.com/softindex/datakernel/tree/master/examples/serializer)
 
 ## Benchmark
 

@@ -10,15 +10,4 @@ CompletableFutures.
 * Promise module also contains utility classes that help to collect results of promises, add loops and conditional logic 
 to promises execution.
 
-## Examples
-1. [Promises Example]() - some basic functionality of Promises.
-2. [Async File Example]() - an example of asynchronous work with a text file using Promise.
-
-To run the examples, you should execute these lines in the console in appropriate folder:
-{% highlight bash %}
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/async
-$ mvn clean compile exec:java@PromisesExample
-$ #or
-$ mvn mvn clean compile exec:java@AsyncFileExample
-{% endhighlight %}
+### You can explore Promise examples [here](https://github.com/softindex/datakernel/tree/master/examples/promise)

@@ -203,5 +203,11 @@ Using this module you can build a server application that will be compatible wit
 [UIKernel integration example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration)
 
 ##Getting started
-In [this guide](https://github.com/softindex/datakernel/tree/gh-pages/examples/getting-started) you can create a simple 
-“Hello World” application using Eventloop, which is the core component of Datakernel Framework.
+There are several guides which demonstrate basic yet extremely important features of DataKernel to get the overall 
+understanding of the framework:
+1. ["Hello World!"](https://github.com/softindex/datakernel/tree/gh-pages/examples/getting-started) - this guide shows 
+ how to create a simple “Hello World” application using Eventloop, which is the core component of Datakernel framework.
+2. ["Hello World!" HTTP Server](https://github.com/softindex/datakernel/tree/master/examples/http-helloworld) - create a 
+simple but scalable HTTP server using Boot and HTTP modules.
+3. [Remote key-value storage](https://github.com/softindex/datakernel/tree/master/examples/remote-key-value-storage) - in 
+this guide we will create a remote key-value storage with basic operations "put" and "get" utilizing Boot andRPC modules.

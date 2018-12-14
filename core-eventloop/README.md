@@ -8,15 +8,5 @@ building client-server applications with high performance requirements.
 * Eventloop can schedule/delay certain tasks for later execution or background execution.
 * Because Eventloop is single-threaded it doesn't have to deal with concurrency overhead.
 
-## Examples
-1. [Busy Wait Eventloop Echo Server]() - poor implementation of echo server at is looping infinitely while trying to data from socket.
-2. [Selector Eventloop Echo Server]() -
+### You can explore Eventloop examples [here](https://github.com/softindex/datakernel/tree/master/examples/eventloop)
 
-To run the examples, you should execute these three lines in the console in appropriate folder:
-```
-$ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/eventloop
-$ mvn clean compile exec:java@BusyWaitEventloopEchoServer
-$ # OR
-$ mvn clean compile exec:java@SelectorEventloopEchoServer
-```

@@ -1,3 +1,0 @@
-this is a small little demo file to be uploaded into Global-FS
-
-hurray!
