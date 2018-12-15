@@ -180,12 +180,12 @@ public interface ChannelConsumer<T> extends Cancellable {
 
 			@Override
 			protected void onClosed(Throwable e) {
-				if (consumer == null) consumer = provider.get();
-				consumer.close(e);
+				if (consumer != null) {
+					consumer.close(e);
+				}
 			}
 		};
 	}
-
 
 	/**
 	 * Wraps {@link AsyncTcpSocket#write(ByteBuf)} operation into {@link ChannelConsumer}

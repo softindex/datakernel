@@ -16,8 +16,9 @@
 
 package io.global.fs.http;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
@@ -62,25 +63,30 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 	}
 
 	@Override
-	public ChannelConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
-		ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
-		MaterializedPromise<HttpResponse> request = client.request(HttpRequest.post(
-				url + UrlBuilder.relative()
-						.appendPathPart(UPLOAD)
-						.appendPathPart(space.asString())
-						.appendPath(filename)
-						.appendQuery("offset", "" + offset)
-						.build())
-				.withBodyStream(buffer.getSupplier().transformWith(new FrameEncoder())))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(ensureStatusCode(200, 201))
-				.materialize();
-		return buffer.getConsumer().withAcknowledgement(ack -> ack.both(request));
-	}
-
-	@Override
 	public Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset) {
-		return Promise.of(uploader(space, filename, offset));
+		SettablePromise<ChannelConsumer<DataFrame>> channelPromise = new SettablePromise<>();
+		SettablePromise<HttpResponse> responsePromise = new SettablePromise<>();
+
+		client.request(
+				HttpRequest.post(
+						url + UrlBuilder.relative()
+								.appendPathPart(UPLOAD)
+								.appendPathPart(space.asString())
+								.appendPath(filename)
+								.appendQuery("offset", "" + offset)
+								.build())
+						.withBodyStream(ChannelSupplier.ofLazyProvider(() -> {
+							ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
+							channelPromise.trySet(buffer.getConsumer()
+									.transformWith(new FrameEncoder())
+									.withAcknowledgement(ack -> ack.both(responsePromise)));
+							return buffer.getSupplier();
+						})))
+				.thenCompose(ensureStatusCode(200, 201))
+				.whenException(channelPromise::trySetException)
+				.whenComplete(responsePromise::trySet);
+
+		return channelPromise;
 	}
 
 	@Override

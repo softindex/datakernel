@@ -17,6 +17,7 @@
 package io.global.fs.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.csp.ChannelConsumer;
@@ -52,13 +53,10 @@ public class HttpFsClient implements FsClient {
 
 	@Override
 	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset) {
-		return Promise.of(uploader(filename, offset));
-	}
+		SettablePromise<ChannelConsumer<ByteBuf>> channelPromise = new SettablePromise<>();
+		SettablePromise<HttpResponse> responsePromise = new SettablePromise<>();
 
-	@Override
-	public ChannelConsumer<ByteBuf> uploader(String filename, long offset) {
-		ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
-		Promise<HttpResponse> res = client.request(
+		client.request(
 				HttpRequest.put(
 						UrlBuilder.http()
 								.withAuthority(address)
@@ -66,10 +64,17 @@ public class HttpFsClient implements FsClient {
 								.appendPath(filename)
 								.appendQuery("offset", "" + offset)
 								.build())
-						.withBodyStream(buffer.getSupplier()))
+						.withBodyStream(ChannelSupplier.ofLazyProvider(() -> {
+							ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
+							channelPromise.trySet(buffer.getConsumer()
+									.withAcknowledgement(ack -> ack.both(responsePromise)));
+							return buffer.getSupplier();
+						})))
 				.thenCompose(ensureStatusCode(200, 201))
-				.materialize();
-		return buffer.getConsumer().withAcknowledgement(ack -> ack.both(res));
+				.whenException(channelPromise::trySetException)
+				.whenComplete(responsePromise::trySet);
+
+		return channelPromise;
 	}
 
 	@Override

@@ -173,8 +173,9 @@ public interface ChannelSupplier<T> extends Cancellable {
 
 			@Override
 			protected void onClosed(Throwable e) {
-				if (supplier == null) supplier = provider.get();
-				supplier.close(e);
+				if (supplier != null) {
+					supplier.close(e);
+				}
 			}
 		};
 	}
