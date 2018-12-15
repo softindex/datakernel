@@ -37,15 +37,7 @@ public interface GlobalFsNode {
 
 	Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset);
 
-	default ChannelConsumer<DataFrame> uploader(PubKey space, String filename, long offset) {
-		return ChannelConsumer.ofPromise(upload(space, filename, offset));
-	}
-
 	Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long limit);
-
-	default ChannelSupplier<DataFrame> downloader(PubKey space, String filename, long offset, long limit) {
-		return ChannelSupplier.ofPromise(download(space, filename, offset, limit));
-	}
 
 	Promise<List<SignedData<GlobalFsCheckpoint>>> list(PubKey space, String glob);
 

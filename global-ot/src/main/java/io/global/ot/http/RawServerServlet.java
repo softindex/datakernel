@@ -16,6 +16,7 @@
 
 package io.global.ot.http;
 
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.process.ChannelByteChunker;
@@ -146,7 +147,7 @@ public final class RawServerServlet implements WithMiddleware {
 					return BinaryChannelSupplier.of(req.getBodyStream())
 							.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
 									.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
-							.streamTo(node.uploader(repoID))
+							.streamTo(ChannelConsumer.ofPromise(node.upload(repoID)))
 							.thenApply($ -> HttpResponse.ok200());
 				});
 	}

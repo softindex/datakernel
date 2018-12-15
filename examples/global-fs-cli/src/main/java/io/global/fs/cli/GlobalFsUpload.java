@@ -19,6 +19,7 @@ package io.global.fs.cli;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.eventloop.Eventloop;
@@ -95,7 +96,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 			}
 		}
 
-		reader.streamTo(gateway.uploader(name, offset))
+		reader.streamTo(ChannelConsumer.ofPromise(gateway.upload(name, offset)))
 				.whenComplete(($, e) -> {
 					if (e == null) {
 						info(name + " upload finished");

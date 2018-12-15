@@ -73,24 +73,26 @@ public final class AbstractCommunicatingProcessTest {
 
 	@Test
 	public void testAckPropagation() {
-		processes[size - 1].getOutput().set(ChannelConsumer.of(value -> {
-			actualData.add(value);
-			if (expectedData.size() == actualData.size()) {
-				deepRecycle(actualData);
-				consumedAll = true;
-			}
-			return Promise.complete();
-		}));
+		processes[size - 1].getOutput()
+				.set(ChannelConsumer.of(value -> {
+					actualData.add(value);
+					if (expectedData.size() == actualData.size()) {
+						deepRecycle(actualData);
+						consumedAll = true;
+					}
+					return Promise.complete();
+				}));
 
 		acknowledgement.whenComplete(assertComplete($ -> assertTrue(consumedAll)));
 	}
 
 	@Test
 	public void testAckPropagationWithFailure() {
-		processes[size - 1].getOutput().set(ChannelConsumer.of(value -> {
-			tryRecycle(value);
-			return Promise.ofException(error);
-		}));
+		processes[size - 1].getOutput()
+				.set(ChannelConsumer.of(value -> {
+					tryRecycle(value);
+					return Promise.ofException(error);
+				}));
 
 		acknowledgement.whenComplete(assertFailure(e -> assertSame(error, e)));
 	}

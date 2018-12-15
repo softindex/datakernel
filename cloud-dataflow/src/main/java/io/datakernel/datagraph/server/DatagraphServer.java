@@ -126,7 +126,8 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		} else {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 		}
-		streamSerializer.getOutput().set(forwarder.getConsumer());
+		streamSerializer.getOutput()
+				.set(forwarder.getConsumer());
 		return streamSerializer;
 	}
 

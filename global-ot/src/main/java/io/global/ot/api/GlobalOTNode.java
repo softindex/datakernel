@@ -166,15 +166,6 @@ public interface GlobalOTNode extends SharedKeyManager {
 	Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId,
 			Set<CommitId> required, Set<CommitId> existing);
 
-	default ChannelSupplier<CommitEntry> downloader(RepoID repositoryId,
-			Set<CommitId> required, Set<CommitId> existing) {
-		return ChannelSupplier.ofPromise(download(repositoryId, required, existing));
-	}
-
 	Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId);
-
-	default ChannelConsumer<CommitEntry> uploader(RepoID repositoryId) {
-		return ChannelConsumer.ofPromise(upload(repositoryId));
-	}
 
 }

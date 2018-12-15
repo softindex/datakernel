@@ -589,8 +589,8 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 			private Promise<Void> doFetch(GlobalOTNode node) {
 				return getHeadsInfo(repositoryId)
-						.thenCompose(headsInfo -> node.downloader(repositoryId, headsInfo.getRequired(), headsInfo.getExisting())
-								.streamTo(uploader(repositoryId)));
+						.thenCompose(headsInfo -> ChannelSupplier.ofPromise(node.download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
+								.streamTo(ChannelConsumer.ofPromise(upload(repositoryId))));
 			}
 
 			private Promise<Void> doCatchUp() {
@@ -626,8 +626,8 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 			private Promise<Void> doPush(GlobalOTNode node) {
 				return node.getHeadsInfo(repositoryId)
-						.thenCompose(headsInfo -> downloader(repositoryId, headsInfo.getRequired(), headsInfo.getExisting())
-								.streamTo(node.uploader(repositoryId)));
+						.thenCompose(headsInfo -> ChannelSupplier.ofPromise(download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
+								.streamTo(ChannelConsumer.ofPromise(node.upload(repositoryId))));
 			}
 		}
 	}

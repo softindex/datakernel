@@ -59,7 +59,8 @@ public class ChannelSplitterTest {
 				.withInput(ChannelSupplier.ofIterable(expected));
 
 		for (int i = 0; i < n; i++) {
-			splitter.addOutput().set(ChannelConsumer.of(AsyncConsumer.<String>of(theList::add)).async());
+			splitter.addOutput()
+					.set(ChannelConsumer.of(AsyncConsumer.<String>of(theList::add)).async());
 		}
 
 		splitter.startProcess().whenComplete(assertComplete());
@@ -82,7 +83,8 @@ public class ChannelSplitterTest {
 				.withInput(ChannelSuppliers.concat(ChannelSupplier.ofIterable(expected), ChannelSupplier.ofException(new StacklessException(ChannelSplitterTest.class, "test exception"))));
 
 		for (int i = 0; i < n; i++) {
-			splitter.addOutput().set(ChannelConsumer.of(AsyncConsumer.of((String s) -> { /*noop*/ })).async());
+			splitter.addOutput()
+					.set(ChannelConsumer.of(AsyncConsumer.of((String s) -> { /*noop*/ })).async());
 		}
 
 		splitter.startProcess().whenComplete(assertFailure("test exception"));
@@ -104,9 +106,11 @@ public class ChannelSplitterTest {
 
 		for (int i = 0; i < n; i++) {
 			if (i == n / 2) {
-				splitter.addOutput().set(ChannelConsumer.ofException(new StacklessException(ChannelSplitterTest.class, "test exception")));
+				splitter.addOutput()
+						.set(ChannelConsumer.ofException(new StacklessException(ChannelSplitterTest.class, "test exception")));
 			} else {
-				splitter.addOutput().set(ChannelConsumer.of(AsyncConsumer.of((String s) -> { /*noop*/ })).async());
+				splitter.addOutput()
+						.set(ChannelConsumer.of(AsyncConsumer.of((String s) -> { /*noop*/ })).async());
 			}
 		}
 

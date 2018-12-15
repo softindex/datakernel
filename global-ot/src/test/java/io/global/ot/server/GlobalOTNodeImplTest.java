@@ -18,6 +18,7 @@ package io.global.ot.server;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promises;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -224,7 +225,7 @@ public class GlobalOTNodeImplTest {
 
 		HeadsInfo headsInfo = await(masterNode.getHeadsInfo(REPO_ID));
 
-		List<CommitEntry> commitEntries = await(masterNode.downloader(REPO_ID, set(getCommitId(15)), emptySet()).toList());
+		List<CommitEntry> commitEntries = await(ChannelSupplier.ofPromise(masterNode.download(REPO_ID, set(getCommitId(15)), emptySet())).toList());
 		Set<CommitId> heads = commitEntries.stream()
 				.filter(CommitEntry::hasHead)
 				.map(entry -> entry.getHead().getValue().getCommitId())
@@ -248,7 +249,7 @@ public class GlobalOTNodeImplTest {
 		entries.add(createCommitEntry(set(1), 1, false));      // id - 6
 		entries.add(createCommitEntry(set(2), 2, true));       // id - 7, head
 
-		await(ChannelSupplier.ofIterable(entries).streamTo(masterNode.uploader(REPO_ID)));
+		await(ChannelSupplier.ofIterable(entries).streamTo(ChannelConsumer.ofPromise(masterNode.upload(REPO_ID))));
 		assertHeads(masterStorage, 4, 7);
 		assertCommits(masterStorage, 1, 2, 3, 4, 5, 6, 7);
 	}
@@ -260,8 +261,8 @@ public class GlobalOTNodeImplTest {
 
 		HeadsInfo headsInfoMaster = await(masterNode.getHeadsInfo(REPO_ID));
 		HeadsInfo headsInfoIntermediate = await(intermediateNode.getHeadsInfo(REPO_ID));
-		await(masterNode.downloader(REPO_ID, union(headsInfoMaster.getExisting(), headsInfoIntermediate.getRequired()), headsInfoIntermediate.getExisting())
-				.streamTo(intermediateNode.uploader(REPO_ID)));
+		await(ChannelSupplier.ofPromise(masterNode.download(REPO_ID, union(headsInfoMaster.getExisting(), headsInfoIntermediate.getRequired()), headsInfoIntermediate.getExisting()))
+				.streamTo(ChannelConsumer.ofPromise(intermediateNode.upload(REPO_ID))));
 
 		assertHeads(5, 9);
 		assertCommits(1, 2, 3, 4, 5, 6, 7, 8, 9);

@@ -17,7 +17,6 @@
 package io.datakernel.examples;
 
 import com.google.inject.*;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
@@ -91,17 +90,16 @@ public class FileDownloadExample extends Launcher {
 	@Override
 	protected void run() throws Exception {
 		eventloop.post(() -> {
-			ChannelFileWriter consumer = null;
+			ChannelFileWriter consumer;
 			try {
 				consumer = ChannelFileWriter.create(executor, CLIENT_STORAGE.resolve(DOWNLOADED_FILE));
 			} catch (Exception e) {
 				throw new UncheckedException(e);
 			}
 
-			ChannelSupplier<ByteBuf> supplier = client.downloader(REQUIRED_FILE, 0);
-
 			// producer result here means that file was successfully downloaded from server
-			supplier.streamTo(consumer)
+			ChannelSupplier.ofPromise(client.download(REQUIRED_FILE, 0))
+					.streamTo(consumer)
 					.whenComplete(($, e) -> {
 						if (e != null) {
 							logger.error("Server error while sending file " + DOWNLOADED_FILE, e);

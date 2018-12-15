@@ -169,18 +169,20 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 										.lenient();
 
 								if (doesUploadCaching || consumers.isEmpty()) {
-									splitter.addOutput().set(ChannelConsumer.ofPromise(ns.save(filename, offset))
-											.withAcknowledgement(ack -> ack.whenException(splitter::close)));
+									splitter.addOutput()
+											.set(ChannelConsumer.ofPromise(ns.save(filename, offset))
+													.withAcknowledgement(ack -> ack.whenException(splitter::close)));
 								}
 
 								int[] up = {consumers.size()};
 
-								consumers.forEach(output -> splitter.addOutput().set(output
-										.withAcknowledgement(ack -> ack.whenException(e -> {
-											if (e != null && --up[0] < uploadSuccessNumber) {
-												splitter.close(e);
-											}
-										}))));
+								consumers.forEach(output -> splitter.addOutput()
+										.set(output
+												.withAcknowledgement(ack -> ack.whenException(e -> {
+													if (e != null && --up[0] < uploadSuccessNumber) {
+														splitter.close(e);
+													}
+												}))));
 
 								MaterializedPromise<Void> process = splitter.startProcess();
 
@@ -227,7 +229,8 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 																					ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(supplier);
 
-																					splitter.addOutput().set(ChannelConsumer.ofPromise(ns.save(filename, offset)));
+																					splitter.addOutput()
+																							.set(ChannelConsumer.ofPromise(ns.save(filename, offset)));
 
 																					return splitter.addOutput()
 																							.getSupplier()

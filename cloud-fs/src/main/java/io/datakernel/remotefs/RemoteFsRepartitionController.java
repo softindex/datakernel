@@ -21,6 +21,8 @@ import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -123,7 +125,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					allFiles = list.size();
 					return Promises.runSequence( // just handling all local files sequentially
 							filterNot(list.stream(), negativeGlob)
-									.map(meta -> (AsyncSupplier<Void>) () ->repartitionFile(meta)
+									.map(meta -> (AsyncSupplier<Void>) () -> repartitionFile(meta)
 											.whenComplete(singleFileRepartitionPromiseStats.recordStats())
 											.thenCompose(success -> {
 												if (success) {
@@ -190,7 +192,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					logger.trace("uploading file {} to partitions {}...", meta, uploadTargets);
 
 					ChannelSplitter<ByteBuf> splitter = ChannelSplitter.<ByteBuf>create()
-							.withInput(localStorage.downloader(name));
+							.withInput(ChannelSupplier.ofPromise(localStorage.download(name)));
 
 					// recycle original non-slice buffer
 					return Promises.toList(uploadTargets.stream() // upload file to target partitions
@@ -201,8 +203,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 								// upload file to this partition
 								return getAcknowledgement(cb ->
 										splitter.addOutput()
-												.set(clients.get(partitionId) // upload file to this partition
-														.uploader(name)
+												.set(ChannelConsumer.ofPromise(clients.get(partitionId).upload(name))
 														.withAcknowledgement(cb)))
 										.whenException(e -> {
 											logger.warn("failed uploading to partition " + partitionId + " (" + e + ')');

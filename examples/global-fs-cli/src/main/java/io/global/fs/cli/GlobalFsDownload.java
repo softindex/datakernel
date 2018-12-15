@@ -19,6 +19,7 @@ package io.global.fs.cli;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
@@ -79,7 +80,8 @@ public final class GlobalFsDownload implements Callable<Void> {
 			writer = ChannelFileWriter.create(AsyncFile.open(executor, Paths.get(localFile), OPEN_OPTIONS));
 		}
 
-		gateway.downloader(file, offset, length).streamTo(writer)
+		ChannelSupplier.ofPromise(gateway.download(file, offset, length))
+				.streamTo(writer)
 				.whenComplete(($, e) -> {
 					if (e == null) {
 						info(file + " download finished");

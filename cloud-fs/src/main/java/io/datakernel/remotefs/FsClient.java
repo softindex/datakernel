@@ -63,23 +63,6 @@ public interface FsClient {
 	}
 
 	/**
-	 * Shortcut which unwraps promise of consumer into a consumer that consumes when promise is complete.
-	 * <p>
-	 * It merges connection errors into end-of-stream promise, so on connection failure
-	 * returned stream closes with the error.
-	 *
-	 * @param filename name of the file to upload
-	 * @return stream consumer of byte buffers
-	 */
-	default ChannelConsumer<ByteBuf> uploader(String filename) {
-		return ChannelConsumer.ofPromise(upload(filename));
-	}
-
-	default ChannelConsumer<ByteBuf> uploader(String filename, long offset) {
-		return ChannelConsumer.ofPromise(upload(filename, offset));
-	}
-
-	/**
 	 * Returns a supplier of bytebufs which are read (or received) from the file.
 	 * If file does not exist, or specified range goes beyond it's size,
 	 * an error will be returned from the server.
@@ -114,34 +97,6 @@ public interface FsClient {
 	 */
 	default Promise<ChannelSupplier<ByteBuf>> download(String filename) {
 		return download(filename, 0, -1);
-	}
-
-	/**
-	 * Shortcut which unwraps promise of supplier into a supplier that produces when promise is complete
-	 *
-	 * @see #download(String, long, long)
-	 */
-	default ChannelSupplier<ByteBuf> downloader(String filename, long offset, long length) {
-		return ChannelSupplier.ofPromise(download(filename, offset, length));
-	}
-
-	/**
-	 * Same shortcut but for downloading the whole file from given offset.
-	 *
-	 * @see #download(String, long)
-	 */
-	default ChannelSupplier<ByteBuf> downloader(String filename, long offset) {
-		return ChannelSupplier.ofPromise(download(filename, offset));
-	}
-
-	/**
-	 * Same shortcut but for downloading the whole file.
-	 *
-	 * @param filename name of the file to be downloaded
-	 * @see #download(String)
-	 */
-	default ChannelSupplier<ByteBuf> downloader(String filename) {
-		return ChannelSupplier.ofPromise(download(filename));
 	}
 
 	/**

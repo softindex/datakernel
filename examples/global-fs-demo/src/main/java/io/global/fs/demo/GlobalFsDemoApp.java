@@ -23,6 +23,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
@@ -173,7 +174,8 @@ public final class GlobalFsDemoApp extends Launcher {
 				discoveryService.announce(aliceKeys.getPubKey(), announceData)
 						.thenCompose($ -> storage.upload(testFile))
 						.thenCompose(ChannelSupplier.of(wrapUtf8("thats some test data right in that file!\n"))::streamTo)
-						.thenCompose($ -> storage.downloader(testFile).streamTo(alice.uploader(testFile)))
+						.thenCompose($ -> ChannelSupplier.ofPromise(storage.download(testFile))
+								.streamTo(ChannelConsumer.ofPromise(alice.upload(testFile))))
 						.whenException(Throwable::printStackTrace)
 						.whenComplete(($, e) -> shutdown())
 		);

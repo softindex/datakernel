@@ -100,7 +100,7 @@ public class FileUploadExample extends Launcher {
 				throw new UncheckedException(e);
 			}
 
-			ChannelConsumer<ByteBuf> consumer = client.uploader(FILE_NAME);
+			ChannelConsumer<ByteBuf> consumer = ChannelConsumer.ofPromise(client.upload(FILE_NAME));
 
 			// consumer result here is a marker of it being successfully uploaded
 			producer.streamTo(consumer)
