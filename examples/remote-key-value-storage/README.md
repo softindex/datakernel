@@ -35,10 +35,9 @@ fast serialzers and custom optimized communication protocol, which enables to gr
 
 To download the complete example, enter next commands:
 ```
-$ git clone https://github.com/softindex/datakernel-examples
-$ cd datakernel-examples/tutorials/remote-key-value-storage
+$ git clone https://github.com/softindex/datakernel
+$ cd datakernel/examples/remote-key-value-storage
 ```
-
 
 Then, go to [testing](#testing) section.
 
@@ -99,12 +98,12 @@ Next, configure your pom.xml file. We will need the following dependencies: RPC,
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-rpc</artifactId>
-            <version>{{site.datakernel_version}}</version>
+            <version>3.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-boot</artifactId>
-            <version>{{site.datakernel_version}}</version>
+            <version>3.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>

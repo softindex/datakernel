@@ -6,9 +6,7 @@ DataKernel uses event-driven programming model. The key component of Datakernel 
 
 Most Datakernel modules, including HTTP, are based on Eventloop. Since Eventloop is single-threaded, we cannot use all capacities of modern multi-core processors if we run only one HTTP-server/Eventloop. If we want to load all cores of processor, we should use worker servers and load-balancer to distribute requests between those servers.
 
-In this tutorial we will build the following architecture which is suitable for 4-core processors:
-
-<img src="/static/images/http-helloworld-architecture.png"/>
+In this tutorial we will build architecture which is suitable for 4-core processors.
 
 Actually, it's not a simple task to implement load balancer, worker servers and run them properly. But there are good news: Boot module already supports worker pools, so we can easily write down HTTP-server with similar architecture in a few lines of code.
 
@@ -31,11 +29,12 @@ Actually, it's not a simple task to implement load balancer, worker servers and 
 ## 1. Working Example
 
 To run the complete example, enter next commands:
-{% highlight bash %}
-$ git clone https://github.com/softindex/datakernel-examples
-$ cd datakernel-examples/tutorials/http-helloworld
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.HttpHelloWorldLauncher
-{% endhighlight %}
+```
+$ git clone https://github.com/softindex/datakernel
+$ cd datakernel/examples/http-helloworld
+$ mvn clean complile exec:java@HttpHelloWorldLauncher
+```
+
 Then, go to [testing](#testing) section.
 
 ## 2. Step-by-step guide
@@ -78,12 +77,12 @@ Next, configure your pom.xml file. We will need the following dependencies: data
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-boot</artifactId>
-            <version>{{site.datakernel_version}}</version>
+            <version>3.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-http</artifactId>
-            <version>{{site.datakernel_version}}</version>
+            <version>3.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>

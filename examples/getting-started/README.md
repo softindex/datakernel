@@ -16,11 +16,13 @@ Framework.
 ## 1. Working Example
 
 To run the complete example, enter next commands:
-{% highlight bash %}
-$ git clone https://github.com/softindex/datakernel-examples
-$ cd datakernel-examples/getting-started
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.HelloWorld
-{% endhighlight %}
+
+```
+$ git clone https://github.com/softindex/datakernel
+$ cd datakernel/examples/getting-started
+$ mvn clean complile exec:java@HelloWorld
+```
+
 
 ## 2. Step-by-step guide
 
@@ -65,7 +67,7 @@ Add a maven dependency to use DataKernel in your project, as showed below:
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-eventloop</artifactId>
-            <version>{{site.datakernel_version}}</version>
+            <version>3.0.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 
@@ -84,6 +86,7 @@ Add a maven dependency to use DataKernel in your project, as showed below:
         </plugins>
     </build>
 </project>
+
 ```
 
 Then, write down the following code to `HelloWorld.java`

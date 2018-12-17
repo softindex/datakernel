@@ -5,7 +5,7 @@
 To run the examples, you should execute these three lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel-examples/examples/codegen
+$ cd datakernel/examples/codegen
 $ mvn clean compile exec:java@DynamicClassCreationExample
 $ # or
 $ mvn clean compile exec:java@ExpressionsExample

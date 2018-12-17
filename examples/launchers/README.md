@@ -27,9 +27,9 @@ you to use.
 
 To run the complete example, enter next commands:
 ```
-$ git clone https://github.com/softindex/datakernel-examples
-$ cd datakernel-examples/tutorials/launchers
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.HttpSimpleServer
+$ git clone https://github.com/softindex/datakernel
+$ cd datakernel/examples/launchers
+$ mvn clean compile exec:java@HttpSimpleServer
 ```
 
 Then, go to [testing](#testing) section.
@@ -70,17 +70,17 @@ So your pom.xml should look like this:
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-boot</artifactId>
-            <version>{{site.datakernel_version}}</version>
+            <version>3.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-http</artifactId>
-            <version>{{site.datakernel_version}}</version>
+            <version>3.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-launchers</artifactId>
-            <version>{{site.datakernel_version}}</version>
+            <version>3.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>

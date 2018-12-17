@@ -26,15 +26,15 @@ Here are some other examples of creating stream nodes:
 
 To run them, you should execute these lines in the console in the appropriate folder:
 ```
-$ git clone https://github.com/softindex/datakernel-examples.git
-$ cd datakernel-examples/examples/datastreams
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.SupplierExample
+$ git clone https://github.com/softindex/datakernel.git
+$ cd datakernel/examples/datastreams
+$ mvn clean compile exec:java@SupplierExample
 $ # OR
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.ConsumerExample
+$ mvn clean compile exec:java@ConsumerExample
 $ # OR
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.TransformerExample
+$ mvn clean compile exec:java@TransformerExample
 $ # OR
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.BuiltinStreamNodesExample
+$ mvn clean compile exec:java@BuiltinStreamNodesExample
 ```
 
 Note that for network demo you should first launch the server and then the client.
