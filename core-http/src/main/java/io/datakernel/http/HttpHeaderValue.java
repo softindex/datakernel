@@ -91,6 +91,13 @@ public abstract class HttpHeaderValue {
 		return Instant.ofEpochSecond(HttpDate.parse(buf.array(), buf.readPosition()));
 	}
 
+	public ByteBuf getBuf() {
+		int estimatedSize = estimateSize();
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[estimatedSize]);
+		writeTo(buf);
+		return buf;
+	}
+
 	@FunctionalInterface
 	public interface ParserIntoList<T> {
 		void parse(ByteBuf buf, List<T> into) throws ParseException;
@@ -197,10 +204,10 @@ public abstract class HttpHeaderValue {
 		}
 	}
 
-	static final class HttpHeaderValueOfFullCookies extends HttpHeaderValue {
+	static final class HttpHeaderValueOfSetCookies extends HttpHeaderValue {
 		final List<HttpCookie> cookies;
 
-		HttpHeaderValueOfFullCookies(List<HttpCookie> cookies) {
+		HttpHeaderValueOfSetCookies(List<HttpCookie> cookies) {
 			this.cookies = cookies;
 		}
 
@@ -359,59 +366,29 @@ public abstract class HttpHeaderValue {
 		}
 	}
 
-	static final class ParsedHttpHeaderValue extends HttpHeaderValue {
-		int size;
-		ByteBuf buf;
-		ByteBuf[] bufs;
+	static final class HttpHeaderValueOfBuf extends HttpHeaderValue {
+		final ByteBuf buf;
 
-		public void add(ByteBuf buf) {
-			if (size == 0) {
-				this.buf = buf;
-				size = 1;
-				return;
-			}
-			if (bufs == null) {
-				bufs = new ByteBuf[4];
-				bufs[0] = buf;
-			}
-			if (size == bufs.length) {
-				ByteBuf[] newBufs = new ByteBuf[bufs.length * 2];
-				System.arraycopy(bufs, 0, newBufs, 0, bufs.length);
-				bufs = newBufs;
-			}
-			bufs[size++] = buf;
-		}
+		HttpHeaderValueOfBuf(ByteBuf buf) {this.buf = buf;}
 
 		@Override
 		int estimateSize() {
-			throw new UnsupportedOperationException();
+			return buf.readRemaining();
 		}
 
 		@Override
 		void writeTo(ByteBuf buf) {
-			throw new UnsupportedOperationException();
+			buf.put(this.buf);
+		}
+
+		@Override
+		public ByteBuf getBuf() {
+			return buf;
 		}
 
 		@Override
 		void recycle() {
 			buf.recycle();
-			if (bufs != null) {
-				for (int i = 1; i < size; i++) {
-					bufs[i].recycle();
-				}
-			}
-			buf = null;
-		}
-
-		public String[] toStrings() {
-			assert size != 0;
-			String[] strings = new String[size];
-			strings[0] = decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining());
-			for (int i = 1; i < size; i++) {
-				ByteBuf buf = bufs[i - 1];
-				strings[i] = decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining());
-			}
-			return strings;
 		}
 
 		@Override

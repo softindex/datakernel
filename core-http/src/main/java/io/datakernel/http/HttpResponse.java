@@ -21,7 +21,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfFullCookies;
+import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSetCookies;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
 
@@ -72,34 +72,30 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	public static HttpResponse redirect302(String url) {
 		HttpResponse response = HttpResponse.ofCode(302);
-		response.setHeader(LOCATION, url);
+		response.addHeader(LOCATION, url);
 		return response;
 	}
 
 	// common builder methods
 	public HttpResponse withHeader(HttpHeader header, String value) {
-		setHeader(header, value);
+		addHeader(header, value);
 		return this;
 	}
 
 	public HttpResponse withHeader(HttpHeader header, byte[] bytes) {
-		setHeader(header, bytes);
+		addHeader(header, bytes);
 		return this;
 	}
 
 	public HttpResponse withHeader(HttpHeader header, HttpHeaderValue value) {
-		setHeader(header, value);
+		addHeader(header, value);
 		return this;
 	}
 
 	@Override
 	public void addCookies(List<HttpCookie> cookies) {
 		assert !isRecycled();
-		HttpHeaderValue existingHeaders = headers.putIfAbsent(SET_COOKIE, new HttpHeaderValueOfFullCookies(cookies));
-		if (existingHeaders != null) {
-			HttpHeaderValueOfFullCookies existingCookies = (HttpHeaderValueOfFullCookies) existingHeaders;
-			existingCookies.cookies.addAll(cookies);
-		}
+		headers.add(SET_COOKIE, new HttpHeaderValueOfSetCookies(cookies));
 	}
 
 	public HttpResponse withCookies(List<HttpCookie> cookies) {

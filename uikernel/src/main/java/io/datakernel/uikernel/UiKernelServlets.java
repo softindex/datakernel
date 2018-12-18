@@ -109,7 +109,7 @@ public class UiKernelServlets {
 					HttpResponse res = HttpResponse.ok200();
 					if (response.hasErrors()) {
 						String json = gson.toJson(response.getErrors());
-						res.setHeader(CONTENT_TYPE, ofContentType(JSON_UTF8));
+						res.addHeader(CONTENT_TYPE, ofContentType(JSON_UTF8));
 						res.setBody(ByteBufStrings.wrapUtf8(json));
 					}
 					return res;

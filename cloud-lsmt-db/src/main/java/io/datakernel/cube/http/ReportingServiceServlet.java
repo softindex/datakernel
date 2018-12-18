@@ -114,17 +114,17 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 
 	private static HttpResponse createResponse(String body) {
 		HttpResponse response = HttpResponse.ok200();
-		response.setHeader(CONTENT_TYPE, ofContentType(ContentType.of(MediaTypes.JSON, StandardCharsets.UTF_8)));
+		response.addHeader(CONTENT_TYPE, ofContentType(ContentType.of(MediaTypes.JSON, StandardCharsets.UTF_8)));
 		response.setBody(wrapUtf8(body));
-		response.setHeader(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+		response.addHeader(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 		return response;
 	}
 
 	private static HttpResponse createErrorResponse(String body) {
 		HttpResponse response = HttpResponse.ofCode(400);
-		response.setHeader(CONTENT_TYPE, ofContentType(ContentType.of(MediaTypes.PLAIN_TEXT, StandardCharsets.UTF_8)));
+		response.addHeader(CONTENT_TYPE, ofContentType(ContentType.of(MediaTypes.PLAIN_TEXT, StandardCharsets.UTF_8)));
 		response.setBody(wrapUtf8(body));
-		response.setHeader(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+		response.addHeader(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 		return response;
 	}
 

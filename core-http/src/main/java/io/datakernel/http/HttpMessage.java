@@ -23,7 +23,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpHeaderValue.ParsedHttpHeaderValue;
+import io.datakernel.exception.UncheckedException;
+import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfBuf;
 import io.datakernel.http.HttpHeaderValue.ParserIntoList;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
@@ -31,16 +32,15 @@ import io.datakernel.util.ParserFunction;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
-import static java.util.Collections.emptyList;
+import static java.util.Arrays.copyOf;
 
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
  */
 @SuppressWarnings("unused")
 public abstract class HttpMessage {
-	protected Map<HttpHeader, HttpHeaderValue> headers = new LinkedHashMap<>();
+	protected HttpHeadersMultimap<HttpHeader, HttpHeaderValue> headers = new HttpHeadersMultimap<>();
 	protected ChannelSupplier<ByteBuf> bodySupplier;
 	protected ByteBuf body;
 	protected boolean useGzip;
@@ -50,48 +50,49 @@ public abstract class HttpMessage {
 
 	void addParsedHeader(HttpHeader header, ByteBuf buf) {
 		assert !isRecycled();
-		ParsedHttpHeaderValue headerBytes =
-				(ParsedHttpHeaderValue) headers.computeIfAbsent(header,
-						$ -> new ParsedHttpHeaderValue());
-		headerBytes.add(buf);
+		headers.add(header, new HttpHeaderValueOfBuf(buf));
 	}
 
-	public void setHeader(HttpHeader header, String string) {
+	public void addHeader(HttpHeader header, String string) {
 		assert !isRecycled();
-		setHeader(header, HttpHeaderValue.of(string));
+		addHeader(header, HttpHeaderValue.of(string));
 	}
 
-	public void setHeader(HttpHeader header, byte[] value) {
+	public void addHeader(HttpHeader header, byte[] value) {
 		assert !isRecycled();
-		setHeader(header, HttpHeaderValue.ofBytes(value, 0, value.length));
+		addHeader(header, HttpHeaderValue.ofBytes(value, 0, value.length));
 	}
 
-	public void setHeader(HttpHeader header, HttpHeaderValue value) {
+	public void addHeader(HttpHeader header, HttpHeaderValue value) {
 		assert !isRecycled();
-		HttpHeaderValue prev = headers.put(header, value);
-		checkArgument(prev == null, "Header '%s' has already been set", header);
+		headers.add(header, value);
 	}
 
 	@NotNull
 	private ByteBuf getHeaderBuf(HttpHeader header) throws ParseException {
-		ParsedHttpHeaderValue headerBuf = (ParsedHttpHeaderValue) headers.get(header);
+		HttpHeaderValue headerBuf = headers.get(header);
 		if (headerBuf != null) {
-			return headerBuf.buf;
+			return headerBuf.getBuf();
 		}
 		throw new ParseException(HttpMessage.class, "There is no header: " + header);
 	}
 
 	@Nullable
 	private ByteBuf getHeaderBufOrNull(HttpHeader header) {
-		ParsedHttpHeaderValue headerBuf = (ParsedHttpHeaderValue) headers.get(header);
-		return headerBuf != null ? headerBuf.buf : null;
+		HttpHeaderValue headerBuf = headers.get(header);
+		return headerBuf != null ? headerBuf.getBuf() : null;
 	}
 
 	public final Map<HttpHeader, String[]> getHeaders() {
-		LinkedHashMap<HttpHeader, String[]> map = new LinkedHashMap<>(headers.size() * 3 / 2);
-		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : headers.entrySet()) {
-			map.put(entry.getKey(), ((ParsedHttpHeaderValue) entry.getValue()).toStrings());
-		}
+		LinkedHashMap<HttpHeader, String[]> map = new LinkedHashMap<>(headers.size() * 2);
+		headers.forEach((httpHeader, httpHeaderValue) ->
+				map.compute(httpHeader, ($, strings) -> {
+					String headerString = httpHeaderValue.toString();
+					if (strings == null) return new String[]{headerString};
+					String[] newStrings = copyOf(strings, strings.length + 1);
+					newStrings[newStrings.length - 1] = headerString;
+					return newStrings;
+				}));
 		return map;
 	}
 
@@ -119,17 +120,19 @@ public abstract class HttpMessage {
 	}
 
 	public <T> List<T> parseHeader(HttpHeader header, ParserIntoList<T> parser) throws ParseException {
-		ParsedHttpHeaderValue headerBuf = (ParsedHttpHeaderValue) headers.get(header);
-		if (headerBuf == null) return emptyList();
-		List<T> list = new ArrayList<>();
-		if (headerBuf.bufs == null) {
-			parser.parse(headerBuf.buf, list);
-		} else {
-			for (ByteBuf buf : headerBuf.bufs) {
-				parser.parse(buf, list);
-			}
+		try {
+			List<T> list = new ArrayList<>();
+			headers.forEach(header, httpHeaderValue -> {
+				try {
+					parser.parse(httpHeaderValue.getBuf(), list);
+				} catch (ParseException e) {
+					throw new UncheckedException(e);
+				}
+			});
+			return list;
+		} catch (UncheckedException u) {
+			throw u.propagate(ParseException.class);
 		}
-		return list;
 	}
 
 	public abstract void addCookies(List<HttpCookie> cookies);
@@ -214,9 +217,8 @@ public abstract class HttpMessage {
 	 */
 	protected void recycleHeaders() {
 		assert !isRecycled();
-		for (HttpHeaderValue headerValue : headers.values()) {
-			headerValue.recycle();
-		}
+		headers.forEach((httpHeader, httpHeaderValue) ->
+				httpHeaderValue.recycle());
 		headers = null;
 	}
 
@@ -239,17 +241,14 @@ public abstract class HttpMessage {
 	 */
 	protected void writeHeaders(ByteBuf buf) {
 		assert !isRecycled();
-		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : headers.entrySet()) {
-			HttpHeader header = entry.getKey();
-
+		headers.forEach((httpHeader, httpHeaderValue) -> {
 			buf.put(CR);
 			buf.put(LF);
-			header.writeTo(buf);
+			httpHeader.writeTo(buf);
 			buf.put((byte) ':');
 			buf.put(SP);
-			entry.getValue().writeTo(buf);
-		}
-
+			httpHeaderValue.writeTo(buf);
+		});
 		buf.put(CR);
 		buf.put(LF);
 		buf.put(CR);
@@ -259,10 +258,11 @@ public abstract class HttpMessage {
 	protected int estimateSize(int firstLineSize) {
 		assert !isRecycled();
 		int size = firstLineSize;
-		for (Map.Entry<HttpHeader, HttpHeaderValue> entry : headers.entrySet()) {
-			HttpHeader header = entry.getKey();
-			size += 2 + header.size() + 2 + entry.getValue().estimateSize(); // CR,LF,header,": ",value
-		}
+		int[] headersSize = new int[1]; // for stack allocation
+		headers.forEach((httpHeader, httpHeaderValue) -> {
+			headersSize[0] += 2 + httpHeader.size() + 2 + httpHeaderValue.estimateSize(); // CR,LF,header,": ",value
+		});
+		size += headersSize[0];
 		size += 4; // CR,LF,CR,LF
 		return size;
 	}

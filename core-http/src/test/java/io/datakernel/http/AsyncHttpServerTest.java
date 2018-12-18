@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.LinkedHashSet;
 import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -38,6 +39,7 @@ import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.lang.Math.min;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -84,7 +86,8 @@ public final class AsyncHttpServerTest {
 	public static void readAndAssert(InputStream is, String expected) {
 		byte[] bytes = new byte[expected.length()];
 		readFully(is, bytes);
-		assertEquals(expected, decodeAscii(bytes));
+		String actual = decodeAscii(bytes);
+		assertEquals(new LinkedHashSet<>(asList(expected.split("\r\n"))), new LinkedHashSet<>(asList(actual.split("\r\n"))));
 	}
 
 	@Test

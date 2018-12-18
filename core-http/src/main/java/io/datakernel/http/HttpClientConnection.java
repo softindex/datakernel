@@ -238,7 +238,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				connectionHeader = CONNECTION_CLOSE_HEADER;
 			}
 		}
-		request.setHeader(CONNECTION, connectionHeader);
+		request.addHeader(CONNECTION, connectionHeader);
 		writeHttpMessage(request);
 		readHttpMessage();
 		return callback;

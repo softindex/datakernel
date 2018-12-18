@@ -81,17 +81,17 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	public HttpRequest withHeader(HttpHeader header, String value) {
-		setHeader(header, value);
+		addHeader(header, value);
 		return this;
 	}
 
 	public HttpRequest withHeader(HttpHeader header, byte[] value) {
-		setHeader(header, value);
+		addHeader(header, value);
 		return this;
 	}
 
 	public HttpRequest withHeader(HttpHeader header, HttpHeaderValue value) {
-		setHeader(header, value);
+		addHeader(header, value);
 		return this;
 	}
 
@@ -113,11 +113,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	@Override
 	public void addCookies(List<HttpCookie> cookies) {
 		assert !isRecycled();
-		HttpHeaderValue existingHeaders = headers.putIfAbsent(COOKIE, new HttpHeaderValueOfSimpleCookies(cookies));
-		if (existingHeaders != null) {
-			HttpHeaderValueOfSimpleCookies existingCookies = (HttpHeaderValueOfSimpleCookies) existingHeaders;
-			existingCookies.cookies.addAll(cookies);
-		}
+		headers.add(COOKIE, new HttpHeaderValueOfSimpleCookies(cookies));
 	}
 
 	public HttpRequest withCookies(List<HttpCookie> cookies) {
@@ -186,7 +182,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		this.url = UrlParser.of(url);
 		if (!this.url.isRelativePath()) {
 			assert this.url.getHostAndPort() != null; // sadly no advanced contracts yet
-			setHeader(HOST, this.url.getHostAndPort());
+			addHeader(HOST, this.url.getHostAndPort());
 		}
 	}
 

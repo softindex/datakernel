@@ -21,7 +21,7 @@ import io.datakernel.http.CaseInsensitiveTokenMap.Token;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 
-public class HttpHeader extends Token {
+public final class HttpHeader extends Token {
 	protected final byte[] bytes;
 	protected final int offset;
 	protected final int length;

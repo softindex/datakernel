@@ -205,7 +205,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				connectionHeader = CONNECTION_CLOSE_HEADER;
 			}
 		}
-		httpResponse.setHeader(CONNECTION, connectionHeader);
+		httpResponse.addHeader(CONNECTION, connectionHeader);
 		writeHttpMessage(httpResponse);
 	}
 

@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.LinkedHashSet;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -37,6 +38,7 @@ import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public final class SimpleProxyServerTest {
@@ -49,7 +51,8 @@ public final class SimpleProxyServerTest {
 	private void readAndAssert(InputStream is, String expected) {
 		byte[] bytes = new byte[expected.length()];
 		readFully(is, bytes);
-		assertEquals(expected, decodeAscii(bytes));
+		String actual = decodeAscii(bytes);
+		assertEquals(new LinkedHashSet<>(asList(expected.split("\r\n"))), new LinkedHashSet<>(asList(actual.split("\r\n"))));
 	}
 
 	@Test

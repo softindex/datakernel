@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 
 import static io.datakernel.http.HttpHeaders.of;
 import static java.util.Arrays.asList;
@@ -37,7 +38,9 @@ public final class HttpMessageTest {
 
 	private static void assertHttpMessageEquals(String expected, HttpMessage message) {
 		ByteBuf buf = AbstractHttpConnection.bodySupplier(message).toCollector(ByteBufQueue.collector()).materialize().getResult();
-		assertEquals(expected, ByteBufStrings.asAscii(buf));
+		String actual = ByteBufStrings.asAscii(buf);
+
+		assertEquals(new LinkedHashSet<>(asList(expected.split("\r\n"))), new LinkedHashSet<>(asList(actual.split("\r\n"))));
 		message.recycle();
 	}
 
@@ -73,13 +76,14 @@ public final class HttpMessageTest {
 		assertHttpMessageEquals("POST /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 4\r\n\r\n/abc", request);
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test
 	public void testMultiHeaders() {
 		HttpResponse response = HttpResponse.ofCode(200);
 		HttpHeader header1 = of("header1");
 		HttpHeader HEADER1 = of("HEADER1");
 
-		response.setHeader(header1, "value1");
-		response.setHeader(HEADER1, "VALUE1");
+		response.addHeader(header1, "value1");
+		response.addHeader(HEADER1, "VALUE1");
+		assertHttpMessageEquals("HTTP/1.1 200 OK\r\nheader1: value1\r\nHEADER1: VALUE1\r\nContent-Length: 0\r\n\r\n", response);
 	}
 }

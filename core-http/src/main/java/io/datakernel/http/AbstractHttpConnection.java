@@ -140,7 +140,7 @@ public abstract class AbstractHttpConnection {
 			ByteBuf body = httpMessage.body;
 			assert httpMessage.bodySupplier == null;
 			if (!httpMessage.useGzip) {
-				httpMessage.setHeader(CONTENT_LENGTH, ofDecimal(body.readRemaining()));
+				httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(body.readRemaining()));
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + body.readRemaining());
 				httpMessage.writeTo(buf);
 				buf.put(body);
@@ -149,8 +149,8 @@ public abstract class AbstractHttpConnection {
 				return ChannelSupplier.of(buf);
 			} else {
 				ByteBuf gzippedBody = GzipProcessorUtils.toGzip(body);
-				httpMessage.setHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
-				httpMessage.setHeader(CONTENT_LENGTH, ofDecimal(gzippedBody.readRemaining()));
+				httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
+				httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(gzippedBody.readRemaining()));
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + gzippedBody.readRemaining());
 				httpMessage.writeTo(buf);
 				buf.put(gzippedBody);
@@ -159,7 +159,7 @@ public abstract class AbstractHttpConnection {
 				return ChannelSupplier.of(buf);
 			}
 		} else if (httpMessage.bodySupplier != null) {
-			httpMessage.setHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
+			httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
 			if (!httpMessage.useGzip) {
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 				httpMessage.writeTo(buf);
@@ -167,7 +167,7 @@ public abstract class AbstractHttpConnection {
 				httpMessage.bodySupplier.bindTo(chunker.getInput());
 				return ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier());
 			} else {
-				httpMessage.setHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
+				httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 				httpMessage.writeTo(buf);
 				BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
@@ -177,7 +177,7 @@ public abstract class AbstractHttpConnection {
 				return ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier());
 			}
 		} else {
-			httpMessage.setHeader(CONTENT_LENGTH, ofDecimal(0));
+			httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(0));
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
 			return ChannelSupplier.of(buf);
