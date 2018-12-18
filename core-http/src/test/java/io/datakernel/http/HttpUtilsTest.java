@@ -23,8 +23,8 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Random;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
-import static io.datakernel.http.HttpUtils.*;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.http.HttpUtils.trimAndDecodePositiveInt;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -32,22 +32,22 @@ public class HttpUtilsTest {
 	private static final Random RANDOM = new Random();
 
 	@Test
-	public void testEncodeUnsignedDecimal() throws ParseException {
+	public void testEncodePositiveDecimal() throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForWriting(new byte[20]);
 
 		// Test edge cases
-		ecodeUnsignedDecimalTest(buf, Long.MAX_VALUE);
+		encodePositiveIntTest(buf, Integer.MAX_VALUE);
 
 		// Test random values
-		long value = Math.abs(RANDOM.nextLong());
+		int value = Math.abs(RANDOM.nextInt());
 		byte[] bytes = String.valueOf(value).getBytes();
 		Arrays.fill(bytes, (byte) 0);
 		buf = ByteBuf.wrapForWriting(bytes);
-		ecodeUnsignedDecimalTest(buf, value);
+		encodePositiveIntTest(buf, value);
 	}
 
 	@Test
-	public void testdecodeUnsignedInt() throws ParseException {
+	public void testDecodePositiveInt() throws ParseException {
 		// Test edge cases
 		decodeUnsignedIntTest(Integer.MAX_VALUE);
 		decodeUnsignedIntTest(0);
@@ -57,35 +57,35 @@ public class HttpUtilsTest {
 	}
 
 	@Test
-	public void testdecodeUnsignedLong() throws ParseException {
+	public void testDecodePositiveInt2() throws ParseException {
 		// Test edge cases
-		decodeUnsignedLongTest(Long.MAX_VALUE);
-		decodeUnsignedLongTest(0L);
+		decodeUnsignedLongTest(Integer.MAX_VALUE);
+		decodeUnsignedLongTest(0);
 
 		// Test random values
-		decodeUnsignedLongTest(Math.abs(RANDOM.nextLong()));
+		decodeUnsignedLongTest(Math.abs(RANDOM.nextInt()));
 
 		// Test with offset
-		String string = "  \t\t  1234567891234 \t\t\t\t   ";
+		String string = "  \t\t  123456789 \t\t\t\t   ";
 		byte[] bytesRepr = string.getBytes();
-		long decoded = decodeUnsignedLong(bytesRepr, 0, string.length());
-		assertEquals(1234567891234L, decoded);
+		int decoded = trimAndDecodePositiveInt(bytesRepr, 0, string.length());
+		assertEquals(123456789, decoded);
 
 		// Test bigger than long
 		try {
 			string = "  \t\t  92233720368547758081242123 \t\t\t\t   ";
 			bytesRepr = string.getBytes();
-			decodeUnsignedLong(bytesRepr, 0, string.length());
+			trimAndDecodePositiveInt(bytesRepr, 0, string.length());
 			fail();
 		} catch (ParseException e) {
-			assertEquals(e.getMessage(), "Bigger than max long value: 92233720368547758081242123");
+			assertEquals(e.getMessage(), "Bigger than max int value: 92233720368547758081242123");
 		}
 	}
 
 	// region helpers
-	private void ecodeUnsignedDecimalTest(ByteBuf buf, long value) throws ParseException {
+	private void encodePositiveIntTest(ByteBuf buf, int value) throws ParseException {
 		buf.rewind();
-		buf.moveWritePosition(encodeUnsignedDecimal(buf.array(), buf.readPosition(), value));
+		buf.moveWritePosition(encodePositiveInt(buf.array(), buf.readPosition(), value));
 		String stringRepr = decodeUtf8(buf);
 		assertEquals(String.valueOf(value), stringRepr);
 	}
@@ -93,14 +93,14 @@ public class HttpUtilsTest {
 	private void decodeUnsignedIntTest(int value) throws ParseException {
 		String string = String.valueOf(value);
 		byte[] bytesRepr = string.getBytes();
-		int decoded = decodeUnsignedInt(bytesRepr, 0, string.length());
+		int decoded = trimAndDecodePositiveInt(bytesRepr, 0, string.length());
 		assertEquals(value, decoded);
 	}
 
-	private void decodeUnsignedLongTest(long value) throws ParseException {
+	private void decodeUnsignedLongTest(int value) throws ParseException {
 		String string = String.valueOf(value);
 		byte[] bytesRepr = string.getBytes();
-		long decoded = decodeUnsignedLong(bytesRepr, 0, string.length());
+		long decoded = decodePositiveInt(bytesRepr, 0, string.length());
 		assertEquals(value, decoded);
 	}
 	// endregion

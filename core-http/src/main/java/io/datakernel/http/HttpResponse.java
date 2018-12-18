@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.bytebuf.ByteBufStrings.putDecimal;
+import static io.datakernel.bytebuf.ByteBufStrings.putPositiveInt;
 import static io.datakernel.http.HttpHeaders.LOCATION;
 import static io.datakernel.http.HttpHeaders.SET_COOKIE;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -183,7 +183,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	private static void writeCodeMessageEx(ByteBuf buf, int code) {
 		buf.put(HTTP11_BYTES);
-		putDecimal(buf, code);
+		putPositiveInt(buf, code);
 		if (code >= 400) {
 			buf.put(CODE_ERROR_BYTES);
 		} else {

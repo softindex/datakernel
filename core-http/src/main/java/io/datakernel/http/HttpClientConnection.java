@@ -29,10 +29,9 @@ import io.datakernel.http.AsyncHttpClient.Inspector;
 import java.net.InetSocketAddress;
 
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
+import static io.datakernel.bytebuf.ByteBufStrings.decodePositiveInt;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
-import static io.datakernel.http.HttpUtils.decodeUnsignedInt;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
-
 
 /**
  * <p>
@@ -132,7 +131,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			}
 		}
 
-		int statusCode = decodeUnsignedInt(line, sp1, sp2 - sp1);
+		int statusCode = decodePositiveInt(line, sp1, sp2 - sp1);
 		if (!(statusCode >= 100 && statusCode < 600)) {
 			throw new UnknownFormatException(HttpClientConnection.class, "Invalid HTTP Status Code " + statusCode);
 		}

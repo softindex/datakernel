@@ -141,7 +141,7 @@ public final class HttpApiTest {
 		assertEquals(responseContentType, response.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
 		assertEquals(responseCookies, new ArrayList<>(response.getCookies().values()));
 		assertEquals(responseDate, response.parseHeader(DATE, HttpHeaderValue::toInstant));
-		assertEquals(age, (int) response.parseHeader(AGE, HttpHeaderValue::toInt));
+		assertEquals(age, (int) response.parseHeader(AGE, HttpHeaderValue::toPositiveInt));
 		assertEquals(expiresDate, response.parseHeader(EXPIRES, HttpHeaderValue::toInstant));
 		assertEquals(lastModified, response.parseHeader(LAST_MODIFIED, HttpHeaderValue::toInstant));
 	}

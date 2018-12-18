@@ -17,11 +17,11 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 
 import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufStrings.encodePositiveInt;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.HttpUtils.skipSpaces;
@@ -118,7 +118,7 @@ public final class AcceptMediaType {
 				container[pos++] = '.';
 				int q = type.q;
 				if (q % 10 == 0) q /= 10;
-				pos += ByteBufStrings.encodeDecimal(container, pos, q);
+				pos += encodePositiveInt(container, pos, q);
 			}
 			if (i < types.size() - 1) {
 				container[pos++] = ',';

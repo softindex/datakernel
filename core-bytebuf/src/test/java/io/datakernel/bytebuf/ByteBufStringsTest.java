@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
-import static io.datakernel.bytebuf.ByteBufStrings.encodeDecimal;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeLong;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -31,19 +31,19 @@ public class ByteBufStringsTest {
 	private static final Random RANDOM = new Random();
 
 	@Test
-	public void testEncodeDecimal() throws ParseException {
+	public void testEncodeLong() throws ParseException {
 		ByteBuf buf = ByteBuf.wrapForWriting(new byte[20]);
 
 		// Test edge cases
-		ecodeDecimalTest(buf, Long.MAX_VALUE);
-		ecodeDecimalTest(buf, Long.MIN_VALUE);
+		encodeLongTest(buf, Long.MAX_VALUE);
+		encodeLongTest(buf, Long.MIN_VALUE);
 
 		// Test random values
 		long value = RANDOM.nextLong();
 		byte[] bytes = String.valueOf(value).getBytes();
 		Arrays.fill(bytes, (byte) 0);
 		buf = ByteBuf.wrapForWriting(bytes);
-		ecodeDecimalTest(buf, value);
+		encodeLongTest(buf, value);
 	}
 
 	@Test
@@ -83,23 +83,23 @@ public class ByteBufStringsTest {
 	}
 
 	@Test
-	public void testWrapDecimal() throws ParseException {
+	public void testWrapLong() throws ParseException {
 		// Test edge cases
-		ByteBuf byteBuf = ByteBufStrings.wrapDecimal(Long.MAX_VALUE);
+		ByteBuf byteBuf = ByteBufStrings.wrapLong(Long.MAX_VALUE);
 		assertEquals(String.valueOf(Long.MAX_VALUE), ByteBufStrings.decodeUtf8(byteBuf));
 
-		byteBuf = ByteBufStrings.wrapDecimal(Long.MIN_VALUE);
+		byteBuf = ByteBufStrings.wrapLong(Long.MIN_VALUE);
 		assertEquals(String.valueOf(Long.MIN_VALUE), ByteBufStrings.decodeUtf8(byteBuf));
 
 		long value = RANDOM.nextLong();
-		byteBuf = ByteBufStrings.wrapDecimal(value);
+		byteBuf = ByteBufStrings.wrapLong(value);
 		assertEquals(String.valueOf(value), ByteBufStrings.decodeUtf8(byteBuf));
 	}
 
 	// region helpers
-	private void ecodeDecimalTest(ByteBuf buf, long value) throws ParseException {
+	private void encodeLongTest(ByteBuf buf, long value) throws ParseException {
 		buf.rewind();
-		buf.moveWritePosition(encodeDecimal(buf.array, buf.readPosition(), value));
+		buf.moveWritePosition(encodeLong(buf.array, buf.readPosition(), value));
 		String stringRepr = decodeUtf8(buf);
 		assertEquals(String.valueOf(value), stringRepr);
 	}

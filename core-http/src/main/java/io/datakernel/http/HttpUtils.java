@@ -33,9 +33,6 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
  */
 public final class HttpUtils {
 	public static final ParseException INVALID_Q_VALUE = new ParseException("Value of 'q' should start either from 0 or 1");
-	public static final ParseException ENCODE_NEGATIVE_VALUE = new ParseException("Trying to encode value that is less than 0");
-	public static final ParseException DECODE_NEGATIVE_VALUE = new ParseException("Trying to decode negative value");
-	private static final String ENCODING = "UTF-8";
 
 	public static InetAddress inetAddress(String host) {
 		try {
@@ -96,7 +93,7 @@ public final class HttpUtils {
 					return false;
 				}
 				try {
-					v = decodeUnsignedInt(bytes, start, i - start);
+					v = trimAndDecodePositiveInt(bytes, start, i - start);
 				} catch (ParseException e) {
 					return false;
 				}
@@ -166,7 +163,7 @@ public final class HttpUtils {
 		} else if (bytes[pos] == '0') {
 			if (length == 1) return 0;
 			length = length > 4 ? 2 : length - 2;
-			int q = decodeUnsignedInt(bytes, pos + 2, length);
+			int q = trimAndDecodePositiveInt(bytes, pos + 2, length);
 			if (length == 1) q *= 10;
 			return q;
 		}
@@ -230,68 +227,15 @@ public final class HttpUtils {
 		}
 	}
 
-	/**
-	 * Encodes non-negative decimal value into bytes and puts these bytes into an array starting from specified position.
-	 *
-	 * @param array array that will hold encoded bytes
-	 * @param pos   position from which encoded bytes will be put into array
-	 * @param value non-negative decimal value to be encoded
-	 * @return number of bytes that were put into array
-	 * @throws ParseException if value to be encoded is negative
-	 */
-	public static int encodeUnsignedDecimal(byte[] array, int pos, long value) throws ParseException {
-		if (value < 0) {
-			throw ENCODE_NEGATIVE_VALUE;
-		}
-		return encodeDecimal(array, pos, value);
+	public static int trimAndDecodePositiveInt(byte[] array, int pos, int len) throws ParseException {
+		int left = trimLeft(array, pos, len);
+		pos += left;
+		len -= left;
+		len -= trimRight(array, pos, len);
+		return decodePositiveInt(array, pos, len);
 	}
 
-	/**
-	 * Decodes non-negative {@code int} value from byte array starting from specified position, with given length.
-	 *
-	 * @param array array that stores bytes to be decoded
-	 * @param pos   position from which to start decoding
-	 * @param len   number of bytes to be decoded
-	 * @return {@code int} value of number that has been encoded
-	 * @throws ParseException in case decoded value is out of bounds of type {@code int}, is negative, or in case
-	 *                        decimal value has been inproperly encoded
-	 */
-	public static int decodeUnsignedInt(byte[] array, int pos, int len) throws ParseException {
-		int offsetLeft = trimOffsetLeft(array, pos, len);
-		if (array[offsetLeft] == (byte) '-') {
-			throw DECODE_NEGATIVE_VALUE;
-		}
-
-		pos += offsetLeft;
-		len -= offsetLeft;
-		len -= trimOffsetRight(array, pos, len);
-		return decodeInt(array, pos, len);
-	}
-
-	/**
-	 * Decodes non-negative {@code long} value from byte array starting from specified position, with given length
-	 *
-	 * @param array array that stores bytes to be decoded
-	 * @param pos   position from which to start decoding
-	 * @param len   number of bytes to be decoded
-	 * @return {@code long} value of number that has been encoded
-	 * @throws ParseException in case decoded value is out of bounds of type {@code long}, is negative, or in case
-	 *                        decimal value has been inproperly encoded
-	 */
-	public static long decodeUnsignedLong(byte[] array, int pos, int len) throws ParseException {
-		int offsetLeft = trimOffsetLeft(array, pos, len);
-		if (array[offsetLeft] == (byte) '-') {
-			throw DECODE_NEGATIVE_VALUE;
-		}
-
-		pos += offsetLeft;
-		len -= offsetLeft;
-		len -= trimOffsetRight(array, pos, len);
-
-		return decodeLong(array, pos, len);
-	}
-
-	private static int trimOffsetLeft(byte[] array, int pos, int len) {
+	private static int trimLeft(byte[] array, int pos, int len) {
 		for (int i = 0; i < len; i++) {
 			if (array[pos + i] != SP && array[pos + i] != HT) {
 				return i;
@@ -300,7 +244,7 @@ public final class HttpUtils {
 		return 0;
 	}
 
-	private static int trimOffsetRight(byte[] array, int pos, int len) {
+	private static int trimRight(byte[] array, int pos, int len) {
 		for (int i = len - 1; i >= 0; i--) {
 			if (array[pos + i] != SP && array[pos + i] != HT) {
 				return len - i - 1;

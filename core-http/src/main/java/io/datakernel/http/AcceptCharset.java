@@ -17,14 +17,12 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 
 import java.nio.charset.Charset;
 import java.util.List;
 
-import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.HttpUtils.skipSpaces;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -134,7 +132,7 @@ public final class AcceptCharset {
 				bytes[pos++] = '.';
 				int q = charset.q;
 				if (q % 10 == 0) q /= 10;
-				pos += ByteBufStrings.encodeDecimal(bytes, pos, q);
+				pos += encodePositiveInt(bytes, pos, q);
 			}
 			if (i < charsets.size() - 1) {
 				bytes[pos++] = ',';

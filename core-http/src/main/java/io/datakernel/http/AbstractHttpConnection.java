@@ -43,7 +43,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaderValue.ofBytes;
 import static io.datakernel.http.HttpHeaderValue.ofDecimal;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.http.HttpUtils.decodeUnsignedInt;
+import static io.datakernel.http.HttpUtils.trimAndDecodePositiveInt;
 import static java.lang.Math.max;
 
 public abstract class AbstractHttpConnection {
@@ -306,7 +306,7 @@ public abstract class AbstractHttpConnection {
 	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
 		assert !isClosed();
 		if (header == CONTENT_LENGTH) {
-			contentLength = decodeUnsignedInt(value.array(), value.readPosition(), value.readRemaining());
+			contentLength = trimAndDecodePositiveInt(value.array(), value.readPosition(), value.readRemaining());
 		} else if (header == CONNECTION) {
 			flags = (byte) ((flags & ~KEEP_ALIVE) |
 					(equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.readPosition(), value.readRemaining()) ? KEEP_ALIVE : 0));

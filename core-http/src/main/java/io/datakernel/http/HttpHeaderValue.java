@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.http.HttpUtils.trimAndDecodePositiveInt;
 import static java.util.Arrays.asList;
 
 public abstract class HttpHeaderValue {
@@ -79,8 +80,8 @@ public abstract class HttpHeaderValue {
 		return new HttpHeaderValueOfContentType(type);
 	}
 
-	public static int toInt(ByteBuf buf) throws ParseException {
-		return decodeInt(buf.array(), buf.readPosition(), buf.readRemaining());
+	public static int toPositiveInt(ByteBuf buf) throws ParseException {
+		return trimAndDecodePositiveInt(buf.array(), buf.readPosition(), buf.readRemaining());
 	}
 
 	public static ContentType toContentType(ByteBuf buf) throws ParseException {
@@ -307,7 +308,7 @@ public abstract class HttpHeaderValue {
 
 		@Override
 		void writeTo(ByteBuf buf) {
-			putDecimal(buf, value);
+			putPositiveInt(buf, value);
 		}
 
 		@Override
