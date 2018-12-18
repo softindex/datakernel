@@ -74,7 +74,9 @@ public class AsyncFileExample {
 	}
 
 	public static void main(String[] args) {
-		Promises.runSequence((AsyncSupplier<Void>) AsyncFileExample::writeToFile, (AsyncSupplier<ByteBuf>) AsyncFileExample::readFromFile)
+		Promises.runSequence(
+				AsyncSupplier.cast(AsyncFileExample::writeToFile),
+				AsyncSupplier.cast(AsyncFileExample::readFromFile))
 				.whenComplete(($, e) -> {
 					if (e != null) {
 						System.out.println("Something went wrong : " + e);

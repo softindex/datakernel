@@ -16,6 +16,7 @@
 
 package io.global.common.discovery;
 
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
@@ -98,9 +99,11 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 	public Promise<List<SignedData<SharedSimKey>>> loadAll(PubKey receiver) {
 		return storage.list(getGlobFor(receiver))
 				.thenCompose(files ->
-						Promises.collectSequence(toList(), files.stream()
-								.map(meta -> storage.download(meta.getFilename())
-										.thenComposeEx(LOAD_SHARED_KEY))))
+						Promises.collectSequence(toList(),
+								files.stream()
+										.map(meta -> AsyncSupplier.cast(() ->
+												storage.download(meta.getFilename())
+														.thenComposeEx(LOAD_SHARED_KEY)))))
 				.whenComplete(toLogger(logger, TRACE, "loadAll", receiver, this));
 	}
 

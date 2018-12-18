@@ -32,7 +32,6 @@ import io.datakernel.crdt.RemoteCrdtClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.PromiseStats;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
@@ -188,9 +187,9 @@ public final class CrdtClusterTest {
 				CrdtData::getState, INT_CODEC);
 
 		Promises.runSequence(IntStream.range(0, 1_000_000)
-				.mapToObj(i -> (AsyncSupplier<HttpResponse>) () ->
+				.mapToObj(i -> AsyncSupplier.cast(() ->
 						client.request(HttpRequest.of(PUT, "http://127.0.0.1:7000")
-								.withBody(JsonUtils.toJson(codec, new CrdtData<>("value_" + i, i)).getBytes(UTF_8)))))
+								.withBody(JsonUtils.toJson(codec, new CrdtData<>("value_" + i, i)).getBytes(UTF_8))))))
 				.whenException(System.err::println)
 				.whenComplete(uploadStat.recordStats())
 				.whenComplete(assertComplete($ -> System.out.println(uploadStat)));

@@ -16,6 +16,8 @@
 
 package io.datakernel.async;
 
+import io.datakernel.functional.Try;
+
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -23,7 +25,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.Utils.loopImpl;
+import static io.datakernel.async.Utils.forEachRemainingImpl;
 
 /**
  * This interface represents asynchronous supplier that returns {@link Promise} of some data.
@@ -39,6 +41,11 @@ public interface AsyncSupplier<T> {
 
 	static <T> AsyncSupplier<T> of(Supplier<? extends Promise<T>> supplier) {
 		return supplier::get;
+	}
+
+	@SuppressWarnings("unchecked")
+	static <T> AsyncSupplier<T> cast(AsyncSupplier<? extends T> supplier) {
+		return (AsyncSupplier<T>) supplier;
 	}
 
 	static <T> AsyncSupplier<T> ofValue(T value) {
@@ -103,6 +110,14 @@ public interface AsyncSupplier<T> {
 		return () -> get().async();
 	}
 
+	default AsyncSupplier<Void> toVoid() {
+		return () -> get().toVoid();
+	}
+
+	default AsyncSupplier<Try<T>> toTry() {
+		return () -> get().toTry();
+	}
+
 	default AsyncSupplier<T> withExecutor(AsyncExecutor asyncExecutor) {
 		return () -> asyncExecutor.execute(this);
 	}
@@ -112,7 +127,7 @@ public interface AsyncSupplier<T> {
 	}
 
 	default Promise<Void> forEachRemainingAsync(AsyncConsumer<T> consumer) {
-		return Promise.ofCallback(cb -> loopImpl(this, consumer, cb));
+		return Promise.ofCallback(cb -> forEachRemainingImpl(this, consumer, cb));
 	}
 
 	/**

@@ -712,7 +712,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		aggregations.forEach((aggregationId, aggregationContainer) -> {
 			Aggregation aggregation = aggregationContainer.aggregation;
 
-			runnables.add(AsyncSupplier.of(() ->
+			runnables.add(AsyncSupplier.cast(() ->
 					strategy.apply(aggregation)
 							.whenResult(aggregationDiff -> {
 								if (!aggregationDiff.isEmpty()) {

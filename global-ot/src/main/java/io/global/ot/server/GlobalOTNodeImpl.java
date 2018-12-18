@@ -147,7 +147,8 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						Promise.complete() :
 						ensureMasterNodes(repositoryId)
 								.thenCompose(nodes -> Promises.firstSuccessful(nodes.stream()
-										.map(node -> node.save(repositoryId, newCommits, newHeads)))));
+										.map(node -> AsyncSupplier.cast(() ->
+												node.save(repositoryId, newCommits, newHeads))))));
 	}
 
 	@Override
@@ -158,7 +159,8 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						ensureMasterNodes(repositoryId)
 								.thenCompose(nodes -> Promises.firstSuccessful(
 										nodes.stream()
-												.map(node -> node.loadCommit(repositoryId, id))))
+												.map(node -> AsyncSupplier.cast(() ->
+														node.loadCommit(repositoryId, id)))))
 								.thenCompose(commit -> commitStorage.saveCommit(id, commit)
 										.thenApply($ -> commit))
 				);
@@ -176,7 +178,8 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 								.map(commitId -> commitStorage.loadCommit(commitId)
 										.whenResult(maybeCommit -> maybeCommit.ifPresent(commit ->
 												queue.add(new RawCommitEntry(commitId, commit))))))
-						.thenApply($ -> AsyncSupplier.of(() -> getNextStreamEntry(queue, skipCommits, required, existing)))
+						.thenApply($ -> AsyncSupplier.cast(() ->
+								getNextStreamEntry(queue, skipCommits, required, existing)))
 						.thenApply(ChannelSupplier::of)
 						.thenApply(supplier -> supplier.map(
 								entry -> new CommitEntry(entry.commitId, entry.commit, thisHeads.get(entry.commitId))))
@@ -310,7 +313,8 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				.thenCompose(saved -> saved && !isMasterFor(repositoryId) ?
 						ensureMasterNodes(repositoryId)
 								.thenCompose(nodes -> Promises.firstSuccessful(nodes.stream()
-										.map(node -> node.saveSnapshot(repositoryId, encryptedSnapshot)))) :
+										.map(node -> AsyncSupplier.cast(() ->
+												node.saveSnapshot(repositoryId, encryptedSnapshot))))) :
 						Promise.complete());
 	}
 
@@ -322,8 +326,9 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						ensureMasterNodes(repositoryId)
 								.thenCompose(nodes -> Promises.firstSuccessful(
 										nodes.stream()
-												.map(node -> node.loadSnapshot(repositoryId, commitId)
-														.thenCompose(Promise::ofOptional)))
+												.map(node -> AsyncSupplier.cast(() ->
+														node.loadSnapshot(repositoryId, commitId)
+																.thenCompose(Promise::ofOptional))))
 										.thenCompose(snapshot -> commitStorage.saveSnapshot(snapshot)
 												.thenApply($ -> snapshot)))
 								.thenApplyEx((snapshot, e) -> e == null ? Optional.of(snapshot) : Optional.empty()));
@@ -483,7 +488,9 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 					.thenCompose(nodes -> nodes.isEmpty() ?
 							Promise.complete() :
 							Promises.firstSuccessful(
-									nodes.stream().map(node -> node.list(pubKey)))
+									nodes.stream()
+											.map(node -> AsyncSupplier.cast(() ->
+													node.list(pubKey))))
 									.whenResult(repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(pubKey, name))))
 									.whenResult($ -> updateRepositoriesTimestamp = now.currentTimeMillis())
 									.toVoid());
@@ -561,7 +568,9 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 								Promise.complete() :
 								commitStorage.getHeads(repositoryId)
 										.thenCompose(heads -> Promises.firstSuccessful(
-												nodes.stream().map(node -> node.getHeads(repositoryId, heads.keySet()))))
+												nodes.stream()
+														.map(node -> AsyncSupplier.cast(() ->
+																node.getHeads(repositoryId, heads.keySet())))))
 										.thenCompose(headsDelta ->
 												commitStorage.updateHeads(repositoryId, headsDelta.newHeads, headsDelta.excludedHeads)))
 						.whenResult($ -> updateHeadsTimestamp = now.currentTimeMillis());
@@ -575,7 +584,9 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						.thenCompose(nodes -> nodes.isEmpty() ?
 								Promise.complete() :
 								Promises.firstSuccessful(
-										nodes.stream().map(node -> node.getPullRequests(repositoryId)))
+										nodes.stream()
+												.map(node -> AsyncSupplier.cast(() ->
+														node.getPullRequests(repositoryId))))
 										.thenCompose(pullRequests -> Promises.all(
 												pullRequests.stream().map(commitStorage::savePullRequest))))
 						.whenResult($ -> updatePullRequestsTimestamp = now.currentTimeMillis())
@@ -584,7 +595,9 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 			private Promise<Void> doFetch() {
 				return ensureMasterNodes()
-						.thenCompose(nodes -> Promises.firstSuccessful(nodes.stream().map(this::doFetch)));
+						.thenCompose(nodes -> Promises.firstSuccessful(nodes.stream()
+								.map(node -> AsyncSupplier.cast(() ->
+										doFetch(node)))));
 			}
 
 			private Promise<Void> doFetch(GlobalOTNode node) {

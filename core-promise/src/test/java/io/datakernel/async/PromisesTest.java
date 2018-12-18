@@ -301,7 +301,8 @@ public final class PromisesTest {
 	public void testRunSequence() {
 		List<Integer> list = asList(1, 2, 3, 4, 5, 6, 7);
 		runSequence(list.stream()
-				.map(n -> (AsyncSupplier<Integer>) () -> getStage(n)));
+				.map(n -> AsyncSupplier.cast(() ->
+						getStage(n))));
 	}
 
 	@Test
@@ -309,7 +310,8 @@ public final class PromisesTest {
 		List<Integer> list = asList(1, 2, 3, 4, 5, 6, 7);
 		runSequence(list.stream()
 				.sorted(Comparator.naturalOrder())
-				.map(n -> (AsyncSupplier<Integer>) () -> getStage(n)));
+				.map(n -> AsyncSupplier.cast(() ->
+						getStage(n))));
 	}
 
 	private Promise<Integer> getStage(Integer number) {

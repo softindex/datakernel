@@ -605,8 +605,8 @@ public final class Promises {
 	/**
 	 * @see Promises#collectSequence(Collector, Iterator)
 	 */
-	public static <T, A, R> Promise<R> collectSequence(Collector<T, A, R> collector, Stream<? extends Promise<? extends T>> promises) {
-		return collectSequence(collector, promises.iterator());
+	public static <T, A, R> Promise<R> collectSequence(Collector<T, A, R> collector, Stream<? extends AsyncSupplier<? extends T>> promises) {
+		return collectSequence(collector, asPromises(promises.iterator()));
 	}
 
 	/**
@@ -657,7 +657,7 @@ public final class Promises {
 		return first(isResult(), promises);
 	}
 
-	public static <T> Promise<T> firstSuccessful(Stream<? extends Promise<? extends T>> promises) {
+	public static <T> Promise<T> firstSuccessful(Stream<? extends AsyncSupplier<? extends T>> promises) {
 		return first(isResult(), promises);
 	}
 
@@ -685,8 +685,8 @@ public final class Promises {
 	}
 
 	public static <T> Promise<T> first(BiPredicate<? super T, ? super Throwable> predicate,
-			Stream<? extends Promise<? extends T>> promises) {
-		return first(predicate, promises.iterator());
+			Stream<? extends AsyncSupplier<? extends T>> promises) {
+		return first(predicate, asPromises(promises.iterator()));
 	}
 
 	/**

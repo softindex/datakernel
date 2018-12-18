@@ -22,7 +22,8 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	default Promise<Void> push(Collection<OTCommit<K, D>> commits) {
 		return runSequence(commits.stream()
 				.sorted(comparingLong(OTCommit::getLevel))
-				.map(commit -> (AsyncSupplier<Void>) () -> push(commit)));
+				.map(commit -> AsyncSupplier.cast(() ->
+						push(commit))));
 	}
 
 	default Promise<Void> push(OTCommit<K, D> commit) {
@@ -81,7 +82,8 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 				return doCall(
 						writeList.apply(commit.getId()).stream()
 								.map(repositories::get)
-								.map(repository -> AsyncSupplier.of(() -> repository.push(commit))),
+								.map(repository -> AsyncSupplier.cast(() ->
+										repository.push(commit))),
 						writeRedundancy);
 			}
 
@@ -101,7 +103,8 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 				return Promises.firstSuccessful(
 						readList.apply(revisionId).stream()
 								.map(repositories::get)
-								.map(repository -> repository.loadCommit(revisionId)));
+								.map(repository -> AsyncSupplier.cast(() ->
+										repository.loadCommit(revisionId))));
 			}
 
 			@Override
@@ -109,7 +112,8 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 				return Promises.firstSuccessful(
 						readList.apply(revisionId).stream()
 								.map(repositories::get)
-								.map(repository -> repository.loadSnapshot(revisionId)));
+								.map(repository -> AsyncSupplier.cast(() ->
+										repository.loadSnapshot(revisionId))));
 			}
 
 			@Override
@@ -117,7 +121,8 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 				return doCall(
 						writeList.apply(revisionId).stream()
 								.map(repositories::get)
-								.map(repository -> AsyncSupplier.of(() -> repository.saveSnapshot(revisionId, diffs))),
+								.map(repository -> AsyncSupplier.cast(() ->
+										repository.saveSnapshot(revisionId, diffs))),
 						writeRedundancy);
 			}
 

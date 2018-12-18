@@ -108,7 +108,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 					logger.info("Pull to commit: {}, start log processing", stateManager.getRevision());
 
 					List<AsyncSupplier<LogDiff<CubeDiff>>> tasks = logProcessors.stream()
-							.map(logProcessor -> AsyncSupplier.of(logProcessor::processLog))
+							.map(logProcessor -> AsyncSupplier.cast(logProcessor::processLog))
 							.collect(toList());
 
 					Promise<List<LogDiff<CubeDiff>>> promise = parallelRunner ?

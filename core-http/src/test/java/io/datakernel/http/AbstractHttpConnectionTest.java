@@ -124,8 +124,10 @@ public final class AbstractHttpConnectionTest {
 
 	@SuppressWarnings("SameParameterValue")
 	private void checkMaxKeepAlive(int maxKeepAlive, AsyncHttpServer server, EventStats connectionCount) {
-		Promises.runSequence(IntStream.range(0, maxKeepAlive - 1)
-				.mapToObj($ -> (AsyncSupplier<HttpResponse>) ()-> checkRequest("keep-alive", 1, connectionCount).post()))
+		Promises.runSequence(
+				IntStream.range(0, maxKeepAlive - 1)
+						.mapToObj($ -> AsyncSupplier.cast(() ->
+								checkRequest("keep-alive", 1, connectionCount).post())))
 				.thenCompose($ -> checkRequest("close", 1, connectionCount))
 				.post()
 				.thenCompose($ -> checkRequest("keep-alive", 2, connectionCount))

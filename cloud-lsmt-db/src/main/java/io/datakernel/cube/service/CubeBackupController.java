@@ -83,8 +83,8 @@ public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx 
 	public Promise<Void> backup(K commitId) {
 		return Promises.toTuple(repository.loadCommit(commitId), algorithms.checkout(commitId))
 				.thenCompose(tuple -> Promises.runSequence(
-						AsyncSupplier.of(() -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2()))),
-						AsyncSupplier.of(() -> backupDb(tuple.getValue1(), tuple.getValue2()))))
+						AsyncSupplier.cast(() -> backupChunks(commitId, chunksInDiffs(cubeDiffScheme, tuple.getValue2()))),
+						AsyncSupplier.cast(() -> backupDb(tuple.getValue1(), tuple.getValue2()))))
 				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 

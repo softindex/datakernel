@@ -141,7 +141,6 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 													}
 												}))));
 
-
 										return splitter.getInput().getConsumer()
 												.withAcknowledgement(ack -> ack
 														.thenCompose($ -> {
@@ -171,11 +170,13 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 									return repo.storage.download(timestamp);
 								}
 								if (!doesDownloadCaching) {
-									return Promises.firstSuccessful(masters.stream().map(node -> node.download(tableID, timestamp)));
+									return Promises.firstSuccessful(masters.stream()
+											.map(node -> AsyncSupplier.cast(() ->
+													node.download(tableID, timestamp))));
 								}
 								return Promises.firstSuccessful(masters
 										.stream()
-										.map(node ->
+										.map(node -> AsyncSupplier.cast(() ->
 												Promises.toTuple(node.download(tableID, timestamp), repo.upload())
 														.thenApply(t -> {
 															ChannelSplitter<SignedData<DbItem>> splitter = ChannelSplitter.create();
@@ -183,7 +184,7 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 															splitter.addOutput().set(t.getValue2());
 															splitter.getInput().set(t.getValue1());
 															return output.getSupplier();
-														})));
+														}))));
 							});
 				});
 	}
@@ -197,12 +198,15 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 					return isMasterFor(tableID.getSpace()) ?
 							repo.storage.get(key) :
 							doesDownloadCaching ?
-									Promises.firstSuccessful(
-											masters.stream().map(node ->
+									Promises.firstSuccessful(masters.stream()
+											.map(node -> AsyncSupplier.cast(() ->
 													node.get(tableID, key)
 															.thenCompose(item ->
-																	repo.storage.put(item).thenApply($ -> item)))) :
-									Promises.firstSuccessful(masters.stream().map(node -> node.get(tableID, key)));
+																	repo.storage.put(item)
+																			.thenApply($ -> item))))) :
+									Promises.firstSuccessful(masters.stream()
+											.map(node -> AsyncSupplier.cast(() ->
+													node.get(tableID, key))));
 				});
 	}
 
@@ -218,9 +222,9 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 										.stream()
 										.map(TableID::getName)
 										.collect(toList())) :
-								Promises.firstSuccessful(masters
-										.stream()
-										.map(node -> node.list(space))));
+								Promises.firstSuccessful(masters.stream()
+										.map(node -> AsyncSupplier.cast(() ->
+												node.list(space)))));
 	}
 
 	public Promise<Void> fetch() {

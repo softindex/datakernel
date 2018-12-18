@@ -125,19 +125,20 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 					allFiles = list.size();
 					return Promises.runSequence( // just handling all local files sequentially
 							filterNot(list.stream(), negativeGlob)
-									.map(meta -> (AsyncSupplier<Void>) () -> repartitionFile(meta)
-											.whenComplete(singleFileRepartitionPromiseStats.recordStats())
-											.thenCompose(success -> {
-												if (success) {
-													ensuredFiles++;
-												} else {
-													failedFiles++;
-												}
-												if (repartitionPromise == null) {
-													return Promise.<Void>ofException(new Exception("forced stop"));
-												}
-												return Promise.complete();
-											})));
+									.map(meta -> AsyncSupplier.cast(() ->
+											repartitionFile(meta)
+													.whenComplete(singleFileRepartitionPromiseStats.recordStats())
+													.thenCompose(success -> {
+														if (success) {
+															ensuredFiles++;
+														} else {
+															failedFiles++;
+														}
+														if (repartitionPromise == null) {
+															return Promise.<Void>ofException(new Exception("forced stop"));
+														}
+														return Promise.complete();
+													}))));
 				})
 				.whenComplete(repartitionPromiseStats.recordStats())
 				.thenComposeEx(($, e) -> {

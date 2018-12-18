@@ -17,6 +17,7 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
@@ -367,7 +368,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					}
 
 					return Promises.firstSuccessful(found.stream() // try to download successively
-							.map(partitionId -> {
+							.map(partitionId -> AsyncSupplier.cast(() -> {
 								FsClient client = aliveClients.get(partitionId);
 								if (client == null) { // marked as dead already by somebody
 									return Promise.ofException(new RemoteFsException(RemoteFsClusterClient.class, "Client " + partitionId + " is not alive"));
@@ -380,7 +381,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 												.withEndOfStream(eos -> eos
 														.whenException(e -> markIfDead(partitionId, e))
 														.whenComplete(downloadFinishPromise.recordStats())));
-							}));
+							})));
 				})
 				.whenComplete(downloadStartPromise.recordStats());
 	}

@@ -207,18 +207,17 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 				.thenCompose(localMeta ->
 						getMetadata(space, filename)
 								.thenComposeEx(sanitizeMeta())
-								.thenCompose(remoteMeta ->
-										// if we have cached file and it is same as or better than remote
-										localMeta != null && localMeta.compareTo(remoteMeta) >= 0 ?
-												localMeta.isTombstone() ?
-														Promise.ofException(FILE_NOT_FOUND) :
-														ns.load(filename, offset, length) :
-												remoteMeta == null || remoteMeta.isTombstone() ?
-														Promise.ofException(FILE_NOT_FOUND) :
-														ns.ensureMasterNodes()
-																.thenCompose(nodes -> Promises.firstSuccessful(nodes
-																		.stream()
-																		.map(node -> node.download(space, filename, offset, length)
+								// if we have cached file and it is same as or better than remote
+								.thenCompose(remoteMeta -> localMeta != null && localMeta.compareTo(remoteMeta) >= 0 ?
+										localMeta.isTombstone() ?
+												Promise.ofException(FILE_NOT_FOUND) :
+												ns.load(filename, offset, length) :
+										remoteMeta == null || remoteMeta.isTombstone() ?
+												Promise.ofException(FILE_NOT_FOUND) :
+												ns.ensureMasterNodes()
+														.thenCompose(nodes -> Promises.firstSuccessful(nodes.stream()
+																.map(node -> AsyncSupplier.cast(() ->
+																		node.download(space, filename, offset, length)
 																				.thenApply(supplier -> {
 																					if (!doesDownloadCaching) {
 																						logger.trace("Trying to download file at " + filename + " from " + node + "...");
@@ -234,7 +233,7 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 																					return splitter.addOutput()
 																							.getSupplier()
 																							.withEndOfStream(eos -> eos.both(splitter.getProcessResult()));
-																				}))))))
+																				})))))))
 				.whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
 	}
 
@@ -244,7 +243,14 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 				.thenCompose(nodes ->
 						isMasterFor(space) ?
 								local.apply(ns) :
-								Promises.firstSuccessful(Stream.concat(nodes.stream().map(self), Stream.generate(() -> local.apply(ns)).limit(1))));
+								Promises.firstSuccessful(Stream.concat(
+										nodes.stream()
+												.map(globalFsNode -> AsyncSupplier.cast(() ->
+														self.apply(globalFsNode))),
+										Stream.generate(
+												() -> AsyncSupplier.cast(() ->
+														local.apply(ns)))
+												.limit(1))));
 	}
 
 	@Override
@@ -267,8 +273,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 	}
 
 	public Promise<Boolean> push() {
-		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), namespaces.values().stream()
-				.map(ns -> push(ns).toTry()))
+		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b),
+				namespaces.values().stream()
+						.map(ns -> () -> push(ns).toTry()))
 				.thenCompose(Promise::ofTry)
 				.whenComplete(toLogger(logger, "push", this));
 	}
@@ -281,13 +288,16 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		return ns.ensureMasterNodes()
 				.thenCompose(nodes ->
 						Promises.collectSequence(Try.reducer(false, (a, b) -> a || b),
-								nodes.stream().map(node -> ns.push(node, "**").toTry())))
+								nodes.stream()
+										.map(node -> () -> ns.push(node, "**").toTry())))
 				.thenCompose(Promise::ofTry)
 				.whenComplete(toLogger(logger, "push", ns.space, this));
 	}
 
 	public Promise<Boolean> fetch() {
-		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), managedPubKeys.stream().map(pk -> fetch(pk).toTry()))
+		return Promises.collectSequence(Try.reducer(false, (a, b) -> a || b),
+				managedPubKeys.stream()
+						.map(pk -> () -> fetch(pk).toTry()))
 				.thenCompose(Promise::ofTry)
 				.whenComplete(toLogger(logger, "fetch", this));
 	}
@@ -297,7 +307,8 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		return ns.ensureMasterNodes()
 				.thenCompose(nodes ->
 						Promises.collectSequence(Try.reducer(false, (a, b) -> a || b),
-								nodes.stream().map(node -> ns.fetch(node, "**").toTry())))
+								nodes.stream()
+										.map(node -> () -> ns.fetch(node, "**").toTry())))
 				.thenCompose(Promise::ofTry)
 				.whenComplete(toLogger(logger, "fetch", space, this));
 	}
@@ -389,38 +400,40 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		Promise<Boolean> push(GlobalFsNode node, String glob) {
 			return list(glob)
 					.thenCompose(files ->
-							Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), files.stream()
-									.map(signedLocalMeta -> {
-										GlobalFsCheckpoint localMeta = signedLocalMeta.getValue();
-										String filename = localMeta.getFilename();
+							Promises.collectSequence(Try.reducer(false, (a, b) -> a || b),
+									files.stream()
+											.map(signedLocalMeta -> () -> {
+												GlobalFsCheckpoint localMeta = signedLocalMeta.getValue();
+												String filename = localMeta.getFilename();
 
-										return node.getMetadata(space, filename)
-												.thenComposeEx(sanitizeMeta())
-												.thenComposeEx((remoteMeta, e) -> {
-													if (localMeta.compareTo(remoteMeta) < 0) {
-														return Promise.of(false);
-													}
-													if (localMeta.isTombstone()) {
-														if (remoteMeta != null && remoteMeta.isTombstone()) {
-															logger.trace("both local and remote files {} are tombstones", remoteMeta.getFilename());
-															return Promise.of(false);
-														} else {
-															logger.info("local file {} is a tombstone, removing remote", localMeta.getFilename());
-															return node.delete(space, signedLocalMeta)
-																	.thenApply($ -> true);
-														}
-													} else {
-														if (remoteMeta != null && remoteMeta.isTombstone()) {
-															logger.info("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
-															return drop(signedLocalMeta)
-																	.thenApply($ -> true);
-														}
-														logger.info("pushing local file {} to node {}", localMeta.getFilename(), node);
-														return streamDataFrames(LocalGlobalFsNode.this, node, filename, remoteMeta != null ? remoteMeta.getPosition() : 0)
-																.thenApply($ -> true);
-													}
-												}).toTry();
-									})))
+												return node.getMetadata(space, filename)
+														.thenComposeEx(sanitizeMeta())
+														.thenComposeEx((remoteMeta, e) -> {
+															if (localMeta.compareTo(remoteMeta) < 0) {
+																return Promise.of(false);
+															}
+															if (localMeta.isTombstone()) {
+																if (remoteMeta != null && remoteMeta.isTombstone()) {
+																	logger.trace("both local and remote files {} are tombstones", remoteMeta.getFilename());
+																	return Promise.of(false);
+																} else {
+																	logger.info("local file {} is a tombstone, removing remote", localMeta.getFilename());
+																	return node.delete(space, signedLocalMeta)
+																			.thenApply($ -> true);
+																}
+															} else {
+																if (remoteMeta != null && remoteMeta.isTombstone()) {
+																	logger.info("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
+																	return drop(signedLocalMeta)
+																			.thenApply($ -> true);
+																}
+																logger.info("pushing local file {} to node {}", localMeta.getFilename(), node);
+																return streamDataFrames(LocalGlobalFsNode.this, node, filename, remoteMeta != null ? remoteMeta.getPosition() : 0)
+																		.thenApply($ -> true);
+															}
+														})
+														.toTry();
+											})))
 					.thenCompose(Promise::ofTry)
 					.whenComplete(toLogger(logger, TRACE, "push", space, node, LocalGlobalFsNode.this));
 		}
@@ -429,50 +442,51 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		Promise<Boolean> fetch(GlobalFsNode node, String glob) {
 			return node.list(space, glob)
 					.thenCompose(files ->
-							Promises.collectSequence(Try.reducer(false, (a, b) -> a || b), files.stream()
-									.map(signedRemoteMeta -> {
-										GlobalFsCheckpoint remoteMeta = signedRemoteMeta.getValue();
-										String filename = remoteMeta.getFilename();
-										return getMetadata(filename)
-												.thenComposeEx(sanitizeMeta())
-												.thenCompose(localMeta -> {
-													if (localMeta != null) {
-														if (localMeta.isTombstone()) {
-															return Promise.of(false);
-														}
-														if (remoteMeta.isTombstone()) {
-															logger.info("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
-															return drop(signedRemoteMeta).thenApply($ -> true);
-														}
-														// our file is better
-														if (localMeta.compareTo(remoteMeta) >= 0) {
-															logger.trace("local file {} is better than remote", localMeta.getFilename());
-															return Promise.of(false);
-														}
-														// other file is encrypted with different key
-														if (!Objects.equals(localMeta.getSimKeyHash(), remoteMeta.getSimKeyHash())) {
-															logger.trace("remote file {} is encrypted with different key, ignoring", remoteMeta.getFilename());
-															return Promise.of(false);
-														}
-														logger.info("remove file {} is better than local", remoteMeta.getFilename());
-													} else {
-														if (remoteMeta.isTombstone()) {
-															logger.trace("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
-															return drop(signedRemoteMeta)
+							Promises.collectSequence(Try.reducer(false, (a, b) -> a || b),
+									files.stream()
+											.map(signedRemoteMeta -> () -> {
+												GlobalFsCheckpoint remoteMeta = signedRemoteMeta.getValue();
+												String filename = remoteMeta.getFilename();
+												return getMetadata(filename)
+														.thenComposeEx(sanitizeMeta())
+														.thenCompose(localMeta -> {
+															if (localMeta != null) {
+																if (localMeta.isTombstone()) {
+																	return Promise.of(false);
+																}
+																if (remoteMeta.isTombstone()) {
+																	logger.info("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
+																	return drop(signedRemoteMeta).thenApply($ -> true);
+																}
+																// our file is better
+																if (localMeta.compareTo(remoteMeta) >= 0) {
+																	logger.trace("local file {} is better than remote", localMeta.getFilename());
+																	return Promise.of(false);
+																}
+																// other file is encrypted with different key
+																if (!Objects.equals(localMeta.getSimKeyHash(), remoteMeta.getSimKeyHash())) {
+																	logger.trace("remote file {} is encrypted with different key, ignoring", remoteMeta.getFilename());
+																	return Promise.of(false);
+																}
+																logger.info("remove file {} is better than local", remoteMeta.getFilename());
+															} else {
+																if (remoteMeta.isTombstone()) {
+																	logger.trace("remote file {} is a tombstone, removing local", remoteMeta.getFilename());
+																	return drop(signedRemoteMeta)
+																			.thenApply($ -> true);
+																}
+																logger.trace("found a new file {}", remoteMeta.getFilename());
+															}
+
+															long ourSize = localMeta != null ? localMeta.getPosition() : 0;
+
+															assert remoteMeta.getPosition() >= ourSize : "Remote meta position is cannot be less than our size at this point";
+
+															return streamDataFrames(node, LocalGlobalFsNode.this, filename, ourSize)
 																	.thenApply($ -> true);
-														}
-														logger.trace("found a new file {}", remoteMeta.getFilename());
-													}
-
-													long ourSize = localMeta != null ? localMeta.getPosition() : 0;
-
-													assert remoteMeta.getPosition() >= ourSize : "Remote meta position is cannot be less than our size at this point";
-
-													return streamDataFrames(node, LocalGlobalFsNode.this, filename, ourSize)
-															.thenApply($ -> true);
-												})
-												.toTry();
-									})))
+														})
+														.toTry();
+											})))
 					.thenCompose(Promise::ofTry)
 					.whenComplete(toLogger(logger, TRACE, "fetch", space, node, LocalGlobalFsNode.this));
 		}
@@ -567,7 +581,9 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 
 		Promise<List<SignedData<GlobalFsCheckpoint>>> list(String glob) {
 			return checkpointStorage.listMetaCheckpoints(glob)
-					.thenCompose(list -> Promises.collectSequence(toList(), list.stream().map(checkpointStorage::loadMetaCheckpoint)));
+					.thenCompose(list -> Promises.collectSequence(toList(),
+							list.stream()
+									.map(filename -> () -> checkpointStorage.loadMetaCheckpoint(filename))));
 		}
 
 		Promise<SignedData<GlobalFsCheckpoint>> getMetadata(String fileName) {

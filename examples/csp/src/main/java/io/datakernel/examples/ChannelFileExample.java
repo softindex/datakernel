@@ -71,7 +71,9 @@ public class ChannelFileExample {
 	}
 
 	public static void main(String[] args) {
-		Promises.runSequence((AsyncSupplier<Void>) ChannelFileExample::writeToFile, (AsyncSupplier<Void>) ChannelFileExample::readFile)
+		Promises.runSequence(
+				AsyncSupplier.cast(ChannelFileExample::writeToFile),
+				AsyncSupplier.cast(ChannelFileExample::readFile))
 				.whenComplete(($, e) -> {
 					if (e != null) {
 						e.printStackTrace();
