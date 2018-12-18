@@ -210,7 +210,7 @@ public final class CrdtClusterTest {
 		PromiseStats uploadStat = PromiseStats.create(Duration.ofSeconds(5));
 
 		StreamSupplier.ofStream(IntStream.range(0, 1000000)
-				.mapToObj(i -> new CrdtData<>("value_" + i, i))).streamTo(client.uploader())
+				.mapToObj(i -> new CrdtData<>("value_" + i, i))).streamTo(StreamConsumer.ofPromise(client.upload()))
 				.whenComplete(uploadStat.recordStats())
 				.whenComplete(assertComplete($ -> {
 					System.out.println(uploadStat);

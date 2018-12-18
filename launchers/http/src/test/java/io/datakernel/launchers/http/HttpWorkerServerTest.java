@@ -38,12 +38,14 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 
 import static com.google.inject.Stage.DEVELOPMENT;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
@@ -118,7 +120,7 @@ public final class HttpWorkerServerTest {
 			total += result;
 		}
 
-		assertEquals(expected, decodeAscii(bytes));
+		assertEquals(new LinkedHashSet<>(asList(expected.split("\r\n"))), new LinkedHashSet<>(asList(decodeAscii(bytes).split("\r\n"))));
 	}
 }
 

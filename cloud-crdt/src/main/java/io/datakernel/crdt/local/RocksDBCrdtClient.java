@@ -156,15 +156,10 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 
 	@Override
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
-		return Promise.of(uploader());
-	}
-
-	@Override
-	public StreamConsumer<CrdtData<K, S>> uploader() {
-		return StreamConsumer.ofChannelConsumer(
+		return Promise.of(StreamConsumer.ofChannelConsumer(
 				ChannelConsumer.<CrdtData<K, S>>of(data -> Promise.ofRunnable(executor, () -> doPut(data.getKey(), data.getState())))
 						.transformWith(detailedStats ? uploadStatsDetailed : uploadStats)
-						.withAcknowledgement(ack -> ack.thenCompose($ -> flush())));
+						.withAcknowledgement(ack -> ack.thenCompose($ -> flush()))));
 	}
 
 	@Override
@@ -200,15 +195,10 @@ public final class RocksDBCrdtClient<K extends Comparable<K>, S> implements Crdt
 
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
-		return Promise.of(remover());
-	}
-
-	@Override
-	public StreamConsumer<K> remover() {
-		return StreamConsumer.ofChannelConsumer(
+		return Promise.of(StreamConsumer.ofChannelConsumer(
 				ChannelConsumer.<K>of(key -> Promise.ofRunnable(executor, () -> doRemove(key)))
 						.transformWith(detailedStats ? removeStatsDetailed : removeStats)
-						.withAcknowledgement(ack -> ack.thenCompose($ -> flush())));
+						.withAcknowledgement(ack -> ack.thenCompose($ -> flush()))));
 	}
 
 	@Override

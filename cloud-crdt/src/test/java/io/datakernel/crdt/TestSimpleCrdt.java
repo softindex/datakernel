@@ -69,7 +69,7 @@ public final class TestSimpleCrdt {
 		localStorage.put("only_local", 12);
 
 		StreamSupplier.ofIterator(localStorage.iterator())
-				.streamTo(client.uploader())
+				.streamTo(StreamConsumer.ofPromise(client.upload()))
 				// .thenCompose($ -> Promise.ofCallback(cb -> getCurrentEventloop().delay(1000, () -> cb.set(null))))
 				.whenComplete(($, e) -> server.close())
 				.whenComplete(assertComplete($ -> {

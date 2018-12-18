@@ -18,6 +18,7 @@ package io.datakernel.crdt;
 
 import io.datakernel.crdt.local.RuntimeCrdtClient;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
@@ -40,7 +41,7 @@ public final class RepartitionTest {
 			clients.put("client_" + i, client);
 		}
 		StreamSupplier.ofStream(IntStream.range(1, 100).mapToObj(i -> new CrdtData<>("test" + i, i)))
-				.streamTo(clients.get("client_0").uploader())
+				.streamTo(StreamConsumer.ofPromise(((CrdtClient<String, Integer>) clients.get("client_0")).upload()))
 				.thenCompose($ -> {
 					CrdtClusterClient<String, String, Integer> cluster = CrdtClusterClient.create(Eventloop.getCurrentEventloop(), clients, Integer::max)
 							.withReplicationCount(3);

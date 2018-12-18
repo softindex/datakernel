@@ -25,6 +25,7 @@ import io.datakernel.crdt.local.FsCrdtClient;
 import io.datakernel.crdt.local.RuntimeCrdtClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 
 import java.util.Set;
@@ -53,7 +54,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 	}
 
 	public Promise<Void> restore() {
-		return localFiles.download().getStream().streamTo(inMemory.uploader());
+		return localFiles.download().getStream().streamTo(StreamConsumer.ofPromise(inMemory.upload()));
 	}
 
 	public Promise<Void> backup() {
@@ -63,8 +64,8 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 		Set<K> removedKeys = inMemory.getRemovedKeys();
 		CrdtStreamSupplierWithToken<K, S> download = inMemory.download(lastToken);
 		download.getTokenPromise().whenResult(token -> lastToken = token);
-		return backupPromise = download.getStream().streamTo(localFiles.uploader())
-				.thenCompose($ -> StreamSupplier.ofIterable(removedKeys).streamTo(localFiles.remover()))
+		return backupPromise = download.getStream().streamTo(StreamConsumer.ofPromise(localFiles.upload()))
+				.thenCompose($ -> StreamSupplier.ofIterable(removedKeys).streamTo(StreamConsumer.ofPromise(localFiles.remove())))
 				.whenComplete(($, e) -> {
 					inMemory.clearRemovedKeys();
 					backupPromise = null;

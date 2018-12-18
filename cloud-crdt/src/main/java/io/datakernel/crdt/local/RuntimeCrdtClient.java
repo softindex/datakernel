@@ -81,22 +81,17 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 		return eventloop;
 	}
 
-	@Override
-	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
-		return Promise.of(uploader());
-	}
-
 	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Override
-	public StreamConsumer<CrdtData<K, S>> uploader() {
+	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		long timestamp = eventloop.currentTimeMillis();
-		return StreamConsumer.<CrdtData<K, S>>of(data -> {
+		return Promise.of(StreamConsumer.<CrdtData<K, S>>of(data -> {
 			K key = data.getKey();
 			removedKeys.remove(key);
 			storage.merge(key, new StateWithTimestamp<>(data.getState(), timestamp), combiner);
 		})
 				.transformWith(detailedStats ? uploadStatsDetailed : uploadStats)
-				.withLateBinding();
+				.withLateBinding());
 	}
 
 	@Override
@@ -116,15 +111,10 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 		return new CrdtStreamSupplierWithToken<>(Promise.of(producer), Promise.of(eventloop.currentTimeMillis()));
 	}
 
-	@Override
-	public Promise<StreamConsumer<K>> remove() {
-		return Promise.of(remover());
-	}
-
 	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Override
-	public StreamConsumer<K> remover() {
-		return StreamConsumer.<K>of(key -> {
+	public Promise<StreamConsumer<K>> remove() {
+		return Promise.of(StreamConsumer.<K>of(key -> {
 			if (downloadCalls > 0) {
 				removedWhileDownloading.add(key);
 			} else {
@@ -133,7 +123,7 @@ public final class RuntimeCrdtClient<K extends Comparable<K>, S> implements Crdt
 			removedKeys.add(key);
 		})
 				.transformWith(detailedStats ? removeStatsDetailed : removeStats)
-				.withLateBinding();
+				.withLateBinding());
 	}
 
 	@Override

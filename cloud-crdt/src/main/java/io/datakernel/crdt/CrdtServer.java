@@ -25,6 +25,7 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.serializer.BinarySerializer;
+import io.datakernel.stream.StreamConsumer;
 
 import java.net.InetAddress;
 
@@ -66,7 +67,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 					if (msg == CrdtMessages.UPLOAD) {
 						return messaging.receiveBinaryStream()
 								.transformWith(ChannelDeserializer.create(serializer))
-								.streamTo(client.uploader())
+								.streamTo(StreamConsumer.ofPromise(client.upload()))
 								.thenCompose($ -> messaging.send(CrdtResponses.UPLOAD_FINISHED))
 								.thenCompose($ -> messaging.sendEndOfStream())
 								.whenResult($ -> messaging.close());
@@ -75,7 +76,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 					if (msg == CrdtMessages.REMOVE) {
 						return messaging.receiveBinaryStream()
 								.transformWith(ChannelDeserializer.create(keySerializer))
-								.streamTo(client.remover())
+								.streamTo(StreamConsumer.ofPromise(client.remove()))
 								.thenCompose($ -> messaging.send(CrdtResponses.REMOVE_FINISHED))
 								.thenCompose($ -> messaging.sendEndOfStream())
 								.whenResult($ -> messaging.close());

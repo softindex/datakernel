@@ -25,6 +25,7 @@ import io.datakernel.crdt.primitives.LWWSet;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 
 import java.nio.file.Paths;
@@ -74,13 +75,13 @@ public final class CrdtExample {
 		//   second = [#2, #3, #4]
 
 		StreamSupplier.of(new CrdtData<>("first", LWWSet.of("#1", "#2", "#3", "#4")), new CrdtData<>("second", LWWSet.of("#3", "#4", "#5", "#6")))
-				.streamTo(one.uploader())
+				.streamTo(StreamConsumer.ofPromise(one.upload()))
 				.thenCompose($ -> {
 					LWWSet<String> second = LWWSet.of("#2", "#4");
 					second.remove("#5");
 					second.remove("#6");
 					return StreamSupplier.of(new CrdtData<>("first", LWWSet.of("#3", "#4", "#5", "#6")), new CrdtData<>("second", second))
-							.streamTo(two.uploader());
+							.streamTo(StreamConsumer.ofPromise(two.upload()));
 				})
 				.thenCompose($ -> cluster.download().getStream().toList())
 				.whenComplete((list, e) -> {

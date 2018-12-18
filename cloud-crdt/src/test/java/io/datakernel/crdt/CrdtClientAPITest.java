@@ -22,6 +22,7 @@ import io.datakernel.crdt.local.FsCrdtClient;
 import io.datakernel.crdt.local.RocksDBCrdtClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.After;
@@ -124,15 +125,15 @@ public class CrdtClientAPITest {
 				.thenCompose($ -> StreamSupplier.of(
 						new CrdtData<>("test_1", 344),
 						new CrdtData<>("test_2", 24),
-						new CrdtData<>("test_3", -8)).streamTo(client.uploader()))
+						new CrdtData<>("test_3", -8)).streamTo(StreamConsumer.ofPromise(client.upload())))
 				.thenCompose($ -> StreamSupplier.of(
 						new CrdtData<>("test_2", 44),
 						new CrdtData<>("test_3", 74),
-						new CrdtData<>("test_4", -28)).streamTo(client.uploader()))
+						new CrdtData<>("test_4", -28)).streamTo(StreamConsumer.ofPromise(client.upload())))
 				.thenCompose($ -> StreamSupplier.of(
 						new CrdtData<>("test_0", 0),
 						new CrdtData<>("test_1", 345),
-						new CrdtData<>("test_2", -28)).streamTo(client.uploader()))
+						new CrdtData<>("test_2", -28)).streamTo(StreamConsumer.ofPromise(client.upload())))
 				.thenCompose($ -> client.download().getStream().toList())
 				.whenComplete(assertComplete(list -> {
 					// list.sort(Comparator.naturalOrder()); // data should be already sorted by merge-reduce, so check for the order too
@@ -152,14 +153,14 @@ public class CrdtClientAPITest {
 						new CrdtData<>("test_1", 1),
 						new CrdtData<>("test_2", 2),
 						new CrdtData<>("test_3", 4)
-				).streamTo(client.uploader()),
+				).streamTo(StreamConsumer.ofPromise(client.upload())),
 				StreamSupplier.of(
 						new CrdtData<>("test_1", 2),
 						new CrdtData<>("test_2", 3),
 						new CrdtData<>("test_3", 2)
-				).streamTo(client.uploader())
+				).streamTo(StreamConsumer.ofPromise(client.upload()))
 		)
-				.thenCompose($ -> StreamSupplier.of("test_2").streamTo(client.remover()))
+				.thenCompose($ -> StreamSupplier.of("test_2").streamTo(StreamConsumer.ofPromise(client.remove())))
 				.thenCompose($ -> client.download().getStreamPromise())
 				.thenCompose(StreamSupplier::toList)
 				.whenComplete(assertComplete(list -> {

@@ -64,7 +64,7 @@ public final class TestCrdtCluster {
 		}
 		CrdtClusterClient<String, String, Integer> cluster = CrdtClusterClient.create(eventloop, clients, Math::max);
 
-		StreamSupplier.ofIterator(localStorage.iterator()).streamTo(cluster.uploader())
+		StreamSupplier.ofIterator(localStorage.iterator()).streamTo(StreamConsumer.ofPromise(cluster.upload()))
 				.whenComplete(($, err) -> servers.forEach(AbstractServer::close))
 				.whenComplete(assertComplete($ ->
 						remoteStorages.forEach((name, storage) -> {

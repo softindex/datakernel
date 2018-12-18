@@ -21,6 +21,7 @@ import io.datakernel.crdt.local.FsCrdtClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.util.BinarySerializers;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
@@ -70,7 +71,7 @@ public final class TestCrdtLocalFileConsolidation {
 						new CrdtData<>("12_test_1", set(123, 124, 125)),
 						new CrdtData<>("12_test_2", set(12))
 				).sorted())
-						.streamTo(client.uploader()))
+						.streamTo(StreamConsumer.ofPromise(client.upload())))
 				.thenCompose($ -> StreamSupplier.ofStream(Stream.of(
 						new CrdtData<>("2_test_1", set(1, 2, 3)),
 						new CrdtData<>("2_test_2", set(2, 3, 4)),
@@ -78,7 +79,7 @@ public final class TestCrdtLocalFileConsolidation {
 						new CrdtData<>("12_test_1", set(123, 542, 125, 2)),
 						new CrdtData<>("12_test_2", set(12, 13))
 				).sorted())
-						.streamTo(client.uploader()))
+						.streamTo(StreamConsumer.ofPromise(client.upload())))
 				.thenCompose($ -> fsClient.list("**").whenResult(System.out::println))
 				.thenCompose($ -> client.consolidate())
 				.thenCompose($ -> fsClient.list("**").whenResult(System.out::println))

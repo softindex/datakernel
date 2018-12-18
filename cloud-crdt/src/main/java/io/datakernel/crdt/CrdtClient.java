@@ -37,16 +37,6 @@ public interface CrdtClient<K extends Comparable<K>, S> {
 	Promise<StreamConsumer<CrdtData<K, S>>> upload();
 
 	/**
-	 * Shortcut which unwraps stage of consumer into a consumer that consumes when stage is complete.
-	 *
-	 * @return unwrapped stream consumer
-	 * @see #upload()
-	 */
-	default StreamConsumer<CrdtData<K, S>> uploader() {
-		return StreamConsumer.ofPromise(upload());
-	}
-
-	/**
 	 * Returns a producer if all key-state pairs in the CRDT storage that were put AFTER given token was received.
 	 * Pairs are sorted by key.
 	 *
@@ -70,16 +60,6 @@ public interface CrdtClient<K extends Comparable<K>, S> {
 	 * @return stage of stream consumer of keys
 	 */
 	Promise<StreamConsumer<K>> remove();
-
-	/**
-	 * Shortcut which unwraps stage of consumer into a consumer that consumes when stage is complete.
-	 *
-	 * @return unwrapped stream consumer
-	 * @see #remove()
-	 */
-	default StreamConsumer<K> remover() {
-		return StreamConsumer.ofPromise(remove());
-	}
 
 	/**
 	 * Marker that this client is functional (server is up, there are enough nodes in cluster etc.)
