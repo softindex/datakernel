@@ -40,7 +40,7 @@
 							<goal>java</goal>
 						</goals>
 						<configuration>
-							<mainClass>GlobalFsDemoApp</mainClass>
+							<mainClass>io.global.fs.demo.GlobalFsDemoApp</mainClass>
 						</configuration>
 					</execution>
 				</executions>

@@ -29,6 +29,11 @@ import io.datakernel.util.guice.OptionalDependency;
 import io.global.common.api.DiscoveryService;
 import io.global.common.api.NodeFactory;
 import io.global.common.discovery.HttpDiscoveryService;
+import io.global.db.LocalGlobalDbNode;
+import io.global.db.api.GlobalDbNode;
+import io.global.db.http.GlobalDbNodeServlet;
+import io.global.db.http.HttpGlobalDbNode;
+import io.global.db.stub.RuntimeDbStorageStub;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.GlobalFsNodeServlet;
 import io.global.fs.http.HttpGlobalFsNode;
@@ -36,6 +41,7 @@ import io.global.fs.local.LocalGlobalFsNode;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.http.GlobalOTNodeHttpClient;
 import io.global.ot.http.RawServerServlet;
+import io.global.ot.server.CommitStorage;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.stub.CommitStorageStub;
 
@@ -45,7 +51,9 @@ import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
+import static io.global.launchers.db.Initializers.ofLocalGlobalDbNode;
 import static io.global.launchers.fs.Initializers.ofLocalGlobalFsNode;
+import static io.global.launchers.ot.Initializers.ofGlobalOTNodeImpl;
 
 public class GlobalNodesModule extends AbstractModule {
 	@Provides
@@ -59,17 +67,23 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Singleton
 	GlobalOTNode provide(Eventloop eventloop, DiscoveryService discoveryService, NodeFactory<GlobalOTNode> factory, Config config) {
-		return GlobalOTNodeImpl.create(eventloop, config.get(ofRawServerId(), "ot.serverId"), discoveryService, new CommitStorageStub(), factory);
+		return GlobalOTNodeImpl.create(eventloop, config.get(ofRawServerId(), "ot.serverId"), discoveryService, new CommitStorageStub(), factory)
+				.initialize(ofGlobalOTNodeImpl(config.getChild("ot")));
 	}
 
 	@Provides
 	@Singleton
 	GlobalFsNode provide(Config config, DiscoveryService discoveryService, NodeFactory<GlobalFsNode> factory, FsClient fsClient) {
 		return LocalGlobalFsNode.create(config.get(ofRawServerId(), "fs.serverId"), discoveryService, factory, fsClient)
-				.initialize(ofLocalGlobalFsNode(config));
+				.initialize(ofLocalGlobalFsNode(config.getChild("fs")));
 	}
 
-	// TODO eduard: add GlobalDbNode
+	@Provides
+	@Singleton
+	GlobalDbNode provide(Config config, DiscoveryService discoveryService, NodeFactory<GlobalDbNode> factory) {
+		return LocalGlobalDbNode.create(config.get(ofRawServerId(), "db.serverId"), discoveryService, factory, $ -> new RuntimeDbStorageStub())
+				.initialize(ofLocalGlobalDbNode(config.getChild("ot")));
+	}
 
 	@Provides
 	@Singleton
@@ -92,10 +106,11 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Singleton
-	AsyncServlet provide(RawServerServlet otServlet, GlobalFsNodeServlet fsServlet) {
+	AsyncServlet provide(RawServerServlet otServlet, GlobalFsNodeServlet fsServlet, GlobalDbNodeServlet dbServlet) {
 		return MiddlewareServlet.create()
 				.with("/ot", otServlet)
-				.with("/fs", fsServlet);
+				.with("/fs", fsServlet)
+				.with("/db", dbServlet);
 	}
 
 	@Provides
@@ -108,6 +123,18 @@ public class GlobalNodesModule extends AbstractModule {
 	@Singleton
 	GlobalFsNodeServlet provideGlobalFsServlet(GlobalFsNode node) {
 		return GlobalFsNodeServlet.create(node);
+	}
+
+	@Provides
+	@Singleton
+	GlobalDbNodeServlet provideGlobalDbServlet(GlobalDbNode node) {
+		return GlobalDbNodeServlet.create(node);
+	}
+
+	@Provides
+	@Singleton
+	CommitStorage provideCommitStorage() {
+		return new CommitStorageStub();
 	}
 
 	@Provides
@@ -126,6 +153,12 @@ public class GlobalNodesModule extends AbstractModule {
 	@Singleton
 	NodeFactory<GlobalOTNode> provideOTNodeFactory(IAsyncHttpClient client) {
 		return id -> GlobalOTNodeHttpClient.create(client, id.getServerIdString());
+	}
+
+	@Provides
+	@Singleton
+	NodeFactory<GlobalDbNode> provideDbNodeFactory(IAsyncHttpClient client) {
+		return id -> HttpGlobalDbNode.create(id.getServerIdString(), client);
 	}
 
 	@Provides

@@ -997,8 +997,10 @@ public final class Promises {
 
 	public static <T> Promise<List<T>> nSuccesses(int n, Iterator<Promise<T>> promises) {
 		SettablePromise<List<T>> result = new SettablePromise<>();
+		List<T> results = new ArrayList<>();
+		List<Throwable> errors = new ArrayList<>();
 		for (int i = 0; i < n; i++) {
-			oneSuccessInto(promises, n, result, new ArrayList<>(), new ArrayList<>());
+			oneSuccessInto(promises, n, result, results, errors);
 		}
 		return result;
 	}
@@ -1009,8 +1011,9 @@ public final class Promises {
 
 	public static <T> Promise<List<T>> nSuccessesOrLess(int n, Iterator<Promise<T>> promises) {
 		SettablePromise<List<T>> result = new SettablePromise<>();
+		List<T> results = new ArrayList<>();
 		for (int i = 0; i < n; i++) {
-			oneSuccessInto(promises, n, result, new ArrayList<>(), null);
+			oneSuccessInto(promises, n, result, results, null);
 		}
 		return result;
 	}

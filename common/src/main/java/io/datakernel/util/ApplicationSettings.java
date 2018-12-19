@@ -18,8 +18,12 @@ package io.datakernel.util;
 
 import io.datakernel.annotation.Nullable;
 
+import java.time.Duration;
+
 public final class ApplicationSettings {
-	private ApplicationSettings() {}
+	private ApplicationSettings() {
+		throw new AssertionError();
+	}
 
 	@Nullable
 	public static String getString(Class<?> type, String name, @Nullable String defValue) {
@@ -59,6 +63,15 @@ public final class ApplicationSettings {
 		String property = getString(type, name, null);
 		if (property != null) {
 			return Double.parseDouble(property);
+		}
+		return defValue;
+	}
+
+	@Nullable
+	public static Duration getDuration(Class<?> type, String name, Duration defValue) {
+		String property = getString(type, name, null);
+		if (property != null) {
+			return StringFormatUtils.parseDuration(property);
 		}
 		return defValue;
 	}

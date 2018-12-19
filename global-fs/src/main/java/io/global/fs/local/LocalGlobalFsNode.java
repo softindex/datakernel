@@ -27,6 +27,7 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.functional.Try;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.Initializable;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -60,7 +61,7 @@ import static java.util.stream.Collectors.toList;
 public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<LocalGlobalFsNode> {
 	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalFsNode.class);
 
-	public static final Duration DEFAULT_LATENCY_MARGIN = Duration.ofMinutes(5);
+	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(LocalGlobalFsNode.class, "latencyMargin", Duration.ofMinutes(5));
 
 	private final Set<PubKey> managedPubKeys = new HashSet<>();
 

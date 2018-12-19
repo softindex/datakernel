@@ -29,7 +29,9 @@ import static io.global.launchers.GlobalConfigConverters.ofPubKey;
 import static java.util.Collections.emptyList;
 
 public class Initializers {
-	private Initializers() {}
+	private Initializers() {
+		throw new AssertionError();
+	}
 
 	public static Initializer<GlobalOTNodeImpl> ofGlobalOTNodeImpl(Config config) {
 		return node -> node

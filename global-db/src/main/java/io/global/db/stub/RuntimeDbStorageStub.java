@@ -23,18 +23,19 @@ import io.global.common.SignedData;
 import io.global.db.DbItem;
 import io.global.db.api.DbStorage;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 public final class RuntimeDbStorageStub implements DbStorage {
-	private final Map<byte[], SignedData<DbItem>> storage = new HashMap<>();
+	private final Map<ByteArrayWrapper, SignedData<DbItem>> storage = new HashMap<>();
 
 	@Override
 	public Promise<ChannelConsumer<SignedData<DbItem>>> upload() {
 		return Promise.of(ChannelConsumer.ofConsumer(item -> {
-			SignedData<DbItem> prev = storage.get(item.getValue().getKey());
+			SignedData<DbItem> prev = storage.get(wrap(item.getValue().getKey()));
 			if (prev == null || item.getValue().getValue().getTimestamp() >= prev.getValue().getValue().getTimestamp()) {
-				storage.put(item.getValue().getKey(), item);
+				storage.put(wrap(item.getValue().getKey()), item);
 			}
 		}));
 	}
@@ -48,23 +49,48 @@ public final class RuntimeDbStorageStub implements DbStorage {
 
 	@Override
 	public Promise<ChannelConsumer<SignedData<byte[]>>> remove() {
-		return Promise.of(ChannelConsumer.ofConsumer(key -> storage.remove(key.getValue())));
+		return Promise.of(ChannelConsumer.ofConsumer(key -> storage.remove(wrap(key.getValue()))));
 	}
 
 	@Override
 	public Promise<SignedData<DbItem>> get(byte[] key) {
-		return Promise.of(storage.get(key));
+		return Promise.of(storage.get(wrap(key)));
 	}
 
 	@Override
 	public Promise<Void> put(SignedData<DbItem> item) {
-		storage.put(item.getValue().getKey(), item);
+		storage.put(wrap(item.getValue().getKey()), item);
 		return Promise.complete();
 	}
 
 	@Override
 	public Promise<Void> remove(SignedData<byte[]> key) {
-		storage.remove(key.getValue());
+		storage.remove(wrap(key.getValue()));
 		return Promise.complete();
+	}
+
+	private static ByteArrayWrapper wrap(byte[] data) {
+		return new ByteArrayWrapper(data);
+	}
+
+	private static final class ByteArrayWrapper {
+		private final byte[] data;
+
+		private ByteArrayWrapper(byte[] data) {
+			this.data = data;
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			if (!(other instanceof ByteArrayWrapper)) {
+				return false;
+			}
+			return Arrays.equals(data, ((ByteArrayWrapper) other).data);
+		}
+
+		@Override
+		public int hashCode() {
+			return Arrays.hashCode(data);
+		}
 	}
 }

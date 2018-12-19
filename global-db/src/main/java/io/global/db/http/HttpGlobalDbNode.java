@@ -40,6 +40,7 @@ import java.util.List;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
+import static io.global.db.api.DbCommand.*;
 import static io.global.db.http.GlobalDbNodeServlet.*;
 
 public final class HttpGlobalDbNode implements GlobalDbNode {

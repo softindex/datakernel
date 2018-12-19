@@ -23,6 +23,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
@@ -49,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.getExecutor;
@@ -65,6 +67,10 @@ import static java.util.Arrays.asList;
 public final class GlobalDbDemoApp extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "globaldb-app.properties";
+	public static final Consumer<DbItem> DB_ITEM_CONSUMER = dbItem -> {
+				System.out.print("Key: " + new String(dbItem.getKey(), UTF_8));
+				System.out.println(" Value: " + new String(dbItem.getValue().getData(), UTF_8));
+	};
 
 	@Inject
 	Eventloop eventloop;
@@ -180,6 +186,9 @@ public final class GlobalDbDemoApp extends Launcher {
 						.thenCompose($ -> alice.upload("test_table"))
 						.thenCompose(ChannelSupplier.ofIterable(dbItems)::streamTo)
 						.whenException(Throwable::printStackTrace)
+						.whenResult($ -> System.out.println("Data items has been uploaded to database\nDownloading back..."))
+						.thenCompose($ -> alice.download("test_table"))
+						.thenCompose(supplier -> supplier.streamTo(ChannelConsumer.ofConsumer(DB_ITEM_CONSUMER)))
 						.whenComplete(($, e) -> shutdown())
 		);
 		awaitShutdown();

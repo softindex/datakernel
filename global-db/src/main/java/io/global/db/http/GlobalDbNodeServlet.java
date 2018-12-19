@@ -16,7 +16,9 @@
 
 package io.global.db.http;
 
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.exception.ParseException;
@@ -38,15 +40,10 @@ import static io.datakernel.codec.StructuredCodecs.ofList;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.csp.binary.ByteBufsParser.ofDecoder;
 import static io.datakernel.http.HttpMethod.*;
+import static io.global.db.api.DbCommand.*;
 import static io.global.db.util.BinaryDataFormats.REGISTRY;
 
 public final class GlobalDbNodeServlet implements WithMiddleware {
-	static final String UPLOAD = "upload";
-	static final String DOWNLOAD = "download";
-	static final String GET_ITEM = "get";
-	static final String PUT_ITEM = "put";
-	static final String LIST = "list";
-
 	static final StructuredCodec<SignedData<DbItem>> DB_ITEM_CODEC = REGISTRY.get(new TypeT<SignedData<DbItem>>() {});
 	static final ByteBufsParser<SignedData<DbItem>> DB_ITEM_PARSER = ofDecoder(DB_ITEM_CODEC);
 	static final StructuredCodec<List<String>> LIST_STRING_CODEC = ofList(STRING_CODEC);
@@ -62,9 +59,10 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 				.with(POST, "/" + UPLOAD + "/:space/:repo", request -> {
 					PubKey space = PubKey.fromString(request.getPathParameter("space"));
 					TableID tableID = TableID.of(space, request.getPathParameter("repo"));
+					ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
 					return node.upload(tableID)
 							.thenApply(consumer ->
-									BinaryChannelSupplier.of(request.getBodyStream())
+									BinaryChannelSupplier.of(bodyStream)
 											.parseStream(DB_ITEM_PARSER)
 											.streamTo(consumer))
 							.thenApply($ -> HttpResponse.ok200());

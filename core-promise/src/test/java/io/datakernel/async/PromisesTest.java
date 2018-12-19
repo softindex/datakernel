@@ -17,6 +17,7 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.util.*;
 import org.junit.Test;
@@ -36,6 +37,7 @@ import static java.time.Duration.ofMillis;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static junit.framework.TestCase.*;
+import static org.junit.Assert.assertArrayEquals;
 
 @RunWith(DatakernelRunner.class)
 public final class PromisesTest {
@@ -312,6 +314,61 @@ public final class PromisesTest {
 				.sorted(Comparator.naturalOrder())
 				.map(n -> AsyncSupplier.cast(() ->
 						getStage(n))));
+	}
+
+	@Test
+	public void testNSuccesses() {
+		// test success
+		Exception exception1 = new Exception("Test1");
+		Exception exception2 = new Exception("Test2");
+		Promises.nSuccesses(3,
+				Stream.of(
+						Promise.of(1),
+						Promise.of(2),
+						Promise.ofException(exception1),
+						Promise.of(3),
+						Promise.ofException(exception2),
+						Promise.of(4)))
+				.whenComplete(assertComplete(list -> assertEquals(asList(1, 2, 3), list)));
+
+		// test failure
+		Promises.nSuccesses(5,
+				Stream.of(
+						Promise.of(1),
+						Promise.of(2),
+						Promise.ofException(exception1),
+						Promise.of(3),
+						Promise.ofException(exception2),
+						Promise.of(4)))
+				.whenComplete(assertFailure(StacklessException.class, "Not enough successes",
+						e -> assertArrayEquals(new Throwable[]{exception1, exception2}, e.getSuppressed())));
+	}
+
+	@Test
+	public void testNSuccessesOrLess() {
+		// test n successes
+		Exception exception1 = new Exception("Test1");
+		Exception exception2 = new Exception("Test2");
+		Promises.nSuccessesOrLess(3,
+				Stream.of(
+						Promise.of(1),
+						Promise.of(2),
+						Promise.ofException(exception1),
+						Promise.of(3),
+						Promise.ofException(exception2),
+						Promise.of(4)))
+				.whenComplete(assertComplete(list -> assertEquals(asList(1, 2, 3), list)));
+
+		// test less successes
+		Promises.nSuccessesOrLess(5,
+				Stream.of(
+						Promise.of(1),
+						Promise.of(2),
+						Promise.ofException(exception1),
+						Promise.of(3),
+						Promise.ofException(exception2),
+						Promise.of(4)))
+				.whenComplete(assertComplete(list -> assertEquals(asList(1, 2, 3, 4), list)));
 	}
 
 	private Promise<Integer> getStage(Integer number) {

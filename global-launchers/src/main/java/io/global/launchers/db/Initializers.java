@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
-package io.global.launchers.fs;
+package io.global.launchers.db;
 
 import io.datakernel.config.Config;
 import io.datakernel.util.Initializer;
-import io.global.fs.local.LocalGlobalFsNode;
+import io.global.db.LocalGlobalDbNode;
 
 import java.util.HashSet;
 
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.ConfigConverters.ofDuration;
+import static io.datakernel.config.ConfigConverters.ofList;
 import static io.global.fs.local.LocalGlobalFsNode.DEFAULT_LATENCY_MARGIN;
 import static io.global.launchers.GlobalConfigConverters.ofPubKey;
 import static java.util.Collections.emptyList;
@@ -32,11 +33,9 @@ public class Initializers {
 		throw new AssertionError();
 	}
 
-	public static Initializer<LocalGlobalFsNode> ofLocalGlobalFsNode(Config config) {
+	public static Initializer<LocalGlobalDbNode> ofLocalGlobalDbNode(Config config) {
 		return node -> node
 				.withManagedPubKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())))
-				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching", false))
-				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching", false))
 				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN));
 	}
 }

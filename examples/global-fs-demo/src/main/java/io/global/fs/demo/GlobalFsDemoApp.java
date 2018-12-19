@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.global.db.demo;
+package io.global.fs.demo;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
@@ -56,6 +56,7 @@ import static io.datakernel.util.CollectionUtils.set;
 import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 import static java.lang.Boolean.parseBoolean;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 
 public final class GlobalFsDemoApp extends Launcher {
@@ -176,6 +177,10 @@ public final class GlobalFsDemoApp extends Launcher {
 						.thenCompose(ChannelSupplier.of(wrapUtf8("thats some test data right in that file!\n"))::streamTo)
 						.thenCompose($ -> ChannelSupplier.ofPromise(storage.download(testFile))
 								.streamTo(ChannelConsumer.ofPromise(alice.upload(testFile))))
+						.whenResult($ -> System.out.println("File has been uploaded\nDownloading back..."))
+						.thenCompose($ -> alice.download(testFile))
+						.thenCompose(supplier -> supplier
+								.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8)))))
 						.whenException(Throwable::printStackTrace)
 						.whenComplete(($, e) -> shutdown())
 		);

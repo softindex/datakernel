@@ -26,6 +26,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.Initializable;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -51,7 +52,7 @@ import static java.util.stream.Collectors.toList;
 public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<LocalGlobalDbNode> {
 	private static final Logger logger = LoggerFactory.getLogger(LocalGlobalDbNode.class);
 
-	public static final Duration DEFAULT_LATENCY_MARGIN = Duration.ofMinutes(5);
+	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(LocalGlobalDbNode.class, "latencyMargin", Duration.ofMinutes(5));
 
 	private final Set<PubKey> managedPubKeys = new HashSet<>();
 

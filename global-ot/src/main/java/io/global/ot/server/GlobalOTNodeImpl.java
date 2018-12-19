@@ -27,6 +27,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.Initializable;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
@@ -50,7 +51,7 @@ import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
-	public static final Duration DEFAULT_LATENCY_MARGIN = Duration.ofMinutes(5);
+	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(GlobalOTNodeImpl.class, "latencyMargin", Duration.ofMinutes(5));
 	private final Eventloop eventloop;
 	private final DiscoveryService discoveryService;
 	private final CommitStorage commitStorage;
