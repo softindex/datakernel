@@ -37,7 +37,6 @@ import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
-import io.global.db.Blob;
 import io.global.db.DbItem;
 import io.global.db.GlobalDbDriver;
 import io.global.db.api.DbClient;
@@ -178,7 +177,7 @@ public final class GlobalDbDemoApp extends Launcher {
 
 		List<DbItem> dbItems = new ArrayList<>();
 		for (int i = 0; i < 10; i++) {
-			dbItems.add(DbItem.of(("value_" + i).getBytes(UTF_8), Blob.of(System.currentTimeMillis(), ("data_" + i).getBytes(UTF_8))));
+			dbItems.add(DbItem.of(("value_" + i).getBytes(UTF_8), ("data_" + i).getBytes(UTF_8), System.currentTimeMillis()));
 		}
 
 		eventloop.post(() ->

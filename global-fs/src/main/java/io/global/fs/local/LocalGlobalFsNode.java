@@ -133,6 +133,12 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 		this.latencyMargin = latencyMargin;
 		return this;
 	}
+
+	public LocalGlobalFsNode withUploadRedundancy(int minUploads, int maxUploads) {
+		this.uploadSuccessNumber = minUploads;
+		this.uploadCallNumber = maxUploads;
+		return this;
+	}
 	// endregion
 
 	private static BiFunction<SignedData<GlobalFsCheckpoint>, Throwable, Promise<GlobalFsCheckpoint>> sanitizeMeta() {

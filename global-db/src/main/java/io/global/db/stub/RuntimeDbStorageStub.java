@@ -34,7 +34,7 @@ public final class RuntimeDbStorageStub implements DbStorage {
 	public Promise<ChannelConsumer<SignedData<DbItem>>> upload() {
 		return Promise.of(ChannelConsumer.ofConsumer(item -> {
 			SignedData<DbItem> prev = storage.get(wrap(item.getValue().getKey()));
-			if (prev == null || item.getValue().getValue().getTimestamp() >= prev.getValue().getValue().getTimestamp()) {
+			if (prev == null || item.getValue().getTimestamp() >= prev.getValue().getTimestamp()) {
 				storage.put(wrap(item.getValue().getKey()), item);
 			}
 		}));
@@ -44,7 +44,7 @@ public final class RuntimeDbStorageStub implements DbStorage {
 	public Promise<ChannelSupplier<SignedData<DbItem>>> download(long timestamp) {
 		return Promise.of(ChannelSupplier.ofStream(storage.values()
 				.stream()
-				.filter(item -> item.getValue().getValue().getTimestamp() >= timestamp)));
+				.filter(item -> item.getValue().getTimestamp() >= timestamp)));
 	}
 
 	@Override

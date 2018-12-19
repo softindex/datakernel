@@ -23,17 +23,21 @@ import io.global.common.Hash;
 import io.global.common.SimKey;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 public final class DbItem {
 	private final byte[] key;
-	private final Blob value;
+	private final long timestamp;
+	@Nullable
+	private final byte[] value;
 
 	@Nullable
 	private final Hash simKeyHash;
 
-	private DbItem(byte[] key, Blob value, @Nullable Hash simKeyHash) {
+	private DbItem(byte[] key, @Nullable byte[] value, long timestamp, @Nullable Hash simKeyHash) {
 		this.key = key;
 		this.value = value;
+		this.timestamp = timestamp;
 		this.simKeyHash = simKeyHash;
 	}
 
@@ -42,16 +46,17 @@ public final class DbItem {
 			return item;
 		}
 		byte[] key = item.key;
-		Blob value = item.value;
+		byte[] value = item.value;
 
-		byte[] data = value.getData();
-		data = Arrays.copyOf(data, data.length);
-		CTRAESCipher.create(simKey.getAesKey(), CryptoUtils.nonceFromBytes(key)).apply(data);
-		return new DbItem(key, Blob.of(value.getTimestamp(), data), storeHash ? Hash.sha1(simKey.getBytes()) : null);
+		assert value != null : "trying to crypt a tombstone";
+
+		value = Arrays.copyOf(value, value.length);
+		CTRAESCipher.create(simKey.getAesKey(), CryptoUtils.nonceFromBytes(key)).apply(value);
+		return new DbItem(key, value, item.timestamp, storeHash ? Hash.sha1(simKey.getBytes()) : null);
 
 		// TODO anton: replace above 4 lines with below 2 when tests will use file storage instead of runtime stubs
-		// CTRAESCipher.create(simKey.getAesKey(), CryptoUtils.nonceFromBytes(key)).apply(value.getData());
-		// return new DbItem(key, value, storeHash ? Hash.sha1(simKey.getBytes()) : null);
+		// CTRAESCipher.create(simKey.getAesKey(), CryptoUtils.nonceFromBytes(key)).apply(value);
+		// return new DbItem(key, value, item.timestamp, storeHash ? Hash.sha1(simKey.getBytes()) : null);
 	}
 
 	public static DbItem encrypt(DbItem plainItem, @Nullable SimKey simKey) {
@@ -62,20 +67,33 @@ public final class DbItem {
 		return crypt(encryptedItem, simKey, false);
 	}
 
-	public static DbItem of(byte[] key, Blob value) {
-		return new DbItem(key, value, null);
+	public static DbItem of(byte[] key, byte[] value, long timestamp) {
+		return new DbItem(key, value, timestamp, null);
 	}
 
-	public static DbItem parse(byte[] key, Blob value, @Nullable Hash simKeyHash) {
-		return new DbItem(key, value, simKeyHash);
+	public static DbItem ofRemoved(byte[] key, long timestamp) {
+		return new DbItem(key, null, timestamp, null);
+	}
+
+	public static DbItem parse(byte[] key, byte[] value, long timestamp, @Nullable Hash simKeyHash) {
+		return new DbItem(key, value, timestamp, simKeyHash);
 	}
 
 	public byte[] getKey() {
 		return key;
 	}
 
-	public Blob getValue() {
+	public byte[] getValue() {
+		assert value != null : "Calling .getValue() on a tombstone key-value pair";
 		return value;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
+	}
+
+	public boolean isRemoved() {
+		return value == null;
 	}
 
 	@Nullable
@@ -90,16 +108,26 @@ public final class DbItem {
 
 		DbItem dbItem = (DbItem) o;
 
-		return Arrays.equals(key, dbItem.key) && value.equals(dbItem.value);
+		if (timestamp != dbItem.timestamp) return false;
+		if (!Arrays.equals(key, dbItem.key)) return false;
+		if (!Arrays.equals(value, dbItem.value)) return false;
+		return Objects.equals(simKeyHash, dbItem.simKeyHash);
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * Arrays.hashCode(key) + value.hashCode();
+		int result = Arrays.hashCode(key);
+		result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
+		result = 31 * result + Arrays.hashCode(value);
+		result = 31 * result + (simKeyHash != null ? simKeyHash.hashCode() : 0);
+		return result;
 	}
 
 	@Override
 	public String toString() {
-		return "DbItem{key=@" + Integer.toHexString(Arrays.hashCode(key)) + ", value=" + value + '}';
+		return "DbItem{key=@" + Integer.toHexString(Arrays.hashCode(key)) +
+				", value=@" + Integer.toHexString(Arrays.hashCode(value)) +
+				", timestamp=" + timestamp +
+				(simKeyHash != null ? ", endcrypted=true" : "") + '}';
 	}
 }

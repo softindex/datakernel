@@ -17,67 +17,71 @@
 package io.global.db.util;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
+import io.global.common.Hash;
 import io.global.common.Signature;
 import io.global.common.SignedData;
-import io.global.db.Blob;
 import io.global.db.DbItem;
 
 import java.math.BigInteger;
 
-import static io.datakernel.serializer.util.BinaryOutputUtils.writeByte;
-import static io.datakernel.serializer.util.BinaryOutputUtils.writeVarInt;
 import static io.global.db.util.BinaryDataFormats.REGISTRY;
-import static java.lang.System.arraycopy;
 
 public final class Utils {
 	private Utils() {
 		throw new AssertionError("nope.");
 	}
 
-	private static int getVarIntLength(int v) {
-		if ((v & ~0x7F) == 0) return 1;
-		if (((v >>>= 7) & ~0x7F) == 0) return 2;
-		if (((v >>>= 7) & ~0x7F) == 0) return 3;
-		if ((v >>> 7 & ~0x7F) == 0) return 4;
-		else return 5;
-	}
-
-	public static DbItem convert(SignedData<DbItem> signedDbItem) {
+	public static byte[] packValue(SignedData<DbItem> signedDbItem) {
+		DbItem dbItem = signedDbItem.getValue();
+		byte[] value = dbItem.getValue();
+		long timestamp = dbItem.getTimestamp();
+		Hash hash = dbItem.getSimKeyHash();
 		Signature signature = signedDbItem.getSignature();
 		byte[] r = signature.getR().toByteArray();
 		byte[] s = signature.getS().toByteArray();
 
-		DbItem dbItem = signedDbItem.getValue();
-		Blob blob = dbItem.getValue();
-		byte[] value = blob.getData();
+		ByteBuf buf = ByteBufPool.allocate(5 + value.length + 4 + 5 + (hash == null ? 1 : 1 + hash.getBytes().length) + 5 + r.length + 5 + s.length);
 
-		int varIntLength = getVarIntLength(value.length);
-		byte[] newValue = new byte[varIntLength + value.length + 1 + r.length + 1 + s.length];
-
-		writeVarInt(newValue, 0, value.length);
-		arraycopy(value, 0, newValue, varIntLength, value.length);
-		writeByte(newValue, varIntLength + value.length, (byte) r.length);
-		arraycopy(r, 0, newValue, varIntLength + value.length + 1, r.length);
-		writeByte(newValue, varIntLength + value.length + 1 + r.length, (byte) s.length);
-		arraycopy(s, 0, newValue, varIntLength + value.length + 1 + r.length + 1, s.length);
-
-		return DbItem.of(dbItem.getKey(), Blob.of(blob.getTimestamp(), newValue));
+		buf.write(value);
+		buf.writeLong(timestamp);
+		if (hash != null) {
+			buf.writeByte((byte) 1);
+			buf.writeVarInt(hash.getBytes().length);
+			buf.write(hash.getBytes());
+		} else {
+			buf.writeByte((byte) 0);
+		}
+		buf.writeVarInt(r.length);
+		buf.write(r);
+		buf.writeVarInt(s.length);
+		buf.write(s);
+		return buf.asArray();
 	}
 
-	public static SignedData<DbItem> convert(DbItem dbItem) throws ParseException {
-		byte[] container = dbItem.getValue().getData();
-		ByteBuf buf = ByteBuf.wrapForReading(container);
+	public static SignedData<DbItem> unpackValue(byte[] key, byte[] value) throws ParseException {
+		if (value == null) {
+			return null;
+		}
+		ByteBuf buf = ByteBuf.wrapForReading(value);
 
-		byte[] data = new byte[buf.readVarInt()];
-		buf.read(data);
+		byte[] theValue = new byte[buf.readVarInt()];
+		buf.read(theValue);
+		long timestamp = buf.readLong();
+		Hash simKeyHash = null;
+		if (buf.readByte() == 1) {
+			byte[] h = new byte[buf.readVarInt()];
+			buf.read(h);
+			simKeyHash = Hash.of(h);
+		}
 		byte[] r = new byte[buf.readByte()];
 		buf.read(r);
 		byte[] s = new byte[buf.readByte()];
 		buf.read(s);
 
 		Signature signature = Signature.parse(new BigInteger(r), new BigInteger(s));
-		DbItem newDbItem = DbItem.of(dbItem.getKey(), Blob.of(dbItem.getValue().getTimestamp(), data));
+		DbItem newDbItem = DbItem.parse(key, value, timestamp, simKeyHash);
 		return SignedData.parse(REGISTRY.get(DbItem.class), newDbItem, signature);
 	}
 }

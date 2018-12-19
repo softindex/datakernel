@@ -137,9 +137,9 @@ public final class GlobalDbTest {
 	private static Set<DbItem> createContent() {
 		long timestamp = System.currentTimeMillis();
 		return set(
-				DbItem.of("test 1".getBytes(UTF_8), Blob.of(timestamp, "value 1".getBytes(UTF_8))),
-				DbItem.of("test 2".getBytes(UTF_8), Blob.of(timestamp + 10, "value 2".getBytes(UTF_8))),
-				DbItem.of("test 3".getBytes(UTF_8), Blob.of(timestamp + 25, "value 3".getBytes(UTF_8)))
+				DbItem.of("test 1".getBytes(UTF_8), "value 1".getBytes(UTF_8), timestamp),
+				DbItem.of("test 2".getBytes(UTF_8), "value 2".getBytes(UTF_8), timestamp + 10),
+				DbItem.of("test 3".getBytes(UTF_8), "value 3".getBytes(UTF_8), timestamp + 25)
 		);
 	}
 
@@ -171,11 +171,7 @@ public final class GlobalDbTest {
 	public void separate() {
 		DbClient firstBobAdapter = firstDriver.gatewayFor(bob.getPubKey());
 
-		Set<DbItem> content = new HashSet<>(asList(
-				DbItem.of("test 1".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 1".getBytes(UTF_8))),
-				DbItem.of("test 2".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 2".getBytes(UTF_8))),
-				DbItem.of("test 3".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 3".getBytes(UTF_8)))
-		));
+		Set<DbItem> content = createContent();
 
 		await(ChannelSupplier.ofIterable(content).streamTo(await(firstAliceAdapter.upload("test"))));
 
@@ -186,11 +182,7 @@ public final class GlobalDbTest {
 	@Test
 	public void downloadFromOther() {
 
-		Set<DbItem> content = set(
-				DbItem.of("test 1".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 1".getBytes(UTF_8))),
-				DbItem.of("test 2".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 2".getBytes(UTF_8))),
-				DbItem.of("test 3".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 3".getBytes(UTF_8)))
-		);
+		Set<DbItem> content = createContent();
 
 		RawServerId serverId = new RawServerId("localhost:432");
 		GlobalDbNode other = LocalGlobalDbNode.create(serverId, discoveryService, nodeFactory, storageFactory);
@@ -206,11 +198,7 @@ public final class GlobalDbTest {
 	@Test
 	public void uploadToOther() {
 
-		Set<DbItem> content = set(
-				DbItem.of("test 1".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 1".getBytes(UTF_8))),
-				DbItem.of("test 2".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 2".getBytes(UTF_8))),
-				DbItem.of("test 3".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 3".getBytes(UTF_8)))
-		);
+		Set<DbItem> content = createContent();
 
 		RawServerId serverId = new RawServerId("localhost:432");
 		GlobalDbNode other = LocalGlobalDbNode.create(serverId, discoveryService, nodeFactory, storageFactory);
@@ -225,11 +213,7 @@ public final class GlobalDbTest {
 
 	@Test
 	public void fetch() {
-		Set<DbItem> content = new HashSet<>(asList(
-				DbItem.of("test 1".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 1".getBytes(UTF_8))),
-				DbItem.of("test 2".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 2".getBytes(UTF_8))),
-				DbItem.of("test 3".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 3".getBytes(UTF_8)))
-		));
+		Set<DbItem> content = createContent();
 
 		announce(alice, set(FIRST_ID, SECOND_ID));
 
@@ -245,11 +229,7 @@ public final class GlobalDbTest {
 
 	@Test
 	public void push() {
-		Set<DbItem> content = new HashSet<>(asList(
-				DbItem.of("test 1".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 1".getBytes(UTF_8))),
-				DbItem.of("test 2".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 2".getBytes(UTF_8))),
-				DbItem.of("test 3".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 3".getBytes(UTF_8)))
-		));
+		Set<DbItem> content = createContent();
 
 		await(ChannelSupplier.ofIterable(content).streamTo(await(secondAliceAdapter.upload("test"))));
 
@@ -269,11 +249,7 @@ public final class GlobalDbTest {
 		PrivateKeyStorage pks = firstDriver.getPrivateKeyStorage();
 		pks.changeCurrentSimKey(key1);
 
-		Set<DbItem> content = set(
-				DbItem.of("test 1".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 1".getBytes(UTF_8))),
-				DbItem.of("test 2".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 2".getBytes(UTF_8))),
-				DbItem.of("test 3".getBytes(UTF_8), Blob.of(System.currentTimeMillis(), "value 3".getBytes(UTF_8)))
-		);
+		Set<DbItem> content = createContent();
 
 		await(ChannelSupplier.ofIterable(content).streamTo(await(firstAliceAdapter.upload("test"))));
 

@@ -86,7 +86,7 @@ public final class GlobalDbGateway implements DbClient {
 									}
 
 									// also skip tombstones
-									return !signedItem.getValue().getValue().isRemoved();
+									return !signedItem.getValue().isRemoved();
 								})
 								.map(SignedData::getValue)
 								.mapAsync(this::decrypt)));
@@ -96,7 +96,7 @@ public final class GlobalDbGateway implements DbClient {
 	public Promise<ChannelConsumer<byte[]>> remove(String table) {
 		return node.upload(TableID.of(owner, table))
 				.thenApply(consumer ->
-						consumer.map(key -> SignedData.sign(DB_ITEM_CODEC, DbItem.of(key, Blob.ofRemoved(currentTimeProvider.currentTimeMillis())), privKey)));
+						consumer.map(key -> SignedData.sign(DB_ITEM_CODEC, DbItem.ofRemoved(key, currentTimeProvider.currentTimeMillis()), privKey)));
 	}
 
 	@Override

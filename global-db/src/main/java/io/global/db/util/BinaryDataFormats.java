@@ -18,7 +18,6 @@ package io.global.db.util;
 
 import io.datakernel.codec.registry.CodecFactory;
 import io.global.common.Hash;
-import io.global.db.Blob;
 import io.global.db.DbItem;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
@@ -30,14 +29,10 @@ public final class BinaryDataFormats {
 	}
 
 	public static final CodecFactory REGISTRY = createGlobal()
-			.with(Blob.class, registry ->
-					tuple(Blob::parse,
-							Blob::getTimestamp, registry.get(long.class),
-							Blob::getData, registry.get(byte[].class).nullable()))
-
 			.with(DbItem.class, registry ->
 					tuple(DbItem::parse,
 							DbItem::getKey, registry.get(byte[].class),
-							DbItem::getValue, registry.get(Blob.class),
+							DbItem::getValue, registry.get(byte[].class).nullable(),
+							DbItem::getTimestamp, registry.get(long.class),
 							DbItem::getSimKeyHash, registry.get(Hash.class).nullable()));
 }
