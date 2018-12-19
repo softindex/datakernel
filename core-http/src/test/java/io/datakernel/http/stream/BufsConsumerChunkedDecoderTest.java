@@ -188,7 +188,7 @@ public final class BufsConsumerChunkedDecoderTest {
 	@Test
 	public void shouldThrowChunkSizeException() {
 		consumer.setExpectedException(MALFORMED_CHUNK_LENGTH);
-		String message = Integer.toHexString(1025) + "\r\n";
+		String message = Integer.toHexString(-1) + "\r\n";
 		decodeOneString(message, MALFORMED_CHUNK_LENGTH);
 	}
 

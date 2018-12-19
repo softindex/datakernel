@@ -17,6 +17,7 @@
 package io.datakernel.http.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.AbstractCommunicatingProcess;
 import io.datakernel.csp.ChannelConsumer;
@@ -37,19 +38,12 @@ import static java.lang.Math.min;
 
 public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProcess
 		implements WithChannelTransformer<BufsConsumerChunkedDecoder, ByteBuf, ByteBuf>, WithBinaryChannelInput<BufsConsumerChunkedDecoder> {
-	public static final int DEFAULT_MAX_EXT_LENGTH = 1024; //1 Kb
-	public static final int DEFAULT_MAX_CHUNK_LENGTH = 1024; //1 Kb
 	public static final int MAX_CHUNK_LENGTH_DIGITS = 8;
 	public static final byte[] CRLF = {13, 10};
 	// region exceptions
 	public static final ParseException MALFORMED_CHUNK = new ParseException(BufsConsumerChunkedDecoder.class, "Malformed chunk");
 	public static final ParseException MALFORMED_CHUNK_LENGTH = new InvalidSizeException(BufsConsumerChunkedDecoder.class, "Malformed chunk length");
-	public static final ParseException EXT_TOO_LARGE = new InvalidSizeException(BufsConsumerChunkedDecoder.class, "Malformed chunk, chunk-ext is larger than maximum allowed length");
-	public static final ParseException TRAILER_TOO_LARGE = new InvalidSizeException(BufsConsumerChunkedDecoder.class, "Malformed chunk, trailer-part is larger than maximum allowed length");
 	// endregion
-
-	private int maxExtLength = DEFAULT_MAX_EXT_LENGTH;
-	private int maxChunkLength = DEFAULT_MAX_CHUNK_LENGTH;
 
 	private ByteBufQueue bufs;
 	private BinaryChannelSupplier input;
@@ -60,16 +54,6 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 
 	public static BufsConsumerChunkedDecoder create() {
 		return new BufsConsumerChunkedDecoder();
-	}
-
-	public BufsConsumerChunkedDecoder withMaxChunkLength(int maxChunkLength) {
-		this.maxChunkLength = maxChunkLength;
-		return this;
-	}
-
-	public BufsConsumerChunkedDecoder withMaxExtLength(int maxExtLength) {
-		this.maxExtLength = maxExtLength;
-		return this;
 	}
 
 	@Override
@@ -120,7 +104,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 							chunkLength = (chunkLength << 4) + (c - 'A' + 10);
 						} else if (c == ';' || c == CR) {
 							// Success
-							if (i == 0 || chunkLength > maxChunkLength || chunkLength < 0) {
+							if (i == 0 || chunkLength < 0) {
 								throw MALFORMED_CHUNK_LENGTH;
 							}
 							queue.skip(i);
@@ -131,7 +115,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 					}
 
 					if (remainingBytes > MAX_CHUNK_LENGTH_DIGITS) {
-						throw MALFORMED_CHUNK;
+						throw MALFORMED_CHUNK_LENGTH;
 					}
 
 					return null;
@@ -145,33 +129,41 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 				});
 	}
 
-	private void processData(int chunkLength, ByteBufQueue queue) {
-		chunkLength -= bufs.drainTo(queue, chunkLength);
+	private void processData(int chunkLength) {
+		ByteBuf tempBuf = ByteBufPool.allocate(16 * 1024); // 16Mb - AsyncTcpSocketimpl's default read size
+		chunkLength -= bufs.drainTo(tempBuf, chunkLength);
 		if (chunkLength != 0) {
 			int newChunkLength = chunkLength;
-			input.needMoreData()
-					.whenResult($ -> processData(newChunkLength, queue));
+			output.accept(tempBuf)
+					.thenCompose($ -> input.needMoreData())
+					.whenResult($ -> processData(newChunkLength));
 			return;
 		}
 		input.parse(assertBytes(CRLF))
 				.whenException(e -> {
-					queue.recycle();
+					tempBuf.recycle();
 					close(MALFORMED_CHUNK);
 				})
-				.thenCompose($ -> output.acceptAll(queue.asIterator()))
+				.thenCompose($ -> output.accept(tempBuf))
 				.whenResult($ -> processLength());
 	}
 
 	private void consumeCRLF(int chunkLength) {
-		input.parse(ofCrlfTerminatedBytes(maxExtLength))
+		input.parse(bufs -> {
+			ByteBuf maybeResult = ofCrlfTerminatedBytes().tryParse(bufs);
+			if (maybeResult == null) {
+				bufs.skip(bufs.remainingBytes() - 1);
+			}
+			return maybeResult;
+		})
 				.whenResult(ByteBuf::recycle)
-				.whenException(e -> close(EXT_TOO_LARGE))
-				.whenResult($ -> processData(chunkLength, new ByteBufQueue()));
+				.whenException(this::close)
+				.whenResult($ -> processData(chunkLength));
 	}
 
 	private void validateLastChunk() {
 		int remainingBytes = bufs.remainingBytes();
-		for (int i = 0; i < min(maxExtLength, remainingBytes - 3); i++) {
+		for (int i = 0; i < remainingBytes - 3; i++) {
 			if (bufs.peekByte(i) == CR
 					&& bufs.peekByte(i + 1) == LF
 					&& bufs.peekByte(i + 2) == CR
@@ -185,10 +177,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 			}
 		}
 
-		if (remainingBytes > maxExtLength) {
-			close(TRAILER_TOO_LARGE);
-			return;
-		}
+		bufs.skip(remainingBytes - 3);
+
 		input.needMoreData()
 				.whenResult($ -> validateLastChunk());
 	}
