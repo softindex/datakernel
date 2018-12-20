@@ -86,6 +86,8 @@ public abstract class AbstractHttpConnection {
 
 	protected int contentLength;
 
+	private boolean isClosed;
+
 	@Nullable
 	ConnectionsLinkedList pool;
 	@Nullable
@@ -117,11 +119,12 @@ public abstract class AbstractHttpConnection {
 	public abstract void onClosedWithError(Throwable e);
 
 	protected final boolean isClosed() {
-		return pool == null;
+		return isClosed;
 	}
 
 	public final void close() {
 		if (isClosed()) return;
+		isClosed = true;
 		onClosed();
 		socket.close();
 		readQueue.recycle();
@@ -129,6 +132,7 @@ public abstract class AbstractHttpConnection {
 
 	protected final void closeWithError(Throwable e) {
 		if (isClosed()) return;
+		isClosed = true;
 		onClosedWithError(e);
 		onClosed();
 		socket.close();
@@ -425,8 +429,11 @@ public abstract class AbstractHttpConnection {
 					.transformWith(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
 		}
 
-		onHeadersReceived(null, bodyStream.getSupplier());
+		ChannelSupplier<ByteBuf> supplier = bodyStream.getSupplier(); // process gets started here and can cause connection closing
+
 		if (isClosed()) return;
+
+		onHeadersReceived(null, supplier);
 
 		process.getProcessResult()
 				.whenComplete(($, e) -> {

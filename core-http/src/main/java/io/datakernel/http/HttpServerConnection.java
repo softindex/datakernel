@@ -95,7 +95,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Throwable e) {
-		if (inspector != null && e != null) inspector.onHttpError(remoteAddress, e);
+		if (e != null) {
+			if (inspector != null) {
+				inspector.onHttpError(remoteAddress, e);
+			}
+			writeException(e);
+		}
 	}
 
 	private static HttpMethod getHttpMethodFromMap(byte[] line) {

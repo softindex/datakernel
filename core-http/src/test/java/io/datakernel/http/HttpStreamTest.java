@@ -45,6 +45,7 @@ import static io.datakernel.util.Recyclable.deepRecycle;
 import static java.lang.Math.min;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(DatakernelRunner.class)
 public final class HttpStreamTest {
@@ -153,6 +154,60 @@ public final class HttpStreamTest {
 				.thenCompose(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.thenCompose($ -> socket.read())
 						.whenComplete(assertComplete(responseBuf -> assertEquals(responseMessage, responseBuf.asString(UTF_8))))
+						.whenComplete(($, e) -> socket.close()));
+
+		deepRecycle(expectedList); // not used here
+	}
+
+	@Test
+	public void testMalformedChunkedEncodingMessage() throws IOException {
+		startTestServer(ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody()))));
+
+		String crlf = new String(CRLF, UTF_8);
+
+		String chunkedRequest =
+				"POST / HTTP/1.1" + crlf +
+						"Host: localhost" + crlf +
+						"Transfer-Encoding: chunked" + crlf + crlf +
+						"ffffffffff";
+
+		AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+				.thenCompose(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
+						.thenCompose($ -> socket.read())
+						.whenComplete(assertComplete(responseBuf -> {
+							String response = responseBuf.asString(UTF_8);
+							System.out.println(response);
+							assertTrue(response.contains("400"));
+							assertTrue(response.contains("Malformed chunk length"));
+						}))
+						.whenComplete(($, e) -> socket.close()));
+
+		deepRecycle(expectedList); // not used here
+	}
+
+	@Test
+	public void testTruncatedRequest() throws IOException {
+		startTestServer(ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody()))));
+
+		String crlf = new String(CRLF, UTF_8);
+
+		String chunkedRequest =
+				"POST / HTTP/1.1" + crlf +
+						"Host: localhost" + crlf +
+						"Content-Length: 13" + crlf +
+						"Transfer-Encoding: chunked" + crlf + crlf +
+						"3";
+
+		AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+				.thenCompose(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
+						.thenCompose($ -> socket.write(null))
+						.thenCompose($ -> socket.read())
+						.whenComplete(assertComplete(responseBuf -> {
+							String response = responseBuf.asString(UTF_8);
+							assertTrue(response.contains("HTTP/1.1 400 Bad Request"));
+							assertTrue(response.contains("Incomplete HTTP message"));
+						}))
+
 						.whenComplete(($, e) -> socket.close()));
 
 		deepRecycle(expectedList); // not used here
