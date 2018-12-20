@@ -239,7 +239,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 
 Congratulations! We've just created a simple HTTP-server. Enter the command below to compile and run it:
 ```
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.HttpHelloWorldLauncher
+$ mvn clean compile exec:java@HttpHelloWorldLauncher
 ```
 
 ## Testing 

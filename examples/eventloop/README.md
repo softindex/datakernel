@@ -1,5 +1,6 @@
-1. [Busy Wait Eventloop Echo Server]() - poor implementation of echo server at is looping infinitely while trying to data from socket.
-2. [Selector Eventloop Echo Server]() -
+1. [Busy Wait Eventloop Echo Server](https://github.com/softindex/datakernel/blob/master/examples/eventloop/src/main/java/io/datakernel/examples/BusyWaitEventloopEchoServer.java)
+ - poor implementation of echo server at is looping infinitely while trying to data from socket.
+2. [Selector Eventloop Echo Server](https://github.com/softindex/datakernel/blob/master/examples/eventloop/src/main/java/io/datakernel/examples/SelectorEventloopEchoServer.java) -
 
 To run the examples, you should execute these three lines in the console in appropriate folder:
 ```

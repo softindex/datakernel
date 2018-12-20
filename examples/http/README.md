@@ -26,7 +26,7 @@ threades for requests processing. In the example above your server will have 4 w
 
 To check how HTTP Server or HTTP Multithreaded Server works, you can start your client:
 ```
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.HttpClientExample
+$ mvn clean compile exec:java@HttpClientExample
 ```
 
 

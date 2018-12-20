@@ -1,6 +1,8 @@
+## Datastream
+
 Datastream Module is useful for intra- and inter-server communication and asynchronous data processing.
 
-It is an important building block for other DataKernel modules (OLAP Cube, Aggregation, RPC etc.)
+It is an important building block for other DataKernel modules.
 
 DataStream is:
 * Modern implementation of async reactive streams (unlike streams in Java 8 and traditional thread-based blocking streams)

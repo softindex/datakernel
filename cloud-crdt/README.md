@@ -1,3 +1,5 @@
+## CRDT
+
 CRDT module was designed to create collaborative editing applications with CRDT (conflicat-free replicated data type) 
 approach. Well suitable for simple solutions (for example, a scalable eventually consistent key-value storage 
 with CRDT conflict resolutions).

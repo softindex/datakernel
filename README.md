@@ -31,15 +31,15 @@ multiple Eventloops can run at the same time providing efficient CPU usage.
 
 ### [Net](https://github.com/softindex/datakernel/tree/master/core-net)
 
-Net module handles low-level asynchronous socket I/O (TCP/UDP) based on ByteBuf. Provides ability to create servers that utilize 
-Eventloop and support SSL.
+Net module handles low-level asynchronous socket I/O (TCP/UDP) based on ByteBuf. Provides ability to create servers that 
+utilize Eventloop and support SSL.
 
 [Net examples](https://github.com/softindex/datakernel/tree/master/examples/net)
 
 ### [CSP](https://github.com/softindex/datakernel/tree/master/core-csp)
 
 CSP stands for Communicating Sequential Processes. This module provides sequential communication between processes via 
-channels similarly to the Go Lang.
+channels similarly to the Go language.
 
 [CSP examples](https://github.com/softindex/datakernel/tree/master/examples/csp)
 
@@ -165,20 +165,27 @@ A foundation for other global components. Contains a `DiscoveryService` that is 
 module also contains cryptography tools and some common classes. Cryptography allows nodes to work with non-trusted 
 servers. 
 
-### [Global FS](https://github.com/softindex/datakernel/tree/master/global-fs)
+### [Global-FS](https://github.com/softindex/datakernel/tree/master/global-fs)
 
 A framework to create file sharing systems alternative to IPFS / BitTorrent technologies. It is fault tolerant, 
 distributed and can work with non-trusted servers due to implementation of cryptographic data authenticity.
 
-[Global FS Demo](https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo)
+[Global-FS Demo](https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo)
 
-### [Global OT](https://github.com/softindex/datakernel/tree/master/global-ot)
+### [Global-OT](https://github.com/softindex/datakernel/tree/master/global-ot)
 
 A framework which extends both OT technology and blockchain technology (representing the data as Git-like graph of 
 individual immutable content-addressable commits, encrypted and signed with private key of its owner). Global-OT can 
 work with non-trusted servers. 
 
-[Global OT Demo](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo)
+[Global-OT Demo](https://github.com/softindex/datakernel/tree/master/examples/global-ot-demo)
+
+
+### [Global-DB](https://github.com/softindex/datakernel/tree/master/global-db)
+
+This module is a variation of Global-FS optimized for storing and synchronization small binary key-value pairs.
+
+[Global-DB demo](https://github.com/softindex/datakernel/tree/master/examples/global-db-demo)
 
 ## Integration components
 
@@ -202,11 +209,11 @@ Using this module you can build a server application that will be compatible wit
 
 [UIKernel integration example](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration)
 
-##Getting started
+## Getting started
 There are several guides which demonstrate basic yet extremely important features of DataKernel to get the overall 
 understanding of the framework:
 1. ["Hello World!"](https://github.com/softindex/datakernel/tree/gh-pages/examples/getting-started) - this guide shows 
- how to create a simple “Hello World” application using Eventloop, which is the core component of Datakernel framework.
+ how to create a simple “Hello World” application using Eventloop, which is the core component of DataKernel framework.
 2. ["Hello World!" HTTP Server](https://github.com/softindex/datakernel/tree/master/examples/http-helloworld) - create a 
 simple but scalable HTTP server using Boot and HTTP modules.
 3. [Remote key-value storage](https://github.com/softindex/datakernel/tree/master/examples/remote-key-value-storage) - in 

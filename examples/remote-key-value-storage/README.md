@@ -410,7 +410,7 @@ $ mvn clean package
 
 Firstly, launch server:
 ```
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.RpcServerLauncher
+$ mvn clean compile exec:java@RpcServerLauncher
 ```
 
 
@@ -418,7 +418,7 @@ $ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.RpcServerL
 Then make a "put" request:
 
 ```
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.RpcClientLauncher -Dexec.args="--put key1 value1"
+$ mvn clean compile exec:java@RpcClientLauncher -Dexec.args="--put key1 value1"
 ```
 
 You should see the following output:
@@ -432,7 +432,7 @@ previous value: null
 Finally, make a "get" request:
 
 ```
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.RpcClientLauncher -Dexec.args="--get key1"
+$ mvn clean compile exec:java@RpcClientLauncher -Dexec.args="--get key1"
 
 ```
 

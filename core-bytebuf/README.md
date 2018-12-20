@@ -1,3 +1,5 @@
+## ByteBuf
+
 ByteBuf module provides memory-efficient, recyclable byte buffers.
 
 * Represents a wrapper over a byte buffer with separate read and write indices.

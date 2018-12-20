@@ -1,3 +1,5 @@
+## Promise
+
 Promise is an efficient replacement of default Java CompletionStage interface. 
 Promise represents partial computations of a large one. Promise will succeed (or fail) at 
 some unspecified time and you should chain method calls that will be executed in both cases. These methods basically 

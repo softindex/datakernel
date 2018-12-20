@@ -1,3 +1,5 @@
+## Serializer
+
 Serializer module is a bytecode generator of extremely fast and space efficient serializers, which are used for 
 transferring data over wire or persisting it into a file system or database.
 

@@ -1,3 +1,5 @@
+## LSMT Table
+
 LSMT Table Module provides the foundation for building almost any type of database by providing the possibility to 
 define custom aggregation functions.
 

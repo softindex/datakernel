@@ -1,4 +1,4 @@
-Datakernel provides you with opportunity to create your own application using `Launchers`.
+DataKernel provides you with opportunity to create your own application using `Launchers`.
 
 `Launchers` are basically full-featured applications. They use ServiceGraph to properly boot your application with all
 services and Google Guice to inject dependencies.
@@ -253,12 +253,12 @@ That's it. Lets test our code.
 
 Firstly, `HelloWorldLauncher`:
 ```
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.HelloWorldLauncher
+$ mvn clean compile exec:java@HelloWorldLauncher
 ```
 
 Now start HTTP server:
 ```
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.HttpServerScratch
+$ mvn clean compile exec:java@HttpServerScratch
 ```
 
 If you now try to connect to localhost port 25565 using your browser (localhost:25565) or enter the following command in the terminal: 
@@ -273,6 +273,6 @@ You will see the following content:
 
 You will receive exactly the same result if you start HTTP Simple Server:
 ```
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.HttpSimpleServer
+$ mvn clean compile exec:java@HttpSimpleServer
 ```
 

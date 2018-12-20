@@ -1,3 +1,5 @@
+## Launchers
+
 If you want to create your own application, you should either extend one of proposed launchers or use it as a reference 
 for your custom launcher.
 
