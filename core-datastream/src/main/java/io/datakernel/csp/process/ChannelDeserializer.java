@@ -59,38 +59,77 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 	@Override
 	protected void produce(AsyncProduceController async) {
 		async.begin();
-		int remainingBytes = queue.remainingBytes();
-		while (isReceiverReady() && remainingBytes != 0) {
+		ByteBuf firstBuf;
+		while (isReceiverReady() && (firstBuf = queue.peekBuf()) != null) {
 			int dataSize;
 			int headerSize;
-			byte b = queue.peekByte();
-			if (b >= 0) {
-				dataSize = b;
-				headerSize = 1;
-			} else if (remainingBytes > 1) {
-				dataSize = b & 0x7f;
-				b = queue.peekByte(1);
+			int size;
+			int firstBufRemaining = firstBuf.readRemaining();
+			if (firstBufRemaining >= 3) {
+				byte[] array = firstBuf.array();
+				int pos = firstBuf.readPosition();
+				byte b = array[pos];
 				if (b >= 0) {
-					dataSize |= (b << 7);
-					headerSize = 2;
-				} else if (remainingBytes > 2) {
-					dataSize |= ((b & 0x7f) << 7);
-					b = queue.peekByte(2);
+					dataSize = b;
+					headerSize = 1;
+				} else {
+					dataSize = b & 0x7f;
+					b = array[pos + 1];
 					if (b >= 0) {
-						dataSize |= (b << 14);
-						headerSize = 3;
-					} else
-						throw new IllegalArgumentException("Invalid header size");
+						dataSize += (b << 7);
+						headerSize = 2;
+					} else {
+						dataSize += ((b & 0x7f) << 7);
+						b = array[pos + 2];
+						if (b >= 0) {
+							dataSize += (b << 14);
+							headerSize = 3;
+						} else
+							throw new IllegalArgumentException("Invalid header size");
+					}
+				}
+				size = headerSize + dataSize;
+
+				if (firstBufRemaining >= size) {
+					T item = valueSerializer.decode(array, pos + headerSize);
+					send(item);
+					if (firstBufRemaining != size) {
+						firstBuf.moveReadPosition(size);
+					} else {
+						queue.take().recycle();
+					}
+					continue;
+				}
+
+			} else {
+				byte b = queue.peekByte();
+				if (b >= 0) {
+					dataSize = b;
+					headerSize = 1;
+				} else if (queue.hasRemainingBytes(2)) {
+					dataSize = b & 0x7f;
+					b = queue.peekByte(1);
+					if (b >= 0) {
+						dataSize += (b << 7);
+						headerSize = 2;
+					} else if (queue.hasRemainingBytes(3)) {
+						dataSize += ((b & 0x7f) << 7);
+						b = queue.peekByte(2);
+						if (b >= 0) {
+							dataSize += (b << 14);
+							headerSize = 3;
+						} else
+							throw new IllegalArgumentException("Invalid header size");
+					} else {
+						break;
+					}
 				} else {
 					break;
 				}
-			} else {
-				break;
+				size = headerSize + dataSize;
 			}
 
-			int size = headerSize + dataSize;
-
-			if ((remainingBytes -= size) < 0)
+			if (!queue.hasRemainingBytes(size))
 				break;
 
 			queue.consume(size, buf -> {

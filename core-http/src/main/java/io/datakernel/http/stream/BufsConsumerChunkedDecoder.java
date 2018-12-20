@@ -150,13 +150,14 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 	}
 
 	private void consumeCRLF(int chunkLength) {
-		input.parse(bufs -> {
-			ByteBuf maybeResult = ofCrlfTerminatedBytes().tryParse(bufs);
-			if (maybeResult == null) {
-				bufs.skip(bufs.remainingBytes() - 1);
-			}
-			return maybeResult;
-		})
+		input.parse(
+				bufs -> {
+					ByteBuf maybeResult = ofCrlfTerminatedBytes().tryParse(bufs);
+					if (maybeResult == null) {
+						bufs.skip(bufs.remainingBytes() - 1);
+					}
+					return maybeResult;
+				})
 				.whenResult(ByteBuf::recycle)
 				.whenException(this::close)
 				.whenResult($ -> processData(chunkLength));
