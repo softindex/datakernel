@@ -120,6 +120,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 
 					return null;
 				})
+				.whenException(this::close)
 				.whenResult(chunkLength -> {
 					if (chunkLength != 0) {
 						consumeCRLF(chunkLength);

@@ -16,6 +16,7 @@
 
 package io.datakernel.http.stream;
 
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -73,7 +74,8 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 	private ChannelConsumer<ByteBuf> output;
 
 	// region creators
-	private BufsConsumerGzipInflater() {}
+	private BufsConsumerGzipInflater() {
+	}
 
 	public static BufsConsumerGzipInflater create() {
 		return new BufsConsumerGzipInflater();
@@ -144,7 +146,8 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 							buf.recycle();
 							runNext(flag).run();
 						}
-				);
+				)
+				.whenException(this::close);
 	}
 
 	private void processBody() {
@@ -191,7 +194,8 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 					input.endOfStream()
 							.thenCompose($ -> output.accept(null))
 							.whenResult($ -> completeProcess());
-				});
+				})
+				.whenException(this::close);
 	}
 
 	private void inflate(ByteBufQueue queue) throws DataFormatException {
@@ -246,15 +250,18 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 				.thenCompose(toSkip -> {
 					if (toSkip > MAX_HEADER_FIELD_LENGTH) {
 						close(FEXTRA_TOO_LARGE);
+						return Promise.ofException(FEXTRA_TOO_LARGE);
 					}
 					return input.parse(ofFixedSize(toSkip));
 				})
+				.whenException(this::close)
 				.whenResult(ByteBuf::recycle)
 				.whenResult($ -> runNext(flag - FEXTRA).run());
 	}
 
 	private void skipCRC16(int flag) {
 		input.parse(ofFixedSize(2))
+				.whenException(this::close)
 				.whenResult(ByteBuf::recycle)
 				.whenResult($ -> runNext(flag - FHCRC).run());
 	}

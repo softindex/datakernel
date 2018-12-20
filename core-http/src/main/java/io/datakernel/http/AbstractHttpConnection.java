@@ -387,8 +387,12 @@ public abstract class AbstractHttpConnection {
 				() -> socket.read()
 						.thenComposeEx((buf, e) -> {
 							if (e == null) {
-								readQueue.add(buf);
-								return Promise.complete();
+								if (buf != null) {
+									readQueue.add(buf);
+									return Promise.complete();
+								} else {
+									return Promise.<Void>ofException(INCOMPLETE_MESSAGE);
+								}
 							} else {
 								closeWithError(e);
 								return Promise.<Void>ofException(e);

@@ -21,6 +21,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
@@ -28,13 +30,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.Promise.ofCallback;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.http.AsyncServlet.ensureRequestBody;
+import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.CRLF;
 import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.util.Recyclable.deepRecycle;
 import static java.lang.Math.min;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
@@ -122,6 +129,51 @@ public final class HttpStreamTest {
 						.withBodyStream(supplier))
 				.thenCompose(response -> response.getBodyStream().toCollector(ByteBufQueue.collector()))
 				.whenComplete(assertComplete(buf -> assertEquals(exceptionMessage, buf.asString(UTF_8))));
+	}
+
+	@Test
+	public void testChunkedEncodingMessage() throws IOException {
+		startTestServer(ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody()))));
+
+		String crlf = new String(CRLF, UTF_8);
+
+		String chunkedRequest =
+				"POST / HTTP/1.1" + crlf +
+						"Host: localhost" + crlf +
+						"Transfer-Encoding: chunked" + crlf + crlf +
+						"4" + crlf + "Test" + crlf + "0" + crlf + crlf;
+
+		String responseMessage =
+				"HTTP/1.1 200 OK" + crlf +
+						"Content-Length: 4" + crlf +
+						"Connection: keep-alive" + crlf + crlf +
+						"Test";
+
+		AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+				.thenCompose(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
+						.thenCompose($ -> socket.read())
+						.whenComplete(assertComplete(responseBuf -> assertEquals(responseMessage, responseBuf.asString(UTF_8))))
+						.whenComplete(($, e) -> socket.close()));
+
+		deepRecycle(expectedList); // not used here
+	}
+
+	@Test
+	public void testSendingErrors() throws IOException {
+		String exceptionMessage = "Test Exception";
+
+		startTestServer(ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody()))));
+
+		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(
+				ChannelSupplier.ofIterable(expectedList),
+				ChannelSupplier.ofException(new Exception(exceptionMessage))
+		);
+
+		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
+						.withBodyStream(supplier))
+				.thenCompose(response -> response.getBodyStream().toCollector(ByteBufQueue.collector()))
+				.whenComplete(assertFailure(exceptionMessage));
 	}
 
 	private void startTestServer(AsyncServlet servlet) throws IOException {
