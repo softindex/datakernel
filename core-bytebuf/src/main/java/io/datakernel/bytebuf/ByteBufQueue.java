@@ -58,7 +58,8 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 		return Collector.of(
 				ByteBufQueue::new,
 				(queue, buf) -> {
-					if (queue.hasRemainingBytes(maxSize)) {
+					int size = buf.readRemaining();
+					if (size > maxSize || queue.hasRemainingBytes(maxSize - size + 1)) {
 						queue.recycle();
 						buf.recycle();
 						throw new UncheckedException(new InvalidSizeException(ByteBufQueue.class,
