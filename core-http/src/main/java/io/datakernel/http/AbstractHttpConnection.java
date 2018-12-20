@@ -78,6 +78,7 @@ public abstract class AbstractHttpConnection {
 	protected static final byte CHUNKED = 1 << 2;
 	protected static final byte BODY_RECEIVED = 1 << 3;
 	protected static final byte BODY_SENT = 1 << 4;
+	protected static final byte CLOSED = (byte) (1 << 7);
 	protected byte flags = 0;
 
 	protected int numberOfKeepAliveRequests;
@@ -85,8 +86,6 @@ public abstract class AbstractHttpConnection {
 	protected static final byte[] CONTENT_ENCODING_GZIP = encodeAscii("gzip");
 
 	protected int contentLength;
-
-	private boolean isClosed;
 
 	@Nullable
 	ConnectionsLinkedList pool;
@@ -119,12 +118,12 @@ public abstract class AbstractHttpConnection {
 	public abstract void onClosedWithError(Throwable e);
 
 	protected final boolean isClosed() {
-		return isClosed;
+		return flags < 0;
 	}
 
 	public final void close() {
 		if (isClosed()) return;
-		isClosed = true;
+		flags |= CLOSED;
 		onClosed();
 		socket.close();
 		readQueue.recycle();
@@ -132,7 +131,7 @@ public abstract class AbstractHttpConnection {
 
 	protected final void closeWithError(Throwable e) {
 		if (isClosed()) return;
-		isClosed = true;
+		flags |= CLOSED;
 		onClosedWithError(e);
 		onClosed();
 		socket.close();
@@ -200,6 +199,7 @@ public abstract class AbstractHttpConnection {
 						if (buf != null) {
 							socket.write(buf)
 									.whenComplete(($, e2) -> {
+										if (isClosed()) return;
 										if (e2 == null) {
 											writeHttpMessageImpl(bodySupplier);
 										} else {
@@ -207,6 +207,7 @@ public abstract class AbstractHttpConnection {
 										}
 									});
 						} else {
+							if (isClosed()) return;
 							flags |= BODY_SENT;
 							onBodySent();
 						}

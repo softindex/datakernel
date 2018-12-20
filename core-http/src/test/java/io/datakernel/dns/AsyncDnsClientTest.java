@@ -25,6 +25,7 @@ import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -119,6 +120,7 @@ public final class AsyncDnsClientTest {
 	}
 
 	@Test
+	@Ignore
 	public void testAdaptedClientsInMultipleThreads() {
 		int threadCount = 10;
 
