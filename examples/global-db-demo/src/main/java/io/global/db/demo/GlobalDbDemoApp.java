@@ -66,9 +66,10 @@ import static java.util.Arrays.asList;
 public final class GlobalDbDemoApp extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "globaldb-app.properties";
+
 	public static final Consumer<DbItem> DB_ITEM_CONSUMER = dbItem -> {
-				System.out.print("Key: " + new String(dbItem.getKey(), UTF_8));
-				System.out.println(" Value: " + new String(dbItem.getValue().getData(), UTF_8));
+		System.out.print("Key: " + new String(dbItem.getKey(), UTF_8));
+		System.out.println(" Value: " + new String(dbItem.getValue(), UTF_8));
 	};
 
 	@Inject
