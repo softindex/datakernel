@@ -128,6 +128,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		}
 
 		input.endOfStream()
+				.thenComposeEx(super::sanitize)
 				.thenCompose($ -> output.accept(null))
 				.whenResult($ -> completeProcess());
 	}
@@ -136,6 +137,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		if (!bufs.hasRemainingBytes(header.compressedLen)) {
 			input.needMoreData()
 					.thenComposeEx(ChannelLZ4Decompressor::checkTruncatedDataException)
+					.thenComposeEx(super::sanitize)
 					.whenResult($ -> processBody());
 			return;
 		}
