@@ -100,13 +100,18 @@ public class HttpClientExample extends Launcher {
 			HttpRequest request = HttpRequest.post(addr).withBody(encodeAscii(msg));
 
 			httpClient.request(request)
-					.whenComplete((result, e) -> {
-						if (e == null) {
-							System.out.println("Server response: " + result.getBody().getString(UTF_8));
-						} else {
-							System.err.println("Server error: " + e);
-						}
-					});
+					.thenCompose(response -> response.getBody()
+							.whenComplete((body, e) -> {
+								try {
+									if (e == null) {
+										System.out.println("Server response: " + body.getString(UTF_8));
+									} else {
+										System.err.println("Server error: " + e);
+									}
+								} finally {
+									body.recycle();
+								}
+							}));
 		});
 	}
 

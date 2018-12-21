@@ -26,6 +26,7 @@ import io.datakernel.config.Config;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.local.RuntimeCrdtClient;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
@@ -66,28 +67,46 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 				CrdtData::getKey, descriptor.getKeyCodec(),
 				CrdtData::getState, descriptor.getStateCodec());
 		MiddlewareServlet servlet = MiddlewareServlet.create()
-				.with(HttpMethod.POST, "/", request -> {
-					K key = JsonUtils.fromJson(keyCodec, request.getBody().getString(UTF_8));
-					S state = client.get(key);
-					if (state != null) {
-						return Promise.of(HttpResponse.ok200()
-								.withBody(JsonUtils.toJson(stateCodec, state).getBytes(UTF_8)));
+				.with(HttpMethod.POST, "/", request -> request.getBody().thenCompose(body -> {
+					try {
+						K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));
+						S state = client.get(key);
+						if (state != null) {
+							return Promise.of(HttpResponse.ok200()
+									.withBody(JsonUtils.toJson(stateCodec, state).getBytes(UTF_8)));
+						}
+						return Promise.of(HttpResponse.ofCode(404)
+								.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
 					}
-					return Promise.of(HttpResponse.ofCode(404)
-							.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
-				})
-				.with(HttpMethod.PUT, "/", request -> {
-					client.put(JsonUtils.fromJson(codec, request.getBody().getString(UTF_8)));
-					return Promise.of(HttpResponse.ok200());
-				})
-				.with(HttpMethod.DELETE, "/", request -> {
-					K key = JsonUtils.fromJson(keyCodec, request.getBody().getString(UTF_8));
-					if (client.remove(key)) {
+				}))
+				.with(HttpMethod.PUT, "/", request -> request.getBody().thenCompose(body -> {
+					try {
+						client.put(JsonUtils.fromJson(codec, body.getString(UTF_8)));
 						return Promise.of(HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
 					}
-					return Promise.of(HttpResponse.ofCode(404)
-							.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
-				});
+				}))
+				.with(HttpMethod.DELETE, "/", request -> request.getBody().thenCompose(body -> {
+					try {
+						K key = JsonUtils.fromJson(keyCodec, body.getString(UTF_8));
+						if (client.remove(key)) {
+							return Promise.of(HttpResponse.ok200());
+						}
+						return Promise.of(HttpResponse.ofCode(404)
+								.withBody(("Key '" + key + "' not found").getBytes(UTF_8)));
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
+				}));
 		//		jmxServlet.ifPresent(s -> servlet.with(HttpMethod.GET, "/", s));
 		backupService.ifPresent(backup -> servlet
 				.with(HttpMethod.POST, "/backup", request -> {

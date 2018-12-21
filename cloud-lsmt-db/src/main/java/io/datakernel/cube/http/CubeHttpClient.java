@@ -39,7 +39,6 @@ import java.util.Map;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.cube.http.Utils.*;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.util.LogUtils.toLogger;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -105,22 +104,21 @@ public final class CubeHttpClient implements ICube {
 	@Override
 	public Promise<QueryResult> query(CubeQuery query) {
 		return httpClient.request(buildRequest(query))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(httpResponse -> {
-					String response = httpResponse.getBody().getString(UTF_8);
-
-					if (httpResponse.getCode() != 200) {
-						return Promise.ofException(new ParseException(CubeHttpClient.class, "Cube HTTP query failed. Response code: " + httpResponse.getCode() + " Body: " + response));
-					}
-
-					QueryResult result;
-					try {
-						result = fromJson(getQueryResultCodec(), response);
-					} catch (ParseException e) {
-						return Promise.ofException(new ParseException(CubeHttpClient.class, "Cube HTTP query failed. Invalid data received", e));
-					}
-					return Promise.of(result);
-				})
+				.thenCompose(httpResponse -> httpResponse.getBody()
+						.thenCompose(body -> {
+							try {
+								String response = body.getString(UTF_8);
+								if (httpResponse.getCode() != 200) {
+									return Promise.ofException(new ParseException(CubeHttpClient.class, "Cube HTTP query failed. Response code: " + httpResponse.getCode() + " Body: " + response));
+								}
+								QueryResult result = fromJson(getQueryResultCodec(), response);
+								return Promise.of(result);
+							} catch (ParseException e) {
+								return Promise.ofException(new ParseException(CubeHttpClient.class, "Cube HTTP query failed. Invalid data received", e));
+							} finally {
+								body.recycle();
+							}
+						}))
 				.whenComplete(toLogger(logger, "query", query));
 	}
 

@@ -16,10 +16,12 @@
 
 package io.global.ot.http;
 
+import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.process.ChannelByteChunker;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
@@ -38,7 +40,6 @@ import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
-import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.util.ParserFunction.asFunction;
@@ -67,88 +68,164 @@ public final class RawServerServlet implements WithMiddleware {
 
 	private MiddlewareServlet servlet(GlobalOTNode node) {
 		return MiddlewareServlet.create()
-				.with(GET, "/" + LIST + "/:pubKey", req ->
-						node.list(req.parsePathParameter("pubKey", HttpDataFormats::urlDecodePubKey))
-								.thenApply(names -> HttpResponse.ok200()
-										.withBody(toJson(ofSet(STRING_CODEC), names).getBytes(UTF_8))
-								))
-				.with(POST, "/" + SAVE + "/:pubKey/:name", ensureRequestBody(req -> {
-					SaveTuple saveTuple = fromJson(SAVE_JSON, req.getBody().getString(UTF_8));
-					return node.save(urlDecodeRepositoryId(req), saveTuple.commits, saveTuple.heads)
-							.thenApply($ -> HttpResponse.ok200());
+				.with(GET, "/" + LIST + "/:pubKey", req -> {
+					try {
+						return node.list(req.parsePathParameter("pubKey", HttpDataFormats::urlDecodePubKey))
+								.thenApply(names ->
+										HttpResponse.ok200()
+												.withBody(toJson(ofSet(STRING_CODEC), names).getBytes(UTF_8)));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(POST, "/" + SAVE + "/:pubKey/:name", req -> req.getBody().thenCompose(body -> {
+					try {
+						SaveTuple saveTuple = fromJson(SAVE_JSON, body.getString(UTF_8));
+						return node.save(urlDecodeRepositoryId(req), saveTuple.commits, saveTuple.heads)
+								.thenApply($ -> HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
 				}))
-				.with(GET, "/" + LOAD_COMMIT + "/:pubKey/:name", req ->
-						node.loadCommit(
-								urlDecodeRepositoryId(req),
-								urlDecodeCommitId(req.getQueryParameter("commitId")))
+				.with(GET, "/" + LOAD_COMMIT + "/:pubKey/:name", req -> {
+					try {
+						return node.loadCommit(urlDecodeRepositoryId(req), urlDecodeCommitId(req.getQueryParameter("commitId")))
 								.thenApply(commit -> HttpResponse.ok200()
-										.withBody(toJson(COMMIT_JSON, commit).getBytes(UTF_8))
-								))
-				.with(GET, "/" + GET_HEADS_INFO + "/:pubKey/:name", req ->
-						node.getHeadsInfo(
+										.withBody(toJson(COMMIT_JSON, commit).getBytes(UTF_8)));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(GET, "/" + GET_HEADS_INFO + "/:pubKey/:name", req -> {
+					try {
+						return node.getHeadsInfo(
 								urlDecodeRepositoryId(req))
 								.thenApply(headsInfo -> HttpResponse.ok200()
 										.withBody(toJson(HEADS_INFO_JSON, headsInfo).getBytes(UTF_8))
-								))
-				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", ensureRequestBody(req -> {
-					SignedData<RawSnapshot> snapshot = decode(SIGNED_SNAPSHOT_CODEC, req.takeBody());
-					return node.saveSnapshot(snapshot.getValue().repositoryId, snapshot)
-							.thenApply($ -> HttpResponse.ok200());
+								);
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(POST, "/" + SAVE_SNAPSHOT + "/:pubKey/:name", req -> req.getBody().thenCompose(body -> {
+					try {
+						SignedData<RawSnapshot> snapshot = decode(SIGNED_SNAPSHOT_CODEC, body.slice());
+						return node.saveSnapshot(snapshot.getValue().repositoryId, snapshot)
+								.thenApply($ -> HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
 				}))
-				.with(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", req ->
-						node.loadSnapshot(
+				.with(GET, "/" + LOAD_SNAPSHOT + "/:pubKey/:name", req -> {
+					try {
+						return node.loadSnapshot(
 								urlDecodeRepositoryId(req),
 								urlDecodeCommitId(req.getQueryParameter("id")))
 								.thenApply(maybeSnapshot -> maybeSnapshot
 										.map(snapshot -> HttpResponse.ok200()
 												.withBody(encode(SIGNED_SNAPSHOT_CODEC, snapshot)))
 										.orElseGet(() -> HttpResponse.ofCode(404))
-								))
-				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", req -> node.getHeads(
-						urlDecodeRepositoryId(req),
-						req.parseQueryParameter("heads", COMMIT_IDS_PARSER))
-						.thenApply(heads -> HttpResponse.ok200()
-								.withBody(toJson(HEADS_DELTA_JSON, heads).getBytes(UTF_8))
-						))
-				.with(POST, "/" + SHARE_KEY + "/:owner", ensureRequestBody(req ->
-						node.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SIGNED_SHARED_KEY_JSON, req.getBody().getString(UTF_8)))
-								.thenApply($ -> HttpResponse.ok200())))
-				.with(GET, "/" + GET_SHARED_KEY + "/:owner/:hash", req -> node.getSharedKey(
-						req.parsePathParameter("owner", HttpDataFormats::urlDecodePubKey),
-						req.parsePathParameter("hash", Hash::parseString))
-						.thenApply(sharedSimKey -> HttpResponse.ok200()
-								.withBody(toJson(SIGNED_SHARED_KEY_JSON, sharedSimKey).getBytes(UTF_8))
-						))
-				.with(GET, "/" + GET_SHARED_KEYS + "/:owner", req -> node.getSharedKeys(
-						req.parsePathParameter("owner", HttpDataFormats::urlDecodePubKey))
-						.thenApply(sharedSimKeys -> HttpResponse.ok200()
-								.withBody(toJson(ofList(SIGNED_SHARED_KEY_JSON), sharedSimKeys).getBytes(UTF_8))
-						))
-				.with(POST, "/" + SEND_PULL_REQUEST, ensureRequestBody(req -> {
-					SignedData<RawPullRequest> pullRequest = decode(SIGNED_PULL_REQUEST_CODEC, req.takeBody());
-					return node.sendPullRequest(pullRequest)
-							.thenApply($ -> HttpResponse.ok200());
+								);
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", req -> {
+					try {
+						return node.getHeads(
+								urlDecodeRepositoryId(req),
+								req.parseQueryParameter("heads", COMMIT_IDS_PARSER))
+								.thenApply(heads -> HttpResponse.ok200()
+										.withBody(toJson(HEADS_DELTA_JSON, heads).getBytes(UTF_8))
+								);
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(POST, "/" + SHARE_KEY + "/:owner", req -> req.getBody().thenCompose(body -> {
+					try {
+						return node.shareKey(PubKey.fromString(req.getPathParameter("owner")), fromJson(SIGNED_SHARED_KEY_JSON, body.getString(UTF_8)))
+								.thenApply($ -> HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
 				}))
-				.with(GET, "/" + GET_PULL_REQUESTS + "/:pubKey/:name", req -> node.getPullRequests(urlDecodeRepositoryId(req))
-						.thenApply(pullRequests -> HttpResponse.ok200()
-								.withBody(encode(ofSet(SIGNED_PULL_REQUEST_CODEC), pullRequests))))
-				.with(GET, "/" + DOWNLOAD, req -> node.download(
-						urlDecodeRepositoryId(req),
-						req.parseQueryParameter("required", COMMIT_IDS_PARSER),
-						req.parseQueryParameter("existing", COMMIT_IDS_PARSER))
-						.thenApply(downloader -> HttpResponse.ok200()
-								.withBodyStream(downloader
-										.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
-										.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
-								)
-						))
+				.with(GET, "/" + GET_SHARED_KEY + "/:owner/:hash", req -> {
+					try {
+						return node.getSharedKey(
+								req.parsePathParameter("owner", HttpDataFormats::urlDecodePubKey),
+								req.parsePathParameter("hash", Hash::parseString))
+								.thenApply(sharedSimKey -> HttpResponse.ok200()
+										.withBody(toJson(SIGNED_SHARED_KEY_JSON, sharedSimKey).getBytes(UTF_8))
+								);
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(GET, "/" + GET_SHARED_KEYS + "/:owner", req -> {
+					try {
+						return node.getSharedKeys(
+								req.parsePathParameter("owner", HttpDataFormats::urlDecodePubKey))
+								.thenApply(sharedSimKeys -> HttpResponse.ok200()
+										.withBody(toJson(ofList(SIGNED_SHARED_KEY_JSON), sharedSimKeys).getBytes(UTF_8))
+								);
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(POST, "/" + SEND_PULL_REQUEST, req -> req.getBody().thenCompose(body -> {
+					try {
+						SignedData<RawPullRequest> pullRequest = decode(SIGNED_PULL_REQUEST_CODEC, body.slice());
+						return node.sendPullRequest(pullRequest)
+								.thenApply($ -> HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
+				}))
+				.with(GET, "/" + GET_PULL_REQUESTS + "/:pubKey/:name", req -> {
+					try {
+						return node.getPullRequests(urlDecodeRepositoryId(req))
+								.thenApply(pullRequests -> HttpResponse.ok200()
+										.withBody(encode(ofSet(SIGNED_PULL_REQUEST_CODEC), pullRequests)));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(GET, "/" + DOWNLOAD, req -> {
+					try {
+						return node.download(
+								urlDecodeRepositoryId(req),
+								req.parseQueryParameter("required", COMMIT_IDS_PARSER),
+								req.parseQueryParameter("existing", COMMIT_IDS_PARSER))
+								.thenApply(downloader -> HttpResponse.ok200()
+										.withBodyStream(downloader
+												.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
+												.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
+										)
+								);
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
 				.with(POST, "/" + UPLOAD, req -> {
-					RepoID repoID = urlDecodeRepositoryId(req);
-					return BinaryChannelSupplier.of(req.getBodyStream())
-							.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
-									.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
-							.streamTo(ChannelConsumer.ofPromise(node.upload(repoID)))
-							.thenApply($ -> HttpResponse.ok200());
+					try {
+						RepoID repoID = urlDecodeRepositoryId(req);
+						return BinaryChannelSupplier.of(req.getBodyStream())
+								.parseStream(ByteBufsParser.ofVarIntSizePrefixedBytes()
+										.andThen(buf -> decode(COMMIT_ENTRY_CODEC, buf)))
+								.streamTo(ChannelConsumer.ofPromise(node.upload(repoID)))
+								.thenApply($ -> HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
 				});
 	}
 

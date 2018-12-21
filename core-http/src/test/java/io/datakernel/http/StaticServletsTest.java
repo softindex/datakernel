@@ -72,8 +72,8 @@ public final class StaticServletsTest {
 		StaticLoader resourceLoader = StaticLoaders.ofPath(Executors.newSingleThreadExecutor(), resourcesPath);
 		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
 				.serve(HttpRequest.get("http://test.com:8080/index.html"))
-				.thenCompose(response -> response.ensureBody(Integer.MAX_VALUE))
-				.whenComplete(assertComplete(responseWithBody -> assertEquals(EXPECTED_CONTENT, responseWithBody.takeBody().asString(UTF_8))));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
 	}
 
 	@Test
@@ -89,8 +89,8 @@ public final class StaticServletsTest {
 		StaticLoader resourceLoader = StaticLoaders.ofFile(Executors.newSingleThreadExecutor(), resourcesFile);
 		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
 				.serve(HttpRequest.get("http://test.com:8080/index.html"))
-				.thenCompose(response -> response.ensureBody(Integer.MAX_VALUE))
-				.whenComplete(assertComplete(responseWithBody -> assertEquals(EXPECTED_CONTENT, responseWithBody.takeBody().asString(UTF_8))));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
 	}
 
 	@Test
@@ -106,8 +106,8 @@ public final class StaticServletsTest {
 		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor());
 		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
 				.serve(HttpRequest.get("http://test.com:8080/testFile.txt"))
-				.thenCompose(response -> response.ensureBody(Integer.MAX_VALUE))
-				.whenComplete(assertComplete(responseWithBody -> assertEquals(EXPECTED_CONTENT, responseWithBody.takeBody().asString(UTF_8))));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
 	}
 
 	@Test
@@ -123,8 +123,8 @@ public final class StaticServletsTest {
 		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor(), getClass());
 		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
 				.serve(HttpRequest.get("http://test.com:8080/testFile.txt"))
-				.thenCompose(response -> response.ensureBody(Integer.MAX_VALUE))
-				.whenComplete(assertComplete(responseWithBody -> assertEquals(EXPECTED_CONTENT, responseWithBody.takeBody().asString(UTF_8))));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
 	}
 
 	@Test
@@ -150,8 +150,8 @@ public final class StaticServletsTest {
 
 		StaticServlet.create(Eventloop.getCurrentEventloop(), testLoader.filter(preDownloadResources::contains))
 				.serve(HttpRequest.get("http://test.com:8080/dir2/testFile.txt"))
-				.thenCompose(response -> response.ensureBody(Integer.MAX_VALUE))
-				.whenComplete(assertComplete(responseWithBody -> assertEquals(EXPECTED_CONTENT, responseWithBody.takeBody().asString(UTF_8))));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
 	}
 
 	@Test
@@ -169,7 +169,7 @@ public final class StaticServletsTest {
 
 		StaticServlet.create(Eventloop.getCurrentEventloop(), testLoader.filter(fileService::contains))
 				.serve(HttpRequest.get("http://test.com:8080/index.html"))
-				.thenCompose(response -> response.ensureBody(Integer.MAX_VALUE))
-				.whenComplete(assertComplete(responseWithBody -> assertEquals(EXPECTED_CONTENT, responseWithBody.takeBody().asString(UTF_8))));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
 	}
 }

@@ -25,7 +25,6 @@ import java.io.IOException;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 
 public final class GzipCompressingBehaviourExample {
 	public static void main(String[] args) throws IOException {
@@ -50,12 +49,10 @@ public final class GzipCompressingBehaviourExample {
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
 		// !sic, you should call withAcceptEncodingGzip for your request if you want to get the response gzipped
-		HttpRequest request = HttpRequest.post("http://example.com")
-				.withBody(encodeAscii("Hello, world!"))
-				.withBodyGzipCompression()
-				.withHeader(ACCEPT_ENCODING, "gzip");
-
-		client.request(request)
-				.thenCompose(ensureResponseBody());
+		client.request(
+				HttpRequest.post("http://example.com")
+						.withBody(encodeAscii("Hello, world!"))
+						.withBodyGzipCompression()
+						.withHeader(ACCEPT_ENCODING, "gzip"));
 	}
 }

@@ -20,8 +20,6 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
-import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import io.global.common.*;
@@ -160,15 +158,7 @@ public class GlobalOTNodeHttpClientTest {
 			}
 		});
 
-		IAsyncHttpClient httpClient = request -> {
-			try {
-				return servlet.serve(request);
-			} catch (ParseException e) {
-				return Promise.ofException(e);
-			}
-		};
-
-		GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(httpClient, "http://localhost/");
+		GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(servlet::serve, "http://localhost/");
 
 		doTest(client.list(pubKey), pubKey);
 

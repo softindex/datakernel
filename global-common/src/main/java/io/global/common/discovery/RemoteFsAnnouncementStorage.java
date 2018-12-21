@@ -70,9 +70,11 @@ public final class RemoteFsAnnouncementStorage implements AnnouncementStorage {
 								supplier.toCollector(ByteBufQueue.collector()))
 				.thenCompose(buf -> {
 					try {
-						return Promise.of(decode(ANNOUNCEMENT_CODEC, buf));
+						return Promise.of(decode(ANNOUNCEMENT_CODEC, buf.slice()));
 					} catch (ParseException e1) {
 						return Promise.ofException(e1);
+					} finally {
+						buf.recycle();
 					}
 				})
 				.whenComplete(toLogger(logger, TRACE, "load", space, this));

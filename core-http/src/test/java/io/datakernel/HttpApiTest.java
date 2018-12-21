@@ -35,7 +35,6 @@ import java.util.List;
 
 import static io.datakernel.http.HttpHeaderValue.*;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.time.ZoneOffset.UTC;
 import static java.util.stream.Collectors.toList;
@@ -70,14 +69,15 @@ public final class HttpApiTest {
 
 	@Before
 	public void setUp() {
-		server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request -> {
-			try {
-				testRequest(request);
-				return Promise.of(createResponse());
-			} catch (ParseException e) {
-				return Promise.ofException(e);
-			}
-		})
+		server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
+				request -> {
+					try {
+						testRequest(request);
+						return Promise.of(createResponse());
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
 				.withListenPort(PORT);
 
 		client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
@@ -108,7 +108,6 @@ public final class HttpApiTest {
 	public void test() throws IOException {
 		server.listen();
 		client.request(createRequest())
-				.thenCompose(ensureResponseBody())
 				.whenComplete(($, e) -> {
 					server.close();
 					client.stop();

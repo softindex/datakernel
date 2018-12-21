@@ -127,13 +127,15 @@ public class HttpFsClient implements FsClient {
 								.appendQuery("glob", glob)
 								.build()))
 				.thenCompose(ensureOk200())
-				.thenCompose(response -> {
+				.thenCompose(response -> response.getBody().thenCompose(body -> {
 					try {
-						return Promise.of(JsonUtils.fromJson(FILE_META_LIST, response.getBody().getString(UTF_8)));
+						return Promise.of(JsonUtils.fromJson(FILE_META_LIST, body.getString(UTF_8)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
+					} finally {
+						body.recycle();
 					}
-				});
+				}));
 	}
 
 	@Override

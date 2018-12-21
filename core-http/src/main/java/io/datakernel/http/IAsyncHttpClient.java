@@ -17,28 +17,11 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
 
 import java.util.function.Function;
 
 public interface IAsyncHttpClient {
 	Promise<HttpResponse> request(HttpRequest request);
-
-	MemSize DEFAULT_MAX_RESPONSE_BODY = MemSize.of(
-			ApplicationSettings.getInt(AsyncHttpClient.class, "maxResponseBody", 1024 * 1024));
-
-	static Function<HttpResponse, Promise<HttpResponse>> ensureResponseBody() {
-		return response -> response.ensureBody(DEFAULT_MAX_RESPONSE_BODY);
-	}
-
-	static Function<HttpResponse, Promise<HttpResponse>> ensureResponseBody(int maxBodySize) {
-		return response -> response.ensureBody(maxBodySize);
-	}
-
-	static Function<HttpResponse, Promise<HttpResponse>> ensureResponseBody(MemSize maxBodySize) {
-		return response -> response.ensureBody(maxBodySize);
-	}
 
 	static Function<HttpResponse, Promise<HttpResponse>> ensureOk200() {
 		return response -> {

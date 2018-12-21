@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
@@ -32,7 +33,6 @@ import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
 
 import static io.datakernel.codec.binary.BinaryUtils.*;
-import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
@@ -57,59 +57,81 @@ public final class GlobalFsNodeServlet implements WithMiddleware {
 	private static MiddlewareServlet servlet(GlobalFsNode node) {
 		return MiddlewareServlet.create()
 				.with(POST, "/" + UPLOAD + "/:space/:path*", request -> {
-					PubKey space = PubKey.fromString(request.getPathParameter("space"));
-					String path = request.getPathParameter("path");
-					long offset = parseOffset(request);
-					ChannelSupplier<ByteBuf> body = request.getBodyStream();
-					return node.getMetadata(space, path)
-							.thenComposeEx((meta, e) -> {
-								boolean newFile = e == NO_CHECKPOINT;
-								if (e == null || newFile) {
-									return node.upload(space, path, offset)
-											.thenCompose(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
-											.thenApply($ -> newFile ? HttpResponse.ok201() : HttpResponse.ok200());
-								}
-								return Promise.ofException(e);
-							});
+					try {
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						String path = request.getPathParameter("path");
+						long offset = parseOffset(request);
+						ChannelSupplier<ByteBuf> body = request.getBodyStream();
+						return node.getMetadata(space, path)
+								.thenComposeEx((meta, e) -> {
+									boolean newFile = e == NO_CHECKPOINT;
+									if (e == null || newFile) {
+										return node.upload(space, path, offset)
+												.thenCompose(consumer -> body.streamTo(consumer.transformWith(new FrameDecoder())))
+												.thenApply($ -> newFile ? HttpResponse.ok201() : HttpResponse.ok200());
+									}
+									return Promise.ofException(e);
+								});
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
 				})
 				.with(GET, "/" + DOWNLOAD + "/:space/:path*", request -> {
-					long[] range = parseRange(request);
-					PubKey space = PubKey.fromString(request.getPathParameter("space"));
-					String path = request.getPathParameter("path");
-					return node.download(space, path, range[0], range[1])
-							.thenApply(supplier ->
-									HttpResponse.ok200()
-											.withBodyStream(supplier.transformWith(new FrameEncoder())));
+					try {
+						long[] range = parseRange(request);
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						String path = request.getPathParameter("path");
+						return node.download(space, path, range[0], range[1])
+								.thenApply(supplier ->
+										HttpResponse.ok200()
+												.withBodyStream(supplier.transformWith(new FrameEncoder())));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
 				})
 				.with(GET, "/" + LIST + "/:space/:name", request -> {
-					PubKey space = PubKey.fromString(request.getPathParameter("space"));
-					return node.list(space, request.getQueryParameter("glob"))
-							.thenApply(list -> HttpResponse.ok200()
-									.withBodyStream(
-											ChannelSupplier.ofStream(list
-													.stream()
-													.map(meta ->
-															encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, meta)))));
+					try {
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						return node.list(space, request.getQueryParameter("glob"))
+								.thenApply(list -> HttpResponse.ok200()
+										.withBodyStream(
+												ChannelSupplier.ofStream(list
+														.stream()
+														.map(meta ->
+																encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, meta)))));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
 				})
 				.with(GET, "/" + GET_METADATA + "/:space/:path*", request -> {
-					PubKey space = PubKey.fromString(request.getPathParameter("space"));
-					return node.getMetadata(space, request.getPathParameter("path"))
-							.thenComposeEx((meta, e) -> {
-								if (e == null) {
-									return Promise.of(HttpResponse.ok200()
-											.withBody(encode(SIGNED_CHECKPOINT_CODEC, meta)));
-								}
-								if (e == NO_CHECKPOINT) {
-									return Promise.of(HttpResponse.ofCode(404));
-								}
-								return Promise.ofException(e);
-							});
+					try {
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						return node.getMetadata(space, request.getPathParameter("path"))
+								.thenComposeEx((meta, e) -> {
+									if (e == null) {
+										return Promise.of(HttpResponse.ok200()
+												.withBody(encode(SIGNED_CHECKPOINT_CODEC, meta)));
+									}
+									if (e == NO_CHECKPOINT) {
+										return Promise.of(HttpResponse.ofCode(404));
+									}
+									return Promise.ofException(e);
+								});
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
 				})
-				.with(POST, "/" + DELETE + "/:space", ensureRequestBody(request -> {
-					PubKey space = PubKey.fromString(request.getPathParameter("space"));
-					SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, request.takeBody());
-					return node.delete(space, checkpoint)
-							.thenApply(list -> HttpResponse.ok200());
+				.with(POST, "/" + DELETE + "/:space", request -> request.getBody().thenCompose(body -> {
+					try {
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, body.slice());
+						return node.delete(space, checkpoint)
+								.thenApply(list -> HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
 				}));
 		// .with(POST, "/" + COPY + "/:space/:fs", ensureRequestBody(MemSize.megabytes(1), request ->
 		// 		node.copy(parseNamespace(request), request.getPostParameters())

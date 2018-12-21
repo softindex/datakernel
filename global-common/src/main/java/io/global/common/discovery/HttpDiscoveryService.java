@@ -34,7 +34,6 @@ import java.util.List;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 import static io.global.common.api.DiscoveryCommand.*;
@@ -69,18 +68,18 @@ public final class HttpDiscoveryService implements DiscoveryService {
 				.toVoid();
 	}
 
-	private <T> Try<T> tryParseResponse(HttpResponse response, ParserFunction<ByteBuf, T> from) {
+	private <T> Try<T> tryParseResponse(HttpResponse response, ByteBuf body, ParserFunction<ByteBuf, T> from) {
 		switch (response.getCode()) {
 			case 200:
 				try {
-					return Try.of(from.parse(response.takeBody()));
+					return Try.of(from.parse(body));
 				} catch (ParseException e) {
 					return Try.ofException(e);
 				}
 			case 404:
 				return Try.of(null);
 			default:
-				return Try.ofException(HttpException.ofCode(response.getCode(), response.getBody().getString(UTF_8)));
+				return Try.ofException(HttpException.ofCode(response.getCode(), body.getString(UTF_8)));
 		}
 	}
 
@@ -92,10 +91,16 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.appendPathPart(FIND)
 						.appendPathPart(space.asString())
 						.build()))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(response -> Promise.ofTry(
-						tryParseResponse(response, body -> decode(SIGNED_ANNOUNCE, body))
-								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_ANNOUNCEMENT))));
+				.thenCompose(response -> response.getBody()
+						.thenCompose(body -> {
+							try {
+								return Promise.ofTry(
+										tryParseResponse(response, body, buf -> decode(SIGNED_ANNOUNCE, buf.slice()))
+												.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_ANNOUNCEMENT)));
+							} finally {
+								body.recycle();
+							}
+						}));
 	}
 
 	@Override
@@ -121,10 +126,16 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.appendPathPart(receiver.asString())
 						.appendPathPart(hash.asString())
 						.build()))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(response -> Promise.ofTry(
-						tryParseResponse(response, body -> decode(SIGNED_SHARED_SIM_KEY, body))
-								.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_SHARED_KEY))));
+				.thenCompose(response -> response.getBody()
+						.thenCompose(body -> {
+							try {
+								return Promise.ofTry(
+										tryParseResponse(response, body, buf -> decode(SIGNED_SHARED_SIM_KEY, buf.slice()))
+												.flatMap(v -> v != null ? Try.of(v) : Try.ofException(NO_SHARED_KEY)));
+							} finally {
+								body.recycle();
+							}
+						}));
 	}
 
 	@Override
@@ -135,9 +146,14 @@ public final class HttpDiscoveryService implements DiscoveryService {
 						.appendPathPart(GET_SHARED_KEY)
 						.appendPathPart(receiver.asString())
 						.build()))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(response -> Promise.ofTry(
-						tryParseResponse(response, body ->
-								decode(LIST_OF_SIGNED_SHARED_SIM_KEYS, body))));
+				.thenCompose(response -> response.getBody()
+						.thenCompose(body -> {
+							try {
+								return Promise.ofTry(
+										tryParseResponse(response, body, buf -> decode(LIST_OF_SIGNED_SHARED_SIM_KEYS, buf.slice())));
+							} finally {
+								body.recycle();
+							}
+						}));
 	}
 }

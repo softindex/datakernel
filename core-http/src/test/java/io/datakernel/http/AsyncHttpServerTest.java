@@ -35,7 +35,6 @@ import java.util.Random;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.lang.Math.min;
@@ -324,12 +323,13 @@ public final class AsyncHttpServerTest {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
+		byte[] body = encodeAscii("Test big HTTP message body");
 		HttpRequest request = HttpRequest.post("http://127.0.0.1:" + port)
-				.withBody(encodeAscii("Test big HTTP message body"));
+				.withBody(body);
 
-		ByteBuf buf = ByteBufPool.allocate(request.estimateSize() + request.body.readRemaining());
+		ByteBuf buf = ByteBufPool.allocate(request.estimateSize() + body.length);
 		request.writeTo(buf);
-		buf.put(request.body);
+		buf.put(body);
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
 				req -> Promise.of(
@@ -357,8 +357,7 @@ public final class AsyncHttpServerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				ensureRequestBody(request ->
-						Promise.of(HttpResponse.ok200().withBody(request.takeBody()))))
+				request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)))
 				.withListenPort(port);
 
 		server.listen();

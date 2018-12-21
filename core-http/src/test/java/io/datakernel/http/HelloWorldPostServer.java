@@ -16,12 +16,10 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class HelloWorldPostServer {
@@ -30,9 +28,9 @@ public final class HelloWorldPostServer {
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
-				ensureRequestBody(request -> Promise.of(
-						HttpResponse.ok200()
-								.withBody(encodeAscii(HELLO_WORLD + request.getBody().getString(UTF_8))))))
+				request -> request.getBody()
+						.thenApply(body -> HttpResponse.ok200()
+								.withBody(encodeAscii(HELLO_WORLD + body.asString(UTF_8)))))
 				.withListenPort(port);
 	}
 

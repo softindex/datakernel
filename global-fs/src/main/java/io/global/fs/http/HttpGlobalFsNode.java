@@ -42,7 +42,6 @@ import java.util.List;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.csp.binary.ByteBufsParser.ofDecoder;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
 import static io.global.fs.api.FsCommand.*;
@@ -127,18 +126,18 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(space.asString())
 						.appendPath(filename)
 						.build()))
-				.thenCompose(ensureResponseBody())
 				.thenCompose(ensureStatusCode(200, 404))
-				.thenCompose(response -> {
-					if (response.getCode() == 404) {
-						return Promise.ofException(NO_CHECKPOINT);
-					}
-					try {
-						return Promise.of(decode(SIGNED_CHECKPOINT_CODEC, response.takeBody()));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				});
+				.thenCompose(res -> res.getCode() == 404 ? Promise.ofException(NO_CHECKPOINT) : Promise.of(res))
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> {
+							try {
+								return Promise.of(decode(SIGNED_CHECKPOINT_CODEC, body.slice()));
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							} finally {
+								body.recycle();
+							}
+						}));
 	}
 
 	@Override

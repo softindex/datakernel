@@ -18,6 +18,7 @@ package io.global.common.discovery;
 
 import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.TypeT;
 import io.global.common.Hash;
@@ -31,7 +32,6 @@ import java.util.List;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.api.DiscoveryCommand.*;
 
@@ -52,40 +52,67 @@ public final class DiscoveryServlet implements WithMiddleware {
 
 	private MiddlewareServlet servlet(DiscoveryService discoveryService) {
 		return MiddlewareServlet.create()
-				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", ensureRequestBody(request -> {
-					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
-					SignedData<AnnounceData> announceData = decode(SIGNED_ANNOUNCE, request.takeBody());
-					return discoveryService.announce(owner, announceData)
-							.thenApply($ -> HttpResponse.ok201());
+				.with(HttpMethod.PUT, "/" + ANNOUNCE + "/:owner", request -> request.getBody().thenCompose(body -> {
+					try {
+						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
+						SignedData<AnnounceData> announceData = decode(SIGNED_ANNOUNCE, body.slice());
+						return discoveryService.announce(owner, announceData)
+								.thenApply($ -> HttpResponse.ok201());
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
 				}))
-				.with(HttpMethod.GET, "/" + FIND + "/:owner", request ->
-						discoveryService.find(PubKey.fromString(request.getPathParameter("owner")))
+				.with(HttpMethod.GET, "/" + FIND + "/:owner", request -> {
+					try {
+						return discoveryService.find(PubKey.fromString(request.getPathParameter("owner")))
 								.thenComposeEx((data, e) ->
 										e == null ?
 												Promise.of(HttpResponse.ok200()
 														.withBody(encode(SIGNED_ANNOUNCE, data))) :
-												Promise.ofException(HttpException.notFound404())))
-				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", ensureRequestBody(request -> {
-					PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
-					SignedData<SharedSimKey> simKey = decode(SIGNED_SHARED_SIM_KEY, request.takeBody());
-					return discoveryService.shareKey(receiver, simKey)
-							.thenApply($ -> HttpResponse.ok201());
+												Promise.ofException(HttpException.notFound404()));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(HttpMethod.POST, "/" + SHARE_KEY + "/:receiver", request -> request.getBody().thenCompose(body -> {
+					try {
+						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
+						SignedData<SharedSimKey> simKey = decode(SIGNED_SHARED_SIM_KEY, body.slice());
+						return discoveryService.shareKey(receiver, simKey)
+								.thenApply($ -> HttpResponse.ok201());
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
 				}))
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEY + "/:receiver/:hash", request -> {
-					PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
-					Hash simKeyHash = Hash.parseString(request.getPathParameter("hash"));
-					return discoveryService.getSharedKey(receiver, simKeyHash)
-							.thenComposeEx((signedSharedKey, e) ->
-									e == null ?
-											Promise.of(HttpResponse.ok200()
-													.withBody(encode(SIGNED_SHARED_SIM_KEY, signedSharedKey))) :
-											Promise.ofException(HttpException.notFound404()));
+					try {
+						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
+						Hash simKeyHash = Hash.parseString(request.getPathParameter("hash"));
+						return discoveryService.getSharedKey(receiver, simKeyHash)
+								.thenComposeEx((signedSharedKey, e) ->
+										e == null ?
+												Promise.of(HttpResponse.ok200()
+														.withBody(encode(SIGNED_SHARED_SIM_KEY, signedSharedKey))) :
+												Promise.ofException(HttpException.notFound404()));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
 				})
 				.with(HttpMethod.GET, "/" + GET_SHARED_KEYS + "/:receiver", request ->
-						discoveryService.getSharedKeys(PubKey.fromString(request.getPathParameter("receiver")))
+				{
+					try {
+						return discoveryService.getSharedKeys(PubKey.fromString(request.getPathParameter("receiver")))
 								.thenApply(signedSharedKeys ->
 										HttpResponse.ok200()
-												.withBody(encode(LIST_OF_SIGNED_SHARED_SIM_KEYS, signedSharedKeys))));
+												.withBody(encode(LIST_OF_SIGNED_SHARED_SIM_KEYS, signedSharedKeys)));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				});
 	}
 
 	@Override

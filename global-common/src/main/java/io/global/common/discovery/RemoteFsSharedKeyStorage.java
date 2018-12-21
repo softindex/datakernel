@@ -82,9 +82,11 @@ public class RemoteFsSharedKeyStorage implements SharedKeyStorage {
 							supplier.toCollector(ByteBufQueue.collector())
 									.thenCompose(buf -> {
 										try {
-											return Promise.of(decode(SHARED_KEY_CODEC, buf));
+											return Promise.of(decode(SHARED_KEY_CODEC, buf.slice()));
 										} catch (ParseException e1) {
 											return Promise.ofException(e1);
+										} finally {
+											buf.recycle();
 										}
 									});
 

@@ -38,7 +38,6 @@ import io.global.db.api.TableID;
 import java.util.List;
 
 import static io.datakernel.codec.binary.BinaryUtils.*;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.db.api.DbCommand.*;
 import static io.global.db.http.GlobalDbNodeServlet.*;
@@ -59,13 +58,14 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 	@Override
 	public Promise<ChannelConsumer<SignedData<DbItem>>> upload(TableID tableID) {
 		ChannelZeroBuffer<SignedData<DbItem>> buffer = new ChannelZeroBuffer<>();
-		MaterializedPromise<HttpResponse> request = client.request(HttpRequest.post(
-				url + UrlBuilder.relative()
-						.appendPathPart(UPLOAD)
-						.appendPath(tableID.asString())
-						.build())
-				.withBodyStream(buffer.getSupplier().map(signedDbItem -> encodeWithSizePrefix(DB_ITEM_CODEC, signedDbItem))))
-				.thenCompose(ensureResponseBody())
+		MaterializedPromise<HttpResponse> request = client.request(
+				HttpRequest.post(
+						url + UrlBuilder.relative()
+								.appendPathPart(UPLOAD)
+								.appendPath(tableID.asString())
+								.build())
+						.withBodyStream(buffer.getSupplier()
+								.map(signedDbItem -> encodeWithSizePrefix(DB_ITEM_CODEC, signedDbItem))))
 				.thenCompose(ensureStatusCode(200))
 				.materialize();
 		return Promise.of(buffer.getConsumer().withAcknowledgement(ack -> ack.both(request)));
@@ -73,11 +73,12 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 
 	@Override
 	public Promise<ChannelSupplier<SignedData<DbItem>>> download(TableID tableID, long timestamp) {
-		return client.request(HttpRequest.get(
-				url + UrlBuilder.relative()
-						.appendPathPart(DOWNLOAD)
-						.appendPath(tableID.asString())
-						.build()))
+		return client.request(
+				HttpRequest.get(
+						url + UrlBuilder.relative()
+								.appendPathPart(DOWNLOAD)
+								.appendPath(tableID.asString())
+								.build()))
 				.thenCompose(ensureStatusCode(200))
 				.thenApply(response -> BinaryChannelSupplier.of(response.getBodyStream()).parseStream(DB_ITEM_PARSER));
 	}
@@ -92,14 +93,15 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.build())
 						.withBody(ByteBuf.wrapForReading(key)))
 				.thenCompose(ensureStatusCode(200))
-				.thenCompose(ensureResponseBody())
-				.thenApply(response -> {
+				.thenCompose(response -> response.getBody().thenApply(body -> {
 					try {
-						return decode(DB_ITEM_CODEC, response.getBody());
+						return decode(DB_ITEM_CODEC, body.slice());
 					} catch (ParseException e) {
 						throw new UncheckedException(e);
+					} finally {
+						body.recycle();
 					}
-				});
+				}));
 	}
 
 	@Override
@@ -124,14 +126,15 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.appendPath(owner.asString())
 								.build()))
 				.thenCompose(ensureStatusCode(200))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(response -> {
+				.thenCompose(response -> response.getBody().thenCompose(body -> {
 					try {
-						return Promise.of(decode(LIST_STRING_CODEC, response.getBody()));
+						return Promise.of(decode(LIST_STRING_CODEC, body.slice()));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
+					} finally {
+						body.recycle();
 					}
-				});
+				}));
 	}
 
 	@Override

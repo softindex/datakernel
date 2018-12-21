@@ -31,7 +31,6 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
@@ -62,11 +61,11 @@ public final class AbstractHttpConnectionTest {
 		server.listen();
 
 		client.request(HttpRequest.get(URL))
-				.thenCompose(ensureResponseBody())
-				.whenComplete(assertComplete(result -> {
-					assertEquals("text/           html", result.getHeaderOrNull(CONTENT_TYPE));
-					assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", result.getBody().getString(UTF_8));
-				}));
+				.thenCompose(result -> result.getBody()
+						.whenComplete(assertComplete(body -> {
+							assertEquals("text/           html", result.getHeaderOrNull(CONTENT_TYPE));
+							assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", body.asString(UTF_8));
+						})));
 	}
 
 	@Test
@@ -82,11 +81,11 @@ public final class AbstractHttpConnectionTest {
 		server.listen();
 
 		client.request(HttpRequest.get(URL).withHeader(ACCEPT_ENCODING, "gzip"))
-				.thenCompose(ensureResponseBody())
-				.whenComplete(assertComplete(response -> {
-					assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING));
-					assertEquals("Test message", response.getBody().getString(UTF_8));
-				}));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertComplete(body -> {
+							assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING));
+							assertEquals("Test message", body.asString(UTF_8));
+						})));
 	}
 
 	@Test
@@ -114,12 +113,13 @@ public final class AbstractHttpConnectionTest {
 
 	private Promise<HttpResponse> checkRequest(String expectedHeader, int expectedConnectionCount, EventStats connectionCount) {
 		return client.request(HttpRequest.get(URL))
-				.thenCompose(ensureResponseBody())
-				.whenComplete(assertComplete(response -> {
-					assertEquals(expectedHeader, response.getHeader(CONNECTION));
-					connectionCount.refresh(System.currentTimeMillis());
-					assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
-				}));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertComplete(body -> {
+							assertEquals(expectedHeader, response.getHeader(CONNECTION));
+							connectionCount.refresh(System.currentTimeMillis());
+							assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
+						}))
+						.thenApply($ -> response));
 	}
 
 	@SuppressWarnings("SameParameterValue")

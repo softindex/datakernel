@@ -52,7 +52,6 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpUtils.renderQueryString;
 import static io.datakernel.http.IAsyncHttpClient.ensureOk200;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.ot.api.OTCommand.*;
@@ -77,8 +76,8 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	@Override
 	public Promise<Set<String>> list(PubKey pubKey) {
 		return httpClient.request(request(GET, LIST, urlEncodePubKey(pubKey)))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, ofSet(STRING_CODEC)));
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> processResult(res, body, ofSet(STRING_CODEC))));
 	}
 
 	@Override
@@ -86,22 +85,21 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SAVE, apiQuery(repositoryId))
 						.initialize(withJson(SAVE_JSON, new SaveTuple(commits, heads))))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, null));
+				.thenCompose(res -> processResult(res));
 	}
 
 	@Override
 	public Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 		return httpClient.request(request(GET, LOAD_COMMIT, apiQuery(repositoryId, map("commitId", urlEncodeCommitId(id)))))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, COMMIT_JSON));
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> processResult(res, body, COMMIT_JSON)));
 	}
 
 	@Override
 	public Promise<HeadsInfo> getHeadsInfo(RepoID repositoryId) {
 		return httpClient.request(request(GET, GET_HEADS_INFO, apiQuery(repositoryId)))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, HEADS_INFO_JSON));
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> processResult(res, body, HEADS_INFO_JSON)));
 	}
 
 	@Override
@@ -147,34 +145,31 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return httpClient.request(request(POST, SAVE_SNAPSHOT, apiQuery(repositoryId))
 				.withBody(encode(SIGNED_SNAPSHOT_CODEC, encryptedSnapshot)))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, null));
+				.thenCompose(res -> processResult(res));
 	}
 
 	@Override
 	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId id) {
-		return httpClient.request(request(GET, LOAD_SNAPSHOT,
-				apiQuery(repositoryId, map(
-						"id", urlEncodeCommitId(id)))))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> {
-					if (r.getCode() != 200)
-						return Promise.ofException(HttpException.ofCode(r.getCode()));
-					ByteBuf body = r.takeBody();
-					try {
-						if (!body.canRead()) {
-							return Promise.of(Optional.empty());
-						}
-						try {
-							return Promise.of(Optional.of(
-									decode(SIGNED_SNAPSHOT_CODEC, body.getArray())));
-						} catch (ParseException e) {
-							return Promise.ofException(e);
-						}
-					} finally {
-						body.recycle();
-					}
-				});
+		return httpClient.request(
+				request(GET, LOAD_SNAPSHOT,
+						apiQuery(repositoryId, map(
+								"id", urlEncodeCommitId(id)))))
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> {
+							try {
+								if (res.getCode() != 200)
+									return Promise.ofException(HttpException.ofCode(res.getCode()));
+								if (!body.canRead()) {
+									return Promise.of(Optional.empty());
+								}
+								return Promise.of(Optional.of(
+										decode(SIGNED_SNAPSHOT_CODEC, body.getArray())));
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							} finally {
+								body.recycle();
+							}
+						}));
 	}
 
 	@Override
@@ -188,8 +183,8 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 								)
 						)
 				))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, HEADS_DELTA_JSON));
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> processResult(res, body, HEADS_DELTA_JSON)));
 	}
 
 	@Override
@@ -197,24 +192,23 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SHARE_KEY, receiver.asString())
 						.initialize(withJson(SIGNED_SHARED_KEY_JSON, simKey)))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, null));
+				.thenCompose(res -> processResult(res));
 	}
 
 	@Override
 	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash simKeyHash) {
 		return httpClient.request(
 				request(GET, GET_SHARED_KEY, urlEncodePubKey(receiver) + "/" + simKeyHash.asString()))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, SIGNED_SHARED_KEY_JSON));
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> processResult(res, body, SIGNED_SHARED_KEY_JSON)));
 	}
 
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
 		return httpClient.request(
 				request(GET, GET_SHARED_KEYS, urlEncodePubKey(receiver)))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, ofList(SIGNED_SHARED_KEY_JSON)));
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> processResult(res, body, ofList(SIGNED_SHARED_KEY_JSON))));
 	}
 
 	@Override
@@ -222,29 +216,25 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SEND_PULL_REQUEST, "")
 						.withBody(encode(SIGNED_PULL_REQUEST_CODEC, pullRequest)))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> processResult(r, null));
+				.thenCompose(res -> processResult(res));
 	}
 
 	@Override
 	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
 		return httpClient.request(request(GET, GET_PULL_REQUESTS, apiQuery(repositoryId)))
-				.thenCompose(ensureResponseBody())
-				.thenCompose(r -> {
-					if (r.getCode() != 200)
-						return Promise.ofException(HttpException.ofCode(r.getCode()));
-					ByteBuf body = r.takeBody();
-					try {
-						try {
-							return Promise.of(
-									decode(ofSet(SIGNED_PULL_REQUEST_CODEC), body.getArray()));
-						} catch (ParseException e) {
-							return Promise.ofException(e);
-						}
-					} finally {
-						body.recycle();
-					}
-				});
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> {
+							try {
+								if (res.getCode() != 200)
+									return Promise.ofException(HttpException.ofCode(res.getCode()));
+								return Promise.of(
+										decode(ofSet(SIGNED_PULL_REQUEST_CODEC), body.slice()));
+							} catch (ParseException e) {
+								return Promise.ofException(e);
+							} finally {
+								body.recycle();
+							}
+						}));
 	}
 
 	private HttpRequest request(HttpMethod httpMethod, @Nullable OTCommand apiMethod, String apiQuery) {
@@ -271,12 +261,19 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 				.withBody(toJson(json, value).getBytes(UTF_8));
 	}
 
-	private static <T> Promise<T> processResult(HttpResponse r, @Nullable StructuredCodec<T> json) {
-		if (r.getCode() != 200) return Promise.ofException(HttpException.ofCode(r.getCode()));
+	private static Promise<Void> processResult(HttpResponse res) {
+		if (res.getCode() != 200) return Promise.ofException(HttpException.ofCode(res.getCode()));
+		return Promise.complete();
+	}
+
+	private static <T> Promise<T> processResult(HttpResponse res, ByteBuf body, @Nullable StructuredCodec<T> json) {
 		try {
-			return Promise.of(json != null ? fromJson(json, r.getBody().getString(UTF_8)) : null);
+			if (res.getCode() != 200) return Promise.ofException(HttpException.ofCode(res.getCode()));
+			return Promise.of(json != null ? fromJson(json, body.getString(UTF_8)) : null);
 		} catch (ParseException e) {
 			return Promise.ofException(e);
+		} finally {
+			body.recycle();
 		}
 	}
 

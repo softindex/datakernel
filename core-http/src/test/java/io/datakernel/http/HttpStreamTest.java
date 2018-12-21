@@ -37,7 +37,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.Promise.ofCallback;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.CRLF;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
@@ -134,7 +133,7 @@ public final class HttpStreamTest {
 
 	@Test
 	public void testChunkedEncodingMessage() throws IOException {
-		startTestServer(ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody()))));
+		startTestServer(request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)));
 
 		String crlf = new String(CRLF, UTF_8);
 
@@ -161,7 +160,7 @@ public final class HttpStreamTest {
 
 	@Test
 	public void testMalformedChunkedEncodingMessage() throws IOException {
-		startTestServer(ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody()))));
+		startTestServer(request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)));
 
 		String crlf = new String(CRLF, UTF_8);
 
@@ -187,7 +186,7 @@ public final class HttpStreamTest {
 
 	@Test
 	public void testTruncatedRequest() throws IOException {
-		startTestServer(ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody()))));
+		startTestServer(request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)));
 
 		String crlf = new String(CRLF, UTF_8);
 
@@ -217,7 +216,7 @@ public final class HttpStreamTest {
 	public void testSendingErrors() throws IOException {
 		String exceptionMessage = "Test Exception";
 
-		startTestServer(ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody()))));
+		startTestServer(request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)));
 
 		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(
 				ChannelSupplier.ofIterable(expectedList),

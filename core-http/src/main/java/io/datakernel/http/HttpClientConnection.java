@@ -161,12 +161,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onHeadersReceived(ByteBuf body, ChannelSupplier<ByteBuf> bodySupplier) {
+	protected void onHeadersReceived(ChannelSupplier<ByteBuf> bodySupplier) {
 		assert !isClosed();
-		assert body != null ^ bodySupplier != null;
 
 		HttpResponse response = this.response;
-		response.body = body;
 		response.bodySupplier = bodySupplier;
 		if (inspector != null) inspector.onHttpResponse(this, response);
 
@@ -174,10 +172,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.callback = null;
 		cb.set(response);
 
-		if (response.body != null) {
-			response.body.recycle();
-			response.body = null;
-		}
 		if (response.bodySupplier != null) {
 			response.bodySupplier.streamTo(BUF_RECYCLER);
 			response.bodySupplier = null;

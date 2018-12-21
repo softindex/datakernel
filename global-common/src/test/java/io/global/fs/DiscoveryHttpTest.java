@@ -17,7 +17,6 @@
 package io.global.fs;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
@@ -56,13 +55,7 @@ public final class DiscoveryHttpTest {
 		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), Executors.newSingleThreadExecutor(), temporaryFolder.newFolder().toPath());
 		DiscoveryServlet servlet = DiscoveryServlet.create(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage));
 
-		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), request -> {
-			try {
-				return servlet.serve(request);
-			} catch (ParseException e) {
-				throw new AssertionError(e);
-			}
-		});
+		DiscoveryService clientService = HttpDiscoveryService.create(new InetSocketAddress(8080), servlet::serve);
 
 		KeyPair alice = KeyPair.generate();
 		KeyPair bob = KeyPair.generate();

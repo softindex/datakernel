@@ -16,13 +16,13 @@
 
 package io.global.db.http;
 
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.WithMiddleware;
@@ -57,49 +57,73 @@ public final class GlobalDbNodeServlet implements WithMiddleware {
 	private GlobalDbNodeServlet(GlobalDbNode node) {
 		this.servlet = MiddlewareServlet.create()
 				.with(POST, "/" + UPLOAD + "/:space/:repo", request -> {
-					PubKey space = PubKey.fromString(request.getPathParameter("space"));
-					TableID tableID = TableID.of(space, request.getPathParameter("repo"));
-					ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
-					return node.upload(tableID)
-							.thenApply(consumer ->
-									BinaryChannelSupplier.of(bodyStream)
-											.parseStream(DB_ITEM_PARSER)
-											.streamTo(consumer))
-							.thenApply($ -> HttpResponse.ok200());
+					try {
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						TableID tableID = TableID.of(space, request.getPathParameter("repo"));
+						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
+						return node.upload(tableID)
+								.thenApply(consumer ->
+										BinaryChannelSupplier.of(bodyStream)
+												.parseStream(DB_ITEM_PARSER)
+												.streamTo(consumer))
+								.thenApply($ -> HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
 				})
 				.with(GET, "/" + DOWNLOAD + "/:space/:repo", request -> {
-					PubKey space = PubKey.fromString(request.getPathParameter("space"));
-					TableID tableID = TableID.of(space, request.getPathParameter("repo"));
-					long offset;
 					try {
-						offset = Long.parseUnsignedLong(request.getQueryParameter("offset", "0"));
-					} catch (NumberFormatException e) {
-						throw new ParseException(e);
+						PubKey space = PubKey.fromString(request.getPathParameter("space"));
+						TableID tableID = TableID.of(space, request.getPathParameter("repo"));
+						long offset;
+						try {
+							offset = Long.parseUnsignedLong(request.getQueryParameter("offset", "0"));
+						} catch (NumberFormatException e) {
+							throw new ParseException(e);
+						}
+						return node.download(tableID, offset)
+								.thenApply(supplier ->
+										HttpResponse.ok200()
+												.withBodyStream(supplier.map(signedDbItem -> encodeWithSizePrefix(DB_ITEM_CODEC, signedDbItem))));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
 					}
-					return node.download(tableID, offset)
-							.thenApply(supplier ->
-									HttpResponse.ok200()
-											.withBodyStream(supplier.map(signedDbItem -> encodeWithSizePrefix(DB_ITEM_CODEC, signedDbItem))));
 				})
-				.with(GET, "/" + GET_ITEM + "/:owner/:repo", request -> {
-					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
-					TableID tableID = TableID.of(owner, request.getPathParameter("repo"));
-					return node.get(tableID, request.getBody().asArray())
-							.thenApply(item ->
-									HttpResponse.ok200().withBody(encode(DB_ITEM_CODEC, item)));
-				})
-				.with(PUT, "/" + PUT_ITEM + "/:owner/:repo", AsyncServlet.ensureRequestBody(request -> {
-					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
-					TableID tableID = TableID.of(owner, request.getPathParameter("repo"));
-					return node.put(tableID, decode(DB_ITEM_CODEC, request.takeBody()))
-							.thenApply($ -> HttpResponse.ok200());
+				.with(GET, "/" + GET_ITEM + "/:owner/:repo", request -> request.getBody().thenCompose(body -> {
+					try {
+						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
+						TableID tableID = TableID.of(owner, request.getPathParameter("repo"));
+						return node.get(tableID, body.asArray())
+								.thenApply(item ->
+										HttpResponse.ok200().withBody(encode(DB_ITEM_CODEC, item)));
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
+				}))
+				.with(PUT, "/" + PUT_ITEM + "/:owner/:repo", request -> request.getBody().thenCompose(body -> {
+					try {
+						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
+						TableID tableID = TableID.of(owner, request.getPathParameter("repo"));
+						return node.put(tableID, decode(DB_ITEM_CODEC, body.slice()))
+								.thenApply($ -> HttpResponse.ok200());
+					} catch (ParseException e) {
+						return Promise.<HttpResponse>ofException(e);
+					} finally {
+						body.recycle();
+					}
 				}))
 				.with(GET, "/" + LIST + "/:owner", request -> {
-					PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
-					return node.list(owner)
-							.thenApply(list ->
-									HttpResponse.ok200()
-											.withBody(encode(LIST_STRING_CODEC, list)));
+					try {
+						PubKey owner = PubKey.fromString(request.getPathParameter("owner"));
+						return node.list(owner)
+								.thenApply(list ->
+										HttpResponse.ok200()
+												.withBody(encode(LIST_STRING_CODEC, list)));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
 				});
 	}
 

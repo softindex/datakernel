@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.util.CollectionUtils.asIterator;
-import static io.datakernel.util.Recyclable.deepRecycle;
 import static io.datakernel.util.Recyclable.tryRecycle;
 
 /**
@@ -76,16 +75,11 @@ public interface ChannelSupplier<T> extends Cancellable {
 	}
 
 	static <T> ChannelSupplier<T> of() {
-		return new AbstractChannelSupplier<T>() {
-			@Override
-			protected Promise<T> doGet() {
-				return Promise.of(null);
-			}
-		};
+		return new ChannelSuppliers.ChannelSupplierEmpty<>();
 	}
 
 	static <T> ChannelSupplier<T> of(T value) {
-		return ChannelSuppliers.of(value);
+		return new ChannelSuppliers.ChannelSupplierOfValue<>(value);
 	}
 
 	@SafeVarargs
@@ -94,12 +88,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 	}
 
 	static <T> ChannelSupplier<T> ofException(Throwable e) {
-		return new AbstractChannelSupplier<T>() {
-			@Override
-			protected Promise<T> doGet() {
-				return Promise.ofException(e);
-			}
-		};
+		return new ChannelSuppliers.ChannelSupplierOfException<>(e);
 	}
 
 	static <T> ChannelSupplier<T> ofIterable(Iterable<? extends T> iterable) {
@@ -111,17 +100,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 	}
 
 	static <T> ChannelSupplier<T> ofIterator(Iterator<? extends T> iterator) {
-		return new AbstractChannelSupplier<T>() {
-			@Override
-			protected Promise<T> doGet() {
-				return Promise.of(iterator.hasNext() ? iterator.next() : null);
-			}
-
-			@Override
-			protected void onClosed(Throwable e) {
-				deepRecycle(iterator);
-			}
-		};
+		return new ChannelSuppliers.ChannelSupplierOfIterator<>(iterator);
 	}
 
 	/**

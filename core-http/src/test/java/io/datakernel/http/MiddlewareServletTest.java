@@ -27,7 +27,8 @@ import org.junit.rules.ExpectedException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.HttpMethod.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public final class MiddlewareServletTest {
 	private static final String TEMPLATE = "http://www.site.org";
@@ -43,7 +44,7 @@ public final class MiddlewareServletTest {
 		assertTrue(promise.isComplete());
 		if (promise.isResult()) {
 			HttpResponse result = promise.materialize().getResult();
-			assertEquals(expectedBody, result.getBody().getString(UTF_8));
+			assertEquals(expectedBody, result.getBody().materialize().getResult().asString(UTF_8));
 			assertEquals(expectedCode, result.getCode());
 			result.recycle();
 		} else {
@@ -52,7 +53,7 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testBase() throws ParseException {
+	public void testBase() {
 		MiddlewareServlet servlet1 = MiddlewareServlet.create();
 		servlet1.with(HttpMethod.GET, "/a/b/c", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
@@ -70,7 +71,7 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testProcessWildCardRequest() throws ParseException {
+	public void testProcessWildCardRequest() {
 		MiddlewareServlet servlet = MiddlewareServlet.create();
 		servlet.with("/a/b/c/d", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
 
@@ -80,7 +81,7 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testMicroMapping() throws ParseException {
+	public void testMicroMapping() {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/a/c");  // ok
@@ -125,7 +126,7 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testLongMapping() throws ParseException {
+	public void testLongMapping() {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/a/c");  // ok
@@ -174,7 +175,7 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testMerge() throws ParseException {
+	public void testMerge() {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");         // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");        // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/b");        // ok
@@ -210,7 +211,7 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testFailMerge() throws ParseException {
+	public void testFailMerge() {
 		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/c/f");    // fail
 
 		AsyncServlet action = req -> {
@@ -240,13 +241,17 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testParameter() throws ParseException {
+	public void testParameter() {
 		AsyncServlet printParameters = request -> {
-			String body = request.getPathParameter("id")
-					+ " " + request.getPathParameter("uid")
-					+ " " + request.getPathParameter("eid");
-			ByteBuf bodyByteBuf = wrapUtf8(body);
-			return Promise.of(HttpResponse.ofCode(200).withBody(bodyByteBuf));
+			try {
+				String body = request.getPathParameter("id")
+						+ " " + request.getPathParameter("uid")
+						+ " " + request.getPathParameter("eid");
+				ByteBuf bodyByteBuf = wrapUtf8(body);
+				return Promise.of(HttpResponse.ofCode(200).withBody(bodyByteBuf));
+			} catch (ParseException e) {
+				return Promise.ofException(e);
+			}
 		};
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -255,31 +260,32 @@ public final class MiddlewareServletTest {
 
 		System.out.println("Parameter test " + DELIM);
 		check(main.serve(HttpRequest.get("http://www.coursera.org/123/a/456/b/789")), "123 456 789", 200);
-		try {
-			main.serve(HttpRequest.get("http://www.coursera.org/555/a/777"));
-			fail();
-		} catch (ParseException ignored) {
-		}
+		Promise<HttpResponse> serve = main.serve(HttpRequest.get("http://www.coursera.org/555/a/777"));
+		assertTrue(serve.materialize().getException() instanceof ParseException);
 		HttpRequest request = HttpRequest.get("http://www.coursera.org");
 		check(main.serve(request), "", 404);
 		System.out.println();
 	}
 
 	@Test
-	public void testMultiParameters() throws ParseException {
-		AsyncServlet serveCar = request -> {
-			ByteBuf body = wrapUtf8("served car: " + request.getPathParameter("cid"));
-			return Promise.of(HttpResponse.ofCode(200).withBody(body));
-		};
-
-		AsyncServlet serveMan = request -> {
-			ByteBuf body = wrapUtf8("served man: " + request.getPathParameter("mid"));
-			return Promise.of(HttpResponse.ofCode(200).withBody(body));
-		};
-
+	public void testMultiParameters() {
 		MiddlewareServlet ms = MiddlewareServlet.create()
-				.with(GET, "/serve/:cid/wash", serveCar)
-				.with(GET, "/serve/:mid/feed", serveMan);
+				.with(GET, "/serve/:cid/wash", request -> {
+					try {
+						ByteBuf body = wrapUtf8("served car: " + request.getPathParameter("cid"));
+						return Promise.of(HttpResponse.ofCode(200).withBody(body));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.with(GET, "/serve/:mid/feed", request -> {
+					try {
+						ByteBuf body = wrapUtf8("served man: " + request.getPathParameter("mid"));
+						return Promise.of(HttpResponse.ofCode(200).withBody(body));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				});
 
 		System.out.println("Multi parameters " + DELIM);
 		check(ms.serve(HttpRequest.get(TEMPLATE + "/serve/1/wash")), "served car: 1", 200);
@@ -288,24 +294,18 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testDifferentMethods() throws ParseException {
+	public void testDifferentMethods() {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/a/b/c/action");
 		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
 		HttpRequest request3 = HttpRequest.of(CONNECT, TEMPLATE + "/a/b/c/action");
 
-		AsyncServlet post = request -> Promise.of(
-				HttpResponse.ofCode(200).withBody(wrapUtf8("POST")));
-
-		AsyncServlet get = request -> Promise.of(
-				HttpResponse.ofCode(200).withBody(wrapUtf8("GET")));
-
-		AsyncServlet wildcard = request -> Promise.of(
-				HttpResponse.ofCode(200).withBody(wrapUtf8("WILDCARD")));
-
 		MiddlewareServlet servlet = MiddlewareServlet.create()
-				.with("/a/b/c/action", wildcard)
-				.with(POST, "/a/b/c/action", post)
-				.with(GET, "/a/b/c/action", get);
+				.with("/a/b/c/action", request -> Promise.of(
+						HttpResponse.ofCode(200).withBody(wrapUtf8("WILDCARD"))))
+				.with(POST, "/a/b/c/action", request -> Promise.of(
+						HttpResponse.ofCode(200).withBody(wrapUtf8("POST"))))
+				.with(GET, "/a/b/c/action", request -> Promise.of(
+						HttpResponse.ofCode(200).withBody(wrapUtf8("GET"))));
 
 		System.out.println("Different methods " + DELIM);
 		check(servlet.serve(request1), "GET", 200);
@@ -315,19 +315,15 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testDefault() throws ParseException {
-		AsyncServlet def = request -> Promise.of(
-				HttpResponse.ofCode(200).withBody(wrapUtf8("Stopped at admin: " + request.getRelativePath())));
-
-		AsyncServlet action = request -> Promise.of(
-				HttpResponse.ofCode(200).withBody(wrapUtf8("Action executed")));
-
+	public void testDefault() {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/html/admin/action");
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/html/admin/action/ban");
 
 		MiddlewareServlet main = MiddlewareServlet.create()
-				.with(GET, "/html/admin/action", action)
-				.withFallback("/html/admin", def);
+				.with(GET, "/html/admin/action", request -> Promise.of(
+						HttpResponse.ofCode(200).withBody(wrapUtf8("Action executed"))))
+				.withFallback("/html/admin", request -> Promise.of(
+						HttpResponse.ofCode(200).withBody(wrapUtf8("Stopped at admin: " + request.getRelativePath()))));
 
 		System.out.println("Default stop " + DELIM);
 		check(main.serve(request1), "Action executed", 200);
@@ -336,11 +332,10 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void test404() throws ParseException {
-		AsyncServlet servlet = request -> Promise.of(
-				HttpResponse.ofCode(200).withBody(wrapUtf8("All OK")));
+	public void test404() {
 		MiddlewareServlet main = MiddlewareServlet.create()
-				.with("/a/:id/b/d", servlet);
+				.with("/a/:id/b/d", request -> Promise.of(
+						HttpResponse.ofCode(200).withBody(wrapUtf8("All OK"))));
 
 		System.out.println("404 " + DELIM);
 		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/123/b/c");
@@ -349,33 +344,27 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void test405() throws ParseException {
-		AsyncServlet servlet = request -> Promise.of(
-				HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute")));
-
+	public void test405() {
 		MiddlewareServlet main = MiddlewareServlet.create()
-				.with(GET, "/a/:id/b/d", servlet);
+				.with(GET, "/a/:id/b/d", request -> Promise.of(
+						HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute"))));
 
 		HttpRequest request = HttpRequest.post(TEMPLATE + "/a/123/b/d");
 		check(main.serve(request), "", 404);
 	}
 
 	@Test
-	public void test405WithFallback() throws ParseException {
-		AsyncServlet servlet = request -> Promise.of(
-				HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute")));
-
-		AsyncServlet fallback = request -> Promise.of(
-				HttpResponse.ofCode(200).withBody(wrapUtf8("Fallback executed")));
-
+	public void test405WithFallback() {
 		MiddlewareServlet main = MiddlewareServlet.create()
-				.with(GET, "/a/:id/b/d", servlet)
-				.withFallback("/a/:id/b/d", fallback);
+				.with(GET, "/a/:id/b/d", request -> Promise.of(
+						HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute"))))
+				.withFallback("/a/:id/b/d", request -> Promise.of(
+						HttpResponse.ofCode(200).withBody(wrapUtf8("Fallback executed"))));
 		check(main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d")), "Fallback executed", 200);
 	}
 
 	@Test
-	public void testFallbackTail() throws ParseException {
+	public void testFallbackTail() {
 		AsyncServlet servlet = request -> Promise.of(HttpResponse.ofCode(200).withBody(wrapUtf8("Success: " + request.getRelativePath())));
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -393,11 +382,17 @@ public final class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testTail() throws ParseException {
-		AsyncServlet servlet = request -> Promise.of(HttpResponse.ofCode(200).withBody(wrapUtf8("Success: " + request.getPathParameter("tail"))));
+	public void testTail() {
 
 		MiddlewareServlet main = MiddlewareServlet.create()
-				.with(GET, "/method/:var/:tail*", servlet);
+				.with(GET, "/method/:var/:tail*", request -> {
+					try {
+						ByteBuf body = wrapUtf8("Success: " + request.getPathParameter("tail"));
+						return Promise.of(HttpResponse.ofCode(200).withBody(body));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				});
 
 		check(main.serve(HttpRequest.get(TEMPLATE + "/method/dfbdb/oneArg")), "Success: oneArg", 200);
 		check(main.serve(HttpRequest.get(TEMPLATE + "/method/srfethj/first/second")), "Success: first/second", 200);

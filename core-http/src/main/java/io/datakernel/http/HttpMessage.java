@@ -26,13 +26,13 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfBuf;
 import io.datakernel.http.HttpHeaderValue.ParserIntoList;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
 
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.copyOf;
 
 /**
@@ -42,8 +42,12 @@ import static java.util.Arrays.copyOf;
 public abstract class HttpMessage {
 	protected HttpHeadersMultimap<HttpHeader, HttpHeaderValue> headers = new HttpHeadersMultimap<>();
 	protected ChannelSupplier<ByteBuf> bodySupplier;
-	protected ByteBuf body;
 	protected boolean useGzip;
+
+	public static final MemSize DEFAULT_MAX_BODY_SIZE = MemSize.of(
+			ApplicationSettings.getInt(HttpMessage.class, "maxBodySize", 1024 * 1024));
+
+	protected static final int DEFAULT_MAX_BODY_SIZE_BYTES = DEFAULT_MAX_BODY_SIZE.toInt();
 
 	protected HttpMessage() {
 	}
@@ -153,51 +157,26 @@ public abstract class HttpMessage {
 		this.useGzip = true;
 	}
 
-	public final ByteBuf getBody() {
-		return this.body;
+	public final Promise<ByteBuf> getBody() {
+		return getBody(DEFAULT_MAX_BODY_SIZE_BYTES);
 	}
 
-	public final ByteBuf takeBody() {
-		ByteBuf body = this.body;
-		this.body = null;
-		return body;
+	public final Promise<ByteBuf> getBody(MemSize maxBodySize) {
+		return getBody(maxBodySize.toInt());
 	}
 
-	protected final Promise<? extends HttpMessage> doEnsureBody(MemSize maxBodySize) {
-		return doEnsureBody(maxBodySize.toInt());
-	}
-
-	protected final Promise<? extends HttpMessage> doEnsureBody(int maxBodySize) {
-		if (body != null) return Promise.of(this);
-		if (bodySupplier != null) {
-			ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
-			this.bodySupplier = null;
-			return bodySupplier.toCollector(ByteBufQueue.collector(maxBodySize))
-					.thenComposeEx((buf, e) -> {
-						if (e == null) {
-							this.body = buf;
-							return Promise.of(this);
-						} else {
-							return Promise.ofException(e);
-						}
-					});
-		}
-		this.body = ByteBuf.empty();
-		return Promise.of(this);
+	public final Promise<ByteBuf> getBody(int maxBodySize) {
+		return getBodyStream().toCollector(ByteBufQueue.collector(maxBodySize));
 	}
 
 	public ChannelSupplier<ByteBuf> getBodyStream() {
-		checkState(body != null || bodySupplier != null, "Either body or body supplier should be present");
-		if (body != null) {
-			return ChannelSupplier.of(body.slice());
-		}
 		ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
 		this.bodySupplier = null;
 		return bodySupplier;
 	}
 
 	public void setBody(ByteBuf body) {
-		this.body = body;
+		this.bodySupplier = ChannelSupplier.of(body);
 	}
 
 	public void setBody(byte[] body) {
@@ -227,10 +206,6 @@ public abstract class HttpMessage {
 		if (bodySupplier != null) {
 //			bodySupplier.cancel();
 			bodySupplier = null;
-		}
-		if (body != null) {
-			body.recycle();
-			body = null;
 		}
 	}
 

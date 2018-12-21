@@ -16,6 +16,7 @@
 
 package io.datakernel.https;
 
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.CachedAsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
@@ -35,10 +36,9 @@ import java.util.concurrent.Executors;
 import static io.datakernel.http.HttpHeaderValue.ofAcceptMediaTypes;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.http.MediaTypes.*;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
 public final class TestHttpsClient {
@@ -66,7 +66,8 @@ public final class TestHttpsClient {
 								AcceptMediaType.of(XML_APP, 90),
 								AcceptMediaType.of(WEBP),
 								AcceptMediaType.of(ANY, 80))))
-				.thenCompose(ensureResponseBody())
-				.whenComplete(assertComplete(response -> assertEquals(200, response.getCode())));
+				.thenCompose(httpResponse -> httpResponse.getBody()
+						.whenResult(ByteBuf::recycle)
+						.whenComplete(assertComplete(body -> assertEquals(200, httpResponse.getCode()))));
 	}
 }

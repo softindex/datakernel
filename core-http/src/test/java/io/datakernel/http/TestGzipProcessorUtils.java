@@ -16,12 +16,12 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.UncheckedException;
 import io.datakernel.stream.processor.DatakernelRunner.DatakernelRunnerFactory;
 import org.junit.Rule;
 import org.junit.Test;
@@ -42,11 +42,10 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static io.datakernel.http.AsyncServlet.ensureRequestBody;
 import static io.datakernel.http.GzipProcessorUtils.fromGzip;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
+import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static junit.framework.TestCase.assertEquals;
@@ -107,15 +106,20 @@ public final class TestGzipProcessorUtils {
 	public void testGzippedCommunicationBetweenClientServer() throws IOException {
 
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
-				ensureRequestBody(request -> {
-					String receivedData = request.getBody().getString(UTF_8);
-					assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
-					assertEquals("gzip", request.getHeader(HttpHeaders.ACCEPT_ENCODING));
-					assertEquals(text, receivedData);
-					return Promise.of(HttpResponse.ok200()
-							.withBodyGzipCompression()
-							.withBody(ByteBufStrings.wrapAscii(receivedData)));
-				}, CHARACTERS_COUNT))
+				request -> request.getBody(CHARACTERS_COUNT)
+						.thenApply(body -> {
+							try {
+								assertEquals("gzip", request.getHeader(CONTENT_ENCODING));
+								assertEquals("gzip", request.getHeader(ACCEPT_ENCODING));
+							} catch (ParseException e) {
+								throw new UncheckedException(e);
+							}
+							String receivedData = body.asString(UTF_8);
+							assertEquals(text, receivedData);
+							return HttpResponse.ok200()
+									.withBodyGzipCompression()
+									.withBody(ByteBufStrings.wrapAscii(receivedData));
+						}))
 				.withListenPort(PORT);
 
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
@@ -128,15 +132,17 @@ public final class TestGzipProcessorUtils {
 		server.listen();
 
 		client.request(request)
-				.thenCompose(ensureResponseBody(CHARACTERS_COUNT))
+				.thenCompose(response ->
+						response.getBody(CHARACTERS_COUNT)
+								.whenComplete(assertComplete(body -> {
+									assertEquals("gzip", response.getHeaderOrNull(CONTENT_ENCODING));
+									assertEquals(text, body.asString(UTF_8));
+								})))
 				.whenComplete(($, e) -> {
 					server.close();
 					client.stop();
 				})
-				.whenComplete(assertComplete(response -> {
-					assertEquals("gzip", response.getHeaderOrNull(HttpHeaders.CONTENT_ENCODING));
-					assertEquals(text, response.getBody().getString(UTF_8));
-				}));
+		;
 	}
 
 	@Test

@@ -35,20 +35,6 @@ import static io.datakernel.util.Recyclable.tryRecycle;
 public final class ChannelSuppliers {
 	private ChannelSuppliers() {}
 
-	public static <T> ChannelSupplier<T> of(T item) {
-		return new AbstractChannelSupplier<T>() {
-			@Nullable
-			T thisItem = item;
-
-			@Override
-			protected Promise<T> doGet() {
-				T item = thisItem;
-				thisItem = null;
-				return Promise.of(item);
-			}
-		};
-	}
-
 	public static <T> ChannelSupplier<T> concat(ChannelSupplier<? extends T> supplier1, ChannelSupplier<? extends T> supplier2) {
 		return concat(CollectionUtils.asIterator(supplier1, supplier2));
 	}
@@ -375,4 +361,62 @@ public final class ChannelSuppliers {
 		};
 	}
 
+	public static class ChannelSupplierEmpty<T> extends AbstractChannelSupplier<T> {
+		@Override
+		protected Promise<T> doGet() {
+			return Promise.of(null);
+		}
+	}
+
+	public static final class ChannelSupplierOfValue<T> extends AbstractChannelSupplier<T> {
+		@Nullable
+		private T item;
+
+		public T getValue() {
+			return item;
+		}
+
+		public T takeValue() {
+			T item = this.item;
+			this.item = null;
+			return item;
+		}
+
+		public ChannelSupplierOfValue(T item) {
+			this.item = item;
+		}
+
+		@Override
+		protected Promise<T> doGet() {
+			T item = takeValue();
+			return Promise.of(item);
+		}
+	}
+
+	public static final class ChannelSupplierOfIterator<T> extends AbstractChannelSupplier<T> {
+		private final Iterator<? extends T> iterator;
+
+		public ChannelSupplierOfIterator(Iterator<? extends T> iterator) {this.iterator = iterator;}
+
+		@Override
+		protected Promise<T> doGet() {
+			return Promise.of(iterator.hasNext() ? iterator.next() : null);
+		}
+
+		@Override
+		protected void onClosed(Throwable e) {
+			deepRecycle(iterator);
+		}
+	}
+
+	public static final class ChannelSupplierOfException<T> extends AbstractChannelSupplier<T> {
+		private final Throwable e;
+
+		public ChannelSupplierOfException(Throwable e) {this.e = e;}
+
+		@Override
+		protected Promise<T> doGet() {
+			return Promise.ofException(e);
+		}
+	}
 }

@@ -215,8 +215,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onHeadersReceived(ByteBuf body, ChannelSupplier<ByteBuf> bodySupplier) {
-		request.body = body;
+	protected void onHeadersReceived(ChannelSupplier<ByteBuf> bodySupplier) {
 		request.bodySupplier = bodySupplier;
 		request.setRemoteAddress(remoteAddress);
 
@@ -230,8 +229,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			servletResult = servlet.serve(request);
 		} catch (UncheckedException u) {
 			servletResult = Promise.ofException(u.getCause());
-		} catch (ParseException e) {
-			servletResult = Promise.ofException(e);
 		}
 		servletResult.whenComplete((response, e) -> {
 			if (isClosed()) {
@@ -250,10 +247,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			}
 		});
 
-		if (request.body != null) {
-			request.body.recycle();
-			request.body = null;
-		}
 		if (request.bodySupplier != null) {
 			request.bodySupplier.streamTo(BUF_RECYCLER);
 			request.bodySupplier = null;

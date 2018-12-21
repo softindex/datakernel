@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.http.IAsyncHttpClient.ensureResponseBody;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -72,8 +71,8 @@ public final class AsyncHttpClientTest {
 
 		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(ensureResponseBody())
-				.whenComplete(assertComplete(response -> assertEquals(decodeAscii(HELLO_WORLD), response.getBody().getString(UTF_8))));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertComplete(body -> assertEquals(decodeAscii(HELLO_WORLD), body.asString(UTF_8)))));
 	}
 
 	@Test
@@ -81,8 +80,8 @@ public final class AsyncHttpClientTest {
 		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.withConnectTimeout(Duration.ofMillis(1))
 				.request(HttpRequest.get("http://google.com"))
-				.thenCompose(ensureResponseBody())
-				.whenComplete(assertFailure(AsyncTimeoutException.class, "Connection timed out"));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertFailure(AsyncTimeoutException.class, "Connection timed out")));
 	}
 
 	@Test
@@ -93,8 +92,8 @@ public final class AsyncHttpClientTest {
 
 		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(ensureResponseBody(maxBodySize))
-				.whenComplete(assertFailure(InvalidSizeException.class, "ByteBufQueue exceeds maximum size of " + maxBodySize + " bytes"));
+				.thenCompose(response -> response.getBody(maxBodySize)
+						.whenComplete(assertFailure(InvalidSizeException.class, "ByteBufQueue exceeds maximum size of " + maxBodySize + " bytes")));
 	}
 
 	@Test
@@ -110,8 +109,8 @@ public final class AsyncHttpClientTest {
 
 		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(ensureResponseBody())
-				.whenComplete(assertFailure(UnknownFormatException.class, "Invalid response"));
+				.thenCompose(response -> response.getBody()
+						.whenComplete(assertFailure(UnknownFormatException.class, "Invalid response")));
 	}
 
 	@Test
@@ -134,16 +133,11 @@ public final class AsyncHttpClientTest {
 				.withInspector(inspector);
 
 		Promises.all(
-				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-						.thenCompose(ensureResponseBody()),
-				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-						.thenCompose(ensureResponseBody()),
-				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-						.thenCompose(ensureResponseBody()),
-				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-						.thenCompose(ensureResponseBody()),
-				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-						.thenCompose(ensureResponseBody()))
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
+				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
 				.whenComplete(($, e) -> {
 					server.close();
 					responses.forEach(response -> response.set(HttpResponse.ok200()));

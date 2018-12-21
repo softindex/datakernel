@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 
 import static io.datakernel.http.AsyncHttpServer.DEFAULT_ERROR_FORMATTER;
@@ -45,12 +44,13 @@ public final class StubHttpClient implements IAsyncHttpClient {
 			servletResult = servlet.serve(request);
 		} catch (UncheckedException u) {
 			servletResult = Promise.ofException(u.getCause());
-		} catch (ParseException e) {
-			servletResult = Promise.ofException(e);
 		}
-		return servletResult.thenComposeEx((res, e) ->
-				e == null ?
-						Promise.of(res) :
-						Promise.of(DEFAULT_ERROR_FORMATTER.formatException(e)));
+		return servletResult.thenComposeEx((res, e) -> {
+			if (e == null) {
+				return Promise.of(res);
+			} else {
+				return Promise.of(DEFAULT_ERROR_FORMATTER.formatException(e));
+			}
+		});
 	}
 }

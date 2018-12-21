@@ -1,11 +1,25 @@
+/*
+ * Copyright (C) 2015-2018 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
-import io.datakernel.exception.ParseException;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,10 +30,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
-public class AsynServletTest {
+public class AsyncServletTest {
 	@Test
-	public void testEnsureRequestBody() throws ParseException {
-		AsyncServlet servlet = AsyncServlet.ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody())));
+	public void testEnsureRequestBody() {
+		AsyncServlet servlet = request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body));
 
 		HttpRequest testRequest = HttpRequest.post("http://example.com")
 				.withBodyStream(ChannelSupplier.of(
@@ -28,12 +42,13 @@ public class AsynServletTest {
 				);
 
 		servlet.serve(testRequest)
-				.whenComplete(assertComplete(res -> assertEquals("Test1Test2", res.takeBody().asString(UTF_8))));
+				.thenCompose(HttpMessage::getBody)
+				.whenComplete(assertComplete(body -> assertEquals("Test1Test2", body.asString(UTF_8))));
 	}
 
 	@Test
-	public void testEnsureRequestBodyWithException() throws ParseException {
-		AsyncServlet servlet = AsyncServlet.ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody())));
+	public void testEnsureRequestBodyWithException() {
+		AsyncServlet servlet = request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body));
 
 		String exceptionMessage = "TestException";
 
@@ -51,8 +66,8 @@ public class AsynServletTest {
 	}
 
 	@Test
-	public void testEnsureRequestBodyMaxSize() throws ParseException {
-		AsyncServlet servlet = AsyncServlet.ensureRequestBody(request -> Promise.of(HttpResponse.ok200().withBody(request.takeBody())), 2);
+	public void testEnsureRequestBodyMaxSize() {
+		AsyncServlet servlet = request -> request.getBody(2).thenApply(body -> HttpResponse.ok200().withBody(body));
 
 		ByteBuf byteBuf = ByteBufPool.allocate(100);
 		byteBuf.put("Test1".getBytes(UTF_8));

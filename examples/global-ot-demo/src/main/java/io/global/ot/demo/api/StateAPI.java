@@ -16,7 +16,9 @@
 
 package io.global.ot.demo.api;
 
+import io.datakernel.async.Promise;
 import io.datakernel.codec.json.JsonUtils;
+import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
@@ -82,17 +84,21 @@ public class StateAPI {
 
 	private AsyncServlet fetch() {
 		return request -> {
-			String stringCommitId = request.getQueryParameter("commitId");
-			CommitId commitId = stringCommitId.isEmpty() ? null : JsonUtils.fromJson(COMMIT_ID_HASH, stringCommitId);
-			return provider.get(request)
-					.thenCompose(manager -> commitId != null ?
-							manager.fetch(commitId) :
-							manager.fetch()
-									.thenCompose(rev -> provider.getWalker(manager).walkFull()
-											.thenApply($ -> rev))
-					)
-					.thenApply(fetchedRev -> okText()
-							.withBody(wrapUtf8(String.valueOf(fetchedRev))));
+			try {
+				String stringCommitId = request.getQueryParameter("commitId");
+				CommitId commitId = stringCommitId.isEmpty() ? null : JsonUtils.fromJson(COMMIT_ID_HASH, stringCommitId);
+				return provider.get(request)
+						.thenCompose(manager -> commitId != null ?
+								manager.fetch(commitId) :
+								manager.fetch()
+										.thenCompose(rev -> provider.getWalker(manager).walkFull()
+												.thenApply($ -> rev))
+						)
+						.thenApply(fetchedRev -> okText()
+								.withBody(wrapUtf8(String.valueOf(fetchedRev))));
+			} catch (ParseException e) {
+				return Promise.ofException(e);
+			}
 		};
 	}
 
@@ -125,10 +131,14 @@ public class StateAPI {
 
 	private AsyncServlet checkout() {
 		return request -> {
-			CommitId commitId = JsonUtils.fromJson(COMMIT_ID_HASH, request.getQueryParameter("commitId"));
-			return provider.get(request)
-					.thenCompose(manager -> manager.checkout(commitId))
-					.thenApply($ -> okText());
+			try {
+				CommitId commitId = JsonUtils.fromJson(COMMIT_ID_HASH, request.getQueryParameter("commitId"));
+				return provider.get(request)
+						.thenCompose(manager -> manager.checkout(commitId))
+						.thenApply($ -> okText());
+			} catch (ParseException e) {
+				return Promise.ofException(e);
+			}
 		};
 	}
 
@@ -148,13 +158,17 @@ public class StateAPI {
 
 	private AsyncServlet add() {
 		return request -> {
-			Integer value = request.parseQueryParameter("value", Integer::parseInt);
-			return provider.get(request)
-					.thenApply(manager -> {
-						manager.add(AddOperation.add(value));
-						return okJson()
-								.withBody(toJson(LIST_DIFFS_CODEC, manager.getWorkingDiffs()).getBytes(UTF_8));
-					});
+			try {
+				Integer value = request.parseQueryParameter("value", Integer::parseInt);
+				return provider.get(request)
+						.thenApply(manager -> {
+							manager.add(AddOperation.add(value));
+							return okJson()
+									.withBody(toJson(LIST_DIFFS_CODEC, manager.getWorkingDiffs()).getBytes(UTF_8));
+						});
+			} catch (ParseException e) {
+				return Promise.ofException(e);
+			}
 		};
 	}
 

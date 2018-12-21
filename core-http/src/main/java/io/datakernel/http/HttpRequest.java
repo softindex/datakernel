@@ -33,7 +33,6 @@ import java.util.*;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * Represents the HTTP request which {@link AsyncHttpClient} sends to
@@ -53,7 +52,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	private InetAddress remoteAddress;
 	private Map<String, String> pathParameters;
 	private Map<String, String> queryParameters;
-	private Map<String, String> postParameters;
 
 	// region creators
 	HttpRequest(HttpMethod method, UrlParser url) {
@@ -136,16 +134,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return this;
 	}
 	// endregion
-
-	@SuppressWarnings("unchecked")
-	public Promise<HttpRequest> ensureBody(MemSize maxBodySize) {
-		return (Promise<HttpRequest>) doEnsureBody(maxBodySize);
-	}
-
-	@SuppressWarnings("unchecked")
-	public Promise<HttpRequest> ensureBody(int maxBodySize) {
-		return (Promise<HttpRequest>) doEnsureBody(maxBodySize);
-	}
 
 	public HttpMethod getMethod() {
 		assert !isRecycled();
@@ -277,47 +265,35 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return parser.parseOrDefault(getQueryParameterOrNull(key), defaultValue);
 	}
 
-	public Map<String, String> getPostParameters() throws ParseException {
+	public Promise<Map<String, String>> getPostParameters() {
+		return getPostParameters(DEFAULT_MAX_BODY_SIZE_BYTES);
+	}
+
+	public Promise<Map<String, String>> getPostParameters(MemSize memSize) {
+		return getPostParameters(memSize.toInt());
+	}
+
+	public Promise<Map<String, String>> getPostParameters(int maxSize) {
 		assert !isRecycled();
-		if (postParameters != null) return postParameters;
-		checkNotNull(body);
-		ContentType contentType = parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType, null);
-		if (method == POST
-				&& contentType != null
-				&& contentType.getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
-				&& body.readPosition() != body.writePosition()) {
-			postParameters = UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.readPosition(), body.readRemaining()));
-		} else {
-			postParameters = Collections.emptyMap();
+		ContentType contentType;
+		try {
+			contentType = parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType, null);
+		} catch (ParseException e) {
+			return Promise.ofException(e);
 		}
-		return postParameters;
-	}
-
-	@NotNull
-	public String getPostParameter(String postParameter) throws ParseException {
-		String result = getPostParameters().get(postParameter);
-		if (result != null) return result;
-		throw new ParseException(HttpRequest.class, "Post parameter '" + postParameter + "' is required");
-	}
-
-	@NotNull
-	public String getPostParameter(String postParameter, String defaultValue) throws ParseException {
-		String result = getPostParameters().get(postParameter);
-		return result != null ? result : defaultValue;
-	}
-
-	@Nullable
-	public String getPostParameterOrNull(String postParameter) throws ParseException {
-		return getPostParameters().get(postParameter);
-	}
-
-	@NotNull
-	public <T> T parsePostParameter(String postParameter, ParserFunction<String, T> parser) throws ParseException {
-		return parser.parse(getPostParameter(postParameter));
-	}
-
-	public <T> T parsePostParameter(String postParameter, ParserFunction<String, T> parser, T defaultValue) throws ParseException {
-		return parser.parseOrDefault(getPostParameterOrNull(postParameter), defaultValue);
+		if (method != POST
+				|| contentType == null
+				|| contentType.getMediaType() != MediaTypes.X_WWW_FORM_URLENCODED) {
+			return Promise.ofException(new ParseException(HttpRequest.class, "Invalid request type"));
+		}
+		return getBody(maxSize)
+				.thenApply(body -> {
+					try {
+						return UrlParser.parseQueryIntoMap(decodeAscii(body.array(), body.readPosition(), body.readRemaining()));
+					} finally {
+						body.recycle();
+					}
+				});
 	}
 
 	public Map<String, String> getPathParameters() {

@@ -17,13 +17,11 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSetCookies;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.MemSize;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -142,16 +140,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	public static HttpResponse ok201() {
 		return new HttpResponse(201);
-	}
-
-	@SuppressWarnings("unchecked")
-	public Promise<HttpResponse> ensureBody(MemSize maxBodySize) {
-		return (Promise<HttpResponse>) doEnsureBody(maxBodySize);
-	}
-
-	@SuppressWarnings("unchecked")
-	public Promise<HttpResponse> ensureBody(int maxBodySize) {
-		return (Promise<HttpResponse>) doEnsureBody(maxBodySize);
 	}
 
 	public int getCode() {

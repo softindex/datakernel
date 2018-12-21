@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.ParseException;
 
 @FunctionalInterface
 public interface WithMiddleware extends AsyncServlet {
@@ -25,7 +24,7 @@ public interface WithMiddleware extends AsyncServlet {
 	MiddlewareServlet getMiddlewareServlet();
 
 	@Override
-	default Promise<HttpResponse> serve(HttpRequest request) throws ParseException {
+	default Promise<HttpResponse> serve(HttpRequest request) {
 		return getMiddlewareServlet().serve(request);
 	}
 }

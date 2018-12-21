@@ -16,7 +16,6 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoaders;
@@ -34,14 +33,12 @@ public class RequestParameterExample {
 	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 
-		StaticServlet staticServlet = StaticServlet.create(eventloop, StaticLoaders.ofPath(newCachedThreadPool(), RESOURCE_DIR));
-
-		MiddlewareServlet dispatcher = MiddlewareServlet.create()
-				.with(HttpMethod.POST, "/hello", request -> Promise.of(HttpResponse.ok200()
-						.withBody(wrapUtf8("<center><h2>Hello, " + request.getPostParameter("name") + "!</h2></center>"))))
-				.withFallback(staticServlet);
-
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, dispatcher)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				MiddlewareServlet.create()
+						.with(HttpMethod.POST, "/hello", request -> request.getPostParameters().thenApply(postParameters ->
+								HttpResponse.ok200()
+										.withBody(wrapUtf8("<center><h2>Hello, " + postParameters.get("name") + "!</h2></center>"))))
+						.withFallback(StaticServlet.create(eventloop, StaticLoaders.ofPath(newCachedThreadPool(), RESOURCE_DIR))))
 				.withListenPort(8080);
 
 		server.listen();

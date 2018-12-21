@@ -91,20 +91,21 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	public Promise<SignedData<GlobalFsCheckpoint>> load(String filename, long position) {
 		return download(filename)
 				.thenCompose(buf -> {
-					while (buf.canRead()) {
-						try {
-							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
-							if (checkpoint.getValue().getPosition() == position) {
-								buf.recycle();
-								return Promise.of(checkpoint);
+					try {
+						while (buf.canRead()) {
+							try {
+								SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
+								if (checkpoint.getValue().getPosition() == position) {
+									return Promise.of(checkpoint);
+								}
+							} catch (ParseException e) {
+								return Promise.ofException(e);
 							}
-						} catch (ParseException e) {
-							buf.recycle();
-							return Promise.ofException(e);
 						}
+						return Promise.ofException(NO_CHECKPOINT);
+					} finally {
+						buf.recycle();
 					}
-					buf.recycle();
-					return Promise.ofException(NO_CHECKPOINT);
 				})
 				.whenComplete(toLogger(logger, TRACE, "load", filename, position, this));
 	}
@@ -120,20 +121,22 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	public Promise<SignedData<GlobalFsCheckpoint>> loadMetaCheckpoint(String filename) {
 		return download(filename)
 				.thenCompose(buf -> {
-					SignedData<GlobalFsCheckpoint> max = null;
-					while (buf.canRead()) {
-						try {
-							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
-							if (max == null || checkpoint.getValue().getPosition() > max.getValue().getPosition()) {
-								max = checkpoint;
+					try {
+						SignedData<GlobalFsCheckpoint> max = null;
+						while (buf.canRead()) {
+							try {
+								SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
+								if (max == null || checkpoint.getValue().getPosition() > max.getValue().getPosition()) {
+									max = checkpoint;
+								}
+							} catch (ParseException e) {
+								return Promise.ofException(e);
 							}
-						} catch (ParseException e) {
-							buf.recycle();
-							return Promise.ofException(e);
 						}
+						return max != null ? Promise.of(max) : Promise.ofException(NO_CHECKPOINT);
+					} finally {
+						buf.recycle();
 					}
-					buf.recycle();
-					return max != null ? Promise.of(max) : Promise.ofException(NO_CHECKPOINT);
 				})
 				.whenComplete(toLogger(logger, TRACE, "loadMetaCheckpoints", filename, this));
 	}
@@ -142,22 +145,24 @@ public final class RemoteFsCheckpointStorage implements CheckpointStorage {
 	public Promise<long[]> loadIndex(String filename) {
 		return download(filename)
 				.thenCompose(buf -> {
-					long[] array = new long[32];
-					int size = 0;
-					while (buf.canRead()) {
-						try {
-							SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
-							if (array.length == size) {
-								array = Arrays.copyOf(array, size * 2);
+					try {
+						long[] array = new long[32];
+						int size = 0;
+						while (buf.canRead()) {
+							try {
+								SignedData<GlobalFsCheckpoint> checkpoint = decode(SIGNED_CHECKPOINT_CODEC, readBuf(buf));
+								if (array.length == size) {
+									array = Arrays.copyOf(array, size * 2);
+								}
+								array[size++] = checkpoint.getValue().getPosition();
+							} catch (ParseException e) {
+								return Promise.ofException(e);
 							}
-							array[size++] = checkpoint.getValue().getPosition();
-						} catch (ParseException e) {
-							buf.recycle();
-							return Promise.ofException(e);
 						}
+						return Promise.of(Arrays.stream(array).limit(size).sorted().toArray());
+					} finally {
+						buf.recycle();
 					}
-					buf.recycle();
-					return Promise.of(Arrays.stream(array).limit(size).sorted().toArray());
 				})
 				.whenComplete(toLogger(logger, TRACE, "loadIndex", filename, this));
 	}

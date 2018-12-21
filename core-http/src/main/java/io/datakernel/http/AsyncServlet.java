@@ -17,10 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
 
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across
@@ -29,30 +26,5 @@ import io.datakernel.util.MemSize;
  */
 @FunctionalInterface
 public interface AsyncServlet {
-	Promise<HttpResponse> serve(HttpRequest request) throws ParseException, UncheckedException;
-
-	MemSize DEFAULT_MAX_REQUEST_BODY = MemSize.of(
-			ApplicationSettings.getInt(AsyncServlet.class, "maxRequestBody", 1024 * 1024));
-
-	static AsyncServlet ensureRequestBody(AsyncServlet delegate) {
-		return ensureRequestBody(delegate, DEFAULT_MAX_REQUEST_BODY);
-	}
-
-	static AsyncServlet ensureRequestBody(AsyncServlet delegate, MemSize maxBodySize) {
-		return ensureRequestBody(delegate, maxBodySize.toInt());
-	}
-
-	static AsyncServlet ensureRequestBody(AsyncServlet delegate, int maxBodySize) {
-		return request -> request.ensureBody(maxBodySize)
-				.thenCompose(requestWithBody -> {
-					try {
-						return delegate.serve(requestWithBody);
-					} catch (UncheckedException u) {
-						return Promise.ofException(u.getCause());
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				});
-	}
-
+	Promise<HttpResponse> serve(HttpRequest request) throws UncheckedException;
 }
