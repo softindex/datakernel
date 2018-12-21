@@ -321,25 +321,18 @@ public final class PromisesTest {
 		// test success
 		Exception exception1 = new Exception("Test1");
 		Exception exception2 = new Exception("Test2");
-		Promises.nSuccesses(3,
-				Stream.of(
-						Promise.of(1),
-						Promise.of(2),
-						Promise.ofException(exception1),
-						Promise.of(3),
-						Promise.ofException(exception2),
-						Promise.of(4)))
+		List<Promise<?>> promises = asList(Promise.of(1),
+				Promise.of(2),
+				Promise.ofException(exception1),
+				Promise.of(3),
+				Promise.ofException(exception2),
+				Promise.of(4));
+
+		PromisesEx.nSuccesses(3, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise)))
 				.whenComplete(assertComplete(list -> assertEquals(asList(1, 2, 3), list)));
 
 		// test failure
-		Promises.nSuccesses(5,
-				Stream.of(
-						Promise.of(1),
-						Promise.of(2),
-						Promise.ofException(exception1),
-						Promise.of(3),
-						Promise.ofException(exception2),
-						Promise.of(4)))
+		PromisesEx.nSuccesses(5, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise)))
 				.whenComplete(assertFailure(StacklessException.class, "Not enough successes",
 						e -> assertArrayEquals(new Throwable[]{exception1, exception2}, e.getSuppressed())));
 	}
@@ -349,25 +342,18 @@ public final class PromisesTest {
 		// test n successes
 		Exception exception1 = new Exception("Test1");
 		Exception exception2 = new Exception("Test2");
-		Promises.nSuccessesOrLess(3,
-				Stream.of(
-						Promise.of(1),
-						Promise.of(2),
-						Promise.ofException(exception1),
-						Promise.of(3),
-						Promise.ofException(exception2),
-						Promise.of(4)))
+		List<Promise<?>> promises = asList(Promise.of(1),
+				Promise.of(2),
+				Promise.ofException(exception1),
+				Promise.of(3),
+				Promise.ofException(exception2),
+				Promise.of(4));
+
+		PromisesEx.nSuccessesOrLess(3, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise)))
 				.whenComplete(assertComplete(list -> assertEquals(asList(1, 2, 3), list)));
 
 		// test less successes
-		Promises.nSuccessesOrLess(5,
-				Stream.of(
-						Promise.of(1),
-						Promise.of(2),
-						Promise.ofException(exception1),
-						Promise.of(3),
-						Promise.ofException(exception2),
-						Promise.of(4)))
+		PromisesEx.nSuccessesOrLess(5, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise)))
 				.whenComplete(assertComplete(list -> assertEquals(asList(1, 2, 3, 4), list)));
 	}
 

@@ -35,12 +35,12 @@
 				<version>1.6.0</version>
 				<executions>
 					<execution>
-						<id>StructuredCodecsExample</id>
+						<id>CrdtExample</id>
 						<goals>
 							<goal>java</goal>
 						</goals>
 						<configuration>
-							<mainClass>io.datakernel.examples.StructuredCodecsExample</mainClass>
+							<mainClass>io.datakernel.examples.CrdtExample</mainClass>
 						</configuration>
 					</execution>
 				</executions>

@@ -67,6 +67,10 @@ public final class Try<T> {
 		}
 	}
 
+	public static Collector<Try<Void>, ?, Try<Void>> voidReducer() {
+		return reducer(($1, $2) -> null);
+	}
+
 	public static <T> Collector<Try<T>, ?, Try<T>> reducer(BinaryOperator<T> combiner) {
 		return reducer(null, combiner);
 	}

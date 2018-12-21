@@ -20,6 +20,7 @@ import io.datakernel.annotation.NotNull;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.async.PromisesEx;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
@@ -120,9 +121,9 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 					Repo repo = ns.ensureRepository(tableID);
 					return isMasterFor(space) ?
 							repo.upload() :
-							Promises.nSuccessesOrLess(uploadCallNumber, masters
+							PromisesEx.nSuccessesOrLess(uploadCallNumber, masters
 									.stream()
-									.map(master -> master.upload(tableID)))
+									.map(master -> AsyncSupplier.cast(() -> master.upload(tableID))))
 									.thenApply(consumers -> {
 
 										ChannelSplitter<SignedData<DbItem>> splitter = ChannelSplitter.<SignedData<DbItem>>create()
