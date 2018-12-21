@@ -1,6 +1,8 @@
 ## UIKernel
 
 UIKernel is integration with UIKernel.io JS frontend library.
-
-You can explore UIKernel example [here](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration).
+`UiKernelServlets` contains API for interacting with UIKernel tables and includes such operations 
+as `read`, `get`, `create`, `update`, `delete`.
+ 
+You can explore UIKernel integration example [here](https://github.com/softindex/datakernel/tree/master/examples/uikernel-integration).
 

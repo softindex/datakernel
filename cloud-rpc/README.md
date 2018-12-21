@@ -1,6 +1,6 @@
 ## RPC
 
-RPC module is the framework to build distributed applications requiring efficient client-server interconnections between 
+RPC module is a framework to build distributed applications which require efficient client-server interconnections between 
 servers.
 
 * Ideal to create near-realtime (i.e. memcache-like) servers with application-specific business logic

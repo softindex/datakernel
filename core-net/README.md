@@ -4,7 +4,7 @@ Net module abstracts async sockets and channels using CSP implementations and Ev
 
 Core classes: 
 * `EventloopServer` - represents non-blocking server which listens new connection and accepts it asynchronous.
-* `AbstractServer` - non-blocking server which works in eventloop and implements `EventloopServer`
+* `AbstractServer` - non-blocking server which works in eventloop and implements `EventloopServer`.
 * `AsyncTcpSocket` - common interface for connection-oriented transport protocols.
 * `UdpPacket` - represents a UDP packet.
 

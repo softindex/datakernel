@@ -12,7 +12,7 @@ $ cd datakernel/global-launchers
 $ mvn clean compile exec:java@GlobalNodesLauncher
 $ #in another console
 $ cd datakernel/examples/global-ot-demo
-$ mvn clean compile exec:java@GlobalFSDemoApp
+$ mvn clean compile exec:java@GlobalFsDemoApp
 ```
 Note that it is important to execute commands in the given order.
 

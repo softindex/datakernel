@@ -6,4 +6,4 @@ Public Keys associated with them. Basically, the main functions of `DiscoverySer
 for data location and registers newly uploaded data along with checking its digital signatures.
 * Tools to manage Private and Public keys.
 * Encryption and digital signature tools.
-* Some other common classes
+* Some other common classes.

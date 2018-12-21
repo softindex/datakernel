@@ -29,5 +29,5 @@ Another important tool for convenient usage of CSP is Transformer. It allows to 
 Typically, it transforms one channel into another, but can extend the approach and convert channel to any object needed.
 For this purpose transformers utilize `ChannelBuffer`s. 
 
-To get more understanding of how the technology works, you can explore CSP examples 
+#### To get more understanding of how the technology works, you can explore CSP examples 
 [here](https://github.com/softindex/datakernel/tree/master/examples/csp).

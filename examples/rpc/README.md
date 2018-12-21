@@ -7,3 +7,10 @@ $ cd datakernel/examples/rpc
 $ mvn clean compile exec:java@RpcExample
 ```
 
+In this example client sends to server a request which contains word "World". When server receives it, we get an 
+output:
+
+```
+Got result: Hello World
+``` 
+
