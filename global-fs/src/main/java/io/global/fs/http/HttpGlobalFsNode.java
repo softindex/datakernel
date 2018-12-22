@@ -25,10 +25,7 @@ import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.IAsyncHttpClient;
-import io.datakernel.http.UrlBuilder;
+import io.datakernel.http.*;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
@@ -42,7 +39,6 @@ import java.util.List;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.csp.binary.ByteBufsParser.ofDecoder;
-import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
 import static io.global.fs.api.FsCommand.*;
 import static io.global.fs.http.GlobalFsNodeServlet.SIGNED_CHECKPOINT_CODEC;
@@ -81,7 +77,8 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 									.withAcknowledgement(ack -> ack.both(responsePromise)));
 							return buffer.getSupplier();
 						})))
-				.thenCompose(ensureStatusCode(200, 201))
+				.thenCompose(response -> response.getCode() != 200 && response.getCode() != 201 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.whenException(channelPromise::trySetException)
 				.whenComplete(responsePromise::trySet);
 
@@ -97,7 +94,8 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPath(filename)
 						.appendQuery("range", offset + (limit != -1 ? "-" + (offset + limit) : ""))
 						.build()))
-				.thenCompose(ensureStatusCode(200))
+				.thenCompose(response1 -> response1.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
 				.thenApply(response -> response.getBodyStream().transformWith(new FrameDecoder()));
 	}
 
@@ -111,7 +109,8 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(space.asString())
 						.appendQuery("glob", glob)
 						.build()))
-				.thenCompose(ensureStatusCode(200))
+				.thenCompose(response1 -> response1.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
 				.thenCompose(response ->
 						BinaryChannelSupplier.of(response.getBodyStream())
 								.parseStream(SIGNED_CHECKPOINT_PARSER)
@@ -126,7 +125,8 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(space.asString())
 						.appendPath(filename)
 						.build()))
-				.thenCompose(ensureStatusCode(200, 404))
+				.thenCompose(response -> response.getCode() != 200 && response.getCode() != 404 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.thenCompose(res -> res.getCode() == 404 ? Promise.ofException(NO_CHECKPOINT) : Promise.of(res))
 				.thenCompose(res -> res.getBody()
 						.thenCompose(body -> {
@@ -148,7 +148,8 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						.appendPathPart(space.asString())
 						.build())
 				.withBody(encode(SIGNED_CHECKPOINT_CODEC, tombstone)))
-				.thenCompose(ensureStatusCode(200))
+				.thenCompose(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}
 

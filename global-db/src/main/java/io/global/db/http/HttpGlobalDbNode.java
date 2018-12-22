@@ -25,10 +25,7 @@ import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.IAsyncHttpClient;
-import io.datakernel.http.UrlBuilder;
+import io.datakernel.http.*;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.db.DbItem;
@@ -38,7 +35,6 @@ import io.global.db.api.TableID;
 import java.util.List;
 
 import static io.datakernel.codec.binary.BinaryUtils.*;
-import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.db.api.DbCommand.*;
 import static io.global.db.http.GlobalDbNodeServlet.*;
 
@@ -66,7 +62,8 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.build())
 						.withBodyStream(buffer.getSupplier()
 								.map(signedDbItem -> encodeWithSizePrefix(DB_ITEM_CODEC, signedDbItem))))
-				.thenCompose(ensureStatusCode(200))
+				.thenCompose(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.materialize();
 		return Promise.of(buffer.getConsumer().withAcknowledgement(ack -> ack.both(request)));
 	}
@@ -79,7 +76,8 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.appendPathPart(DOWNLOAD)
 								.appendPath(tableID.asString())
 								.build()))
-				.thenCompose(ensureStatusCode(200))
+				.thenCompose(response1 -> response1.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
 				.thenApply(response -> BinaryChannelSupplier.of(response.getBodyStream()).parseStream(DB_ITEM_PARSER));
 	}
 
@@ -92,7 +90,8 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.appendPath(tableID.asString())
 								.build())
 						.withBody(ByteBuf.wrapForReading(key)))
-				.thenCompose(ensureStatusCode(200))
+				.thenCompose(response1 -> response1.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
 				.thenCompose(response -> response.getBody().thenApply(body -> {
 					try {
 						return decode(DB_ITEM_CODEC, body.slice());
@@ -113,7 +112,8 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.appendPath(tableID.asString())
 								.build())
 						.withBody(encode(DB_ITEM_CODEC, item)))
-				.thenCompose(ensureStatusCode(200))
+				.thenCompose(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}
 
@@ -125,7 +125,8 @@ public final class HttpGlobalDbNode implements GlobalDbNode {
 								.appendPathPart(LIST)
 								.appendPath(owner.asString())
 								.build()))
-				.thenCompose(ensureStatusCode(200))
+				.thenCompose(response1 -> response1.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
 				.thenCompose(response -> response.getBody().thenCompose(body -> {
 					try {
 						return Promise.of(decode(LIST_STRING_CODEC, body.slice()));

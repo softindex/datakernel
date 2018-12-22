@@ -51,7 +51,6 @@ import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpUtils.renderQueryString;
-import static io.datakernel.http.IAsyncHttpClient.ensureOk200;
 import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.ot.api.OTCommand.*;
@@ -135,7 +134,8 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 										.map(commitEntry -> encodeWithSizePrefix(COMMIT_ENTRY_CODEC, commitEntry))
 										.transformWith(ChannelByteChunker.create(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE.map(s -> s * 2)))
 						))
-				.thenCompose(ensureOk200())
+				.thenCompose(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid()
 				.whenComplete(done::set);
 		return Promise.of(queue.getConsumer().withAcknowledgement(ack -> ack.thenCompose($ -> done)));

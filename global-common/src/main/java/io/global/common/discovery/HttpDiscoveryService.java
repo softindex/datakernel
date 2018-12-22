@@ -34,7 +34,6 @@ import java.util.List;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.common.api.AnnouncementStorage.NO_ANNOUNCEMENT;
 import static io.global.common.api.DiscoveryCommand.*;
 import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
@@ -64,7 +63,8 @@ public final class HttpDiscoveryService implements DiscoveryService {
 								.appendPathPart(space.asString())
 								.build())
 						.withBody(encode(SIGNED_ANNOUNCE, announceData)))
-				.thenCompose(ensureStatusCode(201))
+				.thenCompose(response -> response.getCode() != 201 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}
 
@@ -113,7 +113,8 @@ public final class HttpDiscoveryService implements DiscoveryService {
 								.appendPathPart(receiver.asString())
 								.build())
 						.withBody(encode(SIGNED_SHARED_SIM_KEY, simKey)))
-				.thenCompose(ensureStatusCode(201))
+				.thenCompose(response -> response.getCode() != 201 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}
 

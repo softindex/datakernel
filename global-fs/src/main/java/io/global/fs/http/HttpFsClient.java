@@ -32,8 +32,6 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.http.IAsyncHttpClient.ensureOk200;
-import static io.datakernel.http.IAsyncHttpClient.ensureStatusCode;
 import static io.global.fs.api.FsCommand.*;
 import static io.global.fs.http.RemoteFsServlet.FILE_META_LIST;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -70,7 +68,8 @@ public class HttpFsClient implements FsClient {
 									.withAcknowledgement(ack -> ack.both(responsePromise)));
 							return buffer.getSupplier();
 						})))
-				.thenCompose(ensureStatusCode(200, 201))
+				.thenCompose(response -> response.getCode() != 200 && response.getCode() != 201 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.whenException(channelPromise::trySetException)
 				.whenComplete(responsePromise::trySet);
 
@@ -87,7 +86,8 @@ public class HttpFsClient implements FsClient {
 								.appendPath(filename)
 								.appendQuery("range", offset + (length == -1 ? "" : ("-" + (offset + length))))
 								.build()))
-				.thenCompose(ensureOk200())
+				.thenCompose(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.thenApply(HttpMessage::getBodyStream);
 	}
 
@@ -100,7 +100,8 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(MOVE)
 								.build())
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
-				.thenCompose(ensureOk200())
+				.thenCompose(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}
 
@@ -113,7 +114,8 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(COPY)
 								.build())
 						.withBody(UrlBuilder.mapToQuery(changes).getBytes(UTF_8)))
-				.thenCompose(ensureOk200())
+				.thenCompose(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}
 
@@ -126,7 +128,8 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(LIST)
 								.appendQuery("glob", glob)
 								.build()))
-				.thenCompose(ensureOk200())
+				.thenCompose(response1 -> response1.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response1.getCode())) : Promise.of(response1))
 				.thenCompose(response -> response.getBody().thenCompose(body -> {
 					try {
 						return Promise.of(JsonUtils.fromJson(FILE_META_LIST, body.getString(UTF_8)));
@@ -147,7 +150,8 @@ public class HttpFsClient implements FsClient {
 								.appendPathPart(DELETE)
 								.appendQuery("glob", glob)
 								.build()))
-				.thenCompose(ensureOk200())
+				.thenCompose(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}
 }

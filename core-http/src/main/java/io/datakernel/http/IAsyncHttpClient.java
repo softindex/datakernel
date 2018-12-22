@@ -18,29 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 
-import java.util.function.Function;
-
 public interface IAsyncHttpClient {
 	Promise<HttpResponse> request(HttpRequest request);
-
-	static Function<HttpResponse, Promise<HttpResponse>> ensureOk200() {
-		return response -> {
-			if (response.getCode() == 200) {
-				return Promise.of(response);
-			}
-			return Promise.ofException(HttpException.ofCode(response.getCode()));
-		};
-	}
-
-	static Function<HttpResponse, Promise<HttpResponse>> ensureStatusCode(int... codes) {
-		return response -> {
-			for (int code : codes) {
-				if (response.getCode() == code) {
-					return Promise.of(response);
-				}
-			}
-			return Promise.ofException(HttpException.ofCode(response.getCode()));
-		};
-	}
-
 }
