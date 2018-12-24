@@ -1,6 +1,7 @@
 ## Net
 
-Net module abstracts async sockets and channels using CSP implementations and Eventloop module.
+Net module abstracts async sockets and channels using [CSP](https://github.com/softindex/datakernel/tree/master/core-csp) 
+implementations and [Eventloop module](https://github.com/softindex/datakernel/tree/master/core-eventloop).
 
 Core classes: 
 * `EventloopServer` - represents non-blocking server which listens new connection and accepts it asynchronous.

@@ -6,7 +6,7 @@ transferring data over wire or persisting it into a file system or database.
 * Schema-less approach - for maximum performance and compactness (unlike other serializers, there is no overhead 
 in typed values)
 * Implemented using runtime bytecode generation, to be compatible with dynamically created classes (like intermediate 
-POJOs created with [Codegen](/docs/modules/codegen) module)
+POJOs created with [Codegen](https://github.com/softindex/datakernel/tree/master/core-codegen) module)
 
 A common usage for a serializer is to pass some serialized class instances through the network to 
 remote machines for further processing. This approach is used in RPC, Dataflow and LSMT-Database modules. Serialization 

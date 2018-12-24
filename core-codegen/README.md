@@ -6,7 +6,7 @@ Codegen module allows to build classes and methods in runtime without the overhe
 tuples, compound keys etc.)
 * Implements basic relational algebra operations for individual items: aggregate functions, projections, predicates, 
 ordering, group-by etc.
-* Since I/O overhead is already minimal due to [Eventloop](/docs/modules/eventloop/) module, bytecode generation ensures 
+* Since I/O overhead is already minimal due to [Eventloop](https://github.com/softindex/datakernel/tree/master/core-eventloop) module, bytecode generation ensures 
 that business logic (such as innermost loops processing millions of items) is also as fast as possible.
 * Easy to use API that encapsulates most of the complexity involved in working with bytecode.
 

@@ -1,7 +1,11 @@
-1. [Simple Object Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/SimpleObjectSerializationExample.java) - serialization and deserialization of a simple object.
-2. [Complex Object Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/ComplexObjectSerializationExample.java) - serialization and deserialization of a more complex object, which contains nullable fields, map, list and a two-dimensional array.
-3. [Fixed Size Fields Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/FixedSizeFieldsSerializationExample.java) -
-4. [Generics & Interfaces Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/GenericsAndInterfacesSerializationExample.java) -
+1. [Simple Object Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/SimpleObjectSerializationExample.java) - 
+serialization and deserialization of a simple object.
+2. [Complex Object Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/ComplexObjectSerializationExample.java) - 
+serialization and deserialization of a more complex object, which contains nullable fields, map, list and a two-dimensional array.
+3. [Fixed Size Fields Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/FixedSizeFieldsSerializationExample.java) - 
+example of serialization and deserialization of an object with fixed size fields
+4. [Generics & Interfaces Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/GenericsAndInterfacesSerializationExample.java) - 
+example of using generics and interfaces with serializers and deserializers.
 
 To run the example, you should execute these lines in the console in appropriate folder:
 ```
@@ -25,14 +29,31 @@ abc abc
 40 40
 123 123
 ```
+The first column represents values of a test object 1, while the second one shows values of test object 2, which was 
+created with the help of serialization and deserialization of the test object 1.
 
-* The first column represents values of a test object 1, while the second one shows values of test object 2, which was created with the help of serialization and then deserialization of the test object 1.
-* The same logic for output of Complex Object Serialization and Generics and Interfaces Serialization examples.
+The same logic is for output of `ComplexObjectSerialization` and `GenericsAndInterfacesSerializationExamples`:
+```
+null null
+abc abc
+[a, null, b] [a, null, b]
+2 2
+[a, null] [a, null]
+null null
+{1=abc, 2=null, null=xyz} {null=xyz, 1=abc, 2=null}
+```
+and 
+```
+2 2
+10 a, 10 a
+20 b, 20 b
+```
+<br>
 
-If you run Fixed Size Fields Serialization Example, you'll get the following output:
+If you run `FixedSizeFieldsSerializationExample`, you'll get the following output:
 ```
 [abc, null, 123, superfluous] [abc, null, 123]
 [1, 2, 3, 4] [1, 2, 3, 4]
 ```
-
-Since SerializeFixedSize for String array was set at value 3, "superfluous" was removed while serialization.
+Since `@SerializeFixedSize` annotation for String array was set at value `3`, "superfluous" was removed from the array 
+while serialization.

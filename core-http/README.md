@@ -8,7 +8,7 @@ HTTP module enables users to build HTTP servers and clients that take full advan
 * [up to ~238K of requests per second per core](#benchmark)
 * ~50K of concurrent HTTP connections
 * Low GC pressure
-* Built on top of [Eventloop](/docs/modules/eventloop/) module
+* Built on top of [Eventloop](https://github.com/softindex/datakernel/tree/master/core-eventloop) module
 * GC pressure is low because HTTP connections are managed in a pool and recyclable ByteBufs are used to wrap HTTP messages.
 * Supports requests with streaming request body (using CSP).
 * Contains a DNS client that can be used to cache results of DNS queries.

@@ -65,9 +65,7 @@ Next, configure your pom.xml file. We will need the following dependencies: data
 
     <groupId>io.datakernel</groupId>
     <artifactId>helloworld</artifactId>
-    <version>1.0</version>
-    <packaging>jar</packaging>
-
+    <version>3.0.0-SNAPSHOT</version>
     <name>Datakernel: Hello World Http Server</name>
     <description>
         Simple example of datakernel-http + datakernel-boot modules usage.
@@ -94,13 +92,27 @@ Next, configure your pom.xml file. We will need the following dependencies: data
     <build>
         <plugins>
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <executions>
+                    <execution>
+                        <id>HttpHelloWorldLauncher</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>io.datakernel.examples.HttpHelloWorldLauncher</mainClass>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.7.0</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <encoding>UTF-8</encoding>
+                    <source>8</source>
+                    <target>8</target>
                 </configuration>
             </plugin>
         </plugins>
@@ -123,7 +135,7 @@ public class SimpleServlet implements AsyncServlet {
 
 	@Override
 	public Promise<HttpResponse> serve(HttpRequest httpRequest) {
-		//this message represents, which worker processed the request
+		//this message represents which worker processed the request
 		byte[] message = encodeAscii("Worker #" + workerId + ". Message: " + responseMessage + "\n");
 		return Promise.of(HttpResponse.ok200().withBody(message));
 	}
@@ -138,7 +150,8 @@ Boot module consists of three main parts:
 * Configs
 * Launcher
 
-Service Graph uses dependency tree, built by Google Guice to run services in a proper order. Service Graph considers all dependencies from Guice, determines which of them can be threated as services and then starts those services in a proper way. You just need to extend AbstractModule and write down the dependencies of your app, Service Graph will do the rest of work for you.
+Service Graph uses dependency tree, built by Google Guice to run services in a proper order. Service Graph considers all 
+dependencies from Guice, determines which of them can be treated as services and then starts those services in a proper way. You just need to extend AbstractModule and write down the dependencies of your app, Service Graph will do the rest of work for you.
 
 Configs are a useful extension for properties file. Main features:
 
@@ -215,25 +228,36 @@ We should extend Launcher, pass Promise and Guice modules as arguments to superc
 
 ```java
 public class HttpHelloWorldLauncher extends Launcher {
-	@Override
-	protected Collection<Module> getModules() {
-		return asList(
-				ServiceGraphModule.defaultInstance(),
-				ConfigModule.create(Config.ofProperties("configs.properties")),
-				new HttpHelloWorldModule()
-		);
-	}
+    @Inject
+    Config config;
 
-	@Override
-	protected void run() throws Exception {
-		awaitShutdown();
-	}
+    private int port;
+    @Override
+    protected Collection<Module> getModules() {
+        return asList(
+                ServiceGraphModule.defaultInstance(),
+                ConfigModule.create(Config.ofProperties("configs.properties")),
+                new HttpHelloWorldModule()
+        );
+    }
+
+    @Override
+    protected void onStart() {
+        port = config.get(ofInteger(), "port");
+    }
+
+    @Override
+    protected void run() throws Exception {
+        System.out.println("Server is running");
+        System.out.println("You can connect from browser by visiting 'http://localhost:" + port + "'");
+        awaitShutdown();
+    }
 
 
-	public static void main(String[] args) throws Exception {
-		HttpHelloWorldLauncher launcher = new HttpHelloWorldLauncher();
-		launcher.launch(true, args);
-	}
+    public static void main(String[] args) throws Exception {
+        HttpHelloWorldLauncher launcher = new HttpHelloWorldLauncher();
+        launcher.launch(true, args);
+    }
 }
 ```
 
@@ -241,10 +265,17 @@ Congratulations! We've just created a simple HTTP-server. Enter the command belo
 ```
 $ mvn clean compile exec:java@HttpHelloWorldLauncher
 ```
+You will see the following output:
+```
+"Server is running"
+"You can connect from browser by visiting 'http://localhost:5577');
+```
+
 
 ## Testing 
 
-Launch your favourite browser and go to "localhost:5577" or just enter the following command to the terminal:
+Launch your favourite browser and go to ["localhost:5577"](localhost:5577) or just enter the following command to the 
+terminal:
 ```
 curl localhost:5577
 ```
@@ -253,5 +284,4 @@ You should see content like this:
 ```
 "Worker #0. Message: Hello from config!"
 ```
-
 If you make this HTTP request several times, worker id will be different, which means load-balancing perfectly works.

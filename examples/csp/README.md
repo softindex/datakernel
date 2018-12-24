@@ -7,6 +7,7 @@ Basic interactions between CSP `ChannelSupplier` and `ChannelConsumers`.
 Represents working with files utilizing CSP `ChannelFileReader` and `ChannelFileWriter`.
 4. [Communicating Process Example](https://github.com/softindex/datakernel/blob/master/examples/csp/src/main/java/io/datakernel/examples/CommunicatingProcessExample.java) - 
 Represents communication between ChannelSupplier and `ChannelConsumer` utilizing transformation and Promise features.
+
 For each of the examples you can download and run a [working example](#1-working-example) and see its
 [explanation](#2-explanation). 
 
@@ -60,7 +61,7 @@ In this example the following DataKernel modules are utilized:
 public class ChannelExample {
 	private static void supplierOfValues() {
 		//passing Supplier five Strings which are streamed to Consumer and then printed in accordance to 
-		// #ofConsumer() setup.
+		//ofConsumer() setup.
 		//ChannelSupplier.of() defines what data will be passed and .streamTo() to which ChannelConsumer
 		//ChannelConsumer.ofConsumer() defines consumer behaviour when it receives data
 		ChannelSupplier.of("1", "2", "3", "4", "5")

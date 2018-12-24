@@ -8,20 +8,20 @@ To run the examples, you should execute these three lines in the console in appr
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/examples/eventloop
 $ mvn clean compile exec:java@TcpEchoServerExample
-$ # OR
+$ # or
 $ mvn clean compile exec:java@MultiEchoServerExample
 ```
 
-This will start your echo server. Now try connecting to it by executing these lines in appropriate folder:
+This will start your echo server. Now you can connect to your server from telnet with command `telnet localhost 9922` 
+or by launching your TcpClient example:
 ```
 $ cd datakernel/examples/eventloop
 $ mvn clean compile exec:java@TcpClientExample
-$ # OR
+$ # or
 $ mvn clean compile exec:java@PingPongSocketConnection
 ```
+Now you can send messages to server and receive them back. If you started Multi Echo Server, 
+feel free to connect multiple Tcp Clients and check out how it works. 
 
-Running TcpClientExample allows you to send messages to server and receive them back. If you started Multi Echo Server, 
-feel free to connect multiple Tcp Clients and check how it works. 
-
-If you just want to check whether your server works or no, run PingPongSocketConnection. It will try to send a message 
+If you just want to check whether your server works, run PingPongSocketConnection. It will try to send a message 
 to your server and get a response from it if everything works correctly.

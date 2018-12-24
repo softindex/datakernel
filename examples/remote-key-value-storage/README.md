@@ -1,5 +1,6 @@
 ## Purpose
-In this guide we will create a remote key-value storage using RPC. App will have 2 basic operations: "put" and "get"
+In this guide we will create a remote key-value storage using [RPC module](https://github.com/softindex/datakernel/tree/master/cloud-rpc). 
+App will have 2 basic operations: "put" and "get".
 
 ## Introduction
 During writing distributed application the common concern is what protocol to use for communication. There are two main 
@@ -8,10 +9,9 @@ options:
 * HTTP/REST
 * RPC
 
-<br>
-While HTTP is more popular and well-specified, it has some overhead. When performance is significant aspect of application, 
-you should use something faster than HTTP. And for this purpose Datakernel Framework has RPC module which is based on 
-fast serialzers and custom optimized communication protocol, which enables to greatly improve application performance.
+While HTTP is more popular and well-specified, it has some overhead. When performance is a significant aspect of application, 
+you should use something faster than HTTP. And for this purpose Datakernel Framework has an RPC module which is based on 
+fast serialzers and custom optimized communication protocol, which allows to greatly improve application performance.
 
 ## What you will need:
 
@@ -21,9 +21,9 @@ fast serialzers and custom optimized communication protocol, which enables to gr
 
 ## What modules will be used:
 
-* RPC
-* Serializer
-* Boot
+* [RPC](https://github.com/softindex/datakernel/tree/master/cloud-rpc)
+* [Serializer](https://github.com/softindex/datakernel/tree/master/core-serializer)
+* [Boot](https://github.com/softindex/datakernel/tree/master/boot)
 
 
 ## To proceed with this guide you have 2 options:
@@ -58,6 +58,7 @@ remote-key-value-storage
                         └── GetResponse.java
                         └── PutRequest.java
                         └── PutResponse.java
+                        └── KeyValueStore.java
                         └── RpcServerModule.java
                         └── RpcServerLauncher.java
                         └── RpcClientModule.java
@@ -65,7 +66,8 @@ remote-key-value-storage
 ```
 
 
-Next, configure your pom.xml file. We will need the following dependencies: RPC, Boot and some Logger. So your pom.xml should look like following:
+Next, configure your pom.xml file. We will need the following dependencies: RPC, Boot and some Logger. So your pom.xml 
+should look like following:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -74,25 +76,11 @@ Next, configure your pom.xml file. We will need the following dependencies: RPC,
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.datakernel</groupId>
-    <artifactId>rpc-key-value-store</artifactId>
-    <version>1.0-SNAPSHOT</version>
+		<artifactId>datakernel-examples</artifactId>
+		<groupId>io.datakernel</groupId>
+		<version>3.0.0-SNAPSHOT</version>
+	<name>Datakernel Examples: Remote Key Value Storage</name>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.3</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <encoding>UTF-8</encoding>
-                </configuration>
-            </plugin>
-        </plugins>
-
-    </build>
 
     <dependencies>
         <dependency>
@@ -111,19 +99,44 @@ Next, configure your pom.xml file. We will need the following dependencies: RPC,
             <version>1.1.3</version>
         </dependency>
     </dependencies>
-
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>1.6.0</version>
+				<executions>
+					<execution>
+						<id>RpcServerLauncher</id>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<mainClass>io.datakernel.examples.RpcServerLauncher</mainClass>
+						</configuration>
+					</execution>
+					<execution>
+						<id>RpcClientLauncher</id>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<mainClass>io.datakernel.examples.RpcClientLauncher</mainClass>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 </project>
 ```
 
-
-
 Since we have two basic operations to implement (put and get), let's first write down classes that will be used for communication between client and server. Specifically,  PutRequest, PutResponse, GetRequest and GetResponse. Instances of these classes will be serialized using fast DataKernel Serializer, but to enable serializer to work, we should provide some meta information about this classes using appropriate annotations. The basic rules are:
 
-* Use `@Serialize` annotation with order number on getter of property. Ordering provides better compatibility in case when classes are changed
-* Use `@Deserialize` annotation with property name (which should be same as in getter) in constructor
-* Use `@SerializeNullable` on properties that can have null values
+* Use `@Serialize` annotation with order number on getter of property. Ordering provides better compatibility in case classes are changed.
+* Use `@Deserialize` annotation with property name (which should be same as in getter) in constructor.
+* Use `@SerializeNullable` on properties that can have null values.
 
-<br>
 Thereby, classes for communication should look like following:
 
 ```java
@@ -201,8 +214,6 @@ public class GetResponse {
 }
 ```
 
-
-<br>
 Next, let's write a simple implementation of key-value storage:
 
 ```java
@@ -221,7 +232,8 @@ public class KeyValueStore {
 ```
 
 
-Now, let's write down a guice module for RPC server using Datakernel Boot, that will handle "get" and "put" requests (Note: if you are not familiar with Datakernel Boot, please take a look at [Hello World HTTP Server Tutorial](http-helloworld.html))
+Now, let's write down a guice module for RPC server using Datakernel Boot, that will handle "get" and "put" requests 
+(Note: if you are not familiar with Datakernel Boot, please take a look at [Hello World HTTP Server Tutorial](https://github.com/softindex/datakernel/tree/master/examples/http-helloworld))
 
 ```java
 public class RpcServerModule extends AbstractModule {
@@ -264,8 +276,7 @@ Since Java 1.8 they can be expressed as lambdas, which are represented as third 
 .withHandler(GetRequest.class, GetResponse.class, req -> Promise.of(new GetResponse(store.get(req.getKey()))))
 ```
 
-<br>
-Launcher for RPC server:
+Next, create a launcher for RPC server:
 
 ```java
 public class RpcServerLauncher extends Launcher {
@@ -288,10 +299,9 @@ public class RpcServerLauncher extends Launcher {
 }
 ```
 
-<br>
 Now, let's write RPC client. In order to create RPC client we should again indicate all the classes that will be used 
-for communication and specify RpcStrategy. There is a whole bunch of strategies in RPC module (such as single-server, 
-first-available, round-robin, sharding and so on) and the nice thing about them: all strategies can be combined. For 
+for communication and specify `RpcStrategy`. There is a whole bunch of strategies in RPC module (such as single-server, 
+first-available, round-robin, sharding and so on) and the nice thing about them ia that all strategies can be combined. For 
 example, if you want to dispatch requests between 2 shards, and each shard actually contains main and reserve servers, 
 you can easily tell RPC client to dispatch request in a proper way using the following code:
 
@@ -302,7 +312,6 @@ RpcStrategy strategy = sharding(hashFunction,
 );
 ```
 
-<br>
 But since we have only one server, we will just use single-server strategy:
 
 ```java
@@ -329,9 +338,8 @@ public class RpcClientModule extends AbstractModule {
 }
 ```
 
-
-<br>
-Let's also build RpcClientLauncher. In run() we will consider command line arguments and make appropriate requests to RpcServer.
+Let's also build RpcClientLauncher. In run() we will consider command line arguments and make appropriate requests to 
+`RpcServer`.
 
 ```java
 public class RpcClientLauncher extends Launcher {
@@ -397,11 +405,11 @@ public class RpcClientLauncher extends Launcher {
 
 ```
 
-<br>
-As you can see, sendRequest method returns a CompletionStage, at which we could listen for its results asynchronously with lambdas.
+As you can see, `sendRequest` method returns a `CompletionStage`, at which we could listen for its results asynchronously 
+with lambdas.
 
-<br>
-Contratulation! We've finished writing code for this app. Let's now complile it. In order to do it go to project root directory and enter the following command:
+Contratulation! We've finished writing code for this app. Let's now compile it. In order to do it go to project root 
+directory and enter the following command:
 
 ```
 $ mvn clean package
@@ -413,8 +421,6 @@ Firstly, launch server:
 $ mvn clean compile exec:java@RpcServerLauncher
 ```
 
-
-<br>
 Then make a "put" request:
 
 ```
@@ -428,7 +434,6 @@ put request was made successfully
 previous value: null
 ```
 
-<br>
 Finally, make a "get" request:
 
 ```

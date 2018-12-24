@@ -48,45 +48,52 @@ $ touch helloworld/pom.xml
 $ touch helloworld/src/main/java/io/datakernel/examples/HelloWorld.java
 ```
 
-Add a maven dependency to use DataKernel in your project, as showed below:
+Add a maven dependency to use DataKernel in your project, as shown below:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<artifactId>datakernel-examples</artifactId>
+		<groupId>io.datakernel</groupId>
+		<version>3.0.0-SNAPSHOT</version>
+	</parent>
 
-    <groupId>io.datakernel</groupId>
-    <artifactId>helloworld</artifactId>
-    <version>2.0</version>
-    <packaging>jar</packaging>
+	<artifactId>getting-started</artifactId>
 
-    <name>HelloWorld</name>
+	<name>Datakernel Examples: Getting started</name>
 
-    <dependencies>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-eventloop</artifactId>
-            <version>3.0.0-SNAPSHOT</version>
-        </dependency>
-    </dependencies>
+	<dependencies>
+		<dependency>
+			<groupId>io.datakernel</groupId>
+			<artifactId>datakernel-eventloop</artifactId>
+			<version>3.0.0-SNAPSHOT</version>
+		</dependency>
+	</dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.7.0</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <encoding>UTF-8</encoding>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>1.6.0</version>
+				<executions>
+					<execution>
+						<id>HelloWorld</id>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<mainClass>io.datakernel.examples.HelloWorld</mainClass>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 </project>
-
 ```
 
 Then, write down the following code to `HelloWorld.java`
@@ -109,11 +116,11 @@ public class HelloWorld {
 		eventloop.run();
     }
 }
-
 ```
 
-Finally, enter the command below in console to compile and run this app:
+Finally, enter the commands below in console to compile and run this app:
 ```
-$ mvn clean package exec:java -Dexec.mainClass=io.datakernel.examples.HelloWorld
+$ cd helloworld
+$ mvn clean compile exec:java@HelloWorld
 ```
-
+You'll receive a `Hello World` message proceeded by eventloop.

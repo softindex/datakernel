@@ -2,12 +2,16 @@
 
 CSP provides communication between processes with Go-like approach. This means that CSP creates channels which can be 
 treated as a pipe that connects some processes. A value can be sent to a channel via `ChannelSupplier` and received 
-from a channel by `ChannelConsumer`. `ChannelConsumer` accepts some data and returns Promise so that new object isn't 
-passed until the previous one is consumed. `ChannelSuplier` gets data and then streams it to the next consumer. Both 
-operations also return a Promise, as suppliers work only with one object at a time.
+from a channel by `ChannelConsumer`. 
 
-CSP utilizes Promise module which enables optimisation while communicating in 
-tough conditions (for example, slow Internet connection).
+When `ChannelConsumer` receives some data, it returns a `Promise` so that new object isn't 
+passed until the previous one is consumed. 
+
+`ChannelSuplier` gets data and then streams it to the next consumer. Both operations also return a Promise, as suppliers 
+work only with one object at a time.
+
+CSP utilizes Promise module which enables optimisation while communicating in tough conditions (for example, slow 
+Internet connection).
 
 The main advantages of CSP are:
 * Supports file I/O using channels.
@@ -29,5 +33,4 @@ Another important tool for convenient usage of CSP is Transformer. It allows to 
 Typically, it transforms one channel into another, but can extend the approach and convert channel to any object needed.
 For this purpose transformers utilize `ChannelBuffer`s. 
 
-#### To get more understanding of how the technology works, you can explore CSP examples 
-[here](https://github.com/softindex/datakernel/tree/master/examples/csp).
+#### You can explore CSP examples [here](https://github.com/softindex/datakernel/tree/master/examples/csp).

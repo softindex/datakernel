@@ -65,7 +65,7 @@ Extremely fast and space-efficient serializers created using bytecode engineerin
 best performance.
 
 [Serializer examples](https://github.com/softindex/datakernel/tree/master/examples/serializer)  
-[Benchmark](http://datakernel.io/docs/modules/serializer.html#benchmark)
+[Benchmark](https://github.com/softindex/datakernel/tree/master/core-serializer#benchmark)
 
 ### [Datastream](https://github.com/softindex/datakernel/tree/master/core-datastream)
 
@@ -73,7 +73,7 @@ Composable asynchronous/reactive streams with powerful data processing capabilit
 of lightweight values.
 
 [Datastream examples](https://github.com/softindex/datakernel/tree/master/examples/datastreams)  
-[Benchmark](http://datakernel.io/docs/modules/datastream.html#benchmark)
+[Benchmark](https://github.com/softindex/datakernel/tree/master/core-datastream#benchmark)
 
 ### [HTTP](https://github.com/softindex/datakernel/tree/master/core-http)
 
@@ -81,7 +81,7 @@ High-performance asynchronous HTTP client and server. Contains a built-in servle
 content loading.  
 
 [HTTP examples](https://github.com/softindex/datakernel/tree/master/examples/http)  
-[Benchmark](http://datakernel.io/docs/modules/http.html#benchmark)
+[Benchmark](https://github.com/softindex/datakernel/tree/master/core-http#benchmark)
 
 ### [JSON](https://github.com/softindex/datakernel/tree/master/core-json)
 
