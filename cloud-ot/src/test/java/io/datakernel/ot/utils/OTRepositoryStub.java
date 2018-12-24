@@ -141,4 +141,9 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 		throw new IOException();
 	}
 
+	public void reset() {
+		commits.clear();
+		snapshots.clear();
+	}
+
 }
