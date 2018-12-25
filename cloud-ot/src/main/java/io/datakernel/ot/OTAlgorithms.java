@@ -319,44 +319,61 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	public Promise<K> findAnyCommonParent(Set<K> startCut) {
-		return walkGraph(startCut, new FindAnyCommonParentWalker<>(startCut))
+		return walkGraph(startCut, new FindAnyCommonParentWalker<>(DiffsReducer.toVoid(), startCut))
+				.thenApply(Map.Entry::getKey)
 				.whenComplete(toLogger(logger, thisMethod(), startCut));
 	}
 
 	public Promise<Set<K>> findAllCommonParents(Set<K> startCut) {
-		return walkGraph(startCut, new FindAllCommonParentsWalker<>(startCut))
+		return walkGraph(startCut, new FindAllCommonParentsWalker<>(DiffsReducer.toVoid(), startCut))
+				.thenApply(Map::keySet)
+				.whenComplete(toLogger(logger, thisMethod(), startCut));
+	}
+
+	public Promise<List<D>> diff(K node1, K node2) {
+		Set<K> startCut = set(node1, node2);
+		return walkGraph(startCut, new FindAnyCommonParentWalker<>(DiffsReducer.toList(), startCut))
+				.thenApply(entry -> {
+					List<D> diffs1 = entry.getValue().get(node1);
+					List<D> diffs2 = entry.getValue().get(node2);
+					return concat(diffs2, otSystem.invert(diffs1));
+				})
 				.whenComplete(toLogger(logger, thisMethod(), startCut));
 	}
 
 	public Promise<Set<K>> excludeParents(Set<K> startNodes) {
 		checkArgument(!startNodes.isEmpty(), "Start nodes are empty");
 		if (startNodes.size() == 1) return Promise.of(startNodes);
-		return walkGraph(startNodes, new GraphWalker<K, D, Set<K>>() {
-			long minLevel;
-			Set<K> nodes = new HashSet<>(startNodes);
+		return walkGraph(startNodes,
+				new GraphWalker<K, D, Set<K>>() {
+					long minLevel;
+					Set<K> nodes = new HashSet<>(startNodes);
 
-			@Override
-			public void onStart(List<OTCommit<K, D>> otCommits) {
-				minLevel = otCommits.stream().mapToLong(OTCommit::getLevel).min().getAsLong();
-			}
+					@Override
+					public void onStart(List<OTCommit<K, D>> otCommits) {
+						minLevel = otCommits.stream().mapToLong(OTCommit::getLevel).min().getAsLong();
+					}
 
-			@Override
-			public Promise<Optional<Set<K>>> onCommit(OTCommit<K, D> commit) {
-				nodes.removeAll(commit.getParentIds());
-				if (commit.getLevel() <= minLevel)
-					return Promise.of(Optional.of(nodes));
-				return Promise.of(Optional.empty());
-			}
-		}).whenComplete(toLogger(logger, thisMethod(), startNodes));
+					@Override
+					public Promise<Optional<Set<K>>> onCommit(OTCommit<K, D> commit) {
+						nodes.removeAll(commit.getParentIds());
+						if (commit.getLevel() <= minLevel)
+							return Promise.of(Optional.of(nodes));
+						return Promise.of(Optional.empty());
+					}
+				}).
+				whenComplete(toLogger(logger, thisMethod(), startNodes));
 	}
 
-	private static abstract class AbstractFindCommonParentWalker<K, D, R> extends SimpleGraphWalker<K, D, R> {
+	private static abstract class AbstractFindCommonParentWalker<K, D, A, R> extends SimpleGraphWalker<K, D, R> {
+		private final DiffsReducer<A, D> diffsReducer;
 		protected final Set<K> heads;
-		protected final Map<K, Set<K>> nodeToHeads;
+		protected final Map<K, Map<K, A>> accumulators;
 
-		protected AbstractFindCommonParentWalker(Set<K> heads) {
+		protected AbstractFindCommonParentWalker(DiffsReducer<A, D> diffsReducer, Set<K> heads) {
+			this.diffsReducer = diffsReducer;
 			this.heads = heads;
-			this.nodeToHeads = heads.stream().collect(toMap(identity(), head -> new HashSet<>(singleton(head))));
+			this.accumulators = heads.stream().collect(toMap(identity(), head -> new HashMap<>(singletonMap(head, diffsReducer.initialValue()))));
 		}
 
 		@Nullable
@@ -373,42 +390,51 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			}
 
 			K commitId = commit.getId();
-			Set<K> commitHeads = nodeToHeads.remove(commitId);
+			Map<K, A> accumulators = this.accumulators.remove(commitId);
 
-			for (K parent : commit.getParentIds()) {
-				nodeToHeads.computeIfAbsent(parent, $ -> new HashSet<>())
-						.addAll(commitHeads);
+			for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
+				K parentId = parentEntry.getKey();
+				List<D> parentDiff = parentEntry.getValue();
+
+				for (Map.Entry<K, A> accumulatorEntry : accumulators.entrySet()) {
+					K headId = accumulatorEntry.getKey();
+					A accumulator = accumulatorEntry.getValue();
+					A newAccumulator = diffsReducer.accumulate(accumulator, parentDiff);
+					this.accumulators.computeIfAbsent(parentId, $ -> new HashMap<>())
+							.put(headId, newAccumulator);
+				}
 			}
 
 			return tryGetResult();
 		}
 	}
 
-	private static final class FindAnyCommonParentWalker<K, D> extends AbstractFindCommonParentWalker<K, D, K> {
-		private FindAnyCommonParentWalker(Set<K> heads) {
-			super(heads);
+	private static final class FindAnyCommonParentWalker<K, D, A> extends AbstractFindCommonParentWalker<K, D, A, Map.Entry<K, Map<K, A>>> {
+		private FindAnyCommonParentWalker(DiffsReducer<A, D> diffsReducer, Set<K> heads) {
+			super(diffsReducer, heads);
 		}
 
 		@Override
-		protected K tryGetResult() {
-			return nodeToHeads.entrySet().stream()
-					.filter(entry -> heads.equals(entry.getValue()))
+		protected Map.Entry<K, Map<K, A>> tryGetResult() {
+			return accumulators.entrySet().stream()
+					.filter(entry -> heads.equals(entry.getValue().keySet()))
 					.findAny()
-					.map(Map.Entry::getKey)
 					.orElse(null);
 		}
 	}
 
-	private static final class FindAllCommonParentsWalker<K, D> extends AbstractFindCommonParentWalker<K, D, Set<K>> {
-		private FindAllCommonParentsWalker(Set<K> heads) {
-			super(heads);
+	private static final class FindAllCommonParentsWalker<K, D, A> extends AbstractFindCommonParentWalker<K, D, A, Map<K, Map<K, A>>> {
+		private FindAllCommonParentsWalker(DiffsReducer<A, D> diffsReducer, Set<K> heads) {
+			super(diffsReducer, heads);
 		}
 
 		@Nullable
 		@Override
-		protected Set<K> tryGetResult() {
-			return nodeToHeads.values().stream().allMatch(heads::equals) ?
-					nodeToHeads.keySet() : null;
+		protected Map<K, Map<K, A>> tryGetResult() {
+			return accumulators.values()
+					.stream()
+					.map(Map::keySet)
+					.allMatch(heads::equals) ? accumulators : null;
 		}
 	}
 
@@ -477,18 +503,20 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	@SuppressWarnings("unchecked")
 	public Promise<List<D>> checkout(K commitId) {
 		List<D>[] cachedSnapshot = new List[1];
-		return findParent(singleton(commitId), DiffsReducer.toList(),
-				commit -> commit.getSnapshotHint() == Boolean.FALSE ?
-						Promise.of(false) :
-						repository.loadSnapshot(commit.getId())
-								.thenApply(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null))
-				.thenCompose(findResult -> {
-					if (!findResult.isFound())
-						return Promise.ofException(new OTException("No snapshot or root from id:" + commitId));
+		return repository.getHeads()
+				.thenCompose(heads ->
+						findParent(union(heads, singleton(commitId)), DiffsReducer.toVoid(),
+								commit -> commit.getSnapshotHint() == Boolean.FALSE ?
+										Promise.of(false) :
+										repository.loadSnapshot(commit.getId())
+												.thenApply(maybeSnapshot -> (cachedSnapshot[0] = maybeSnapshot.orElse(null)) != null))
+								.thenCompose(findResult -> {
+									if (!findResult.isFound())
+										return Promise.ofException(new OTException("No snapshot or root from id:" + commitId));
 
-					List<D> changes = concat(cachedSnapshot[0], findResult.getAccumulatedDiffs());
-					return Promise.of(otSystem.squash(changes));
-				})
+									return diff(findResult.commit, commitId)
+											.thenApply(diff -> concat(cachedSnapshot[0], diff));
+								}))
 				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 
