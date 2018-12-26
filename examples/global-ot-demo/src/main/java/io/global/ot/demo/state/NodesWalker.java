@@ -240,11 +240,13 @@ public class NodesWalker<T> {
 					.append(toJson(encoder, node))
 					.append(" style=")
 					.append(isPending ? "dashed color=" : "filled fillcolor=")
-					.append(isFetched ?
-							"yellow" :
-							isCurrent ?
-									"green" :
-									"white")
+					.append(isCurrent ?
+							"green" :
+							isFetched ?
+									"yellow" :
+									isPending ?
+											"black" :
+											"white")
 					.append("];\n");
 		}
 

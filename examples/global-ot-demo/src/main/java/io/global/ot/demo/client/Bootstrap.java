@@ -40,7 +40,7 @@ import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.BinaryDataFormats.REGISTRY;
-import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
+import static io.global.launchers.GlobalConfigConverters.*;
 import static io.global.ot.demo.util.Utils.LIST_DIFFS_CODEC;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -51,6 +51,7 @@ public class Bootstrap implements EventloopService {
 	private final DiscoveryService discoveryService;
 	private final GlobalOTNode intermediateServer;
 	private final RawServerId masterId;
+	private OTDriver otDriver;
 	private PrivKey privateKey;
 	private PubKey publicKey;
 	private SimKey simKey;
@@ -75,6 +76,10 @@ public class Bootstrap implements EventloopService {
 		return myRepositoryId;
 	}
 
+	public OTDriver getOtDriver() {
+		return otDriver;
+	}
+
 	public SimKey getSimKey() {
 		return simKey;
 	}
@@ -96,14 +101,15 @@ public class Bootstrap implements EventloopService {
 	}
 
 	private void initializeCredentials() {
-		KeyPair keys = KeyPair.generate();
-		privateKey = keys.getPrivKey();
-		publicKey = keys.getPubKey();
-		simKey = SimKey.generate();
+		privateKey = config.get(ofPrivKey(), "credentials.privKey");
+		publicKey = privateKey.computePubKey();
+		simKey = config.get(ofSimKey(), "credentials.simKey");
 		repositoryId = RepoID.of(publicKey, config.get("repository.name"));
 		myRepositoryId = new MyRepositoryId<>(repositoryId, privateKey,
 				list -> encode(LIST_DIFFS_CODEC, list).asArray(),
 				bytes -> decode(LIST_DIFFS_CODEC, bytes));
+		otDriver = new OTDriver(intermediateServer, emptyList(), repositoryId);
+		otDriver.changeCurrentSimKey(simKey);
 	}
 
 	private Promise<Void> initializeDiscoveryService() {
@@ -113,11 +119,12 @@ public class Bootstrap implements EventloopService {
 	}
 
 	private Promise<Void> initializeRootCommit() {
-		OTDriver driver = new OTDriver(intermediateServer, emptyList(), repositoryId);
-		driver.changeCurrentSimKey(simKey);
-		OTCommit<CommitId, Operation> rootCommit = driver.createCommit(myRepositoryId, emptyMap(), 1);
-		return driver.push(myRepositoryId, rootCommit)
-				.thenCompose($ -> driver.saveSnapshot(myRepositoryId, rootCommit.getId(), emptyList()));
+		OTCommit<CommitId, Operation> rootCommit = otDriver.createCommit(myRepositoryId, emptyMap(), 1);
+		return otDriver.getHeads(repositoryId)
+				.thenCompose(heads -> heads.isEmpty() ?
+						otDriver.push(myRepositoryId, rootCommit)
+								.thenCompose($ -> otDriver.saveSnapshot(myRepositoryId, rootCommit.getId(), emptyList()))
+						: Promise.complete());
 	}
 
 }

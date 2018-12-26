@@ -23,9 +23,6 @@ $(document).ready(function () {
         execute('/reset', 'post');
     })
     $('#newManager').click(openNew);
-    $('#update').click(update);
-
-    $('#updateGraph').click(updateGraph);
     document.title = '[' + $.urlParam('id') + ']' + ' OT State Manager';
 });
 

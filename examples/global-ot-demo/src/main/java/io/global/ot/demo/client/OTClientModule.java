@@ -27,7 +27,6 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.demo.operations.Operation;
 
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
 class OTClientModule extends AbstractModule {
@@ -46,9 +45,7 @@ class OTClientModule extends AbstractModule {
 	@Provides
 	@Singleton
 	OTDriver provideDriver(Bootstrap bootstrap) {
-		OTDriver otDriver = new OTDriver(bootstrap.getIntermediateServer(), emptyList(), bootstrap.getMyRepositoryId().getRepositoryId());
-		otDriver.changeCurrentSimKey(bootstrap.getSimKey());
-		return otDriver;
+		return bootstrap.getOtDriver();
 	}
 
 	@Provides

@@ -144,26 +144,26 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 							}
 							return updateHeads(repositoryId, new Heads(newHeads, excludedHeads));
 						}))
-				.thenCompose($ -> isMasterFor(repositoryId) ?
+				.thenCompose($ -> ensureMasterNodes(repositoryId))
+				.thenCompose(nodes -> isMasterFor(repositoryId) ?
 						Promise.complete() :
-						ensureMasterNodes(repositoryId)
-								.thenCompose(nodes -> Promises.firstSuccessful(nodes.stream()
-										.map(node -> AsyncSupplier.cast(() ->
-												node.save(repositoryId, newCommits, newHeads))))));
+						Promises.firstSuccessful(nodes.stream()
+								.map(node -> AsyncSupplier.cast(() ->
+										node.save(repositoryId, newCommits, newHeads)))));
 	}
 
 	@Override
 	public Promise<RawCommit> loadCommit(RepoID repositoryId, CommitId id) {
 		return commitStorage.loadCommit(id)
-				.thenCompose(maybeCommit -> maybeCommit.isPresent() || isMasterFor(repositoryId) ?
-						Promise.ofOptional(maybeCommit) :
-						ensureMasterNodes(repositoryId)
-								.thenCompose(nodes -> Promises.firstSuccessful(
+				.thenCompose(maybeCommit -> ensureMasterNodes(repositoryId)
+						.thenCompose(nodes -> maybeCommit.isPresent() || isMasterFor(repositoryId) ?
+								Promise.ofOptional(maybeCommit) :
+								Promises.firstSuccessful(
 										nodes.stream()
 												.map(node -> AsyncSupplier.cast(() ->
-														node.loadCommit(repositoryId, id)))))
-								.thenCompose(commit -> commitStorage.saveCommit(id, commit)
-										.thenApply($ -> commit))
+														node.loadCommit(repositoryId, id))))
+										.thenCompose(commit -> commitStorage.saveCommit(id, commit)
+												.thenApply($ -> commit)))
 				);
 	}
 
@@ -311,12 +311,12 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	@Override
 	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return commitStorage.saveSnapshot(encryptedSnapshot)
-				.thenCompose(saved -> saved && !isMasterFor(repositoryId) ?
-						ensureMasterNodes(repositoryId)
-								.thenCompose(nodes -> Promises.firstSuccessful(nodes.stream()
+				.thenCompose(saved -> ensureMasterNodes(repositoryId)
+						.thenCompose(nodes -> saved && !isMasterFor(repositoryId) ?
+								Promises.firstSuccessful(nodes.stream()
 										.map(node -> AsyncSupplier.cast(() ->
-												node.saveSnapshot(repositoryId, encryptedSnapshot))))) :
-						Promise.complete());
+												node.saveSnapshot(repositoryId, encryptedSnapshot)))) :
+								Promise.complete()));
 	}
 
 	@Override
@@ -405,12 +405,12 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 	@Override
 	public Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
+		RepoID repository = pullRequest.getValue().getRepository();
 		return commitStorage.savePullRequest(pullRequest)
-				.thenCompose(saveStatus -> (saveStatus && !isMasterFor(pullRequest.getValue().getRepository())) ?
-						ensureMasterNodes(pullRequest.getValue().repository)
-								.thenCompose(nodes -> Promises.any(
-										nodes.stream().map(node -> node.sendPullRequest(pullRequest)))) :
-						Promise.complete());
+				.thenCompose(saveStatus -> ensureMasterNodes(repository)
+						.thenCompose(nodes -> (saveStatus && !isMasterFor(repository)) ?
+								Promises.any(nodes.stream().map(node -> node.sendPullRequest(pullRequest))) :
+								Promise.complete()));
 	}
 
 	@Override

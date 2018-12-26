@@ -26,9 +26,11 @@ import io.datakernel.service.ServiceGraphModule;
 
 import java.util.Collection;
 
+import static io.datakernel.config.Config.ofProperties;
 import static java.util.Arrays.asList;
 
 public class GlobalOTDemoApp extends Launcher {
+	public static final String PROPERTIES_FILE = "client.properties";
 	@Inject
 	AsyncHttpServer server;
 
@@ -36,7 +38,10 @@ public class GlobalOTDemoApp extends Launcher {
 	protected Collection<Module> getModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
-				ConfigModule.create(() -> Config.ofProperties("client.properties")),
+				ConfigModule.create(() ->
+						Config.ofProperties(PROPERTIES_FILE)
+								.override(ofProperties(System.getProperties()).getChild("config")))
+						.printEffectiveConfig(),
 				new OTClientModule(),
 				new HttpModule(),
 				new OTStateModule()

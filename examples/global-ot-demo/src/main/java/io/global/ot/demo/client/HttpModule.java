@@ -24,7 +24,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
-import io.global.ot.demo.api.StateAPI;
+import io.global.ot.demo.api.OTStateServlet;
 import io.global.ot.demo.state.StateManagerProvider;
 
 import java.nio.file.Path;
@@ -55,7 +55,7 @@ class HttpModule extends AbstractModule {
 		Path resources = Paths.get(DEFAULT_PATH_TO_RESOURCES);
 		StaticLoader resourceLoader = StaticLoaders.ofPath(newCachedThreadPool(), resources);
 		StaticServlet staticServlet = StaticServlet.create(eventloop, resourceLoader);
-		return new StateAPI(stateManagerProvider).getServlet()
+		return OTStateServlet.create(stateManagerProvider).getMiddlewareServlet()
 				.withFallback(staticServlet);
 	}
 }

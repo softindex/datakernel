@@ -23,6 +23,7 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.WithMiddleware;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.exceptions.OTTransformException;
 import io.global.ot.api.CommitId;
@@ -39,15 +40,21 @@ import static io.global.ot.demo.util.Utils.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singleton;
 
-public class StateAPI {
+public class OTStateServlet implements WithMiddleware {
 	private static final StateManagerInfo INFO = new StateManagerInfo();
 	private final StateManagerProvider provider;
+	private final MiddlewareServlet servlet;
 
-	public StateAPI(StateManagerProvider provider) {
+	private OTStateServlet(StateManagerProvider provider) {
 		this.provider = provider;
+		this.servlet = getServlet();
 	}
 
-	public MiddlewareServlet getServlet() {
+	public static OTStateServlet create(StateManagerProvider provider) {
+		return new OTStateServlet(provider);
+	}
+
+	private MiddlewareServlet getServlet() {
 		return MiddlewareServlet.create()
 				.with(PUT, "/add", add())
 				.with(POST, "/commit", commit())
@@ -185,6 +192,11 @@ public class StateAPI {
 									HttpResponse.redirect302(redirectUrl);
 						}
 				);
+	}
+
+	@Override
+	public MiddlewareServlet getMiddlewareServlet() {
+		return servlet;
 	}
 	// endregion
 }
