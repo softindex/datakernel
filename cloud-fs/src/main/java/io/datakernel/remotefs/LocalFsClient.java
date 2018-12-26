@@ -337,10 +337,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		return Promise.ofCallable(executor,
 				() -> {
 					Path file = storageDir.resolve(filename);
-					if (Files.isRegularFile(file)) {
-						return getFileMeta(file);
-					}
-					return null;
+					return Files.isRegularFile(file) ? getFileMeta(file) : null;
 				});
 	}
 

@@ -55,7 +55,10 @@ public final class MiddlewareServletTest {
 	@Test
 	public void testBase() {
 		MiddlewareServlet servlet1 = MiddlewareServlet.create();
-		servlet1.with(HttpMethod.GET, "/a/b/c", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
+
+		AsyncServlet subservlet = request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8)));
+
+		servlet1.with(HttpMethod.GET, "/a/b/c", subservlet);
 
 		check(servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c")), "", 200);
 		check(servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c")), "", 200);
@@ -63,7 +66,7 @@ public final class MiddlewareServletTest {
 		check(servlet1.serve(HttpRequest.post("http://some-test.com/a/b/c")), "", 404);
 
 		MiddlewareServlet servlet2 = MiddlewareServlet.create();
-		servlet2.with(HttpMethod.HEAD, "/a/b/c", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
+		servlet2.with(HttpMethod.HEAD, "/a/b/c", subservlet);
 
 		check(servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c")), "", 404);
 		check(servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c/d")), "", 404);
@@ -383,7 +386,6 @@ public final class MiddlewareServletTest {
 
 	@Test
 	public void testTail() {
-
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/method/:var/:tail*", request -> {
 					try {
@@ -398,5 +400,7 @@ public final class MiddlewareServletTest {
 		check(main.serve(HttpRequest.get(TEMPLATE + "/method/srfethj/first/second")), "Success: first/second", 200);
 		check(main.serve(HttpRequest.get(TEMPLATE + "/method/dvyhju/")), "Success: ", 200);
 		check(main.serve(HttpRequest.get(TEMPLATE + "/method/yumgn")), "Success: ", 200);
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/yumgn?query=string")), "Success: ", 200);
+		check(main.serve(HttpRequest.get(TEMPLATE + "/method/yumgn/first?query=string")), "Success: first", 200);
 	}
 }

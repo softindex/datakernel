@@ -19,7 +19,9 @@ package io.global.fs.http;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.remotefs.FileMetadata;
@@ -45,15 +47,47 @@ public final class RemoteFsServlet implements WithMiddleware {
 		this.servlet = servlet(client);
 	}
 
-	public RemoteFsServlet create(FsClient client) {
+	public static RemoteFsServlet create(FsClient client) {
 		return new RemoteFsServlet(client);
 	}
 
+
 	private MiddlewareServlet servlet(FsClient client) {
 		return MiddlewareServlet.create()
+				.with(HttpMethod.POST, "/" + UPLOAD + "/:path*", request -> {
+					try {
+						String path = request.getPathParameter("path");
+						long offset = HttpDataFormats.parseOffset(request);
+						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
+
+						String contentType = request.getHeader(HttpHeaders.CONTENT_TYPE);
+						if (!contentType.startsWith("multipart/form-data; boundary=")) {
+							return Promise.ofException(HttpException.ofCode(400, "Content type is not multipart/form-data"));
+						}
+						String boundary = contentType.substring(30);
+						if (boundary.startsWith("\"") && boundary.endsWith("\"")) {
+							boundary = boundary.substring(1, boundary.length() - 1);
+						}
+
+						String finalBoundary = boundary;
+
+						return (offset == -1 || offset == 0) && path.isEmpty() ?
+								MultipartParser.create(finalBoundary)
+										.splitByFiles(bodyStream, filename -> ChannelConsumer.ofPromise(client.upload(filename, offset)))
+										.thenApply($ -> HttpResponse.ok201()) :
+								client.getMetadata(path)
+										.thenCompose(meta ->
+												client.upload(path, offset)
+														.thenCompose(BinaryChannelSupplier.of(bodyStream).parseStream(MultipartParser.create(finalBoundary).ignoreHeaders())::streamTo)
+														.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
+
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
 				.with(HttpMethod.GET, "/" + DOWNLOAD + "/:path*", request -> {
 					try {
-						String path = request.getRelativePath();
+						String path = request.getPathParameter("path");
 						long[] range = HttpDataFormats.parseRange(request);
 						String name = path;
 						int lastSlash = path.lastIndexOf('/');
@@ -69,31 +103,12 @@ public final class RemoteFsServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(HttpMethod.PUT, "/" + UPLOAD + "/:path*", request -> {
-					try {
-						String path = request.getRelativePath();
-						long offset = HttpDataFormats.parseOffset(request);
-						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
-						return client.getMetadata(path)
-								.thenCompose(meta ->
-										client.upload(path, offset)
-												.thenCompose(bodyStream::streamTo)
-												.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
-				.with(HttpMethod.GET, "/" + LIST, request -> {
-					try {
-						return client.list(request.getQueryParameter("glob"))
+				.with(HttpMethod.GET, "/" + LIST, request ->
+						client.list(request.getQueryParameter("glob", "**"))
 								.thenApply(list -> HttpResponse.ok200()
 										.withBody(toJson(FILE_META_LIST, list).getBytes(UTF_8))
-										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON))));
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
-				.with(HttpMethod.DELETE, "/" + DELETE, request -> {
+										.withHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.JSON)))))
+				.with(HttpMethod.GET, "/" + DELETE, request -> {
 					try {
 						return client.deleteBulk(request.getQueryParameter("glob"))
 								.thenApply($ -> HttpResponse.ok200());
@@ -101,10 +116,10 @@ public final class RemoteFsServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(HttpMethod.POST, "/" + COPY, request -> request.getPostParameters()
+				.with(HttpMethod.GET, "/" + COPY, request -> request.getPostParameters()
 						.thenCompose(postParameters -> client.copyBulk(postParameters)
 								.thenApply($ -> HttpResponse.ok200())))
-				.with(HttpMethod.POST, "/" + MOVE, request -> request.getPostParameters()
+				.with(HttpMethod.GET, "/" + MOVE, request -> request.getPostParameters()
 						.thenCompose(postParameters -> client.moveBulk(postParameters)
 								.thenApply($ -> HttpResponse.ok200())));
 	}

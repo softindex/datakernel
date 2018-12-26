@@ -55,7 +55,7 @@ public class HttpFsClient implements FsClient {
 		SettablePromise<HttpResponse> responsePromise = new SettablePromise<>();
 
 		client.request(
-				HttpRequest.put(
+				HttpRequest.post(
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(DOWNLOAD)
@@ -94,7 +94,7 @@ public class HttpFsClient implements FsClient {
 	@Override
 	public Promise<Void> moveBulk(Map<String, String> changes) {
 		return client.request(
-				HttpRequest.post(
+				HttpRequest.get(
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(MOVE)
@@ -108,7 +108,7 @@ public class HttpFsClient implements FsClient {
 	@Override
 	public Promise<Void> copyBulk(Map<String, String> changes) {
 		return client.request(
-				HttpRequest.post(
+				HttpRequest.get(
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(COPY)
@@ -122,7 +122,7 @@ public class HttpFsClient implements FsClient {
 	@Override
 	public Promise<List<FileMetadata>> list(String glob) {
 		return client.request(
-				HttpRequest.post(
+				HttpRequest.get(
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(LIST)
@@ -144,7 +144,7 @@ public class HttpFsClient implements FsClient {
 	@Override
 	public Promise<Void> deleteBulk(String glob) {
 		return client.request(
-				HttpRequest.post(
+				HttpRequest.get(
 						UrlBuilder.http()
 								.withAuthority(address)
 								.appendPathPart(DELETE)

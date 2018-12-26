@@ -45,7 +45,7 @@ public final class StaticServlet implements AsyncServlet {
 		return new StaticServlet(eventloop, resourceLoader);
 	}
 
-	private ContentType getContentType(String path) {
+	static ContentType getContentType(String path) {
 		int pos = path.lastIndexOf(".");
 		if (pos != -1) {
 			path = path.substring(pos + 1);

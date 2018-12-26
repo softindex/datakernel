@@ -157,7 +157,10 @@ public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGa
 	@Override
 	public Promise<FileMetadata> getMetadata(String filename) {
 		return node.getMetadata(space, filename)
-				.thenCompose(signedMeta -> {
+				.thenComposeEx((signedMeta, e) -> {
+					if (e != null) {
+						return e == NO_CHECKPOINT ? Promise.of(null) : Promise.ofException(e);
+					}
 					GlobalFsCheckpoint value = signedMeta.getValue();
 					return Promise.of(new FileMetadata(value.getFilename(), value.isTombstone() ? -1 : value.getPosition(), 0));
 				})

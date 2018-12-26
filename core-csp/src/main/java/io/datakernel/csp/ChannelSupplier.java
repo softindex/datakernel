@@ -249,6 +249,29 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
+	default ChannelSupplier<T> until(Predicate<? super T> predicate) {
+		return new AbstractChannelSupplier<T>(this) {
+			boolean stop = false;
+
+			@Override
+			protected Promise<T> doGet() {
+				if (stop) {
+					return Promise.of(null);
+				}
+				return ChannelSupplier.this.get()
+						.thenApply(value -> {
+							if (value == null) {
+								return null;
+							}
+							if (predicate.test(value)) {
+								stop = true;
+							}
+							return value;
+						});
+			}
+		};
+	}
+
 	default MaterializedPromise<Void> streamTo(ChannelConsumer<T> consumer) {
 		return ChannelSuppliers.streamTo(this, consumer);
 	}

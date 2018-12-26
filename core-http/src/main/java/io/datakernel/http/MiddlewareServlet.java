@@ -141,10 +141,10 @@ public class MiddlewareServlet implements AsyncServlet {
 			for (Entry<String, MiddlewareServlet> entry : parameters.entrySet()) {
 				String key = entry.getKey();
 				if (key.endsWith("*")) {
-					request.setPos(introPosition);
-					String tail = request.getRelativePath();
+					String relativePath = request.getRelativePath();
+					String tail = urlPart + (relativePath.isEmpty() ? "" : '/' + relativePath);
 					request.putPathParameter(key.substring(0, key.length() - 1), tail);
-					request.setPos(introPosition + tail.length());
+					// *-template is asserted to be the last url part (at line 68), so we dont touch request.setPos
 				} else {
 					request.putPathParameter(key, urlPart);
 				}

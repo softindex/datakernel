@@ -441,7 +441,7 @@ public final class UrlParser {
 
 	// work with path
 	String getPartialPath() {
-		if (pos == -1) {
+		if (pos == -1 || pos > pathEnd) {
 			return "/";
 		}
 		return raw.substring(pos, pathEnd);
