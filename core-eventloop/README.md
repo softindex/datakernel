@@ -14,5 +14,15 @@ Working of this eventloop will be ended when it has not selected keys and its qu
 * Eventloop can schedule/delay certain tasks for later execution or background execution.
 * Because Eventloop is single-threaded it doesn't have to deal with concurrency overhead.
 
+You can create different Eventloop modifications, utilizing builtin creators:
+* withThreadName(String threadName)
+* withThreadPriority(int threadPriority) 
+* withInspector(@Nullable EventloopInspector inspector) 
+* withFatalErrorHandler(FatalErrorHandler fatalErrorHandler) 
+* withSelectorProvider(SelectorProvider selectorProvider) 
+* withIdleInterval(Duration idleInterval) 
+* withCurrentThread() 
+* withoutStats() 
+
 ### You can explore Eventloop examples [here](https://github.com/softindex/datakernel/tree/master/examples/eventloop)
 

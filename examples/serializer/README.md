@@ -4,7 +4,7 @@ serialization and deserialization of a simple object.
 serialization and deserialization of a more complex object, which contains nullable fields, map, list and a two-dimensional array.
 3. [Fixed Size Fields Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/FixedSizeFieldsSerializationExample.java) - 
 example of serialization and deserialization of an object with fixed size fields
-4. [Generics & Interfaces Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/GenericsAndInterfacesSerializationExample.java) - 
+4. [Generics And Interfaces Serialization Example](https://github.com/softindex/datakernel/blob/master/examples/serializer/src/main/java/io/datakernel/examples/GenericsAndInterfacesSerializationExample.java) - 
 example of using generics and interfaces with serializers and deserializers.
 
 To run the example, you should execute these lines in the console in appropriate folder:
@@ -19,7 +19,8 @@ $ mvn clean compile exec:java@FixedSizeFieldsSerializationExample
 $ # OR
 $ mvn clean compile exec:java@GenericsAndInterfacesSerializationExample
 ```
-
+In all of these examples method `serializeAndDeserialized()` is utilized but with different arguments and configurations.
+ 
 If you run the first example, you'll get the following output:
 ```
 10 10
@@ -29,10 +30,11 @@ abc abc
 40 40
 123 123
 ```
-The first column represents values of a test object 1, while the second one shows values of test object 2, which was 
+The first column represents values of test object 1, while the second one shows values of test object 2, which was 
 created with the help of serialization and deserialization of the test object 1.
 
-The same logic is for output of `ComplexObjectSerialization` and `GenericsAndInterfacesSerializationExamples`:
+The same logic is for output of other examples. `Complex Object Serialization` is an example of serialization and 
+deserialization of a more complex object, which contains nullable fields, map, list and a two-dimensional array:
 ```
 null null
 abc abc
@@ -42,7 +44,7 @@ abc abc
 null null
 {1=abc, 2=null, null=xyz} {null=xyz, 1=abc, 2=null}
 ```
-and 
+`Generics and Interfaces Serialization` represents using generics and interfaces with serializers and deserializers:
 ```
 2 2
 10 a, 10 a
@@ -55,5 +57,5 @@ If you run `FixedSizeFieldsSerializationExample`, you'll get the following outpu
 [abc, null, 123, superfluous] [abc, null, 123]
 [1, 2, 3, 4] [1, 2, 3, 4]
 ```
-Since `@SerializeFixedSize` annotation for String array was set at value `3`, "superfluous" was removed from the array 
-while serialization.
+As you can see in the first line, test object 2 differs from test object 1. This is because `@SerializeFixedSize` 
+annotation  was set at value `3` for the String array. Thus, "superfluous" was removed from the array while serialization.

@@ -9,14 +9,14 @@ DataStream is:
 * Asynchronous with extremely efficient congestion control, to handle natural imbalance in speed of data sources
 * Composable stream operations (mappers, reducers, filters, sorters, mergers/splitters, compression, serialization)
 * Stream-based network and file I/O on top of Eventloop module
-* Compatibility with CSP module.
+* Compatibility with [CSP module](https://github.com/softindex/datakernel/tree/master/core-csp).
 
 ### You can explore Datastream examples [here](https://github.com/softindex/datakernel/tree/master/examples/datastreams)
 
 
 ## Stream Primitives
 
-There are dozens of builtin primitives which you can simply wire to each other (as illustrated in the picture above).
+There are dozens of builtin primitives which you can simply wire to each other.
 
 Here is a list of them with short descriptions:
 
@@ -31,10 +31,13 @@ Here is a list of them with short descriptions:
   * StreamSupplier.ofSupplier(supplier) - produces items from a given lambda.
   * StreamSupplier.ofSerialSuppliers(suppliers) - 
   * StreamSupplier.withLateBinding() - 
-  * StreamSupplier.ofPromise(promise) - a wrapper which unwraps supplier from a CompletionStage (starts sending data from supplier from promise when promise is completed).
+  * StreamSupplier.ofPromise(promise) - a wrapper which unwraps supplier from a CompletionStage (starts sending data 
+  from supplier from promise when promise is completed).
   * StreamSupplier.withEndOfStream(function < Promise, Promise >) - returns end of stream wrapper when stream closes.
-  * StreamSupplier.withResult(StreamSupplier, CompletionStage) - wrapper which assigns given CompletionStage as a result to given supplier.
-  * StreamSupplier.concat(StreamSupplier... /List StreamSupplier / Iterator < StreamSupplier >) - wrapper which concatenates given suppliers.
+  * StreamSupplier.withResult(StreamSupplier, CompletionStage) - wrapper which assigns given CompletionStage as a result 
+  to given supplier.
+  * StreamSupplier.concat(StreamSupplier... /List StreamSupplier / Iterator < StreamSupplier >) - wrapper which 
+  concatenates given suppliers.
   * StreamSupplier.asSerialSupplier() - supplier which allows to non-blockingly write data to file.
 
 
