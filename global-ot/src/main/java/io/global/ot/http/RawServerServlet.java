@@ -46,15 +46,18 @@ import static io.datakernel.util.ParserFunction.asFunction;
 import static io.global.ot.api.OTCommand.*;
 import static io.global.ot.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
 public final class RawServerServlet implements WithMiddleware {
 	public static final MemSize DEFAULT_CHUNK_SIZE = MemSize.kilobytes(128);
 
 	private static final ParserFunction<String, Set<CommitId>> COMMIT_IDS_PARSER = s ->
-			Arrays.stream(s.split(","))
-					.map(asFunction(HttpDataFormats::urlDecodeCommitId))
-					.collect(toSet());
+			s.isEmpty() ?
+					emptySet() :
+					Arrays.stream(s.split(","))
+							.map(asFunction(HttpDataFormats::urlDecodeCommitId))
+							.collect(toSet());
 
 	private final MiddlewareServlet middlewareServlet;
 
@@ -134,6 +137,17 @@ public final class RawServerServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
+				.with(GET, "/" + LIST_SNAPSHOTS + "/:pubKey/:name", req -> {
+					try {
+						return node.listSnapshots(
+								urlDecodeRepositoryId(req),
+								req.parseQueryParameter("snapshots", COMMIT_IDS_PARSER))
+								.thenApply(snapshots -> HttpResponse.ok200()
+										.withBody(toJson(ofSet(COMMIT_ID_JSON), snapshots).getBytes(UTF_8)));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
 				.with(GET, "/" + GET_HEADS + "/:pubKey/:name", req -> {
 					try {
 						return node.getHeads(
@@ -199,7 +213,7 @@ public final class RawServerServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(GET, "/" + DOWNLOAD, req -> {
+				.with(GET, "/" + DOWNLOAD + "/:pubKey/:name", req -> {
 					try {
 						return node.download(
 								urlDecodeRepositoryId(req),
@@ -215,7 +229,7 @@ public final class RawServerServlet implements WithMiddleware {
 						return Promise.ofException(e);
 					}
 				})
-				.with(POST, "/" + UPLOAD, req -> {
+				.with(POST, "/" + UPLOAD + "/:pubKey/:name", req -> {
 					try {
 						RepoID repoID = urlDecodeRepositoryId(req);
 						return BinaryChannelSupplier.of(req.getBodyStream())

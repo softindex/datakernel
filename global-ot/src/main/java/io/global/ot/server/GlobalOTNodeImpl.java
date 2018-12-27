@@ -414,6 +414,18 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 	}
 
 	@Override
+	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshotIds) {
+		return ensureMasterNodes(repositoryId)
+				.thenCompose(masters -> isMasterFor(repositoryId) ?
+						Promise.complete() :
+						ensureRepository(repositoryId)
+								.updateSnapshots())
+				.thenCompose($ -> commitStorage.listSnapshotIds(repositoryId))
+				.thenApply(localSnapshotIds -> difference(localSnapshotIds, remoteSnapshotIds))
+				.whenComplete(toLogger(logger, "listSnapshots", repositoryId, remoteSnapshotIds, this));
+	}
+
+	@Override
 	public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
 		return ensureMasterNodes(repositoryId)
 				.thenCompose(masters -> isMasterFor(repositoryId) ?
@@ -557,6 +569,16 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				.whenComplete(toLogger(logger, "push", this));
 	}
 
+	public Promise<Void> pushSnapshots() {
+		return forEachRepository(RepositoryEntry::pushSnapshots)
+				.whenComplete(toLogger(logger, "pushSnapshots", this));
+	}
+
+	public Promise<Void> pushPullRequests() {
+		return forEachRepository(RepositoryEntry::pushPullRequests)
+				.whenComplete(toLogger(logger, "pushPullRequests", this));
+	}
+
 	private boolean isMasterFor(RepoID repositoryId) {
 		return managedPubKeys.contains(repositoryId.getOwner());
 	}
@@ -677,14 +699,18 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 			private long updateTimestamp;
 			private long updateHeadsTimestamp;
+			private long updateSnapshotsTimestamp;
 			private long updatePullRequestsTimestamp;
 
 			private final AsyncSupplier<Void> update = reuse(this::doUpdate);
 			private final AsyncSupplier<Void> updateHeads = reuse(this::doUpdateHeads);
+			private final AsyncSupplier<Void> updateSnapshots = reuse(this::doUpdateSnapshots);
 			private final AsyncSupplier<Void> updatePullRequests = reuse(this::doUpdatePullRequests);
 			private final AsyncSupplier<Void> filterHeads = resubscribe(this::doFilterHeads);
 			private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
 			private final AsyncSupplier<Void> push = reuse(this::doPush);
+			private final AsyncSupplier<Void> pushSnapshots = reuse(this::doPushSnapshots);
+			private final AsyncSupplier<Void> pushPullRequests = reuse(this::doPushPullRequests);
 
 			RepositoryEntry(RepoID repositoryId) {
 				this.repositoryId = repositoryId;
@@ -696,6 +722,10 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 
 			public Promise<Void> updateHeads() {
 				return updateHeads.get();
+			}
+
+			public Promise<Void> updateSnapshots() {
+				return updateSnapshots.get();
 			}
 
 			public Promise<Void> updatePullRequests() {
@@ -714,11 +744,19 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				return push.get();
 			}
 
+			public Promise<Void> pushSnapshots() {
+				return pushSnapshots.get();
+			}
+
+			public Promise<Void> pushPullRequests() {
+				return pushPullRequests.get();
+			}
+
 			private Promise<Void> doUpdate() {
 				if (updateTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
 					return Promise.complete();
 				}
-				return Promises.all(updateHeads(), updatePullRequests())
+				return Promises.all(updateHeads(), updatePullRequests(), updateSnapshots())
 						.whenResult($ -> updateTimestamp = now.currentTimeMillis());
 			}
 
@@ -737,6 +775,24 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 														Promise.complete() :
 														filterHeads())))
 						.whenResult($ -> updateHeadsTimestamp = now.currentTimeMillis());
+			}
+
+			private Promise<Void> doUpdateSnapshots() {
+				logger.trace("Updating snapshots");
+				if (updateSnapshotsTimestamp >= now.currentTimeMillis() - latencyMargin.toMillis()) {
+					return Promise.complete();
+				}
+				return ensureMasterNodes()
+						.thenCompose(masters -> commitStorage.listSnapshotIds(repositoryId)
+								.thenCompose(localSnapshotIds -> PromisesEx.firstSuccessfulOr(Collections.<SignedData<RawSnapshot>>emptyList(),
+										masters.stream()
+												.map(master -> AsyncSupplier.cast(() -> master.listSnapshots(repositoryId, localSnapshotIds)
+														.thenCompose(newSnapshotIds -> Promises.toList(
+																newSnapshotIds.stream()
+																		.map(snapshotId -> master.loadSnapshot(repositoryId, snapshotId)
+																				.thenCompose(Promise::ofOptional))))))))
+								.thenCompose(snapshots -> Promises.all(snapshots.stream().map(commitStorage::saveSnapshot))))
+						.whenResult($ -> updateSnapshotsTimestamp = now.currentTimeMillis());
 			}
 
 			private Promise<Void> doUpdatePullRequests() {
@@ -779,6 +835,30 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 					return master.getHeadsInfo(repositoryId)
 							.thenCompose(headsInfo -> ChannelSupplier.ofPromise(download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
 									.streamTo(ChannelConsumer.ofPromise(master.upload(repositoryId))));
+				});
+			}
+
+			private Promise<Void> doPushSnapshots() {
+				return forEachMaster(master -> {
+					logger.trace("{} pushing snapshots to {}", repositoryId, master);
+					//noinspection OptionalGetWithoutIsPresent - snapshot presence is checked in commitStorage.listSnapshotIds()
+					return master.listSnapshots(repositoryId, emptySet())
+							.thenCompose(remoteSnapshotIds -> commitStorage.listSnapshotIds(repositoryId)
+									.thenApply(localSnapshotIds -> difference(localSnapshotIds, remoteSnapshotIds)))
+							.thenCompose(snapshotsIds -> Promises.toList(snapshotsIds.stream()
+									.map(snapshot -> commitStorage.loadSnapshot(repositoryId, snapshot))))
+							.thenCompose(snapshots -> PromisesEx.tollerantCollectVoid(snapshots,
+									snapshot -> master.saveSnapshot(repositoryId, snapshot.get())));
+				});
+			}
+
+			private Promise<Void> doPushPullRequests() {
+				return forEachMaster(master -> {
+					logger.trace("{} pushing pull requests to {}", repositoryId, master);
+					return master.getPullRequests(repositoryId)
+							.thenCompose(remotePullRequests -> commitStorage.getPullRequests(repositoryId)
+									.thenApply(localPullRequests -> difference(localPullRequests, remotePullRequests)))
+							.thenCompose(pullRequests -> PromisesEx.tollerantCollectVoid(pullRequests, master::sendPullRequest));
 				});
 			}
 		}

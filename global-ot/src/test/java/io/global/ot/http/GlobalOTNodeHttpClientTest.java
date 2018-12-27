@@ -17,6 +17,7 @@
 package io.global.ot.http;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -25,18 +26,22 @@ import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import io.global.common.*;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
+import io.global.ot.api.GlobalOTNode.CommitEntry;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.TestUtils.await;
+import static io.global.ot.server.GlobalOTNodeImplTest.createCommitEntry;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -94,12 +99,49 @@ public class GlobalOTNodeHttpClientTest {
 
 			@Override
 			public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> required, Set<CommitId> existing) {
-				throw new UnsupportedOperationException();
+				return Promise.of(
+						new ChannelSupplier<CommitEntry>() {
+							private List<CommitEntry> entries = asList(
+									createCommitEntry(emptySet(), 0, false),
+									createCommitEntry(set(1), 1, false),
+									createCommitEntry(set(3), 2, true)
+							);
+							private int index = -1;
+
+							@Override
+							public Promise<CommitEntry> get() {
+								index++;
+								return index == 3 ?
+										resultOf(null, repositoryId, required, existing, entries.stream().map(CommitEntry::getCommitId).collect(Collectors.toList())) :
+										Promise.of(entries.get(index));
+							}
+
+							@Override
+							public void close(Throwable e) {
+							}
+						}
+				);
 			}
 
 			@Override
 			public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId) {
-				throw new UnsupportedOperationException();
+				return Promise.of(new ChannelConsumer<CommitEntry>() {
+					List<CommitId> commitIds = new ArrayList<>();
+
+					@Override
+					public Promise<Void> accept(@Nullable CommitEntry value) {
+						if (value != null) {
+							commitIds.add(value.getCommitId());
+							return Promise.complete();
+						} else {
+							return resultOf(null, repositoryId, commitIds);
+						}
+					}
+
+					@Override
+					public void close(Throwable e) {
+					}
+				});
 			}
 
 			@Override
@@ -119,6 +161,16 @@ public class GlobalOTNodeHttpClientTest {
 										Hash.sha1(simKey.getBytes())),
 								privKey)),
 						repositoryId, commitId);
+			}
+
+			@Override
+			public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> snapshotIds) {
+				Set<CommitId> commitIds = set(
+						CommitId.ofBytes(new byte[]{1, 2, 3}),
+						CommitId.ofBytes(new byte[]{4, 5, 6}),
+						CommitId.ofBytes(new byte[]{7, 8, 9})
+				);
+				return resultOf(commitIds, repositoryId, snapshotIds);
 			}
 
 			@Override
@@ -203,6 +255,25 @@ public class GlobalOTNodeHttpClientTest {
 		doTest(client.sendPullRequest(signedPullRequest), signedPullRequest);
 
 		doTest(client.getPullRequests(repository), repository);
+
+		List<CommitEntry> entries = asList(
+				createCommitEntry(emptySet(), 0, false),
+				createCommitEntry(set(1), 1, false),
+				createCommitEntry(set(3), 2, true)
+		);
+		List<CommitId> ids = entries.stream().map(CommitEntry::getCommitId).collect(toList());
+		MaterializedPromise<Void> uploadFinished = ChannelSupplier.ofIterable(entries)
+				.streamTo(ChannelConsumer.ofPromise(client.upload(repository)));
+		doTest(uploadFinished, repository, ids);
+
+		Set<CommitId> required = emptySet();
+		Set<CommitId> existing = emptySet();
+		ids.clear();
+		MaterializedPromise<Void> downloadFinished = ChannelSupplier.ofPromise(client.download(repository, required, existing))
+				.streamTo(ChannelConsumer.ofConsumer(entry -> ids.add(entry.getCommitId())));
+		doTest(downloadFinished, repository, required, existing, ids);
+
+		doTest(client.listSnapshots(repository, emptySet()), repository, emptySet());
 	}
 
 	private <T> void doTest(Promise<T> promise, Object... parameters) {

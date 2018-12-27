@@ -84,7 +84,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SAVE, apiQuery(repositoryId))
 						.initialize(withJson(SAVE_JSON, new SaveTuple(commits, heads))))
-				.thenCompose(res -> processResult(res));
+				.thenCompose(GlobalOTNodeHttpClient::processResult);
 	}
 
 	@Override
@@ -145,7 +145,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
 		return httpClient.request(request(POST, SAVE_SNAPSHOT, apiQuery(repositoryId))
 				.withBody(encode(SIGNED_SNAPSHOT_CODEC, encryptedSnapshot)))
-				.thenCompose(res -> processResult(res));
+				.thenCompose(GlobalOTNodeHttpClient::processResult);
 	}
 
 	@Override
@@ -173,6 +173,18 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 	}
 
 	@Override
+	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshots) {
+		return httpClient.request(request(GET, LIST_SNAPSHOTS,
+				apiQuery(repositoryId, map(
+						"snapshots", remoteSnapshots.stream()
+								.map(HttpDataFormats::urlEncodeCommitId)
+								.collect(joining(",")))
+				)))
+				.thenCompose(res -> res.getBody()
+						.thenCompose(body -> processResult(res, body, ofSet(COMMIT_ID_JSON))));
+	}
+
+	@Override
 	public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
 		return httpClient.request(
 				request(GET, GET_HEADS,
@@ -192,7 +204,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SHARE_KEY, receiver.asString())
 						.initialize(withJson(SIGNED_SHARED_KEY_JSON, simKey)))
-				.thenCompose(res -> processResult(res));
+				.thenCompose(GlobalOTNodeHttpClient::processResult);
 	}
 
 	@Override
@@ -216,7 +228,7 @@ public class GlobalOTNodeHttpClient implements GlobalOTNode {
 		return httpClient.request(
 				request(POST, SEND_PULL_REQUEST, "")
 						.withBody(encode(SIGNED_PULL_REQUEST_CODEC, pullRequest)))
-				.thenCompose(res -> processResult(res));
+				.thenCompose(GlobalOTNodeHttpClient::processResult);
 	}
 
 	@Override

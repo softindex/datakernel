@@ -65,6 +65,11 @@ public class FailingGlobalOTNode implements GlobalOTNode {
 	}
 
 	@Override
+	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshots) {
+		return Promise.ofException(ERROR);
+	}
+
+	@Override
 	public Promise<Heads> getHeads(RepoID repositoryId, Set<CommitId> remoteHeads) {
 		return Promise.ofException(ERROR);
 	}

@@ -99,6 +99,11 @@ public class CommitStorageStub implements CommitStorage {
 	}
 
 	@Override
+	public Promise<Set<CommitId>> listSnapshotIds(RepoID repositoryId) {
+		return Promise.of(snapshots.getOrDefault(repositoryId, emptyMap()).keySet());
+	}
+
+	@Override
 	public Promise<Boolean> savePullRequest(SignedData<RawPullRequest> pullRequest) {
 		return Promise.of(pullRequests.computeIfAbsent(pullRequest.getValue().repository, $ -> new HashSet<>()).add(pullRequest));
 	}

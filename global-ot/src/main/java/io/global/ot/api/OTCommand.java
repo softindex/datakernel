@@ -26,6 +26,7 @@ public enum OTCommand implements HttpPathPart {
 	GET_HEADS_INFO("getHeadsInfo"),
 	SAVE_SNAPSHOT("saveSnapshot"),
 	LOAD_SNAPSHOT("loadSnapshot"),
+	LIST_SNAPSHOTS("listSnapshots"),
 	DOWNLOAD("download"),
 	UPLOAD("upload"),
 	SEND_PULL_REQUEST("sendPullRequest"),

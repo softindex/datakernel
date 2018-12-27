@@ -590,6 +590,64 @@ public class GlobalOTNodeImplTest {
 		assertCommits(1, 2, 3, 4, 5, 6, 7);
 	}
 
+	@Test
+	public void testPushSnapshots() {
+		addCommits(null, 3, intermediateNode);
+
+		turnOff("master1");
+		CommitId snapshotId = getCommitId(1);
+		SignedData<RawSnapshot> snapshot = SignedData.sign(
+				REGISTRY.get(RawSnapshot.class),
+				RawSnapshot.of(REPO_ID, snapshotId, EncryptedData.encrypt(DATA, SIM_KEY), HASH),
+				PRIV_KEY
+		);
+
+		await(intermediateNode.saveSnapshot(REPO_ID, snapshot));
+		Set<CommitId> snapshotIds = await(intermediateStorage.listSnapshotIds(REPO_ID));
+		assertEquals(1, snapshotIds.size());
+		assertEquals(snapshotId, first(snapshotIds));
+
+		CommitStorage masterStorage = getMasterStorage(1);
+		Set<CommitId> masterSnapshotIds = await(masterStorage.listSnapshotIds(REPO_ID));
+		assertEquals(0, masterSnapshotIds.size());
+
+		turnOn("master1");
+		await(((GlobalOTNodeImpl) intermediateNode).pushSnapshots());
+
+		Set<CommitId> newSnapshotIds = await(masterStorage.listSnapshotIds(REPO_ID));
+		assertEquals(1, newSnapshotIds.size());
+		assertEquals(snapshotId, first(newSnapshotIds));
+	}
+
+	@Test
+	public void testPushPullRequests() {
+		addCommits(null, 3, intermediateNode);
+
+		turnOff("master1");
+		RawPullRequest pullRequest = RawPullRequest.of(REPO_ID, RepoID.of(PUB_KEY, "Fork"));
+		SignedData<RawPullRequest> signedPullRequest = SignedData.sign(
+				REGISTRY.get(RawPullRequest.class),
+				pullRequest,
+				PRIV_KEY
+		);
+		await(intermediateNode.sendPullRequest(signedPullRequest));
+		Set<SignedData<RawPullRequest>> snapshotIds = await(intermediateStorage.getPullRequests(REPO_ID));
+		assertEquals(1, snapshotIds.size());
+		assertEquals(signedPullRequest, first(snapshotIds));
+
+		CommitStorage masterStorage = getMasterStorage(1);
+		Set<SignedData<RawPullRequest>> masterSnapshotIds = await(masterStorage.getPullRequests(REPO_ID));
+		assertEquals(0, masterSnapshotIds.size());
+
+		turnOn("master1");
+		await(((GlobalOTNodeImpl) intermediateNode).pushPullRequests());
+
+		Set<SignedData<RawPullRequest>> newSnapshotIds = await(masterStorage.getPullRequests(REPO_ID));
+		assertEquals(1, newSnapshotIds.size());
+		assertEquals(signedPullRequest, first(newSnapshotIds));
+	}
+
+
 	// region helpers
 	private CommitStorage getMasterStorage(Integer id) {
 		return masters.get(id).getValue1();

@@ -41,6 +41,8 @@ public interface CommitStorage {
 
 	Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId);
 
+	Promise<Set<CommitId>> listSnapshotIds(RepoID repositoryId);
+
 	Promise<Boolean> savePullRequest(SignedData<RawPullRequest> pullRequest);
 
 	Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repository);

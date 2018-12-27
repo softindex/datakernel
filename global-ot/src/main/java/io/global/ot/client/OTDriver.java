@@ -138,6 +138,9 @@ public final class OTDriver {
 
 	public <D> Promise<Void> push(MyRepositoryId<D> myRepositoryId,
 			Collection<OTCommit<CommitId, D>> commits) {
+		if (commits.isEmpty()) {
+			return Promise.complete();
+		}
 		Map<CommitId, RawCommit> rawCommits = new LinkedHashMap<>();
 
 		for (OTCommit<CommitId, D> commit : commits) {

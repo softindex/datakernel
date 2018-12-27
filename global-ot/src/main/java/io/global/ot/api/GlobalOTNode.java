@@ -84,6 +84,8 @@ public interface GlobalOTNode extends SharedKeyManager {
 
 	Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId id);
 
+	Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshots);
+
 	class Heads {
 		public final Set<SignedData<RawCommitHead>> newHeads;
 		public final Set<CommitId> excludedHeads;
