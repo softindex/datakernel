@@ -172,7 +172,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.callback = null;
 		cb.set(response);
 
-		if (response.bodySupplier != null) {
+		if (response.bodySupplier != null && (response.flags & HttpMessage.DETACHED_BODY_STREAM) == 0) {
 			response.bodySupplier.streamTo(BUF_RECYCLER);
 			response.bodySupplier = null;
 		}

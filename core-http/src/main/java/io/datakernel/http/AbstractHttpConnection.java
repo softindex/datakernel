@@ -142,7 +142,7 @@ public abstract class AbstractHttpConnection {
 		if (httpMessage.bodySupplier != null) {
 			if (httpMessage.bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue) {
 				ByteBuf body = ((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) httpMessage.bodySupplier).getValue();
-				if (!httpMessage.useGzip) {
+				if ((httpMessage.flags & HttpMessage.USE_GZIP) == 0) {
 					httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(body.readRemaining()));
 					ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + body.readRemaining());
 					httpMessage.writeTo(buf);
@@ -162,7 +162,7 @@ public abstract class AbstractHttpConnection {
 			}
 
 			httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
-			if (!httpMessage.useGzip) {
+			if ((httpMessage.flags & HttpMessage.USE_GZIP) == 0) {
 				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 				httpMessage.writeTo(buf);
 				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();

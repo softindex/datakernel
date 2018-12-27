@@ -247,7 +247,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			}
 		});
 
-		if (request.bodySupplier != null) {
+		if (request.bodySupplier != null && (request.flags & HttpMessage.DETACHED_BODY_STREAM) == 0) {
 			request.bodySupplier.streamTo(BUF_RECYCLER);
 			request.bodySupplier = null;
 		}

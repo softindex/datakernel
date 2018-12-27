@@ -40,9 +40,13 @@ import static java.util.Arrays.copyOf;
  */
 @SuppressWarnings("unused")
 public abstract class HttpMessage {
-	protected HttpHeadersMultimap<HttpHeader, HttpHeaderValue> headers = new HttpHeadersMultimap<>();
+	protected final HttpHeadersMultimap<HttpHeader, HttpHeaderValue> headers = new HttpHeadersMultimap<>();
 	protected ChannelSupplier<ByteBuf> bodySupplier;
-	protected boolean useGzip;
+
+	byte flags;
+	static final byte DETACHED_BODY_STREAM = 1 << 0;
+	static final byte USE_GZIP = 1 << 1;
+	static final byte RECYCLED = (byte) (1 << 7);
 
 	public static final MemSize DEFAULT_MAX_BODY_SIZE = MemSize.of(
 			ApplicationSettings.getInt(HttpMessage.class, "maxBodySize", 1024 * 1024));
@@ -153,8 +157,21 @@ public abstract class HttpMessage {
 		addCookies(list);
 	}
 
-	public void setBodyGzipCompression() {
-		this.useGzip = true;
+	public void setBodyStream(ChannelSupplier<ByteBuf> bodySupplier) {
+		this.bodySupplier = bodySupplier;
+	}
+
+	public ChannelSupplier<ByteBuf> getBodyStream() {
+		flags |= DETACHED_BODY_STREAM;
+		return this.bodySupplier;
+	}
+
+	public void setBody(ByteBuf body) {
+		this.bodySupplier = ChannelSupplier.of(body);
+	}
+
+	public void setBody(byte[] body) {
+		setBody(ByteBuf.wrapForReading(body));
 	}
 
 	public final Promise<ByteBuf> getBody() {
@@ -169,44 +186,18 @@ public abstract class HttpMessage {
 		return getBodyStream().toCollector(ByteBufQueue.collector(maxBodySize));
 	}
 
-	public ChannelSupplier<ByteBuf> getBodyStream() {
-		ChannelSupplier<ByteBuf> bodySupplier = this.bodySupplier;
-		this.bodySupplier = null;
-		return bodySupplier;
+	public void setBodyGzipCompression() {
+		this.flags |= USE_GZIP;
 	}
 
-	public void setBody(ByteBuf body) {
-		this.bodySupplier = ChannelSupplier.of(body);
+	boolean isRecycled() {
+		return (this.flags & RECYCLED) != 0;
 	}
 
-	public void setBody(byte[] body) {
-		setBody(ByteBuf.wrapForReading(body));
-	}
-
-	public void setBodyStream(ChannelSupplier<ByteBuf> bodySupplier) {
-		this.bodySupplier = bodySupplier;
-	}
-
-	protected boolean isRecycled() {
-		return headers == null;
-	}
-
-	/**
-	 * Recycles body and header. You should do it before reusing.
-	 */
-	protected void recycleHeaders() {
+	final void recycle() {
 		assert !isRecycled();
-		headers.forEach((httpHeader, httpHeaderValue) ->
-				httpHeaderValue.recycle());
-		headers = null;
-	}
-
-	protected void recycle() {
-		recycleHeaders();
-		if (bodySupplier != null) {
-//			bodySupplier.cancel();
-			bodySupplier = null;
-		}
+		assert (this.flags |= RECYCLED) != 0;
+		headers.forEach((httpHeader, httpHeaderValue) -> httpHeaderValue.recycle());
 	}
 
 	/**
