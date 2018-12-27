@@ -49,12 +49,21 @@ public class TestUtils {
 		logger.setLevel(level);
 	}
 
+	public static void enableLogging(Class<?> cls, Level level) {
+		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(cls);
+		logger.setLevel(level);
+	}
+
 	public static void enableLogging(Level level) {
 		enableLogging(Logger.ROOT_LOGGER_NAME, level);
 	}
 
 	public static void enableLogging(String name) {
 		enableLogging(name, Level.TRACE);
+	}
+
+	public static void enableLogging(Class<?> cls) {
+		enableLogging(cls, Level.TRACE);
 	}
 
 	public static void enableLogging() {

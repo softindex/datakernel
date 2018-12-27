@@ -17,10 +17,7 @@
 package io.global.db;
 
 import io.datakernel.annotation.NotNull;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.PromisesEx;
+import io.datakernel.async.*;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
@@ -243,6 +240,33 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 
 	public Promise<Void> push(PubKey space) {
 		return ensureNamespace(space).push();
+	}
+
+	private final AsyncSupplier<Void> catchUpImpl = reuse(() -> Promise.ofCallback(this::catchUpIteration));
+
+	public Promise<Void> catchUp() {
+		return catchUpImpl.get();
+	}
+
+	private void catchUpIteration(SettablePromise<Void> cb) {
+		long started = now.currentTimeMillis();
+		Promise<Void> fetchPromise = fetch();
+		if (fetchPromise.isResult()) {
+			cb.set(fetchPromise.materialize().getResult());
+		} else if (fetchPromise.isException()) {
+			cb.setException(fetchPromise.materialize().getException());
+		} else {
+			fetchPromise
+					.whenResult($ -> {
+						long timestampEnd = now.currentTimeMillis();
+						if (timestampEnd - started > latencyMargin.toMillis()) {
+							cb.set(null);
+						} else {
+							catchUpIteration(cb);
+						}
+					})
+					.whenException(cb::setException);
+		}
 	}
 
 	@Override

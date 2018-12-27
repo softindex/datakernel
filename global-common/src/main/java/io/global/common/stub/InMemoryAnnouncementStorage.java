@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-package io.global.ot.demo.storage;
+package io.global.common.stub;
 
 import io.datakernel.async.Promise;
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
-import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
@@ -28,13 +25,8 @@ import io.global.common.api.AnnouncementStorage;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.codec.binary.BinaryUtils.decode;
-import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.global.common.BinaryDataFormats.REGISTRY;
-
 public class InMemoryAnnouncementStorage implements AnnouncementStorage {
 	private final Map<PubKey, SignedData<AnnounceData>> announcements = new HashMap<>();
-	private static final StructuredCodec<SignedData<AnnounceData>> SIGNED_ANNOUNCE = REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
 
 	@Override
 	public Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData) {
@@ -45,13 +37,12 @@ public class InMemoryAnnouncementStorage implements AnnouncementStorage {
 	@Override
 	public Promise<SignedData<AnnounceData>> load(PubKey space) {
 		SignedData<AnnounceData> signedData = announcements.get(space);
-		if (signedData == null) {
-			return Promise.ofException(NO_ANNOUNCEMENT);
-		}
-		try {
-			return Promise.of(decode(SIGNED_ANNOUNCE, encode(SIGNED_ANNOUNCE, signedData)));
-		} catch (ParseException e) {
-			return Promise.ofException(e);
-		}
+		return signedData != null ?
+				Promise.of(signedData) :
+				Promise.ofException(NO_ANNOUNCEMENT);
+	}
+
+	public void clear() {
+		announcements.clear();
 	}
 }

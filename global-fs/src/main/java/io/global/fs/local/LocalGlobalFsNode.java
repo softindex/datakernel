@@ -322,7 +322,8 @@ public final class LocalGlobalFsNode implements GlobalFsNode, Initializable<Loca
 					} else {
 						catchUpIteration(cb);
 					}
-				});
+				})
+				.whenException(cb::setException);
 	}
 
 	@Override

@@ -17,6 +17,8 @@
 package io.global.launchers;
 
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
+import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModule;
@@ -38,6 +40,34 @@ public class GlobalNodesLauncher extends Launcher {
 
 	@Inject
 	AsyncHttpServer server;
+
+	@Inject
+	@Named("FS push")
+	EventloopTaskScheduler fsPushScheduler;
+
+	@Inject
+	@Named("FS catch up")
+	EventloopTaskScheduler fsCatchUpScheduler;
+
+	@Inject
+	@Named("OT push")
+	EventloopTaskScheduler otPushScheduler;
+
+	@Inject
+	@Named("OT catch up")
+	EventloopTaskScheduler otCatchUpScheduler;
+
+	@Inject
+	@Named("OT update")
+	EventloopTaskScheduler otUppdateScheduler;
+
+	@Inject
+	@Named("DB push")
+	EventloopTaskScheduler dbPushScheduler;
+
+	@Inject
+	@Named("DB catch up")
+	EventloopTaskScheduler dbCatchUpScheduler;
 
 	@Override
 	protected final Collection<com.google.inject.Module> getModules() {

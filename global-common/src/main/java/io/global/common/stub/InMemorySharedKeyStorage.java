@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.global.ot.demo.storage;
+package io.global.common.stub;
 
 import io.datakernel.async.Promise;
 import io.global.common.Hash;
@@ -48,9 +48,12 @@ public class InMemorySharedKeyStorage implements SharedKeyStorage {
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> loadAll(PubKey receiver) {
 		List<SignedData<SharedSimKey>> signedDataList = keys.get(receiver);
-		if (signedDataList == null) {
-			return Promise.ofException(NO_SHARED_KEY);
-		}
-		return Promise.of(signedDataList);
+		return signedDataList != null ?
+				Promise.of(signedDataList) :
+				Promise.ofException(NO_SHARED_KEY);
+	}
+
+	public void clear() {
+		keys.clear();
 	}
 }

@@ -45,6 +45,7 @@ import java.util.function.Function;
 import static io.datakernel.async.AsyncSuppliers.resubscribe;
 import static io.datakernel.async.AsyncSuppliers.reuse;
 import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -99,11 +100,13 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 		return id;
 	}
 
-	private PubKeyEntry ensurePubKey(PubKey pubKey) {
+	// Visible for testing
+	PubKeyEntry ensurePubKey(PubKey pubKey) {
 		return pubKeys.computeIfAbsent(pubKey, PubKeyEntry::new);
 	}
 
-	private RepositoryEntry ensureRepository(RepoID repositoryId) {
+	// Visible for testing
+	RepositoryEntry ensureRepository(RepoID repositoryId) {
 		return ensurePubKey(repositoryId.getOwner()).ensureRepository(repositoryId);
 	}
 
@@ -184,6 +187,7 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 		checkArgument(!hasIntersection(required, existing), "Required heads and existing heads cannot have intersections");
 		Set<CommitId> skipCommits = new HashSet<>(existing);
 		PriorityQueue<RawCommitEntry> queue = new PriorityQueue<>(reverseOrder());
+		ensureRepository(repositoryId); //ensuring repository to fetch from later
 		return commitStorage.getHeads(repositoryId)
 				.thenCompose(thisHeads -> Promises.all(
 						union(thisHeads.keySet(), required, existing)
@@ -506,6 +510,53 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				.whenComplete(toLogger(logger, "getPullRequests", repositoryId, this));
 	}
 
+	private final AsyncSupplier<Void> catchUp = reuse(() -> Promise.ofCallback(this::doCatchUp));
+
+	public Promise<Void> catchUp() {
+		return catchUp.get()
+				.whenComplete(toLogger(logger, "catchUp", this));
+	}
+
+	private void doCatchUp(SettablePromise<Void> cb) {
+		long timestampBegin = now.currentTimeMillis();
+		Promise<Void> fetchPromise = fetch();
+		if (fetchPromise.isResult()) {
+			cb.set(fetchPromise.materialize().getResult());
+		} else if (fetchPromise.isException()) {
+			cb.setException(fetchPromise.materialize().getException());
+		} else {
+			fetchPromise
+					.whenResult($ -> {
+						long timestampEnd = now.currentTimeMillis();
+						if (timestampEnd - timestampBegin > latencyMargin.toMillis()) {
+							cb.set(null);
+						} else {
+							doCatchUp(cb);
+						}
+					})
+					.whenException(cb::setException);
+		}
+	}
+
+	private Promise<Void> forEachRepository(Function<RepositoryEntry, Promise<Void>> fn) {
+		return PromisesEx.tollerantCollectVoid(pubKeys.values().stream().flatMap(entry -> entry.repositories.values().stream()), fn);
+	}
+
+	public Promise<Void> fetch() {
+		return forEachRepository(RepositoryEntry::fetch)
+				.whenComplete(toLogger(logger, TRACE, "fetch", this));
+	}
+
+	public Promise<Void> update() {
+		return PromisesEx.tollerantCollectVoid(pubKeys.values(), PubKeyEntry::updateRepositories)
+				.thenComposeEx(($, e) -> forEachRepository(RepositoryEntry::update));
+	}
+
+	public Promise<Void> push() {
+		return forEachRepository(RepositoryEntry::push)
+				.whenComplete(toLogger(logger, "push", this));
+	}
+
 	private boolean isMasterFor(RepoID repositoryId) {
 		return managedPubKeys.contains(repositoryId.getOwner());
 	}
@@ -544,7 +595,8 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 		private final PubKey pubKey;
 		private final Map<RepoID, RepositoryEntry> repositories = new HashMap<>();
 
-		private final Map<RawServerId, GlobalOTNode> masterNodes = new HashMap<>();
+		// Visible for testing
+		final Map<RawServerId, GlobalOTNode> masterNodes = new HashMap<>();
 		private long updateNodesTimestamp;
 		private long updateRepositoriesTimestamp;
 		private long announceTimestamp;
@@ -630,9 +682,8 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 			private final AsyncSupplier<Void> update = reuse(this::doUpdate);
 			private final AsyncSupplier<Void> updateHeads = reuse(this::doUpdateHeads);
 			private final AsyncSupplier<Void> updatePullRequests = reuse(this::doUpdatePullRequests);
-			private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
-			private final AsyncSupplier<Void> catchUp = reuse(this::doCatchUp);
 			private final AsyncSupplier<Void> filterHeads = resubscribe(this::doFilterHeads);
+			private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
 			private final AsyncSupplier<Void> push = reuse(this::doPush);
 
 			RepositoryEntry(RepoID repositoryId) {
@@ -651,16 +702,12 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 				return updatePullRequests.get();
 			}
 
-			public Promise<Void> fetch() {
-				return fetch.get();
-			}
-
-			public Promise<Void> catchUp() {
-				return catchUp.get();
-			}
-
 			public Promise<Void> filterHeads() {
 				return filterHeads.get();
+			}
+
+			public Promise<Void> fetch() {
+				return fetch.get();
 			}
 
 			public Promise<Void> push() {
@@ -705,55 +752,34 @@ public final class GlobalOTNodeImpl implements GlobalOTNode, EventloopService, I
 						.whenResult($ -> updatePullRequestsTimestamp = now.currentTimeMillis());
 			}
 
-			private Promise<Void> doFetch() {
-				return ensureMasterNodes()
-						.thenCompose(nodes -> Promises.firstSuccessful(nodes.stream()
-								.map(node -> AsyncSupplier.cast(() ->
-										doFetch(node)))));
-			}
-
-			private Promise<Void> doFetch(GlobalOTNode node) {
-				return getHeadsInfo(repositoryId)
-						.thenCompose(headsInfo -> ChannelSupplier.ofPromise(node.download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
-								.streamTo(ChannelConsumer.ofPromise(upload(repositoryId))));
-			}
-
-			private Promise<Void> doCatchUp() {
-				return Promise.ofCallback(this::doCatchUp);
-			}
-
-			private void doCatchUp(SettablePromise<Void> cb) {
-				long timestampBegin = now.currentTimeMillis();
-				fetch()
-						.thenCompose($ -> commitStorage.markCompleteCommits())
-						.whenResult($ -> {
-							long timestampEnd = now.currentTimeMillis();
-							if (timestampEnd - timestampBegin > latencyMargin.toMillis()) {
-								cb.set(null);
-							} else {
-								doCatchUp(cb);
-							}
-						})
-						.whenException(cb::setException);
-			}
-
 			private Promise<Void> doFilterHeads() {
 				logger.trace("Filtering heads");
 				return commitStorage.getHeads(repositoryId)
 						.thenCompose(heads -> excludeParents(heads.keySet())
-								.thenCompose(excludedHeadIds -> commitStorage.updateHeads(repositoryId, emptySet(), excludedHeadIds)))
-						.toVoid();
+								.thenCompose(excludedHeadIds -> commitStorage.updateHeads(repositoryId, emptySet(), excludedHeadIds)));
+			}
+
+			private Promise<Void> forEachMaster(Function<GlobalOTNode, Promise<Void>> action) {
+				return ensureMasterNodes()
+						.thenCompose(masters -> PromisesEx.tollerantCollectVoid(masters, action));
+			}
+
+			private Promise<Void> doFetch() {
+				return forEachMaster(master -> {
+					logger.trace("{} fetching from {}", repositoryId, master);
+					return getLocalHeadsInfo(repositoryId)
+							.thenCompose(headsInfo -> ChannelSupplier.ofPromise(master.download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
+									.streamTo(ChannelConsumer.ofPromise(uploadLocal(repositoryId))));
+				});
 			}
 
 			private Promise<Void> doPush() {
-				return ensureMasterNodes()
-						.thenCompose(nodes -> Promises.all(nodes.stream().map(this::doPush).map(Promise::toTry)));
-			}
-
-			private Promise<Void> doPush(GlobalOTNode node) {
-				return node.getHeadsInfo(repositoryId)
-						.thenCompose(headsInfo -> ChannelSupplier.ofPromise(download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
-								.streamTo(ChannelConsumer.ofPromise(node.upload(repositoryId))));
+				return forEachMaster(master -> {
+					logger.trace("{} pushing to {}", repositoryId, master);
+					return master.getHeadsInfo(repositoryId)
+							.thenCompose(headsInfo -> ChannelSupplier.ofPromise(download(repositoryId, headsInfo.getRequired(), headsInfo.getExisting()))
+									.streamTo(ChannelConsumer.ofPromise(master.upload(repositoryId))));
+				});
 			}
 		}
 	}
