@@ -17,14 +17,14 @@
 package io.global.fs.api;
 
 import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.exception.ConstantException;
 import io.global.common.SignedData;
 
 import java.util.List;
 
 public interface CheckpointStorage {
-	StacklessException NO_CHECKPOINT = new StacklessException(CheckpointStorage.class, "No checkpoint found");
-	StacklessException OVERRIDING = new StacklessException(CheckpointStorage.class, "Trying to override existing checkpoint with different one");
+	ConstantException NO_CHECKPOINT = new ConstantException(CheckpointStorage.class, "No checkpoint found");
+	ConstantException OVERRIDING = new ConstantException(CheckpointStorage.class, "Trying to override existing checkpoint with different one");
 
 	Promise<Void> store(String filename, SignedData<GlobalFsCheckpoint> checkpoint);
 

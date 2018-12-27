@@ -29,16 +29,15 @@ import io.datakernel.remotefs.FsClient;
 import io.global.fs.util.HttpDataFormats;
 
 import java.util.List;
-import java.util.Set;
 
-import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.codec.StructuredCodecs.ofList;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.remotefs.RemoteFsResponses.FILE_META_CODEC;
 import static io.global.fs.api.FsCommand.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class RemoteFsServlet implements WithMiddleware {
-	static final StructuredCodec<Set<String>> STRING_SET = ofSet(STRING_CODEC);
+	//	static final StructuredCodec<Set<String>> STRING_SET = ofSet(STRING_CODEC);
 	static final StructuredCodec<List<FileMetadata>> FILE_META_LIST = ofList(FILE_META_CODEC);
 
 	private final MiddlewareServlet servlet;
@@ -61,8 +60,8 @@ public final class RemoteFsServlet implements WithMiddleware {
 						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
 
 						String contentType = request.getHeader(HttpHeaders.CONTENT_TYPE);
-						if (!contentType.startsWith("multipart/form-data; boundary=")) {
-							return Promise.ofException(HttpException.ofCode(400, "Content type is not multipart/form-data"));
+						if (path.isEmpty() && !contentType.startsWith("multipart/form-data; boundary=")) {
+							return Promise.ofException(HttpException.ofCode(400, "Path is empty and content type is not multipart/form-data"));
 						}
 						String boundary = contentType.substring(30);
 						if (boundary.startsWith("\"") && boundary.endsWith("\"")) {

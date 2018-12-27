@@ -116,39 +116,40 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 		return ns.ensureMasterNodes()
 				.thenCompose(masters -> {
 					Repo repo = ns.ensureRepository(tableID);
-					return isMasterFor(space) ?
-							repo.upload() :
-							PromisesEx.nSuccessesOrLess(uploadCallNumber, masters
-									.stream()
-									.map(master -> AsyncSupplier.cast(() -> master.upload(tableID))))
-									.thenApply(consumers -> {
+					if (isMasterFor(space)) {
+						return repo.upload();
+					}
+					return PromisesEx.nSuccessesOrLess(uploadCallNumber, masters
+							.stream()
+							.map(master -> AsyncSupplier.cast(() -> master.upload(tableID))))
+							.thenApply(consumers -> {
 
-										ChannelSplitter<SignedData<DbItem>> splitter = ChannelSplitter.<SignedData<DbItem>>create()
-												.lenient();
+								ChannelSplitter<SignedData<DbItem>> splitter = ChannelSplitter.<SignedData<DbItem>>create()
+										.lenient();
 
-										if (doesUploadCaching || consumers.isEmpty()) {
-											splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload())
-													.withAcknowledgement(ack -> ack.whenException(splitter::close)));
-										}
+								if (doesUploadCaching || consumers.isEmpty()) {
+									splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload())
+											.withAcknowledgement(ack -> ack.whenException(splitter::close)));
+								}
 
-										int[] up = {consumers.size()};
+								int[] up = {consumers.size()};
 
-										consumers.forEach(output -> splitter.addOutput()
-												.set(output.withAcknowledgement(ack -> ack.whenException(e -> {
-													if (e != null && --up[0] < uploadSuccessNumber) {
-														splitter.close(e);
+								consumers.forEach(output -> splitter.addOutput()
+										.set(output.withAcknowledgement(ack -> ack.whenException(e -> {
+											if (e != null && --up[0] < uploadSuccessNumber) {
+												splitter.close(e);
+											}
+										}))));
+
+								return splitter.getInput().getConsumer()
+										.withAcknowledgement(ack -> ack
+												.thenCompose($ -> {
+													if (up[0] >= uploadSuccessNumber) {
+														return Promise.complete();
 													}
-												}))));
-
-										return splitter.getInput().getConsumer()
-												.withAcknowledgement(ack -> ack
-														.thenCompose($ -> {
-															if (up[0] >= uploadSuccessNumber) {
-																return Promise.complete();
-															}
-															return Promise.ofException(new StacklessException(LocalGlobalDbNode.class, "Not enough successes"));
-														}));
-									});
+													return Promise.ofException(new StacklessException(LocalGlobalDbNode.class, "Not enough successes"));
+												}));
+							});
 
 				});
 	}
@@ -194,18 +195,17 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 		return ns.ensureMasterNodes()
 				.thenCompose(masters -> {
 					Repo repo = ns.ensureRepository(tableID);
-					return isMasterFor(tableID.getSpace()) ?
-							repo.storage.get(key) :
-							doesDownloadCaching ?
-									Promises.firstSuccessful(masters.stream()
-											.map(node -> AsyncSupplier.cast(() ->
-													node.get(tableID, key)
-															.thenCompose(item ->
-																	repo.storage.put(item)
-																			.thenApply($ -> item))))) :
-									Promises.firstSuccessful(masters.stream()
-											.map(node -> AsyncSupplier.cast(() ->
-													node.get(tableID, key))));
+					if (isMasterFor(tableID.getSpace())) {
+						return repo.storage.get(key);
+					}
+					return Promises.firstSuccessful(masters.stream()
+							.map(node -> AsyncSupplier.cast(
+									doesDownloadCaching ?
+											() -> node.get(tableID, key)
+													.thenCompose(item ->
+															repo.storage.put(item)
+																	.thenApply($ -> item)) :
+											() -> node.get(tableID, key))));
 				});
 	}
 
@@ -214,16 +214,17 @@ public final class LocalGlobalDbNode implements GlobalDbNode, Initializable<Loca
 		Namespace ns = ensureNamespace(space);
 		return ns
 				.ensureMasterNodes()
-				.thenCompose(masters ->
-						isMasterFor(space) ?
-								Promise.of(ns.repos
-										.keySet()
-										.stream()
-										.map(TableID::getName)
-										.collect(toList())) :
-								Promises.firstSuccessful(masters.stream()
-										.map(node -> AsyncSupplier.cast(() ->
-												node.list(space)))));
+				.thenCompose(masters -> {
+					if (!isMasterFor(space)) {
+						return Promises.firstSuccessful(masters.stream()
+								.map(node -> AsyncSupplier.cast(() -> node.list(space))));
+					}
+					return Promise.of(ns.repos
+							.keySet()
+							.stream()
+							.map(TableID::getName)
+							.collect(toList()));
+				});
 	}
 
 	public Promise<Void> fetch() {

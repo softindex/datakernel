@@ -20,7 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.exception.ConstantException;
 
 import java.util.Collections;
 import java.util.List;
@@ -32,7 +32,7 @@ import static io.datakernel.file.FileUtils.escapeGlob;
  * This interface represents a simple filesystem client with upload, download, move, delete and list operations.
  */
 public interface FsClient {
-	StacklessException FILE_NOT_FOUND = new StacklessException(FsClient.class, "File not found");
+	ConstantException FILE_NOT_FOUND = new ConstantException(FsClient.class, "File not found");
 
 	/**
 	 * Returns a consumer of bytebufs which are written (or sent) to the file.

@@ -19,12 +19,12 @@ package io.datakernel.csp;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.exception.ConstantException;
 
 import static io.datakernel.util.Recyclable.tryRecycle;
 
 public abstract class AbstractCommunicatingProcess implements AsyncProcess {
-	public static final StacklessException ASYNC_PROCESS_IS_COMPLETE = new StacklessException(AbstractCommunicatingProcess.class, "AsyncProcess is complete");
+	public static final ConstantException ASYNC_PROCESS_IS_COMPLETE = new ConstantException(AbstractCommunicatingProcess.class, "AsyncProcess is complete");
 
 	private boolean processStarted;
 	private boolean processComplete;

@@ -24,7 +24,7 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelByteRanger;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.exception.ConstantException;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.Initializable;
@@ -53,7 +53,7 @@ import static java.util.stream.Collectors.toList;
 public final class GlobalFsGateway implements FsClient, Initializable<GlobalFsGateway> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsGateway.class);
 
-	public static final StacklessException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new StacklessException(GlobalFsGateway.class, "Trying to upload at offset greater than known file size");
+	public static final ConstantException UPLOAD_OFFSET_EXCEEDS_FILE_SIZE = new ConstantException(GlobalFsGateway.class, "Trying to upload at offset greater than known file size");
 
 	private static final StructuredCodec<GlobalFsCheckpoint> METADATA_CODEC = REGISTRY.get(GlobalFsCheckpoint.class);
 

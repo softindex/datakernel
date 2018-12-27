@@ -22,6 +22,7 @@ import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.exception.ConstantException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
@@ -45,6 +46,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			response = HttpResponse.ofCode(code).withBodyString(e.getLocalizedMessage());
 		} else if (e instanceof ParseException) {
 			response = HttpResponse.ofCode(400).withBodyString(e.getLocalizedMessage());
+		} else if (e instanceof ConstantException) {
+			response = HttpResponse.ofCode(500).withBodyString(e.getLocalizedMessage());
 		} else {
 			response = HttpResponse.ofCode(500);
 		}

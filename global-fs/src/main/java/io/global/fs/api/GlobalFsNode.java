@@ -19,7 +19,7 @@ package io.global.fs.api;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.exception.ConstantException;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 
@@ -32,9 +32,9 @@ import static io.global.fs.api.CheckpointStorage.NO_CHECKPOINT;
  * This component handles one of the GlobalFS nodes.
  */
 public interface GlobalFsNode {
-	StacklessException UNEXPECTED_TOMBSTONE = new StacklessException(GlobalFsNode.class, "Tombstones are not allowed to be streamed");
-	StacklessException UPLOADING_TO_TOMBSTONE = new StacklessException(GlobalFsNode.class, "Trying to upload to a file which was deleted");
-	StacklessException FILE_ALREADY_EXISTS = new StacklessException(GlobalFsNode.class, "File already exists");
+	ConstantException UNEXPECTED_TOMBSTONE = new ConstantException(GlobalFsNode.class, "Tombstones are not allowed to be streamed");
+	ConstantException UPLOADING_TO_TOMBSTONE = new ConstantException(GlobalFsNode.class, "Trying to upload to a file which was deleted");
+	ConstantException FILE_ALREADY_EXISTS = new ConstantException(GlobalFsNode.class, "File already exists");
 
 	Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset);
 

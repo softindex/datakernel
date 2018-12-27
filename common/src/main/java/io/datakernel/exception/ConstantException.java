@@ -14,17 +14,15 @@
  * limitations under the License.
  */
 
-package io.global.common.api;
+package io.datakernel.exception;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.ConstantException;
-import io.global.common.PubKey;
-import io.global.common.SignedData;
+public final class ConstantException extends StacklessException {
 
-public interface AnnouncementStorage {
-	ConstantException NO_ANNOUNCEMENT = new ConstantException(AnnouncementStorage.class, "No announcement found for key");
+	public ConstantException(Class<?> component, String message) {
+		super(component, message);
+	}
 
-	Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData);
-
-	Promise<SignedData<AnnounceData>> load(PubKey space);
+	public ConstantException(Class<?> component, String message, Throwable cause) {
+		super(component, message, cause);
+	}
 }
