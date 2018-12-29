@@ -1,5 +1,5 @@
 1. [Structured Codec Example](https://github.com/softindex/datakernel/blob/master/examples/codec/src/main/java/io/datakernel/examples/StructuredCodecsExample.java)- 
-converting a LocalDate object to JSON string and then recovering it back to LocalDate object with Gson Adapter.
+converting a custom `Person` objects to/from JSON using `JsonUtils` and `BinaryUtils`.
 
 To run the example, you should first execute these lines in the console in appropriate folder:
 
@@ -31,8 +31,8 @@ Map of persons after encoding: {121=Person{id=121, name='John', dateOfBirth=1990
 Maps are equal? : true
 ```
 
-All of the examples represent Codec module encoding and decoding.
-In the first situation BinaryUtils were used.
-In the second one - JsonUtils.
-In the third - JsonUtils were used to convert ArrayList of persons.
-Finally, the fourth example also uses JsonUtils, but this time it converts Map of persons.
+All of the examples represent encoding and decoding objects using Codec module.
+In the first situation `BinaryUtils` were used:
+In the second one - `JsonUtils`.
+In the third - `JsonUtils` were used to convert ArrayList of `Person`s.
+Finally, the fourth example also uses `JsonUtils`, but converts Map of `Person`s.

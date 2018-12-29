@@ -12,7 +12,7 @@ simplify work with service graph
 The main component is a `ServiceGraphModule` which builds dependency graph based on Guice's object graph. It is used to 
 start or stop services concurrently, according to their dependencies. 
 
-* Although, Guice is used here as a dependency injector tool, it is not the main component of the module and can be 
+* Although Guice is used here as a dependency injector tool, it is not the main component of the module and can be 
 replaced with another tool.
 * `ConfigModule` helps to configure services in a simple way. There is a rich set of config converters that can be used 
 to set up your application.

@@ -1,5 +1,3 @@
-Boot examples are covering the following topics:
-
 1. [Config Module Example](https://github.com/softindex/datakernel/blob/master/examples/boot/src/main/java/io/datakernel/examples/ConfigModuleExample.java) - 
 supplies config to your application and controls it.
 2. [Service Graph Module Example](https://github.com/softindex/datakernel/tree/master/examples/boot/src/main/java/io/datakernel/examples/ServiceGraphModuleExample.java) - 
@@ -7,10 +5,6 @@ manages a service which displays "Hello World!" message.
 3. [Worker Pool Module Example](https://github.com/softindex/datakernel/tree/master/examples/boot/src/main/java/io/datakernel/examples/WorkerPoolModuleExample.java) - 
 creating a Worker Pool with 4 workers.
 
-For each of the examples you can download and run a [working example](#1-working-example) and see its
-[explanation](#2-explanation). 
-
-## 1. Working Example
 To run the examples, you should execute these lines in the console in appropriate folder:
 ``` 
 $ git clone https://github.com/softindex/datakernel.git
@@ -22,98 +16,38 @@ $ #or
 $ mvn clean compile exec:java@WorkerPoolModuleExample
 ```
 
-## 2. Explanation
-1. Config Module Example
-
-```java
-public class ConfigModuleExample extends AbstractModule {
-	private static final String PROPERTIES_FILE = "example.properties";
-
-	@Provides
-	String providePhrase(Config config) {
-		return config.get("phrase");
-	}
-
-	@Provides
-	Integer provideNumber(Config config) {
-		return config.get(ofInteger(), "number");
-	}
-
-	@Provides
-	InetAddress provideAddress(Config config) {
-		return config.get(ofInetAddress(), "address");
-	}
-
-	public static void main(String[] args) {
-		Injector injector = Guice.createInjector(
-				new ConfigModuleExample(),
-				ConfigModule.create(Config.ofProperties(PROPERTIES_FILE))
-		);
-
-		String phrase = injector.getInstance(String.class);
-		Integer number = injector.getInstance(Integer.class);
-		InetAddress address = injector.getInstance(InetAddress.class);
-
-		System.out.println(phrase);
-		System.out.println(number);
-		System.out.println(address);
-	}
-}
+If you run the first example, you will see the following output:
 ```
-
-`example.properties` contains the following data:
-```properties
-phrase=Hello world!
-number=123456789
-address=8.8.8.8
+Hello world!
+123456789
+/8.8.8.8
 ```
+This data was provided by properties file of the example and supplied by `ConfigModule` which looks after usage of configs 
+and prevents their usage in any part of lifecycle except for startup. We created `ConfigModule` in the following way:
 
-
-2. Service Graph Module Example
-```java
-public class ServiceGraphModuleExample extends AbstractModule {
-	@Provides
-	@Singleton
-	Eventloop provideEventloop() {
-		return Eventloop.create();
-	}
-
-	public static void main(String[] args) throws ExecutionException, InterruptedException {
-		Injector injector = Guice.createInjector(ServiceGraphModule.defaultInstance(), new ServiceGraphModuleExample());
-		Eventloop eventloop = injector.getInstance(Eventloop.class);
-
-		eventloop.execute(() -> System.out.println("Hello World"));
-
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
-		try {
-			serviceGraph.startFuture().get();
-		} finally {
-			serviceGraph.stopFuture().get();
-		}
-	}
-}
+```java 
+ConfigModule.create(Config.ofProperties(PROPERTIES_FILE))
 ```
+`ofProperties()` returns a `Config` - an interface for interacting with configs. There are also some other ways of 
+initialization of `ConfigModule`, such as:
+* ofMap()
+* ofConfigs()
+* ofValue()
 
-3. Worker Pool Module Example
-```java
-public class WorkerPoolModuleExample extends AbstractModule {
-	@Provides
-	@Singleton
-	WorkerPool provideWorkerPool() {
-		return new WorkerPool(4);
-	}
+<br>
 
-	@Provides
-	@Worker
-	String provideString(@WorkerId int workerId) {
-		return "Hello from worker #" + workerId;
-	}
+If you run the Service Graph Module Example, you will see a `Hello World` output. This output is conducted via eventloop 
+which was provided by `ServiceGraphModule`. `ServiceGraphModule` builds dependency graph of Service objects based on 
+Guice's object graph. When  method `startFuture()` is called, our eventloop starts running and we get an output message. 
 
-	public static void main(String[] args) {
-		Injector injector = Guice.createInjector(new WorkerPoolModule(), new WorkerPoolModuleExample());
-		WorkerPool workerPool = injector.getInstance(WorkerPool.class);
-		List<String> strings = workerPool.getInstances(String.class);
-		strings.forEach(System.out::println);
-	}
-}
+
+<br> 
+
+If you run the Worker Pool Module Example, you will see the following output:
 ```
+Hello from worker #0
+Hello from worker #1
+Hello from worker #2
+Hello from worker #3
+```
+These are four workers which were provided by our Worker Pool Module and then injected and printed out. 

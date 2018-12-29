@@ -1,5 +1,7 @@
-1. [Rpc Example](https://github.com/softindex/datakernel/blob/master/examples/rpc/src/main/java/io/datakernel/examples/RpcExample.java)
-2. [Rpc Benchmark](https://github.com/softindex/datakernel/blob/master/examples/rpc/src/main/java/io/datakernel/examples/RpcBenchmark.java)
+1. [Rpc Example](https://github.com/softindex/datakernel/blob/master/examples/rpc/src/main/java/io/datakernel/examples/RpcExample.java) - 
+a "Hello World" RPC client and and server interaction.
+2. [Rpc Benchmark](https://github.com/softindex/datakernel/blob/master/examples/rpc/src/main/java/io/datakernel/examples/RpcBenchmark.java) - 
+RPC benchmarks.
 
 To run the examples, you should execute these three lines in the console in appropriate folder:
 ```

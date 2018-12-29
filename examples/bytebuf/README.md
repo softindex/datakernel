@@ -144,11 +144,12 @@ Buf taken from queue: [3, 4, 5, 6, 7, 8]
 [5, 6, 7, 8]
 Queue is empty? true
 ```
-The first line represents QUEUE after we added two bufs: `[0, 1, 2, 3]` and `[3, 4, 5]`.
-Then method QUEUE.take() was applied and the first added buf is taken from it. so the taken buf is `[0, 1, 2, 3]`.
+The first line represents our queue after we added two bufs: `[0, 1, 2, 3]` and `[3, 4, 5]`.
+Then method QUEUE.take() is applied and the first added buf is taken from the queue which is `[0, 1, 2, 3]`.
 The next line represents the consequence of two operations: adding a new `[6, 7, 8]` buf and then applying 
-QUEUE.takeRemaining().
+QUEUE.takeRemaining() which takes all remaining bufs from the queue.
 Finally, the last three lines represent the following operations:
+
 * Creating two bufs: `[1, 2, 3, 4]` and `[5, 6, 7, 8]`;
-* Draining th QUEUE to consumer, in our situation consumer prints the bufs;
-* Then we check if the que is empty now.
+* Draining the queue to consumer which prints the bufs;
+* Then we check if the queue is empty now.

@@ -1,4 +1,4 @@
-## Global-FS-CLI
+## Global-FS CLI
 
 Global-FS-CLI is a command-line interface of Global-FS client application. It allows to conduct basic interactions with 
 Global-FS nodes, upload and download files, delete them and get list of uploaded files.

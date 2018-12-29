@@ -21,7 +21,7 @@ Now you can interact with your echo server.
 Both of the examples utilize `eventloop.listen()` as the basis of server processing. This method creates 
 `ServerSocketChannel` that listens on `InetSocketAddress`. 
 
-Also, they both utilize ByteBuf module to efficiently wrap incoming and outgoing messages:
+Also, they both utilize ByteBuf module to efficiently wrap incoming and outgoing messages.
 
 But servers have different approaches towards `AcceptCallback` 
 interface implementation. `AcceptCallback` is called when new incoming connection is being accepted. Busy Wait Eventloop 

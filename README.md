@@ -170,6 +170,8 @@ servers.
 A framework to create file sharing systems alternative to IPFS / BitTorrent technologies. It is fault tolerant, 
 distributed and can work with non-trusted servers due to implementation of cryptographic data authenticity.
 
+[Global-FS CLI](https://github.com/softindex/datakernel/tree/master/examples/global-fs-cli)
+
 [Global-FS Demo](https://github.com/softindex/datakernel/tree/master/examples/global-fs-demo)
 
 ### [Global-OT](https://github.com/softindex/datakernel/tree/master/global-ot)

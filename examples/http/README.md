@@ -1,10 +1,15 @@
-
-1. [HTTP Server Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/HttpServerExample.java)
-2. [HTTP Multithreaded Server Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/HttpMultithreadedServerExample.java)
-3. [HTTP Client Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/HttpClientExample.java)
-4. [Middleware Servlet Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/MiddlewareServletExample.java)
-5. [Request Parameter Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/RequestParameterExample.java)
-6. [Static Servlet Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/StaticServletExample.java)
+1. [HTTP Server Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/HttpServerExample.java) - 
+A simple HTTP Server utilizing `HttpServerLauncher`.
+2. [HTTP Multithreaded Server Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/HttpMultithreadedServerExample.java) - 
+HTTP multithreaded server example.
+3. [HTTP Client Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/HttpClientExample.java) - 
+an HTTP client example utilizing `Launcher`.
+4. [Middleware Servlet Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/MiddlewareServletExample.java) - 
+an example of `MiddlewareServlet` usage.
+5. [Request Parameter Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/RequestParameterExample.java) - 
+an example of processing requests with parameter.
+6. [Static Servlet Example](https://github.com/softindex/datakernel/blob/master/examples/http/src/main/java/io/datakernel/examples/StaticServletExample.java) - 
+an example of `StaticServlet` utilizing.
 
 To run the examples, you should first execute these lines in the console in appropriate folder:
 ```
@@ -20,10 +25,6 @@ $ mvn clean compile exec:java@RequestParametrExample
 $ # or
 $ mvn clean compile exec:java@StaticServletExample
 ```
-
-The difference between multithreaded HTTP server and simple HTTP server is that the first one creates several worker 
-threades for requests processing. In the example above your server will have 4 workers.
-
 To check how HTTP Server or HTTP Multithreaded Server works, you can start your client:
 ```
 $ mvn clean compile exec:java@HttpClientExample
@@ -33,13 +34,25 @@ If you connected to the multithreaded server, you'll receive a message represent
 ```
 "Hello from worker server #..." 
 ```
-
 Otherwise, you'll see a message: `"Hello World!"`
 
-If you run Examples 4-6, you can connect to you server by visiting [this link](http://localhost:8080/) in your browser.
+The difference between Multithreaded HTTP Server and simple HTTP Server is that the first one creates several worker 
+threads for requests processing. 
 
-Middleware Servlet Example processes requests and redirects to needed web-page. 
+`HttpServerExample` utilizes `HttpServerLauncher` while `HttpMultithreadedServerExample` extends 
+`MultithreadedHttpServerLauncher`. When using predefined launchers, you should override the following methods:
+ * `getBusinessLogicModules()` - to specify the actual logic of your application
+ * `getOverrideModules()` - to override default modules.
 
-Request Parameter Example represents requests with `getPostParameters()` and then utilizing them with  `postParameters.get()`.
+<br>
 
-Static Servlet Example shows how to set up and utilize `StaticServlet`.
+If you run Examples 4-6, you can connect to you server by visiting [localhost:8080](http://localhost:8080/) in your browser.
+
+Middleware Servlet Example processes requests and redirects you to chosen web-page. You can set up configurations for your 
+Servlet with method `with()`. It sets up HTTP methods (optionally), paths and `AsyncServlet`.
+
+Request Parameter Example represents requests with parameters which are received with `getPostParameters()` and then 
+utilized with `postParameters.get()`.
+
+Static Servlet Example shows how to set up and utilize `StaticServlet`. Method `create()` creates a new StaticServlet and 
+takes receives eventloop and resource loader parameters. `StaticLoaders` can be utilized as resource loader.

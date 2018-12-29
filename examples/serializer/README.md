@@ -12,11 +12,11 @@ To run the example, you should execute these lines in the console in appropriate
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/examples/serializer
 $ mvn clean compile exec:java@SimpleObjectSerializationExample
-$ # OR
+$ # or
 $ mvn clean compile exec:java@ComplexObjectSerializationExample
-$ # OR
+$ # or
 $ mvn clean compile exec:java@FixedSizeFieldsSerializationExample
-$ # OR
+$ # or
 $ mvn clean compile exec:java@GenericsAndInterfacesSerializationExample
 ```
 In all of these examples method `serializeAndDeserialized()` is utilized but with different arguments and configurations.
