@@ -16,27 +16,29 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.stream.TestStreamConsumers.*;
 import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
+@RunWith(DatakernelRunner.class)
 public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicate() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamSupplier<Integer> source0 = StreamSupplier.ofIterable(Collections.emptyList());
 		StreamSupplier<Integer> source1 = StreamSupplier.of(3, 7);
 		StreamSupplier<Integer> source2 = StreamSupplier.of(3, 4, 6);
@@ -45,14 +47,16 @@ public class StreamMergerTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		source0.streamTo(merger.newInput());
-		source1.streamTo(merger.newInput());
-		source2.streamTo(merger.newInput());
+		await(
+				source0.streamTo(merger.newInput()),
+				source1.streamTo(merger.newInput()),
+				source2.streamTo(merger.newInput()),
 
-		merger.getOutput()
-				.streamTo(consumer.transformWith(randomlySuspending()));
+				merger.getOutput()
+						.streamTo(consumer.transformWith(randomlySuspending()))
+		);
 
-		eventloop.run();
+
 		assertEquals(asList(3, 4, 6, 7), consumer.getList());
 
 		assertEndOfStream(source0);
@@ -65,7 +69,6 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDuplicate() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamSupplier<Integer> source0 = StreamSupplier.ofIterable(Collections.emptyList());
 		StreamSupplier<Integer> source1 = StreamSupplier.of(3, 7);
 		StreamSupplier<Integer> source2 = StreamSupplier.of(3, 4, 6);
@@ -74,14 +77,14 @@ public class StreamMergerTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		source0.streamTo(merger.newInput());
-		source1.streamTo(merger.newInput());
-		source2.streamTo(merger.newInput());
+		await(
+				source0.streamTo(merger.newInput()),
+				source1.streamTo(merger.newInput()),
+				source2.streamTo(merger.newInput()),
+				merger.getOutput()
+						.streamTo(consumer.transformWith(randomlySuspending()))
+		);
 
-		merger.getOutput()
-				.streamTo(consumer.transformWith(randomlySuspending()));
-
-		eventloop.run();
 		assertEquals(asList(3, 3, 4, 6, 7), consumer.getList());
 
 		assertEndOfStream(source0);
@@ -94,7 +97,6 @@ public class StreamMergerTest {
 
 	@Test
 	public void test() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DataItem1 d0 = new DataItem1(0, 1, 1, 1);
 		DataItem1 d1 = new DataItem1(0, 2, 1, 2);
 		DataItem1 d2 = new DataItem1(0, 6, 1, 3);
@@ -116,13 +118,12 @@ public class StreamMergerTest {
 
 		StreamConsumerToList<DataItem1> consumer = StreamConsumerToList.create();
 
-		source1.streamTo(merger.newInput());
-		source2.streamTo(merger.newInput());
-
-		merger.getOutput()
-				.streamTo(consumer.transformWith(randomlySuspending()));
-
-		eventloop.run();
+		await(
+				source1.streamTo(merger.newInput()),
+				source2.streamTo(merger.newInput()),
+				merger.getOutput()
+						.streamTo(consumer.transformWith(randomlySuspending()))
+		);
 
 		assertEquals(asList(d0, //DataItem1(0,1,1,1)
 				d3, //DataItem1(1,1,1,4)
@@ -140,7 +141,6 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicateWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamSupplier<Integer> source1 = StreamSupplier.of(7, 8, 3);
 		StreamSupplier<Integer> source2 = StreamSupplier.of(3, 4, 6);
 
@@ -148,22 +148,23 @@ public class StreamMergerTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
+		Exception exception = new Exception("Test Exception");
 
-		source1.streamTo(merger.newInput());
-		source2.streamTo(merger.newInput());
+		Throwable e = awaitException(
+				source1.streamTo(merger.newInput()),
+				source2.streamTo(merger.newInput()),
+				merger.getOutput()
+						.streamTo(consumer
+								.transformWith(decorator((context, dataAcceptor) ->
+										item -> {
+											dataAcceptor.accept(item);
+											if (item == 8) {
+												context.closeWithError(exception);
+											}
+										})))
+		);
 
-		merger.getOutput()
-				.streamTo(consumer
-						.transformWith(decorator((context, dataAcceptor) ->
-								item -> {
-									dataAcceptor.accept(item);
-									if (item == 8) {
-										context.closeWithError(new Exception("Test Exception"));
-									}
-								})));
-
-		eventloop.run();
-
+		assertSame(exception, e);
 //		assertEquals(5, list.size());
 		assertEndOfStream(source1);
 		assertEndOfStream(source2);
@@ -175,7 +176,6 @@ public class StreamMergerTest {
 
 	@Test
 	public void testSupplierDeduplicateWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamSupplier<Integer> source1 = StreamSupplier.concat(
 				StreamSupplier.of(7),
 				StreamSupplier.of(8),
@@ -195,13 +195,12 @@ public class StreamMergerTest {
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		source1.streamTo(merger.newInput());
-		source2.streamTo(merger.newInput());
-
-		merger.getOutput()
-				.streamTo(consumer.transformWith(oneByOne()));
-
-		eventloop.run();
+		awaitException(
+				source1.streamTo(merger.newInput()),
+				source2.streamTo(merger.newInput()),
+				merger.getOutput()
+						.streamTo(consumer.transformWith(oneByOne()))
+		);
 
 		assertEquals(0, list.size());
 		assertClosedWithError(consumer);

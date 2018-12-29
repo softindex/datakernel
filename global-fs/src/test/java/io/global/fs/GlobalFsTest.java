@@ -55,13 +55,13 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.stream.processor.ByteBufRule.IgnoreLeaks;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.common.TestUtils.await;
-import static io.global.common.TestUtils.awaitException;
 import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.fs.api.GlobalFsNode.UPLOADING_TO_TOMBSTONE;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
@@ -86,8 +86,6 @@ public final class GlobalFsTest {
 	private KeyPair alice = KeyPair.generate();
 	private KeyPair bob = KeyPair.generate();
 
-	private NodeFactory<GlobalFsNode> clientFactory;
-
 	private LocalGlobalFsNode rawFirstClient;
 	private LocalGlobalFsNode rawSecondClient;
 
@@ -98,8 +96,6 @@ public final class GlobalFsTest {
 	private FsClient storage;
 	private Path dir;
 
-	private GlobalFsNode cachingNode;
-	private GlobalFsDriver driver;
 	private FsClient aliceGateway;
 	private FsClient bobGateway;
 
@@ -117,7 +113,7 @@ public final class GlobalFsTest {
 
 		Map<RawServerId, GlobalFsNode> nodes = new HashMap<>();
 
-		clientFactory = new NodeFactory<GlobalFsNode>() {
+		NodeFactory<GlobalFsNode> clientFactory = new NodeFactory<GlobalFsNode>() {
 			@Override
 			public GlobalFsNode create(RawServerId serverId) {
 				GlobalFsNode node = nodes.computeIfAbsent(serverId, id -> LocalGlobalFsNode.create(serverId, discoveryService, this, storage.subfolder(folderFor(id))));
@@ -137,8 +133,8 @@ public final class GlobalFsTest {
 		firstAliceAdapter = firstDriver.gatewayFor(alice.getPubKey());
 		secondAliceAdapter = secondDriver.gatewayFor(alice.getPubKey());
 
-		cachingNode = clientFactory.create(new RawServerId("http://127.0.0.1:1003"));
-		driver = GlobalFsDriver.create(cachingNode, discoveryService, asList(alice, bob), CheckpointPosStrategy.of(16));
+		GlobalFsNode cachingNode = clientFactory.create(new RawServerId("http://127.0.0.1:1003"));
+		GlobalFsDriver driver = GlobalFsDriver.create(cachingNode, discoveryService, asList(alice, bob), CheckpointPosStrategy.of(16));
 		aliceGateway = driver.gatewayFor(alice.getPubKey());
 		bobGateway = driver.gatewayFor(bob.getPubKey());
 	}

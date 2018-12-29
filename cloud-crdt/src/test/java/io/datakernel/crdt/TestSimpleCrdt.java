@@ -27,10 +27,10 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.junit.Assert.assertEquals;
 
@@ -68,19 +68,17 @@ public final class TestSimpleCrdt {
 		localStorage.put("only_local", 47);
 		localStorage.put("only_local", 12);
 
-		StreamSupplier.ofIterator(localStorage.iterator())
+		await(StreamSupplier.ofIterator(localStorage.iterator())
 				.streamTo(StreamConsumer.ofPromise(client.upload()))
-				// .thenCompose($ -> Promise.ofCallback(cb -> getCurrentEventloop().delay(1000, () -> cb.set(null))))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ -> {
-					System.out.println("Data at 'remote' storage:");
-					remoteStorage.iterator().forEachRemaining(System.out::println);
+				.whenComplete(($, e) -> server.close()));
 
-					assertEquals(23, checkNotNull(remoteStorage.get("mx")).intValue());
-					assertEquals(5, checkNotNull(remoteStorage.get("test")).intValue());
-					assertEquals(35, checkNotNull(remoteStorage.get("only_remote")).intValue());
-					assertEquals(47, checkNotNull(remoteStorage.get("only_local")).intValue());
-				}));
+		System.out.println("Data at 'remote' storage:");
+		remoteStorage.iterator().forEachRemaining(System.out::println);
+
+		assertEquals(23, checkNotNull(remoteStorage.get("mx")).intValue());
+		assertEquals(5, checkNotNull(remoteStorage.get("test")).intValue());
+		assertEquals(35, checkNotNull(remoteStorage.get("only_remote")).intValue());
+		assertEquals(47, checkNotNull(remoteStorage.get("only_local")).intValue());
 	}
 
 	@SuppressWarnings("deprecation") // StreamConsumer#of
@@ -88,16 +86,15 @@ public final class TestSimpleCrdt {
 	public void testDownload() {
 		RuntimeCrdtClient<String, Integer> localStorage = RuntimeCrdtClient.create(getCurrentEventloop(), Integer::max);
 
-		client.download().getStream()
+		await(client.download().getStream()
 				.streamTo(StreamConsumer.of(localStorage::put))
-				.whenComplete(($, err) -> server.close())
-				.whenComplete(assertComplete($ -> {
-					System.out.println("Data fetched from 'remote' storage:");
-					localStorage.iterator().forEachRemaining(System.out::println);
+				.whenComplete(($, err) -> server.close()));
 
-					assertEquals(2, checkNotNull(localStorage.get("mx")).intValue());
-					assertEquals(5, checkNotNull(localStorage.get("test")).intValue());
-					assertEquals(35, checkNotNull(localStorage.get("only_remote")).intValue());
-				}));
+		System.out.println("Data fetched from 'remote' storage:");
+		localStorage.iterator().forEachRemaining(System.out::println);
+
+		assertEquals(2, checkNotNull(localStorage.get("mx")).intValue());
+		assertEquals(5, checkNotNull(localStorage.get("test")).intValue());
+		assertEquals(35, checkNotNull(localStorage.get("only_remote")).intValue());
 	}
 }

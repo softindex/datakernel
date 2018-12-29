@@ -35,7 +35,7 @@ import org.junit.runners.parameterized.ParametersRunnerFactory;
 import org.junit.runners.parameterized.TestWithParameters;
 import org.slf4j.LoggerFactory;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Annotation;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -64,21 +64,15 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 		errors.removeIf(e -> e.getClass() == Exception.class && "No runnable methods".equals(e.getMessage()));
 	}
 
-	private static Statement addEventloop(FrameworkMethod method, Statement root) {
-		Eventloop eventloop = Eventloop.create()
+	private static Statement addEventloop(Statement root) {
+		Eventloop.create()
 				.withCurrentThread()
 				.withFatalErrorHandler(rethrowOnAnyError());
 
 		// set eventloop logger level to WARN so that await calls do not spam with eventloop running and finishing each time
 		((Logger) LoggerFactory.getLogger(Eventloop.class.getName())).setLevel(Level.WARN);
 
-		return new LambdaStatement(() -> {
-			root.evaluate();
-			if (method.getDeclaringClass().getAnnotation(SkipEventloopRun.class) == null
-					&& method.getAnnotation(SkipEventloopRun.class) == null) {
-				eventloop.run();
-			}
-		});
+		return new LambdaStatement(root::evaluate);
 	}
 
 	private static Description getModifiedDescription(TestClass testClass, Description superDescription, String name, Annotation[] runnerAnnotations) {
@@ -122,7 +116,7 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 
 	@Override
 	protected Statement methodInvoker(FrameworkMethod method, Object test) {
-		return addEventloop(method, super.methodInvoker(method, test));
+		return addEventloop(super.methodInvoker(method, test));
 	}
 
 	@Override
@@ -175,7 +169,7 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 
 				@Override
 				protected Statement methodInvoker(FrameworkMethod method, Object test) {
-					return addEventloop(method, super.methodInvoker(method, test));
+					return addEventloop(super.methodInvoker(method, test));
 				}
 
 				@Override
@@ -214,8 +208,4 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 		}
 	}
 
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.METHOD, ElementType.TYPE})
-	public @interface SkipEventloopRun {
-	}
 }

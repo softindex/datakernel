@@ -32,17 +32,17 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.async.TestUtils.await;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
 
@@ -58,14 +58,11 @@ public final class TestCachedFsClient {
 	@Rule
 	public final TemporaryFolder tempFolder = new TemporaryFolder();
 
-	private final static InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 23343);
-
 	private Path cacheStorage;
 	private Path serverStorage;
 	private Path cacheTestFile;
 	private Path serverTestFile;
 	private CachedFsClient cacheRemote;
-	private RemoteFsServer server;
 	private String testTxtContent;
 
 	private FsClient main;
@@ -88,36 +85,32 @@ public final class TestCachedFsClient {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
-		main = RemoteFsClient.create(eventloop, ADDRESS);
+		main = LocalFsClient.create(eventloop, executor, serverStorage);
 		cache = LocalFsClient.create(eventloop, executor, cacheStorage);
 		cacheRemote = CachedFsClient.create(main, cache, CachedFsClient.lruCompare())
 				.with(MemSize.kilobytes(50));
-		server = RemoteFsServer.create(eventloop, executor, serverStorage)
-				.withListenAddress(ADDRESS);
-		server.listen();
 	}
 
 	@Test
 	public void testDownloadFileNotInCache() {
-		cacheRemote.download("test.txt")
-				.thenCompose(TO_STRING)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete(s -> assertEquals(testTxtContent, s)))
-				.thenCompose($ -> cache.download("test.txt")
-						.thenCompose(TO_STRING)
-						.whenComplete(assertComplete(s -> assertEquals(testTxtContent, s))));
+		String downloadedString = await(cacheRemote.download("test.txt")
+				.thenCompose(TO_STRING));
+
+		assertEquals(testTxtContent, downloadedString);
+
+		String cachedString = await(cache.download("test.txt")
+				.thenCompose(TO_STRING));
+
+		assertEquals(testTxtContent, cachedString);
 	}
 
 	@Test
 	public void testDownloadFileNotInCacheWithOffsetAndLength() {
-		cacheRemote.download("test.txt", 1, 2)
-				.thenCompose(TO_STRING)
-				.whenComplete((res, e) -> {
-					server.close();
-					assertEquals(res, "in");
-					assertFalse(Files.exists(cacheStorage.resolve("test.txt")));
-				})
-				.whenComplete(assertComplete());
+		String downloadedString = await(cacheRemote.download("test.txt", 1, 2)
+				.thenCompose(TO_STRING));
+
+		assertEquals("in", downloadedString);
+		assertFalse(Files.exists(cacheStorage.resolve("test.txt")));
 	}
 
 	@Test
@@ -126,44 +119,43 @@ public final class TestCachedFsClient {
 		Files.write(cacheTestFile, bytes);
 		assertArrayEquals(bytes, Files.readAllBytes(cacheTestFile));
 
-		cacheRemote.download("test.txt")
-				.thenCompose(TO_STRING)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete(s -> assertEquals(testTxtContent, s)))
-				.thenCompose($ -> cache.download("test.txt"))
-				.thenCompose(TO_STRING)
-				.whenComplete(assertComplete(s -> assertEquals(testTxtContent, s)));
+		String downloadedString = await(cacheRemote.download("test.txt")
+				.thenCompose(TO_STRING));
+
+		assertEquals(testTxtContent, downloadedString);
+
+		String cachedString = await(cache.download("test.txt")
+				.thenCompose(TO_STRING));
+
+		assertEquals(testTxtContent, cachedString);
 	}
 
 	@Test
 	public void testDownloadFilePartlyInCacheWithOffsetAndLength() throws IOException {
 		Files.write(cacheTestFile, "line1\nline2\nline3".getBytes(UTF_8));
 
-		cacheRemote.download("test.txt", 1, 2)
-				.thenCompose(TO_STRING)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete((res, e) -> assertEquals("in", res))
-				.whenComplete(assertComplete());
+		String downloadedString = await(cacheRemote.download("test.txt", 1, 2)
+				.thenCompose(TO_STRING));
+
+		assertEquals("in", downloadedString);
 	}
 
 	@Test
 	public void testDownloadFileFullyInCache() throws IOException {
 		Files.copy(serverTestFile, cacheTestFile);
-		cacheRemote.download("test.txt")
-				.thenCompose(TO_STRING)
-				.whenComplete(($, e) -> server.close())
-				.whenResult(s -> assertEquals(testTxtContent, s))
-				.whenComplete(assertComplete());
+		String downloadedString = await(cacheRemote.download("test.txt")
+				.thenCompose(TO_STRING));
+
+		assertEquals(testTxtContent, downloadedString);
 	}
 
 	@Test
 	public void testDownloadFileFullyInCacheWithOffsetAndLength() throws IOException {
 		Files.copy(serverTestFile, cacheTestFile);
-		cacheRemote.download("test.txt", 1, 2)
-				.thenCompose(TO_STRING)
-				.whenComplete((res, e) -> assertEquals("in", res))
-				.whenComplete(assertComplete())
-				.whenComplete(($, e) -> server.close());
+		String downloadedString = await(cacheRemote.download("test.txt", 1, 2)
+				.thenCompose(TO_STRING));
+
+		assertEquals("in", downloadedString);
 	}
 
 	@Test
@@ -171,11 +163,10 @@ public final class TestCachedFsClient {
 		Path filePath = cacheStorage.resolve("cacheOnly.txt");
 		String fileContent = "This file is stored only in cache";
 		Files.write(filePath, fileContent.getBytes());
-		cacheRemote.download("cacheOnly.txt")
-				.thenCompose(TO_STRING)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete())
-				.whenResult(s -> assertEquals(fileContent, s));
+		String downloadedString = await(cacheRemote.download("cacheOnly.txt")
+				.thenCompose(TO_STRING));
+
+		assertEquals(fileContent, downloadedString);
 	}
 
 	@Test
@@ -183,11 +174,10 @@ public final class TestCachedFsClient {
 		Path filePath = cacheStorage.resolve("cacheOnly.txt");
 		String fileContent = "This file is stored only in cache";
 		Files.write(filePath, fileContent.getBytes());
-		cacheRemote.download("cacheOnly.txt", 1, 2)
-				.thenCompose(TO_STRING)
-				.whenComplete((res, e) -> assertEquals("hi", res))
-				.whenComplete(assertComplete())
-				.whenComplete(($, e) -> server.close());
+		String downloadedString = await(cacheRemote.download("cacheOnly.txt", 1, 2)
+				.thenCompose(TO_STRING));
+
+		assertEquals("hi", downloadedString);
 	}
 
 	@Test
@@ -217,41 +207,30 @@ public final class TestCachedFsClient {
 		// Adding 1 new file, tottal is 9
 		Files.write(serverStorage.resolve("newFile.txt"), "New data".getBytes());
 
-		cacheRemote.list("**")
-				.whenResult(list -> assertEquals(list.size(), 9))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete());
+		List<FileMetadata> list = await(cacheRemote.list("**"));
+
+		assertEquals(list.size(), 9);
 	}
 
 	@Test
 	public void testGetMetadata() throws IOException {
 		Files.write(serverStorage.resolve("newFile.txt"), "Initial data\n".getBytes(), StandardOpenOption.CREATE_NEW);
 
-		cacheRemote.getMetadata("newFile.txt")
-				.thenApply(metadata -> {
-					assertNotNull(metadata);
-					return metadata.getSize();
-				})
-				.thenCompose(oldSize -> {
-					try {
-						Files.write(serverStorage.resolve("newFile.txt"), "Appended data\n".getBytes(), StandardOpenOption.APPEND);
-					} catch (IOException e) {
-						throw new AssertionError(e);
-					}
-					return cacheRemote.getMetadata("newFile.txt")
-							.whenResult(newMetadata ->
-									assertTrue("New metadata is not greater than old one", newMetadata.getSize() > oldSize));
-				})
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete());
+		FileMetadata oldMetadata = await(cacheRemote.getMetadata("newFile.txt"));
+		assertNotNull(oldMetadata);
+
+		Files.write(serverStorage.resolve("newFile.txt"), "Appended data\n".getBytes(), StandardOpenOption.APPEND);
+
+		FileMetadata newMetadata = await(cacheRemote.getMetadata("newFile.txt"));
+
+		assertTrue("New metadata is not greater than old one", newMetadata.getSize() > oldMetadata.getSize());
 	}
 
 	@Test
 	public void testGetMetadataOfNonExistingFile() {
-		cacheRemote.getMetadata("nonExisting.txt")
-				.whenComplete((res, e) -> assertNull(res))
-				.whenComplete(assertComplete())
-				.whenComplete(($, e) -> server.close());
+		FileMetadata metadata = await(cacheRemote.getMetadata("nonExisting.txt"));
+
+		assertNull(metadata);
 	}
 
 	@Test
@@ -262,12 +241,9 @@ public final class TestCachedFsClient {
 		// ~100 KB
 		initializeCacheDownloadFiles(20, "testFile_");
 
-		cacheRemote.getTotalCacheSize()
-				.whenResult(cacheSize -> {
-					assertTrue(sizeLimit.toLong() >= cacheSize.toLong());
-					server.close();
-				})
-				.whenResult($ -> server.close());
+		MemSize cacheSize = await(cacheRemote.getTotalCacheSize());
+
+		assertTrue(sizeLimit.toLong() >= cacheSize.toLong());
 	}
 
 	@Test
@@ -280,21 +256,14 @@ public final class TestCachedFsClient {
 		new Random().nextBytes(data);
 		Files.write(cacheStorage.resolve("oldFile.txt"), data);
 
-		cacheRemote.start().whenResult(r -> server.close());
-
-		Eventloop.getCurrentEventloop().run();
-
-		server.listen();
+		await(cacheRemote.start());
 
 		// ~10 KB
 		initializeCacheDownloadFiles(2, "tetsFile_");
 
-		cacheRemote.getTotalCacheSize()
-				.whenResult(cacheSize -> {
-					assertTrue(sizeLimit.toLong() >= cacheSize.toLong());
-					server.close();
-				})
-				.whenComplete(($, e) -> server.close());
+		MemSize cacheSize = await(cacheRemote.getTotalCacheSize());
+
+		assertTrue(sizeLimit.toLong() >= cacheSize.toLong());
 	}
 
 	@Test
@@ -305,51 +274,32 @@ public final class TestCachedFsClient {
 		// 100Kb
 		initializeCacheDownloadFiles(20, "testFile_");
 
-		cacheRemote.getTotalCacheSize()
-				.whenResult(cacheSize -> {
-					assertTrue(sizeLimit.toLong() >= cacheSize.toLong());
-					server.close();
-				})
-				.whenResult($ -> server.close());
+		MemSize cacheSize = await(cacheRemote.getTotalCacheSize());
+
+		assertTrue(sizeLimit.toLong() >= cacheSize.toLong());
 
 		MemSize newSizeLimit = MemSize.kilobytes(20);
 
-		cacheRemote.setCacheSizeLimit(newSizeLimit)
-				.whenResult(r -> cacheRemote.getTotalCacheSize()
-						.whenResult(cacheSize -> {
-							assertTrue(newSizeLimit.toLong() >= cacheSize.toLong());
-							server.close();
-						})
-						.whenResult($ -> server.close())
-				);
-	}
+		await(cacheRemote.setCacheSizeLimit(newSizeLimit));
+		MemSize newCacheSize = await(cacheRemote.getTotalCacheSize());
 
-	@Test
-	public void testGetTotalCacheSize() throws IOException {
-		initializeCacheFolder();
-		cacheRemote.getTotalCacheSize().whenResult(r -> server.close());
+		assertTrue(newSizeLimit.toLong() >= newCacheSize.toLong());
 	}
 
 	@Test
 	public void testStart() throws IOException {
 		initializeCacheFolder();
 
-		cacheRemote.start()
-				.whenComplete(assertComplete())
-				.thenApply($ -> cacheRemote.getTotalCacheSize()
-						.whenResult(r -> assertTrue(r.toLong() < cacheRemote.getCacheSizeLimit().toLong())))
-				.whenResult($ -> server.close());
+		await(cacheRemote.start());
+		MemSize cacheSize = await(cacheRemote.getTotalCacheSize());
+
+		assertTrue(cacheSize.toLong() < cacheRemote.getCacheSizeLimit().toLong());
 	}
 
-	@Test
+	@Test(expected = IllegalStateException.class)
 	public void testStartWithoutMemSize() {
 		cacheRemote = CachedFsClient.create(main, cache, CachedFsClient.lruCompare());
-		try {
-			cacheRemote.start();
-		} catch (IllegalStateException e) {
-			assertEquals(IllegalStateException.class, e.getClass());
-			server.close();
-		}
+		await(cacheRemote.start());
 	}
 
 	@Test
@@ -364,8 +314,8 @@ public final class TestCachedFsClient {
 		initializeFiles(20, "newTestFile_");
 		downloadFiles(20, 1, "newTestFile_");
 
-		cache.list("**")
-				.whenResult(list -> list.forEach(val -> assertTrue(val.getFilename().startsWith("new"))));
+		List<FileMetadata> list = await(cache.list("**"));
+		list.forEach(val -> assertTrue(val.getFilename().startsWith("new")));
 	}
 
 	@Test
@@ -381,8 +331,8 @@ public final class TestCachedFsClient {
 		// 10 KB
 		initializeCacheDownloadFiles(2, "newTestFile_");
 
-		cache.list("**")
-				.whenResult(list -> assertEquals(1, list.stream().filter(fileMetadata -> fileMetadata.getFilename().startsWith("new")).count()));
+		List<FileMetadata> list = await(cache.list("**"));
+		assertEquals(1, list.stream().filter(fileMetadata -> fileMetadata.getFilename().startsWith("new")).count());
 	}
 
 	@Test
@@ -392,26 +342,20 @@ public final class TestCachedFsClient {
 		new Random().nextBytes(fileData);
 		Files.write(cacheStorage.resolve("bigFile.txt"), fileData);
 
-		cacheRemote.start().thenCompose($ -> cacheRemote.download("bigFile.txt"))
-				.thenCompose(RECYCLING_FUNCTION)
-				.thenCompose($ -> cacheRemote.download("bigFile.txt"))
-				.thenCompose(RECYCLING_FUNCTION)
-				.whenComplete(($, e) -> server.close());
-
-		Eventloop.getCurrentEventloop().run();
-
-		server.listen();
+		await(cacheRemote.start().thenCompose($ -> cacheRemote.download("bigFile.txt"))
+				.thenCompose(RECYCLING_FUNCTION));
+		await(cacheRemote.download("bigFile.txt")
+				.thenCompose(RECYCLING_FUNCTION));
 
 		// 1 file
 		initializeCacheDownloadFiles(1, "testFile_");
 
-		cache.list("**")
-				.whenResult(list ->
-						list.forEach(value -> {
-							System.out.println(value);
-							assertTrue(value.getFilename().startsWith("test"));
-						}))
-				.whenComplete(($, e) -> server.close());
+		List<FileMetadata> list = await(cache.list("**"));
+
+		list.forEach(value -> {
+			System.out.println(value);
+			assertTrue(value.getFilename().startsWith("test"));
+		});
 	}
 
 	@Test
@@ -423,14 +367,11 @@ public final class TestCachedFsClient {
 		new Random().nextBytes(fileData);
 		Files.write(serverStorage.resolve("tiny.txt"), fileData);
 
-		server.listen();
+		await(cacheRemote.download("tiny.txt")
+				.thenCompose(RECYCLING_FUNCTION));
 
-		cacheRemote.download("tiny.txt")
-				.whenComplete(assertComplete($ -> System.out.println("DOWNLOAD COMPLETED")))
-				.thenCompose(RECYCLING_FUNCTION)
-				.whenComplete(($, e) -> server.close())
-				.thenCompose($ -> cacheRemote.getTotalCacheSize())
-				.whenComplete(assertComplete(size -> assertEquals(35 * 1024 + 1, size.toLong())));
+		MemSize cacheSize = await(cacheRemote.getTotalCacheSize());
+		assertEquals(35 * 1024 + 1, cacheSize.toLong());
 	}
 
 	@Test
@@ -440,17 +381,15 @@ public final class TestCachedFsClient {
 		// 10 KB
 		initializeCacheDownloadFiles(2, "toDelete");
 
-		server.listen();
+		List<FileMetadata> listBefore = await(cache.list("**"));
+		assertEquals(4, listBefore.size());
 
-		cache.list("**")
-				.whenComplete(assertComplete(list -> assertEquals(4, list.size())))
-				.thenCompose($ -> cacheRemote.deleteBulk("toDelete*"))
-				.thenCompose($ -> cache.list("**"))
-				.whenComplete(assertComplete(list -> {
-					assertEquals(2, list.size());
-					list.forEach(file -> assertTrue(file.getFilename().startsWith("test")));
-				}))
-				.whenComplete(($, e) -> server.close());
+		await(cacheRemote.deleteBulk("toDelete*"));
+
+		List<FileMetadata> listAfter = await(cache.list("**"));
+
+		assertEquals(2, listAfter.size());
+		listAfter.forEach(file -> assertTrue(file.getFilename().startsWith("test")));
 	}
 
 	private void initializeCacheFolder() throws IOException {
@@ -485,14 +424,11 @@ public final class TestCachedFsClient {
 		return sizeAccum;
 	}
 
-	private void downloadFiles(int numberOfFiles, int nTimes, String prefix) throws IOException {
+	private void downloadFiles(int numberOfFiles, int nTimes, String prefix) {
 		for (int j = 0; j < nTimes; j++) {
 			for (int i = 0; i < numberOfFiles; i++) {
-				server.listen();
-				cacheRemote.download(prefix + i)
-						.thenCompose(RECYCLING_FUNCTION)
-						.whenComplete(($, e) -> server.close());
-				Eventloop.getCurrentEventloop().run();
+				await(cacheRemote.download(prefix + i)
+						.thenCompose(RECYCLING_FUNCTION));
 			}
 		}
 	}

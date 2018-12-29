@@ -29,8 +29,8 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.csp.ChannelSupplier.ofIterable;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(DatakernelRunner.class)
@@ -106,7 +106,8 @@ public final class BufsConsumerIntegrationTest {
 	}
 
 	private void doTest(AsyncProcess process1, AsyncProcess process2) {
-		Promises.all(process1.getProcessResult(), process2.getProcessResult())
-				.whenComplete(assertComplete($ -> assertTrue(consumer.executed)));
+		await(Promises.all(process1.getProcessResult(), process2.getProcessResult()));
+		assertTrue(consumer.executed);
+
 	}
 }

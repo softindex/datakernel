@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncUdpSocket.EventHandler;
 import io.datakernel.net.DatagramSocketSettings;
@@ -27,6 +28,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static org.junit.Assert.assertArrayEquals;
 
@@ -38,6 +40,8 @@ public final class UdpSocketHandlerTest {
 
 	@Test
 	public void testEchoUdpServer() throws IOException {
+		SettablePromise<byte[]> receivePromise = new SettablePromise<>();
+
 		DatagramChannel serverDatagramChannel = createDatagramChannel(DatagramSocketSettings.create(), SERVER_ADDRESS, null);
 		AsyncUdpSocketImpl serverSocket = AsyncUdpSocketImpl.create(Eventloop.getCurrentEventloop(), serverDatagramChannel);
 		serverSocket.setEventHandler(new EventHandler() {
@@ -77,7 +81,7 @@ public final class UdpSocketHandlerTest {
 				byte[] message = new byte[packet.getBuf().readRemaining()];
 
 				System.arraycopy(bytesReceived, 0, message, 0, packet.getBuf().readRemaining());
-				assertArrayEquals(bytesToSend, message);
+				receivePromise.set(message);
 
 				packet.recycle();
 				clientSocket.close();
@@ -94,5 +98,8 @@ public final class UdpSocketHandlerTest {
 			}
 		});
 		clientSocket.register();
+
+		assertArrayEquals(bytesToSend, await(receivePromise));
 	}
+
 }

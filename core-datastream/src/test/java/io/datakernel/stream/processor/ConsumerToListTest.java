@@ -16,24 +16,24 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
+@RunWith(DatakernelRunner.class)
 public class ConsumerToListTest {
 
 	@Test
 	public void emptyListTest() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<String> consumer = StreamConsumerToList.create();
 
 		List<String> testList2 = new ArrayList<>();
@@ -43,8 +43,7 @@ public class ConsumerToListTest {
 		testList2.add("d");
 
 		StreamSupplier<String> supplier = StreamSupplier.ofIterable(testList2);
-		supplier.streamTo(consumer);
-		eventloop.run();
+		await(supplier.streamTo(consumer));
 
 		assertEquals(testList2, consumer.getList());
 		assertEndOfStream(supplier);
@@ -52,7 +51,6 @@ public class ConsumerToListTest {
 
 	@Test
 	public void fullListTest() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> testList1 = new ArrayList<>();
 		testList1.add(1);
 		testList1.add(2);
@@ -65,8 +63,7 @@ public class ConsumerToListTest {
 		testList2.add(6);
 
 		StreamSupplier<Integer> supplier = StreamSupplier.ofIterable(testList2);
-		supplier.streamTo(consumer);
-		eventloop.run();
+		await(supplier.streamTo(consumer));
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
 		assertEndOfStream(supplier);

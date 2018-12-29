@@ -36,15 +36,15 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.async.Promise.ofCallback;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.CRLF;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.Recyclable.deepRecycle;
 import static java.lang.Math.min;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
 public final class HttpStreamTest {
@@ -72,13 +72,15 @@ public final class HttpStreamTest {
 				.whenComplete(assertComplete(buf -> assertEquals(requestBody, buf.asString(UTF_8))))
 				.thenCompose(s -> Promise.of(HttpResponse.ok200())));
 
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+		Integer code = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
 						.withBodyStream(ChannelSupplier.ofIterable(expectedList)
 								.mapAsync(item -> ofCallback(cb ->
 										getCurrentEventloop().delay(1, () -> cb.set(item))))))
 				.async()
-				.whenComplete(assertComplete(response -> assertEquals(200, response.getCode())));
+				.thenApply(HttpResponse::getCode));
+
+		assertEquals((Integer) 200, code);
 	}
 
 	@Test
@@ -89,12 +91,13 @@ public final class HttpStreamTest {
 								.mapAsync(item -> ofCallback(cb ->
 										getCurrentEventloop().delay(1, () -> cb.set(item)))))));
 
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+		ByteBuf body = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT))
 				.async()
 				.whenComplete(assertComplete(response -> assertEquals(200, response.getCode())))
-				.thenCompose(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(buf -> assertEquals(requestBody, buf.asString(UTF_8))));
+				.thenCompose(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector())));
+
+		assertEquals(requestBody, body.asString(UTF_8));
 	}
 
 	@Test
@@ -106,14 +109,15 @@ public final class HttpStreamTest {
 				.thenApply(ChannelSupplier::ofIterable)
 				.thenCompose(bodyStream -> Promise.of(HttpResponse.ok200().withBodyStream(bodyStream.async()))));
 
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+		ByteBuf body = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
 						.withBodyStream(ChannelSupplier.ofIterable(expectedList)
 								.mapAsync(item -> ofCallback(cb ->
 										getCurrentEventloop().delay(1, () -> cb.set(item))))))
 				.whenComplete(assertComplete(response -> assertEquals(200, response.getCode())))
-				.thenCompose(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(buf -> assertEquals(requestBody, buf.asString(UTF_8))));
+				.thenCompose(response -> response.getBodyStream().async().toCollector(ByteBufQueue.collector())));
+
+		assertEquals(requestBody, body.asString(UTF_8));
 	}
 
 	@Test
@@ -124,11 +128,12 @@ public final class HttpStreamTest {
 
 		ChannelSupplier<ByteBuf> supplier = ChannelSupplier.ofIterable(expectedList);
 
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+		ByteBuf body = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
 						.withBodyStream(supplier))
-				.thenCompose(response -> response.getBodyStream().toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertComplete(buf -> assertEquals(exceptionMessage, buf.asString(UTF_8))));
+				.thenCompose(response -> response.getBodyStream().toCollector(ByteBufQueue.collector())));
+
+		assertEquals(exceptionMessage, body.asString(UTF_8));
 	}
 
 	@Test
@@ -149,11 +154,12 @@ public final class HttpStreamTest {
 						"Connection: keep-alive" + crlf + crlf +
 						"Test";
 
-		AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
 				.thenCompose(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.thenCompose($ -> socket.read())
-						.whenComplete(assertComplete(responseBuf -> assertEquals(responseMessage, responseBuf.asString(UTF_8))))
-						.whenComplete(($, e) -> socket.close()));
+						.whenComplete(($, e) -> socket.close())));
+
+		assertEquals(responseMessage, body.asString(UTF_8));
 
 		deepRecycle(expectedList); // not used here
 	}
@@ -170,16 +176,15 @@ public final class HttpStreamTest {
 						"Transfer-Encoding: chunked" + crlf + crlf +
 						"ffffffffff";
 
-		AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
 				.thenCompose(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.thenCompose($ -> socket.read())
-						.whenComplete(assertComplete(responseBuf -> {
-							String response = responseBuf.asString(UTF_8);
-							System.out.println(response);
-							assertTrue(response.contains("400"));
-							assertTrue(response.contains("Malformed chunk length"));
-						}))
-						.whenComplete(($, e) -> socket.close()));
+						.whenComplete(($, e) -> socket.close())));
+
+		String response = body.asString(UTF_8);
+		System.out.println(response);
+		assertTrue(response.contains("400"));
+		assertTrue(response.contains("Malformed chunk length"));
 
 		deepRecycle(expectedList); // not used here
 	}
@@ -197,37 +202,36 @@ public final class HttpStreamTest {
 						"Transfer-Encoding: chunked" + crlf + crlf +
 						"3";
 
-		AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
 				.thenCompose(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.thenCompose($ -> socket.write(null))
 						.thenCompose($ -> socket.read())
-						.whenComplete(assertComplete(responseBuf -> {
-							String response = responseBuf.asString(UTF_8);
-							assertTrue(response.contains("HTTP/1.1 400 Bad Request"));
-							assertTrue(response.contains("Incomplete HTTP message"));
-						}))
+						.whenComplete(($, e) -> socket.close())));
 
-						.whenComplete(($, e) -> socket.close()));
+		String response = body.asString(UTF_8);
+		assertTrue(response.contains("HTTP/1.1 400 Bad Request"));
+		assertTrue(response.contains("Incomplete HTTP message"));
 
 		deepRecycle(expectedList); // not used here
 	}
 
 	@Test
 	public void testSendingErrors() throws IOException {
-		String exceptionMessage = "Test Exception";
+		Exception exception = new Exception("Test Exception");
 
 		startTestServer(request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)));
 
 		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(
 				ChannelSupplier.ofIterable(expectedList),
-				ChannelSupplier.ofException(new Exception(exceptionMessage))
+				ChannelSupplier.ofException(exception)
 		);
 
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+		Throwable e = awaitException(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
 						.withBodyStream(supplier))
-				.thenCompose(response -> response.getBodyStream().toCollector(ByteBufQueue.collector()))
-				.whenComplete(assertFailure(exceptionMessage));
+				.thenCompose(response -> response.getBodyStream().toCollector(ByteBufQueue.collector())));
+
+		assertSame(e, exception);
 	}
 
 	private void startTestServer(AsyncServlet servlet) throws IOException {

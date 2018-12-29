@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package io.global.common;
+package io.datakernel.async;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.concurrent.ExecutionException;
@@ -31,16 +30,29 @@ public class TestUtils {
 		}
 	}
 
-	public static <T> Throwable awaitException(Promise<T> promise) {
+	@SafeVarargs
+	public static <T> Void await(Promise<T>... promises) {
+		return await(Promises.all(promises));
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T, E extends Throwable> E awaitException(Promise<T> promise) {
 		try {
 			compute(promise);
 		} catch (ExecutionException e) {
-			return e.getCause();
+			return (E) e.getCause();
+		} catch (Throwable e) {
+			return (E) e;
 		}
 		throw new AssertionError("Promise did not fail");
 	}
 
-	private static <T> T compute(Promise<T> promise) throws ExecutionException {
+	@SafeVarargs
+	public static <T, E extends Throwable> E awaitException(Promise<T>... promises) {
+		return awaitException(Promises.all(promises));
+	}
+
+	public static <T> T compute(Promise<T> promise) throws ExecutionException {
 		Future<T> future = promise.toCompletableFuture();
 		Eventloop.getCurrentEventloop().run();
 		try {

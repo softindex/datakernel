@@ -60,7 +60,7 @@ public final class TestRepartitionController {
 	private EventloopTaskScheduler scheduler;
 
 	@Before
-	public void setup() throws IOException, InterruptedException {
+	public void setup() throws IOException {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 		ExecutorService executor = Executors.newSingleThreadExecutor();

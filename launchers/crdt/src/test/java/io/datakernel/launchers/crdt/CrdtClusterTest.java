@@ -38,7 +38,6 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import io.datakernel.stream.processor.Manual;
 import io.datakernel.test.TestUtils;
 import org.junit.Test;
@@ -88,11 +87,9 @@ public final class CrdtClusterTest {
 	}
 
 	static class TestNodeLauncher extends CrdtNodeLauncher<String, Integer> {
-		private final int jmxHttpPort;
 		private final Config config;
 
-		public TestNodeLauncher(int jmxHttpPort, Config config) {
-			this.jmxHttpPort = jmxHttpPort;
+		public TestNodeLauncher(Config config) {
 			this.config = config;
 		}
 
@@ -116,9 +113,8 @@ public final class CrdtClusterTest {
 	}
 
 	@Test
-	@SkipEventloopRun
 	public void startFirst() throws Exception {
-		new TestNodeLauncher(6565, Config.create()
+		new TestNodeLauncher(Config.create()
 				.with("crdt.http.listenAddresses", "localhost:7000")
 				.with("crdt.server.listenAddresses", "localhost:8000")
 				.with("crdt.cluster.server.listenAddresses", "localhost:9000")
@@ -131,9 +127,8 @@ public final class CrdtClusterTest {
 	}
 
 	@Test
-	@SkipEventloopRun
 	public void startSecond() throws Exception {
-		new TestNodeLauncher(6566, Config.create()
+		new TestNodeLauncher(Config.create()
 				.with("crdt.http.listenAddresses", "localhost:7001")
 				.with("crdt.server.listenAddresses", "localhost:8001")
 				.with("crdt.cluster.server.listenAddresses", "localhost:9001")
@@ -146,7 +141,6 @@ public final class CrdtClusterTest {
 	}
 
 	@Test
-	@SkipEventloopRun
 	public void startFileServer() throws Exception {
 		new CrdtFileServerLauncher<String, Integer>() {
 

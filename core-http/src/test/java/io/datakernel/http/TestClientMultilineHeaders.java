@@ -24,8 +24,8 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.HttpHeaders.ALLOW;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
@@ -44,9 +44,10 @@ public final class TestClientMultilineHeaders {
 				.withAcceptOnce()
 				.listen();
 
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
-				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(httpResponse -> httpResponse.getBody()
-						.whenComplete(assertComplete(body -> assertEquals("GET,   HEAD", httpResponse.getHeaderOrNull(ALLOW)))));
+		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
+		String allowHeader = await(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.thenApply(response -> response.getHeaderOrNull(ALLOW)));
+
+		assertEquals("GET,   HEAD", allowHeader);
 	}
 }

@@ -38,8 +38,8 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
@@ -65,15 +65,16 @@ public final class RpcBinaryProtocolTest {
 
 		int countRequests = 10;
 
-		client.start()
+		List<String> list = await(client.start()
 				.thenCompose($ ->
 						Promises.toList(IntStream.range(0, countRequests)
 								.mapToObj(i -> client.<String, String>sendRequest(testMessage, 1000))))
 				.whenComplete(($, e) -> {
 					client.stop();
 					server.close();
-				})
-				.whenComplete(assertComplete(list -> assertTrue(list.stream().allMatch(response -> response.equals("Hello, " + testMessage + "!")))));
+				}));
+
+		assertTrue(list.stream().allMatch(response -> response.equals("Hello, " + testMessage + "!")));
 	}
 
 	@Test
@@ -87,21 +88,20 @@ public final class RpcBinaryProtocolTest {
 		String testMessage = "Test";
 		List<RpcMessage> sourceList = IntStream.range(0, countRequests).mapToObj(i -> RpcMessage.of(i, testMessage)).collect(toList());
 
-		StreamSupplier.ofIterable(sourceList)
+		StreamSupplier<RpcMessage> supplier = StreamSupplier.ofIterable(sourceList)
 				.transformWith(ChannelSerializer.create(binarySerializer)
 						.withInitialBufferSize(MemSize.of(1))
 						.withMaxMessageSize(MemSize.of(64)))
 				.transformWith(ChannelLZ4Compressor.createFastCompressor())
 				.transformWith(ChannelLZ4Decompressor.create())
-				.transformWith(ChannelDeserializer.create(binarySerializer))
-				.toList()
-				.whenComplete(assertComplete(list -> {
-					assertEquals(countRequests, list.size());
-					for (int i = 0; i < countRequests; i++) {
-						assertEquals(i, list.get(i).getCookie());
-						String data = (String) list.get(i).getData();
-						assertEquals(testMessage, data);
-					}
-				}));
+				.transformWith(ChannelDeserializer.create(binarySerializer));
+
+		List<RpcMessage> list = await(supplier.toList());
+		assertEquals(countRequests, list.size());
+		for (int i = 0; i < countRequests; i++) {
+			assertEquals(i, list.get(i).getCookie());
+			String data = (String) list.get(i).getData();
+			assertEquals(testMessage, data);
+		}
 	}
 }

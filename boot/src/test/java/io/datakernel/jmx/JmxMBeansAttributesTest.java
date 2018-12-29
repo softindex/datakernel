@@ -35,6 +35,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
 public class JmxMBeansAttributesTest {
@@ -43,7 +44,7 @@ public class JmxMBeansAttributesTest {
 	public static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	@Test
-	public void retreivesProperMBeanInfo() throws Exception {
+	public void retreivesProperMBeanInfo() {
 		MBeanWithSimpleAttrsAndPojo mbeanOneSample = new MBeanWithSimpleAttrsAndPojo("data", new SamplePojo(5, 100));
 		DynamicMBean mbean = createDynamicMBeanFor(mbeanOneSample);
 
@@ -94,7 +95,7 @@ public class JmxMBeansAttributesTest {
 
 		DynamicMBean mbean = createDynamicMBeanFor(mbean_1, mbean_2);
 
-		assertEquals(null, mbean.getAttribute("value"));
+		assertNull(mbean.getAttribute("value"));
 	}
 
 	@Test
@@ -119,11 +120,11 @@ public class JmxMBeansAttributesTest {
 	public void concatenatesListAttributesFromDifferentMBeans() throws Exception {
 		MBeanWithListAttr mBeanWithListAttr_1 = new MBeanWithListAttr(asList("a", "b"));
 		MBeanWithListAttr mBeanWithListAttr_2 = new MBeanWithListAttr(new ArrayList<>());
-		MBeanWithListAttr mBeanWithListAttr_3 = new MBeanWithListAttr(asList("w"));
+		MBeanWithListAttr mBeanWithListAttr_3 = new MBeanWithListAttr(singletonList("w"));
 
 		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithListAttr_1, mBeanWithListAttr_2, mBeanWithListAttr_3);
 
-		assertArrayEquals(new String[]{"a", "b", "w"}, (String[]) mbean.getAttribute("list"));
+		assertArrayEquals(new String[]{"a", "b", "w"}, (Object[]) mbean.getAttribute("list"));
 	}
 
 	@Test
@@ -201,7 +202,7 @@ public class JmxMBeansAttributesTest {
 
 	// test setters
 	@Test
-	public void returnsInfoAboutWritableAttributesInMBeanInfo() throws Exception {
+	public void returnsInfoAboutWritableAttributesInMBeanInfo() {
 		MBeanWithSettableAttributes settableMBean = new MBeanWithSettableAttributes(10, 20, "data");
 		DynamicMBean mbean = createDynamicMBeanFor(settableMBean);
 
@@ -289,7 +290,7 @@ public class JmxMBeansAttributesTest {
 	}
 
 	// region helper methods
-	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
+	public static DynamicMBean createDynamicMBeanFor(Object... objects) {
 		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), false);
 	}
 

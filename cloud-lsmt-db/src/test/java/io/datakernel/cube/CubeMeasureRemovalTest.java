@@ -26,17 +26,22 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.multilog.Multilog;
 import io.datakernel.multilog.MultilogImpl;
-import io.datakernel.ot.*;
+import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTRepositoryMySql;
+import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -44,7 +49,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -52,13 +57,14 @@ import java.util.stream.Stream;
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.sum;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.cube.TestUtils.initializeRepository;
+import static io.datakernel.cube.TestUtils.runProcessLogs;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.*;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
@@ -67,6 +73,7 @@ import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
+@RunWith(DatakernelRunner.class)
 public class CubeMeasureRemovalTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -79,20 +86,21 @@ public class CubeMeasureRemovalTest {
 	private DefiningClassLoader classLoader;
 	private DataSource dataSource;
 	private AggregationChunkStorage<Long> aggregationChunkStorage;
-	private BinarySerializer<LogItem> serializer;
 	private Multilog<LogItem> multilog;
+	private Path aggregationsDir;
+	private Path logsDir;
 
 	@Before
 	public void before() throws IOException {
-		Path aggregationsDir = temporaryFolder.newFolder().toPath();
-		Path logsDir = temporaryFolder.newFolder().toPath();
+		aggregationsDir = temporaryFolder.newFolder().toPath();
+		logsDir = temporaryFolder.newFolder().toPath();
 
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		eventloop = Eventloop.getCurrentEventloop();
 		executor = Executors.newCachedThreadPool();
 		classLoader = DefiningClassLoader.create();
 		dataSource = dataSource("test.properties");
 		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
-		serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
+		BinarySerializer<LogItem> serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
 		multilog = MultilogImpl.create(eventloop,
 				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
 				serializer,
@@ -101,13 +109,6 @@ public class CubeMeasureRemovalTest {
 
 	@Test
 	public void test() throws Exception {
-		Path aggregationsDir = temporaryFolder.newFolder().toPath();
-		Path logsDir = temporaryFolder.newFolder().toPath();
-
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		ExecutorService executor = Executors.newCachedThreadPool();
-		DefiningClassLoader classLoader = DefiningClassLoader.create();
-
 		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", ofLocalDate())
@@ -133,10 +134,7 @@ public class CubeMeasureRemovalTest {
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 		OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, LogDiffCodec.create(CubeDiffCodec.create(cube)));
-		repository.initialize();
-		repository.truncateTables();
-		repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
-		eventloop.run();
+		initializeRepository(repository);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
 				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
@@ -151,30 +149,15 @@ public class CubeMeasureRemovalTest {
 				cube.logStreamConsumer(LogItem.class), "testlog", asList("partitionA"), cubeDiffLogOTState);
 
 		// checkout first (root) revision
-
-		CompletableFuture<?> future;
-
-		future = logCubeStateManager.checkout().toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(logCubeStateManager.checkout());
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems1 = LogItem.getListOfRandomLogItems(100);
-		StreamSupplier.ofIterable(listOfRandomLogItems1).streamTo(
-				multilog.writer("partitionA"));
-		eventloop.run();
+		await(StreamSupplier.ofIterable(listOfRandomLogItems1).streamTo(
+				multilog.writer("partitionA")));
 
 		OTStateManager<Long, LogDiff<CubeDiff>> finalLogCubeStateManager1 = logCubeStateManager;
-		future = logOTProcessor.processLog()
-				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
-						.thenApply($ -> logDiff))
-				.whenResult(logCubeStateManager::add)
-				.thenApply($ -> finalLogCubeStateManager1)
-				.thenCompose(OTStateManager::commitAndPush)
-				.toCompletableFuture();
-		eventloop.run();
-		future.get();
+		runProcessLogs(aggregationChunkStorage, finalLogCubeStateManager1, logOTProcessor);
 
 		List<AggregationChunk> chunks = new ArrayList<>(cube.getAggregation("date").getState().getChunks().values());
 		assertEquals(1, chunks.size());
@@ -208,29 +191,17 @@ public class CubeMeasureRemovalTest {
 		logOTProcessor = LogOTProcessor.create(eventloop, multilog, cube.logStreamConsumer(LogItem.class),
 				"testlog", asList("partitionA"), cubeDiffLogOTState1);
 
-		future = logCubeStateManager.checkout().toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(logCubeStateManager.checkout());
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
-		StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
-				multilog.writer("partitionA"));
-		eventloop.run();
+		await(StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
+				multilog.writer("partitionA")));
 
 		OTStateManager<Long, LogDiff<CubeDiff>> finalLogCubeStateManager = logCubeStateManager;
 		LogOTProcessor<LogItem, CubeDiff> finalLogOTProcessor = logOTProcessor;
-		future = finalLogCubeStateManager.pull()
-				.thenCompose($ -> finalLogOTProcessor.processLog())
-				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
-						.thenApply($ -> logDiff))
-				.whenResult(logCubeStateManager::add)
-				.thenApply($ -> finalLogCubeStateManager)
-				.thenCompose(OTStateManager::commitAndPush)
-				.toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(finalLogCubeStateManager.pull());
+		runProcessLogs(aggregationChunkStorage, finalLogCubeStateManager, finalLogOTProcessor);
 
 		chunks = new ArrayList<>(cube.getAggregation("date").getState().getChunks().values());
 		assertEquals(2, chunks.size());
@@ -247,9 +218,8 @@ public class CubeMeasureRemovalTest {
 				.collect(groupingBy(o -> o.date, reducing(0L, o -> o.clicks, (v, v2) -> v + v2)));
 
 		StreamConsumerToList<LogItem> queryResultConsumer2 = StreamConsumerToList.create();
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(
-				queryResultConsumer2);
-		eventloop.run();
+		await(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(
+				queryResultConsumer2));
 
 		// Check query results
 		List<LogItem> queryResult2 = queryResultConsumer2.getList();
@@ -259,18 +229,12 @@ public class CubeMeasureRemovalTest {
 		assertTrue(map.isEmpty());
 
 		// Consolidate
-		CompletableFuture<CubeDiff> future1 = cube.consolidate(Aggregation::consolidateHotSegment)
-				.thenCompose(cubeDiff -> aggregationChunkStorage.finish(cubeDiff.addedChunks().map(id -> (long) id).collect(toSet()))
-						.thenApply($ -> cubeDiff))
-				.toCompletableFuture();
-		eventloop.run();
-		CubeDiff consolidatingCubeDiff = future1.get();
+		CubeDiff consolidatingCubeDiff = await(cube.consolidate(Aggregation::consolidateHotSegment));
+		await(aggregationChunkStorage.finish(consolidatingCubeDiff.addedChunks().map(id -> (long) id).collect(toSet())));
 		assertFalse(consolidatingCubeDiff.isEmpty());
 
 		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
-		future = logCubeStateManager.commitAndPush().toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(logCubeStateManager.commitAndPush());
 
 		chunks = new ArrayList<>(cube.getAggregation("date").getState().getChunks().values());
 		assertEquals(1, chunks.size());
@@ -282,9 +246,8 @@ public class CubeMeasureRemovalTest {
 
 		// Query
 		StreamConsumerToList<LogItem> queryResultConsumer3 = StreamConsumerToList.create();
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, DefiningClassLoader.create(classLoader))
-				.streamTo(queryResultConsumer3);
-		eventloop.run();
+		await(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, DefiningClassLoader.create(classLoader))
+				.streamTo(queryResultConsumer3));
 		List<LogItem> queryResult3 = queryResultConsumer3.getList();
 
 		// Check that query results before and after consolidation match
@@ -310,10 +273,7 @@ public class CubeMeasureRemovalTest {
 			LogDiffCodec<CubeDiff> diffCodec1 = LogDiffCodec.create(CubeDiffCodec.create(cube1));
 			OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffCodec1);
-			repository.initialize();
-			repository.truncateTables();
-			repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
-			eventloop.run();
+			initializeRepository(repository);
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
 			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
@@ -323,21 +283,12 @@ public class CubeMeasureRemovalTest {
 			LogOTProcessor<LogItem, CubeDiff> logOTProcessor1 = LogOTProcessor.create(eventloop,
 					multilog, logStreamConsumer1, "testlog", asList("partitionA"), cubeDiffLogOTState);
 
-			logCubeStateManager1.checkout();
-			eventloop.run();
+			await(logCubeStateManager1.checkout());
 
-			StreamSupplier.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
-					multilog.writer("partitionA"));
-			eventloop.run();
+			await(StreamSupplier.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
+					multilog.writer("partitionA")));
 
-			logOTProcessor1.processLog()
-					.thenCompose(logDiff -> aggregationChunkStorage
-							.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
-							.thenApply($ -> logDiff))
-					.whenResult(logCubeStateManager1::add)
-					.thenApply($ -> logCubeStateManager1)
-					.thenCompose(OTStateManager::commitAndPush);
-			eventloop.run();
+			runProcessLogs(aggregationChunkStorage, logCubeStateManager1, logOTProcessor1);
 		}
 
 		// Initialize cube with new structure (remove "clicks" from cube configuration)
@@ -356,16 +307,10 @@ public class CubeMeasureRemovalTest {
 		exception.expectCause(instanceOf(ParseException.class));
 		exception.expectCause(hasProperty("message", equalTo("Unknown fields: [clicks, conversions]")));
 
-		CompletableFuture<OTCommit<Long, LogDiff<CubeDiff>>> future = otSourceSql2
-				.getHeads()
-				.thenCompose(newHeads -> {
-					assertEquals(1, newHeads.size());
-					return otSourceSql2.loadCommit(first(newHeads));
-				})
-				.toCompletableFuture();
+		Set<Long> newHeads = await(otSourceSql2.getHeads());
+		assertEquals(1, newHeads.size());
 
-		eventloop.run();
-		future.get();
+		await(otSourceSql2.loadCommit(first(newHeads)));
 	}
 
 	@Test
@@ -388,10 +333,7 @@ public class CubeMeasureRemovalTest {
 			LogDiffCodec<CubeDiff> diffCodec1 = LogDiffCodec.create(CubeDiffCodec.create(cube1));
 			OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffCodec1);
-			repository.initialize();
-			repository.truncateTables();
-			repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
-			eventloop.run();
+			initializeRepository(repository);
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
 			OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
@@ -402,21 +344,12 @@ public class CubeMeasureRemovalTest {
 			LogOTProcessor<LogItem, CubeDiff> logOTProcessor1 = LogOTProcessor.create(eventloop,
 					multilog, logStreamConsumer1, "testlog", asList("partitionA"), cubeDiffLogOTState);
 
-			logCubeStateManager1.checkout();
-			eventloop.run();
+			await(logCubeStateManager1.checkout());
 
-			StreamSupplier.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
-					multilog.writer("partitionA"));
-			eventloop.run();
+			await(StreamSupplier.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
+					multilog.writer("partitionA")));
 
-			logOTProcessor1.processLog()
-					.thenCompose(logDiff -> aggregationChunkStorage
-							.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
-							.thenApply($ -> logDiff))
-					.whenResult(logCubeStateManager1::add)
-					.thenApply($ -> logCubeStateManager1)
-					.thenCompose(OTStateManager::commitAndPush);
-			eventloop.run();
+			runProcessLogs(aggregationChunkStorage, logCubeStateManager1, logOTProcessor1);
 		}
 
 		// Initialize cube with new structure (remove "impressions" aggregation from cube configuration)
@@ -436,15 +369,8 @@ public class CubeMeasureRemovalTest {
 		exception.expectCause(instanceOf(ParseException.class));
 		exception.expectCause(hasProperty("message", equalTo("Unknown aggregation: impressionsAggregation")));
 
-		CompletableFuture<OTCommit<Long, LogDiff<CubeDiff>>> future = otSourceSql2
-				.getHeads()
-				.thenCompose(newHeads -> {
-					assertEquals(1, newHeads.size());
-					return otSourceSql2.loadCommit(first(newHeads));
-				})
-				.toCompletableFuture();
-
-		eventloop.run();
-		future.get();
+		Set<Long> newHeads = await(otSourceSql2.getHeads());
+		assertEquals(1, newHeads.size());
+		await(otSourceSql2.loadCommit(first(newHeads)));
 	}
 }

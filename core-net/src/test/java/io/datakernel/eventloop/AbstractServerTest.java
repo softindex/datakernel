@@ -16,10 +16,10 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.util.Recyclable;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -28,13 +28,16 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 
 import static io.datakernel.async.Promises.repeat;
-import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.async.TestUtils.await;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(DatakernelRunner.class)
 public final class AbstractServerTest {
 
 	@Test
 	public void testTimeouts() throws IOException {
+		String message = "Hello!";
 		InetSocketAddress address = new InetSocketAddress("localhost", 5588);
 		SocketSettings settings = SocketSettings.create().withImplReadTimeout(Duration.ofMillis(100000L)).withImplWriteTimeout(Duration.ofMillis(100000L));
 
@@ -56,12 +59,12 @@ public final class AbstractServerTest {
 				.withAcceptOnce()
 				.listen();
 
-		AsyncTcpSocketImpl.connect(address)
+		ByteBuf response = await(AsyncTcpSocketImpl.connect(address)
 				.thenCompose(socket ->
-						socket.write(ByteBufStrings.wrapAscii("Hello!"))
+						socket.write(ByteBufStrings.wrapAscii(message))
 								.thenCompose($ -> socket.read())
-								.whenResult(Recyclable::tryRecycle)
-								.whenComplete(($, e) -> socket.close()))
-				.whenComplete(assertComplete());
+								.whenComplete(($, e) -> socket.close())));
+
+		assertEquals(message, response.asString(UTF_8));
 	}
 }

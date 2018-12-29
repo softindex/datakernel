@@ -50,9 +50,9 @@ import java.time.Duration;
 import java.util.*;
 import java.util.stream.IntStream;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.common.TestUtils.await;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
@@ -60,8 +60,8 @@ import static java.util.Comparator.naturalOrder;
 import static java.util.stream.Collectors.*;
 import static org.junit.Assert.*;
 
+@SuppressWarnings("unused")
 @RunWith(DatakernelRunner.class)
-@DatakernelRunner.SkipEventloopRun
 public class GlobalOTNodeImplTest {
 	private static final InMemoryAnnouncementStorage ANNOUNCEMENT_STORAGE = new InMemoryAnnouncementStorage();
 	private static final InMemorySharedKeyStorage SHARED_KEY_STORAGE = new InMemorySharedKeyStorage();

@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 
 import static io.datakernel.async.Promises.loop;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -61,7 +62,7 @@ public final class PingPongSocketConnectionTest {
 				.withAcceptOnce()
 				.listen();
 
-		AsyncTcpSocketImpl.connect(ADDRESS)
+		await(AsyncTcpSocketImpl.connect(ADDRESS)
 				.thenCompose(socket -> {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					return loop(ITERATIONS, i -> i != 0,
@@ -69,9 +70,7 @@ public final class PingPongSocketConnectionTest {
 									.thenCompose($ -> bufsSupplier.parse(PARSER))
 									.whenResult(res -> assertEquals(RESPONSE_MSG, res))
 									.thenApply($ -> i - 1))
-							.whenComplete(($, e) -> socket.close())
-							.whenComplete(assertComplete());
-				})
-				.whenComplete(assertComplete());
+							.whenResult($ -> socket.close());
+				}));
 	}
 }

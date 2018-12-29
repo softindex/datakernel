@@ -43,12 +43,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
 import static java.util.Collections.singletonList;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 @RunWith(DatakernelRunner.class)
 public final class TestRemoteFsClusterClient {
@@ -97,24 +100,24 @@ public final class TestRemoteFsClusterClient {
 	}
 
 	@Test
-	public void testUpload() {
+	public void testUpload() throws IOException {
 		String content = "test content of the file";
 		String resultFile = "file.txt";
 
-		client.upload(resultFile)
+		await(client.upload(resultFile)
 				.thenCompose(ChannelSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8)))::streamTo)
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertComplete($ -> {
-					int uploaded = 0;
-					for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
-						Path path = serverStorages[i].resolve(resultFile);
-						if (Files.exists(path)) {
-							assertEquals(new String(readAllBytes(path), UTF_8), content);
-							uploaded++;
-						}
-					}
-					assertEquals(4, uploaded); // replication count
-				}));
+				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+
+		int uploaded = 0;
+		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
+			Path path = serverStorages[i].resolve(resultFile);
+			if (Files.exists(path)) {
+				assertEquals(new String(readAllBytes(path), UTF_8), content);
+				uploaded++;
+			}
+		}
+		assertEquals(4, uploaded); // replication count
+
 	}
 
 	@Test
@@ -125,15 +128,15 @@ public final class TestRemoteFsClusterClient {
 
 		Files.write(serverStorages[numOfServer].resolve(file), content.getBytes(UTF_8));
 
-		ChannelSupplier.ofPromise(client.download(file, 0))
+		await(ChannelSupplier.ofPromise(client.download(file, 0))
 				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(file)))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertComplete($ ->
-						assertEquals(new String(readAllBytes(clientStorage.resolve(file)), UTF_8), content)));
+				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+
+		assertEquals(new String(readAllBytes(clientStorage.resolve(file)), UTF_8), content);
 	}
 
 	@Test
-	public void testUploadSelector() {
+	public void testUploadSelector() throws IOException {
 		String content = "test content of the file";
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));
 
@@ -153,52 +156,54 @@ public final class TestRemoteFsClusterClient {
 
 		String[] files = {"file_1.txt", "file_2.txt", "file_3.txt", "other.txt"};
 
-		Promises.all(Arrays.stream(files).map(f -> ChannelSupplier.of(data.slice()).streamTo(ChannelConsumer.ofPromise(client.upload(f)))))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertComplete($ -> {
-					assertEquals(new String(readAllBytes(serverStorages[1].resolve("file_1.txt")), UTF_8), content);
-					assertEquals(new String(readAllBytes(serverStorages[2].resolve("file_2.txt")), UTF_8), content);
-					assertEquals(new String(readAllBytes(serverStorages[3].resolve("file_3.txt")), UTF_8), content);
-					assertEquals(new String(readAllBytes(serverStorages[0].resolve("other.txt")), UTF_8), content);
-				}));
+		await(Promises.all(Arrays.stream(files).map(f -> ChannelSupplier.of(data.slice()).streamTo(ChannelConsumer.ofPromise(client.upload(f)))))
+				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+
+		assertEquals(new String(readAllBytes(serverStorages[1].resolve("file_1.txt")), UTF_8), content);
+		assertEquals(new String(readAllBytes(serverStorages[2].resolve("file_2.txt")), UTF_8), content);
+		assertEquals(new String(readAllBytes(serverStorages[3].resolve("file_3.txt")), UTF_8), content);
+		assertEquals(new String(readAllBytes(serverStorages[0].resolve("other.txt")), UTF_8), content);
 	}
 
 	@Test
 	@Ignore("this test uses lots of local ports (and all of them are in TIME_WAIT state after it for a minute) so HTTP tests after it may fail indefinitely")
-	public void testUploadAlot() {
+	public void testUploadAlot() throws IOException {
 		String content = "test content of the file";
 		ByteBuf data = ByteBuf.wrapForReading(content.getBytes(UTF_8));
 
-		Promises.runSequence(IntStream.range(0, 1000)
+		await(Promises.runSequence(IntStream.range(0, 1000)
 				.mapToObj(i -> AsyncSupplier.cast(() ->
 						ChannelSupplier.of(data.slice())
 								.streamTo(ChannelConsumer.ofPromise(client.upload("file_uploaded_" + i + ".txt"))))))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertComplete($ -> {
-					for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
-						for (int j = 0; j < 1000; j++) {
-							assertEquals(new String(readAllBytes(serverStorages[i].resolve("file_uploaded_" + i + ".txt")), UTF_8), content);
-						}
-					}
-				}));
+				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+
+		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
+			for (int j = 0; j < 1000; j++) {
+				assertEquals(new String(readAllBytes(serverStorages[i].resolve("file_uploaded_" + i + ".txt")), UTF_8), content);
+			}
+		}
 	}
 
 	@Test
 	public void testNotEnoughUploads() {
 		client.withReplicationCount(client.getClients().size()); // max possible replication
 
-		ChannelSupplier.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(ChannelConsumer.ofPromise(client.upload("file_uploaded.txt")))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertFailure(RemoteFsException.class, "Didn't connect to enough partitions"));
+		Throwable exception = awaitException(ChannelSupplier.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(ChannelConsumer.ofPromise(client.upload("file_uploaded.txt")))
+				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+
+		assertThat(exception, instanceOf(RemoteFsException.class));
+		assertThat(exception.getMessage(), containsString("Didn't connect to enough partitions"));
 	}
 
 	@Test
 	public void downloadNonExisting() {
 		String fileName = "i_dont_exist.txt";
 
-		ChannelSupplier.ofPromise(client.download(fileName))
+		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(fileName))
 				.streamTo(ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle)))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertFailure(RemoteFsException.class, fileName));
+				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+
+		assertThat(exception, instanceOf(RemoteFsException.class));
+		assertThat(exception.getMessage(), containsString(fileName));
 	}
 }

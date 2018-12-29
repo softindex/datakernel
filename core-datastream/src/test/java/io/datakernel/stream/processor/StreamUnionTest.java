@@ -16,29 +16,30 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.stream.TestStreamConsumers.*;
 import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
+@RunWith(DatakernelRunner.class)
 public class StreamUnionTest {
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
 		StreamSupplier<Integer> source0 = StreamSupplier.of();
@@ -51,16 +52,18 @@ public class StreamUnionTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		source0.streamTo(streamUnion.newInput());
-		source1.streamTo(streamUnion.newInput());
-		source2.streamTo(streamUnion.newInput());
-		source3.streamTo(streamUnion.newInput());
-		source4.streamTo(streamUnion.newInput());
-		source5.streamTo(streamUnion.newInput());
-		source6.streamTo(streamUnion.newInput());
-		streamUnion.getOutput()
-				.streamTo(consumer.transformWith(randomlySuspending()));
-		eventloop.run();
+		await(
+				source0.streamTo(streamUnion.newInput()),
+				source1.streamTo(streamUnion.newInput()),
+				source2.streamTo(streamUnion.newInput()),
+				source3.streamTo(streamUnion.newInput()),
+				source4.streamTo(streamUnion.newInput()),
+				source5.streamTo(streamUnion.newInput()),
+				source6.streamTo(streamUnion.newInput()),
+
+				streamUnion.getOutput()
+						.streamTo(consumer.transformWith(randomlySuspending()))
+		);
 
 		List<Integer> result = consumer.getList();
 		Collections.sort(result);
@@ -80,8 +83,6 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
 		StreamSupplier<Integer> source0 = StreamSupplier.of(1, 2, 3);
@@ -90,23 +91,25 @@ public class StreamUnionTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
+		ExpectedException exception = new ExpectedException("Test Exception");
 
-		source0.streamTo(streamUnion.newInput());
-		source1.streamTo(streamUnion.newInput());
-		source2.streamTo(streamUnion.newInput());
+		Throwable e = awaitException(
+				source0.streamTo(streamUnion.newInput()),
+				source1.streamTo(streamUnion.newInput()),
+				source2.streamTo(streamUnion.newInput()),
 
-		streamUnion.getOutput()
-				.streamTo(consumer
-						.transformWith(decorator((context, dataAcceptor) ->
-								item -> {
-									dataAcceptor.accept(item);
-									if (item == 1) {
-										context.closeWithError(new ExpectedException("Test Exception"));
-									}
-								})));
+				streamUnion.getOutput()
+						.streamTo(consumer
+								.transformWith(decorator((context, dataAcceptor) ->
+										item -> {
+											dataAcceptor.accept(item);
+											if (item == 1) {
+												context.closeWithError(exception);
+											}
+										})))
+		);
 
-		eventloop.run();
-
+		assertSame(exception, e);
 		assertEquals(Arrays.asList(6, 7, 4, 5, 1), list);
 		assertClosedWithError(source0);
 		assertEndOfStream(source1);
@@ -120,29 +123,29 @@ public class StreamUnionTest {
 
 	@Test
 	public void testSupplierWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
+		ExpectedException exception = new ExpectedException("Test Exception");
 
 		StreamSupplier<Integer> source0 = StreamSupplier.concat(
 				StreamSupplier.ofIterable(Arrays.asList(1, 2)),
-				StreamSupplier.closingWithError(new ExpectedException("Test Exception"))
+				StreamSupplier.closingWithError(exception)
 		);
 		StreamSupplier<Integer> source1 = StreamSupplier.concat(
 				StreamSupplier.ofIterable(Arrays.asList(7, 8, 9)),
-				StreamSupplier.closingWithError(new ExpectedException("Test Exception"))
+				StreamSupplier.closingWithError(exception)
 		);
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumer<Integer> consumer = StreamConsumerToList.create(list);
 
-		source0.streamTo(streamUnion.newInput());
-		source1.streamTo(streamUnion.newInput());
+		Throwable e = awaitException(
+				source0.streamTo(streamUnion.newInput()),
+				source1.streamTo(streamUnion.newInput()),
+				streamUnion.getOutput()
+						.streamTo(consumer.transformWith(oneByOne()))
+		);
 
-		streamUnion.getOutput()
-				.streamTo(consumer.transformWith(oneByOne()));
-		eventloop.run();
-
+		assertSame(exception, e);
 		assertEquals(3, list.size());
 		assertClosedWithError(streamUnion.getOutput());
 		assertConsumersClosedWithError(streamUnion.getInputs());

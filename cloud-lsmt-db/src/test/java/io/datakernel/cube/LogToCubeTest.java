@@ -29,7 +29,10 @@ import io.datakernel.etl.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.multilog.Multilog;
 import io.datakernel.multilog.MultilogImpl;
-import io.datakernel.ot.*;
+import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTRepositoryMySql;
+import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamSupplier;
@@ -45,19 +48,19 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Function;
 
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
+import static io.datakernel.cube.TestUtils.initializeRepository;
+import static io.datakernel.cube.TestUtils.runProcessLogs;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
-import static io.datakernel.test.TestUtils.*;
+import static io.datakernel.test.TestUtils.dataSource;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
-import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
@@ -65,13 +68,6 @@ import static org.junit.Assert.assertEquals;
 public final class LogToCubeTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-	private static <K, D> Function<D, OTStateManager<K, D>> addFunction(OTStateManager<K, D> stateManager) {
-		return value -> {
-			stateManager.add(value);
-			return stateManager;
-		};
-	}
 
 	@Test
 	public void testStubStorage() throws Exception {
@@ -94,61 +90,51 @@ public final class LogToCubeTest {
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 		OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, LogDiffCodec.create(CubeDiffCodec.create(cube)));
-		repository.initialize();
-		repository.truncateTables();
+		initializeRepository(repository);
 
 		List<TestAdvResult> expected = asList(new TestAdvResult(10, 2), new TestAdvResult(20, 1), new TestAdvResult(30, 1));
 
-		repository.createCommitId()
-				.thenCompose(id -> repository.push(OTCommit.ofRoot(id))
-						.thenCompose($ -> repository.saveSnapshot(id, emptyList())))
-				.thenCompose($ -> {
-					LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-					OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
-					OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
+		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
+		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
+		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
-					Multilog<TestPubRequest> multilog = MultilogImpl.create(eventloop,
-							LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
-							SerializerBuilder.create(classLoader).build(TestPubRequest.class),
-							NAME_PARTITION_REMAINDER_SEQ);
+		Multilog<TestPubRequest> multilog = MultilogImpl.create(eventloop,
+				LocalFsClient.create(eventloop, newSingleThreadExecutor(), logsDir),
+				SerializerBuilder.create(classLoader).build(TestPubRequest.class),
+				NAME_PARTITION_REMAINDER_SEQ);
 
-					LogOTProcessor<TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
-							multilog,
-							new TestAggregatorSplitter(cube), // TestAggregatorSplitter.create(eventloop, cube),
-							"testlog",
-							asList("partitionA"),
-							cubeDiffLogOTState);
+		LogOTProcessor<TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
+				multilog,
+				new TestAggregatorSplitter(cube), // TestAggregatorSplitter.create(eventloop, cube),
+				"testlog",
+				asList("partitionA"),
+				cubeDiffLogOTState);
 
-					return StreamSupplier.of(
-							new TestPubRequest(1000, 1, asList(new TestAdvRequest(10))),
-							new TestPubRequest(1001, 2, asList(new TestAdvRequest(10), new TestAdvRequest(20))),
-							new TestPubRequest(1002, 1, asList(new TestAdvRequest(30))),
-							new TestPubRequest(1002, 2, Arrays.asList()))
-							.streamTo(multilog.writer("partitionA"))
-							.whenComplete(assertComplete())
-							.thenCompose($2 -> logCubeStateManager.checkout())
-							.thenCompose($2 -> logOTProcessor.processLog())
-							.thenCompose(logDiff -> aggregationChunkStorage
-									.finish(logDiff.diffs().flatMap(CubeDiff::<Long>addedChunks).collect(toSet()))
-									.thenApply($2 -> logDiff))
-							.thenApply(addFunction(logCubeStateManager))
-							.thenCompose(OTStateManager::commitAndPush)
-							.thenCompose(asserting($2 -> {
-								return cube.queryRawStream(
-										asList("adv"),
-										asList("advRequests"),
-										alwaysTrue(),
-										TestAdvResult.class, classLoader)
-										.toList();
-							}));
-				})
-				.whenComplete(assertComplete(list -> assertEquals(expected, list)));
+		StreamSupplier<TestPubRequest> supplier = StreamSupplier.of(
+				new TestPubRequest(1000, 1, asList(new TestAdvRequest(10))),
+				new TestPubRequest(1001, 2, asList(new TestAdvRequest(10), new TestAdvRequest(20))),
+				new TestPubRequest(1002, 1, asList(new TestAdvRequest(30))),
+				new TestPubRequest(1002, 2, Arrays.asList()));
+
+		await(supplier.streamTo(multilog.writer("partitionA")));
+		await(logCubeStateManager.checkout());
+		runProcessLogs(aggregationChunkStorage, logCubeStateManager, logOTProcessor);
+
+		List<TestAdvResult> list = await(cube.queryRawStream(
+				asList("adv"),
+				asList("advRequests"),
+				alwaysTrue(),
+				TestAdvResult.class, classLoader)
+				.toList());
+
+		assertEquals(expected, list);
 	}
 
 	public static final class TestAdvResult {
 		public int adv;
 		public long advRequests;
 
+		@SuppressWarnings("unused")
 		public TestAdvResult() {
 		}
 

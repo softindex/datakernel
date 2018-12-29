@@ -17,6 +17,7 @@
 package io.datakernel.http.stream;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
@@ -31,6 +32,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.zip.Deflater;
 
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_DATA_EXCEPTION;
@@ -38,7 +41,6 @@ import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static java.lang.Math.min;
 import static java.util.Arrays.copyOfRange;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 @RunWith(DatakernelRunner.class)
 public final class BufsConsumerGzipInflaterTest {
@@ -217,14 +219,12 @@ public final class BufsConsumerGzipInflaterTest {
 
 	private void doTest(@Nullable Exception expectedException) {
 		gunzip.getInput().set(ChannelSupplier.ofIterable(list));
-		gunzip.getProcessResult()
-				.whenComplete(($, e) -> {
-					if (expectedException == null) {
-						assertNull(e);
-					} else {
-						assertEquals(expectedException, e);
-					}
-				});
+		MaterializedPromise<Void> processResult = gunzip.getProcessResult();
+		if (expectedException == null) {
+			await(processResult);
+		} else {
+			assertEquals(expectedException, awaitException(processResult));
+		}
 	}
 
 	private static String generateLargeText() {

@@ -17,32 +17,24 @@
 package io.datakernel.csp;
 
 import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.Promise;
 import io.datakernel.csp.process.ChannelSplitter;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
-import org.junit.Before;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertSame;
 
+@RunWith(DatakernelRunner.class)
 public class ChannelSplitterTest {
-
-	private Eventloop eventloop;
-
-	@Before
-	public void setUp() {
-		eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
-	}
 
 	@Test
 	public void simpleCase() {
@@ -63,9 +55,7 @@ public class ChannelSplitterTest {
 					.set(ChannelConsumer.of(AsyncConsumer.<String>of(theList::add)).async());
 		}
 
-		splitter.startProcess().whenComplete(assertComplete());
-
-		eventloop.run();
+		await(splitter.startProcess());
 
 		assertEquals(expected.stream().flatMap(x -> Stream.generate(() -> x).limit(n)).collect(toList()), theList);
 	}
@@ -79,17 +69,16 @@ public class ChannelSplitterTest {
 		expected.add("second");
 		expected.add("third");
 
+		StacklessException exception = new StacklessException(ChannelSplitterTest.class, "test exception");
 		ChannelSplitter<String> splitter = ChannelSplitter.<String>create()
-				.withInput(ChannelSuppliers.concat(ChannelSupplier.ofIterable(expected), ChannelSupplier.ofException(new StacklessException(ChannelSplitterTest.class, "test exception"))));
+				.withInput(ChannelSuppliers.concat(ChannelSupplier.ofIterable(expected), ChannelSupplier.ofException(exception)));
 
 		for (int i = 0; i < n; i++) {
 			splitter.addOutput()
 					.set(ChannelConsumer.of(AsyncConsumer.of((String s) -> { /*noop*/ })).async());
 		}
 
-		splitter.startProcess().whenComplete(assertFailure("test exception"));
-
-		eventloop.run();
+		assertSame(exception, awaitException(splitter.startProcess()));
 	}
 
 	@Test
@@ -103,23 +92,18 @@ public class ChannelSplitterTest {
 
 		ChannelSplitter<String> splitter = ChannelSplitter.<String>create()
 				.withInput(ChannelSupplier.ofIterable(expected));
+		StacklessException exception = new StacklessException(ChannelSplitterTest.class, "test exception");
 
 		for (int i = 0; i < n; i++) {
 			if (i == n / 2) {
 				splitter.addOutput()
-						.set(ChannelConsumer.ofException(new StacklessException(ChannelSplitterTest.class, "test exception")));
+						.set(ChannelConsumer.ofException(exception));
 			} else {
 				splitter.addOutput()
 						.set(ChannelConsumer.of(AsyncConsumer.of((String s) -> { /*noop*/ })).async());
 			}
 		}
 
-		Promise<Void> promise = splitter.startProcess()
-				.whenComplete(($, e) -> System.out.println("completed"))
-				.whenComplete(assertFailure("test exception"));
-
-		eventloop.run();
-
-		assertTrue(promise.isComplete());
+		assertSame(exception, awaitException(splitter.startProcess()));
 	}
 }

@@ -22,14 +22,13 @@ import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.List;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.ot.utils.Utils.*;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "WeakerAccess"})
@@ -37,7 +36,6 @@ import static java.util.Arrays.asList;
 public final class OTSystemTest {
 
 	@Test
-	@SkipEventloopRun
 	public void testTransform1() throws Exception {
 		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> left = asList(add(2), add(1));
@@ -48,7 +46,6 @@ public final class OTSystemTest {
 	}
 
 	@Test
-	@SkipEventloopRun
 	public void testTransform2() throws Exception {
 		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> left = asList(add(2), set(2, 1), add(2), add(10));
@@ -59,7 +56,6 @@ public final class OTSystemTest {
 	}
 
 	@Test
-	@SkipEventloopRun
 	public void testSimplify() {
 		OTSystem<TestOp> opSystem = createTestOp();
 		List<? extends TestOp> arg = asList(add(2), set(2, 1), add(2), add(10));
@@ -83,52 +79,46 @@ public final class OTSystemTest {
 		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), system, repository);
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(Eventloop.getCurrentEventloop(), algorithms, state);
 
-		stateManager.start()
-				.thenCompose($ -> stateManager.pull())
-				.whenComplete(assertComplete($ -> {
-					System.out.println(stateManager);
-					System.out.println();
-				}))
-				.thenCompose($ -> algorithms.mergeHeadsAndPush())
-				.whenComplete(assertComplete($ -> {
-					System.out.println(repository.loadCommit("m"));
-					System.out.println(stateManager);
-					System.out.println();
-					stateManager.add(new TestAdd(50));
-					System.out.println(stateManager);
-				}))
-				.thenCompose($ -> stateManager.commit())
-				.whenComplete(assertComplete($ -> {
-					System.out.println(stateManager);
-					System.out.println();
-					stateManager.add(new TestAdd(3));
-					System.out.println(stateManager);
-				}))
-				.thenCompose($ -> stateManager.pull())
-				.whenComplete(assertComplete($ -> {
-					System.out.println(stateManager);
-					System.out.println();
-				}))
-				.thenCompose($ -> stateManager.commit())
-				.whenComplete(assertComplete($ -> {
-					System.out.println(stateManager);
-					System.out.println();
-					System.out.println(repository);
-					System.out.println(stateManager);
-				}))
-				.thenCompose($ -> stateManager.push())
-				.whenComplete(assertComplete($ -> {
-					System.out.println(repository.loadCommit("x"));
-					System.out.println(repository.loadCommit("y"));
-					System.out.println(stateManager);
-					System.out.println();
-					System.out.println(repository);
-				}))
-				.thenCompose($ -> algorithms.mergeHeadsAndPush())
-				.whenComplete(assertComplete($ -> {
-					System.out.println(stateManager);
-					System.out.println();
-				}));
+		await(stateManager.start());
+
+		await(stateManager.pull());
+		System.out.println(stateManager);
+		System.out.println();
+
+		await(algorithms.mergeHeadsAndPush());
+
+		System.out.println(repository.loadCommit("m"));
+		System.out.println(stateManager);
+		System.out.println();
+		stateManager.add(new TestAdd(50));
+		System.out.println(stateManager);
+
+		await(stateManager.commit());
+		System.out.println(stateManager);
+		System.out.println();
+		stateManager.add(new TestAdd(3));
+		System.out.println(stateManager);
+
+		await(stateManager.pull());
+		System.out.println(stateManager);
+		System.out.println();
+
+		await(stateManager.commit());
+		System.out.println(stateManager);
+		System.out.println();
+		System.out.println(repository);
+		System.out.println(stateManager);
+
+		await(stateManager.push());
+		System.out.println(repository.loadCommit("x"));
+		System.out.println(repository.loadCommit("y"));
+		System.out.println(stateManager);
+		System.out.println();
+		System.out.println(repository);
+
+		await(algorithms.mergeHeadsAndPush());
+		System.out.println(stateManager);
+		System.out.println();
 	}
 
 	@Test
@@ -162,16 +152,14 @@ public final class OTSystemTest {
 	}
 
 	private void pullAndThenMergeAndPush(OTRepositoryStub<String, TestOp> otSource, OTAlgorithms<String, TestOp> algorithms, OTStateManager<String, TestOp> stateManager) {
-		stateManager.start()
-				.thenCompose($ -> stateManager.pull())
-				.whenComplete(assertComplete($ -> {
-					System.out.println(stateManager);
-					System.out.println();
-				}))
-				.thenCompose($ -> algorithms.mergeHeadsAndPush())
-				.whenComplete(assertComplete($ -> {
-					System.out.println(otSource);
-					System.out.println(stateManager);
-				}));
+		await(stateManager.start());
+
+		await(stateManager.pull());
+		System.out.println(stateManager);
+		System.out.println();
+
+		await(algorithms.mergeHeadsAndPush());
+		System.out.println(otSource);
+		System.out.println(stateManager);
 	}
 }

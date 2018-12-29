@@ -41,6 +41,7 @@ import java.util.Random;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.GzipProcessorUtils.fromGzip;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
@@ -104,7 +105,6 @@ public final class TestGzipProcessorUtils {
 
 	@Test
 	public void testGzippedCommunicationBetweenClientServer() throws IOException {
-
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
 				request -> request.getBody(CHARACTERS_COUNT)
 						.thenApply(body -> {
@@ -131,18 +131,15 @@ public final class TestGzipProcessorUtils {
 
 		server.listen();
 
-		client.request(request)
-				.thenCompose(response ->
-						response.getBody(CHARACTERS_COUNT)
-								.whenComplete(assertComplete(body -> {
-									assertEquals("gzip", response.getHeaderOrNull(CONTENT_ENCODING));
-									assertEquals(text, body.asString(UTF_8));
-								})))
+		ByteBuf body = await(client.request(request)
+				.whenComplete(assertComplete(response -> assertEquals("gzip", response.getHeaderOrNull(CONTENT_ENCODING))))
+				.thenCompose(response -> response.getBody(CHARACTERS_COUNT))
 				.whenComplete(($, e) -> {
 					server.close();
 					client.stop();
-				})
-		;
+				}));
+
+		assertEquals(text, body.asString(UTF_8));
 	}
 
 	@Test

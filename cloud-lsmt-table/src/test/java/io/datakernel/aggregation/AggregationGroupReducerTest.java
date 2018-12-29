@@ -20,26 +20,25 @@ import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.Promise;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static io.datakernel.util.CollectionUtils.keysToMap;
 import static java.util.Arrays.asList;
@@ -47,14 +46,14 @@ import static java.util.Collections.singletonMap;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings({"Duplicates", "unchecked", "ArraysAsListWithZeroOrOneArgument", "rawtypes"})
+@RunWith(DatakernelRunner.class)
 public class AggregationGroupReducerTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Test
-	public void test() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+	public void test() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
 				.withKey("word", FieldTypes.ofString())
@@ -117,15 +116,12 @@ public class AggregationGroupReducerTest {
 				structure, asList("documents"),
 				aggregationClass, singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader);
 
-		CompletableFuture<List<AggregationChunk>> future = supplier.streamTo(groupReducer)
-				.thenCompose($ -> groupReducer.getResult())
-				.toCompletableFuture();
-
-		eventloop.run();
+		await(supplier.streamTo(groupReducer));
+		List<AggregationChunk> list = await(groupReducer.getResult());
 
 		assertEndOfStream(supplier);
 		assertEndOfStream(groupReducer);
-		assertEquals(future.get().size(), 5);
+		assertEquals(5, list.size());
 
 		for (StreamConsumer consumer : listConsumers) {
 			assertEndOfStream(consumer);

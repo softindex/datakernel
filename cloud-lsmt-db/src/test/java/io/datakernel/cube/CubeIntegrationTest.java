@@ -27,34 +27,38 @@ import io.datakernel.etl.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.multilog.Multilog;
 import io.datakernel.multilog.MultilogImpl;
-import io.datakernel.ot.*;
+import io.datakernel.ot.OTAlgorithms;
+import io.datakernel.ot.OTRepositoryMySql;
+import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import javax.sql.DataSource;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.sum;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.cube.TestUtils.initializeRepository;
+import static io.datakernel.cube.TestUtils.runProcessLogs;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.test.TestUtils.dataSource;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
@@ -63,6 +67,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
+@RunWith(DatakernelRunner.class)
 public class CubeIntegrationTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -73,7 +78,7 @@ public class CubeIntegrationTest {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
@@ -102,10 +107,7 @@ public class CubeIntegrationTest {
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 		OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, LogDiffCodec.create(CubeDiffCodec.create(cube)));
-		repository.initialize();
-		repository.truncateTables();
-		repository.createCommitId().thenCompose(id -> repository.push(OTCommit.ofRoot(id)).thenCompose($ -> repository.saveSnapshot(id, emptyList())));
-		eventloop.run();
+		initializeRepository(repository);
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
 		OTAlgorithms<Long, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, repository);
@@ -124,18 +126,13 @@ public class CubeIntegrationTest {
 				cubeDiffLogOTState);
 
 		// checkout first (root) revision
-
-		CompletableFuture<?> future;
-
-		future = logCubeStateManager.checkout().toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(logCubeStateManager.checkout());
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
-		StreamSupplier.ofIterable(listOfRandomLogItems).streamTo(
-				multilog.writer("partitionA"));
-		eventloop.run();
+		await(StreamSupplier.ofIterable(listOfRandomLogItems).streamTo(
+				multilog.writer("partitionA")));
+		;
 		Files.list(logsDir).forEach(System.out::println);
 
 //		AsynchronousFileChannel channel = AsynchronousFileChannel.open(Files.list(logsDir).findFirst().get(),
@@ -144,72 +141,31 @@ public class CubeIntegrationTest {
 //		channel.write(ByteBuffer.wrap(new byte[]{123}), 0).get();
 //		channel.close();
 
-		future = logOTProcessor.processLog()
-				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
-						.thenApply($ -> logDiff))
-				.whenResult(logCubeStateManager::add)
-				.thenApply($ -> logCubeStateManager)
-				.thenCompose(OTStateManager::commitAndPush)
-				.toCompletableFuture();
-		eventloop.run();
-		future.get();
+		runProcessLogs(aggregationChunkStorage, logCubeStateManager, logOTProcessor);
 
-		future = logOTProcessor.processLog()
-				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
-						.thenApply($ -> logDiff))
-				.whenResult(logCubeStateManager::add)
-				.thenApply($ -> logCubeStateManager)
-				.thenCompose(OTStateManager::commitAndPush)
-				.toCompletableFuture();
-		eventloop.run();
-		future.get();
+		runProcessLogs(aggregationChunkStorage, logCubeStateManager, logOTProcessor);
 
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
-		StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
-				multilog.writer("partitionA"));
-		eventloop.run();
+		await(StreamSupplier.ofIterable(listOfRandomLogItems2).streamTo(
+				multilog.writer("partitionA")));
+		;
 		Files.list(logsDir).forEach(System.out::println);
 
-		future = logOTProcessor.processLog()
-				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
-						.thenApply($ -> logDiff))
-				.whenResult(logCubeStateManager::add)
-				.thenApply($ -> logCubeStateManager)
-				.thenCompose(OTStateManager::commitAndPush)
-				.toCompletableFuture();
-		eventloop.run();
-		future.get();
+		runProcessLogs(aggregationChunkStorage, logCubeStateManager, logOTProcessor);
 
 		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
-		StreamSupplier.ofIterable(listOfRandomLogItems3).streamTo(
-				multilog.writer("partitionA"));
-		eventloop.run();
+		await(StreamSupplier.ofIterable(listOfRandomLogItems3).streamTo(
+				multilog.writer("partitionA")));
+		;
 		Files.list(logsDir).forEach(System.out::println);
 
-		future = logOTProcessor.processLog()
-				.thenCompose(logDiff -> aggregationChunkStorage
-						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet()))
-						.thenApply($ -> logDiff))
-				.whenResult(logCubeStateManager::add)
-				.thenApply($ -> logCubeStateManager)
-				.thenCompose(OTStateManager::commitAndPush)
-				.toCompletableFuture();
-		eventloop.run();
-		future.get();
+		runProcessLogs(aggregationChunkStorage, logCubeStateManager, logOTProcessor);
 
-		future = aggregationChunkStorage.backup("backup1", (Set) cube.getAllChunks())
-				.toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(aggregationChunkStorage.backup("backup1", (Set) cube.getAllChunks()));
 
-		Future<List<LogItem>> futureResult = cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
+		List<LogItem> logItems = await(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
 				LogItem.class, DefiningClassLoader.create(classLoader))
-				.toList()
-				.toCompletableFuture();
-		eventloop.run();
+				.toList());
 
 		// Aggregate manually
 		Map<Integer, Long> map = new HashMap<>();
@@ -218,49 +174,33 @@ public class CubeIntegrationTest {
 		aggregateToMap(map, listOfRandomLogItems3);
 
 		// Check query results
-		assertEquals(map, futureResult.get().stream().collect(toMap(r -> r.date, r -> r.clicks)));
+		assertEquals(map, logItems.stream().collect(toMap(r -> r.date, r -> r.clicks)));
 
 		// checkout revision 3 and consolidate it:
-		future = logCubeStateManager.checkout(3L).toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(logCubeStateManager.checkout(3L));
 
-		CompletableFuture<CubeDiff> future1 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
-		eventloop.run();
-		CubeDiff consolidatingCubeDiff = future1.get();
+		CubeDiff consolidatingCubeDiff = await(cube.consolidate(Aggregation::consolidateHotSegment));
+		;
 		assertFalse(consolidatingCubeDiff.isEmpty());
 
 		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
-		future = logCubeStateManager.commitAndPush().toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(logCubeStateManager.commitAndPush());
 
-		future = aggregationChunkStorage.finish(consolidatingCubeDiff.addedChunks().map(id -> (long) id).collect(toSet())).toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(aggregationChunkStorage.finish(consolidatingCubeDiff.addedChunks().map(id -> (long) id).collect(toSet())));
 
 		// merge heads: revision 4, and revision 5 (which is a consolidation of 3)
-
-		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(algorithms.mergeHeadsAndPush());
 
 		// make a checkpoint and checkout it
+		await(logCubeStateManager.checkout(6L));
 
-		future = logCubeStateManager.checkout(6L).toCompletableFuture();
-		eventloop.run();
-		future.get();
-
-		future = aggregationChunkStorage.cleanup((Set) cube.getAllChunks()).toCompletableFuture();
-		eventloop.run();
-		future.get();
+		await(aggregationChunkStorage.cleanup((Set) cube.getAllChunks()));
 
 		// Query
-		futureResult = cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
-				LogItem.class, DefiningClassLoader.create(classLoader)).toList().toCompletableFuture();
-		eventloop.run();
+		List<LogItem> queryResult = await(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
+				LogItem.class, DefiningClassLoader.create(classLoader)).toList());
 
-		assertEquals(map, futureResult.get().stream().collect(toMap(r -> r.date, r -> r.clicks)));
+		assertEquals(map, queryResult.stream().collect(toMap(r -> r.date, r -> r.clicks)));
 
 		// Check files in aggregations directory
 		Set<String> actualChunkFileNames = new TreeSet<>();

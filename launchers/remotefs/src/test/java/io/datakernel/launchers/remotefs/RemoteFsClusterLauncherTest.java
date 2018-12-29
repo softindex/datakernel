@@ -20,7 +20,6 @@ import com.google.inject.Module;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import io.datakernel.stream.processor.Manual;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -37,7 +36,6 @@ import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static java.util.Collections.singleton;
 
 @RunWith(DatakernelRunner.class)
-@SkipEventloopRun
 public final class RemoteFsClusterLauncherTest {
 
 	private static final int serverNumber = 5400;

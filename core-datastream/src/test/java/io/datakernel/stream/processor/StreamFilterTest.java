@@ -16,36 +16,36 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.stream.TestStreamConsumers.*;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
+@RunWith(DatakernelRunner.class)
 public class StreamFilterTest {
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3);
 		StreamFilter<Integer> filter = StreamFilter.create(input -> input % 2 == 1);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		supplier.transformWith(filter)
-				.streamTo(consumer.transformWith(randomlySuspending()));
+		await(supplier.transformWith(filter)
+				.streamTo(consumer.transformWith(randomlySuspending())));
 
-		eventloop.run();
 		assertEquals(asList(1, 3), consumer.getList());
 		assertEndOfStream(supplier);
 		assertEndOfStream(filter.getInput());
@@ -54,24 +54,24 @@ public class StreamFilterTest {
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
 		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4, 5);
 		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
+		ExpectedException exception = new ExpectedException("Test Exception");
 
-		source.transformWith(streamFilter)
+		Throwable e = awaitException(source.transformWith(streamFilter)
 				.streamTo(consumer
 						.transformWith(decorator((context, dataAcceptor) ->
 								item -> {
 									dataAcceptor.accept(item);
 									if (item == 3) {
-										context.closeWithError(new ExpectedException("Test Exception"));
+										context.closeWithError(exception);
 									}
-								})));
+								}))));
 
-		eventloop.run();
+		assertSame(exception, e);
 
 		assertEquals(asList(1, 2, 3), list);
 		assertClosedWithError(source);
@@ -82,21 +82,20 @@ public class StreamFilterTest {
 
 	@Test
 	public void testSupplierDisconnectWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
+		ExpectedException exception = new ExpectedException("Test Exception");
 		StreamSupplier<Integer> source = StreamSupplier.concat(
 				StreamSupplier.ofIterable(Arrays.asList(1, 2, 3)),
-				StreamSupplier.closingWithError(new ExpectedException("Test Exception")));
+				StreamSupplier.closingWithError(exception));
 
 		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		source.transformWith(streamFilter)
-				.streamTo(consumer.transformWith(oneByOne()));
+		Throwable e = awaitException(source.transformWith(streamFilter)
+				.streamTo(consumer.transformWith(oneByOne())));
 
-		eventloop.run();
+		assertSame(exception, e);
 
 		assertEquals(3, list.size());
 		assertClosedWithError(consumer);

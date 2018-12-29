@@ -29,13 +29,14 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -43,12 +44,14 @@ import static io.datakernel.aggregation.AggregationPredicates.and;
 import static io.datakernel.aggregation.AggregationPredicates.eq;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.sum;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
+@RunWith(DatakernelRunner.class)
 public class StringDimensionTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -56,7 +59,7 @@ public class StringDimensionTest {
 	@Test
 	public void testQuery() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
@@ -70,41 +73,35 @@ public class StringDimensionTest {
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
 
 		StreamConsumerWithResult<DataItemString1, CubeDiff> consumer1 = cube.consume(DataItemString1.class);
-		CompletableFuture<CubeDiff> future1 =
-				StreamSupplier.of(
-						new DataItemString1("str1", 2, 10, 20),
-						new DataItemString1("str2", 3, 10, 20))
-						.streamTo(consumer1.getConsumer())
-						.thenCompose($ -> consumer1.getResult())
-						.toCompletableFuture();
+		await(StreamSupplier.of(
+				new DataItemString1("str1", 2, 10, 20),
+				new DataItemString1("str2", 3, 10, 20))
+				.streamTo(consumer1.getConsumer()));
+
+		CubeDiff consumer1Result = await(consumer1.getResult());
 
 		StreamConsumerWithResult<DataItemString2, CubeDiff> consumer2 = cube.consume(DataItemString2.class);
-		CompletableFuture<CubeDiff> future2 =
-				StreamSupplier.of(
-						new DataItemString2("str2", 3, 10, 20),
-						new DataItemString2("str1", 4, 10, 20))
-						.streamTo(consumer2.getConsumer())
-						.thenCompose($ -> consumer2.getResult())
-						.toCompletableFuture();
+		await(StreamSupplier.of(
+				new DataItemString2("str2", 3, 10, 20),
+				new DataItemString2("str1", 4, 10, 20))
+				.streamTo(consumer2.getConsumer()));
 
-		eventloop.run();
+		CubeDiff consumer2Result = await(consumer2.getResult());
 
-		aggregationChunkStorage.finish(future1.get().addedChunks().map(id -> (long) id).collect(toSet()));
-		aggregationChunkStorage.finish(future2.get().addedChunks().map(id -> (long) id).collect(toSet()));
-		eventloop.run();
+		await(aggregationChunkStorage.finish(consumer1Result.addedChunks().map(id -> (long) id).collect(toSet())));
+		await(aggregationChunkStorage.finish(consumer2Result.addedChunks().map(id -> (long) id).collect(toSet())));
 
-		cube.apply(future1.get());
-		cube.apply(future2.get());
+		cube.apply(consumer1Result);
+		cube.apply(consumer2Result);
 
 		StreamConsumerToList<DataItemResultString> consumerToList = StreamConsumerToList.create();
-		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
+		await(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", "str2"), eq("key2", 3)),
 				DataItemResultString.class, DefiningClassLoader.create(classLoader))
-				.streamTo(consumerToList);
-		eventloop.run();
+				.streamTo(consumerToList));
 
 		List<DataItemResultString> actual = consumerToList.getList();
-		List<DataItemResultString> expected = asList(new DataItemResultString("str2", 3, 10, 30, 20));
+		List<DataItemResultString> expected = singletonList(new DataItemResultString("str2", 3, 10, 30, 20));
 
 		assertEquals(expected, actual);
 	}

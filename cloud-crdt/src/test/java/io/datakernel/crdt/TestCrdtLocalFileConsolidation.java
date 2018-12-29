@@ -16,7 +16,6 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.async.Promise;
 import io.datakernel.crdt.local.FsCrdtClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
@@ -36,8 +35,8 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.util.CollectionUtils.set;
 
 @RunWith(DatakernelRunner.class)
@@ -63,26 +62,23 @@ public final class TestCrdtLocalFileConsolidation {
 		FsCrdtClient<String, Set<Integer>> client = FsCrdtClient.create(Eventloop.getCurrentEventloop(), fsClient, this::union,
 				BinarySerializers.UTF8_SERIALIZER, BinarySerializers.ofSet(INT_SERIALIZER));
 
-		Promise.complete()
-				.thenCompose($ -> StreamSupplier.ofStream(Stream.of(
-						new CrdtData<>("1_test_1", set(1, 2, 3)),
-						new CrdtData<>("1_test_2", set(2, 3, 7)),
-						new CrdtData<>("1_test_3", set(78, 2, 3)),
-						new CrdtData<>("12_test_1", set(123, 124, 125)),
-						new CrdtData<>("12_test_2", set(12))
-				).sorted())
-						.streamTo(StreamConsumer.ofPromise(client.upload())))
-				.thenCompose($ -> StreamSupplier.ofStream(Stream.of(
-						new CrdtData<>("2_test_1", set(1, 2, 3)),
-						new CrdtData<>("2_test_2", set(2, 3, 4)),
-						new CrdtData<>("2_test_3", set(0, 1, 2)),
-						new CrdtData<>("12_test_1", set(123, 542, 125, 2)),
-						new CrdtData<>("12_test_2", set(12, 13))
-				).sorted())
-						.streamTo(StreamConsumer.ofPromise(client.upload())))
-				.thenCompose($ -> fsClient.list("**").whenResult(System.out::println))
-				.thenCompose($ -> client.consolidate())
-				.thenCompose($ -> fsClient.list("**").whenResult(System.out::println))
-				.whenComplete(assertComplete());
+		await(StreamSupplier.ofStream(Stream.of(
+				new CrdtData<>("1_test_1", set(1, 2, 3)),
+				new CrdtData<>("1_test_2", set(2, 3, 7)),
+				new CrdtData<>("1_test_3", set(78, 2, 3)),
+				new CrdtData<>("12_test_1", set(123, 124, 125)),
+				new CrdtData<>("12_test_2", set(12))).sorted())
+				.streamTo(StreamConsumer.ofPromise(client.upload())));
+		await(StreamSupplier.ofStream(Stream.of(
+				new CrdtData<>("2_test_1", set(1, 2, 3)),
+				new CrdtData<>("2_test_2", set(2, 3, 4)),
+				new CrdtData<>("2_test_3", set(0, 1, 2)),
+				new CrdtData<>("12_test_1", set(123, 542, 125, 2)),
+				new CrdtData<>("12_test_2", set(12, 13))).sorted())
+				.streamTo(StreamConsumer.ofPromise(client.upload())));
+
+		System.out.println(await(fsClient.list("**")));
+		await(client.consolidate());
+		System.out.println(await(fsClient.list("**")));
 	}
 }

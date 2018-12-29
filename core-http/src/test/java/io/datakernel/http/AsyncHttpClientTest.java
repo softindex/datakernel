@@ -38,11 +38,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.eventloop.Eventloop.CONNECT_TIMEOUT;
+import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
+import static io.datakernel.http.HttpClientConnection.INVALID_RESPONSE;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
 public final class AsyncHttpClientTest {
@@ -69,19 +73,19 @@ public final class AsyncHttpClientTest {
 	public void testAsyncClient() throws Exception {
 		startServer();
 
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
-				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(response -> response.getBody()
-						.whenComplete(assertComplete(body -> assertEquals(decodeAscii(HELLO_WORLD), body.asString(UTF_8)))));
+		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
+		ByteBuf body = await(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.thenCompose(HttpMessage::getBody));
+
+		assertEquals(decodeAscii(HELLO_WORLD), body.asString(UTF_8));
 	}
 
 	@Test
 	public void testClientTimeoutConnect() {
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
-				.withConnectTimeout(Duration.ofMillis(1))
-				.request(HttpRequest.get("http://google.com"))
-				.thenCompose(response -> response.getBody()
-						.whenComplete(assertFailure(AsyncTimeoutException.class, "Connection timed out")));
+		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.withConnectTimeout(Duration.ofMillis(1));
+		AsyncTimeoutException e = awaitException(client.request(HttpRequest.get("http://google.com")));
+		assertSame(CONNECT_TIMEOUT, e);
 	}
 
 	@Test
@@ -90,10 +94,10 @@ public final class AsyncHttpClientTest {
 
 		int maxBodySize = HELLO_WORLD.length - 1;
 
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
-				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(response -> response.getBody(maxBodySize)
-						.whenComplete(assertFailure(InvalidSizeException.class, "ByteBufQueue exceeds maximum size of " + maxBodySize + " bytes")));
+		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
+		InvalidSizeException e = awaitException(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.thenCompose(response -> response.getBody(maxBodySize)));
+		assertThat(e.getMessage(), containsString("ByteBufQueue exceeds maximum size of " + maxBodySize + " bytes"));
 	}
 
 	@Test
@@ -107,10 +111,10 @@ public final class AsyncHttpClientTest {
 				.withAcceptOnce()
 				.listen();
 
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
-				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
-				.thenCompose(response -> response.getBody()
-						.whenComplete(assertFailure(UnknownFormatException.class, "Invalid response")));
+		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
+		UnknownFormatException e = awaitException(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.thenCompose(HttpMessage::getBody));
+		assertSame(INVALID_RESPONSE, e);
 	}
 
 	@Test
@@ -132,13 +136,13 @@ public final class AsyncHttpClientTest {
 				.withReadWriteTimeout(Duration.ofMillis(20))
 				.withInspector(inspector);
 
-		Promises.all(
+		AsyncTimeoutException e = awaitException(Promises.all(
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
-				.whenComplete(($, e) -> {
+				.whenComplete(($, e1) -> {
 					server.close();
 					responses.forEach(response -> response.set(HttpResponse.ok200()));
 
@@ -153,7 +157,7 @@ public final class AsyncHttpClientTest {
 					System.out.println(inspector.getTotalResponses());
 
 					assertEquals(4, inspector.getActiveRequests());
-				})
-				.whenComplete(assertFailure(AsyncTimeoutException.class, "timeout"));
+				}));
+		assertSame(READ_TIMEOUT_ERROR, e);
 	}
 }

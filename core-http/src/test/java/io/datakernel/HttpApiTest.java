@@ -33,9 +33,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.HttpHeaderValue.*;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static java.time.ZoneOffset.UTC;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
@@ -71,12 +71,8 @@ public final class HttpApiTest {
 	public void setUp() {
 		server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
 				request -> {
-					try {
-						testRequest(request);
-						return Promise.of(createResponse());
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
+					testRequest(request);
+					return Promise.of(createResponse());
 				})
 				.withListenPort(PORT);
 
@@ -107,12 +103,12 @@ public final class HttpApiTest {
 	@Test
 	public void test() throws IOException {
 		server.listen();
-		client.request(createRequest())
-				.whenComplete(($, e) -> {
+		await(client.request(createRequest())
+				.whenComplete((response, e) -> {
+					testResponse(response);
 					server.close();
 					client.stop();
-				})
-				.whenComplete(assertComplete(this::testResponse));
+				}));
 	}
 
 	private HttpResponse createResponse() {
@@ -136,23 +132,31 @@ public final class HttpApiTest {
 				.initialize(httpRequest -> requestCookies.forEach(httpRequest::addCookie));
 	}
 
-	private void testResponse(HttpResponse response) throws ParseException {
-		assertEquals(responseContentType, response.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
-		assertEquals(responseCookies, new ArrayList<>(response.getCookies().values()));
-		assertEquals(responseDate, response.parseHeader(DATE, HttpHeaderValue::toInstant));
-		assertEquals(age, (int) response.parseHeader(AGE, HttpHeaderValue::toPositiveInt));
-		assertEquals(expiresDate, response.parseHeader(EXPIRES, HttpHeaderValue::toInstant));
-		assertEquals(lastModified, response.parseHeader(LAST_MODIFIED, HttpHeaderValue::toInstant));
+	private void testResponse(HttpResponse response) {
+		try {
+			assertEquals(responseContentType, response.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
+			assertEquals(responseCookies, new ArrayList<>(response.getCookies().values()));
+			assertEquals(responseDate, response.parseHeader(DATE, HttpHeaderValue::toInstant));
+			assertEquals(age, (int) response.parseHeader(AGE, HttpHeaderValue::toPositiveInt));
+			assertEquals(expiresDate, response.parseHeader(EXPIRES, HttpHeaderValue::toInstant));
+			assertEquals(lastModified, response.parseHeader(LAST_MODIFIED, HttpHeaderValue::toInstant));
+		} catch (ParseException e) {
+			throw new AssertionError(e);
+		}
 	}
 
-	private void testRequest(HttpRequest request) throws ParseException {
-		assertEquals(requestAcceptContentTypes, request.parseHeader(ACCEPT, HttpHeaderValue::toAcceptContentTypes));
-		assertEquals(requestAcceptCharsets, request.parseHeader(ACCEPT_CHARSET, HttpHeaderValue::toAcceptCharsets));
-		assertEquals(requestDate, request.parseHeader(DATE, HttpHeaderValue::toInstant));
-		assertEquals(dateIMS, request.parseHeader(IF_MODIFIED_SINCE, HttpHeaderValue::toInstant));
-		assertEquals(dateIUMS, request.parseHeader(IF_UNMODIFIED_SINCE, HttpHeaderValue::toInstant));
-		assertEquals(requestContentType, request.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
-		assertEquals(requestCookies.stream().map(HttpCookie::getValue).collect(toList()), new ArrayList<>(request.getCookies().values()));
+	private void testRequest(HttpRequest request) {
+		try {
+			assertEquals(requestAcceptContentTypes, request.parseHeader(ACCEPT, HttpHeaderValue::toAcceptContentTypes));
+			assertEquals(requestAcceptCharsets, request.parseHeader(ACCEPT_CHARSET, HttpHeaderValue::toAcceptCharsets));
+			assertEquals(requestDate, request.parseHeader(DATE, HttpHeaderValue::toInstant));
+			assertEquals(dateIMS, request.parseHeader(IF_MODIFIED_SINCE, HttpHeaderValue::toInstant));
+			assertEquals(dateIUMS, request.parseHeader(IF_UNMODIFIED_SINCE, HttpHeaderValue::toInstant));
+			assertEquals(requestContentType, request.parseHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
+			assertEquals(requestCookies.stream().map(HttpCookie::getValue).collect(toList()), new ArrayList<>(request.getCookies().values()));
+		} catch (ParseException e) {
+			throw new AssertionError(e);
+		}
 	}
 
 	private static Instant createDate(int year, int month, int day) {

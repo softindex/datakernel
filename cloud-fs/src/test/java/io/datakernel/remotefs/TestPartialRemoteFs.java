@@ -36,10 +36,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertThat;
 
 @RunWith(DatakernelRunner.class)
 public final class TestPartialRemoteFs {
@@ -74,67 +77,72 @@ public final class TestPartialRemoteFs {
 
 	@Test
 	public void justDownload() throws IOException {
-		ChannelSupplier.ofPromise(client.download(FILE))
+		await(ChannelSupplier.ofPromise(client.download(FILE))
 				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ -> assertArrayEquals(CONTENT, Files.readAllBytes(clientStorage.resolve(FILE)))));
+				.whenComplete(($, e) -> server.close()));
+
+		assertArrayEquals(CONTENT, Files.readAllBytes(clientStorage.resolve(FILE)));
 	}
 
 	@Test
-	public void ensuredUpload() {
+	public void ensuredUpload() throws IOException {
 		byte[] data = new byte[10 * (1 << 20)]; // 10 mb
 		ThreadLocalRandom.current().nextBytes(data);
 
 		ChannelSupplier<ByteBuf> supplier = ChannelSupplier.of(ByteBuf.wrapForReading(data));
 		ChannelConsumer<ByteBuf> consumer = ChannelConsumer.ofPromise(client.upload("test_big_file.bin"));
 
-		supplier.streamTo(consumer)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ ->
-						assertArrayEquals(data, Files.readAllBytes(serverStorage.resolve("test_big_file.bin")))));
+		await(supplier.streamTo(consumer)
+				.whenComplete(($, e) -> server.close()));
+
+		assertArrayEquals(data, Files.readAllBytes(serverStorage.resolve("test_big_file.bin")));
 	}
 
 	@Test
 	public void downloadPrefix() throws IOException {
-		ChannelSupplier.ofPromise(client.download(FILE, 0, 12))
+		await(ChannelSupplier.ofPromise(client.download(FILE, 0, 12))
 				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ ->
-						assertArrayEquals("test content".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)))));
+				.whenComplete(($, e) -> server.close()));
+
+		assertArrayEquals("test content".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)));
 	}
 
 	@Test
 	public void downloadSuffix() throws IOException {
-		ChannelSupplier.ofPromise(client.download(FILE, 13))
+		await(ChannelSupplier.ofPromise(client.download(FILE, 13))
 				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ ->
-						assertArrayEquals("of the file".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)))));
+				.whenComplete(($, e) -> server.close()));
+
+		assertArrayEquals("of the file".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)));
 	}
 
 	@Test
 	public void downloadPart() throws IOException {
-		ChannelSupplier.ofPromise(client.download(FILE, 5, 10))
+		await(ChannelSupplier.ofPromise(client.download(FILE, 5, 10))
 				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ ->
-						assertArrayEquals("content of".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)))));
+				.whenComplete(($, e) -> server.close()));
+
+		assertArrayEquals("content of".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)));
 	}
 
 	@Test
 	public void downloadOverSuffix() throws IOException {
-		ChannelSupplier.ofPromise(client.download(FILE, 13, 123))
+		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(FILE, 13, 123))
 				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertFailure(RemoteFsException.class, "Boundaries exceed file size"));
+				.whenComplete(($, e) -> server.close()));
+
+		assertThat(exception, instanceOf(RemoteFsException.class));
+		assertThat(exception.getMessage(), containsString("Boundaries exceed file size"));
 	}
 
 	@Test
 	public void downloadOver() throws IOException {
-		ChannelSupplier.ofPromise(client.download(FILE, 123, 123))
+		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(FILE, 123, 123))
 				.streamTo(ChannelFileWriter.create(executor, clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertFailure(RemoteFsException.class, "Offset exceeds file size"));
+				.whenComplete(($, e) -> server.close()));
+
+		assertThat(exception, instanceOf(RemoteFsException.class));
+		assertThat(exception.getMessage(), containsString("Offset exceeds file size"));
 	}
 
 	@Test
@@ -146,10 +154,10 @@ public final class TestPartialRemoteFs {
 
 		Files.write(path, content.getBytes(UTF_8));
 
-		ChannelSupplier.of(ByteBuf.wrapForReading(override.getBytes(UTF_8)))
+		await(ChannelSupplier.of(ByteBuf.wrapForReading(override.getBytes(UTF_8)))
 				.streamTo(ChannelConsumer.ofPromise(client.upload(path.getFileName().toString(), 35)))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ ->
-						assertArrayEquals(updated.getBytes(UTF_8), Files.readAllBytes(path))));
+				.whenComplete(($, e) -> server.close()));
+
+		assertArrayEquals(updated.getBytes(UTF_8), Files.readAllBytes(path));
 	}
 }

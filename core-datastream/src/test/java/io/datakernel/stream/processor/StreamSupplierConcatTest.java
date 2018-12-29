@@ -16,38 +16,36 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.stream.TestStreamConsumers.randomlySuspending;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
+@RunWith(DatakernelRunner.class)
 public class StreamSupplierConcatTest {
 
 	@Test
 	public void testSequence() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		StreamSupplier.concat(
+		await(StreamSupplier.concat(
 				StreamSupplier.of(1, 2, 3),
 				StreamSupplier.of(4, 5, 6))
-				.streamTo(consumer.transformWith(randomlySuspending()));
-
-		eventloop.run();
+				.streamTo(consumer.transformWith(randomlySuspending())));
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
 		assertEndOfStream(consumer);
@@ -55,55 +53,48 @@ public class StreamSupplierConcatTest {
 
 	@Test
 	public void testSequenceException() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
+		ExpectedException exception = new ExpectedException("Test Exception");
 
-		StreamSupplier.concat(
+		Throwable e = awaitException(StreamSupplier.concat(
 				StreamSupplier.of(1, 2, 3),
 				StreamSupplier.of(4, 5, 6),
-				StreamSupplier.closingWithError(new ExpectedException("Test Exception")),
+				StreamSupplier.closingWithError(exception),
 				StreamSupplier.of(1, 2, 3))
-				.streamTo(consumer.transformWith(randomlySuspending()));
+				.streamTo(consumer.transformWith(randomlySuspending())));
 
-		eventloop.run();
-
+		assertSame(exception, e);
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
 		assertClosedWithError(consumer);
 	}
 
 	@Test
-	public void testConcat() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		CompletableFuture<List<Integer>> future = StreamSupplier.concat(
+	public void testConcat() {
+		List<Integer> list = await(StreamSupplier.concat(
 				StreamSupplier.of(1, 2, 3),
 				StreamSupplier.of(4, 5, 6),
 				StreamSupplier.of())
-				.toList()
-				.toCompletableFuture();
+				.toList());
 
-		eventloop.run();
-
-		assertEquals(asList(1, 2, 3, 4, 5, 6), future.get());
+		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
 	}
 
 	@Test
 	public void testConcatException() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
+		ExpectedException exception = new ExpectedException("Test Exception");
 
-		StreamSupplier.concat(
+		Throwable e = awaitException(StreamSupplier.concat(
 				StreamSupplier.of(1, 2, 3),
 				StreamSupplier.of(4, 5, 6),
-				StreamSupplier.closingWithError(new ExpectedException("Test Exception")))
-				.streamTo(consumer.transformWith(TestStreamConsumers.oneByOne()));
+				StreamSupplier.closingWithError(exception))
+				.streamTo(consumer.transformWith(TestStreamConsumers.oneByOne())));
 
-		eventloop.run();
-
+		assertSame(exception, e);
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
 
 	}

@@ -30,8 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.util.Recyclable.deepRecycle;
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static org.junit.Assert.assertSame;
@@ -83,7 +83,8 @@ public final class AbstractCommunicatingProcessTest {
 					return Promise.complete();
 				}));
 
-		acknowledgement.whenComplete(assertComplete($ -> assertTrue(consumedAll)));
+		await(acknowledgement);
+		assertTrue(consumedAll);
 	}
 
 	@Test
@@ -94,7 +95,7 @@ public final class AbstractCommunicatingProcessTest {
 					return Promise.ofException(error);
 				}));
 
-		acknowledgement.whenComplete(assertFailure(e -> assertSame(error, e)));
+		assertSame(error, awaitException(acknowledgement));
 	}
 
 	// region stub

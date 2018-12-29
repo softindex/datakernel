@@ -26,14 +26,15 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -41,10 +42,11 @@ import java.util.stream.Collectors;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.*;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.util.CollectionUtils.set;
 import static junit.framework.TestCase.assertEquals;
 
+@RunWith(DatakernelRunner.class)
 public class CustomFieldsTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -82,88 +84,82 @@ public class CustomFieldsTest {
 		@Override
 		public String toString() {
 			return "QueryResult{" +
-				"siteId=" + siteId +
-				", eventCount=" + eventCount +
-				", sumRevenue=" + sumRevenue +
-				", minRevenue=" + minRevenue +
-				", maxRevenue=" + maxRevenue +
-				", uniqueUserIds=" + uniqueUserIds +
-				", estimatedUniqueUserIdCount=" + estimatedUniqueUserIdCount +
-				'}';
+					"siteId=" + siteId +
+					", eventCount=" + eventCount +
+					", sumRevenue=" + sumRevenue +
+					", minRevenue=" + minRevenue +
+					", maxRevenue=" + maxRevenue +
+					", uniqueUserIds=" + uniqueUserIds +
+					", estimatedUniqueUserIdCount=" + estimatedUniqueUserIdCount +
+					'}';
 		}
 	}
 
 	@Test
 	public void test() throws Exception {
 		ExecutorService executorService = Executors.newCachedThreadPool();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
 		Path path = temporaryFolder.newFolder().toPath();
 		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executorService, path));
 
 		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
-			.withKey("siteId", FieldTypes.ofInt())
-			.withMeasure("eventCount", count(ofLong()))
-			.withMeasure("sumRevenue", sum(ofDouble()))
-			.withMeasure("minRevenue", min(ofDouble()))
-			.withMeasure("maxRevenue", max(ofDouble()))
-			.withMeasure("uniqueUserIds", union(ofLong()))
-			.withMeasure("estimatedUniqueUserIdCount", hyperLogLog(1024));
+				.withKey("siteId", FieldTypes.ofInt())
+				.withMeasure("eventCount", count(ofLong()))
+				.withMeasure("sumRevenue", sum(ofDouble()))
+				.withMeasure("minRevenue", min(ofDouble()))
+				.withMeasure("maxRevenue", max(ofDouble()))
+				.withMeasure("uniqueUserIds", union(ofLong()))
+				.withMeasure("estimatedUniqueUserIdCount", hyperLogLog(1024));
 
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
-			.withTemporarySortDir(temporaryFolder.newFolder().toPath());
+				.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
 		StreamSupplier<EventRecord> supplier = StreamSupplier.of(
-			new EventRecord(1, 0.34, 1),
-			new EventRecord(2, 0.42, 3),
-			new EventRecord(3, 0.13, 20));
+				new EventRecord(1, 0.34, 1),
+				new EventRecord(2, 0.42, 3),
+				new EventRecord(3, 0.13, 20));
 
-		CompletableFuture<AggregationDiff> future = aggregation.consume(supplier, EventRecord.class).toCompletableFuture();
-		eventloop.run();
-		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
-		aggregation.getState().apply(future.get());
-
-		supplier = StreamSupplier.of(
-			new EventRecord(2, 0.30, 20),
-			new EventRecord(1, 0.22, 1000),
-			new EventRecord(2, 0.91, 33));
-		future = aggregation.consume(supplier, EventRecord.class).toCompletableFuture();
-		eventloop.run();
-		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
-		aggregation.getState().apply(future.get());
+		AggregationDiff diff = await(aggregation.consume(supplier, EventRecord.class));
+		aggregationChunkStorage.finish(diff.getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
+		aggregation.getState().apply(diff);
 
 		supplier = StreamSupplier.of(
-			new EventRecord(1, 0.01, 1),
-			new EventRecord(3, 0.88, 20),
-			new EventRecord(3, 1.01, 21));
-		future = aggregation.consume(supplier, EventRecord.class).toCompletableFuture();
-		eventloop.run();
-		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
-		aggregation.getState().apply(future.get());
+				new EventRecord(2, 0.30, 20),
+				new EventRecord(1, 0.22, 1000),
+				new EventRecord(2, 0.91, 33));
+
+		diff = await(aggregation.consume(supplier, EventRecord.class));
+		aggregationChunkStorage.finish(diff.getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
+		aggregation.getState().apply(diff);
 
 		supplier = StreamSupplier.of(
-			new EventRecord(1, 0.35, 500),
-			new EventRecord(1, 0.59, 17),
-			new EventRecord(2, 0.85, 50));
-		future = aggregation.consume(supplier, EventRecord.class).toCompletableFuture();
-		eventloop.run();
-		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
-		aggregation.getState().apply(future.get());
+				new EventRecord(1, 0.01, 1),
+				new EventRecord(3, 0.88, 20),
+				new EventRecord(3, 1.01, 21));
+
+		diff = await(aggregation.consume(supplier, EventRecord.class));
+		aggregationChunkStorage.finish(diff.getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
+		aggregation.getState().apply(diff);
+
+		supplier = StreamSupplier.of(
+				new EventRecord(1, 0.35, 500),
+				new EventRecord(1, 0.59, 17),
+				new EventRecord(2, 0.85, 50));
+
+		diff = await(aggregation.consume(supplier, EventRecord.class));
+		aggregationChunkStorage.finish(diff.getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
+		aggregation.getState().apply(diff);
 
 		AggregationQuery query = AggregationQuery.create()
-			.withKeys("siteId")
-			.withMeasures("eventCount", "sumRevenue", "minRevenue", "maxRevenue", "uniqueUserIds", "estimatedUniqueUserIdCount");
+				.withKeys("siteId")
+				.withMeasures("eventCount", "sumRevenue", "minRevenue", "maxRevenue", "uniqueUserIds", "estimatedUniqueUserIdCount");
 
-		CompletableFuture<List<QueryResult>> future1 =
-			aggregation.query(query, QueryResult.class, DefiningClassLoader.create(classLoader))
-				.toList()
-				.toCompletableFuture();
-
-		eventloop.run();
+		List<QueryResult> queryResults = await(aggregation.query(query, QueryResult.class, DefiningClassLoader.create(classLoader))
+				.toList());
 
 		double delta = 1E-3;
-		List<QueryResult> queryResults = future1.get();
 		assertEquals(3, queryResults.size());
 
 		QueryResult s1 = queryResults.get(0);

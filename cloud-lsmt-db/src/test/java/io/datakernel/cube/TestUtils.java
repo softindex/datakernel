@@ -16,30 +16,41 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.cube.bean.TestPubRequest;
+import io.datakernel.aggregation.AggregationChunkStorage;
+import io.datakernel.cube.ot.CubeDiff;
+import io.datakernel.etl.LogDiff;
+import io.datakernel.etl.LogOTProcessor;
+import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTRepositoryMySql;
+import io.datakernel.ot.OTStateManager;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
+import java.sql.SQLException;
+
+import static io.datakernel.async.TestUtils.await;
+import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.toSet;
 
 public final class TestUtils {
-	public static List<TestPubRequest> generatePubRequests(int numberOfTestRequests) {
-		List<TestPubRequest> pubRequests = new ArrayList<>();
 
-		for (int i = 0; i < numberOfTestRequests; ++i) {
-			pubRequests.add(TestPubRequest.randomPubRequest());
+	public static void initializeRepository(OTRepositoryMySql<LogDiff<CubeDiff>> repository) {
+		try {
+			repository.initialize();
+			repository.truncateTables();
+		} catch (IOException | SQLException e) {
+			throw new AssertionError(e);
 		}
-
-		return pubRequests;
+		Long id = await(repository.createCommitId());
+		await(repository.push(OTCommit.ofRoot(id)));
+		await(repository.saveSnapshot(id, emptyList()));
 	}
 
-	public static long countAdvRequests(List<TestPubRequest> pubRequests) {
-		long count = 0;
-
-		for (TestPubRequest pubRequest : pubRequests) {
-			count += pubRequest.advRequests.size();
-		}
-
-		return count;
+	public static <T> void runProcessLogs(AggregationChunkStorage<Long> aggregationChunkStorage, OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager, LogOTProcessor<T, CubeDiff> logOTProcessor) {
+		LogDiff<CubeDiff> logDiff = await(logOTProcessor.processLog());
+		await(aggregationChunkStorage
+				.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).map(id -> (long) id).collect(toSet())));
+		logCubeStateManager.add(logDiff);
+		await(logCubeStateManager.commitAndPush());
 	}
 
 }

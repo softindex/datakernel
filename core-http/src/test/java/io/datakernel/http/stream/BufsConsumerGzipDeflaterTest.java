@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.zip.GZIPOutputStream;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
-import static io.datakernel.test.TestUtils.assertComplete;
 
 @RunWith(DatakernelRunner.class)
 public final class BufsConsumerGzipDeflaterTest {
@@ -103,7 +103,7 @@ public final class BufsConsumerGzipDeflaterTest {
 
 	private void doTest() {
 		gzip.getInput().set(ChannelSupplier.ofIterable(list));
-		gzip.getProcessResult().whenComplete(assertComplete());
+		await(gzip.getProcessResult());
 	}
 
 	private byte[] compressWithGzipOutputStream(byte[]... arrays) {

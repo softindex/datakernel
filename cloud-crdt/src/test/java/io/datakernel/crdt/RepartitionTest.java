@@ -28,7 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.async.TestUtils.await;
 
 @RunWith(DatakernelRunner.class)
 public final class RepartitionTest {
@@ -40,22 +40,23 @@ public final class RepartitionTest {
 			RuntimeCrdtClient<String, Integer> client = RuntimeCrdtClient.create(Eventloop.getCurrentEventloop(), Integer::max);
 			clients.put("client_" + i, client);
 		}
-		StreamSupplier.ofStream(IntStream.range(1, 100).mapToObj(i -> new CrdtData<>("test" + i, i)))
-				.streamTo(StreamConsumer.ofPromise(((CrdtClient<String, Integer>) clients.get("client_0")).upload()))
-				.thenCompose($ -> {
-					CrdtClusterClient<String, String, Integer> cluster = CrdtClusterClient.create(Eventloop.getCurrentEventloop(), clients, Integer::max)
-							.withReplicationCount(3);
-					return CrdtRepartitionController.create(cluster, "client_0").repartition();
-				})
-				.whenComplete(assertComplete($ ->
-						clients.forEach((k, v) -> {
-							System.out.println(k + ":");
-							int[] i = {0};
-							v.iterator().forEachRemaining(x -> {
-								i[0]++;
-								System.out.println(x);
-							});
-							System.out.println("Was " + i[0] + " elements");
-						})));
+		await(StreamSupplier.ofStream(IntStream.range(1, 100).mapToObj(i -> new CrdtData<>("test" + i, i)))
+				.streamTo(StreamConsumer.ofPromise(((CrdtClient<String, Integer>) clients.get("client_0")).upload())));
+
+		CrdtClusterClient<String, String, Integer> cluster = CrdtClusterClient.create(Eventloop.getCurrentEventloop(), clients, Integer::max)
+				.withReplicationCount(3);
+
+		await(CrdtRepartitionController.create(cluster, "client_0").repartition());
+
+
+		clients.forEach((k, v) -> {
+			System.out.println(k + ":");
+			int[] i = {0};
+			v.iterator().forEachRemaining(x -> {
+				i[0]++;
+				System.out.println(x);
+			});
+			System.out.println("Was " + i[0] + " elements");
+		});
 	}
 }

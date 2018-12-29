@@ -4,8 +4,8 @@ import io.datakernel.async.Promise;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.global.common.Hash;
 import io.global.common.SimKey;
-import io.global.ot.api.CommitId;
 import io.global.common.api.EncryptedData;
+import io.global.ot.api.CommitId;
 import io.global.ot.api.RawCommit;
 import io.global.ot.server.CommitStorage;
 import org.junit.Test;
@@ -14,8 +14,8 @@ import org.junit.runner.RunWith;
 import java.util.Optional;
 import java.util.Set;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.common.TestUtils.await;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
@@ -24,7 +24,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(DatakernelRunner.class)
-@DatakernelRunner.SkipEventloopRun
 public class CommitStorageStubTest {
 	public static final SimKey SIM_KEY = SimKey.generate();
 	public static final byte[] DATA = {1};

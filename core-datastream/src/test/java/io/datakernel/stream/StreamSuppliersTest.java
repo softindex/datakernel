@@ -1,61 +1,51 @@
 package io.datakernel.stream;
 
-import io.datakernel.eventloop.Eventloop;
-import org.junit.Before;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.stream.TestStreamSuppliers.errorDecorator;
+import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
+@RunWith(DatakernelRunner.class)
 public class StreamSuppliersTest {
-
-	private Eventloop eventloop;
-
-	@Before
-	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-	}
 
 	@Test
 	public void testErrorDecorator() {
+		IllegalArgumentException exception = new IllegalArgumentException("TestException");
 		StreamSupplier<Integer> supplier = StreamSupplier.ofStream(IntStream.range(1, 10).boxed())
-				.transformWith(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
+				.transformWith(errorDecorator(k -> k.equals(5) ? exception : null));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		supplier.streamTo(consumer);
+		Throwable e = awaitException(supplier.streamTo(consumer));
 
-		eventloop.run();
-
-		TestUtils.assertClosedWithError(consumer);
+		assertSame(exception, e);
+		assertClosedWithError(consumer);
 		assertThat(consumer.getAcknowledgement().getException(), instanceOf(IllegalArgumentException.class));
 	}
 
 	@Test
-	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
+	public void testErrorDecoratorWithResult() {
+		IllegalArgumentException exception = new IllegalArgumentException("TestException");
 		StreamSupplier<Integer> supplier = StreamSupplier.ofStream(IntStream.range(1, 10).boxed())
-				.transformWith(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
+				.transformWith(errorDecorator(k -> k.equals(5) ? exception : null));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		CompletableFuture<Void> future = supplier.streamTo(consumer)
-				.whenComplete(($, e) -> assertThat(e, instanceOf(IllegalArgumentException.class)))
-				.thenApplyEx(($, e) -> (Void) null)
-				.toCompletableFuture();
-		eventloop.run();
+		Throwable e = awaitException(supplier.streamTo(consumer));
 
-		future.get();
-		TestUtils.assertClosedWithError(consumer);
+		assertSame(exception, e);
+		assertClosedWithError(consumer);
 		assertThat(consumer.getAcknowledgement().getException(), instanceOf(IllegalArgumentException.class));
 	}
 
@@ -63,15 +53,15 @@ public class StreamSuppliersTest {
 	public void testSupplierSupplier() {
 		List<Integer> actual = new ArrayList<>();
 		int[] i = {0};
-		StreamSupplier.ofSupplier(
+		await(StreamSupplier.ofSupplier(
 				() -> {
 					if (i[0] == 10) {
 						return null;
 					}
 					return i[0]++;
 				})
-				.streamTo(StreamConsumerToList.create(actual));
-		eventloop.run();
+				.streamTo(StreamConsumerToList.create(actual)));
+
 		assertEquals(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9), actual);
 	}
 }

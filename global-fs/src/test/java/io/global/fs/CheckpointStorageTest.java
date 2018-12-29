@@ -16,7 +16,6 @@
 
 package io.global.fs;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.processor.DatakernelRunner;
@@ -36,6 +35,7 @@ import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
@@ -76,17 +76,20 @@ public final class CheckpointStorageTest {
 
 		String filename = "test.txt";
 
-		Promise.complete()
-				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 567, digest1, null), keys.getPrivKey())))
-				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 123, digest2, null), keys.getPrivKey())))
-				.thenCompose($ -> storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 321, digest3, null), keys.getPrivKey())))
-				.thenCompose($ -> storage.loadIndex("test.txt"))
-				.whenResult(positions -> assertArrayEquals(new long[]{123, 321, 567}, positions))
-				.thenCompose($ -> storage.load("test.txt", 321))
-				.whenResult(checkpoint -> assertTrue(checkpoint.verify(keys.getPubKey())))
-				.thenCompose($ -> storage.load("test.txt", 567))
-				.whenResult(checkpoint -> assertTrue(checkpoint.verify(keys.getPubKey())))
-				.thenCompose($ -> storage.load("test.txt", 123))
-				.whenResult(checkpoint -> assertTrue(checkpoint.verify(keys.getPubKey())));
+		await(storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 567, digest1, null), keys.getPrivKey())));
+		await(storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 123, digest2, null), keys.getPrivKey())));
+		await(storage.store("test.txt", SignedData.sign(REGISTRY.get(GlobalFsCheckpoint.class), GlobalFsCheckpoint.of(filename, 321, digest3, null), keys.getPrivKey())));
+
+		long[] positions = await(storage.loadIndex("test.txt"));
+		assertArrayEquals(new long[]{123, 321, 567}, positions);
+
+		SignedData<GlobalFsCheckpoint> checkpoint1 = await(storage.load("test.txt", 321));
+		assertTrue(checkpoint1.verify(keys.getPubKey()));
+
+		SignedData<GlobalFsCheckpoint> checkpoint2 = await(storage.load("test.txt", 567));
+		assertTrue(checkpoint2.verify(keys.getPubKey()));
+
+		SignedData<GlobalFsCheckpoint> checkpoint3 = await(storage.load("test.txt", 123));
+		assertTrue(checkpoint3.verify(keys.getPubKey()));
 	}
 }

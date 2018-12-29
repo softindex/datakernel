@@ -16,8 +16,6 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.crdt.local.FsCrdtClient;
 import io.datakernel.crdt.local.RocksDBCrdtClient;
 import io.datakernel.eventloop.Eventloop;
@@ -47,9 +45,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BinaryOperator;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
@@ -121,25 +119,22 @@ public class CrdtClientAPITest {
 				new CrdtData<>("test_4", -28)
 		);
 
-		Promise.complete()
-				.thenCompose($ -> StreamSupplier.of(
-						new CrdtData<>("test_1", 344),
-						new CrdtData<>("test_2", 24),
-						new CrdtData<>("test_3", -8)).streamTo(StreamConsumer.ofPromise(client.upload())))
-				.thenCompose($ -> StreamSupplier.of(
-						new CrdtData<>("test_2", 44),
-						new CrdtData<>("test_3", 74),
-						new CrdtData<>("test_4", -28)).streamTo(StreamConsumer.ofPromise(client.upload())))
-				.thenCompose($ -> StreamSupplier.of(
-						new CrdtData<>("test_0", 0),
-						new CrdtData<>("test_1", 345),
-						new CrdtData<>("test_2", -28)).streamTo(StreamConsumer.ofPromise(client.upload())))
-				.thenCompose($ -> client.download().getStream().toList())
-				.whenComplete(assertComplete(list -> {
-					// list.sort(Comparator.naturalOrder()); // data should be already sorted by merge-reduce, so check for the order too
-					System.out.println(list);
-					assertEquals(expected, list);
-				}));
+		await(StreamSupplier.of(
+				new CrdtData<>("test_1", 344),
+				new CrdtData<>("test_2", 24),
+				new CrdtData<>("test_3", -8)).streamTo(StreamConsumer.ofPromise(client.upload())));
+		await(StreamSupplier.of(
+				new CrdtData<>("test_2", 44),
+				new CrdtData<>("test_3", 74),
+				new CrdtData<>("test_4", -28)).streamTo(StreamConsumer.ofPromise(client.upload())));
+		await(StreamSupplier.of(
+				new CrdtData<>("test_0", 0),
+				new CrdtData<>("test_1", 345),
+				new CrdtData<>("test_2", -28)).streamTo(StreamConsumer.ofPromise(client.upload())));
+
+		List<CrdtData<String, Integer>> list = await(client.download().getStream().toList());
+		System.out.println(list);
+		assertEquals(expected, list);
 	}
 
 	@Test
@@ -148,24 +143,19 @@ public class CrdtClientAPITest {
 				new CrdtData<>("test_1", 2),
 				new CrdtData<>("test_3", 4)
 		);
-		Promises.all(
-				StreamSupplier.of(
-						new CrdtData<>("test_1", 1),
-						new CrdtData<>("test_2", 2),
-						new CrdtData<>("test_3", 4)
-				).streamTo(StreamConsumer.ofPromise(client.upload())),
-				StreamSupplier.of(
-						new CrdtData<>("test_1", 2),
-						new CrdtData<>("test_2", 3),
-						new CrdtData<>("test_3", 2)
-				).streamTo(StreamConsumer.ofPromise(client.upload()))
-		)
-				.thenCompose($ -> StreamSupplier.of("test_2").streamTo(StreamConsumer.ofPromise(client.remove())))
-				.thenCompose($ -> client.download().getStreamPromise())
-				.thenCompose(StreamSupplier::toList)
-				.whenComplete(assertComplete(list -> {
-					System.out.println(list);
-					assertEquals(expected, list);
-				}));
+		await(StreamSupplier.of(
+				new CrdtData<>("test_1", 1),
+				new CrdtData<>("test_2", 2),
+				new CrdtData<>("test_3", 4)).streamTo(StreamConsumer.ofPromise(client.upload())));
+		await(StreamSupplier.of(
+				new CrdtData<>("test_1", 2),
+				new CrdtData<>("test_2", 3),
+				new CrdtData<>("test_3", 2)).streamTo(StreamConsumer.ofPromise(client.upload())));
+		await(StreamSupplier.of("test_2").streamTo(StreamConsumer.ofPromise(client.remove())));
+
+		List<CrdtData<String, Integer>> list = await(client.download().getStreamPromise()
+				.thenCompose(StreamSupplier::toList));
+		System.out.println(list);
+		assertEquals(expected, list);
 	}
 }

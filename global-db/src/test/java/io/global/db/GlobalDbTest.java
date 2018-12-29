@@ -48,10 +48,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.common.TestUtils.await;
-import static io.global.common.TestUtils.awaitException;
 import static io.global.common.api.SharedKeyStorage.NO_SHARED_KEY;
 import static io.global.db.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -75,10 +75,8 @@ public final class GlobalDbTest {
 	private KeyPair alice = KeyPair.generate();
 	private KeyPair bob = KeyPair.generate();
 
-	private LocalGlobalDbNode rawFirstClient;
 	private LocalGlobalDbNode rawSecondClient;
 
-	private GlobalDbNode firstNode;
 	private GlobalDbDriver firstDriver;
 	private DbClient firstAliceAdapter;
 	private DbClient secondAliceAdapter;
@@ -86,10 +84,7 @@ public final class GlobalDbTest {
 	private NodeFactory<GlobalDbNode> nodeFactory;
 	private Function<TableID, DbStorage> storageFactory;
 
-	private GlobalDbNode cachingNode;
-	private GlobalDbDriver cachingDriver;
 	private DbClient cachingAliceGateway;
-	private DbClient cachingBobGateway;
 
 	@Before
 	public void setUp() throws IOException {
@@ -112,10 +107,9 @@ public final class GlobalDbTest {
 			}
 		};
 
-		firstNode = nodeFactory.create(FIRST_ID);
+		GlobalDbNode firstNode = nodeFactory.create(FIRST_ID);
 		GlobalDbNode secondNode = nodeFactory.create(SECOND_ID);
 
-		rawFirstClient = (LocalGlobalDbNode) nodes.get(FIRST_ID);
 		rawSecondClient = (LocalGlobalDbNode) nodes.get(SECOND_ID);
 
 		firstDriver = GlobalDbDriver.create(firstNode, discoveryService, list(alice, bob));
@@ -124,10 +118,9 @@ public final class GlobalDbTest {
 		firstAliceAdapter = firstDriver.gatewayFor(alice.getPubKey());
 		secondAliceAdapter = secondDriver.gatewayFor(alice.getPubKey());
 
-		cachingNode = nodeFactory.create(new RawServerId("http://127.0.0.1:1003"));
-		cachingDriver = GlobalDbDriver.create(cachingNode, discoveryService, asList(alice, bob));
+		GlobalDbNode cachingNode = nodeFactory.create(new RawServerId("http://127.0.0.1:1003"));
+		GlobalDbDriver cachingDriver = GlobalDbDriver.create(cachingNode, discoveryService, asList(alice, bob));
 		cachingAliceGateway = cachingDriver.gatewayFor(alice.getPubKey());
-		cachingBobGateway = cachingDriver.gatewayFor(bob.getPubKey());
 	}
 
 	private void announce(KeyPair keys, Set<RawServerId> rawServerIds) {

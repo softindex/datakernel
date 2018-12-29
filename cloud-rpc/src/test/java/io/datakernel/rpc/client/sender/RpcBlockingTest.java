@@ -25,26 +25,27 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
 import static org.junit.Assert.assertEquals;
 
+@RunWith(DatakernelRunner.class)
 public final class RpcBlockingTest {
 	private static final int PORT_1 = 10001;
 	private static final int PORT_2 = 10002;
 	private static final int PORT_3 = 10003;
 	private static final int TIMEOUT = 1500;
 
-	private Eventloop eventloop;
 	private Thread thread;
 
 	private RpcServer serverOne;
@@ -56,7 +57,7 @@ public final class RpcBlockingTest {
 
 	@Before
 	public void setUp() throws Exception {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 		serverOne = RpcServer.create(eventloop)
 				.withMessageTypes(HelloRequest.class, HelloResponse.class)
@@ -102,7 +103,7 @@ public final class RpcBlockingTest {
 			return shard;
 		};
 
-		RpcClient client = RpcClient.create(eventloop)
+		RpcClient client = RpcClient.create(Eventloop.getCurrentEventloop())
 				.withMessageTypes(HelloRequest.class, HelloResponse.class)
 				.withStrategy(
 						roundRobin(

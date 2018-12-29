@@ -27,7 +27,7 @@ import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
+import io.datakernel.util.Tuple2;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,15 +45,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static io.datakernel.test.TestUtils.*;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.stream.Collectors.toSet;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
@@ -85,84 +89,88 @@ public final class FsIntegrationTest {
 	}
 
 	@Test
-	public void testUpload() {
+	public void testUpload() throws IOException {
 		String resultFile = "file_uploaded.txt";
 
-		upload(resultFile, CONTENT)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ -> assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)))));
+		await(upload(resultFile, CONTENT)
+				.whenComplete(($, e) -> server.close()));
+
+		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
 	}
 
 	@Test
-	public void testUploadMultiple() {
+	public void testUploadMultiple() throws IOException {
 		int files = 10;
 
-		Promises.all(IntStream.range(0, 10)
+		await(Promises.all(IntStream.range(0, 10)
 				.mapToObj(i -> ChannelSupplier.of(ByteBuf.wrapForReading(CONTENT))
 						.streamTo(ChannelConsumer.ofPromise(client.upload("file" + i)))))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ -> {
-					for (int i = 0; i < files; i++) {
-						assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
-					}
-				}));
+				.whenComplete(($, e) -> server.close()));
+
+		for (int i = 0; i < files; i++) {
+			assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
+		}
 	}
 
 	@Test
-	public void testUploadBigFile() {
+	public void testUploadBigFile() throws IOException {
 		String resultFile = "big file_uploaded.txt";
 
-		upload(resultFile, BIG_FILE)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ -> assertArrayEquals(BIG_FILE, Files.readAllBytes(storage.resolve(resultFile)))));
+		await(upload(resultFile, BIG_FILE)
+				.whenComplete(($, e) -> server.close()));
+
+		assertArrayEquals(BIG_FILE, Files.readAllBytes(storage.resolve(resultFile)));
 	}
 
 	@Test
-	public void testUploadLong() {
+	public void testUploadLong() throws IOException {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
-		upload(resultFile, CONTENT)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ -> assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)))));
+		await(upload(resultFile, CONTENT)
+				.whenComplete(($, e) -> server.close()));
+
+		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
 	}
 
 	@Test
-	public void testUploadExistingFile() {
+	public void testUploadExistingFile() throws IOException {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
-		upload(resultFile, CONTENT)
+		Throwable exception = awaitException(upload(resultFile, CONTENT)
 				.thenCompose($ -> upload(resultFile, CONTENT))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertFailure(RemoteFsException.class, "FileAlreadyExistsException"))
-				.whenComplete(asserting(($, e) -> {
-					assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
-				}));
+				.whenComplete(($, e) -> server.close()));
+
+		assertThat(exception, instanceOf(RemoteFsException.class));
+		assertThat(exception.getMessage(), containsString("FileAlreadyExistsException"));
+		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
 	}
 
 	@Test
 	public void testUploadServerFail() {
-		upload("../../nonlocal/../file.txt", CONTENT)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertFailure(RemoteFsException.class, "File .*? goes outside of the storage directory"));
+		Throwable exception = awaitException(upload("../../nonlocal/../file.txt", CONTENT)
+				.whenComplete(($, e) -> server.close()));
+
+		assertThat(exception, instanceOf(RemoteFsException.class));
+		assertTrue(Pattern.compile("File .*? goes outside of the storage directory").matcher(exception.getMessage()).find());
 	}
 
 	@Test
-	@SkipEventloopRun
 	public void testOnClientExceptionWhileUploading() throws IOException {
 		String resultFile = "upload_with_exceptions.txt";
 
 		ByteBuf test4 = wrapUtf8("Test4");
 
-		ChannelSuppliers.concat(
+		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(
 				ChannelSupplier.of(wrapUtf8("Test1"), wrapUtf8(" Test2"), wrapUtf8(" Test3")).async(),
 				ChannelSupplier.of(ByteBuf.wrapForReading(BIG_FILE)),
 				ChannelSupplier.ofException(new StacklessException(FsIntegrationTest.class, "Test exception")),
-				ChannelSupplier.of(test4))
-				.streamTo(ChannelConsumer.ofPromise(client.upload(resultFile)))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertFailure(StacklessException.class, "Test exception"));
+				ChannelSupplier.of(test4));
 
-		Eventloop.getCurrentEventloop().run(); // because for some reason file does not exist until eventloop ends
+		Throwable exception = awaitException(supplier.streamTo(ChannelConsumer.ofPromise(client.upload(resultFile)))
+				.whenComplete(($, e) -> server.close()));
+
+		assertThat(exception, instanceOf(StacklessException.class));
+		assertThat(exception.getMessage(), containsString("Test exception"));
 
 		test4.recycle();
 		ByteBufQueue queue = new ByteBufQueue();
@@ -181,7 +189,9 @@ public final class FsIntegrationTest {
 		String file = "file1_downloaded.txt";
 		Files.write(storage.resolve(file), CONTENT);
 
-		download(file).whenComplete(assertComplete(result -> assertArrayEquals(CONTENT, result.asArray())));
+		ByteBuf result = await(download(file));
+
+		assertArrayEquals(CONTENT, result.asArray());
 	}
 
 	@Test
@@ -190,16 +200,20 @@ public final class FsIntegrationTest {
 		Files.createDirectories(storage.resolve("this/is/not/empty/directory"));
 		Files.write(storage.resolve(file), CONTENT);
 
-		download(file).whenComplete(assertComplete(result -> assertArrayEquals(CONTENT, result.asArray())));
+		ByteBuf result = await(download(file));
+
+		assertArrayEquals(CONTENT, result.asArray());
 	}
 
 	@Test
 	public void testDownloadNotExist() {
 		String file = "file_not_exist_downloaded.txt";
-		ChannelSupplier.ofPromise(client.download(file))
+		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(file))
 				.streamTo(ChannelConsumer.of($ -> Promise.complete()))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertFailure(RemoteFsException.class, "File not found"));
+				.whenComplete(($, e) -> server.close()));
+
+		assertThat(exception, instanceOf(RemoteFsException.class));
+		assertThat(exception.getMessage(), containsString("File not found"));
 	}
 
 	@Test
@@ -214,13 +228,12 @@ public final class FsIntegrationTest {
 					.streamTo(ChannelFileWriter.create(executor, storage.resolve("file" + i))));
 		}
 
-		Promises.all(tasks)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ -> {
-					for (int i = 0; i < tasks.size(); i++) {
-						assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
-					}
-				}));
+		await(Promises.all(tasks)
+				.whenComplete(($, e) -> server.close()));
+
+		for (int i = 0; i < tasks.size(); i++) {
+			assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
+		}
 	}
 
 	@Test
@@ -228,18 +241,18 @@ public final class FsIntegrationTest {
 		String file = "file.txt";
 		Files.write(storage.resolve(file), CONTENT);
 
-		client.deleteBulk(file)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete($ -> assertFalse(Files.exists(storage.resolve(file)))));
+		await(client.deleteBulk(file)
+				.whenComplete(($, e) -> server.close()));
+
+		assertFalse(Files.exists(storage.resolve(file)));
 	}
 
 	@Test
 	public void testDeleteMissingFile() {
 		String file = "no_file.txt";
 
-		client.deleteBulk(file)
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete());
+		await(client.deleteBulk(file)
+				.whenComplete(($, e) -> server.close()));
 	}
 
 	@Test
@@ -255,12 +268,12 @@ public final class FsIntegrationTest {
 			Files.write(storage.resolve(filename), CONTENT);
 		}
 
-		client.list("**")
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete(list ->
-						assertEquals(expected, list.stream()
-								.map(FileMetadata::getFilename)
-								.collect(toSet()))));
+		List<FileMetadata> metadataList = await(client.list("**")
+				.whenComplete(($, e) -> server.close()));
+
+		assertEquals(expected, metadataList.stream()
+				.map(FileMetadata::getFilename)
+				.collect(toSet()));
 	}
 
 	@Test
@@ -287,12 +300,13 @@ public final class FsIntegrationTest {
 		expected2.add("subsubfolder/file1.txt");
 		expected2.add("subsubfolder/first file.txt");
 
-		Promises.toTuple(client.subfolder("subfolder1").list("**"), client.subfolder("subfolder2").list("**"))
-				.whenComplete(($, e) -> server.close())
-				.whenComplete(assertComplete(tuple -> {
-					assertEquals(expected1, tuple.getValue1().stream().map(FileMetadata::getFilename).collect(toSet()));
-					assertEquals(expected2, tuple.getValue2().stream().map(FileMetadata::getFilename).collect(toSet()));
-				}));
+		Tuple2<List<FileMetadata>, List<FileMetadata>> tuple = await(
+				Promises.toTuple(client.subfolder("subfolder1").list("**"), client.subfolder("subfolder2").list("**"))
+						.whenComplete(($, e) -> server.close())
+		);
+
+		assertEquals(expected1, tuple.getValue1().stream().map(FileMetadata::getFilename).collect(toSet()));
+		assertEquals(expected2, tuple.getValue2().stream().map(FileMetadata::getFilename).collect(toSet()));
 	}
 
 	private Promise<Void> upload(String resultFile, byte[] bytes) {

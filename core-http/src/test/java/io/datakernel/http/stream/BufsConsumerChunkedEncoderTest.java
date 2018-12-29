@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.async.TestUtils.await;
 
 @RunWith(DatakernelRunner.class)
 public final class BufsConsumerChunkedEncoderTest {
@@ -90,7 +90,6 @@ public final class BufsConsumerChunkedEncoderTest {
 
 	private void doTest() {
 		chunkedEncoder.getInput().set(ChannelSupplier.ofIterable(list));
-		chunkedEncoder.getProcessResult()
-				.whenComplete(assertComplete());
+		await(chunkedEncoder.getProcessResult());
 	}
 }

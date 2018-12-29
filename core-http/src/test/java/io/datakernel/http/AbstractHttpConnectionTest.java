@@ -19,8 +19,10 @@ package io.datakernel.http;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
@@ -29,6 +31,7 @@ import org.junit.runner.RunWith;
 
 import java.util.stream.IntStream;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.test.TestUtils.assertComplete;
@@ -60,12 +63,11 @@ public final class AbstractHttpConnectionTest {
 				.withAcceptOnce();
 		server.listen();
 
-		client.request(HttpRequest.get(URL))
-				.thenCompose(result -> result.getBody()
-						.whenComplete(assertComplete(body -> {
-							assertEquals("text/           html", result.getHeaderOrNull(CONTENT_TYPE));
-							assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", body.asString(UTF_8));
-						})));
+		ByteBuf body = await(client.request(HttpRequest.get(URL))
+				.whenComplete(assertComplete(response -> assertEquals("text/           html", response.getHeaderOrNull(CONTENT_TYPE))))
+				.thenCompose(HttpMessage::getBody));
+
+		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", body.asString(UTF_8));
 	}
 
 	@Test
@@ -80,12 +82,11 @@ public final class AbstractHttpConnectionTest {
 
 		server.listen();
 
-		client.request(HttpRequest.get(URL).withHeader(ACCEPT_ENCODING, "gzip"))
-				.thenCompose(response -> response.getBody()
-						.whenComplete(assertComplete(body -> {
-							assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING));
-							assertEquals("Test message", body.asString(UTF_8));
-						})));
+		ByteBuf body = await(client.request(HttpRequest.get(URL).withHeader(ACCEPT_ENCODING, "gzip"))
+				.whenComplete(assertComplete(response -> assertNotNull(response.getHeaderOrNull(CONTENT_ENCODING))))
+				.thenCompose(HttpMessage::getBody));
+
+		assertEquals("Test message", body.asString(UTF_8));
 	}
 
 	@Test
@@ -114,17 +115,22 @@ public final class AbstractHttpConnectionTest {
 	private Promise<HttpResponse> checkRequest(String expectedHeader, int expectedConnectionCount, EventStats connectionCount) {
 		return client.request(HttpRequest.get(URL))
 				.thenCompose(response -> response.getBody()
-						.whenComplete(assertComplete(body -> {
-							assertEquals(expectedHeader, response.getHeader(CONNECTION));
-							connectionCount.refresh(System.currentTimeMillis());
-							assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
-						}))
+						.whenComplete((body, e) -> {
+							if (e != null) throw new AssertionError(e);
+							try {
+								assertEquals(expectedHeader, response.getHeader(CONNECTION));
+								connectionCount.refresh(System.currentTimeMillis());
+								assertEquals(expectedConnectionCount, connectionCount.getTotalCount());
+							} catch (ParseException e1) {
+								throw new AssertionError(e1);
+							}
+						})
 						.thenApply($ -> response));
 	}
 
 	@SuppressWarnings("SameParameterValue")
 	private void checkMaxKeepAlive(int maxKeepAlive, AsyncHttpServer server, EventStats connectionCount) {
-		Promises.runSequence(
+		await(Promises.runSequence(
 				IntStream.range(0, maxKeepAlive - 1)
 						.mapToObj($ -> AsyncSupplier.cast(() ->
 								checkRequest("keep-alive", 1, connectionCount).post())))
@@ -132,6 +138,6 @@ public final class AbstractHttpConnectionTest {
 				.post()
 				.thenCompose($ -> checkRequest("keep-alive", 2, connectionCount))
 				.post()
-				.whenComplete(($, e) -> server.close());
+				.whenComplete(($, e) -> server.close()));
 	}
 }

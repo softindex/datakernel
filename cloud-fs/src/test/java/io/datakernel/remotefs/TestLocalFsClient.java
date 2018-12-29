@@ -16,17 +16,15 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import io.datakernel.util.MemSize;
 import org.junit.Before;
 import org.junit.Rule;
@@ -46,12 +44,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.csp.file.ChannelFileReader.READ_OPTIONS;
 import static io.datakernel.csp.file.ChannelFileReader.readFile;
 import static io.datakernel.csp.file.ChannelFileWriter.CREATE_OPTIONS;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -120,10 +118,10 @@ public final class TestLocalFsClient {
 		Path path = clientPath.resolve("c.txt");
 		AsyncFile file = AsyncFile.open(executor, path, READ_OPTIONS);
 
-		client.upload("1/c.txt")
-				.thenCompose(readFile(file).withBufferSize(BUFFER_SIZE)::streamTo)
-				.whenComplete(assertComplete($ ->
-						assertArrayEquals(Files.readAllBytes(path), Files.readAllBytes(storagePath.resolve("1/c.txt")))));
+		await(client.upload("1/c.txt")
+				.thenCompose(readFile(file).withBufferSize(BUFFER_SIZE)::streamTo));
+
+		assertArrayEquals(Files.readAllBytes(path), Files.readAllBytes(storagePath.resolve("1/c.txt")));
 	}
 
 	@Test
@@ -131,7 +129,7 @@ public final class TestLocalFsClient {
 		String file = "concurrent.txt";
 		Files.write(storagePath.resolve(file), "Concurrent data - 1\nConcurr".getBytes());
 
-		Promises.all(
+		await(
 				delayed(Arrays.asList(
 						ByteBuf.wrapForReading("oncurrent data - 1\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data - 2\n".getBytes()),
@@ -207,28 +205,28 @@ public final class TestLocalFsClient {
 						ByteBuf.wrapForReading("Concurrent data #2\n".getBytes()),
 						ByteBuf.wrapForReading("Concurrent data + new line\n".getBytes())))
 						.streamTo(ChannelConsumer.ofPromise(client.upload(file, 10)))
-		)
-				.thenCompose($ -> ChannelSupplier.ofPromise(client.download(file))
-						.streamTo(ChannelConsumer.of(AsyncConsumer.of(buf -> {
-							String actual = buf.asString(UTF_8);
-							String expected = "Concurrent data - 1\n" +
-									"Concurrent data - 2\n" +
-									"Concurrent data - 3\n" +
-									"Concurrent data - 4\n" +
-									"Concurrent data - 5\n" +
-									"Concurrent data - 6\n" +
-									"Concurrent data - 7\n" +
-									"Concurrent data - 8\n" +
-									"Concurrent data - 9\n" +
-									"Concurrent data #2\n" +
-									"Concurrent data #2\n" +
-									"Concurrent data #2\n" +
-									"Concurrent data #2\n" +
-									"Concurrent data + new line\n";
-							assertEquals(expected, actual);
-						}))))
-				.whenComplete(($, e) -> System.out.println("finished"))
-				.whenComplete(assertComplete());
+		);
+
+		String expected = "Concurrent data - 1\n" +
+				"Concurrent data - 2\n" +
+				"Concurrent data - 3\n" +
+				"Concurrent data - 4\n" +
+				"Concurrent data - 5\n" +
+				"Concurrent data - 6\n" +
+				"Concurrent data - 7\n" +
+				"Concurrent data - 8\n" +
+				"Concurrent data - 9\n" +
+				"Concurrent data #2\n" +
+				"Concurrent data #2\n" +
+				"Concurrent data #2\n" +
+				"Concurrent data #2\n" +
+				"Concurrent data + new line\n";
+
+		String actual = await(ChannelSupplier.ofPromise(client.download(file))
+				.toCollector(ByteBufQueue.collector())
+				.thenApply(buf -> buf.asString(UTF_8)));
+
+		assertEquals(expected, actual);
 	}
 
 	private ChannelSupplier<ByteBuf> delayed(List<ByteBuf> list) {
@@ -243,37 +241,32 @@ public final class TestLocalFsClient {
 	}
 
 	@Test
-	@SkipEventloopRun
 	public void testDoDownload() throws IOException {
 		Path outputFile = clientPath.resolve("d.txt");
 		AsyncFile open = AsyncFile.open(executor, outputFile, CREATE_OPTIONS);
-		client.download("2/b/d.txt")
-				.whenResult(reader -> reader.streamTo(ChannelFileWriter.create(open)))
-				.whenComplete(assertComplete());
-
-		Eventloop.getCurrentEventloop().run(); // again, cant see the file
+		ChannelSupplier<ByteBuf> supplier = await(client.download("2/b/d.txt"));
+		await(supplier.streamTo(ChannelFileWriter.create(open)));
 
 		assertArrayEquals(Files.readAllBytes(storagePath.resolve("2/b/d.txt")), Files.readAllBytes(outputFile));
 	}
 
 	@Test
 	public void testDownloadNonExistingFile() {
-		client.download("no_file.txt")
-				.thenCompose(supplier -> supplier.streamTo(ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle))))
-				.whenComplete(assertFailure(e -> assertSame(FILE_NOT_FOUND, e)));
+		Throwable e = awaitException(client.download("no_file.txt"));
+
+		assertSame(FILE_NOT_FOUND, e);
 	}
 
 	@Test
 	public void testDeleteFile() {
-		client.deleteBulk("2/3/a.txt")
-				.whenComplete(assertComplete($ ->
-						assertFalse(Files.exists(storagePath.resolve("2/3/a.txt")))));
+		await(client.deleteBulk("2/3/a.txt"));
+
+		assertFalse(Files.exists(storagePath.resolve("2/3/a.txt")));
 	}
 
 	@Test
 	public void testDeleteNonExistingFile() {
-		client.deleteBulk("no_file.txt")
-				.whenComplete(assertComplete());
+		await(client.deleteBulk("no_file.txt"));
 	}
 
 	@Test
@@ -286,9 +279,9 @@ public final class TestLocalFsClient {
 				"2/b/e.txt"
 		);
 
-		client.list("**")
-				.whenComplete(assertComplete(list ->
-						assertEquals(expected, list.stream().map(FileMetadata::getFilename).collect(toSet()))));
+		List<FileMetadata> actual = await(client.list("**"));
+
+		assertEquals(expected, actual.stream().map(FileMetadata::getFilename).collect(toSet()));
 	}
 
 	@Test
@@ -299,28 +292,26 @@ public final class TestLocalFsClient {
 				"2/b/e.txt"
 		);
 
-		client.list("2/*/*.txt")
-				.whenComplete(assertComplete(list ->
-						assertEquals(expected, list.stream().map(FileMetadata::getFilename).collect(toSet()))));
+		List<FileMetadata> actual = await(client.list("2/*/*.txt"));
+
+		assertEquals(expected, actual.stream().map(FileMetadata::getFilename).collect(toSet()));
 	}
 
 	@Test
 	public void testMove() throws IOException {
 		byte[] expected = Files.readAllBytes(storagePath.resolve("1/a.txt"));
-		client.move("1/a.txt", "3/new_folder/z.txt")
-				.whenComplete(assertComplete($ -> {
-					assertArrayEquals(expected, Files.readAllBytes(storagePath.resolve("3/new_folder/z.txt")));
-					assertFalse(Files.exists(storagePath.resolve("1/a.txt")));
-				}));
+		await(client.move("1/a.txt", "3/new_folder/z.txt"));
+
+		assertArrayEquals(expected, Files.readAllBytes(storagePath.resolve("3/new_folder/z.txt")));
+		assertFalse(Files.exists(storagePath.resolve("1/a.txt")));
 	}
 
 	@Test
-	public void testPossiblyPreviousSuccessfulMove() {
-		client.move("3/new_folder/z.txt", "1/a.txt")
-				.whenComplete(assertComplete($ -> {
-					assertArrayEquals(Files.readAllBytes(storagePath.resolve("1/a.txt")), Files.readAllBytes(storagePath.resolve("1/a.txt")));
-					assertFalse(Files.exists(storagePath.resolve("3/new_folder/z.txt")));
-				}));
+	public void testPossiblyPreviousSuccessfulMove() throws IOException {
+		await(client.move("3/new_folder/z.txt", "1/a.txt"));
+
+		assertArrayEquals(Files.readAllBytes(storagePath.resolve("1/a.txt")), Files.readAllBytes(storagePath.resolve("1/a.txt")));
+		assertFalse(Files.exists(storagePath.resolve("3/new_folder/z.txt")));
 	}
 
 	@Test
@@ -328,28 +319,25 @@ public final class TestLocalFsClient {
 		//		1/a.txt -> 12 bytes
 		//		1/b.txt -> 15 bytes
 		byte[] expected = Files.readAllBytes(storagePath.resolve("1/b.txt"));
-		client.move("1/b.txt", "1/a.txt")
-				.whenComplete(assertComplete($ -> {
-					assertArrayEquals(expected, Files.readAllBytes(storagePath.resolve("1/a.txt")));
-					assertFalse(Files.exists(storagePath.resolve("1/b.txt")));
-				}));
+		await(client.move("1/b.txt", "1/a.txt"));
+
+		assertArrayEquals(expected, Files.readAllBytes(storagePath.resolve("1/a.txt")));
+		assertFalse(Files.exists(storagePath.resolve("1/b.txt")));
 	}
 
 	@Test
-	public void testMoveSmallerIntoBigger() {
-		client.move("1/a.txt", "1/b.txt")
-				.whenComplete(assertComplete($ -> {
-					assertArrayEquals(Files.readAllBytes(storagePath.resolve("1/b.txt")), Files.readAllBytes(storagePath.resolve("1/b.txt")));
-					assertFalse(Files.exists(storagePath.resolve("1/a.txt")));
-				}));
+	public void testMoveSmallerIntoBigger() throws IOException {
+		await(client.move("1/a.txt", "1/b.txt"));
+
+		assertArrayEquals(Files.readAllBytes(storagePath.resolve("1/b.txt")), Files.readAllBytes(storagePath.resolve("1/b.txt")));
+		assertFalse(Files.exists(storagePath.resolve("1/a.txt")));
 	}
 
 	@Test
 	public void testMoveNothingIntoNothing() {
-		client.move("i_do_not_exist.txt", "neither_am_i.txt")
-				.whenComplete(assertComplete($ -> {
-					assertFalse(Files.exists(storagePath.resolve("i_do_not_exist.txt")));
-					assertFalse(Files.exists(storagePath.resolve("neither_am_i.txt")));
-				}));
+		await(client.move("i_do_not_exist.txt", "neither_am_i.txt"));
+
+		assertFalse(Files.exists(storagePath.resolve("i_do_not_exist.txt")));
+		assertFalse(Files.exists(storagePath.resolve("neither_am_i.txt")));
 	}
 }

@@ -31,18 +31,18 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
+import org.spongycastle.crypto.CryptoException;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.BinaryDataFormats.REGISTRY;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static io.global.common.api.DiscoveryService.REJECTED_OUTDATED_ANNOUNCE_DATA;
+import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
 public final class DiscoveryHttpTest {
@@ -51,7 +51,7 @@ public final class DiscoveryHttpTest {
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Test
-	public void test() throws IOException {
+	public void test() throws IOException, CryptoException {
 		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), Executors.newSingleThreadExecutor(), temporaryFolder.newFolder().toPath());
 		DiscoveryServlet servlet = DiscoveryServlet.create(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage));
 
@@ -63,32 +63,30 @@ public final class DiscoveryHttpTest {
 		SimKey bobSimKey = SimKey.generate();
 		Hash bobSimKeyHash = Hash.sha1(bobSimKey.getBytes());
 
-		InetAddress localhost = InetAddress.getLocalHost();
-
 		AnnounceData testAnnounce = AnnounceData.of(123, set(new RawServerId("127.0.0.1:1234")));
 
-		clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), testAnnounce, alice.getPrivKey()))
-				.thenCompose($ -> clientService.announce(bob.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), testAnnounce, bob.getPrivKey())))
+		await(clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), testAnnounce, alice.getPrivKey())));
+		await(clientService.announce(bob.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), testAnnounce, bob.getPrivKey())));
 
-				.thenCompose($ -> clientService.find(alice.getPubKey()))
-				.whenComplete(assertComplete(data -> assertTrue(data.verify(alice.getPubKey()))))
+		SignedData<AnnounceData> aliceData = await(clientService.find(alice.getPubKey()));
+		assertTrue(aliceData.verify(alice.getPubKey()));
 
-				.thenCompose($ -> clientService.find(bob.getPubKey()))
-				.whenComplete(assertComplete(data -> assertTrue(data.verify(bob.getPubKey()))))
+		SignedData<AnnounceData> bobData = await(clientService.find(bob.getPubKey()));
+		assertTrue(bobData.verify(bob.getPubKey()));
 
-				.thenCompose($ -> clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class), AnnounceData.of(90, set()), alice.getPrivKey())))
-				.whenComplete(assertFailure(StacklessException.class, "Rejected announce data as outdated"))
-				.thenComposeEx(($, e) -> clientService.find(alice.getPubKey()))
-				.whenComplete(assertComplete(data -> {
-					assertTrue(data.verify(alice.getPubKey()));
-					assertEquals(123, data.getValue().getTimestamp());
-				}))
+		StacklessException e = awaitException(clientService.announce(alice.getPubKey(), SignedData.sign(REGISTRY.get(AnnounceData.class),
+				AnnounceData.of(90, set()), alice.getPrivKey())));
+		assertSame(REJECTED_OUTDATED_ANNOUNCE_DATA, e);
 
-				.thenCompose($ -> clientService.shareKey(alice.getPubKey(), SignedData.sign(REGISTRY.get(SharedSimKey.class), SharedSimKey.of(bobSimKey, alice.getPubKey()), bob.getPrivKey())))
-				.thenCompose($ -> clientService.getSharedKey(alice.getPubKey(), bobSimKeyHash))
-				.whenComplete(assertComplete(signedSharedSimKey -> {
-					assertTrue(signedSharedSimKey.verify(bob.getPubKey()));
-					assertEquals(bobSimKey, signedSharedSimKey.getValue().decryptSimKey(alice.getPrivKey()));
-				}));
+		aliceData = await(clientService.find(alice.getPubKey()));
+		assertTrue(aliceData.verify(alice.getPubKey()));
+		assertEquals(123, aliceData.getValue().getTimestamp());
+
+		await(clientService.shareKey(alice.getPubKey(), SignedData.sign(REGISTRY.get(SharedSimKey.class),
+				SharedSimKey.of(bobSimKey, alice.getPubKey()), bob.getPrivKey())));
+		SignedData<SharedSimKey> signedSharedSimKey = await(clientService.getSharedKey(alice.getPubKey(), bobSimKeyHash));
+		assertTrue(signedSharedSimKey.verify(bob.getPubKey()));
+		assertEquals(bobSimKey, signedSharedSimKey.getValue().decryptSimKey(alice.getPrivKey()));
+
 	}
 }

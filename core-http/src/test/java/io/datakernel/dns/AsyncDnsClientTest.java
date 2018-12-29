@@ -38,9 +38,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.test.TestUtils.*;
+import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.test.TestUtils.enableLogging;
 import static java.util.stream.Collectors.joining;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -69,14 +72,12 @@ public final class AsyncDnsClientTest {
 		InetAddress[] ips = {InetAddress.getByName("173.194.113.210"), InetAddress.getByName("173.194.113.209")};
 
 		cachedDnsClient.getCache().add(query, DnsResponse.of(DnsTransaction.of((short) 0, query), DnsResourceRecord.of(ips, 10)));
+		DnsResponse result = await(cachedDnsClient.resolve4("www.google.com"));
 
-		cachedDnsClient.resolve4("www.google.com")
-				.whenComplete(assertComplete(result -> {
-					assertNotNull(result.getRecord());
-					System.out.println(Arrays.stream(result.getRecord().getIps())
-							.map(InetAddress::toString)
-							.collect(joining(", ", "Resolved: ", ".")));
-				}));
+		assertNotNull(result.getRecord());
+		System.out.println(Arrays.stream(result.getRecord().getIps())
+				.map(InetAddress::toString)
+				.collect(joining(", ", "Resolved: ", ".")));
 	}
 
 	@Test
@@ -85,45 +86,40 @@ public final class AsyncDnsClientTest {
 
 		cachedDnsClient.getCache().add(query, DnsResponse.ofFailure(DnsTransaction.of((short) 0, query), SERVER_FAILURE));
 
-		cachedDnsClient.resolve4("www.google.com")
-				.whenComplete(assertFailure(DnsQueryException.class, e ->
-						assertEquals(SERVER_FAILURE, e.getResult().getErrorCode())));
+		DnsQueryException e = awaitException(cachedDnsClient.resolve4("www.google.com"));
+		assertEquals(SERVER_FAILURE, e.getResult().getErrorCode());
 	}
 
 	@Test
 	public void testDnsClient() {
 		AsyncDnsClient dnsClient = RemoteAsyncDnsClient.create(Eventloop.getCurrentEventloop());
 
-		Promises.toList(Stream.of("www.google.com", "www.github.com", "www.kpi.ua")
-				.map(dnsClient::resolve4))
-				.whenComplete(assertComplete());
+		await(Promises.toList(Stream.of("www.google.com", "www.github.com", "www.kpi.ua")
+				.map(dnsClient::resolve4)));
 	}
 
 	@Test
 	public void testDnsClientTimeout() {
-		RemoteAsyncDnsClient.create(Eventloop.getCurrentEventloop())
+		RemoteAsyncDnsClient dnsClient = RemoteAsyncDnsClient.create(Eventloop.getCurrentEventloop())
 				.withTimeout(Duration.ofMillis(20))
-				.withDnsServerAddress(UNREACHABLE_DNS)
-				.resolve4("www.google.com")
-				.whenComplete(assertFailure(DnsQueryException.class, e ->
-						assertEquals(TIMED_OUT, e.getResult().getErrorCode())));
-	}
+				.withDnsServerAddress(UNREACHABLE_DNS);
 
+		DnsQueryException e = awaitException(dnsClient.resolve4("www.google.com"));
+		assertEquals(TIMED_OUT, e.getResult().getErrorCode());
+	}
 
 	@Test
 	public void testDnsNameError() {
 		AsyncDnsClient dnsClient = RemoteAsyncDnsClient.create(Eventloop.getCurrentEventloop());
 
-		dnsClient.resolve4("example.ensure-such-top-domain-it-will-never-exist")
-				.whenComplete(assertFailure(DnsQueryException.class, e ->
-						assertEquals(NAME_ERROR, e.getResult().getErrorCode())));
+		DnsQueryException e = awaitException(dnsClient.resolve4("example.ensure-such-top-domain-it-will-never-exist"));
+		assertEquals(NAME_ERROR, e.getResult().getErrorCode());
 	}
 
 	@Test
 	@Ignore
 	public void testAdaptedClientsInMultipleThreads() {
 		int threadCount = 10;
-
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 		InspectorGadget inspector = new InspectorGadget();

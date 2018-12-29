@@ -1,6 +1,5 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
@@ -13,12 +12,10 @@ import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.Set;
 
-import static io.datakernel.ot.OTCommit.ofRoot;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.ot.utils.Utils.add;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.util.CollectionUtils.getLast;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Arrays.asList;
@@ -42,7 +39,7 @@ public class OTAlgorithmsTest {
 	}
 
 	@Test
-	public void testLoadAllChangesFromRootWithSnapshot() throws ExecutionException, InterruptedException {
+	public void testLoadAllChangesFromRootWithSnapshot() {
 		TestOpState opState = new TestOpState();
 		REPOSITORY.setGraph(g -> {
 			g.add(0, 1, add(1));
@@ -53,20 +50,17 @@ public class OTAlgorithmsTest {
 		});
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, REPOSITORY);
 
-		REPOSITORY.saveSnapshot(0, asList(add(10)));
-		eventloop.run();
+		await(REPOSITORY.saveSnapshot(0, asList(add(10))));
 
-		CompletableFuture<List<TestOp>> changes = REPOSITORY.getHeads().thenCompose(heads ->
-				algorithms.checkout(getLast(heads)))
-				.toCompletableFuture();
-		eventloop.run();
-		changes.get().forEach(opState::apply);
+		Set<Integer> heads = await(REPOSITORY.getHeads());
+		List<TestOp> changes = await(algorithms.checkout(getLast(heads)));
+		changes.forEach(opState::apply);
 
 		assertEquals(15, opState.getValue());
 	}
 
 	@Test
-	public void testReduceEdges() throws ExecutionException, InterruptedException {
+	public void testReduceEdges() {
 		REPOSITORY.setGraph(g -> {
 			g.add(0, 1, add(1));
 			g.add(1, 2, add(1));
@@ -77,21 +71,15 @@ public class OTAlgorithmsTest {
 			g.add(6, 7, add(1));
 		});
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, REPOSITORY);
-		CompletableFuture<Map<Integer, List<TestOp>>> future = algorithms.reduceEdges(
-				set(5, 7),
-				0,
-				DiffsReducer.toList())
-				.toCompletableFuture();
 
-		eventloop.run();
-		Map<Integer, List<TestOp>> result = future.get();
+		Map<Integer, List<TestOp>> result = await(algorithms.reduceEdges(set(5, 7), 0, DiffsReducer.toList()));
 
 		assertEquals(1, applyToState(result.get(5)));
 		assertEquals(5, applyToState(result.get(7)));
 	}
 
 	@Test
-	public void testReduceEdges2() throws ExecutionException, InterruptedException {
+	public void testReduceEdges2() {
 		REPOSITORY.setGraph(g -> {
 			g.add(0, 1, add(1));
 			g.add(0, 2, add(-1));
@@ -102,14 +90,7 @@ public class OTAlgorithmsTest {
 		});
 		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, TEST_OP, REPOSITORY);
 
-		CompletableFuture<Map<Integer, List<TestOp>>> future = algorithms.reduceEdges(
-				set(3, 4, 5),
-				0,
-				DiffsReducer.toList())
-				.toCompletableFuture();
-
-		eventloop.run();
-		Map<Integer, List<TestOp>> result = future.get();
+		Map<Integer, List<TestOp>> result = await(algorithms.reduceEdges(set(3, 4, 5), 0, DiffsReducer.toList()));
 
 		assertEquals(2, applyToState(result.get(3)));
 		assertEquals(0, applyToState(result.get(4)));
@@ -153,68 +134,45 @@ public class OTAlgorithmsTest {
 	@Test
 	public void testDiffBetween() {
 		graph1();
-		algorithms.diff(5, 9)
-				.whenComplete(assertComplete(diff -> assertEquals(applyToState(asList(add(10))), applyToState(diff)))); // -2, +4, +4, +4
-		eventloop.run();
+		List<TestOp> diff = await(algorithms.diff(5, 9));
+		assertEquals(applyToState(asList(add(10))), applyToState(diff)); // -2, +4, +4, +4
 
-		algorithms.diff(5, 0)
-				.whenComplete(assertComplete(diff -> assertEquals(applyToState(asList(add(-6))), applyToState(diff)))); // -2, -1, -1, -1, -1
-		eventloop.run();
+		diff = await(algorithms.diff(5, 0));
+		assertEquals(applyToState(asList(add(-6))), applyToState(diff)); // -2, -1, -1, -1, -1
 
-		algorithms.diff(5, 6)
-				.whenComplete(assertComplete(diff -> assertEquals(applyToState(asList(add(+3))), applyToState(diff)))); // +3
-		eventloop.run();
+		diff = await(algorithms.diff(5, 6));
+		assertEquals(applyToState(asList(add(+3))), applyToState(diff)); // +3
 
-		algorithms.diff(5, 5)
-				.whenComplete(assertComplete(diff -> assertEquals(emptyList(), diff))); // 0
-		eventloop.run();
+		diff = await(algorithms.diff(5, 5));
+		assertEquals(emptyList(), diff); // 0
 
 		graph2();
-		algorithms.diff(6, 3)
-				.whenComplete(assertComplete(diff -> assertEquals(applyToState(asList(add(-2))), applyToState(diff)))); // -1, -1
-		eventloop.run();
+		diff = await(algorithms.diff(6, 3));
+		assertEquals(applyToState(asList(add(-2))), applyToState(diff)); // -1, -1
 
-		algorithms.diff(0, 6)
-				.whenComplete(assertComplete(diff -> assertEquals(applyToState(asList(add(5))), applyToState(diff)))); // +1, +1, +1, +1, +1
-		eventloop.run();
+		diff = await(algorithms.diff(0, 6));
+		assertEquals(applyToState(asList(add(5))), applyToState(diff)); // +1, +1, +1, +1, +1
 
-		algorithms.diff(4, 5)
-				.whenComplete(assertComplete(diff -> assertEquals(applyToState(emptyList()), applyToState(diff)))); // 0
-		eventloop.run();
+		diff = await(algorithms.diff(4, 5));
+		assertEquals(applyToState(emptyList()), applyToState(diff)); // +1, -1
 
-		algorithms.diff(3, 2)
-				.whenComplete(assertComplete(diff -> assertEquals(applyToState(asList(add(-1))), applyToState(diff)))); // -1
-		eventloop.run();
+		diff = await(algorithms.diff(3, 2));
+		assertEquals(applyToState(asList(add(-1))), applyToState(diff)); // -1
 
 	}
 
 	private void doTestCheckoutGraph1(int snaphotId, List<TestOp> snapshotDiffs) {
-		doTestCheckout(snaphotId, snapshotDiffs);
+		await(REPOSITORY.saveSnapshot(snaphotId, snapshotDiffs));
 
-		algorithms.checkout(9)
-				.whenComplete(assertComplete(diffs -> assertEquals(16, applyToState(diffs))));
-		eventloop.run();
+		List<TestOp> diffs = await(algorithms.checkout(9));
+		assertEquals(16, applyToState(diffs));
 	}
 
 	private void doTestCheckoutGraph2(int snaphotId, List<TestOp> snapshotDiffs) {
-		doTestCheckout(snaphotId, snapshotDiffs);
+		await(REPOSITORY.saveSnapshot(snaphotId, snapshotDiffs));
 
-		eventloop.run();
-
-		algorithms.checkout(6)
-				.whenComplete(assertComplete(diffs -> assertEquals(5, applyToState(diffs))));
-		eventloop.run();
-	}
-
-
-	private void doTestCheckout(int snaphotId, List<TestOp> snapshotDiffs) {
-		// pushing root commit + snapshot
-		Promises.all(REPOSITORY.push(ofRoot(0)));
-		eventloop.run();
-
-		// saving snapshot on
-		REPOSITORY.saveSnapshot(snaphotId, snapshotDiffs);
-		eventloop.run();
+		List<TestOp> diffs = await(algorithms.checkout(6));
+		assertEquals(5, applyToState(diffs));
 	}
 
 	private static void graph1() {

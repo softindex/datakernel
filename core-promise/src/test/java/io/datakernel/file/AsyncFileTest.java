@@ -16,7 +16,10 @@
 
 package io.datakernel.file;
 
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.Manual;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -25,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -33,7 +35,8 @@ import java.nio.file.Paths;
 import java.util.Random;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.test.TestUtils.assertComplete;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.Assert.assertArrayEquals;
@@ -50,52 +53,35 @@ public final class AsyncFileTest {
 	public void testReadFully() throws Exception {
 		File tempFile = temporaryFolder.newFile("hello-2.html");
 		Path srcPath = Paths.get("test_data/hello.html");
-		AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ})
-				.whenComplete(assertComplete(asyncFile -> {
-					logger.info("Opened file.");
-					asyncFile.read().whenComplete(assertComplete(byteBuf -> {
-						Path destPath = Paths.get(tempFile.getAbsolutePath());
+		AsyncFile srcFile = await(AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}));
+		logger.info("Opened file.");
+		ByteBuf byteBuf = await(srcFile.read());
+		Path destPath = Paths.get(tempFile.getAbsolutePath());
 
-						AsyncFile.openAsync(Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE})
-								.whenComplete(assertComplete(file -> {
-									logger.info("Finished reading file.");
+		AsyncFile destFile = await(AsyncFile.openAsync(Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}));
+		logger.info("Finished reading file.");
+		await(destFile.write(byteBuf));
+		logger.info("Finished writing file");
 
-									file.write(byteBuf).whenComplete(assertComplete($ -> {
-										logger.info("Finished writing file");
-										try {
-											assertArrayEquals(Files.readAllBytes(srcPath), Files.readAllBytes(destPath));
-										} catch (IOException e) {
-											logger.info("Could not compare files {} and {}", srcPath, destPath);
-											throw new RuntimeException(e);
-										}
-									}));
-								}));
-					}));
-				}));
+		assertArrayEquals(Files.readAllBytes(srcPath), Files.readAllBytes(destPath));
 	}
 
 	@Test
+	@Manual("This test may fail if read finishes before close, hence big file size")
 	public void testClose() throws Exception {
-		File file = temporaryFolder.newFile("10Mb");
-		byte[] data = new byte[10 * 1024 * 1024]; // the larger the file the less chance that it will be read fully before close completes
+		File file = temporaryFolder.newFile("100Mb");
+		byte[] data = new byte[100 * 1024 * 1024]; // the larger the file the less chance that it will be read fully before close completes
 		new Random().nextBytes(data);
 		Files.write(file.toPath(), data);
 		Path srcPath = file.toPath();
-		AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ})
-				.whenComplete(assertComplete(asyncFile -> {
-					logger.info("Opened file");
-					asyncFile.read().whenComplete((res, e) -> {
-						if (e != null) {
-							assertSame(AsyncFile.FILE_CLOSED, e);
-						} else {
-							// rare cases when read finishes before close
-							logger.info("Read has finished prior to close");
-							assertArrayEquals(data, res.asArray());
-						}
-					});
-					logger.info("Calling close file");
-					asyncFile.close()
-							.whenComplete(assertComplete($ -> logger.info("Closed file")));
-				}));
+		AsyncFile asyncFile = await(AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}));
+		logger.info("Opened file");
+		Eventloop originalEventloop = Eventloop.getCurrentEventloop();
+
+		// closing file from outside
+		new Thread(() -> originalEventloop.execute(asyncFile::close)).start();
+
+		Throwable e = awaitException(asyncFile.read());
+		assertSame(AsyncFile.FILE_CLOSED, e);
 	}
 }

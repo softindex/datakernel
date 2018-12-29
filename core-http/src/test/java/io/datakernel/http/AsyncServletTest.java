@@ -24,10 +24,11 @@ import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
 public class AsyncServletTest {
@@ -41,16 +42,15 @@ public class AsyncServletTest {
 						ByteBuf.wrapForReading("Test2".getBytes(UTF_8)))
 				);
 
-		servlet.serve(testRequest)
-				.thenCompose(HttpMessage::getBody)
-				.whenComplete(assertComplete(body -> assertEquals("Test1Test2", body.asString(UTF_8))));
+		HttpResponse response = await(servlet.serve(testRequest));
+		ByteBuf body = await(response.getBody());
+		assertEquals("Test1Test2", body.asString(UTF_8));
 	}
 
 	@Test
 	public void testEnsureRequestBodyWithException() {
 		AsyncServlet servlet = request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body));
-
-		String exceptionMessage = "TestException";
+		Exception exception = new Exception("TestException");
 
 		ByteBuf byteBuf = ByteBufPool.allocate(100);
 		byteBuf.put("Test1".getBytes(UTF_8));
@@ -58,11 +58,12 @@ public class AsyncServletTest {
 		HttpRequest testRequest = HttpRequest.post("http://example.com")
 				.withBodyStream(ChannelSuppliers.concat(
 						ChannelSupplier.of(byteBuf),
-						ChannelSupplier.ofException(new Exception(exceptionMessage))
+						ChannelSupplier.ofException(exception)
 				));
 
-		servlet.serve(testRequest)
-				.whenComplete(assertFailure(exceptionMessage));
+		Throwable e = awaitException(servlet.serve(testRequest));
+
+		assertSame(exception, e);
 	}
 
 	@Test
@@ -75,7 +76,8 @@ public class AsyncServletTest {
 		HttpRequest testRequest = HttpRequest.post("http://example.com")
 				.withBodyStream(ChannelSupplier.of(byteBuf));
 
-		servlet.serve(testRequest)
-				.whenComplete(assertFailure("ByteBufQueue exceeds maximum size of 2 bytes"));
+		Throwable e = awaitException(servlet.serve(testRequest));
+
+		assertThat(e.getMessage(), containsString("ByteBufQueue exceeds maximum size of 2 bytes"));
 	}
 }

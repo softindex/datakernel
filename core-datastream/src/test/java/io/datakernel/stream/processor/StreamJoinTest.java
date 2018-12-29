@@ -16,25 +16,28 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.StreamJoin.ValueJoiner;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.stream.TestStreamConsumers.*;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
-import static org.junit.Assert.assertArrayEquals;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
+@RunWith(DatakernelRunner.class)
 public class StreamJoinTest {
 	private static final class DataItemMaster {
 		int id;
@@ -111,8 +114,6 @@ public class StreamJoinTest {
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 		StreamSupplier<DataItemMaster> source1 = StreamSupplier.of(
 				new DataItemMaster(10, 10, "masterA"),
 				new DataItemMaster(20, 10, "masterB"),
@@ -143,29 +144,27 @@ public class StreamJoinTest {
 
 		StreamConsumerToList<DataItemMasterDetail> consumer = StreamConsumerToList.create();
 
-		source1.streamTo(streamJoin.getLeft());
-		source2.streamTo(streamJoin.getRight());
+		await(
+				source1.streamTo(streamJoin.getLeft()),
+				source2.streamTo(streamJoin.getRight()),
+				streamJoin.getOutput().streamTo(
+						consumer.transformWith(randomlySuspending()))
+		);
 
-		streamJoin.getOutput().streamTo(
-				consumer.transformWith(randomlySuspending()));
-
-		eventloop.run();
-
-		List<DataItemMasterDetail> result = consumer.getList();
-		assertArrayEquals(new DataItemMasterDetail[]{
-						new DataItemMasterDetail(10, 10, "masterA", "detailX"),
-						new DataItemMasterDetail(20, 10, "masterB", "detailX"),
-						new DataItemMasterDetail(25, 15, "masterB+", null),
-						new DataItemMasterDetail(30, 20, "masterC", "detailY"),
-						new DataItemMasterDetail(40, 20, "masterD", "detailY")},
-				result.toArray(new DataItemMasterDetail[0]));
+		assertEquals(asList(
+				new DataItemMasterDetail(10, 10, "masterA", "detailX"),
+				new DataItemMasterDetail(20, 10, "masterB", "detailX"),
+				new DataItemMasterDetail(25, 15, "masterB+", null),
+				new DataItemMasterDetail(30, 20, "masterC", "detailY"),
+				new DataItemMasterDetail(40, 20, "masterD", "detailY")
+				),
+				consumer.getList());
 		assertEndOfStream(source1);
 		assertEndOfStream(source2);
 	}
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<DataItemMasterDetail> list = new ArrayList<>();
 
 		StreamSupplier<DataItemMaster> source1 = StreamSupplier.of(
@@ -196,22 +195,24 @@ public class StreamJoinTest {
 						}
 				);
 
-		StreamConsumerToList<DataItemMasterDetail> consumer = StreamConsumerToList.create(list);
+		ExpectedException exception = new ExpectedException("Test Exception");
+		StreamConsumerToList<DataItemMasterDetail> consumerToList = StreamConsumerToList.create(list);
+		StreamConsumer<DataItemMasterDetail> consumer = consumerToList
+				.transformWith(decorator((context, dataAcceptor) ->
+						item -> {
+							dataAcceptor.accept(item);
+							if (list.size() == 1) {
+								context.closeWithError(exception);
+							}
+						}));
 
-		source1.streamTo(streamJoin.getLeft());
-		source2.streamTo(streamJoin.getRight());
+		Throwable e = awaitException(
+				source1.streamTo(streamJoin.getLeft()),
+				source2.streamTo(streamJoin.getRight()),
+				streamJoin.getOutput().streamTo(consumer)
+		);
 
-		streamJoin.getOutput()
-				.streamTo(consumer
-						.transformWith(decorator((context, dataAcceptor) ->
-								item -> {
-									dataAcceptor.accept(item);
-									if (list.size() == 1) {
-										context.closeWithError(new ExpectedException("Test Exception"));
-									}
-								})));
-
-		eventloop.run();
+		assertSame(exception, e);
 		assertEquals(1, list.size());
 		assertClosedWithError(source1);
 		assertEndOfStream(source2);
@@ -219,10 +220,10 @@ public class StreamJoinTest {
 
 	@Test
 	public void testSupplierWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		ExpectedException exception = new ExpectedException("Test Exception");
 		StreamSupplier<DataItemMaster> source1 = StreamSupplier.concat(
 				StreamSupplier.of(new DataItemMaster(10, 10, "masterA")),
-				StreamSupplier.closingWithError(new ExpectedException("Test Exception")),
+				StreamSupplier.closingWithError(exception),
 				StreamSupplier.of(new DataItemMaster(20, 10, "masterB")),
 				StreamSupplier.of(new DataItemMaster(25, 15, "masterB+")),
 				StreamSupplier.of(new DataItemMaster(30, 20, "masterC")),
@@ -232,7 +233,7 @@ public class StreamJoinTest {
 		StreamSupplier<DataItemDetail> source2 = StreamSupplier.concat(
 				StreamSupplier.of(new DataItemDetail(10, "detailX")),
 				StreamSupplier.of(new DataItemDetail(20, "detailY")),
-				StreamSupplier.closingWithError(new ExpectedException("Test Exception"))
+				StreamSupplier.closingWithError(exception)
 		);
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
@@ -255,12 +256,13 @@ public class StreamJoinTest {
 		List<DataItemMasterDetail> list = new ArrayList<>();
 		StreamConsumer<DataItemMasterDetail> consumer = StreamConsumerToList.create(list);
 
-		source1.streamTo(streamJoin.getLeft());
-		source2.streamTo(streamJoin.getRight());
+		Throwable e = awaitException(
+				source1.streamTo(streamJoin.getLeft()),
+				source2.streamTo(streamJoin.getRight()),
+				streamJoin.getOutput().streamTo(consumer.transformWith(oneByOne()))
+		);
 
-		streamJoin.getOutput().streamTo(consumer.transformWith(oneByOne()));
-
-		eventloop.run();
+		assertSame(exception, e);
 		assertEquals(0, list.size());
 		assertClosedWithError(source1);
 		assertClosedWithError(source2);

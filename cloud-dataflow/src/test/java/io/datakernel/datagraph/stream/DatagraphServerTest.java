@@ -16,6 +16,7 @@
 
 package io.datakernel.datagraph.stream;
 
+import io.datakernel.async.Promise;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
@@ -37,12 +38,13 @@ import org.junit.runner.RunWith;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.datagraph.dataset.Datasets.*;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -51,6 +53,8 @@ import static org.junit.Assert.assertEquals;
 public final class DatagraphServerTest {
 
 	private static int testPort = 1511;
+	private static DatagraphServer server1;
+	private static DatagraphServer server2;
 
 	@Test
 	public void testForward() throws Exception {
@@ -78,9 +82,9 @@ public final class DatagraphServerTest {
 						new TestItem(6)))
 				.with("result", result2);
 
-		DatagraphServer server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
+		server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		DatagraphServer server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
+		server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		DatagraphClient client = new DatagraphClient(serialization);
@@ -97,16 +101,13 @@ public final class DatagraphServerTest {
 
 		server1.listen();
 		server2.listen();
-
-		result1.getResult()
-				.whenComplete(($, e) -> server1.close())
-				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), list)));
-
-		result2.getResult()
-				.whenComplete(($, e) -> server2.close())
-				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), list)));
-
 		graph.execute();
+
+		List<TestItem> list1 = await(cleanUp(result1.getResult()));
+		List<TestItem> list2 = await(result2.getResult());
+
+		assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), list1);
+		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), list2);
 	}
 
 	@Test
@@ -139,9 +140,9 @@ public final class DatagraphServerTest {
 						new TestItem(1),
 						new TestItem(6)))
 				.with("result", result2);
-		DatagraphServer server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
+		server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		DatagraphServer server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
+		server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
@@ -159,16 +160,13 @@ public final class DatagraphServerTest {
 
 		server1.listen();
 		server2.listen();
-
-		result1.getResult()
-				.whenComplete(($, e) -> server1.close())
-				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), list)));
-
-		result2.getResult()
-				.whenComplete(($, e) -> server2.close())
-				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), list)));
-
 		graph.execute();
+
+		List<TestItem> list1 = await(cleanUp(result1.getResult()));
+		List<TestItem> list2 = await(result2.getResult());
+
+		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), list1);
+		assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), list2);
 	}
 
 	@Test
@@ -205,9 +203,9 @@ public final class DatagraphServerTest {
 						new TestItem(5)))
 				.with("result", result2);
 
-		DatagraphServer server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
+		server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		DatagraphServer server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
+		server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
@@ -227,16 +225,13 @@ public final class DatagraphServerTest {
 
 		server1.listen();
 		server2.listen();
-
-		result1.getResult()
-				.whenComplete(($, e) -> server1.close())
-				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), list)));
-
-		result2.getResult()
-				.whenComplete(($, e) -> server2.close())
-				.whenComplete(assertComplete(list -> assertEquals(asList(new TestItem(2), new TestItem(8)), result2.getList())));
-
 		graph.execute();
+
+		List<TestItem> list1 = await(cleanUp(result1.getResult()));
+		List<TestItem> list2 = await(result2.getResult());
+
+		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), list1);
+		assertEquals(asList(new TestItem(2), new TestItem(8)), list2);
 	}
 
 	@Test
@@ -271,9 +266,9 @@ public final class DatagraphServerTest {
 						new TestItem(10)
 				));
 
-		DatagraphServer server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
+		server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		DatagraphServer server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
+		server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
@@ -293,17 +288,11 @@ public final class DatagraphServerTest {
 
 		System.out.println("Graph: ");
 		System.out.println(graph);
-
-		resultSupplier.streamTo(resultConsumer)
-				.whenComplete(($, e) -> {
-					server1.close();
-					server2.close();
-				})
-				.thenCompose($ -> resultConsumer.getResult())
-				.whenComplete(assertComplete(list ->
-						assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(8), new TestItem(10)), list)));
-
 		graph.execute();
+
+		await(cleanUp(resultSupplier.streamTo(resultConsumer)));
+		List<TestItem> list = await(resultConsumer.getResult());
+		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(8), new TestItem(10)), list);
 	}
 
 	public static final class TestItem {
@@ -352,5 +341,13 @@ public final class DatagraphServerTest {
 		public boolean test(TestItem input) {
 			return input.value % 2 == 0;
 		}
+	}
+
+	private static <T> Promise<T> cleanUp(Promise<T> promise) {
+		return promise
+				.whenComplete(($, e) -> {
+					server1.close();
+					server2.close();
+				});
 	}
 }

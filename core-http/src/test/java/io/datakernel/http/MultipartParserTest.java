@@ -26,8 +26,8 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.util.CollectionUtils.map;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -60,7 +60,7 @@ public final class MultipartParserTest {
 			CRLF + BOUNDARY + "--" + CRLF;
 
 	@Test
-	public void test() throws ExecutionException, InterruptedException {
+	public void test() {
 		List<ByteBuf> split = new ArrayList<>();
 		int i = 0;
 		while (i < DATA.length() / 5 - 1) {
@@ -72,7 +72,7 @@ public final class MultipartParserTest {
 
 		List<Map<String, String>> headers = new ArrayList<>();
 
-		String res = BinaryChannelSupplier.of(ChannelSupplier.ofIterable(split))
+		String res = await(BinaryChannelSupplier.of(ChannelSupplier.ofIterable(split))
 				.parseStream(MultipartParser.create(BOUNDARY.substring(2)))
 				.toCollector(mapping(frame -> {
 					if (frame.isData()) {
@@ -81,9 +81,7 @@ public final class MultipartParserTest {
 					assertFalse(frame.getHeaders().isEmpty());
 					headers.add(frame.getHeaders());
 					return "";
-				}, joining()))
-				.toCompletableFuture()
-				.get();
+				}, joining())));
 
 		assertEquals("This is some bytes of data to be extracted from the multipart form\r\n" +
 				"Also here we had a wild CRLF sequence appear\n" +

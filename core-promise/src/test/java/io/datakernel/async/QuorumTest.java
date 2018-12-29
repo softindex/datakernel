@@ -25,12 +25,12 @@ import java.util.Iterator;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
 import static java.util.stream.Collectors.toSet;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
 public final class QuorumTest {
@@ -45,10 +45,9 @@ public final class QuorumTest {
 				i -> Promise.of("" + (i + 3))
 		).iterator();
 
-		Quorum.create(functions, list -> String.join("", list), 4, 2)
-				.apply(1)
-				.whenComplete(assertComplete(res ->
-						assertEquals(Stream.of(49, 50, 51, 52).collect(toSet()), res.chars().boxed().collect(toSet()))));
+		Function<Integer, Promise<String>> quorum = Quorum.create(functions, list -> String.join("", list), 4, 2);
+		String result = await(quorum.apply(1));
+		assertEquals(Stream.of(49, 50, 51, 52).collect(toSet()), result.chars().boxed().collect(toSet()));
 	}
 
 	@Test
@@ -62,9 +61,10 @@ public final class QuorumTest {
 				i -> Promise.ofException(new StacklessException(QuorumTest.class, "test3"))
 		).iterator();
 
-		Quorum.create(functions, list -> String.join("", list), 4, 2)
-				.apply(1)
-				.whenComplete(assertFailure("Not enough successful completions, 4 were required, only 3 succeeded"));
+		Function<Integer, Promise<String>> quorum = Quorum.create(functions, list -> String.join("", list), 4, 2);
+		Throwable e = awaitException(quorum.apply(1));
+
+		assertThat(e.getMessage(), containsString("Not enough successful completions, 4 were required, only 3 succeeded"));
 	}
 
 	private static Promise<String> work(long millis, int[] calls, int maxCalls, String res) {
@@ -95,8 +95,7 @@ public final class QuorumTest {
 				i -> work(70, calls, maxParallelCalls, "" + (i + 9))
 		).iterator();
 
-		Quorum.create(functions, list -> String.join("", list), 8, maxParallelCalls)
-				.apply(1)
-				.whenComplete(assertComplete());
+		Function<Integer, Promise<String>> quorum = Quorum.create(functions, list -> String.join("", list), 8, maxParallelCalls);
+		await(quorum.apply(1));
 	}
 }

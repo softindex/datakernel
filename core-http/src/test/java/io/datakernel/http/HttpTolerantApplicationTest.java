@@ -20,7 +20,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -32,11 +31,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.LinkedHashSet;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.asserting;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -45,7 +44,6 @@ import static org.junit.Assert.assertEquals;
 public final class HttpTolerantApplicationTest {
 
 	@Test
-	@SkipEventloopRun
 	public void testTolerantServer() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 
@@ -101,12 +99,14 @@ public final class HttpTolerantApplicationTest {
 		})
 				.start();
 
-		AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+		String header = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.get("http://127.0.0.1:" + port))
+				.thenApply(response -> response.getHeaderOrNull(HttpHeaders.CONTENT_TYPE))
 				.whenComplete(asserting(($, e) -> {
 					listener.close();
-				}))
-				.whenComplete(assertComplete(response -> assertEquals("text/html; charset=UTF-8", response.getHeaderOrNull(HttpHeaders.CONTENT_TYPE))));
+				})));
+
+		assertEquals("text/html; charset=UTF-8", header);
 	}
 
 	private static void write(Socket socket, String string) throws IOException {

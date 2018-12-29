@@ -18,7 +18,6 @@ package io.datakernel.test;
 
 import ch.qos.logback.classic.Level;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
-import io.datakernel.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +26,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import java.util.function.*;
-import java.util.regex.Pattern;
 
 public class TestUtils {
 	private static int activePromises = 0;
@@ -93,52 +91,6 @@ public class TestUtils {
 
 	public static <T> BiConsumer<T, Throwable> assertComplete() {
 		return assertComplete($ -> {});
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, @Nullable String messagePattern, ThrowingConsumer<E> consumer) {
-		activePromises++;
-		return (t, e) -> {
-			activePromises--;
-			if (e == null && errorClass == Throwable.class) {
-				throw new AssertionError("Expected an error");
-			}
-			if (e == null || !errorClass.isAssignableFrom(e.getClass())) {
-				throw new AssertionError("Expected an error of type " + errorClass.getName() + ", but got " + (e == null ? "none" : e.getClass().getSimpleName()));
-			}
-			if (messagePattern != null && !Pattern.compile(messagePattern).matcher(e.getMessage()).find()) {
-				throw new AssertionError("Expected error message to match pattern `" + messagePattern + "`, but got message '" + e.getMessage() + "'");
-			}
-			try {
-				consumer.accept((E) e);
-			} catch (Throwable throwable) {
-				throw new AssertionError(throwable);
-			}
-		};
-	}
-
-	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, ThrowingConsumer<E> consumer) {
-		return assertFailure(errorClass, null, consumer);
-	}
-
-	public static <T, E extends Throwable> BiConsumer<T, Throwable> assertFailure(Class<E> errorClass, String messagePattern) {
-		return assertFailure(errorClass, messagePattern, $ -> {});
-	}
-
-	public static <T> BiConsumer<T, Throwable> assertFailure(Class<? extends Throwable> errorClass) {
-		return assertFailure(errorClass, $ -> {});
-	}
-
-	public static <T> BiConsumer<T, Throwable> assertFailure(String messagePattern) {
-		return assertFailure(Throwable.class, messagePattern);
-	}
-
-	public static <T> BiConsumer<T, Throwable> assertFailure(ThrowingConsumer<Throwable> consumer) {
-		return assertFailure(Throwable.class, consumer);
-	}
-
-	public static <T> BiConsumer<T, Throwable> assertFailure() {
-		return assertFailure($ -> {});
 	}
 
 	public static int getActivePromises() {

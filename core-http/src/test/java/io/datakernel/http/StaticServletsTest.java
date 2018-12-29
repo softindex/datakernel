@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.FileNamesLoadingService;
@@ -40,9 +41,9 @@ import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
@@ -70,69 +71,77 @@ public final class StaticServletsTest {
 	@Test
 	public void testPathLoader() {
 		StaticLoader resourceLoader = StaticLoaders.ofPath(Executors.newSingleThreadExecutor(), resourcesPath);
-		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
-				.serve(HttpRequest.get("http://test.com:8080/index.html"))
-				.thenCompose(response -> response.getBody()
-						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
+		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
+		ByteBuf body = await(response.getBody());
+
+		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
 
 	@Test
 	public void testFileNotFoundPathLoader() {
 		StaticLoader resourceLoader = StaticLoaders.ofPath(Executors.newSingleThreadExecutor(), resourcesPath);
-		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
-				.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt"))
-				.whenComplete(assertFailure(HttpException.class, e -> assertEquals(404, e.getCode())));
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
+		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt")));
+
+		assertEquals(404, e.getCode());
 	}
 
 	@Test
 	public void testFileLoader() {
 		StaticLoader resourceLoader = StaticLoaders.ofFile(Executors.newSingleThreadExecutor(), resourcesFile);
-		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
-				.serve(HttpRequest.get("http://test.com:8080/index.html"))
-				.thenCompose(response -> response.getBody()
-						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
+		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
+		ByteBuf body = await(response.getBody());
+
+		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
 
 	@Test
 	public void testFileNotFoundCachedFileLoader() {
 		StaticLoader resourceLoader = StaticLoaders.ofFile(Executors.newSingleThreadExecutor(), resourcesFile);
-		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
-				.serve(HttpRequest.get("http://test.com:8080/testFile.txt"))
-				.whenComplete(assertFailure(HttpException.class, e -> assertEquals(404, e.getCode())));
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
+		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
+
+		assertEquals(404, e.getCode());
 	}
 
 	@Test
 	public void testClassPath() {
 		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor());
-		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
-				.serve(HttpRequest.get("http://test.com:8080/testFile.txt"))
-				.thenCompose(response -> response.getBody()
-						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
+		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
+		ByteBuf body = await(response.getBody());
+
+		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
 
 	@Test
 	public void testFileNotFoundClassPath() {
 		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor());
-		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
-				.serve(HttpRequest.get("http://test.com:8080/index.html"))
-				.whenComplete(assertFailure(HttpException.class, e -> assertEquals(404, e.getCode())));
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
+		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
+
+		assertEquals(404, e.getCode());
 	}
 
 	@Test
 	public void testRelativeClassPath() {
 		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor(), getClass());
-		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
-				.serve(HttpRequest.get("http://test.com:8080/testFile.txt"))
-				.thenCompose(response -> response.getBody()
-						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
+		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/testFile.txt")));
+		ByteBuf body = await(response.getBody());
+
+		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
 
 	@Test
 	public void testFileNotFoundRelativeClassPath() {
 		StaticLoader resourceLoader = StaticLoaders.ofClassPath(Executors.newSingleThreadExecutor(), StaticServlet.class);
-		StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader)
-				.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt"))
-				.whenComplete(assertFailure(HttpException.class, e -> assertEquals(404, e.getCode())));
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), resourceLoader);
+		HttpException e = awaitException(staticServlet.serve(HttpRequest.get("http://test.com:8080/unknownFile.txt")));
+
+		assertEquals(404, e.getCode());
 	}
 
 	@Test
@@ -148,10 +157,11 @@ public final class StaticServletsTest {
 				Promise.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT)) :
 				Promise.ofException(new NoSuchFileException(name));
 
-		StaticServlet.create(Eventloop.getCurrentEventloop(), testLoader.filter(preDownloadResources::contains))
-				.serve(HttpRequest.get("http://test.com:8080/dir2/testFile.txt"))
-				.thenCompose(response -> response.getBody()
-						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), testLoader.filter(preDownloadResources::contains));
+		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/dir2/testFile.txt")));
+		ByteBuf body = await(response.getBody());
+
+		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
 
 	@Test
@@ -167,9 +177,10 @@ public final class StaticServletsTest {
 				Promise.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT)) :
 				Promise.ofException(new NoSuchFileException(name));
 
-		StaticServlet.create(Eventloop.getCurrentEventloop(), testLoader.filter(fileService::contains))
-				.serve(HttpRequest.get("http://test.com:8080/index.html"))
-				.thenCompose(response -> response.getBody()
-						.whenComplete(assertComplete(body -> assertEquals(EXPECTED_CONTENT, body.asString(UTF_8)))));
+		StaticServlet staticServlet = StaticServlet.create(Eventloop.getCurrentEventloop(), testLoader.filter(fileService::contains));
+		HttpResponse response = await(staticServlet.serve(HttpRequest.get("http://test.com:8080/index.html")));
+		ByteBuf body = await(response.getBody());
+
+		assertEquals(EXPECTED_CONTENT, body.asString(UTF_8));
 	}
 }

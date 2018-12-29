@@ -23,21 +23,24 @@ import io.datakernel.util.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.Promise.*;
+import static io.datakernel.async.Promise.of;
 import static io.datakernel.async.Promises.*;
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
-import static java.lang.System.out;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static java.time.Duration.ofMillis;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
-import static junit.framework.TestCase.*;
-import static org.junit.Assert.assertArrayEquals;
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.fail;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.junit.Assert.*;
 
 @RunWith(DatakernelRunner.class)
 public final class PromisesTest {
@@ -45,275 +48,234 @@ public final class PromisesTest {
 
 	@Test
 	public void toListEmptyTest() {
-		Promises.toList()
-				.whenComplete(assertComplete(list -> {
-					assertEquals(0, list.size());
-					// asserting immutability
-					try {
-						list.add(123);
-					} catch (UnsupportedOperationException e) {
-						return;
-					}
-					fail();
-				}));
+		List<Integer> list = await(Promises.toList());
+		assertEquals(0, list.size());
+		// asserting immutability
+		try {
+			list.add(123);
+		} catch (UnsupportedOperationException e) {
+			return;
+		}
+		fail();
 	}
 
 	@Test
 	public void toListSingleTest() {
-		Promises.toList(of(321))
-				.whenComplete(assertComplete(list -> {
-					assertEquals(1, list.size());
-
-					// asserting mutability
-					Integer newInt = 123;
-					list.set(0, newInt);
-					assertEquals(newInt, list.get(0));
-
-				}));
+		List<Integer> list = await(Promises.toList(of(321)));
+		assertEquals(1, list.size());
+		// asserting mutability
+		Integer newInt = 123;
+		list.set(0, newInt);
+		assertEquals(newInt, list.get(0));
 	}
 
 	@Test
 	public void varargsToListTest() {
-		Promises.toList(of(321), of(322), of(323))
-				.whenComplete(assertComplete(list -> {
-					assertEquals(3, list.size());
-
-					// asserting mutability
-					list.set(0, 123);
-					assertEquals(3, list.size());
-					assertEquals(new Integer(123), list.get(0));
-
-				}));
+		List<Integer> list = await(Promises.toList(of(321), of(322), of(323)));
+		assertEquals(3, list.size());
+		// asserting mutability
+		list.set(0, 123);
+		assertEquals(3, list.size());
+		assertEquals(new Integer(123), list.get(0));
 	}
 
 	@Test
 	public void streamToListTest() {
-		Promises.toList(Stream.of(of(321), of(322), of(323)))
-				.whenComplete(assertComplete(list -> {
-					assertEquals(3, list.size());
-
-					// asserting mutability
-					list.set(0, 123);
-					assertEquals(3, list.size());
-					assertEquals(new Integer(123), list.get(0));
-
-				}));
+		List<Integer> list = await(Promises.toList(Stream.of(of(321), of(322), of(323))));
+		assertEquals(3, list.size());
+		// asserting mutability
+		list.set(0, 123);
+		assertEquals(3, list.size());
+		assertEquals(new Integer(123), list.get(0));
 	}
 
 	@Test
 	public void listToListTest() {
-		Promises.toList(asList(of(321), of(322), of(323)))
-				.whenComplete(assertComplete(list -> {
-					assertEquals(3, list.size());
-
-					// asserting mutability
-					list.set(0, 123);
-					assertEquals(3, list.size());
-					assertEquals(new Integer(123), list.get(0));
-
-				}));
+		List<Integer> list = await(Promises.toList(asList(of(321), of(322), of(323))));
+		assertEquals(3, list.size());
+		// asserting mutability
+		list.set(0, 123);
+		assertEquals(3, list.size());
+		assertEquals(new Integer(123), list.get(0));
 	}
 
 	@Test
 	public void toArrayEmptyTest() {
-		toArray(Object.class)
-				.whenComplete(assertComplete(array -> assertEquals(0, array.length)));
+		Object[] array = await(toArray(Object.class));
+		assertEquals(0, array.length);
 	}
 
 	@Test
 	public void toArraySingleTest() {
-		toArray(Integer.class, of(321))
-				.whenComplete(assertComplete(array -> {
-					assertEquals(1, array.length);
-					assertEquals(new Integer(321), array[0]);
-				}));
+		Integer[] array = await(toArray(Integer.class, of(321)));
+		assertEquals(1, array.length);
+		assertEquals(new Integer(321), array[0]);
+
 	}
 
 	@Test
 	public void arraytoArrayDoubleTest() {
-		toArray(Integer.class, of(321), of(322))
-				.whenComplete(assertComplete(array -> {
-					assertEquals(2, array.length);
-					assertEquals(new Integer(321), array[0]);
-					assertEquals(new Integer(322), array[1]);
-				}));
+		Integer[] array = await(toArray(Integer.class, of(321), of(322)));
+		assertEquals(2, array.length);
+		assertEquals(new Integer(321), array[0]);
+		assertEquals(new Integer(322), array[1]);
 	}
 
 	@Test
 	public void varargsToArrayDoubleTest() {
-		toArray(Integer.class, of(321), of(322), of(323))
-				.whenComplete(assertComplete(array -> {
-					assertEquals(3, array.length);
-					assertEquals(new Integer(321), array[0]);
-					assertEquals(new Integer(322), array[1]);
-					assertEquals(new Integer(323), array[2]);
-				}));
+		Integer[] array = await(toArray(Integer.class, of(321), of(322), of(323)));
+		assertEquals(3, array.length);
+		assertEquals(new Integer(321), array[0]);
+		assertEquals(new Integer(322), array[1]);
+		assertEquals(new Integer(323), array[2]);
+
 	}
 
 	@Test
 	public void streamToArrayDoubleTest() {
-		toArray(Integer.class, Stream.of(of(321), of(322), of(323)))
-				.whenComplete(assertComplete(array -> {
-					assertEquals(3, array.length);
-					assertEquals(new Integer(321), array[0]);
-					assertEquals(new Integer(322), array[1]);
-					assertEquals(new Integer(323), array[2]);
-				}));
+		Integer[] array = await(toArray(Integer.class, Stream.of(of(321), of(322), of(323))));
+		assertEquals(3, array.length);
+		assertEquals(new Integer(321), array[0]);
+		assertEquals(new Integer(322), array[1]);
+		assertEquals(new Integer(323), array[2]);
 	}
 
 	@Test
 	public void listToArrayDoubleTest() {
-		toArray(Integer.class, asList(of(321), of(322), of(323)))
-				.whenComplete(assertComplete(array -> {
-					assertEquals(3, array.length);
-					assertEquals(new Integer(321), array[0]);
-					assertEquals(new Integer(322), array[1]);
-					assertEquals(new Integer(323), array[2]);
-				}));
+		Integer[] array = await(toArray(Integer.class, asList(of(321), of(322), of(323))));
+		assertEquals(3, array.length);
+		assertEquals(new Integer(321), array[0]);
+		assertEquals(new Integer(322), array[1]);
+		assertEquals(new Integer(323), array[2]);
 	}
 
 	@Test
 	public void toTuple1Test() {
-		toTuple(Tuple1::new, of(321))
-				.whenComplete(assertComplete(value -> assertEquals(new Integer(321), value.getValue1())))
-				.thenCompose($ -> toTuple(of(321))
-						.whenComplete(assertComplete(value -> assertEquals(new Integer(321), value.getValue1()))));
+		Tuple1<Integer> tuple1 = await(toTuple(Tuple1::new, of(321)));
+		assertEquals(new Integer(321), tuple1.getValue1());
+
+		Tuple1<Integer> tuple2 = await(toTuple(of(321)));
+		assertEquals(new Integer(321), tuple2.getValue1());
 	}
 
 	@Test
 	public void toTuple2Test() {
-		toTuple(Tuple2::new, of(321), of("322"))
-				.whenComplete(assertComplete(value -> {
-					assertEquals(new Integer(321), value.getValue1());
-					assertEquals("322", value.getValue2());
-				}))
-				.thenCompose($ -> toTuple(of(321), of("322"))
-						.whenComplete(assertComplete(value -> {
-							assertEquals(new Integer(321), value.getValue1());
-							assertEquals("322", value.getValue2());
-						})));
+		Tuple2<Integer, String> tuple1 = await(toTuple(Tuple2::new, of(321), of("322")));
+		assertEquals(new Integer(321), tuple1.getValue1());
+		assertEquals("322", tuple1.getValue2());
+
+		Tuple2<Integer, String> tuple2 = await(toTuple(of(321), of("322")));
+		assertEquals(new Integer(321), tuple2.getValue1());
+		assertEquals("322", tuple2.getValue2());
 	}
 
 	@Test
 	public void toTuple3Test() {
-		toTuple(Tuple3::new, of(321), of("322"), of(323.34))
-				.whenComplete(assertComplete(value -> {
-					assertEquals(new Integer(321), value.getValue1());
-					assertEquals("322", value.getValue2());
-					assertEquals(323.34, value.getValue3());
-				}))
-				.thenCompose($ -> toTuple(of(321), of("322"), of(323.34))
-						.whenComplete(assertComplete(value -> {
-							assertEquals(new Integer(321), value.getValue1());
-							assertEquals("322", value.getValue2());
-							assertEquals(323.34, value.getValue3());
-						})));
+		Tuple3<Integer, String, Double> tuple1 = await(toTuple(Tuple3::new, of(321), of("322"), of(323.34)));
+		assertEquals(new Integer(321), tuple1.getValue1());
+		assertEquals("322", tuple1.getValue2());
+		assertEquals(323.34, tuple1.getValue3());
+
+		Tuple3<Integer, String, Double> tuple2 = await(toTuple(of(321), of("322"), of(323.34)));
+		assertEquals(new Integer(321), tuple2.getValue1());
+		assertEquals("322", tuple2.getValue2());
+		assertEquals(323.34, tuple2.getValue3());
 	}
 
 	@Test
 	public void toTuple4Test() {
-		toTuple(Tuple4::new, of(321), of("322"), of(323.34), of(ofMillis(324)))
-				.whenComplete(assertComplete(value -> {
-					assertEquals(new Integer(321), value.getValue1());
-					assertEquals("322", value.getValue2());
-					assertEquals(323.34, value.getValue3());
-					assertEquals(ofMillis(324), value.getValue4());
-				}))
-				.thenCompose($ -> toTuple(of(321), of("322"), of(323.34), of(ofMillis(324)))
-						.whenComplete(assertComplete(value -> {
-							assertEquals(new Integer(321), value.getValue1());
-							assertEquals("322", value.getValue2());
-							assertEquals(323.34, value.getValue3());
-							assertEquals(ofMillis(324), value.getValue4());
-						})));
+		Tuple4<Integer, String, Double, Duration> tuple1 = await(toTuple(Tuple4::new, of(321), of("322"), of(323.34), of(ofMillis(324))));
+		assertEquals(new Integer(321), tuple1.getValue1());
+		assertEquals("322", tuple1.getValue2());
+		assertEquals(323.34, tuple1.getValue3());
+		assertEquals(ofMillis(324), tuple1.getValue4());
+
+		Tuple4<Integer, String, Double, Duration> tuple2 = await(toTuple(of(321), of("322"), of(323.34), of(ofMillis(324))));
+		assertEquals(new Integer(321), tuple2.getValue1());
+		assertEquals("322", tuple2.getValue2());
+		assertEquals(323.34, tuple2.getValue3());
+		assertEquals(ofMillis(324), tuple2.getValue4());
 	}
 
 	@Test
 	public void toTuple5Test() {
-		toTuple(Tuple5::new, of(321), of("322"), of(323.34), of(ofMillis(324)), of(1))
-				.whenComplete(assertComplete(value -> {
-					assertEquals(new Integer(321), value.getValue1());
-					assertEquals("322", value.getValue2());
-					assertEquals(323.34, value.getValue3());
-					assertEquals(ofMillis(324), value.getValue4());
-					assertEquals(new Integer(1), value.getValue5());
-				}))
-				.thenCompose($ -> toTuple(of(321), of("322"), of(323.34), of(ofMillis(324)), of(1)))
-				.whenComplete(assertComplete(value -> {
-					assertEquals(new Integer(321), value.getValue1());
-					assertEquals("322", value.getValue2());
-					assertEquals(323.34, value.getValue3());
-					assertEquals(ofMillis(324), value.getValue4());
-					assertEquals(new Integer(1), value.getValue5());
-				}));
+		Tuple5<Integer, String, Double, Duration, Integer> tuple1 = await(toTuple(Tuple5::new, of(321), of("322"), of(323.34), of(ofMillis(324)), of(1)));
+		assertEquals(new Integer(321), tuple1.getValue1());
+		assertEquals("322", tuple1.getValue2());
+		assertEquals(323.34, tuple1.getValue3());
+		assertEquals(ofMillis(324), tuple1.getValue4());
+		assertEquals(new Integer(1), tuple1.getValue5());
+
+		Tuple5<Integer, String, Double, Duration, Integer> tuple2 = await(toTuple(of(321), of("322"), of(323.34), of(ofMillis(324)), of(1)));
+		assertEquals(new Integer(321), tuple2.getValue1());
+		assertEquals("322", tuple2.getValue2());
+		assertEquals(323.34, tuple2.getValue3());
+		assertEquals(ofMillis(324), tuple2.getValue4());
+		assertEquals(new Integer(1), tuple2.getValue5());
 	}
 
 	@Test
 	public void toTuple6Test() {
-		toTuple(Tuple6::new, of(321), of("322"), of(323.34), of(ofMillis(324)), of(1), of(null))
-				.whenComplete(assertComplete(value -> {
-					assertEquals(new Integer(321), value.getValue1());
-					assertEquals("322", value.getValue2());
-					assertEquals(323.34, value.getValue3());
-					assertEquals(ofMillis(324), value.getValue4());
-					assertEquals(new Integer(1), value.getValue5());
-					assertNull(value.getValue6());
-				}))
-				.thenCompose($ -> toTuple(of(321), of("322"), of(323.34), of(ofMillis(324)), of(1), of(null)))
-				.whenComplete(assertComplete(value -> {
-					assertEquals(new Integer(321), value.getValue1());
-					assertEquals("322", value.getValue2());
-					assertEquals(323.34, value.getValue3());
-					assertEquals(ofMillis(324), value.getValue4());
-					assertEquals(new Integer(1), value.getValue5());
-					assertNull(value.getValue6());
-				}));
+		Tuple6<Integer, String, Double, Duration, Integer, Object> tuple1 = await(toTuple(Tuple6::new, of(321), of("322"), of(323.34), of(ofMillis(324)), of(1), of(null)));
+		assertEquals(new Integer(321), tuple1.getValue1());
+		assertEquals("322", tuple1.getValue2());
+		assertEquals(323.34, tuple1.getValue3());
+		assertEquals(ofMillis(324), tuple1.getValue4());
+		assertEquals(new Integer(1), tuple1.getValue5());
+		assertNull(tuple1.getValue6());
+
+		Tuple6<Integer, String, Double, Duration, Integer, Object> tuple2 = await(toTuple(of(321), of("322"), of(323.34), of(ofMillis(324)), of(1), of(null)));
+		assertEquals(new Integer(321), tuple2.getValue1());
+		assertEquals("322", tuple2.getValue2());
+		assertEquals(323.34, tuple2.getValue3());
+		assertEquals(ofMillis(324), tuple2.getValue4());
+		assertEquals(new Integer(1), tuple2.getValue5());
+		assertNull(tuple2.getValue6());
 	}
 
 	@Test
 	public void testCollectWithListener() {
 		CollectListener<Object, Object[], List<Object>> any = (canceller, accumulator) -> {};
-		collect(IndexedCollector.toList(), any, asList(of(1), of(2), of(3)))
-				.whenComplete(assertComplete(list -> assertEquals(3, list.size())));
+		List<Object> list = await(collect(IndexedCollector.toList(), any, asList(of(1), of(2), of(3))));
+		assertEquals(3, list.size());
 	}
 
 	@Test
 	public void testCollectStream() {
-		collect(toList(), Stream.of(of(1), of(2), of(3)))
-				.whenComplete(assertComplete(list -> assertEquals(3, list.size())));
+		List<Integer> list = await(collect(toList(), Stream.of(of(1), of(2), of(3))));
+		assertEquals(3, list.size());
 	}
 
 	@Test
 	public void testRepeat() {
-		AtomicInteger counter = new AtomicInteger(0);
-		repeat(() -> complete()
-				.thenCompose($ -> {
-					if (counter.get() == 5) {
-						return ofException(new Exception());
-					}
-					counter.incrementAndGet();
-					return of($);
-				})
-				.whenResult($ -> out.println(counter)))
-				.whenComplete(assertFailure(Exception.class))
-				.whenException(e -> assertEquals(5, counter.get()));
+		Exception exception = new Exception();
+		Throwable e = awaitException(repeat(() -> {
+			if (counter.get() == 5) {
+				return Promise.ofException(exception);
+			}
+			counter.incrementAndGet();
+			return Promise.of(null);
+		}));
+		System.out.println(counter);
+		assertSame(exception, e);
+		assertEquals(5, counter.get());
 	}
 
 	@Test
 	public void testRunSequence() {
 		List<Integer> list = asList(1, 2, 3, 4, 5, 6, 7);
-		runSequence(list.stream()
+		await(runSequence(list.stream()
 				.map(n -> AsyncSupplier.cast(() ->
-						getStage(n))));
+						getStage(n)))));
 	}
 
 	@Test
 	public void testRunSequenceWithSorted() {
 		List<Integer> list = asList(1, 2, 3, 4, 5, 6, 7);
-		runSequence(list.stream()
+		await(runSequence(list.stream()
 				.sorted(Comparator.naturalOrder())
 				.map(n -> AsyncSupplier.cast(() ->
-						getStage(n))));
+						getStage(n)))));
 	}
 
 	@Test
@@ -321,20 +283,22 @@ public final class PromisesTest {
 		// test success
 		Exception exception1 = new Exception("Test1");
 		Exception exception2 = new Exception("Test2");
-		List<Promise<?>> promises = asList(Promise.of(1),
+		List<Promise<Integer>> promises = asList(Promise.of(1),
 				Promise.of(2),
 				Promise.ofException(exception1),
 				Promise.of(3),
 				Promise.ofException(exception2),
 				Promise.of(4));
 
-		PromisesEx.nSuccesses(3, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise)))
-				.whenComplete(assertComplete(list -> assertEquals(asList(1, 2, 3), list)));
+		List<Integer> list = await(PromisesEx.nSuccesses(3, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise))));
+		assertEquals(asList(1, 2, 3), list);
 
 		// test failure
-		PromisesEx.nSuccesses(5, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise)))
-				.whenComplete(assertFailure(StacklessException.class, "Not enough successes",
-						e -> assertArrayEquals(new Throwable[]{exception1, exception2}, e.getSuppressed())));
+		Throwable e = awaitException(PromisesEx.nSuccesses(5, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise))));
+		assertThat(e, instanceOf(StacklessException.class));
+		assertThat(e.getMessage(), containsString("Not enough successes"));
+		assertArrayEquals(new Exception[]{exception1, exception2}, e.getSuppressed());
+		assertArrayEquals(new Throwable[]{exception1, exception2}, e.getSuppressed());
 	}
 
 	@Test
@@ -342,19 +306,19 @@ public final class PromisesTest {
 		// test n successes
 		Exception exception1 = new Exception("Test1");
 		Exception exception2 = new Exception("Test2");
-		List<Promise<?>> promises = asList(Promise.of(1),
+		List<Promise<Integer>> promises = asList(Promise.of(1),
 				Promise.of(2),
 				Promise.ofException(exception1),
 				Promise.of(3),
 				Promise.ofException(exception2),
 				Promise.of(4));
 
-		PromisesEx.nSuccessesOrLess(3, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise)))
-				.whenComplete(assertComplete(list -> assertEquals(asList(1, 2, 3), list)));
+		List<Integer> list1 = await(PromisesEx.nSuccessesOrLess(3, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise))));
+		assertEquals(asList(1, 2, 3), list1);
 
 		// test less successes
-		PromisesEx.nSuccessesOrLess(5, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise)))
-				.whenComplete(assertComplete(list -> assertEquals(asList(1, 2, 3, 4), list)));
+		List<Integer> list2 = await(PromisesEx.nSuccessesOrLess(5, promises.stream().map(promise -> AsyncSupplier.cast(() -> promise))));
+		assertEquals(asList(1, 2, 3, 4), list2);
 	}
 
 	private Promise<Integer> getStage(Integer number) {

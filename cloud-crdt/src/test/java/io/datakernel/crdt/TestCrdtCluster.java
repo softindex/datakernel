@@ -32,9 +32,9 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.function.BinaryOperator;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Collections.singleton;
 
 @RunWith(DatakernelRunner.class)
@@ -64,13 +64,13 @@ public final class TestCrdtCluster {
 		}
 		CrdtClusterClient<String, String, Integer> cluster = CrdtClusterClient.create(eventloop, clients, Math::max);
 
-		StreamSupplier.ofIterator(localStorage.iterator()).streamTo(StreamConsumer.ofPromise(cluster.upload()))
-				.whenComplete(($, err) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertComplete($ ->
-						remoteStorages.forEach((name, storage) -> {
-							System.out.println("Data at '" + name + "' storage:");
-							storage.iterator().forEachRemaining(System.out::println);
-						})));
+		await(StreamSupplier.ofIterator(localStorage.iterator())
+				.streamTo(StreamConsumer.ofPromise(cluster.upload()))
+				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+		remoteStorages.forEach((name, storage) -> {
+			System.out.println("Data at '" + name + "' storage:");
+			storage.iterator().forEachRemaining(System.out::println);
+		});
 	}
 
 	@SuppressWarnings("deprecation") // StreamConsumer#of
@@ -105,17 +105,15 @@ public final class TestCrdtCluster {
 		RuntimeCrdtClient<String, Set<Integer>> localStorage = RuntimeCrdtClient.create(eventloop, union);
 		CrdtClusterClient<String, String, Set<Integer>> cluster = CrdtClusterClient.create(eventloop, clients, union);
 
-		cluster.download().getStream()
+		await(cluster.download().getStream()
 				.streamTo(StreamConsumer.of(localStorage::put))
-				.whenComplete(($, err) -> servers.forEach(AbstractServer::close))
-				.whenComplete(assertComplete($ -> {
-					System.out.println("Data at 'local' storage:");
-					localStorage.iterator().forEachRemaining(System.out::println);
-					System.out.println();
-					remoteStorages.forEach((name, storage) -> {
-						System.out.println("Data at '" + name + "' storage:");
-						storage.iterator().forEachRemaining(System.out::println);
-					});
-				}));
+				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+		System.out.println("Data at 'local' storage:");
+		localStorage.iterator().forEachRemaining(System.out::println);
+		System.out.println();
+		remoteStorages.forEach((name, storage) -> {
+			System.out.println("Data at '" + name + "' storage:");
+			storage.iterator().forEachRemaining(System.out::println);
+		});
 	}
 }

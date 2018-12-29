@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
@@ -32,7 +33,7 @@ import static org.junit.Assert.assertTrue;
 public class JmxMBeansAttributesSelectionTest {
 
 	@Test
-	public void doNotConsiderOptionalAttributesByDefault() throws Exception {
+	public void doNotConsiderOptionalAttributesByDefault() {
 		MBeanWithNoExtraSubAttributes mbeanStub = new MBeanWithNoExtraSubAttributes();
 		DynamicMBean mbean = createDynamicMBeanFor(mbeanStub);
 
@@ -46,7 +47,7 @@ public class JmxMBeansAttributesSelectionTest {
 	}
 
 	@Test
-	public void considerOptionalAttributesIfTheyAreSpecified() throws Exception {
+	public void considerOptionalAttributesIfTheyAreSpecified() {
 		MBeanWithExtraSubAttributes mbeanStub = new MBeanWithExtraSubAttributes();
 		DynamicMBean mbean = createDynamicMBeanFor(mbeanStub);
 
@@ -63,7 +64,7 @@ public class JmxMBeansAttributesSelectionTest {
 	}
 
 	@Test(expected = RuntimeException.class)
-	public void throwsExceptionInCaseOfInvalidFieldName() throws Exception {
+	public void throwsExceptionInCaseOfInvalidFieldName() {
 		MBeansStubWithInvalidExtraAttrName mbeanStub = new MBeansStubWithInvalidExtraAttrName();
 		DynamicMBean mbean = createDynamicMBeanFor(mbeanStub);
 
@@ -83,6 +84,7 @@ public class JmxMBeansAttributesSelectionTest {
 			return stats;
 		}
 
+		@Nullable
 		@Override
 		public Eventloop getEventloop() {
 			return null;
@@ -97,6 +99,7 @@ public class JmxMBeansAttributesSelectionTest {
 			return stats;
 		}
 
+		@Nullable
 		@Override
 		public Eventloop getEventloop() {
 			return null;
@@ -111,6 +114,7 @@ public class JmxMBeansAttributesSelectionTest {
 			return stats;
 		}
 
+		@Nullable
 		@Override
 		public Eventloop getEventloop() {
 			return null;

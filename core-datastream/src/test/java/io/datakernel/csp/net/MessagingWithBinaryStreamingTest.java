@@ -32,6 +32,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.stream.LongStream;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.serializer.util.BinarySerializers.LONG_SERIALIZER;
@@ -82,8 +83,8 @@ public final class MessagingWithBinaryStreamingTest {
 				.withAcceptOnce()
 				.listen();
 
-		AsyncTcpSocketImpl.connect(ADDRESS)
-				.whenComplete(assertComplete(socket -> ping(3, MessagingWithBinaryStreaming.create(socket, INTEGER_SERIALIZER))));
+		await(AsyncTcpSocketImpl.connect(ADDRESS)
+				.whenComplete(assertComplete(socket -> ping(3, MessagingWithBinaryStreaming.create(socket, INTEGER_SERIALIZER)))));
 	}
 
 	@Test
@@ -108,7 +109,7 @@ public final class MessagingWithBinaryStreamingTest {
 				.withAcceptOnce()
 				.listen();
 
-		AsyncTcpSocketImpl.connect(ADDRESS)
+		List<Long> list = await(AsyncTcpSocketImpl.connect(ADDRESS)
 				.thenCompose(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
@@ -118,8 +119,9 @@ public final class MessagingWithBinaryStreamingTest {
 							.thenCompose($ -> messaging.receiveBinaryStream()
 									.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
 									.toList());
-				})
-				.whenComplete(assertComplete(list -> assertEquals(source, list)));
+				}));
+
+		assertEquals(source, list);
 	}
 
 	@Test
@@ -135,7 +137,7 @@ public final class MessagingWithBinaryStreamingTest {
 							MessagingWithBinaryStreaming.create(socket, serializer);
 
 					messaging.receive()
-							.whenResult(msg -> assertEquals("start", msg))
+							.whenComplete(assertComplete(msg -> assertEquals("start", msg)))
 							.thenCompose($ ->
 									messaging.receiveBinaryStream()
 											.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
@@ -148,7 +150,7 @@ public final class MessagingWithBinaryStreamingTest {
 				.withAcceptOnce()
 				.listen();
 
-		AsyncTcpSocketImpl.connect(ADDRESS)
+		await(AsyncTcpSocketImpl.connect(ADDRESS)
 				.whenResult(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, serializer);
@@ -159,7 +161,7 @@ public final class MessagingWithBinaryStreamingTest {
 							.transformWith(ChannelSerializer.create(LONG_SERIALIZER)
 									.withInitialBufferSize(MemSize.of(1)))
 							.streamTo(messaging.sendBinaryStream());
-				});
+				}));
 	}
 
 	@Test
@@ -189,7 +191,7 @@ public final class MessagingWithBinaryStreamingTest {
 				.withAcceptOnce()
 				.listen();
 
-		AsyncTcpSocketImpl.connect(ADDRESS)
+		String msg = await(AsyncTcpSocketImpl.connect(ADDRESS)
 				.thenCompose(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, serializer);
@@ -201,8 +203,9 @@ public final class MessagingWithBinaryStreamingTest {
 									.streamTo(messaging.sendBinaryStream()))
 							.thenCompose($ -> messaging.receive())
 							.whenComplete(($, e) -> messaging.close());
-				})
-				.whenComplete(assertComplete(res -> assertEquals("ack", res)));
+				}));
+
+		assertEquals("ack", msg);
 	}
 
 	@Test
@@ -215,7 +218,7 @@ public final class MessagingWithBinaryStreamingTest {
 							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
 
 					messaging.receive()
-							.whenResult(msg -> assertEquals("start", msg))
+							.whenComplete(assertComplete(msg -> assertEquals("start", msg)))
 							.thenCompose(msg -> messaging.sendEndOfStream())
 							.thenCompose(msg ->
 									messaging.receiveBinaryStream()
@@ -227,7 +230,7 @@ public final class MessagingWithBinaryStreamingTest {
 				.withAcceptOnce()
 				.listen();
 
-		AsyncTcpSocketImpl.connect(ADDRESS)
+		await(AsyncTcpSocketImpl.connect(ADDRESS)
 				.whenResult(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
@@ -238,6 +241,6 @@ public final class MessagingWithBinaryStreamingTest {
 							.transformWith(ChannelSerializer.create(LONG_SERIALIZER)
 									.withInitialBufferSize(MemSize.of(1)))
 							.streamTo(messaging.sendBinaryStream());
-				});
+				}));
 	}
 }

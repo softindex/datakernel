@@ -5,14 +5,14 @@ import io.datakernel.ot.utils.OTGraphBuilder;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.Utils;
-import org.junit.Before;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.ot.utils.Utils.createTestOp;
 import static io.datakernel.util.CollectionUtils.list;
@@ -22,14 +22,9 @@ import static io.datakernel.util.Utils.coalesce;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("CodeBlock2Expr")
+@RunWith(DatakernelRunner.class)
 public class OTMergeAlgorithmTest {
-	Eventloop eventloop;
 	OTSystem<TestOp> system = createTestOp();
-
-	@Before
-	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-	}
 
 	static <K, D> OTLoadedGraph<K, D> buildGraph(Consumer<OTGraphBuilder<K, D>> consumer, OTSystem<D> system) {
 		OTLoadedGraph<K, D> graph = new OTLoadedGraph<>(system);
@@ -37,7 +32,7 @@ public class OTMergeAlgorithmTest {
 			checkArgument(graph.getParents(child) == null || graph.getParents(child).get(parent) == null, "Invalid graph");
 			graph.addEdge(parent, child, diffs);
 		});
-		HashMap<K, Long> levels = new HashMap<>();
+		Map<K, Long> levels = new HashMap<>();
 		for (K commitId : graph.getTips()) {
 			Utils.calcLevels(commitId, levels,
 					parentId -> coalesce(graph.getParents(parentId), Collections.<K, List<D>>emptyMap()).keySet());
@@ -49,7 +44,7 @@ public class OTMergeAlgorithmTest {
 
 	@FunctionalInterface
 	private interface TestAcceptor {
-		void accept(OTLoadedGraph<String, TestOp> graph, Map<String, List<TestOp>> merge) throws Exception;
+		void accept(OTLoadedGraph<String, TestOp> graph, Map<String, List<TestOp>> merge);
 	}
 
 	private void doTest(Set<String> heads, Consumer<OTGraphBuilder<String, TestOp>> graphBuilder, TestAcceptor testAcceptor) throws Exception {
@@ -71,11 +66,9 @@ public class OTMergeAlgorithmTest {
 	private void doTestLoadAndMerge(Set<String> heads, Consumer<OTGraphBuilder<String, TestOp>> graphBuilder, TestAcceptor testAcceptor) throws Exception {
 		OTRepositoryStub<String, TestOp> repository = OTRepositoryStub.create();
 		repository.setGraph(graphBuilder);
-		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, repository);
-		CompletableFuture<OTLoadedGraph<String, TestOp>> future = algorithms.loadGraph(heads)
-				.toCompletableFuture();
-		eventloop.run();
-		OTLoadedGraph<String, TestOp> graph = future.get();
+		OTAlgorithms<String, TestOp> algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), system, repository);
+
+		OTLoadedGraph<String, TestOp> graph = await(algorithms.loadGraph(heads));
 		Map<String, List<TestOp>> merge;
 		try {
 			merge = graph.merge(heads);

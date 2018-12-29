@@ -16,15 +16,9 @@
 
 package io.global.launchers;
 
-import io.global.launchers.discovery.DiscoveryServiceLauncher;
 import org.junit.Test;
 
-public class TestInjectors {
-	@Test
-	public void testDiscoveryServiceLauncher() {
-		new DiscoveryServiceLauncher().testInjector();
-	}
-
+public class GlobalNodesLauncherTest {
 	@Test
 	public void testGlobalNodesLauncher() {
 		new GlobalNodesLauncher().testInjector();

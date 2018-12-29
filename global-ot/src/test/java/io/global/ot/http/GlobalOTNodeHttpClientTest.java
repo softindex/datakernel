@@ -16,13 +16,13 @@
 
 package io.global.ot.http;
 
+import io.datakernel.annotation.NotNull;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import io.global.common.*;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
@@ -33,10 +33,10 @@ import org.junit.runner.RunWith;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.CollectionUtils.set;
-import static io.global.common.TestUtils.await;
 import static io.global.ot.server.GlobalOTNodeImplTest.createCommitEntry;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Arrays.asList;
@@ -46,31 +46,134 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(DatakernelRunner.class)
-@SkipEventloopRun
 public class GlobalOTNodeHttpClientTest {
 	private final LinkedList<Object> params = new LinkedList<>();
+	private final RawServerServlet servlet = getServlet();
+	private final GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(servlet::serve, "http://localhost/");
+	private final KeyPair keys = KeyPair.generate();
+	private final PrivKey privKey = keys.getPrivKey();
+	private final PubKey pubKey = keys.getPubKey();
+	private final SimKey simKey = SimKey.generate();
+	private final SharedSimKey sharedSimKey = SharedSimKey.of(simKey, pubKey);
+	private final RepoID repository = RepoID.of(pubKey, "test");
+	private final RawCommit rootCommit = RawCommit.of(emptySet(),
+			EncryptedData.encrypt(new byte[0], simKey),
+			Hash.sha1(simKey.getBytes()),
+			0, 0L);
+	private final CommitId rootCommitId = CommitId.ofCommitData(encode(REGISTRY.get(RawCommit.class), rootCommit).asArray());
+	private final RawCommitHead rawCommitHead = RawCommitHead.of(repository, rootCommitId, 123L);
+	private final SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(REGISTRY.get(RawCommitHead.class), rawCommitHead, privKey);
+	private final List<CommitEntry> commitEntries = asList(
+			createCommitEntry(emptySet(), 0, false),
+			createCommitEntry(set(1), 1, false),
+			createCommitEntry(set(3), 2, true)
+	);
 
 	@Test
-	public void test1() {
-		KeyPair keys = KeyPair.generate();
-		PrivKey privKey = keys.getPrivKey();
-		PubKey pubKey = keys.getPubKey();
+	public void list() {
+		doTest(client.list(pubKey), pubKey);
+	}
 
-		SimKey simKey = SimKey.generate();
+	@Test
+	public void save() {
+		Map<CommitId, RawCommit> commits = map(rootCommitId, rootCommit);
+		Set<SignedData<RawCommitHead>> heads = singleton(signedRawCommitHead);
+		doTest(client.save(repository, commits, heads), repository, commits, heads);
+	}
 
-		RepoID repository = RepoID.of(pubKey, "test");
+	@Test
+	public void loadCommit() {
+		doTest(client.loadCommit(repository, rootCommitId), repository, rootCommitId);
+	}
 
-		RawCommit rootCommit = RawCommit.of(emptySet(),
-				EncryptedData.encrypt(new byte[0], simKey),
-				Hash.sha1(simKey.getBytes()),
-				0, 0L);
-		CommitId rootCommitId = CommitId.ofCommitData(encode(REGISTRY.get(RawCommit.class), rootCommit).asArray());
+	@Test
+	public void getHeadsInfo() {
+		doTest(client.getHeadsInfo(repository), repository);
+	}
 
-		RawCommitHead rawCommitHead = RawCommitHead.of(repository, rootCommitId, 123L);
-		SignedData<RawCommitHead> signedRawCommitHead = SignedData.sign(REGISTRY.get(RawCommitHead.class), rawCommitHead, privKey);
+	@Test
+	public void saveSnapshot() {
+		SignedData<RawSnapshot> signedSnapshot = SignedData.sign(
+				REGISTRY.get(RawSnapshot.class),
+				RawSnapshot.of(
+						repository,
+						rootCommitId,
+						EncryptedData.encrypt(new byte[100], simKey),
+						Hash.sha1(simKey.getBytes())),
+				privKey);
+		doTest(client.saveSnapshot(repository, signedSnapshot), repository, signedSnapshot);
+	}
 
+	@Test
+	public void loadSnpashot() {
+		doTest(client.loadSnapshot(repository, rootCommitId), repository, rootCommitId);
+	}
 
-		RawServerServlet servlet = RawServerServlet.create(new GlobalOTNode() {
+	@Test
+	public void getHeads() {
+		Set<CommitId> commitSet = set(rootCommitId);
+		doTest(client.getHeads(repository, commitSet), repository, commitSet);
+	}
+
+	@Test
+	public void shareKey() {
+		SignedData<SharedSimKey> signedSharedSimKey = SignedData.sign(
+				REGISTRY.get(SharedSimKey.class),
+				sharedSimKey,
+				privKey);
+		doTest(client.shareKey(pubKey, signedSharedSimKey), pubKey, signedSharedSimKey);
+	}
+
+	@Test
+	public void getSharedKey() {
+		Hash hash = sharedSimKey.getHash();
+		doTest(client.getSharedKey(pubKey, hash), pubKey, hash);
+	}
+
+	@Test
+	public void getSharedKeys() {
+		doTest(client.getSharedKeys(pubKey), pubKey);
+	}
+
+	@Test
+	public void sendPullRequest() {
+		RawPullRequest pullRequest = RawPullRequest.of(repository, RepoID.of(pubKey, "Fork"));
+		SignedData<RawPullRequest> signedPullRequest = SignedData.sign(REGISTRY.get(RawPullRequest.class), pullRequest, privKey);
+		doTest(client.sendPullRequest(signedPullRequest), signedPullRequest);
+	}
+
+	@Test
+	public void getPullRequests() {
+		doTest(client.getPullRequests(repository), repository);
+	}
+
+	@Test
+	public void upload() {
+		List<CommitId> commitIds = commitEntries.stream().map(CommitEntry::getCommitId).collect(toList());
+		MaterializedPromise<Void> uploadFinished = ChannelSupplier.ofIterable(commitEntries)
+				.streamTo(ChannelConsumer.ofPromise(client.upload(repository)));
+		doTest(uploadFinished, repository, commitIds);
+	}
+
+	@Test
+	public void download() {
+		Set<CommitId> required = emptySet();
+		Set<CommitId> existing = emptySet();
+		List<CommitId> commitIds = new ArrayList<>();
+		MaterializedPromise<Void> downloadFinished = ChannelSupplier.ofPromise(client.download(repository, required, existing))
+				.streamTo(ChannelConsumer.ofConsumer(entry -> commitIds.add(entry.getCommitId())));
+		doTest(downloadFinished, repository, required, existing, commitIds);
+	}
+
+	@Test
+	public void listSnapshots() {
+		doTest(client.listSnapshots(repository, emptySet()), repository, emptySet());
+	}
+
+	// region helpers
+	@NotNull
+	public RawServerServlet getServlet() {
+		return RawServerServlet.create(new GlobalOTNode() {
 			<T> Promise<T> resultOf(@Nullable T result, Object... args) {
 				params.add(result);
 				params.addAll(asList(args));
@@ -209,71 +312,6 @@ public class GlobalOTNodeHttpClientTest {
 						repositoryId);
 			}
 		});
-
-		GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(servlet::serve, "http://localhost/");
-
-		doTest(client.list(pubKey), pubKey);
-
-		Map<CommitId, RawCommit> commits = map(rootCommitId, rootCommit);
-		Set<SignedData<RawCommitHead>> heads = singleton(signedRawCommitHead);
-		doTest(client.save(repository, commits, heads), repository, commits, heads);
-
-		doTest(client.loadCommit(repository, rootCommitId), repository, rootCommitId);
-
-		doTest(client.getHeadsInfo(repository), repository);
-
-		SignedData<RawSnapshot> signedSnapshot = SignedData.sign(
-				REGISTRY.get(RawSnapshot.class),
-				RawSnapshot.of(
-						repository,
-						rootCommitId,
-						EncryptedData.encrypt(new byte[100], simKey),
-						Hash.sha1(simKey.getBytes())),
-				privKey);
-		doTest(client.saveSnapshot(repository, signedSnapshot), repository, signedSnapshot);
-
-		doTest(client.loadSnapshot(repository, rootCommitId), repository, rootCommitId);
-
-		Set<CommitId> commitSet = set(rootCommitId);
-		doTest(client.getHeads(repository, commitSet), repository, commitSet);
-
-		SharedSimKey sharedSimKey = SharedSimKey.of(simKey, pubKey);
-		SignedData<SharedSimKey> signedSharedSimKey = SignedData.sign(
-				REGISTRY.get(SharedSimKey.class),
-				sharedSimKey,
-				privKey);
-		doTest(client.shareKey(pubKey, signedSharedSimKey), pubKey, signedSharedSimKey);
-
-
-		Hash hash = sharedSimKey.getHash();
-		doTest(client.getSharedKey(pubKey, hash), pubKey, hash);
-
-		doTest(client.getSharedKeys(pubKey), pubKey);
-
-		RawPullRequest pullRequest = RawPullRequest.of(repository, RepoID.of(pubKey, "Fork"));
-		SignedData<RawPullRequest> signedPullRequest = SignedData.sign(REGISTRY.get(RawPullRequest.class), pullRequest, privKey);
-		doTest(client.sendPullRequest(signedPullRequest), signedPullRequest);
-
-		doTest(client.getPullRequests(repository), repository);
-
-		List<CommitEntry> entries = asList(
-				createCommitEntry(emptySet(), 0, false),
-				createCommitEntry(set(1), 1, false),
-				createCommitEntry(set(3), 2, true)
-		);
-		List<CommitId> ids = entries.stream().map(CommitEntry::getCommitId).collect(toList());
-		MaterializedPromise<Void> uploadFinished = ChannelSupplier.ofIterable(entries)
-				.streamTo(ChannelConsumer.ofPromise(client.upload(repository)));
-		doTest(uploadFinished, repository, ids);
-
-		Set<CommitId> required = emptySet();
-		Set<CommitId> existing = emptySet();
-		ids.clear();
-		MaterializedPromise<Void> downloadFinished = ChannelSupplier.ofPromise(client.download(repository, required, existing))
-				.streamTo(ChannelConsumer.ofConsumer(entry -> ids.add(entry.getCommitId())));
-		doTest(downloadFinished, repository, required, existing, ids);
-
-		doTest(client.listSnapshots(repository, emptySet()), repository, emptySet());
 	}
 
 	private <T> void doTest(Promise<T> promise, Object... parameters) {
@@ -284,4 +322,5 @@ public class GlobalOTNodeHttpClientTest {
 		}
 		assertTrue(params.isEmpty());
 	}
+	// endregion
 }

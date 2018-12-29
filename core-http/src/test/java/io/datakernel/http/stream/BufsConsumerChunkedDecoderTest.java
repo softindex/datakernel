@@ -17,6 +17,7 @@
 package io.datakernel.http.stream;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.MaterializedPromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -35,12 +36,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.http.TestUtils.AssertingConsumer;
 import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.MALFORMED_CHUNK;
 import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.MALFORMED_CHUNK_LENGTH;
 import static java.lang.System.arraycopy;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 @RunWith(DatakernelRunner.class)
 public final class BufsConsumerChunkedDecoderTest {
@@ -266,14 +268,12 @@ public final class BufsConsumerChunkedDecoderTest {
 
 	private void doTest(@Nullable Exception expectedException) {
 		chunkedDecoder.getInput().set(BinaryChannelSupplier.of(ChannelSupplier.ofIterable(list)));
-		chunkedDecoder.getProcessResult()
-				.whenComplete(($, e) -> {
-					if (expectedException == null) {
-						assertNull(e);
-					} else {
-						assertEquals(expectedException, e);
-					}
-				});
+		MaterializedPromise<Void> processResult = chunkedDecoder.getProcessResult();
+		if (expectedException == null) {
+			await(processResult);
+		} else {
+			assertEquals(expectedException, awaitException(processResult));
+		}
 	}
 
 	public static byte[] encode(byte[] data, boolean lastchunk) throws IOException {

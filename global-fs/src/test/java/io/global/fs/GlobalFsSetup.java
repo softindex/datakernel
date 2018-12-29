@@ -16,10 +16,10 @@
 
 package io.global.fs;
 
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
@@ -44,9 +44,9 @@ import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.http.AsyncHttpClient.create;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.util.CollectionUtils.list;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.BinaryDataFormats.REGISTRY;
@@ -94,17 +94,18 @@ public final class GlobalFsSetup {
 
 		ChannelSupplier<ByteBuf> supplier = ChannelSupplier.of(ByteBuf.wrapForReading(text1.getBytes(UTF_8)), ByteBuf.wrapForReading(text2.getBytes(UTF_8)));
 
-		discoveryService.announce(alice.getPubKey(), sign(ANNOUNCE_DATA_CODEC, AnnounceData.of(123, set(first, second)), alice.getPrivKey()))
-				.whenResult($ -> System.out.println("Servers announced"))
-				.thenCompose($ -> firstAdapter.upload("test.txt"))
-				.thenCompose(supplier::streamTo)
-				.whenResult($ -> System.out.println("Upload to first server finished"))
-				.thenCompose($ -> secondAdapter.download("test.txt"))
-				.thenCompose(s -> s.toCollector(ByteBufQueue.collector()))
-				.whenResult(s -> System.out.println("  downloaded: " + s.getString(UTF_8)))
-				.whenResult(res -> assertEquals(text1 + text2, res.asString(UTF_8)))
-				.whenResult($ -> System.out.println("Download from second server finished"))
-				.whenComplete(assertComplete());
+		await(discoveryService.announce(alice.getPubKey(), sign(ANNOUNCE_DATA_CODEC, AnnounceData.of(123, set(first, second)), alice.getPrivKey())));
+		System.out.println("Servers announced");
+
+		ChannelConsumer<ByteBuf> channelConsumer = await(firstAdapter.upload("test.txt"));
+		await(supplier.streamTo(channelConsumer));
+		System.out.println("Upload to first server finished");
+
+		ChannelSupplier<ByteBuf> channelSupplier = await(secondAdapter.download("test.txt"));
+		ByteBuf downloaded = await(channelSupplier.toCollector(ByteBufQueue.collector()));
+		System.out.println("  downloaded: " + downloaded.getString(UTF_8));
+		assertEquals(text1 + text2, downloaded.asString(UTF_8));
+		System.out.println("Download from second server finished");
 	}
 
 	@Test
@@ -118,10 +119,7 @@ public final class GlobalFsSetup {
 			servers.add(new RawServerId("127.0.0.1:" + (8000 + i)));
 		}
 
-		Promises.all(
-				discoveryService.announce(alice.getPubKey(), sign(ANNOUNCE_DATA_CODEC, AnnounceData.of(123, servers), alice.getPrivKey())),
-				discoveryService.announce(bob.getPubKey(), sign(ANNOUNCE_DATA_CODEC, AnnounceData.of(234, servers), bob.getPrivKey()))
-		)
-				.whenComplete(assertComplete());
+		await(discoveryService.announce(alice.getPubKey(), sign(ANNOUNCE_DATA_CODEC, AnnounceData.of(123, servers), alice.getPrivKey())));
+		await(discoveryService.announce(bob.getPubKey(), sign(ANNOUNCE_DATA_CODEC, AnnounceData.of(234, servers), bob.getPrivKey())));
 	}
 }

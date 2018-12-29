@@ -20,13 +20,11 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.Promise;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamSupplier;
 import io.datakernel.stream.processor.DatakernelRunner;
-import io.datakernel.stream.processor.DatakernelRunner.SkipEventloopRun;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -39,11 +37,13 @@ import java.util.Set;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
+import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.assertFailure;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 @SuppressWarnings({"unchecked", "rawtypes"})
 @RunWith(DatakernelRunner.class)
@@ -51,17 +51,15 @@ public final class AggregationChunkerTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+	private final DefiningClassLoader classLoader = DefiningClassLoader.create();
+	private final AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
+			.withKey("key", ofInt())
+			.withMeasure("value", sum(ofInt()))
+			.withMeasure("timestamp", sum(ofLong()));
+	private final AggregationState state = new AggregationState(structure);
 
 	@Test
 	public void test() {
-		DefiningClassLoader classLoader = DefiningClassLoader.create();
-
-		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
-				.withKey("key", ofInt())
-				.withMeasure("value", sum(ofInt()))
-				.withMeasure("timestamp", sum(ofLong()));
-		AggregationState state = new AggregationState(structure);
-
 		List<KeyValuePair> items = new ArrayList<>();
 		AggregationChunkStorage<Long> aggregationChunkStorage = new AggregationChunkStorage<Long>() {
 			long chunkId;
@@ -106,32 +104,23 @@ public final class AggregationChunkerTest {
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
-		StreamSupplier.of(
+		StreamSupplier<KeyValuePair> supplier = StreamSupplier.of(
 				new KeyValuePair(3, 4, 6),
 				new KeyValuePair(3, 6, 7),
 				new KeyValuePair(1, 2, 1)
-		)
-				.streamTo(chunker)
-				.thenCompose($ -> chunker.getResult())
-				.whenComplete(assertComplete(list -> {
-					assertEquals(3, list.size());
-					assertEquals(new KeyValuePair(3, 4, 6), items.get(0));
-					assertEquals(new KeyValuePair(3, 6, 7), items.get(1));
-					assertEquals(new KeyValuePair(1, 2, 1), items.get(2));
-				}));
+		);
+
+		await(supplier.streamTo(chunker));
+		List<AggregationChunk> list = await(chunker.getResult());
+
+		assertEquals(3, list.size());
+		assertEquals(new KeyValuePair(3, 4, 6), items.get(0));
+		assertEquals(new KeyValuePair(3, 6, 7), items.get(1));
+		assertEquals(new KeyValuePair(1, 2, 1), items.get(2));
 	}
 
 	@Test
-	@SkipEventloopRun
 	public void testSupplierWithError() {
-		DefiningClassLoader classLoader = DefiningClassLoader.create();
-
-		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
-				.withKey("key", ofInt())
-				.withMeasure("value", sum(ofInt()))
-				.withMeasure("timestamp", sum(ofLong()));
-		AggregationState state = new AggregationState(structure);
-
 		List<StreamConsumer> listConsumers = new ArrayList<>();
 		AggregationChunkStorage<Long> aggregationChunkStorage = new AggregationChunkStorage<Long>() {
 			long chunkId;
@@ -173,6 +162,7 @@ public final class AggregationChunkerTest {
 
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
+		ExpectedException exception = new ExpectedException("Test Exception");
 		StreamSupplier<KeyValuePair> supplier = StreamSupplier.concat(
 				StreamSupplier.of(
 						new KeyValuePair(1, 1, 0),
@@ -190,17 +180,14 @@ public final class AggregationChunkerTest {
 						new KeyValuePair(1, 1, 0),
 						new KeyValuePair(1, 2, 1),
 						new KeyValuePair(1, 1, 2)),
-				StreamSupplier.closingWithError(new ExpectedException("Test Exception"))
+				StreamSupplier.closingWithError(exception)
 		);
 		AggregationChunker chunker = AggregationChunker.create(
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
-		supplier.streamTo(chunker)
-				.thenCompose($ -> chunker.getResult())
-				.whenComplete(assertFailure(ExpectedException.class, "Test Exception"));
-
-		Eventloop.getCurrentEventloop().run();
+		Throwable e = awaitException(supplier.streamTo(chunker));
+		assertSame(exception, e);
 
 		// this must be checked after eventloop completion :(
 		for (int i = 0; i < listConsumers.size() - 1; i++) {
@@ -210,17 +197,7 @@ public final class AggregationChunkerTest {
 	}
 
 	@Test
-	@SkipEventloopRun
 	public void testStorageConsumerWithError() {
-
-		DefiningClassLoader classLoader = DefiningClassLoader.create();
-
-		AggregationStructure structure = AggregationStructure.create(ChunkIdCodec.ofLong())
-				.withKey("key", ofInt())
-				.withMeasure("value", sum(ofInt()))
-				.withMeasure("timestamp", sum(ofLong()));
-		AggregationState state = new AggregationState(structure);
-
 		List<StreamConsumer> listConsumers = new ArrayList<>();
 		AggregationChunkStorage<Long> aggregationChunkStorage = new AggregationChunkStorage<Long>() {
 			long chunkId;
@@ -278,12 +255,7 @@ public final class AggregationChunkerTest {
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
-		supplier.streamTo(chunker)
-				.thenCompose($ -> chunker.getResult())
-				.whenComplete(assertFailure())
-				.toCompletableFuture();
-
-		Eventloop.getCurrentEventloop().run();
+		awaitException(supplier.streamTo(chunker));
 
 		for (int i = 0; i < listConsumers.size() - 1; i++) {
 			assertEndOfStream(listConsumers.get(i));

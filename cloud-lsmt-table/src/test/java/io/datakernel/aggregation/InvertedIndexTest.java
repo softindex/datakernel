@@ -22,26 +22,28 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.stream.StreamSupplier;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofString;
 import static io.datakernel.aggregation.measure.Measures.union;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
+@RunWith(DatakernelRunner.class)
 public class InvertedIndexTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -50,6 +52,7 @@ public class InvertedIndexTest {
 		public String word;
 		public Set<Integer> documents;
 
+		@SuppressWarnings("unused")
 		public InvertedIndexQueryResult() {
 		}
 
@@ -89,7 +92,7 @@ public class InvertedIndexTest {
 	@Test
 	public void testInvertedIndex() throws Exception {
 		ExecutorService executorService = Executors.newCachedThreadPool();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Path path = temporaryFolder.newFolder().toPath();
 		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executorService, path));
@@ -105,45 +108,29 @@ public class InvertedIndexTest {
 				new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2),
 				new InvertedIndexRecord("fox", 3));
-		CompletableFuture<AggregationDiff> future = aggregation.consume(supplier, InvertedIndexRecord.class).toCompletableFuture();
-		eventloop.run();
-		aggregation.getState().apply(future.get());
 
-		aggregationChunkStorage.finish(getAddedChunks(future.get()));
-		eventloop.run();
+		doProcess(aggregationChunkStorage, aggregation, supplier);
 
 		supplier = StreamSupplier.of(
 				new InvertedIndexRecord("brown", 3),
 				new InvertedIndexRecord("lazy", 4),
 				new InvertedIndexRecord("dog", 1));
-		future = aggregation.consume(supplier, InvertedIndexRecord.class).toCompletableFuture();
-		eventloop.run();
-		aggregation.getState().apply(future.get());
 
-		aggregationChunkStorage.finish(getAddedChunks(future.get()));
-		eventloop.run();
+		doProcess(aggregationChunkStorage, aggregation, supplier);
 
 		supplier = StreamSupplier.of(
 				new InvertedIndexRecord("quick", 1),
 				new InvertedIndexRecord("fox", 4),
 				new InvertedIndexRecord("brown", 10));
-		future = aggregation.consume(supplier, InvertedIndexRecord.class).toCompletableFuture();
-		eventloop.run();
-		aggregation.getState().apply(future.get());
 
-		aggregationChunkStorage.finish(getAddedChunks(future.get()));
-		eventloop.run();
+		doProcess(aggregationChunkStorage, aggregation, supplier);
 
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("word")
 				.withMeasures("documents");
 
-		CompletableFuture<List<InvertedIndexQueryResult>> future1 =
-				aggregation.query(query, InvertedIndexQueryResult.class, DefiningClassLoader.create(classLoader))
-						.toList()
-						.toCompletableFuture();
-
-		eventloop.run();
+		List<InvertedIndexQueryResult> list = await(aggregation.query(query, InvertedIndexQueryResult.class, DefiningClassLoader.create(classLoader))
+				.toList());
 
 		List<InvertedIndexQueryResult> expectedResult = asList(
 				new InvertedIndexQueryResult("brown", set(2, 3, 10)),
@@ -151,9 +138,14 @@ public class InvertedIndexTest {
 				new InvertedIndexQueryResult("fox", set(1, 3, 4)),
 				new InvertedIndexQueryResult("lazy", set(4)),
 				new InvertedIndexQueryResult("quick", set(1)));
-		List<InvertedIndexQueryResult> actualResult = future1.get();
 
-		assertEquals(expectedResult, actualResult);
+		assertEquals(expectedResult, list);
+	}
+
+	public void doProcess(AggregationChunkStorage<Long> aggregationChunkStorage, Aggregation aggregation, StreamSupplier<InvertedIndexRecord> supplier) {
+		AggregationDiff diff = await(aggregation.consume(supplier, InvertedIndexRecord.class));
+		aggregation.getState().apply(diff);
+		await(aggregationChunkStorage.finish(getAddedChunks(diff)));
 	}
 
 	private Set<Long> getAddedChunks(AggregationDiff aggregationDiff) {

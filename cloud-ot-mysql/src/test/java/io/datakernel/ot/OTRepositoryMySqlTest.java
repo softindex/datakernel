@@ -21,8 +21,10 @@ import ch.qos.logback.classic.Logger;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.ot.utils.*;
+import io.datakernel.stream.processor.DatakernelRunner;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
@@ -30,13 +32,11 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.*;
@@ -47,11 +47,11 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
+@RunWith(DatakernelRunner.class)
 public class OTRepositoryMySqlTest {
 
-	private Eventloop eventloop;
 	private OTRepositoryMySql<TestOp> repository;
-	private OTSystem<TestOp> otSystem;
+	private OTAlgorithms<Long, TestOp> algorithms;
 
 	static {
 		Logger rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -60,11 +60,10 @@ public class OTRepositoryMySqlTest {
 
 	@Before
 	public void before() throws IOException, SQLException {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		otSystem = Utils.createTestOp();
-		repository = OTRepositoryMySql.create(eventloop, Executors.newFixedThreadPool(4), dataSource("test.properties"), otSystem, Utils.OP_CODEC);
+		repository = OTRepositoryMySql.create(Eventloop.getCurrentEventloop(), Executors.newFixedThreadPool(4), dataSource("test.properties"), Utils.createTestOp(), Utils.OP_CODEC);
 		repository.initialize();
 		repository.truncateTables();
+		algorithms = new OTAlgorithms<>(Eventloop.getCurrentEventloop(), Utils.createTestOp(), repository);
 	}
 
 	@SafeVarargs
@@ -97,35 +96,31 @@ public class OTRepositoryMySqlTest {
 	}
 
 	@Test
-	public void testRootHeads() throws ExecutionException, InterruptedException {
-		CompletableFuture<Set<Long>> headsFuture = repository.createCommitId()
-				.thenCompose(id -> repository.push(ofRoot(id)))
-				.thenCompose($ -> repository.getHeads())
-				.toCompletableFuture();
-		eventloop.run();
+	public void testRootHeads() {
+		Long id = await(repository.createCommitId());
+		await(repository.push(ofRoot(id)));
 
-		Set<Long> heads = headsFuture.get();
+		Set<Long> heads = await(repository.getHeads());
 		assertEquals(1, heads.size());
 		assertEquals(1, first(heads).intValue());
 	}
 
 	@Test
-	public void testReplaceHead() throws ExecutionException, InterruptedException {
-		CompletableFuture<Set<Long>> headsFuture = repository.createCommitId()
-				.thenCompose(rootId -> repository.push(ofRoot(rootId))
-						.thenCompose($ -> repository.createCommitId())
-						.thenCompose(id -> repository.push(ofCommit(id, rootId, singletonList(new TestSet(0, 5)), id))))
-				.thenCompose($ -> repository.getHeads())
-				.toCompletableFuture();
-		eventloop.run();
+	public void testReplaceHead() {
+		Long rootId = await(repository.createCommitId());
+		await(repository.push(ofRoot(rootId)));
 
-		Set<Long> heads = headsFuture.get();
+		Long id = await(repository.createCommitId());
+
+		await(repository.push(ofCommit(id, rootId, singletonList(new TestSet(0, 5)), id)));
+
+		Set<Long> heads = await(repository.getHeads());
 		assertEquals(1, heads.size());
 		assertEquals(2, first(heads).intValue());
 	}
 
 	@Test
-	public void testReplaceHeadsOnMerge() throws ExecutionException, InterruptedException {
+	public void testReplaceHeadsOnMerge() {
 		/*
 		        / firstId  \
 		       /            \
@@ -135,37 +130,25 @@ public class OTRepositoryMySqlTest {
 
 		 */
 
-		CompletableFuture<?> graphFuture = repository
+		await(repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(1, 3, add(1));
 					g.add(1, 4, add(1));
-				})))
-				.toCompletableFuture();
+				}))));
 
-		eventloop.run();
-		graphFuture.get();
-
-		CompletableFuture<Set<Long>> headFuture = repository.getHeads().toCompletableFuture();
-		eventloop.run();
-		Set<Long> heads = headFuture.get();
+		Set<Long> heads = await(repository.getHeads());
 		assertEquals(3, heads.size());
 		assertEquals(set(2L, 3L, 4L), heads);
 
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
-		CompletableFuture<Long> mergeFuture = algorithms.mergeHeadsAndPush().toCompletableFuture();
+		Long mergeId = await(algorithms.mergeHeadsAndPush());
 
-		eventloop.run();
-		Long mergeId = mergeFuture.get();
-
-		CompletableFuture<Set<Long>> headAfterMergeFuture = repository.getHeads().toCompletableFuture();
-		eventloop.run();
-		Set<Long> headsAfterMerge = headAfterMergeFuture.get();
+		Set<Long> headsAfterMerge = await(repository.getHeads());
 		assertEquals(1, headsAfterMerge.size());
 		assertEquals(mergeId, first(headsAfterMerge));
 	}
 
-//	@Test
+	//	@Test
 //	public void testMergeSnapshotOnMergeNodes() throws ExecutionException, InterruptedException {
 //		final GraphBuilder<Long, TestOp> graphBuilder = new GraphBuilder<>(repository);
 //		final CompletableFuture<Void> graphFuture = graphBuilder.buildGraph(asList(
@@ -230,8 +213,8 @@ public class OTRepositoryMySqlTest {
 //	}
 
 	@Test
-	public void testForkMerge() throws ExecutionException, InterruptedException {
-		CompletableFuture<?> graphFuture = repository
+	public void testForkMerge() {
+		await(repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(2, 3, add(1));
@@ -240,25 +223,15 @@ public class OTRepositoryMySqlTest {
 					g.add(4, 6, add(1));
 					g.add(5, 7, add(1));
 					g.add(6, 8, add(1));
-				})))
-				.toCompletableFuture();
+				}))));
 
-		eventloop.run();
-		graphFuture.get();
-
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
-		CompletableFuture<Long> merge = algorithms.mergeHeadsAndPush()
-				.toCompletableFuture();
-
-		eventloop.run();
-		merge.get();
-
+		await(algorithms.mergeHeadsAndPush());
 		//		assertEquals(searchSurface, rootNodesFuture.get());
 	}
 
 	@Test
-	public void testFindRootNodes() throws ExecutionException, InterruptedException {
-		CompletableFuture<?> graphFuture = repository
+	public void testFindRootNodes() {
+		await(repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(1, 3, add(1));
@@ -268,52 +241,29 @@ public class OTRepositoryMySqlTest {
 					g.add(3, 5, add(1));
 					g.add(4, 6, add(1));
 					g.add(5, 7, add(1));
-				})))
-				.toCompletableFuture();
+				}))));
 
-		eventloop.run();
-		graphFuture.get();
-
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
-		CompletableFuture<Set<Long>> rootNodes1Future = algorithms.findAllCommonParents(set(6L, 7L))
-				.toCompletableFuture();
-
-		CompletableFuture<Set<Long>> rootNodes2Future = algorithms.findAllCommonParents(set(6L))
-				.toCompletableFuture();
-
-		eventloop.run();
-
-		assertEquals(set(2L, 3L), rootNodes1Future.get());
-		assertEquals(set(6L), rootNodes2Future.get());
+		assertEquals(set(2L, 3L), await(algorithms.findAllCommonParents(set(6L, 7L))));
+		assertEquals(set(6L), await(algorithms.findAllCommonParents(set(6L))));
 	}
 
 	@Test
-	public void testFindRootNodes2() throws ExecutionException, InterruptedException {
-		CompletableFuture<?> graphFuture = repository
+	public void testFindRootNodes2() {
+		await(repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(2, 3, add(1));
 					g.add(3, 4, add(1));
 					g.add(4, 5, add(1));
 					g.add(4, 6, add(1));
-				})))
-				.toCompletableFuture();
+				}))));
 
-		eventloop.run();
-		graphFuture.get();
-
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
-		CompletableFuture<Set<Long>> rootNodesFuture = algorithms.findAllCommonParents(set(4L, 5L, 6L))
-				.toCompletableFuture();
-
-		eventloop.run();
-
-		assertEquals(set(4L), rootNodesFuture.get());
+		assertEquals(set(4L), await(algorithms.findAllCommonParents(set(4L, 5L, 6L))));
 	}
 
 	@Test
-	public void testFindParentCandidatesSurface() throws ExecutionException, InterruptedException {
-		CompletableFuture<?> graphFuture = repository
+	public void testFindParentCandidatesSurface() {
+		await(repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(1, 3, add(1));
@@ -323,26 +273,19 @@ public class OTRepositoryMySqlTest {
 					g.add(3, 5, add(1));
 					g.add(4, 6, add(1));
 					g.add(5, 7, add(1));
-				})))
-				.toCompletableFuture();
-
-		eventloop.run();
-		graphFuture.get();
+				}))));
 
 		Set<Long> searchSurface = set(2L, 3L);
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
-		CompletableFuture<Set<Long>> rootNodesFuture = algorithms.findCut(set(6L, 7L),
-				commits -> searchSurface.equals(commits.stream().map(OTCommit::getId).collect(toSet())))
-				.toCompletableFuture();
 
-		eventloop.run();
+		Set<Long> rootNodes = await(algorithms.findCut(set(6L, 7L),
+				commits -> searchSurface.equals(commits.stream().map(OTCommit::getId).collect(toSet()))));
 
-		assertEquals(searchSurface, rootNodesFuture.get());
+		assertEquals(searchSurface, rootNodes);
 	}
 
 	@Test
-	public void testSingleCacheCheckpointNode() throws ExecutionException, InterruptedException {
-		CompletableFuture<?> graphFuture = repository
+	public void testSingleCacheCheckpointNode() {
+		await(repository
 				.push(commits(asLong(g -> {
 					g.add(1, 2, add(1));
 					g.add(2, 3, add(1));
@@ -350,27 +293,15 @@ public class OTRepositoryMySqlTest {
 					g.add(4, 5, add(1));
 					g.add(5, 6, add(1));
 					g.add(5, 7, add(1));
-				})))
-				.thenCompose($ -> repository.saveSnapshot(1L, emptyList()))
-				.toCompletableFuture();
+				}))));
+		await(repository.saveSnapshot(1L, emptyList()));
 
-		eventloop.run();
-		graphFuture.get();
+		List<TestOp> diffs = await(algorithms.checkout(5L));
 
-		OTAlgorithms<Long, TestOp> algorithms = new OTAlgorithms<>(eventloop, otSystem, repository);
-		CompletableFuture<?> mergeSnapshotFuture = algorithms.checkout(5L)
-				.thenCompose(ds -> repository.saveSnapshot(5L, ds))
-				.thenCompose($ -> repository.cleanup(5L))
-				.toCompletableFuture();
+		await(repository.saveSnapshot(5L, diffs));
+		await(repository.cleanup(5L));
 
-		eventloop.run();
-		mergeSnapshotFuture.get();
-
-		CompletableFuture<Integer> snapshotFuture = algorithms.checkout(7L)
-				.thenApply(OTRepositoryMySqlTest::apply)
-				.toCompletableFuture();
-		eventloop.run();
-
-		assertEquals(5, snapshotFuture.get().intValue());
+		int result = apply(await(algorithms.checkout(7L)));
+		assertEquals(5, result);
 	}
 }
