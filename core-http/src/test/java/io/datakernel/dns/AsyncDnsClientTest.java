@@ -24,6 +24,7 @@ import io.datakernel.dns.RemoteAsyncDnsClient.Inspector;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.RequiresInternetConnection;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -49,6 +50,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 @RunWith(DatakernelRunner.class)
+@RequiresInternetConnection
 public final class AsyncDnsClientTest {
 	static {
 		enableLogging("io.datakernel.dns");

@@ -46,6 +46,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  * Also handles the &#064;Manual annotation.
  */
 public final class DatakernelRunner extends BlockJUnit4ClassRunner {
+	private static boolean shouldRunInternetTests = Boolean.parseBoolean(System.getProperty("internetTests"));
 	private boolean manualRun;
 
 	public DatakernelRunner(Class<?> klass) throws InitializationError {
@@ -77,9 +78,9 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 
 	private static Description getModifiedDescription(TestClass testClass, Description superDescription, String name, Annotation[] runnerAnnotations) {
 		Description description = Description.createSuiteDescription(name, runnerAnnotations);
-		if (testClass.getAnnotation(Manual.class) == null) {
+		if (testClass.getAnnotation(Manual.class) == null && shouldRunInternetTests(testClass.getAnnotation(RequiresInternetConnection.class))) {
 			for (Description child : superDescription.getChildren()) {
-				if (child.getAnnotation(Manual.class) == null) {
+				if (child.getAnnotation(Manual.class) == null && shouldRunInternetTests(child.getAnnotation(RequiresInternetConnection.class))) {
 					description.addChild(child);
 				}
 			}
@@ -93,12 +94,14 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 			@Override
 			public boolean shouldRun(Description description) {
 				return description.getAnnotation(Manual.class) == null
-						&& description.getTestClass().getAnnotation(Manual.class) == null;
+						&& description.getTestClass().getAnnotation(Manual.class) == null
+						&& shouldRunInternetTests(description.getAnnotation(RequiresInternetConnection.class))
+						&& shouldRunInternetTests(description.getTestClass().getAnnotation(RequiresInternetConnection.class));
 			}
 
 			@Override
 			public String describe() {
-				return "all tests except manual";
+				return "all tests except manual and those that require internet connection";
 			}
 		};
 	}
@@ -107,6 +110,10 @@ public final class DatakernelRunner extends BlockJUnit4ClassRunner {
 		// quite a dirty hack, but it works
 		String name = filter.getClass().getName();
 		return name.equals("org.junit.runner.manipulation.Filter$2") || name.equals("com.intellij.junit4.JUnit4TestRunnerUtil$3");
+	}
+
+	private static boolean shouldRunInternetTests(RequiresInternetConnection annotation) {
+		return shouldRunInternetTests || annotation == null;
 	}
 
 	@Override

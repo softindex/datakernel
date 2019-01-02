@@ -29,6 +29,7 @@ import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpClient.JmxInspector;
 import io.datakernel.stream.processor.DatakernelRunner;
+import io.datakernel.stream.processor.RequiresInternetConnection;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -81,6 +82,7 @@ public final class AsyncHttpClientTest {
 	}
 
 	@Test
+	@RequiresInternetConnection
 	public void testClientTimeoutConnect() {
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.withConnectTimeout(Duration.ofMillis(1));
