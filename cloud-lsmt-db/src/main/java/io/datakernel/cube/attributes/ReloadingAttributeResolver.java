@@ -21,6 +21,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.ValueStats;
@@ -29,7 +30,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttributeResolver<K, A> implements EventloopService {
+public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttributeResolver<K, A> implements EventloopService, EventloopJmxMBean {
 	protected final Eventloop eventloop;
 
 	private long timestamp;
@@ -146,9 +147,10 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		return resolveErrors;
 	}
 
+	@Nullable
 	@JmxAttribute
-	public K getLastResolveErrorKey() {
-		return lastResolveErrorKey;
+	public String getLastResolveErrorKey() {
+		return lastResolveErrorKey == null ? null : lastResolveErrorKey.toString();
 	}
 
 	@JmxAttribute
