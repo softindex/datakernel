@@ -382,7 +382,7 @@ public final class HttpCookie {
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException {
-						cookie.setExpirationDate(parseExpirationDate(bytes, start, end));
+						cookie.setExpirationDate(parseExpirationDate(bytes, start));
 					}
 				};
 			case MAX_AGE_HC:
@@ -425,8 +425,7 @@ public final class HttpCookie {
 		return null;
 	}
 
-	private static Date parseExpirationDate(byte[] bytes, int start, int end) throws ParseException {
-		assert end - start <= 29;
+	private static Date parseExpirationDate(byte[] bytes, int start) throws ParseException {
 		long timestamp = HttpDate.parse(bytes, start);
 		return new Date(timestamp);
 	}
