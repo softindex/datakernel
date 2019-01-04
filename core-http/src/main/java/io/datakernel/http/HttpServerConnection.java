@@ -90,7 +90,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	public void serve() {
 		switchPool(server.poolReadWrite);
-		readHttpMessage();
+		socket.read().whenComplete(firstLineConsumer);
 	}
 
 	@Override

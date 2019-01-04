@@ -474,7 +474,7 @@ public abstract class AbstractHttpConnection {
 					readQueue.add(buf);
 					thenRun();
 				} else {
-					closeWithError(INCOMPLETE_MESSAGE);
+					onEndOfStream();
 				}
 			} else {
 				closeWithError(e);
@@ -482,19 +482,37 @@ public abstract class AbstractHttpConnection {
 		}
 
 		abstract void thenRun();
+
+		abstract void onEndOfStream();
 	}
 
-	private final ReadConsumer firstLineConsumer = new ReadConsumer() {
+	protected final ReadConsumer firstLineConsumer = new ReadConsumer() {
 		@Override
 		void thenRun() {
 			readFirstLine();
 		}
+
+		@Override
+		void onEndOfStream() {
+			if (readQueue.isEmpty()) {
+				// Connection closed before any data has been received, probably client just disconnected
+				close();
+			} else {
+				closeWithError(INCOMPLETE_MESSAGE);
+			}
+		}
+
 	};
 
 	private final ReadConsumer headersConsumer = new ReadConsumer() {
 		@Override
 		void thenRun() {
 			readHeaders();
+		}
+
+		@Override
+		void onEndOfStream() {
+			closeWithError(INCOMPLETE_MESSAGE);
 		}
 	};
 }
