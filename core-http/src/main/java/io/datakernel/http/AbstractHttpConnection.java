@@ -186,13 +186,8 @@ public abstract class AbstractHttpConnection {
 		}
 	}
 
-	protected final void writeHttpMessage(HttpMessage httpMessage) {
-		writeHttpMessageImpl(bodySupplier(httpMessage));
-		httpMessage.recycle();
-	}
-
-	private void writeHttpMessageImpl(ChannelSupplier<ByteBuf> bodySupplier) {
-		bodySupplier.get()
+	protected final void writeHttpMessage(ChannelSupplier<ByteBuf> supplier) {
+		supplier.get()
 				.whenComplete((buf, e) -> {
 					if (e == null) {
 						if (buf != null) {
@@ -200,7 +195,7 @@ public abstract class AbstractHttpConnection {
 									.whenComplete(($, e2) -> {
 										if (isClosed()) return;
 										if (e2 == null) {
-											writeHttpMessageImpl(bodySupplier);
+											writeHttpMessage(supplier);
 										} else {
 											closeWithError(e2);
 										}
@@ -244,16 +239,19 @@ public abstract class AbstractHttpConnection {
 		int offset = 0;
 		for (int i = 0; i < readQueue.remainingBufs(); i++) {
 			ByteBuf buf = readQueue.peekBuf(i);
-			for (int p = buf.readPosition(); p < buf.writePosition(); p++) {
-				if (buf.at(p) == LF) {
+			byte[] array = buf.array();
+			int readPosition = buf.readPosition();
+			int writePosition = buf.writePosition();
+			for (int p = readPosition; p < writePosition; p++) {
+				if (array[p] == LF) {
 
 					// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
-					if (isMultilineHeader(buf, p)) {
-						preprocessMultiLine(buf, p);
+					if (isMultilineHeader(array, readPosition, writePosition, p)) {
+						preprocessMultiline(array, p);
 						continue;
 					}
 
-					ByteBuf line = readQueue.takeExactSize(offset + p - buf.readPosition() + 1);
+					ByteBuf line = readQueue.takeExactSize(offset + p - readPosition + 1);
 					if (line.readRemaining() >= 2 && line.peek(line.readRemaining() - 2) == CR) {
 						line.moveWritePosition(-2);
 					} else {
@@ -267,19 +265,19 @@ public abstract class AbstractHttpConnection {
 		return null;
 	}
 
-	private boolean isMultilineHeader(ByteBuf buf, int p) {
-		return p + 1 < buf.writePosition() && (buf.at(p + 1) == SP || buf.at(p + 1) == HT) &&
-				isDataBetweenStartAndLF(buf, p);
+	private static boolean isMultilineHeader(byte[] array, int readPosition, int writePosition, int p) {
+		return p + 1 < writePosition && (array[p + 1] == SP || array[p + 1] == HT) &&
+				isDataBetweenStartAndLF(array, readPosition, p);
 	}
 
-	private boolean isDataBetweenStartAndLF(ByteBuf buf, int p) {
-		return !(p == buf.readPosition() || (p - buf.readPosition() == 1 && buf.at(p - 1) == CR));
+	private static boolean isDataBetweenStartAndLF(byte[] array, int readPosition, int p) {
+		return !(p == readPosition || (p - readPosition == 1 && array[p - 1] == CR));
 	}
 
-	private void preprocessMultiLine(ByteBuf buf, int pos) {
-		buf.array()[pos] = SP;
-		if (buf.at(pos - 1) == CR) {
-			buf.array()[pos - 1] = SP;
+	private static void preprocessMultiline(byte[] array, int p) {
+		array[p] = SP;
+		if (array[p - 1] == CR) {
+			array[p - 1] = SP;
 		}
 	}
 
@@ -328,25 +326,22 @@ public abstract class AbstractHttpConnection {
 
 	private void readFirstLine() {
 		assert !isClosed();
-		ByteBuf buf = null;
 		try {
-			buf = takeFirstLine();
+			ByteBuf buf = takeFirstLine();
 			if (buf == null) { // states that more bytes are being required
 				if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
 				socket.read().whenComplete(firstLineConsumer);
 				return;
 			}
-
-			onFirstLine(buf.array(), buf.writePosition());
+			try {
+				onFirstLine(buf.array(), buf.writePosition());
+			} finally {
+				buf.recycle();
+			}
 		} catch (ParseException e) {
 			closeWithError(e);
 			return;
-		} finally {
-			if (buf != null) {
-				buf.recycle();
-			}
 		}
-
 		readHeaders();
 	}
 
@@ -447,9 +442,8 @@ public abstract class AbstractHttpConnection {
 	}
 
 	protected void switchPool(ConnectionsLinkedList newPool) {
-		if (pool != null) pool.removeNode(this);
-		pool = newPool;
-		if (pool != null) pool.addLastNode(this);
+		pool.removeNode(this);
+		(pool = newPool).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
 	}
 

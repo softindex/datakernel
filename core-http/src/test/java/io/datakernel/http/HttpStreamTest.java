@@ -221,15 +221,13 @@ public final class HttpStreamTest {
 
 		startTestServer(request -> request.getBody().thenApply(body -> HttpResponse.ok200().withBody(body)));
 
-		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(
-				ChannelSupplier.ofIterable(expectedList),
-				ChannelSupplier.ofException(exception)
-		);
-
-		Throwable e = awaitException(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
-				.request(HttpRequest.post("http://127.0.0.1:" + PORT)
-						.withBodyStream(supplier))
-				.thenCompose(response -> response.getBodyStream().toCollector(ByteBufQueue.collector())));
+		Throwable e = awaitException(
+				AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+						.request(HttpRequest.post("http://127.0.0.1:" + PORT)
+								.withBodyStream(ChannelSuppliers.concat(
+										ChannelSupplier.ofIterable(expectedList),
+										ChannelSupplier.ofException(exception))))
+						.thenCompose(response -> response.getBodyStream().toCollector(ByteBufQueue.collector())));
 
 		assertSame(e, exception);
 	}

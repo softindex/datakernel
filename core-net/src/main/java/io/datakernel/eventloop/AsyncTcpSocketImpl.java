@@ -26,6 +26,7 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 
 import java.io.IOException;
@@ -34,54 +35,42 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.time.Duration;
-import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
-import static io.datakernel.util.Recyclable.deepRecycle;
 
 @SuppressWarnings("WeakerAccess")
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
-	public static final MemSize DEFAULT_READ_BUF_SIZE = MemSize.kilobytes(16);
+	public static final int DEFAULT_READ_BUFFER_SIZE = ApplicationSettings.getInt(AsyncTcpSocketImpl.class, "readBufferSize", MemSize.kilobytes(16).toInt());
 
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(AsyncTcpSocketImpl.class, "timed out");
-	public static final int NO_TIMEOUT = -1;
+	public static final int NO_TIMEOUT = 0;
 
-	private static final MemSize MAX_MERGE_SIZE = MemSize.kilobytes(16);
-	private static final AtomicInteger connectionCount = new AtomicInteger(0);
+	private static final AtomicInteger CONNECTION_COUNT = new AtomicInteger(0);
 
 	private final Eventloop eventloop;
 	private SocketChannel channel;
-	private final ArrayDeque<ByteBuf> readQueue = new ArrayDeque<>();
+	private ByteBuf readBuf;
 	private boolean readEndOfStream;
-	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
+	private ByteBuf writeBuf;
 	private boolean writeEndOfStream;
 
-	@Nullable
-	private SettablePromise<Void> write;
-	@Nullable
 	private SettablePromise<ByteBuf> read;
+	private SettablePromise<Void> write;
 
-	@Nullable
 	private SelectionKey key;
-
 	private boolean reentrantCall;
-	private int ops = 0;
-//	private long readTimestamp = 0L;
-//	private long writeTimestamp = 0L;
+	private int ops;
 
-	private long readTimeout = NO_TIMEOUT;
-	private long writeTimeout = NO_TIMEOUT;
-	private int readMaxSize = DEFAULT_READ_BUF_SIZE.toInt();
-	private int writeMaxSize = MAX_MERGE_SIZE.toInt();
+	private int readTimeout = NO_TIMEOUT;
+	private int writeTimeout = NO_TIMEOUT;
+	private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
 
-	@Nullable
 	private ScheduledRunnable scheduledReadTimeout;
-
-	@Nullable
 	private ScheduledRunnable scheduledWriteTimeout;
+
+	private Inspector inspector;
 
 	public interface Inspector {
 		void onReadTimeout();
@@ -189,25 +178,22 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
-	@Nullable
-	private Inspector inspector;
-
 	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel, @Nullable SocketSettings socketSettings) {
 		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
 		if (socketSettings == null) return asyncTcpSocket;
 		try {
 			socketSettings.applySettings(socketChannel);
-		} catch (IOException e) {
-			throw new AssertionError("Failed to apply socketSettings", e);
+		} catch (IOException ignored) {
 		}
-		if (socketSettings.hasImplReadTimeout())
-			asyncTcpSocket.readTimeout = socketSettings.getImplReadTimeout().toMillis();
-		if (socketSettings.hasImplWriteTimeout())
-			asyncTcpSocket.writeTimeout = socketSettings.getImplWriteTimeout().toMillis();
-		if (socketSettings.hasImplReadSize())
-			asyncTcpSocket.readMaxSize = socketSettings.getImplReadSize().toInt();
-		if (socketSettings.hasImplWriteSize())
-			asyncTcpSocket.writeMaxSize = socketSettings.getImplWriteSize().toInt();
+		if (socketSettings.hasImplReadTimeout()) {
+			asyncTcpSocket.readTimeout = (int) socketSettings.getImplReadTimeoutMillis();
+		}
+		if (socketSettings.hasImplWriteTimeout()) {
+			asyncTcpSocket.writeTimeout = (int) socketSettings.getImplWriteTimeoutMillis();
+		}
+		if (socketSettings.hasReadBufferSize()) {
+			asyncTcpSocket.readBufferSize = socketSettings.getImplReadBufferSizeBytes();
+		}
 		return asyncTcpSocket;
 	}
 
@@ -242,13 +228,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	public AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
-		this.eventloop = checkNotNull(eventloop);
-		this.channel = checkNotNull(socketChannel);
+		this.eventloop = eventloop;
+		this.channel = socketChannel;
 	}
 	// endregion
 
 	public static int getConnectionCount() {
-		return connectionCount.get();
+		return CONNECTION_COUNT.get();
 	}
 
 	// timeouts management
@@ -273,15 +259,16 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	private void updateInterests() {
-		if (reentrantCall || !isOpen()) return;
-		int newOps = (read != null || readQueue.isEmpty() ? SelectionKey.OP_READ : 0) +
-				(write != null ? SelectionKey.OP_WRITE : 0);
+		if (reentrantCall || channel == null) return;
+		int newOps = (readBuf == null ? SelectionKey.OP_READ : 0) | (writeBuf == null ? 0 : SelectionKey.OP_WRITE);
 		if (key == null) {
 			ops = newOps;
-			doRegister();
-//			if (read != null) { // TODO
-//				doRead();
-//			}
+			try {
+				key = channel.register(eventloop.ensureSelector(), ops, this);
+				CONNECTION_COUNT.incrementAndGet();
+			} catch (IOException e) {
+				close(e);
+			}
 		} else {
 			if (ops != newOps) {
 				ops = newOps;
@@ -290,20 +277,15 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
-	private void doRegister() {
-		try {
-			key = channel.register(eventloop.ensureSelector(), ops, this);
-			connectionCount.incrementAndGet();
-		} catch (IOException e) {
-			close(e);
-		}
-	}
-
 	@Override
 	public Promise<ByteBuf> read() {
-		if (!isOpen()) return Promise.ofException(CLOSE_EXCEPTION);
+		if (channel == null) return Promise.ofException(CLOSE_EXCEPTION);
 		read = null;
-		if (!readQueue.isEmpty() || readEndOfStream) return Promise.of(readQueue.poll());
+		if (readBuf != null || readEndOfStream) {
+			ByteBuf readBuf = this.readBuf;
+			this.readBuf = null;
+			return Promise.of(readBuf);
+		}
 		read = new SettablePromise<>();
 		if (readTimeout != NO_TIMEOUT) {
 			scheduleReadTimeout();
@@ -316,58 +298,61 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public void onReadReady() {
 		reentrantCall = true;
 		doRead();
-		SettablePromise<ByteBuf> read = this.read;
-		if (read != null && (!readQueue.isEmpty() || readEndOfStream)) {
+		if (read != null && (readBuf != null || readEndOfStream)) {
+			SettablePromise<ByteBuf> read = this.read;
+			ByteBuf readBuf = this.readBuf;
 			this.read = null;
-			read.set(readQueue.poll());
+			this.readBuf = null;
+			read.set(readBuf);
 		}
 		reentrantCall = false;
 		updateInterests();
 	}
 
 	private void doRead() {
-		while (true) {
-			ByteBuf buf = ByteBufPool.allocate(readMaxSize);
-			ByteBuffer buffer = buf.toWriteByteBuffer();
+		ByteBuf buf = ByteBufPool.allocate(readBufferSize);
+		ByteBuffer buffer = buf.toWriteByteBuffer();
 
-			int numRead;
-			try {
-				numRead = channel.read(buffer);
-				buf.ofWriteByteBuffer(buffer);
-			} catch (IOException e) {
-				buf.recycle();
-				if (inspector != null) inspector.onReadError(e);
-				close(e);
-				return;
-			}
+		int numRead;
+		try {
+			numRead = channel.read(buffer);
+			buf.ofWriteByteBuffer(buffer);
+		} catch (IOException e) {
+			buf.recycle();
+			if (inspector != null) inspector.onReadError(e);
+			close(e);
+			return;
+		}
 
-			if (numRead == 0) {
-				if (inspector != null) inspector.onRead(buf);
-				buf.recycle();
-				return;
-			}
-
-			if (scheduledReadTimeout != null) {
-				scheduledReadTimeout.cancel();
-				scheduledReadTimeout = null;
-			}
-
-			if (numRead == -1) {
-				buf.recycle();
-				if (inspector != null) inspector.onReadEndOfStream();
-				readEndOfStream = true;
-				if (writeEndOfStream && writeQueue.isEmpty()) {
-					doClose();
-				}
-				return;
-			}
-
+		if (numRead == 0) {
 			if (inspector != null) inspector.onRead(buf);
-			readQueue.add(buf);
+			buf.recycle();
+			return;
+		}
 
-			if (buf.writeRemaining() != 0) {
-				return;
+		if (scheduledReadTimeout != null) {
+			scheduledReadTimeout.cancel();
+			scheduledReadTimeout = null;
+		}
+
+		if (numRead == -1) {
+			buf.recycle();
+			if (inspector != null) inspector.onReadEndOfStream();
+			readEndOfStream = true;
+			if (writeEndOfStream && writeBuf == null) {
+				doClose();
 			}
+			return;
+		}
+
+		if (inspector != null) inspector.onRead(buf);
+
+		if (readBuf == null) {
+			readBuf = buf;
+		} else {
+			readBuf = ByteBufPool.ensureWriteRemaining(readBuf, buf.readRemaining());
+			readBuf.put(buf.array(), buf.readPosition(), buf.readRemaining());
+			buf.recycle();
 		}
 	}
 
@@ -376,23 +361,32 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public Promise<Void> write(@Nullable ByteBuf buf) {
 		assert eventloop.inEventloopThread();
 		checkState(!writeEndOfStream, "End of stream has already been sent");
-		if (!isOpen()) {
+		if (channel == null) {
 			if (buf != null) buf.recycle();
 			return Promise.ofException(CLOSE_EXCEPTION);
 		}
-		if (buf != null) {
-			writeQueue.add(buf);
-		} else {
-			writeEndOfStream = true;
-		}
+		writeEndOfStream |= buf == null;
 		if (write != null) return write;
-		try {
-			if (doWrite()) {
-				return Promise.complete();
+
+		if (writeBuf == null) {
+			writeBuf = buf;
+		} else {
+			if (buf != null) {
+				writeBuf = ByteBufPool.ensureWriteRemaining(this.writeBuf, buf.readRemaining());
+				writeBuf.put(buf.array(), buf.readPosition(), buf.readRemaining());
+				buf.recycle();
 			}
+		}
+
+		try {
+			doWrite();
 		} catch (IOException e) {
 			close(e);
 			return Promise.ofException(e);
+		}
+
+		if (this.writeBuf == null) {
+			return Promise.complete();
 		}
 		write = new SettablePromise<>();
 		if (writeTimeout != NO_TIMEOUT) {
@@ -407,7 +401,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		assert write != null;
 		reentrantCall = true;
 		try {
-			if (doWrite()) {
+			doWrite();
+			if (writeBuf == null) {
 				SettablePromise<Void> write = this.write;
 				this.write = null;
 				write.set(null);
@@ -419,65 +414,42 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		updateInterests();
 	}
 
-	private boolean doWrite() throws IOException {
-		while (true) {
-			ByteBuf bufToSend = writeQueue.poll();
-			if (bufToSend == null)
-				break;
-
-			while (true) {
-				ByteBuf nextBuf = writeQueue.peek();
-				if (nextBuf == null)
-					break;
-
-				int bytesToCopy = nextBuf.readRemaining(); // bytes to append to bufToSend
-				if (bufToSend.readPosition() + bufToSend.readRemaining() + bytesToCopy > bufToSend.limit())
-					bytesToCopy += bufToSend.readRemaining(); // append will resize bufToSend
-				if (bytesToCopy < writeMaxSize) {
-					bufToSend = ByteBufPool.append(bufToSend, nextBuf);
-					writeQueue.poll();
-				} else {
-					break;
-				}
-			}
-
-			ByteBuffer bufferToSend = bufToSend.toReadByteBuffer();
+	private void doWrite() throws IOException {
+		if (writeBuf != null) {
+			ByteBuf buf = this.writeBuf;
+			ByteBuffer buffer = buf.toReadByteBuffer();
 
 			try {
-				channel.write(bufferToSend);
+				channel.write(buffer);
 			} catch (IOException e) {
 				if (inspector != null) inspector.onWriteError(e);
-				bufToSend.recycle();
+				buf.recycle();
 				throw e;
 			}
 
-			if (inspector != null)
-				inspector.onWrite(bufToSend, bufferToSend.position() - bufToSend.readPosition());
+			if (inspector != null) inspector.onWrite(buf, buffer.position() - buf.readPosition());
 
-			bufToSend.ofReadByteBuffer(bufferToSend);
+			buf.ofReadByteBuffer(buffer);
 
-			if (bufToSend.canRead()) {
-				writeQueue.addFirst(bufToSend); // put the buf back to the queue, to send it the next time
-				break;
+			if (buf.canRead()) {
+				return;
+			} else {
+				buf.recycle();
+				writeBuf = null;
 			}
-			bufToSend.recycle();
 		}
 
-		if (writeQueue.isEmpty()) {
-			if (scheduledWriteTimeout != null) {
-				scheduledWriteTimeout.cancel();
-				scheduledWriteTimeout = null;
+		if (scheduledWriteTimeout != null) {
+			scheduledWriteTimeout.cancel();
+			scheduledWriteTimeout = null;
+		}
+
+		if (writeEndOfStream) {
+			if (readEndOfStream) {
+				doClose();
+			} else {
+				channel.shutdownOutput();
 			}
-			if (writeEndOfStream) {
-				if (readEndOfStream) {
-					doClose();
-				} else {
-					channel.shutdownOutput();
-				}
-			}
-			return true;
-		} else {
-			return false;
 		}
 	}
 
@@ -486,8 +458,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		assert eventloop.inEventloopThread();
 		if (channel == null) return;
 		doClose();
-		deepRecycle(readQueue);
-		deepRecycle(writeQueue);
+		if (readBuf != null) {
+			readBuf.recycle();
+		}
+		if (writeBuf != null) {
+			writeBuf.recycle();
+		}
 		if (scheduledWriteTimeout != null) {
 			scheduledWriteTimeout.cancel();
 			scheduledWriteTimeout = null;
@@ -510,8 +486,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		eventloop.closeChannel(channel, key);
 		//noinspection AssignmentToNull - null only after close
 		channel = null;
-		key = null;
-		connectionCount.decrementAndGet();
+		CONNECTION_COUNT.decrementAndGet();
 	}
 
 	public boolean isOpen() {
@@ -526,7 +501,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public String toString() {
 		return "AsyncTcpSocketImpl{" +
 				"channel=" + (channel != null ? channel : "") +
-				", writeQueueSize=" + writeQueue.size() +
+				", readBuf=" + readBuf +
+				", writeBuf=" + writeBuf +
 				", writeEndOfStream=" + writeEndOfStream +
 				", read=" + read +
 				", write=" + write +

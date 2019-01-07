@@ -1,11 +1,8 @@
 package io.datakernel.http;
 
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-
 final class HttpHeadersMultimap<K, V> {
-	private Object[] kvPairs = new Object[8];
-	private int size;
+	Object[] kvPairs = new Object[8];
+	int size;
 
 	public int size() {
 		return size;
@@ -46,30 +43,6 @@ final class HttpHeadersMultimap<K, V> {
 			}
 			if (k.equals(key)) {
 				return (V) kvPairs[i + 1];
-			}
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	public void forEach(K key, Consumer<V> valueConsumer) {
-		for (int i = key.hashCode() & (kvPairs.length - 2); ; i = (i + 2) & (kvPairs.length - 2)) {
-			K k = (K) kvPairs[i];
-			if (k == null) {
-				return;
-			}
-			if (k.equals(key)) {
-				valueConsumer.accept((V) kvPairs[i + 1]);
-			}
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	public void forEach(BiConsumer<K, V> consumer) {
-		for (int i = 0; i != this.kvPairs.length; i += 2) {
-			K k = (K) kvPairs[i];
-			if (k != null) {
-				V v = (V) kvPairs[i + 1];
-				consumer.accept(k, v);
 			}
 		}
 	}

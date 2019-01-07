@@ -27,7 +27,7 @@ public class ChannelSupplierTest {
 				ByteBuf.wrapForReading("Test6".getBytes(UTF_8))
 		));
 
-		ByteBuf resultBuf = await(supplier.toCollector(ByteBufQueue.collector(Integer.MAX_VALUE)));
+		ByteBuf resultBuf = await(supplier.toCollector(ByteBufQueue.collector()));
 		assertEquals("Test1Test2Test3Test4Test5Test6", resultBuf.asString(UTF_8));
 	}
 
@@ -41,7 +41,7 @@ public class ChannelSupplierTest {
 				ChannelSupplier.ofException(exception)
 		);
 
-		Throwable e = awaitException(supplier.toCollector(ByteBufQueue.collector(Integer.MAX_VALUE)));
+		Throwable e = awaitException(supplier.toCollector(ByteBufQueue.collector()));
 		assertSame(exception, e);
 	}
 

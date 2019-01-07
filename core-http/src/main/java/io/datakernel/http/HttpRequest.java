@@ -266,7 +266,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	public Promise<Map<String, String>> getPostParameters() {
-		return getPostParameters(DEFAULT_MAX_BODY_SIZE_BYTES);
+		return getPostParameters(DEFAULT_LOAD_LIMIT_BYTES);
 	}
 
 	public Promise<Map<String, String>> getPostParameters(MemSize memSize) {

@@ -281,7 +281,8 @@ public interface ChannelSupplier<T> extends Cancellable {
 	}
 
 	default <A, R> Promise<R> toCollector(Collector<T, A, R> collector) {
-		return ChannelSuppliers.toCollector(this, collector);
+		return ChannelSuppliers.collect(this,
+				collector.supplier().get(), collector.accumulator(), collector.finisher());
 	}
 
 	default Promise<List<T>> toList() {

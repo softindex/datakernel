@@ -48,7 +48,7 @@ public final class AbstractHttpConnectionTest {
 
 	@Before
 	public void setUp() {
-		client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
+		client = AsyncHttpClient.create(Eventloop.getCurrentEventloop()).withInspector(new AsyncHttpClient.JmxInspector());
 	}
 
 	@Test

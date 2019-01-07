@@ -16,7 +16,6 @@
 
 package io.datakernel.net;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.util.MemSize;
 
 import java.io.IOException;
@@ -33,14 +32,14 @@ public final class DatagramSocketSettings {
 	private static final byte TRUE = 1;
 	private static final byte FALSE = 0;
 
-	private final MemSize receiveBufferSize;
+	private final int receiveBufferSize;
 	private final byte reuseAddress;
-	private final MemSize sendBufferSize;
+	private final int sendBufferSize;
 	private final byte broadcast;
 
 	// region builders
-	private DatagramSocketSettings(@Nullable MemSize receiveBufferSize, @Nullable MemSize sendBufferSize, byte reuseAddress,
-								   byte broadcast) {
+	private DatagramSocketSettings(int receiveBufferSize, int sendBufferSize, byte reuseAddress,
+			byte broadcast) {
 		this.receiveBufferSize = receiveBufferSize;
 		this.reuseAddress = reuseAddress;
 		this.sendBufferSize = sendBufferSize;
@@ -48,15 +47,15 @@ public final class DatagramSocketSettings {
 	}
 
 	public static DatagramSocketSettings create() {
-		return new DatagramSocketSettings(null, null, DEF_BOOL, DEF_BOOL);
+		return new DatagramSocketSettings(0, 0, DEF_BOOL, DEF_BOOL);
 	}
 
 	public DatagramSocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
-		return new DatagramSocketSettings(receiveBufferSize, sendBufferSize, reuseAddress, broadcast);
+		return new DatagramSocketSettings(receiveBufferSize.toInt(), sendBufferSize, reuseAddress, broadcast);
 	}
 
 	public DatagramSocketSettings withSendBufferSize(MemSize sendBufferSize) {
-		return new DatagramSocketSettings(receiveBufferSize, sendBufferSize, reuseAddress, broadcast);
+		return new DatagramSocketSettings(receiveBufferSize, sendBufferSize.toInt(), reuseAddress, broadcast);
 	}
 
 	public DatagramSocketSettings withReuseAddress(boolean reuseAddress) {
@@ -69,11 +68,11 @@ public final class DatagramSocketSettings {
 	// endregion
 
 	public void applySettings(DatagramChannel channel) throws IOException {
-		if (receiveBufferSize != null) {
-			channel.setOption(SO_RCVBUF, receiveBufferSize.toInt());
+		if (receiveBufferSize != 0) {
+			channel.setOption(SO_RCVBUF, receiveBufferSize);
 		}
-		if (sendBufferSize != null) {
-			channel.setOption(SO_SNDBUF, sendBufferSize.toInt());
+		if (sendBufferSize != 0) {
+			channel.setOption(SO_SNDBUF, sendBufferSize);
 		}
 		if (reuseAddress != DEF_BOOL) {
 			channel.setOption(SO_REUSEADDR, reuseAddress != FALSE);
@@ -84,10 +83,14 @@ public final class DatagramSocketSettings {
 	}
 
 	public boolean hasReceiveBufferSize() {
-		return receiveBufferSize != null;
+		return receiveBufferSize != 0;
 	}
 
 	public MemSize getReceiveBufferSize() {
+		return MemSize.of(getReceiveBufferSizeBytes());
+	}
+
+	public int getReceiveBufferSizeBytes() {
 		check(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
 		return receiveBufferSize;
 	}
@@ -102,10 +105,14 @@ public final class DatagramSocketSettings {
 	}
 
 	public boolean hasSendBufferSize() {
-		return sendBufferSize != null;
+		return sendBufferSize != 0;
 	}
 
 	public MemSize getSendBufferSize() {
+		return MemSize.of(getSendBufferSizeBytes());
+	}
+
+	public int getSendBufferSizeBytes() {
 		check(hasSendBufferSize(), "No 'send buffer size' setting is present");
 		return sendBufferSize;
 	}

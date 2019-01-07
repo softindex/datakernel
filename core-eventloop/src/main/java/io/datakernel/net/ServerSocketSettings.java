@@ -38,18 +38,18 @@ public final class ServerSocketSettings {
 
 	private final int backlog;
 	@Nullable
-	private final MemSize receiveBufferSize;
+	private final int receiveBufferSize;
 	private final byte reuseAddress;
 
 	// region builders
-	private ServerSocketSettings(int backlog, @Nullable MemSize receiveBufferSize, byte reuseAddress) {
+	private ServerSocketSettings(int backlog, int receiveBufferSize, byte reuseAddress) {
 		this.backlog = backlog;
 		this.receiveBufferSize = receiveBufferSize;
 		this.reuseAddress = reuseAddress;
 	}
 
 	public static ServerSocketSettings create(int backlog) {
-		return new ServerSocketSettings(backlog, null, DEF_BOOL);
+		return new ServerSocketSettings(backlog, 0, DEF_BOOL);
 	}
 
 	public ServerSocketSettings withBacklog(int backlog) {
@@ -57,7 +57,7 @@ public final class ServerSocketSettings {
 	}
 
 	public ServerSocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
-		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
+		return new ServerSocketSettings(backlog, receiveBufferSize.toInt(), reuseAddress);
 	}
 
 	public ServerSocketSettings withReuseAddress(boolean reuseAddress) {
@@ -66,8 +66,8 @@ public final class ServerSocketSettings {
 	// endregion
 
 	public void applySettings(ServerSocketChannel channel) throws IOException {
-		if (receiveBufferSize != null) {
-			channel.setOption(SO_RCVBUF, receiveBufferSize.toInt());
+		if (receiveBufferSize != 0) {
+			channel.setOption(SO_RCVBUF, receiveBufferSize);
 		}
 		if (reuseAddress != DEF_BOOL) {
 			channel.setOption(SO_REUSEADDR, reuseAddress != FALSE);
@@ -79,10 +79,14 @@ public final class ServerSocketSettings {
 	}
 
 	public boolean hasReceiveBufferSize() {
-		return receiveBufferSize != null;
+		return receiveBufferSize != 0;
 	}
 
 	public MemSize getReceiveBufferSize() {
+		return MemSize.of(getReceiveBufferSizeBytes());
+	}
+
+	public int getReceiveBufferSizeBytes() {
 		check(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
 		return receiveBufferSize;
 	}

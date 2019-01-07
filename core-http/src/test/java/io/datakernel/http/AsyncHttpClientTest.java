@@ -99,7 +99,7 @@ public final class AsyncHttpClientTest {
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
 		InvalidSizeException e = awaitException(client.request(HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenCompose(response -> response.getBody(maxBodySize)));
-		assertThat(e.getMessage(), containsString("ByteBufQueue exceeds maximum size of " + maxBodySize + " bytes"));
+		assertThat(e.getMessage(), containsString("HTTP body size exceeds load limit " + maxBodySize));
 	}
 
 	@Test

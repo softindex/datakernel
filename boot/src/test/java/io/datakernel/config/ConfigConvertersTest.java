@@ -232,8 +232,7 @@ public class ConfigConvertersTest {
 
 		SocketSettings actual = Config.EMPTY.get(ofSocketSettings(), THIS, expected);
 
-		assertFalse(actual.hasImplReadSize());
-		assertFalse(actual.hasImplWriteSize());
+		assertFalse(actual.hasReadBufferSize());
 
 		assertEquals(expected.getTcpNoDelay(), actual.getTcpNoDelay());
 		assertEquals(expected.getReuseAddress(), actual.getReuseAddress());

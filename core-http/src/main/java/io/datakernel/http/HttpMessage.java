@@ -22,6 +22,8 @@ import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfBuf;
@@ -44,14 +46,14 @@ public abstract class HttpMessage {
 	protected ChannelSupplier<ByteBuf> bodySupplier;
 
 	byte flags;
-	static final byte DETACHED_BODY_STREAM = 1 << 0;
+	static final byte ACCESSED_BODY_STREAM = 1 << 0;
 	static final byte USE_GZIP = 1 << 1;
 	static final byte RECYCLED = (byte) (1 << 7);
 
-	public static final MemSize DEFAULT_MAX_BODY_SIZE = MemSize.of(
-			ApplicationSettings.getInt(HttpMessage.class, "maxBodySize", 1024 * 1024));
+	public static final int DEFAULT_LOAD_LIMIT_BYTES =
+			ApplicationSettings.getInt(HttpMessage.class, "loadLimit", 1024 * 1024 * 1024);
 
-	protected static final int DEFAULT_MAX_BODY_SIZE_BYTES = DEFAULT_MAX_BODY_SIZE.toInt();
+	public static final MemSize DEFAULT_LOAD_LIMIT = MemSize.of(DEFAULT_LOAD_LIMIT_BYTES);
 
 	protected HttpMessage() {
 	}
@@ -93,14 +95,19 @@ public abstract class HttpMessage {
 
 	public final Map<HttpHeader, String[]> getHeaders() {
 		LinkedHashMap<HttpHeader, String[]> map = new LinkedHashMap<>(headers.size() * 2);
-		headers.forEach((httpHeader, httpHeaderValue) ->
-				map.compute(httpHeader, ($, strings) -> {
-					String headerString = httpHeaderValue.toString();
+		for (int i = 0; i != headers.kvPairs.length; i += 2) {
+			HttpHeader k = (HttpHeader) headers.kvPairs[i];
+			if (k != null) {
+				HttpHeaderValue v = (HttpHeaderValue) headers.kvPairs[i + 1];
+				map.compute(k, ($, strings) -> {
+					String headerString = v.toString();
 					if (strings == null) return new String[]{headerString};
 					String[] newStrings = copyOf(strings, strings.length + 1);
 					newStrings[newStrings.length - 1] = headerString;
 					return newStrings;
-				}));
+				});
+			}
+		}
 		return map;
 	}
 
@@ -128,19 +135,17 @@ public abstract class HttpMessage {
 	}
 
 	public <T> List<T> parseHeader(HttpHeader header, ParserIntoList<T> parser) throws ParseException {
-		try {
-			List<T> list = new ArrayList<>();
-			headers.forEach(header, httpHeaderValue -> {
-				try {
-					parser.parse(httpHeaderValue.getBuf(), list);
-				} catch (ParseException e) {
-					throw new UncheckedException(e);
-				}
-			});
-			return list;
-		} catch (UncheckedException u) {
-			throw u.propagate(ParseException.class);
+		List<T> list = new ArrayList<>();
+		for (int i = header.hashCode() & (headers.kvPairs.length - 2); ; i = (i + 2) & (headers.kvPairs.length - 2)) {
+			HttpHeader k = (HttpHeader) headers.kvPairs[i];
+			if (k == null) {
+				break;
+			}
+			if (k.equals(header)) {
+				parser.parse(((HttpHeaderValue) headers.kvPairs[i + 1]).getBuf(), list);
+			}
 		}
+		return list;
 	}
 
 	public abstract void addCookies(List<HttpCookie> cookies);
@@ -162,7 +167,7 @@ public abstract class HttpMessage {
 	}
 
 	public ChannelSupplier<ByteBuf> getBodyStream() {
-		flags |= DETACHED_BODY_STREAM;
+		flags |= ACCESSED_BODY_STREAM;
 		return this.bodySupplier;
 	}
 
@@ -175,15 +180,30 @@ public abstract class HttpMessage {
 	}
 
 	public final Promise<ByteBuf> getBody() {
-		return getBody(DEFAULT_MAX_BODY_SIZE_BYTES);
+		return getBody(DEFAULT_LOAD_LIMIT_BYTES);
 	}
 
-	public final Promise<ByteBuf> getBody(MemSize maxBodySize) {
-		return getBody(maxBodySize.toInt());
+	public final Promise<ByteBuf> getBody(MemSize loadLimit) {
+		return getBody(loadLimit.toInt());
 	}
 
-	public final Promise<ByteBuf> getBody(int maxBodySize) {
-		return getBodyStream().toCollector(ByteBufQueue.collector(maxBodySize));
+	public final Promise<ByteBuf> getBody(int loadLimit) {
+		if (this.bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue<?>) {
+			flags |= ACCESSED_BODY_STREAM;
+			return Promise.of(((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) bodySupplier).getValue());
+		}
+		return ChannelSuppliers.collect(getBodyStream(),
+				new ByteBufQueue(),
+				(queue, buf) -> {
+					if (queue.hasRemainingBytes(loadLimit)) {
+						queue.recycle();
+						buf.recycle();
+						throw new UncheckedException(new InvalidSizeException(HttpMessage.class,
+								"HTTP body size exceeds load limit " + loadLimit));
+					}
+					queue.add(buf);
+				},
+				ByteBufQueue::takeRemaining);
 	}
 
 	public void setBodyGzipCompression() {
@@ -197,7 +217,12 @@ public abstract class HttpMessage {
 	final void recycle() {
 		assert !isRecycled();
 		assert (this.flags |= RECYCLED) != 0;
-		headers.forEach((httpHeader, httpHeaderValue) -> httpHeaderValue.recycle());
+		for (int i = 0; i != headers.kvPairs.length; i += 2) {
+			HttpHeaderValue v = (HttpHeaderValue) headers.kvPairs[i + 1];
+			if (v != null) {
+				v.recycle();
+			}
+		}
 	}
 
 	/**
@@ -207,14 +232,18 @@ public abstract class HttpMessage {
 	 */
 	protected void writeHeaders(ByteBuf buf) {
 		assert !isRecycled();
-		headers.forEach((httpHeader, httpHeaderValue) -> {
-			buf.put(CR);
-			buf.put(LF);
-			httpHeader.writeTo(buf);
-			buf.put((byte) ':');
-			buf.put(SP);
-			httpHeaderValue.writeTo(buf);
-		});
+		for (int i = 0; i != headers.kvPairs.length; i += 2) {
+			HttpHeader k = (HttpHeader) headers.kvPairs[i];
+			if (k != null) {
+				HttpHeaderValue v = (HttpHeaderValue) headers.kvPairs[i + 1];
+				buf.put(CR);
+				buf.put(LF);
+				k.writeTo(buf);
+				buf.put((byte) ':');
+				buf.put(SP);
+				v.writeTo(buf);
+			}
+		}
 		buf.put(CR);
 		buf.put(LF);
 		buf.put(CR);
@@ -224,11 +253,15 @@ public abstract class HttpMessage {
 	protected int estimateSize(int firstLineSize) {
 		assert !isRecycled();
 		int size = firstLineSize;
-		int[] headersSize = new int[1]; // for stack allocation
-		headers.forEach((httpHeader, httpHeaderValue) -> {
-			headersSize[0] += 2 + httpHeader.size() + 2 + httpHeaderValue.estimateSize(); // CR,LF,header,": ",value
-		});
-		size += headersSize[0];
+		// CR,LF,header,": ",value
+		for (int i = 0; i != headers.kvPairs.length; i += 2) {
+			HttpHeader k = (HttpHeader) headers.kvPairs[i];
+			if (k != null) {
+				HttpHeaderValue v = (HttpHeaderValue) headers.kvPairs[i + 1];
+				// CR,LF,header,": ",value
+				size += 2 + k.size() + 2 + v.estimateSize();
+			}
+		}
 		size += 4; // CR,LF,CR,LF
 		return size;
 	}

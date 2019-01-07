@@ -20,6 +20,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
@@ -172,9 +173,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.callback = null;
 		cb.set(response);
 
-		if (response.bodySupplier != null && (response.flags & HttpMessage.DETACHED_BODY_STREAM) == 0) {
-			response.bodySupplier.streamTo(BUF_RECYCLER);
-			response.bodySupplier = null;
+		if ((response.flags & HttpMessage.ACCESSED_BODY_STREAM) == 0) {
+			if (bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue) {
+				((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) bodySupplier).getValue().recycle();
+			} else {
+				bodySupplier.streamTo(BUF_RECYCLER);
+			}
 		}
 	}
 
@@ -225,7 +229,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	public Promise<HttpResponse> send(HttpRequest request) {
 		SettablePromise<HttpResponse> callback = new SettablePromise<>();
 		this.callback = callback;
-		switchPool(client.poolReadWrite);
+		assert pool == null;
+		(pool = client.poolReadWrite).addLastNode(this);
+		poolTimestamp = eventloop.currentTimeMillis();
 		HttpHeaderValue connectionHeader = CONNECTION_KEEP_ALIVE_HEADER;
 		if (client.maxKeepAliveRequests != -1) {
 			if (++numberOfKeepAliveRequests >= client.maxKeepAliveRequests) {
@@ -233,7 +239,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			}
 		}
 		request.addHeader(CONNECTION, connectionHeader);
-		writeHttpMessage(request);
+		writeHttpMessage(bodySupplier(request));
+		request.recycle();
 		if (!isClosed()) {
 			readHttpMessage();
 		}
@@ -257,7 +264,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		// pool will be null if socket was closed by the peer just before connection.send() invocation
 		// (eg. if connection was in open(null) or taken(null) states)
-		switchPool(null);
+		pool.removeNode(this);
+		pool = null;
 
 		client.onConnectionClosed();
 		if (response != null) {

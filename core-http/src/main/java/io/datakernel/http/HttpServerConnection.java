@@ -19,6 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
@@ -89,7 +90,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	public void serve() {
-		switchPool(server.poolReadWrite);
+		(pool = server.poolReadWrite).addLastNode(this);
+		poolTimestamp = eventloop.currentTimeMillis();
 		socket.read().whenComplete(firstLineConsumer);
 	}
 
@@ -211,7 +213,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			}
 		}
 		httpResponse.addHeader(CONNECTION, connectionHeader);
-		writeHttpMessage(httpResponse);
+		writeHttpMessage(bodySupplier(httpResponse));
+		httpResponse.recycle();
 	}
 
 	@Override
@@ -247,9 +250,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			}
 		});
 
-		if (request.bodySupplier != null && (request.flags & HttpMessage.DETACHED_BODY_STREAM) == 0) {
-			request.bodySupplier.streamTo(BUF_RECYCLER);
-			request.bodySupplier = null;
+		if ((request.flags & HttpMessage.ACCESSED_BODY_STREAM) == 0) {
+			if (bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue) {
+				((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) bodySupplier).getValue().recycle();
+			} else {
+				bodySupplier.streamTo(BUF_RECYCLER);
+			}
 		}
 	}
 
@@ -294,7 +300,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			request.recycle();
 			request = null;
 		}
-		switchPool(null);
+		pool.removeNode(this);
 		server.onConnectionClosed();
 	}
 

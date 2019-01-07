@@ -27,7 +27,6 @@ import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.stream.Collector;
 
 import static io.datakernel.util.Recyclable.deepRecycle;
 import static io.datakernel.util.Recyclable.tryRecycle;
@@ -82,9 +81,10 @@ public final class ChannelSuppliers {
 		};
 	}
 
-	static <T, A, R> Promise<R> toCollector(ChannelSupplier<T> supplier, Collector<T, A, R> collector) {
+	public static <T, A, R> Promise<R> collect(ChannelSupplier<T> supplier,
+			A initialValue, BiConsumer<A, T> accumulator, Function<A, R> finisher) {
 		SettablePromise<R> cb = new SettablePromise<>();
-		toCollectorImpl(supplier, collector.supplier().get(), collector.accumulator(), collector.finisher(), cb);
+		toCollectorImpl(supplier, initialValue, accumulator, finisher, cb);
 		return cb;
 	}
 

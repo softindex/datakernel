@@ -499,13 +499,9 @@ public final class ConfigConverters {
 								config.get(ofDuration(), "implWriteTimeout",
 										defaultValue.hasImplWriteTimeout() ? defaultValue.getImplWriteTimeout() : null)))
 						.andThen(applyIfNotNull(
-								SocketSettings::withImplReadSize,
-								config.get(ofMemSize(), "implReadSize",
-										defaultValue.hasImplReadSize() ? defaultValue.getImplReadSize() : null)))
-						.andThen(applyIfNotNull(
-								SocketSettings::withImplWriteSize,
-								config.get(ofMemSize(), "implWriteSize",
-										defaultValue.hasImplWriteSize() ? defaultValue.getImplWriteSize() : null)))
+								SocketSettings::withImplReadBufferSize,
+								config.get(ofMemSize(), "implReadBufferSize",
+										defaultValue.hasReadBufferSize() ? defaultValue.getImplReadBufferSize() : null)))
 						.apply(SocketSettings.create());
 			}
 		};

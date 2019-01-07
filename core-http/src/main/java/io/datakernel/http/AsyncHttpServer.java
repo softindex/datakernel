@@ -153,7 +153,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public static AsyncHttpServer create(Eventloop eventloop, AsyncServlet servlet) {
-		return new AsyncHttpServer(eventloop, servlet).withInspector(new JmxInspector());
+		return new AsyncHttpServer(eventloop, servlet);
 	}
 
 	public AsyncHttpServer withKeepAliveTimeout(Duration keepAliveTime) {

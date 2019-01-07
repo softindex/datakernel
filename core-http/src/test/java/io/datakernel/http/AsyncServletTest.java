@@ -27,8 +27,8 @@ import org.junit.runner.RunWith;
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.async.TestUtils.awaitException;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hamcrest.Matchers.containsString;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 @RunWith(DatakernelRunner.class)
 public class AsyncServletTest {
@@ -64,20 +64,5 @@ public class AsyncServletTest {
 		Throwable e = awaitException(servlet.serve(testRequest));
 
 		assertSame(exception, e);
-	}
-
-	@Test
-	public void testEnsureRequestBodyMaxSize() {
-		AsyncServlet servlet = request -> request.getBody(2).thenApply(body -> HttpResponse.ok200().withBody(body));
-
-		ByteBuf byteBuf = ByteBufPool.allocate(100);
-		byteBuf.put("Test1".getBytes(UTF_8));
-
-		HttpRequest testRequest = HttpRequest.post("http://example.com")
-				.withBodyStream(ChannelSupplier.of(byteBuf));
-
-		Throwable e = awaitException(servlet.serve(testRequest));
-
-		assertThat(e.getMessage(), containsString("ByteBufQueue exceeds maximum size of 2 bytes"));
 	}
 }
