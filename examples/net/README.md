@@ -5,14 +5,12 @@ shows how to create an echo server which can handle multiple connections.
 3. [TCP Client](https://github.com/softindex/datakernel/blob/master/examples/net/src/main/java/io/datakernel/examples/TcpClientExample.java) - 
 an example of creating a simple TCP client console application.
 4. [TCP Ping Pong Socket Connection](https://github.com/softindex/datakernel/blob/master/examples/net/src/main/java/io/datakernel/examples/PingPongSocketConnection.java) - 
-a console application which connects to a simple server with "PING" request and gets a "PONG" response.
+a console application which sends to a simple server "PING" request and receives a "PONG" response.
 
-To run the examples, you should first launch one of the servers by executing these three lines in the console in 
-appropriate folder:
-
+To run the examples, you should enter these lines in the console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/eventloop
+$ cd datakernel/examples/net
 $ mvn clean compile exec:java@TcpEchoServerExample
 $ # or
 $ mvn clean compile exec:java@MultiEchoServerExample
@@ -20,7 +18,7 @@ $ mvn clean compile exec:java@MultiEchoServerExample
 This will start your echo server.
 Both of the servers utilize `SimpleServer` as their basis. `SimpleServer` is an implementation of 
 `AbstractServer` which is a non-blocking server that works in an eventloop. Let's have a closer look at `SimpleServer` 
-setup from TCP Echo Server example:
+setup from **TCP Echo Server** example:
 
 ```java
 //creating an eventloop for our server
@@ -29,7 +27,6 @@ Eventloop eventloop = Eventloop.create().withCurrentThread();
 SimpleServer server = SimpleServer.create(socket ->
             //BinaryChannelSupplier will listen and supply incoming data from the socket
 			BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket))
-			        //
 					.parseStream(ByteBufsParser.ofCrlfTerminatedBytes())
 					//peek returns a ChannelSuplier which processes the incoming message
 					.peek(buf -> System.out.println("client:" + buf.getString(UTF_8)))
@@ -47,41 +44,22 @@ SimpleServer server = SimpleServer.create(socket ->
 server.listen();
 ```
 
-You can connect to your server from telnet with command `telnet localhost 9922` 
-or by launching your TcpClient example:
+You can connect to your server from telnet with command `telnet localhost 9922` or by launching your TcpClient example:
 ```
 $ cd datakernel/examples/eventloop
 $ mvn clean compile exec:java@TcpClientExample
 ```
 
-Now you can send messages to server and receive them back. If you started Multi Echo Server, 
-feel free to run multiple Tcp Clients and check out how it works. 
+Now you can send messages to server and receive them back as a response. If you started **TCP Multi Echo Server**, 
+feel free to run multiple **TCP Client**s and check out how it works. 
 
-To run Ping Pong Socket Connection example enter these lines in the console in appropriate folder:
+To run **Ping Pong Socket Connection** example enter these lines in the console in appropriate folder:
 
 ```
 $ git clone https://github.com/softindex/datakernel.git
-$ cd datakernel/examples/eventloop
+$ cd datakernel/examples/net
 $ mvn clean compile exec:java@PingPongSocketConnection
 ```
 
-Along with `SimpleServer`, this example also utilizes `AsyncTcpSocketImpl`:
-
-```java
-//AsyncTcpSocket is an implementation of AsyncTcpSocket interface which describes asynchronous read and write operations
-//for data transmission through network
-AsyncTcpSocketImpl.connect(ADDRESS)
-        //whenResult() subscribes given action to be executed after this promise completes successfully
-		.whenResult(socket -> {
-			//creating a BinaryChannelSuplier
-			BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
-			loop(0, i -> i < ITERATIONS,
-				i -> socket.write(wrapAscii(REQUEST_MSG))
-					.thenCompose($ -> bufsSupplier.parse(PARSER)
-					.whenResult(System.out::println)
-					.thenApply($2 -> i + 1)))
-					.whenComplete(($, e) -> socket.close());
-				})
-		.whenException(e -> { throw new RuntimeException(e); });
-eventloop.run();
-```
+Along with `SimpleServer`, this example also utilizes `AsyncTcpSocketImpl` - an implementation of `AsyncTcpSocket` 
+interface which describes asynchronous read and write operations.

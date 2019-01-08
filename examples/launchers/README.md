@@ -16,12 +16,12 @@ $ mvn clean compile exec:java@HttpServerScratch
 $ mvn clean compile exec:java@HttpSimpleServer
 ```
 
-If you started HttpSimpleServlet or HttpServerScratch, open your browser and go to [localhost:25565](localhost:25565). 
+If you started **HTTP Simple Servlet** or **HTTP Server Scratch**, open your browser and go to [localhost:25565](localhost:25565). 
 You will see the following content:
 ```
 "Hello from HTTP server" 
 ```
-If you run "Hello World" Launcher example, you will see `Hello World!` message right in your console.
+If you run **"Hello World" Launcher** example, you will see `Hello World!` message right in your console.
 
 Let's have a closer look at "Hello World" Launcher example and initialization of the launcher itself:
 ```java
@@ -51,9 +51,34 @@ When creating launchers, you can override these methods:
 In the **HTTP Server Scratch** example we are creating an echo HTTP server from scratch which extends `Launcher`. It also 
 overrides `getModules()` and `run()` methods.
 
-**HTTP Simple Server** shows how simply can be an HTTP server created utilizing `HttpServerLauncher`. When using predefined 
+**HTTP Simple Server** shows how simply an HTTP server can be created utilizing `HttpServerLauncher`. When using predefined 
 launchers, you should override the following methods:
 * `getBusinessLogicModules()` - to specify the actual logic of your application
 * `getOverrideModules()` - to override default modules.
-In the example we are overriding default port with our own and providing servlet that will handle each connection.
+In the example we are overriding default port with our own and providing servlet that will handle each connection:
+```java
+@Override
+protected Collection<Module> getOverrideModules() {
+	return singletonList(
+			ConfigModule.create(Config.create()
+			    .with("http.listenAddresses", "" + SERVICE_PORT)
+				)
+			);
+        }
+        
+@Override
+protected Collection<Module> getBusinessLogicModules() {
+	return singletonList(
+			new AbstractModule() {
+				@Singleton
+				@Provides
+				AsyncServlet rootServlet() {
+					return request -> {
+						logger.info("Connection received");
+						return Promise.of(HttpResponse.ok200().withBody(encodeAscii("Hello from HTTP server")));
+					};
+				}
+			});
+        }
+```
 

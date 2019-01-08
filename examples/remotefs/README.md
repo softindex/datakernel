@@ -1,4 +1,3 @@
-## FS Example
 1. [Server Setup Example](https://github.com/softindex/datakernel/blob/master/examples/remotefs/src/main/java/io/datakernel/examples/ServerSetupExample.java) - 
 configuring and launching `RemoteFsServer`.
 2. [File Upload Example](https://github.com/softindex/datakernel/blob/master/examples/remotefs/src/main/java/io/datakernel/examples/FileUploadExample.java) - 
@@ -11,17 +10,17 @@ To run the examples, you should execute these lines in the console in appropriat
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/examples/remotefs
 $ mvn clean compile exec:java@ServerSetupExample
-$ # or
+$ # in another console
 $ mvn clean compile exec:java@FileUploadExample
-$ # or
+$ # then
 $ mvn clean compile exec:java@FileDownloadExample
 ```
 
 Note that to work properly all these three examples should be launched in order given here.
 In the example we upload file "example.txt" to server and then download it back as "download_example.txt".
 
-Let's have a closer look at Server Setup Example. To make setup and launching as simple is possible, there is a 
-special RemoteFsServerLauncher from Launchers module. It allows to setup FS server in less then 30 lines of code:
+Let's have a closer look at **Server Setup Example**. To make setup and launching as simple is possible, there is a 
+special `RemoteFsServerLauncher` from Launchers module. It allows to setup FS server in less then 30 lines of code:
 
 ```java
  public class ServerSetupExample {
@@ -54,16 +53,18 @@ special RemoteFsServerLauncher from Launchers module. It allows to setup FS serv
  }
 ```
 
-As for files upload and download examples, they have alike implementations. Both of them extend `Launcher` and thus 
+As for file upload and download examples, they have alike implementations. Both of them extend `Launcher` and thus 
 implement `run()` method which defines the main behaviour of the launcher.
 Also, both of the examples utilize CSP module - uploader uses `ChannelFileReader` while downloader uses `ChannelFileWriter`. 
-They allow to asynchronously read/write data from/to files. Let's analyze File Upload `run()` method:
+They allow to asynchronously read/write data from/to files. 
+
+Let's analyze **File Upload Example** `run()` method:
 
 ```java
 protected void run() throws Exception {
 	//post() method posts a new task to local tasks
 	eventloop.post(() -> {
-		//creating a producer which reads files and streams it to consumer
+		//creating a producer which reads files and streams them to consumer
 		ChannelFileReader producer = null;
 		try {
 			producer = ChannelFileReader.readFile(executor, CLIENT_STORAGE.resolve(FILE_NAME))
@@ -74,7 +75,7 @@ protected void run() throws Exception {
 		//upload() uploads our file
 		ChannelConsumer<ByteBuf> consumer = ChannelConsumer.ofPromise(client.upload(FILE_NAME));
 
-		// consumer result here is a marker of it being successfully uploaded
+		//consumer result here is a marker of successful upload
 		producer.streamTo(consumer)
 			    .whenComplete(($, e) -> {
 					if (e != null) {
@@ -90,4 +91,4 @@ protected void run() throws Exception {
 	}
 ```
 
-File Upload Example has a resembling `run()` implementation. 
+**File Upload Example** has a resembling `run()` implementation. 

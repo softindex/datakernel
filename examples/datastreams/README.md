@@ -14,7 +14,7 @@ $ mvn clean compile exec:java@NetworkDemoClient
 Example's stream graph is illustrated in the picture below:
 <img src="http://www.plantuml.com/plantuml/png/dPH1RiCW44Ntd694Dl72aT83LBb3J-3QqmJLPYmO9qghtBrGspME0uwwPHwVp_-2W-N2SDVKmZAPueWWtz2SqS1cB-5R0A1cnLUGhQ6gAn6KPYk3TOj65RNwGk0JDdvCy7vbl8DqrQy2UN67WaQ-aFaCCOCbghDN8ei3_s6eYV4LJgVtzE_nbetInvc1akeQInwK1y3HK42jB4jnMmRmCWzWDFTlM_V9bTIq7Kzk1ablqADWgS4JNHw7FLqXcdUOuZBrcn3RiDCCylmLjj4wCv6OZNkZBMT29CUmspc1TCHUOuNeVIJoTxT8JVlzJnRZj9ub8U_QURhB_cO1FnXF6YlT_cMTXEQ9frvSc7kI6nscdsMyWX4OTLOURIOExfRkx_e1">
 
-This transformations of datastreams are implemented in the following way:
+This transformations of datastreams on Server #2 are implemented in the following way:
 
 ```java
 //ofSocket() returns ChannelSupplier of ByteBufs that are received from network
@@ -28,7 +28,7 @@ ChannelSupplier.ofSocket(socket)
 	//streams data to ChannelConsumer
 	.streamTo(ChannelConsumer.ofSocket(socket));
 ```
-Let's see how client interacts with our server:
+Let's see how Server #1 interacts with Server #2:
 ```java
 public static void main(String[] args) {
 	//createing an Eventloop for connecting to our server	
@@ -74,7 +74,7 @@ shows how to create a simple custom Consumer.
 3. [Custom Transformer](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/TransformerExample.java) - 
 shows how to create a custom StreamTransformer, which takes strings and transforms them to their length if it is less than MAX_LENGTH.
 4. [Builtin Stream Nodes Example](https://github.com/softindex/datakernel/blob/master/examples/datastreams/src/main/java/io/datakernel/examples/BuiltinStreamNodesExample.java) - 
-demonstrates some of builtin Stream possibilities.
+demonstrates some of builtin Stream possibilities, such as filtering, sharding and mapping.
 
 To run the examples, you should execute these lines in the console in the appropriate folder:
 ```

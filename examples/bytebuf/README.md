@@ -10,13 +10,13 @@ To run the examples, you should execute these three lines in the console in appr
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/examples/bytebuf
 $ mvn clean compile exec:java@ByteBufExample
-$ #or
+$ # or
 $ mvn clean compile exec:java@ByteBufPoolExample
-$ #or
+$ # or
 $ mvn clean compile exec:java@ByteBufQueueExample
 ```
 
-If you run the ByteBuf example, you'll receive the following output:
+If you run the **ByteBuf Example**, you'll receive the following output:
 
 ```
 0
@@ -35,12 +35,51 @@ Sliced byteBuf array: [1, 2, 3]
 Array of ByteBuf converted from ByteBuffer: [1, 2, 3]
 ```
 
-* The first six lines are result of wrapping byte array to ByteBuf wrapper for reading and then printing it.
-* The line [0, 1, 2, 3, 4, 5] is a result of converting bytes to ByteBuf and wrapping them for writing.
-* "Hello" line was first converted to ByteBuf and wrapped for reading and then represented as a String for output.
-* The last two outputs represent some other possibilities of ByteBuf.
+* The first six lines are result of wrapping byte array to ByteBuf wrapper for reading and then printing it:
+```java
+byte[] data = new byte[]{0, 1, 2, 3, 4, 5};
+ByteBuf byteBuf = ByteBuf.wrapForReading(data);
+```
 
-If you run the ByteBuf pool example, you'll receive the following output:
+* The line `[0, 1, 2, 3, 4, 5]` is a result of converting bytes to ByteBuf and wrapping them for writing:
+```java
+byte[] data = new byte[6];
+ByteBuf byteBuf = ByteBuf.wrapForWriting(data);
+byte value = 0;
+while (byteBuf.canWrite()) {
+	byteBuf.writeByte(value++);
+}
+```
+
+* "Hello" line was first converted from String to ByteBuf and wrapped for reading, then represented as a String for output:
+```java
+String message = "Hello";
+ByteBuf byteBuf = ByteBuf.wrapForReading(message.getBytes(UTF_8));
+String unWrappedMessage = byteBuf.asString(UTF_8);
+```
+* The last two outputs represent some other possibilities of ByteBuf, such as slicing:
+```java
+byte[] data = new byte[]{0, 1, 2, 3, 4, 5};
+ByteBuf byteBuf = ByteBuf.wrap(data, 0, data.length);
+//the first parameter is an offset and the second is length
+ByteBuf slice = byteBuf.slice(1, 3);
+```
+and conversions:
+```java
+//Creating a ByteBuf instance. 
+//The first parameter is the bytes to be wrapped, the second and the third are read and write positions
+ByteBuf byteBuf = ByteBuf.wrap(new byte[20], 0, 0);
+//Creating a ByteBuffer instance
+ByteBuffer buffer = byteBuf.toWriteByteBuffer();
+buffer.put((byte) 1);
+buffer.put((byte) 2);
+buffer.put((byte) 3);
+//converting ByteBuffer to ByteBuf
+byteBuf.ofWriteByteBuffer(buffer);
+```
+ <br>
+
+If you run the **ByteBuf Pool Example**, you'll receive the following output:
 ```
 Length of array of allocated ByteBuf: 128
 Number of ByteBufs in pool before recycling: 0
@@ -53,7 +92,7 @@ Remaining bytes of a new ByteBuf: 5
 
 [0, 1, 2, 3, 4, 5]
 ```
-To understand how this example works from within, let's consider its code:
+Let's have a look at the implementation:
 ```java
 public class ByteBufPoolExample {
 	/* Setting ByteBufPool minSize and maxSize properties here for illustrative purposes.
@@ -132,7 +171,7 @@ public class ByteBufPoolExample {
 }
 ```
 
-If you run the third ByteBuf queue example, you'll receive the following output:
+If you run the **ByteBuf Queue Example**, you'll receive the following output:
 ```
 bufs:2 bytes:7
 
@@ -144,12 +183,13 @@ Buf taken from queue: [3, 4, 5, 6, 7, 8]
 [5, 6, 7, 8]
 Queue is empty? true
 ```
-The first line represents our queue after we added two bufs: `[0, 1, 2, 3]` and `[3, 4, 5]`.
-Then method QUEUE.take() is applied and the first added buf is taken from the queue which is `[0, 1, 2, 3]`.
+The first line represents our queue after we added two bufs: `[0, 1, 2, 3]` and `[3, 4, 5]` with `QUEUE.add()` method.
+Then method `QUEUE.take()` is applied and the first added buf, which is `[0, 1, 2, 3]`, is taken from the queue.
 The next line represents the consequence of two operations: adding a new `[6, 7, 8]` buf and then applying 
-QUEUE.takeRemaining() which takes all remaining bufs from the queue.
+`QUEUE.takeRemaining()` which takes all remaining bufs from the queue.
+
 Finally, the last three lines represent the following operations:
 
-* Creating two bufs: `[1, 2, 3, 4]` and `[5, 6, 7, 8]`;
-* Draining the queue to consumer which prints the bufs;
+* Creating two bufs: `[1, 2, 3, 4]` and `[5, 6, 7, 8]`.
+* Draining the queue to consumer which prints the bufs.
 * Then we check if the queue is empty now.

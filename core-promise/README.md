@@ -12,4 +12,7 @@ CompletableFutures.
 * Promise module also contains utility classes that help to collect results of promises, add loops and conditional logic 
 to promises execution.
 
+[`Promise` interface](https://github.com/softindex/datakernel/blob/master/core-promise/src/main/java/io/datakernel/async/Promise.java) 
+represents the main logic of the Promises.
+
 ### You can explore Promise examples [here](https://github.com/softindex/datakernel/tree/master/examples/promise)

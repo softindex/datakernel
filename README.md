@@ -111,7 +111,7 @@ based on Java NIO. Utilizes CSP for fast and reliable file transfer.
 This module allows to build collaborative software systems based on Git-like approach and with automatic conflict 
 resolution utilizing a special algorithm for operational transformations.
 
-### [OT-MySql](https://github.com/softindex/datakernel/tree/master/cloud-ot-mysql)
+### [OT-MySQL](https://github.com/softindex/datakernel/tree/master/cloud-ot-mysql)
 
 Enables binding OT repositories to MySQL (or any other) database. You can even store `OTRepository` commits in-memory or 
 as files on a disk.

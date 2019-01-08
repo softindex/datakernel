@@ -1,4 +1,3 @@
-
 1. [Dynamic Class Creation](https://github.com/softindex/datakernel/blob/master/examples/codegen/src/main/java/io/datakernel/examples/DynamicClassCreationExample.java) - 
 dynamically creates a class that implements a specified interface.
 2. [Expressions Example](https://github.com/softindex/datakernel/blob/master/examples/codegen/src/main/java/io/datakernel/examples/ExpressionsExample.java) - 
@@ -13,7 +12,7 @@ $ # or
 $ mvn clean compile exec:java@ExpressionsExample
 ```
 
-If you run Dynamic Class Creation Example, you will receive the following output:
+If you run **Dynamic Class Creation Example**, you will receive the following output:
 ```
 First person: {id: 5, name: Jack}
 Second person: {id: 10, name: Martha}
@@ -24,11 +23,11 @@ jack.hash()             = 2301082
 examplePojo.hashCode()  = 2301082
 ```
 
-* jack and martha are dynamically created instances of Person class which implements interface Person.
-* PersonPojo is created conventionally.
+* *jack* and *martha* are dynamically created instances of `Person` class which implements interface `Person`.
+* `PersonPojo` is created conventionally.
 * The last three lines compare dynamically created hashing implementation with the conventional one.
 
-The process of creating a Person class goes as follows:
+The process of creating `Person` class goes as follows:
 ```java
 // Construct a Class that implements Person interface
 Class<Person> personClass = ClassBuilder.create(DefiningClassLoader.create(Thread.currentThread().getContextClassLoader()), Person.class)
@@ -53,8 +52,8 @@ Class<Person> personClass = ClassBuilder.create(DefiningClassLoader.create(Threa
 	.build();
 ```
 <br>
-In the Expressions example method `sayHello()` is described within example Class description with the following line:
- 
+
+In the **Expressions Example** method `sayHello()` is described within `Class` description with the following line:
 ```java
 .withMethod("sayHello", call(staticField(System.class, "out"), "println", value("Hello world")))
 ```

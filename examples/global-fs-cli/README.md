@@ -1,9 +1,9 @@
 ## Global-FS CLI
 
 Global-FS-CLI is a command-line interface of Global-FS client application. It allows to conduct basic interactions with 
-Global-FS nodes, upload and download files, delete them and get list of uploaded files.
+Global-FS nodes: upload and download files, delete them and get list of uploaded files.
 
-To run the CLI, you should enter the following commands in appropriate folder:
+To run the CLI, you should enter these commands in your console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/examples/global-fs-cli

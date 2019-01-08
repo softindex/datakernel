@@ -1,7 +1,7 @@
 ## Global-OT demo application
 
-To understand how Global-OT works and organizes data you can run Global-OT demo application. It provides you with ability 
-to work with repository which represents the history of counter modifications and covers the following operations:
+To understand how Global-OT module works and organizes data, you can run Global-OT demo application. It provides you with 
+ability to work with repository which represents the history of counter modifications and covers the following operations:
 * `Add` - saves your modification locally, so that it can be then committed.
 * `Commit` - locally creates a commit which then can be pushed to the repository.
 * `Push` - applies your commit to the commit graph.
@@ -20,7 +20,7 @@ conflict resolution. Global-OT has already done it for you.
 Also, demo application has an additional operation:
 * `New Manager` - adds new virtual participant to repository (will be opened in new browser tab).
 
-There are two markers which help to work with the repository:
+There are two values which help to work with the repository:
 * `Current state` - shows local value of the counter. 
 * `Uncommitted operations` - represents operations which were `Add`ed but not committed yet.
 
@@ -28,16 +28,15 @@ All of the pushed commits are represented in commit graph. Each commit contains 
 * Hashcode of the operation
 * Current value of the counter
 
-To run the Global-OT demo application, you should first run `DiscoveryServiceLauncher` and `GlobalNodesLauncher` and 
-after that run `GlobalOTDemoApp`. To execute this enter the following commands:
+To run Global-OT demo application, you should enter these commands in your console in appropriate folder:
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/global-launchers
 $ mvn clean compile exec:java@DiscoveryServiceLauncher
-$ # then
+$ # in another console
 $ cd datakernel/global-launchers
 $ mvn clean compile exec:java@GlobalNodesLauncher
-$ # then
+$ # in another console
 $ cd datakernel/examples/global-ot-demo
 $ mvn clean compile exec:java@GlobalOTDemoApp
 ```

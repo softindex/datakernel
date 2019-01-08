@@ -1,7 +1,7 @@
 ## Dataflow
 
 Dataflow is a distributed stream-based batch processing engine for Big Data applications.
-You can write a tasks to be executed on a dataset. The task is then compiled into an execution graphs and passed as a 
+You can write tasks to be executed on a dataset. The task is then compiled into execution graphs and passed as 
 JSON commands to corresponding worker servers to be executed.
 
 * Data graph consists of nodes that correspond to certain operations (e.g. Download, Filter, Map, Reduce, Sort, etc).

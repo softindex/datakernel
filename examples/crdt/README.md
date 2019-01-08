@@ -5,7 +5,7 @@ To run the example, you should first execute these lines in the console in appro
 ```
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/examples/crdt
-$ mvn clean compile exec:java@HttpServerExample
+$ mvn clean compile exec:java@CrdtExample
 ```
 
 In this example, we have two replicas - independent nodes which store different information.
@@ -28,5 +28,5 @@ first = [#1, #2, #3, #4, #5, #6]
 second = [#2, #3, #4]
 ```
 
-In the example `LWWSet` (last write wins) is utilized. It implements `Set` interface and is basically a 
-Map<E, Timestamp>. Timestamp allows to merge LWWSets by choosing the most relevant versions in case of conflicts.
+In the example `LWWSet` (Last Write Wins) is utilized. It implements `Set` interface and is basically a 
+`Map<E, Timestamp>`. Timestamp allows to merge `LWWSet`s by choosing the most relevant versions in case of conflicts.

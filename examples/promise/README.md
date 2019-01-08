@@ -8,11 +8,11 @@ To run the examples, you should execute these lines in the console in appropriat
 $ git clone https://github.com/softindex/datakernel.git
 $ cd datakernel/examples/promise
 $ mvn clean compile exec:java@PromisesExample
-$ #or
-$ mvn mvn clean compile exec:java@AsyncFileExample
+$ # or
+$ mvn clean compile exec:java@AsyncFileExample
 ```
 
-If you run `PromisesExample`, you'll receive the following output:
+If you run **Promises Example**, you'll receive the following output:
 ```
 Repeat until exception:
 This is iteration #1
@@ -41,7 +41,7 @@ This is iteration #3
 This is iteration #4
 This is iteration #5
 ```
-Here we created a Promise with a condition (like a simple `for` loop with condition):
+Here we created a `Promise` with a condition (like a simple `for` loop with condition):
 ```java
 Promises.loop(0, i -> i < 5, i -> {
 	System.out.println("This is iteration #" + ++i);
@@ -55,7 +55,7 @@ Collecting group of Promises to list of Promises' results:
 Size of collected list: 6
 List: [1, 2, 3, 4, 5, 6]
 ```
-In this example a `Promises.toList()` method is utilized:
+Here a `Promises.toList()` method is utilized:
 ```java
 Promises.toList(Promise.of(1), Promise.of(2), Promise.of(3), Promise.of(4), Promise.of(5), Promise.of(6))
 	.whenResult(list -> System.out.println("Size of collected list: " + list.size() + "\nList: " + list));
@@ -68,7 +68,7 @@ Collecting group of Promises to array of Promises' results:
 Size of collected array: 6
 Array: [1, 2, 3, 4, 5, 6]
 ```
-In this example a `Promises.toArray()` method is utilized:
+Here a `Promises.toArray()` method is utilized:
 ```java
 Promises.toArray(Integer.class, Promise.of(1), Promise.of(2), Promise.of(3), Promise.of(4), Promise.of(5), Promise.of(6))
     .whenResult(array -> System.out.println("Size of collected array: " + array.length + "\nArray: " + Arrays.toString(array)));
@@ -76,7 +76,7 @@ Promises.toArray(Integer.class, Promise.of(1), Promise.of(2), Promise.of(3), Pro
 
 <br>
 
-If you run `AsyncFileExample`, you'll receive the following output:
+If you run **Async File Example**, you'll receive the following output:
 
 ```
 Hello

@@ -19,7 +19,7 @@ to set up your application.
 * `WorkerPoolModule` introduces a worker pool, which is a container for other services. It is an easy way to utilize all 
 of available cores by running a worker `Eventloop` on each core.
 * `JmxModule` provides tools to monitor a component's lifecycle via `JmxAttribute`s or even interfere with it by the 
-means of `JmxOperation`s
+means of `JmxOperation`s.
 * `TriggersModule` adds the ability to place certain triggers on a module that will work as soon as some condition 
 fulfills. These triggers can be monitored via JMX.
 * Boot module introduces a concept of a `Launcher`, which can be seen as a basic application. It uses `ServiceGraph` to 

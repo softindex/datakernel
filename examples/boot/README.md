@@ -16,7 +16,7 @@ $ #or
 $ mvn clean compile exec:java@WorkerPoolModuleExample
 ```
 
-If you run the first example, you will see the following output:
+If you run the **Config Module Example**, you will see the following output:
 ```
 Hello world!
 123456789
@@ -34,20 +34,17 @@ initialization of `ConfigModule`, such as:
 * ofConfigs()
 * ofValue()
 
-<br>
 
-If you run the Service Graph Module Example, you will see a `Hello World` output. This output is conducted via eventloop 
+If you run the **Service Graph Module Example**, you will see a `Hello World` output. This output is conducted via eventloop 
 which was provided by `ServiceGraphModule`. `ServiceGraphModule` builds dependency graph of Service objects based on 
 Guice's object graph. When  method `startFuture()` is called, our eventloop starts running and we get an output message. 
 
 
-<br> 
-
-If you run the Worker Pool Module Example, you will see the following output:
+If you run the **Worker Pool Module Example**, you will see the following output:
 ```
 Hello from worker #0
 Hello from worker #1
 Hello from worker #2
 Hello from worker #3
 ```
-These are four workers which were provided by our Worker Pool Module and then injected and printed out. 
+These are four workers which were provided by our `WorkerPoolModule` and then injected and printed out. 
