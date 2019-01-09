@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.ThrowingRunnable;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -82,6 +83,16 @@ public class HttpUtilsTest {
 		}
 	}
 
+	@Test
+	public void testNegativeValueWithOffset() {
+		String text = "Content-Length: -1";
+		byte[] bytes = text.getBytes();
+		assertNegativeSizeException(() -> HttpUtils.decodeUnsignedInt(bytes, 15, 3));
+		assertNegativeSizeException(() -> HttpUtils.decodeUnsignedInt(bytes, 16, 3));
+		assertNegativeSizeException(() -> HttpUtils.decodeUnsignedLong(bytes, 15, 3));
+		assertNegativeSizeException(() -> HttpUtils.decodeUnsignedLong(bytes, 16, 3));
+	}
+
 	// region helpers
 	private void ecodeUnsignedDecimalTest(ByteBuf buf, long value) throws ParseException {
 		buf.rewind();
@@ -102,6 +113,16 @@ public class HttpUtilsTest {
 		byte[] bytesRepr = string.getBytes();
 		long decoded = decodeUnsignedLong(bytesRepr, 0, string.length());
 		assertEquals(value, decoded);
+	}
+
+	private void assertNegativeSizeException(ThrowingRunnable runnable) {
+		try {
+			runnable.run();
+			fail();
+		} catch (Throwable e) {
+			assertEquals(DECODE_NEGATIVE_VALUE, e);
+		}
+
 	}
 	// endregion
 }

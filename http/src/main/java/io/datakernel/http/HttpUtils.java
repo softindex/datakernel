@@ -248,10 +248,9 @@ public final class HttpUtils {
 	 */
 	public static int decodeUnsignedInt(byte[] array, int pos, int len) throws ParseException {
 		int offsetLeft = trimOffsetLeft(array, pos, len);
-		if (array[offsetLeft] == (byte) '-') {
+		if (array[pos + offsetLeft] == (byte) '-') {
 			throw DECODE_NEGATIVE_VALUE;
 		}
-		;
 
 		pos += offsetLeft;
 		len -= offsetLeft;
@@ -271,7 +270,7 @@ public final class HttpUtils {
 	 */
 	public static long decodeUnsignedLong(byte[] array, int pos, int len) throws ParseException {
 		int offsetLeft = trimOffsetLeft(array, pos, len);
-		if (array[offsetLeft] == (byte) '-') {
+		if (array[pos + offsetLeft] == (byte) '-') {
 			throw DECODE_NEGATIVE_VALUE;
 		}
 
