@@ -16,13 +16,12 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.RemoteAsyncDnsClient.Inspector;
-import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.inspector.AbstractInspector;
 import io.datakernel.stream.processor.DatakernelRunner;
 import io.datakernel.stream.processor.RequiresInternetConnection;
 import org.junit.Before;
@@ -171,7 +170,7 @@ public final class AsyncDnsClientTest {
 		inspector.getRequestCounts().forEach((k, v) -> assertEquals(1, v.intValue()));
 	}
 
-	private static class InspectorGadget implements Inspector {
+	private static class InspectorGadget extends AbstractInspector<Inspector> implements Inspector {
 		private Map<DnsQuery, Integer> requestCounts = new ConcurrentHashMap<>();
 
 		public Map<DnsQuery, Integer> getRequestCounts() {
@@ -191,12 +190,6 @@ public final class AsyncDnsClientTest {
 		@Override
 		public void onDnsQueryError(DnsQuery query, Throwable e) {
 
-		}
-
-		@Nullable
-		@Override
-		public AsyncUdpSocketImpl.Inspector socketInspector() {
-			return null;
 		}
 	}
 }

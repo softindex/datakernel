@@ -20,7 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.AsyncTcpSocketImpl.Inspector;
-import io.datakernel.eventloop.AsyncTcpSocketImpl.JmxInspector;
+import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -90,8 +90,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	// jmx
 	private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 	AbstractServer<?> acceptServer = this;
-	private final JmxInspector socketStats = new JmxInspector();
-	private final JmxInspector socketStatsSsl = new JmxInspector();
+	private AsyncTcpSocketImpl.Inspector socketInspector;
+	private AsyncTcpSocketImpl.Inspector socketSslInspector;
 	private final EventStats accepts = EventStats.create(SMOOTHING_WINDOW);
 	private final EventStats acceptsSsl = EventStats.create(SMOOTHING_WINDOW);
 	private final EventStats filteredAccepts = EventStats.create(SMOOTHING_WINDOW);
@@ -168,23 +168,37 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@SuppressWarnings("unchecked")
+	public final S withSocketInspector(Inspector socketInspector) {
+		this.socketInspector = socketInspector;
+		return (S) this;
+	}
+
+	@SuppressWarnings("unchecked")
+	public final S withSocketSslInspector(Inspector socketSslInspector) {
+		this.socketSslInspector = socketSslInspector;
+		return (S) this;
+	}
+
+	@SuppressWarnings("unchecked")
 	public final S withLogger(Logger logger) {
 		this.logger = logger;
 		return (S) this;
 	}
 	// endregion
 
-	public ServerSocketSettings getServerSocketSettings() {
-		return serverSocketSettings;
+	protected abstract void serve(AsyncTcpSocket socket, InetAddress remoteAddress);
+
+	protected void onListen() {
 	}
 
-	public SocketSettings getSocketSettings() {
-		return socketSettings;
+	protected void onClose(SettablePromise<Void> promise) {
+		promise.set(null);
 	}
 
-	@Override
-	public final Eventloop getEventloop() {
-		return eventloop;
+	protected void onAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl) {
+	}
+
+	protected void onFilteredAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl) {
 	}
 
 	@Override
@@ -219,9 +233,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 	}
 
-	protected void onListen() {
-	}
-
 	@Override
 	public final Promise<Void> close() {
 		check(eventloop.inEventloopThread(), "Cannot close server from different thread");
@@ -244,11 +255,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return eventloop.submit(this::close);
 	}
 
-	protected void onClose(SettablePromise<Void> promise) {
-		promise.set(null);
-	}
-
-	public boolean isRunning() {
+	public final boolean isRunning() {
 		return running;
 	}
 
@@ -271,19 +278,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	protected Inspector getSocketInspector(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl) {
-		return ssl ? socketStatsSsl : socketStats;
-	}
-
-	protected void onAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl) {
-		logger.trace("received connection from [{}]{}: {}", remoteAddress, ssl ? " over SSL" : "", this);
-		accepts.recordEvent();
-		if (ssl) {
-			acceptsSsl.recordEvent();
-		}
-	}
-
-	protected void onFilteredAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl) {
-		filteredAccepts.recordEvent();
+		return ssl ? socketSslInspector : socketInspector;
 	}
 
 	private void doAccept(SocketChannel channel, InetSocketAddress localAddress, boolean ssl) {
@@ -298,6 +293,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 
 		if (acceptFilter != null && acceptFilter.filterAccept(channel, localAddress, remoteAddress, ssl)) {
+			filteredAccepts.recordEvent();
 			onFilteredAccept(channel, localAddress, remoteAddress, ssl);
 			return;
 		}
@@ -308,6 +304,11 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		if (workerServerEventloop == eventloop) {
 			workerServer.doAccept(channel, localAddress, remoteAddress, ssl, socketSettings);
 		} else {
+			if (logger.isTraceEnabled()) {
+				logger.trace("received connection from [{}]{}: {}", remoteAddress, ssl ? " over SSL" : "", this);
+			}
+			accepts.recordEvent();
+			if (ssl) acceptsSsl.recordEvent();
 			onAccept(channel, localAddress, remoteAddress, ssl);
 			workerServerEventloop.execute(() ->
 					workerServer.doAccept(channel, localAddress, remoteAddress, ssl, socketSettings));
@@ -319,20 +320,64 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@Override
-	public void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress,
+	public final void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress,
 			boolean ssl, SocketSettings socketSettings) {
 		assert eventloop.inEventloopThread();
+		accepts.recordEvent();
+		if (ssl) acceptsSsl.recordEvent();
 		onAccept(socketChannel, localAddress, remoteAddress, ssl);
-		AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
-				.withInspector(getSocketInspector(remoteAddress, localAddress, ssl));
+		AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
 		AsyncTcpSocket asyncTcpSocket = ssl ? wrapServerSocket(asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 		serve(asyncTcpSocket, remoteAddress);
 	}
 
-	protected abstract void serve(AsyncTcpSocket socket, InetAddress remoteAddress);
-
 	private boolean isInetAddressAny(InetSocketAddress listenAddress) {
 		return listenAddress.getAddress().isAnyLocalAddress();
+	}
+
+	public ServerSocketSettings getServerSocketSettings() {
+		return serverSocketSettings;
+	}
+
+	public SocketSettings getSocketSettings() {
+		return socketSettings;
+	}
+
+	@Override
+	public final Eventloop getEventloop() {
+		return eventloop;
+	}
+
+	@JmxAttribute(extraSubAttributes = "totalCount")
+	@Nullable
+	public final EventStats getAccepts() {
+		return acceptServer.listenAddresses.isEmpty() ? null : accepts;
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final EventStats getAcceptsSsl() {
+		return acceptServer.sslListenAddresses.isEmpty() ? null : acceptsSsl;
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final EventStats getFilteredAccepts() {
+		return acceptFilter == null ? null : filteredAccepts;
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final AsyncTcpSocketImpl.JmxInspector getSocketStats() {
+		return this instanceof PrimaryServer || acceptServer.listenAddresses.isEmpty() ? null :
+				BaseInspector.lookup(socketInspector, AsyncTcpSocketImpl.JmxInspector.class);
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
+		return this instanceof PrimaryServer || acceptServer.sslListenAddresses.isEmpty() ? null :
+				BaseInspector.lookup(socketSslInspector, AsyncTcpSocketImpl.JmxInspector.class);
 	}
 
 	@Override
@@ -344,35 +389,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 				'}';
 	}
 
-	@JmxAttribute(extraSubAttributes = "totalCount")
-	@Nullable
-	public final EventStats getAccepts() {
-		return acceptServer.listenAddresses.isEmpty() ? null : accepts;
-	}
-
-	@JmxAttribute
-	@Nullable
-	public EventStats getAcceptsSsl() {
-		return acceptServer.sslListenAddresses.isEmpty() ? null : acceptsSsl;
-	}
-
-	@JmxAttribute
-	@Nullable
-	public EventStats getFilteredAccepts() {
-		return acceptFilter == null ? null : filteredAccepts;
-	}
-
-	@JmxAttribute
-	@Nullable
-	public JmxInspector getSocketStats() {
-		return this instanceof PrimaryServer || acceptServer.listenAddresses.isEmpty() ? null : socketStats;
-	}
-
-	@JmxAttribute
-	@Nullable
-	public JmxInspector getSocketStatsSsl() {
-		return this instanceof PrimaryServer || acceptServer.sslListenAddresses.isEmpty() ? null : socketStatsSsl;
-	}
 }
 
 

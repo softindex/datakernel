@@ -24,6 +24,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.ConstantException;
 import io.datakernel.exception.ParseException;
+import io.datakernel.inspector.AbstractInspector;
+import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -34,7 +36,6 @@ import java.time.Duration;
 
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final Duration DEFAULT_KEEP_ALIVE = Duration.ofSeconds(30);
@@ -74,7 +75,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	Inspector inspector;
 
-	public interface Inspector {
+	public interface Inspector extends BaseInspector<Inspector> {
 		void onHttpError(InetAddress remoteAddress, Throwable e);
 
 		void onHttpRequest(HttpRequest request);
@@ -84,7 +85,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		void onServletException(HttpRequest request, Throwable e);
 	}
 
-	public static class JmxInspector implements Inspector {
+	public static class JmxInspector extends AbstractInspector<Inspector> implements Inspector {
 		private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 		private final EventStats totalRequests = EventStats.create(SMOOTHING_WINDOW);
@@ -157,16 +158,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withKeepAliveTimeout(Duration keepAliveTime) {
-		long keepAliveTimeMillis = keepAliveTime.toMillis();
-
-		checkArgument(keepAliveTimeMillis >= 0, "Keep alive timeout should not be less than zero");
-
-		this.keepAliveTimeoutMillis = (int) keepAliveTimeMillis;
+		this.keepAliveTimeoutMillis = (int) keepAliveTime.toMillis();
 		return this;
 	}
 
 	public AsyncHttpServer withMaxKeepAliveRequests(int maxKeepAliveRequests) {
-		checkArgument(maxKeepAliveRequests >= 0, "Maximum number of requests per keep-alive connection should not be less than zero");
 		this.maxKeepAliveRequests = maxKeepAliveRequests;
 		return this;
 	}
@@ -176,21 +172,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withReadWriteTimeout(Duration readTimeout) {
-		long readTimeoutMillis = readTimeout.toMillis();
-
-		checkArgument(readTimeoutMillis >= 0, "Read timeout should not be less than zero");
-
-		this.readWriteTimeoutMillis = (int) readTimeoutMillis;
+		this.readWriteTimeoutMillis = (int) readTimeout.toMillis();
 		return this;
 	}
 
 	public AsyncHttpServer withHttpErrorFormatter(HttpExceptionFormatter httpExceptionFormatter) {
 		this.errorFormatter = httpExceptionFormatter;
-		return this;
-	}
-
-	public AsyncHttpServer withInspector(Inspector inspector) {
-		this.inspector = inspector;
 		return this;
 	}
 
@@ -200,6 +187,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	public Duration getReadWriteTimeout() {
 		return Duration.ofMillis(readWriteTimeoutMillis);
+	}
+
+	public AsyncHttpServer withInspector(Inspector inspector) {
+		this.inspector = inspector;
+		return this;
 	}
 
 	// endregion
@@ -283,7 +275,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@JmxAttribute(name = "")
 	@Nullable
 	public JmxInspector getStats() {
-		return inspector instanceof JmxInspector ? (JmxInspector) inspector : null;
+		return BaseInspector.lookup(inspector, JmxInspector.class);
 	}
 
 }

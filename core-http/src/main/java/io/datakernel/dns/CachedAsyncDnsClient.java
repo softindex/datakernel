@@ -20,14 +20,9 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
-import io.datakernel.dns.RemoteAsyncDnsClient.Inspector;
-import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -189,58 +184,5 @@ public class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx
 		return eventloop;
 	}
 
-	// region JMX
-	public static class JmxInspector implements Inspector {
-		private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
-		private final AsyncUdpSocketImpl.JmxInspector socketInspector =
-				new AsyncUdpSocketImpl.JmxInspector(SMOOTHING_WINDOW);
-		private final EventStats queries = EventStats.create(SMOOTHING_WINDOW);
-		private final EventStats failedQueries = EventStats.create(SMOOTHING_WINDOW);
-		private final EventStats expirations = EventStats.create(SMOOTHING_WINDOW);
-
-		@Override
-		@Nullable
-		public AsyncUdpSocketImpl.Inspector socketInspector() {
-			return socketInspector;
-		}
-
-		@Override
-		public void onDnsQuery(DnsQuery query, ByteBuf payload) {
-			queries.recordEvent();
-		}
-
-		@Override
-		public void onDnsQueryResult(DnsQuery query, DnsResponse result) {
-			if (!result.isSuccessful()) {
-				failedQueries.recordEvent();
-			}
-		}
-
-		@Override
-		public void onDnsQueryError(DnsQuery query, Throwable e) {
-			failedQueries.recordEvent();
-		}
-
-		@JmxAttribute
-		public AsyncUdpSocketImpl.JmxInspector getSocketInspector() {
-			return socketInspector;
-		}
-
-		@JmxAttribute
-		public EventStats getQueries() {
-			return queries;
-		}
-
-		@JmxAttribute
-		public EventStats getFailedQueries() {
-			return failedQueries;
-		}
-
-		@JmxAttribute
-		public EventStats getExpirations() {
-			return expirations;
-		}
-	}
-	// endregion
 }

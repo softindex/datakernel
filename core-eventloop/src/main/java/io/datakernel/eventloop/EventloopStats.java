@@ -17,6 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.inspector.ForwardingInspector;
 import io.datakernel.jmx.*;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.util.Stopwatch;
@@ -30,7 +31,7 @@ import static io.datakernel.eventloop.Eventloop.DEFAULT_SMOOTHING_WINDOW;
 import static io.datakernel.jmx.ValueStats.POWERS_OF_TWO;
 
 @SuppressWarnings("unused")
-public final class EventloopStats implements EventloopInspector {
+public final class EventloopStats extends ForwardingInspector<EventloopInspector> implements EventloopInspector {
 
 	@Nullable
 	final EventloopInspector next;
@@ -47,6 +48,7 @@ public final class EventloopStats implements EventloopInspector {
 	private final EventStats selectOverdues;
 
 	EventloopStats(@Nullable EventloopInspector next) {
+		super(next);
 		this.next = next;
 		loops = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
 		selectorSelectTimeout = ValueStats.create(DEFAULT_SMOOTHING_WINDOW)
@@ -76,7 +78,7 @@ public final class EventloopStats implements EventloopInspector {
 			}
 		}
 
-		if(next != null){
+		if (next != null) {
 			next.onUpdateBusinessLogicTime(taskOrKeyPresent, externalTaskPresent, businessLogicTime);
 		}
 	}
@@ -84,7 +86,7 @@ public final class EventloopStats implements EventloopInspector {
 	@Override
 	public void onUpdateSelectorSelectTime(long selectorSelectTime) {
 		this.selectorSelectTime.recordValue((int) selectorSelectTime);
-		if(next != null){
+		if (next != null) {
 			next.onUpdateSelectorSelectTime(selectorSelectTime);
 		}
 	}
@@ -93,7 +95,7 @@ public final class EventloopStats implements EventloopInspector {
 	public void onUpdateSelectorSelectTimeout(long selectorSelectTimeout) {
 		this.selectorSelectTimeout.recordValue((int) selectorSelectTimeout);
 		if (selectorSelectTimeout < 0) selectOverdues.recordEvent();
-		if(next != null){
+		if (next != null) {
 			next.onUpdateSelectorSelectTimeout(selectorSelectTimeout);
 		}
 	}
@@ -103,7 +105,7 @@ public final class EventloopStats implements EventloopInspector {
 		if (sw != null) {
 			keys.oneKeyTime.recordValue((int) sw.elapsed(TimeUnit.MICROSECONDS));
 		}
-		if(next != null){
+		if (next != null) {
 			next.onUpdateSelectedKeyDuration(sw);
 		}
 	}
@@ -118,7 +120,7 @@ public final class EventloopStats implements EventloopInspector {
 		keys.readPerLoop.recordValue(readKeys);
 		keys.writePerLoop.recordValue(writeKeys);
 		if (lastSelectedKeys != 0) keys.loopTime.recordValue((int) loopTime);
-		if(next != null){
+		if (next != null) {
 			next.onUpdateSelectedKeysStats(lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
 		}
 	}
@@ -136,7 +138,7 @@ public final class EventloopStats implements EventloopInspector {
 	@Override
 	public void onUpdateLocalTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
 		updateTaskDuration(tasks.local.oneTaskTime, tasks.local.longestTask, runnable, sw);
-		if(next != null){
+		if (next != null) {
 			next.onUpdateLocalTaskDuration(runnable, sw);
 		}
 	}
@@ -145,7 +147,7 @@ public final class EventloopStats implements EventloopInspector {
 	public void onUpdateLocalTasksStats(int newLocalTasks, long loopTime) {
 		if (newLocalTasks != 0) tasks.local.loopTime.recordValue((int) loopTime);
 		tasks.local.tasksPerLoop.recordValue(newLocalTasks);
-		if(next != null){
+		if (next != null) {
 			next.onUpdateLocalTasksStats(newLocalTasks, loopTime);
 		}
 	}
@@ -153,7 +155,7 @@ public final class EventloopStats implements EventloopInspector {
 	@Override
 	public void onUpdateConcurrentTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
 		updateTaskDuration(tasks.concurrent.oneTaskTime, tasks.concurrent.longestTask, runnable, sw);
-		if(next != null){
+		if (next != null) {
 			next.onUpdateConcurrentTaskDuration(runnable, sw);
 		}
 	}
@@ -162,7 +164,7 @@ public final class EventloopStats implements EventloopInspector {
 	public void onUpdateConcurrentTasksStats(int newConcurrentTasks, long loopTime) {
 		if (newConcurrentTasks != 0) tasks.concurrent.loopTime.recordValue((int) loopTime);
 		tasks.concurrent.tasksPerLoop.recordValue(newConcurrentTasks);
-		if(next != null){
+		if (next != null) {
 			next.onUpdateConcurrentTasksStats(newConcurrentTasks, loopTime);
 		}
 	}
@@ -174,7 +176,7 @@ public final class EventloopStats implements EventloopInspector {
 		} else {
 			updateTaskDuration(tasks.scheduled.getOneTaskTime(), tasks.scheduled.getLongestTask(), runnable, sw);
 		}
-		if(next != null){
+		if (next != null) {
 			next.onUpdateScheduledTaskDuration(runnable, sw, background);
 		}
 	}
@@ -188,7 +190,7 @@ public final class EventloopStats implements EventloopInspector {
 			if (newScheduledTasks != 0) tasks.scheduled.getLoopTime().recordValue((int) loopTime);
 			tasks.scheduled.getTasksPerLoop().recordValue(newScheduledTasks);
 		}
-		if(next != null){
+		if (next != null) {
 			next.onUpdateScheduledTasksStats(newScheduledTasks, loopTime, background);
 		}
 	}
@@ -204,7 +206,7 @@ public final class EventloopStats implements EventloopInspector {
 			fatalErrorsMap.put(type, stats);
 		}
 		stats.recordException(e, causedObject);
-		if(next != null){
+		if (next != null) {
 			next.onFatalError(e, causedObject);
 		}
 	}
@@ -216,15 +218,10 @@ public final class EventloopStats implements EventloopInspector {
 		} else {
 			tasks.scheduled.overdues.recordValue(overdue);
 		}
-		if(next != null){
+		if (next != null) {
 			next.onScheduledTaskOverdue(overdue, background);
 		}
 	}
-
-	@Override
-	public void setEventloop(Eventloop eventloop) {
-	}
-
 	// endregion
 
 	// region root attributes

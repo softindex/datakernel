@@ -29,6 +29,7 @@ import io.datakernel.csp.dsl.WithBinaryChannelInput;
 import io.datakernel.csp.dsl.WithChannelTransformer;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.TruncatedDataException;
+import io.datakernel.inspector.BaseInspector;
 import net.jpountz.lz4.LZ4Exception;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
@@ -55,7 +56,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 
 	private Inspector inspector;
 
-	public interface Inspector {
+	public interface Inspector extends BaseInspector<Inspector> {
 		void onBlock(ChannelLZ4Decompressor self, Header header, ByteBuf inputBuf, ByteBuf outputBuf);
 	}
 

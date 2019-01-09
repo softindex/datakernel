@@ -19,6 +19,8 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.inspector.AbstractInspector;
+import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
@@ -55,7 +57,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	private int ops = 0;
 
 	// region JMX
-	public interface Inspector {
+	public interface Inspector extends BaseInspector<Inspector> {
 		void onReceive(UdpPacket packet);
 
 		void onReceiveError(IOException e);
@@ -65,18 +67,11 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		void onSendError(IOException e);
 	}
 
-	public static class JmxInspector implements Inspector {
+	public static class JmxInspector extends AbstractInspector<Inspector> implements Inspector {
 		private final ValueStats receives;
 		private final EventStats receiveErrors;
 		private final ValueStats sends;
 		private final EventStats sendErrors;
-
-//		public JmxInspector(double smoothingWindow) {
-//			this.receives = ValueStats.create(smoothingWindow);
-//			this.receiveErrors = EventStats.create(smoothingWindow);
-//			this.sends = ValueStats.create(smoothingWindow);
-//			this.sendErrors = EventStats.create(smoothingWindow);
-//		}
 
 		public JmxInspector(Duration smoothingWindow) {
 			this.receives = ValueStats.create(smoothingWindow).withUnit("bytes").withRate();

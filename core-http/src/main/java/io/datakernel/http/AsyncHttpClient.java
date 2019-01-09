@@ -24,6 +24,8 @@ import io.datakernel.dns.DnsQueryException;
 import io.datakernel.dns.DnsResponse;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.*;
+import io.datakernel.inspector.AbstractInspector;
+import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.*;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.SocketSettings;
@@ -72,11 +74,11 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private SSLContext sslContext;
 	private ExecutorService sslExecutor;
 
+	private AsyncTcpSocketImpl.Inspector socketInspector;
+	private AsyncTcpSocketImpl.Inspector socketInspectorForSSL;
 	Inspector inspector;
 
-	public interface Inspector {
-		AsyncTcpSocketImpl.Inspector socketInspector(HttpRequest httpRequest, InetSocketAddress address, boolean https);
-
+	public interface Inspector extends BaseInspector<Inspector> {
 		void onRequest(HttpRequest request);
 
 		void onResolve(HttpRequest request, DnsResponse dnsResponse);
@@ -92,11 +94,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		void onHttpError(HttpClientConnection connection, boolean keepAliveConnection, Throwable e);
 	}
 
-	public static class JmxInspector implements Inspector {
+	public static class JmxInspector extends AbstractInspector<Inspector> implements Inspector {
 		private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
-		protected final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
-		protected final AsyncTcpSocketImpl.JmxInspector socketStatsForSSL = new AsyncTcpSocketImpl.JmxInspector();
 		private final EventStats totalRequests = EventStats.create(SMOOTHING_WINDOW);
 		private final ExceptionStats resolveErrors = ExceptionStats.create();
 		private final EventStats connected = EventStats.create(SMOOTHING_WINDOW);
@@ -106,11 +106,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		private final ExceptionStats httpErrors = ExceptionStats.create();
 		private long responsesErrors;
 		private final EventStats sslErrors = EventStats.create(SMOOTHING_WINDOW);
-
-		@Override
-		public AsyncTcpSocketImpl.Inspector socketInspector(HttpRequest httpRequest, InetSocketAddress address, boolean https) {
-			return https ? socketStatsForSSL : socketStats;
-		}
 
 		@Override
 		public void onRequest(HttpRequest request) {
@@ -158,11 +153,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			}
 		}
 
-		@JmxAttribute
-		public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
-			return socketStats;
-		}
-
 		@JmxAttribute(extraSubAttributes = "totalCount", description = "all requests that were sent (both successful and failed)")
 		public EventStats getTotalRequests() {
 			return totalRequests;
@@ -208,7 +198,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		public EventStats getSslErrors() {
 			return sslErrors;
 		}
-
 	}
 
 	private int inetAddressIdx = 0;
@@ -361,7 +350,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 					if (e == null) {
 						boolean https = request.isHttps();
 						asyncTcpSocketImpl
-								.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
+								.withInspector(https ? socketInspector : socketInspectorForSSL);
 
 						if (https && sslContext == null) {
 							throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
@@ -470,10 +459,22 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return formatListAsMultilineString(result);
 	}
 
+	@JmxAttribute
+	@Nullable
+	public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
+		return BaseInspector.lookup(socketInspector, AsyncTcpSocketImpl.JmxInspector.class);
+	}
+
+	@JmxAttribute
+	@Nullable
+	public AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
+		return BaseInspector.lookup(socketInspectorForSSL, AsyncTcpSocketImpl.JmxInspector.class);
+	}
+
 	@JmxAttribute(name = "")
 	@Nullable
 	public JmxInspector getStats() {
-		return inspector instanceof JmxInspector ? (JmxInspector) inspector : null;
+		return BaseInspector.lookup(inspector, JmxInspector.class);
 	}
 	// endregion
 }

@@ -20,6 +20,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
+import io.datakernel.inspector.AbstractInspector;
+import io.datakernel.inspector.BaseInspector;
+import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
@@ -55,11 +58,13 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 	private ChannelSupplier<ByteBuf> input;
 	private ChannelConsumer<ByteBuf> output;
 
-	public interface Inspector {
+	private Inspector inspector;
+
+	public interface Inspector extends BaseInspector<Inspector> {
 		void onBuf(ByteBuf in, ByteBuf out);
 	}
 
-	public static class JmxInspector implements Inspector {
+	public static class JmxInspector extends AbstractInspector<Inspector> implements Inspector {
 		public static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 		private final ValueStats bytesIn = ValueStats.create(SMOOTHING_WINDOW);
@@ -69,6 +74,16 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		public void onBuf(ByteBuf in, ByteBuf out) {
 			bytesIn.recordValue(in.readRemaining());
 			bytesOut.recordValue(out.readRemaining());
+		}
+
+		@JmxAttribute
+		public ValueStats getBytesIn() {
+			return bytesIn;
+		}
+
+		@JmxAttribute
+		public ValueStats getBytesOut() {
+			return bytesOut;
 		}
 	}
 
@@ -97,6 +112,11 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		return new ChannelLZ4Compressor(LZ4Factory.fastestInstance().highCompressor(compressionLevel));
 	}
 
+	public ChannelLZ4Compressor withInspector(Inspector inspector) {
+		this.inspector = inspector;
+		return this;
+	}
+
 	//check input for clarity
 	@Override
 	public ChannelInput<ByteBuf> getInput() {
@@ -122,6 +142,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 				.whenResult(buf -> {
 					if (buf != null) {
 						ByteBuf outputBuf = compressBlock(compressor, checksum, buf.array(), buf.readPosition(), buf.readRemaining());
+						if (inspector != null) inspector.onBuf(buf, outputBuf);
 						buf.recycle();
 						output.accept(outputBuf)
 								.whenResult($ -> doProcess());

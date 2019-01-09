@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ConstantException;
 import io.datakernel.exception.UncheckedException;
+import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
@@ -155,8 +156,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	// JMX
 
-	@Nullable
-	private EventloopInspector inspector = new EventloopStats(null);
+	private EventloopInspector inspector;
 
 	private boolean monitoring = false;
 
@@ -185,15 +185,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public Eventloop withInspector(@Nullable EventloopInspector inspector) {
-		if (inspector != null) {
-			inspector.setEventloop(this);
-		}
-
-		if (this.inspector != null) {
-			this.inspector = new EventloopStats(inspector);
-		} else {
-			this.inspector = inspector;
-		}
+		this.inspector = inspector;
 		return this;
 	}
 
@@ -217,12 +209,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return this;
 	}
 
-	public Eventloop withoutStats() {
-		assert inspector != null;
-		inspector = ((EventloopStats) inspector).next;
-		return this;
-	}
-
 	// endregion
 
 	@Nullable
@@ -243,11 +229,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			return eventloop;
 		}
 		throw new IllegalStateException(NO_CURRENT_EVENTLOOP_ERROR);
-	}
-
-	@Nullable
-	public EventloopInspector getInspector() {
-		return inspector;
 	}
 
 	private void openSelector() {
@@ -357,9 +338,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 			try {
 				long selectTimeout = getSelectTimeout();
-				if (inspector != null) {
-					inspector.onUpdateSelectorSelectTimeout(selectTimeout);
-				}
+				if (inspector != null) inspector.onUpdateSelectorSelectTimeout(selectTimeout);
 				if (selectTimeout <= 0) {
 					lastSelectedKeys = selector.selectNow();
 				} else {
@@ -473,16 +452,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 					invalidKeys++;
 				}
 			}
-			if (sw != null && inspector != null) {
-				inspector.onUpdateSelectedKeyDuration(sw);
-			}
+			if (sw != null && inspector != null) inspector.onUpdateSelectedKeyDuration(sw);
 		}
 
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		if (inspector != null) {
-			inspector.onUpdateSelectedKeysStats(lastSelectedKeys,
-					invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
-		}
+		if (inspector != null)
+			inspector.onUpdateSelectedKeysStats(lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
 
 		return acceptKeys + connectKeys + readKeys + writeKeys + invalidKeys;
 	}
@@ -511,18 +486,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			try {
 				runnable.run();
 				tick++;
-				if (sw != null && inspector != null) {
-					inspector.onUpdateLocalTaskDuration(runnable, sw);
-				}
+				if (sw != null && inspector != null) inspector.onUpdateLocalTaskDuration(runnable, sw);
 			} catch (Throwable e) {
 				recordFatalError(e, runnable);
 			}
 			newLocalTasks++;
 		}
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		if (inspector != null) {
-			inspector.onUpdateLocalTasksStats(newLocalTasks, loopTime);
-		}
+		if (inspector != null) inspector.onUpdateLocalTasksStats(newLocalTasks, loopTime);
 
 		return newLocalTasks;
 	}
@@ -550,18 +521,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 			try {
 				runnable.run();
-				if (sw != null && inspector != null) {
-					inspector.onUpdateConcurrentTaskDuration(runnable, sw);
-				}
+				if (sw != null && inspector != null) inspector.onUpdateConcurrentTaskDuration(runnable, sw);
 			} catch (Throwable e) {
 				recordFatalError(e, runnable);
 			}
 			newConcurrentTasks++;
 		}
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		if (inspector != null) {
-			inspector.onUpdateConcurrentTasksStats(newConcurrentTasks, loopTime);
-		}
+		if (inspector != null) inspector.onUpdateConcurrentTasksStats(newConcurrentTasks, loopTime);
 
 		return newConcurrentTasks;
 	}
@@ -612,8 +579,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				runnable.run();
 				tick++;
 				peeked.complete();
-				if (sw != null && inspector != null)
-					inspector.onUpdateScheduledTaskDuration(runnable, sw, background);
+				if (sw != null && inspector != null) inspector.onUpdateScheduledTaskDuration(runnable, sw, background);
 			} catch (Throwable e) {
 				recordFatalError(e, runnable);
 			}
@@ -622,9 +588,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		if (inspector != null) {
-			inspector.onUpdateScheduledTasksStats(newScheduledTasks, loopTime, background);
-		}
+		if (inspector != null) inspector.onUpdateScheduledTasksStats(newScheduledTasks, loopTime, background);
 
 		return newScheduledTasks;
 	}
@@ -1132,7 +1096,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@Nullable
 	@JmxAttribute(name = "")
 	public EventloopStats getStats() {
-		return inspector instanceof EventloopStats ? (EventloopStats) inspector : null;
+		return BaseInspector.lookup(inspector, EventloopStats.class);
 	}
 
 	@JmxAttribute

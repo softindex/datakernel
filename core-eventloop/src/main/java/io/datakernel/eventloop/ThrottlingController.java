@@ -17,6 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.inspector.AbstractInspector;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
@@ -31,7 +32,7 @@ import java.util.Random;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.pow;
 
-public final class ThrottlingController implements EventloopJmxMBean, EventloopInspector {
+public final class ThrottlingController extends AbstractInspector<EventloopInspector> implements EventloopJmxMBean, EventloopInspector {
 	private static int staticInstanceCounter = 0;
 
 	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
@@ -368,6 +369,11 @@ public final class ThrottlingController implements EventloopJmxMBean, EventloopI
 	}
 
 	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
+
+	@Override
 	public String toString() {
 		return String.format("{throttling:%2d%% avgKps=%-4d avgThrottling=%2d%% requests=%-4d throttled=%-4d rounds=%-3d zero=%-3d >targetTime=%-3d}",
 				(int) (throttling * 100),
@@ -378,15 +384,5 @@ public final class ThrottlingController implements EventloopJmxMBean, EventloopI
 				infoRounds,
 				infoRoundsZeroThrottling,
 				infoRoundsExceededTargetTime);
-	}
-
-	@Override
-	public void setEventloop(Eventloop eventloop) {
-		this.eventloop = eventloop;
-	}
-
-	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
 	}
 }

@@ -22,6 +22,8 @@ import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.AsyncTimeoutException;
+import io.datakernel.inspector.AbstractInspector;
+import io.datakernel.inspector.BaseInspector;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
@@ -72,7 +74,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private Inspector inspector;
 
-	public interface Inspector {
+	public interface Inspector extends BaseInspector<Inspector> {
 		void onReadTimeout();
 
 		void onRead(ByteBuf buf);
@@ -88,7 +90,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		void onWriteError(IOException e);
 	}
 
-	public static class JmxInspector implements Inspector {
+	public static class JmxInspector extends AbstractInspector<Inspector> implements Inspector {
 		public static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 		private final ValueStats reads = ValueStats.create(SMOOTHING_WINDOW).withUnit("bytes").withRate();
@@ -259,8 +261,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	private void updateInterests() {
-		if (reentrantCall || channel == null) return;
-		int newOps = (readBuf == null ? SelectionKey.OP_READ : 0) | (writeBuf == null ? 0 : SelectionKey.OP_WRITE);
+		if (ops < 0 || channel == null) return;
+		byte newOps = (byte) ((readBuf == null ? SelectionKey.OP_READ : 0) | (writeBuf == null ? 0 : SelectionKey.OP_WRITE));
 		if (key == null) {
 			ops = newOps;
 			try {
@@ -503,6 +505,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				"channel=" + (channel != null ? channel : "") +
 				", readBuf=" + readBuf +
 				", writeBuf=" + writeBuf +
+				", readEndOfStream=" + readEndOfStream +
 				", writeEndOfStream=" + writeEndOfStream +
 				", read=" + read +
 				", write=" + write +

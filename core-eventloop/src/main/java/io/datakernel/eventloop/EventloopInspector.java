@@ -1,9 +1,10 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.inspector.BaseInspector;
 import io.datakernel.util.Stopwatch;
 
-public interface EventloopInspector {
+public interface EventloopInspector extends BaseInspector<EventloopInspector> {
 	void onUpdateBusinessLogicTime(boolean taskOrKerPresent, boolean externalTaskPresent, long businessLogicTime);
 
 	void onUpdateSelectorSelectTime(long selectorSelectTime);
@@ -29,6 +30,4 @@ public interface EventloopInspector {
 	void onFatalError(Throwable e, Object causedObject);
 
 	void onScheduledTaskOverdue(int overdue, boolean background);
-
-	void setEventloop(Eventloop eventloop);
 }

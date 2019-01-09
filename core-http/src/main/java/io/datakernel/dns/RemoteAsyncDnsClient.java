@@ -27,7 +27,11 @@ import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.UdpPacket;
 import io.datakernel.exception.ParseException;
+import io.datakernel.inspector.AbstractInspector;
+import io.datakernel.inspector.BaseInspector;
+import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.net.DatagramSocketSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +48,7 @@ import static io.datakernel.async.Promises.TIMEOUT_EXCEPTION;
 import static io.datakernel.async.Promises.timeout;
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.TIMED_OUT;
 
-public class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, EventloopJmxMBeanEx {
+public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(RemoteAsyncDnsClient.class);
 
 	private static final int DNS_SERVER_PORT = 53;
@@ -59,9 +63,12 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, Event
 	private Duration timeout = Duration.ofSeconds(3);
 
 	@Nullable
-	private AsyncUdpSocket socket = null;
+	private AsyncUdpSocket socket;
+
 	@Nullable
-	private Inspector inspector = null;
+	private AsyncUdpSocketImpl.Inspector socketInspector;
+	@Nullable
+	private Inspector inspector;
 
 	// region creators
 	private RemoteAsyncDnsClient(Eventloop eventloop) {
@@ -126,7 +133,7 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, Event
 			try {
 				DatagramChannel channel = Eventloop.createDatagramChannel(datagramSocketSettings, null, dnsServerAddress);
 				AsyncUdpSocketImpl s = AsyncUdpSocketImpl.create(eventloop, channel)
-						.withInspector(inspector != null ? inspector.socketInspector() : null);
+						.withInspector(socketInspector);
 				s.setEventHandler(this);
 				s.register();
 				socket = s;
@@ -214,14 +221,66 @@ public class RemoteAsyncDnsClient implements AsyncDnsClient, EventHandler, Event
 	public void onClosedWithError(Exception e) {
 	}
 
-	public interface Inspector {
+	// region JMX
+	public interface Inspector extends BaseInspector<Inspector> {
 		void onDnsQuery(DnsQuery query, ByteBuf payload);
 
 		void onDnsQueryResult(DnsQuery query, DnsResponse result);
 
 		void onDnsQueryError(DnsQuery query, Throwable e);
-
-		@Nullable
-		AsyncUdpSocketImpl.Inspector socketInspector();
 	}
+
+	public static class JmxInspector extends AbstractInspector<Inspector> implements Inspector {
+		private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
+
+		private final EventStats queries = EventStats.create(SMOOTHING_WINDOW);
+		private final EventStats failedQueries = EventStats.create(SMOOTHING_WINDOW);
+		private final EventStats expirations = EventStats.create(SMOOTHING_WINDOW);
+
+		@Override
+		public void onDnsQuery(DnsQuery query, ByteBuf payload) {
+			queries.recordEvent();
+		}
+
+		@Override
+		public void onDnsQueryResult(DnsQuery query, DnsResponse result) {
+			if (!result.isSuccessful()) {
+				failedQueries.recordEvent();
+			}
+		}
+
+		@Override
+		public void onDnsQueryError(DnsQuery query, Throwable e) {
+			failedQueries.recordEvent();
+		}
+
+		@JmxAttribute
+		public EventStats getQueries() {
+			return queries;
+		}
+
+		@JmxAttribute
+		public EventStats getFailedQueries() {
+			return failedQueries;
+		}
+
+		@JmxAttribute
+		public EventStats getExpirations() {
+			return expirations;
+		}
+	}
+	// endregion
+
+	@JmxAttribute
+	@Nullable
+	public AsyncUdpSocketImpl.JmxInspector getSocketStats() {
+		return BaseInspector.lookup(socketInspector, AsyncUdpSocketImpl.JmxInspector.class);
+	}
+
+	@JmxAttribute(name = "")
+	@Nullable
+	public JmxInspector getStats() {
+		return BaseInspector.lookup(inspector, JmxInspector.class);
+	}
+
 }

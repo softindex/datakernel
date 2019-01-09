@@ -183,8 +183,17 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 											.transformWith(streamReads.register(logPartition + ":" + currentLogFile + "@" + position))
 											.transformWith(streamReadStats)
 											.transformWith(ChannelLZ4Decompressor.create()
-													.withInspector((self, header, inputBuf, outputBuf) ->
-															inputStreamPosition += ChannelLZ4Decompressor.HEADER_LENGTH + header.compressedLen))
+													.withInspector(new ChannelLZ4Decompressor.Inspector() {
+														@Override
+														public <Q extends ChannelLZ4Decompressor.Inspector> Q lookup(Class<Q> type) {
+															throw new UnsupportedOperationException();
+														}
+
+														@Override
+														public void onBlock(ChannelLZ4Decompressor self, ChannelLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
+															inputStreamPosition += ChannelLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
+														}
+													}))
 											.transformWith(supplier ->
 													supplier.withEndOfStream(eos ->
 															eos.thenComposeEx(($, e) -> (e == null || e instanceof TruncatedDataException) ?
