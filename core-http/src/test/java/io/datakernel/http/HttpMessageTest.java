@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
@@ -37,7 +36,7 @@ public final class HttpMessageTest {
 	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	private static void assertHttpMessageEquals(String expected, HttpMessage message) {
-		ByteBuf buf = AbstractHttpConnection.bodySupplier(message).toCollector(ByteBufQueue.collector()).materialize().getResult();
+		ByteBuf buf = AbstractHttpConnection.renderHttpMessage(message);
 		String actual = ByteBufStrings.asAscii(buf);
 
 		assertEquals(new LinkedHashSet<>(asList(expected.split("\r\n"))), new LinkedHashSet<>(asList(actual.split("\r\n"))));

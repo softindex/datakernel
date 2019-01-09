@@ -138,55 +138,73 @@ public abstract class AbstractHttpConnection {
 		readQueue.recycle();
 	}
 
-	static ChannelSupplier<ByteBuf> bodySupplier(HttpMessage httpMessage) {
-		if (httpMessage.bodySupplier != null) {
-			if (httpMessage.bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue) {
-				ByteBuf body = ((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) httpMessage.bodySupplier).getValue();
-				if ((httpMessage.flags & HttpMessage.USE_GZIP) == 0) {
-					httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(body.readRemaining()));
-					ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + body.readRemaining());
-					httpMessage.writeTo(buf);
-					buf.put(body);
-					body.recycle();
-					return ChannelSupplier.of(buf);
-				} else {
-					ByteBuf gzippedBody = GzipProcessorUtils.toGzip(body);
-					httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
-					httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(gzippedBody.readRemaining()));
-					ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + gzippedBody.readRemaining());
-					httpMessage.writeTo(buf);
-					buf.put(gzippedBody);
-					gzippedBody.recycle();
-					return ChannelSupplier.of(buf);
-				}
-			}
-
-			httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
+	@Nullable
+	public static ByteBuf renderHttpMessage(HttpMessage httpMessage) {
+		if (httpMessage.bodySupplier instanceof ChannelSuppliers.ChannelSupplierOfValue) {
+			ByteBuf body = ((ChannelSuppliers.ChannelSupplierOfValue<ByteBuf>) httpMessage.bodySupplier).getValue();
 			if ((httpMessage.flags & HttpMessage.USE_GZIP) == 0) {
-				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
+				httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(body.readRemaining()));
+				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + body.readRemaining());
 				httpMessage.writeTo(buf);
-				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
-				httpMessage.bodySupplier.bindTo(chunker.getInput());
-				return ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier());
+				buf.put(body);
+				body.recycle();
+				return buf;
 			} else {
+				ByteBuf gzippedBody = GzipProcessorUtils.toGzip(body);
 				httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
-				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
+				httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(gzippedBody.readRemaining()));
+				ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize() + gzippedBody.readRemaining());
 				httpMessage.writeTo(buf);
-				BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
-				BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
-				httpMessage.bodySupplier.bindTo(deflater.getInput());
-				deflater.getOutput().bindTo(chunker.getInput());
-				return ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier());
+				buf.put(gzippedBody);
+				gzippedBody.recycle();
+				return buf;
 			}
-		} else {
+		}
+
+		if (httpMessage.bodySupplier == null) {
 			httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(0));
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
-			return ChannelSupplier.of(buf);
+			return buf;
+		}
+
+		return null;
+	}
+
+	protected void writeHttpMessageAsChunkedStream(HttpMessage httpMessage) {
+		httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
+		if ((httpMessage.flags & HttpMessage.USE_GZIP) == 0) {
+			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
+			httpMessage.writeTo(buf);
+			BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
+			httpMessage.bodySupplier.bindTo(chunker.getInput());
+			writeStream(ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier()));
+		} else {
+			httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
+			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
+			httpMessage.writeTo(buf);
+			BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
+			BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
+			httpMessage.bodySupplier.bindTo(deflater.getInput());
+			deflater.getOutput().bindTo(chunker.getInput());
+			writeStream(ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier()));
 		}
 	}
 
-	protected final void writeHttpMessage(ChannelSupplier<ByteBuf> supplier) {
+	protected void writeBuf(ByteBuf buf) {
+		socket.write(buf)
+				.whenComplete(($, e2) -> {
+					if (isClosed()) return;
+					if (e2 == null) {
+						flags |= BODY_SENT;
+						onBodySent();
+					} else {
+						closeWithError(e2);
+					}
+				});
+	}
+
+	private void writeStream(ChannelSupplier<ByteBuf> supplier) {
 		supplier.get()
 				.whenComplete((buf, e) -> {
 					if (e == null) {
@@ -195,7 +213,7 @@ public abstract class AbstractHttpConnection {
 									.whenComplete(($, e2) -> {
 										if (isClosed()) return;
 										if (e2 == null) {
-											writeHttpMessage(supplier);
+											writeStream(supplier);
 										} else {
 											closeWithError(e2);
 										}
@@ -468,7 +486,7 @@ public abstract class AbstractHttpConnection {
 					readQueue.add(buf);
 					thenRun();
 				} else {
-					onEndOfStream();
+					close();
 				}
 			} else {
 				closeWithError(e);
@@ -476,8 +494,6 @@ public abstract class AbstractHttpConnection {
 		}
 
 		abstract void thenRun();
-
-		abstract void onEndOfStream();
 	}
 
 	protected final ReadConsumer firstLineConsumer = new ReadConsumer() {
@@ -485,28 +501,12 @@ public abstract class AbstractHttpConnection {
 		void thenRun() {
 			readFirstLine();
 		}
-
-		@Override
-		void onEndOfStream() {
-			if (readQueue.isEmpty()) {
-				// Connection closed before any data has been received, probably client just disconnected
-				close();
-			} else {
-				closeWithError(INCOMPLETE_MESSAGE);
-			}
-		}
-
 	};
 
 	private final ReadConsumer headersConsumer = new ReadConsumer() {
 		@Override
 		void thenRun() {
 			readHeaders();
-		}
-
-		@Override
-		void onEndOfStream() {
-			closeWithError(INCOMPLETE_MESSAGE);
 		}
 	};
 }

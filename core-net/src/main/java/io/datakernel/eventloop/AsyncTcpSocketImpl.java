@@ -62,8 +62,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private SettablePromise<Void> write;
 
 	private SelectionKey key;
-	private boolean reentrantCall;
-	private int ops;
+	private byte ops;
 
 	private int readTimeout = NO_TIMEOUT;
 	private int writeTimeout = NO_TIMEOUT;
@@ -298,7 +297,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public void onReadReady() {
-		reentrantCall = true;
+		ops = (byte) (ops | 0x80);
 		doRead();
 		if (read != null && (readBuf != null || readEndOfStream)) {
 			SettablePromise<ByteBuf> read = this.read;
@@ -307,7 +306,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			this.readBuf = null;
 			read.set(readBuf);
 		}
-		reentrantCall = false;
+		ops = (byte) (ops & 0x7f);
 		updateInterests();
 	}
 
@@ -401,7 +400,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	@Override
 	public void onWriteReady() {
 		assert write != null;
-		reentrantCall = true;
+		ops = (byte) (ops | 0x80);
 		try {
 			doWrite();
 			if (writeBuf == null) {
@@ -412,7 +411,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		} catch (IOException e) {
 			close(e);
 		}
-		reentrantCall = false;
+		ops = (byte) (ops & 0x7f);
 		updateInterests();
 	}
 
@@ -509,7 +508,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				", writeEndOfStream=" + writeEndOfStream +
 				", read=" + read +
 				", write=" + write +
-				", processing=" + reentrantCall +
+				", ops=" + ops +
 				"}";
 	}
 }

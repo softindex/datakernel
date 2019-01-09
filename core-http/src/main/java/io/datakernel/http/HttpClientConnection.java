@@ -239,7 +239,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			}
 		}
 		request.addHeader(CONNECTION, connectionHeader);
-		writeHttpMessage(bodySupplier(request));
+		ByteBuf buf = renderHttpMessage(request);
+		if (buf != null) {
+			writeBuf(buf);
+		} else {
+			writeHttpMessageAsChunkedStream(request);
+		}
 		request.recycle();
 		if (!isClosed()) {
 			readHttpMessage();

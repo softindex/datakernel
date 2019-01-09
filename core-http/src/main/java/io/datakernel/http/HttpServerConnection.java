@@ -213,7 +213,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			}
 		}
 		httpResponse.addHeader(CONNECTION, connectionHeader);
-		writeHttpMessage(bodySupplier(httpResponse));
+		ByteBuf buf = renderHttpMessage(httpResponse);
+		if (buf != null) {
+			writeBuf(buf);
+		} else {
+			writeHttpMessageAsChunkedStream(httpResponse);
+		}
 		httpResponse.recycle();
 	}
 
