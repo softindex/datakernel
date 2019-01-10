@@ -22,7 +22,6 @@ import io.datakernel.exception.UncheckedException;
 import io.datakernel.util.Recyclable;
 
 import java.util.Iterator;
-import java.util.function.Consumer;
 import java.util.stream.Collector;
 
 import static io.datakernel.util.CollectionUtils.emptyIterator;
@@ -124,22 +123,50 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 	}
 
 	/**
-	 * Creates and returns ByteBufSlice that contains {@code maxSize} bytes from queue's first ByteBuf
+	 * Creates and returns ByteBufSlice that contains {@code size} bytes from queue's first ByteBuf
 	 * if latter contains enough bytes. Otherwise creates and returns ByteBuf that contains all bytes
 	 * from first ByteBuf in queue.
 	 *
-	 * @param maxSize number of bytes to returning
+	 * @param size number of bytes to returning
 	 * @return ByteBuf with result bytes
 	 */
-	public ByteBuf takeMaxSize(int maxSize) {
+	public ByteBuf takeAtMost(int size) {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
-		if (maxSize >= buf.readRemaining()) {
+		if (size >= buf.readRemaining()) {
 			first = next(first);
 			return buf;
 		}
-		ByteBuf result = buf.slice(maxSize);
-		buf.moveReadPosition(maxSize);
+		ByteBuf result = buf.slice(size);
+		buf.moveReadPosition(size);
+		return result;
+	}
+
+	public ByteBuf takeAtLeast(int size) {
+		assert hasRemainingBytes(size);
+		if (size == 0) return ByteBuf.empty();
+		ByteBuf buf = bufs[first];
+		if (buf.readRemaining() >= size) {
+			first = next(first);
+			return buf;
+		}
+		ByteBuf result = ByteBufPool.allocate(size);
+		drainTo(result.array(), 0, size);
+		result.moveWritePosition(size);
+		return result;
+	}
+
+	public ByteBuf takeAtLeast(int size, ByteBufConsumer recycled) {
+		assert hasRemainingBytes(size);
+		if (size == 0) return ByteBuf.empty();
+		ByteBuf buf = bufs[first];
+		if (buf.readRemaining() >= size) {
+			first = next(first);
+			return buf;
+		}
+		ByteBuf result = ByteBufPool.allocate(size);
+		drainTo(result.array(), 0, size, recycled);
+		result.moveWritePosition(size);
 		return result;
 	}
 
@@ -151,8 +178,8 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 	 * @return ByteBuf with {@code exactSize} or less bytes
 	 */
 	public ByteBuf takeExactSize(int exactSize) {
-		if (!hasRemaining())
-			return ByteBuf.empty();
+		assert hasRemainingBytes(exactSize);
+		if (exactSize == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() == exactSize) {
 			first = next(first);
@@ -163,7 +190,26 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 			return result;
 		}
 		ByteBuf result = ByteBufPool.allocate(exactSize);
-		drainTo(result, exactSize);
+		drainTo(result.array(), 0, exactSize);
+		result.moveWritePosition(exactSize);
+		return result;
+	}
+
+	public ByteBuf takeExactSize(int exactSize, ByteBufConsumer recycledBufs) {
+		assert hasRemainingBytes(exactSize);
+		if (exactSize == 0) return ByteBuf.empty();
+		ByteBuf buf = bufs[first];
+		if (buf.readRemaining() == exactSize) {
+			first = next(first);
+			return buf;
+		} else if (exactSize < buf.readRemaining()) {
+			ByteBuf result = buf.slice(exactSize);
+			buf.moveReadPosition(exactSize);
+			return result;
+		}
+		ByteBuf result = ByteBufPool.allocate(exactSize);
+		drainTo(result.array(), 0, exactSize, recycledBufs);
+		result.moveWritePosition(exactSize);
 		return result;
 	}
 
@@ -322,8 +368,26 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 				buf.moveReadPosition(s);
 				return maxSize;
 			} else {
-				buf.readPosition(buf.writePosition());
-				doPoll();
+				buf.recycle();
+				first = next(first);
+				s -= remaining;
+			}
+		}
+		return maxSize - s;
+	}
+
+	public int skip(int maxSize, ByteBufConsumer recycledBufs) {
+		int s = maxSize;
+		while (hasRemaining()) {
+			ByteBuf buf = bufs[first];
+			int remaining = buf.readRemaining();
+			if (s < remaining) {
+				buf.moveReadPosition(s);
+				return maxSize;
+			} else {
+				recycledBufs.accept(buf);
+				buf.recycle();
+				first = next(first);
 				s -= remaining;
 			}
 		}
@@ -350,8 +414,29 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 				return maxSize;
 			} else {
 				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, remaining);
-				buf.readPosition(buf.writePosition());
-				doPoll();
+				buf.recycle();
+				first = next(first);
+				s -= remaining;
+				destOffset += remaining;
+			}
+		}
+		return maxSize - s;
+	}
+
+	public int drainTo(byte[] dest, int destOffset, int maxSize, ByteBufConsumer recycledBufs) {
+		int s = maxSize;
+		while (hasRemaining()) {
+			ByteBuf buf = bufs[first];
+			int remaining = buf.readRemaining();
+			if (s < remaining) {
+				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, s);
+				buf.moveReadPosition(s);
+				return maxSize;
+			} else {
+				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, remaining);
+				recycledBufs.accept(buf);
+				buf.recycle();
+				first = next(first);
 				s -= remaining;
 				destOffset += remaining;
 			}
@@ -400,7 +485,7 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 		return size;
 	}
 
-	public int drainTo(Consumer<ByteBuf> dest) {
+	public int drainTo(ByteBufConsumer dest) {
 		int size = 0;
 		while (hasRemaining()) {
 			ByteBuf buf = take();
@@ -421,17 +506,17 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 	public int drainTo(ByteBufQueue dest, int maxSize) {
 		int s = maxSize;
 		while (s != 0 && hasRemaining()) {
-			ByteBuf buf = takeMaxSize(s);
+			ByteBuf buf = takeAtMost(s);
 			dest.add(buf);
 			s -= buf.readRemaining();
 		}
 		return maxSize - s;
 	}
 
-	public int drainTo(Consumer<ByteBuf> dest, int maxSize) {
+	public int drainTo(ByteBufConsumer dest, int maxSize) {
 		int s = maxSize;
 		while (s != 0 && hasRemaining()) {
-			ByteBuf buf = takeMaxSize(s);
+			ByteBuf buf = takeAtMost(s);
 			dest.accept(buf);
 			s -= buf.readRemaining();
 		}

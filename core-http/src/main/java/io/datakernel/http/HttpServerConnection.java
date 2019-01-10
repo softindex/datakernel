@@ -26,6 +26,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
 import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpServer.Inspector;
+import io.datakernel.util.ThreadLocalCharArray;
 
 import java.net.InetAddress;
 import java.util.Arrays;
@@ -40,8 +41,6 @@ import static io.datakernel.http.HttpMethod.*;
  * {@link AsyncServlet async servlet}.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
-	public static final ParseException FIRST_LINE_IS_TOO_BIG = new ParseException(HttpServerConnection.class, "First line is too big");
-
 	private static final int HEADERS_SLOTS = 256;
 	private static final int MAX_PROBINGS = 2;
 	private static final HttpMethod[] METHODS = new HttpMethod[HEADERS_SLOTS];
@@ -68,6 +67,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private final AsyncHttpServer server;
 	private final Inspector inspector;
 	private final AsyncServlet servlet;
+	private final char[] charBuffer;
 
 	private static final byte[] EXPECT_100_CONTINUE = encodeAscii("100-continue");
 	private static final byte[] EXPECT_RESPONSE_CONTINUE = encodeAscii("HTTP/1.1 100 Continue\r\n\r\n");
@@ -79,20 +79,22 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param remoteAddress an address of remote
 	 * @param server        server, which uses this connection
 	 * @param servlet       servlet for handling requests
+	 * @param charBuffer
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-			AsyncHttpServer server, AsyncServlet servlet) {
+			AsyncHttpServer server, AsyncServlet servlet, char[] charBuffer) {
 		super(eventloop, asyncTcpSocket);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
 		this.inspector = server.inspector;
+		this.charBuffer = charBuffer;
 	}
 
 	public void serve() {
 		(pool = server.poolReadWrite).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
-		socket.read().whenComplete(firstLineConsumer);
+		socket.read().whenComplete(startLineConsumer);
 	}
 
 	@Override
@@ -105,8 +107,65 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 	}
 
+	/**
+	 * This method is called after received line of header.
+	 *
+	 * @param line received line of header.
+	 */
+	@Override
+	protected void onStartLine(byte[] line, int limit) throws ParseException {
+		switchPool(server.poolReadWrite);
+
+		HttpMethod method = getHttpMethod(line);
+		if (method == null) {
+			throw new UnknownFormatException(HttpServerConnection.class,
+					"Unknown HTTP method. First Bytes: " + Arrays.toString(line));
+		}
+
+		int urlStart = method.size + 1;
+
+		int urlEnd;
+		for (urlEnd = urlStart; urlEnd < limit; urlEnd++) {
+			if (line[urlEnd] == SP)
+				break;
+		}
+
+		int p;
+		for (p = urlEnd + 1; p < limit; p++) {
+			if (line[p] != SP)
+				break;
+		}
+
+		if (p + 7 < limit) {
+			boolean http11 = line[p + 0] == 'H' && line[p + 1] == 'T' && line[p + 2] == 'T' && line[p + 3] == 'P'
+					&& line[p + 4] == '/' && line[p + 5] == '1' && line[p + 6] == '.' && line[p + 7] == '1';
+			if (http11) {
+				flags |= KEEP_ALIVE; // keep-alive for HTTP/1.1
+			}
+		}
+
+		request = new HttpRequest(method,
+				UrlParser.parse(decodeAscii(line, urlStart, urlEnd - urlStart, ThreadLocalCharArray.ensure(charBuffer, urlEnd - urlStart))));
+
+		if (method == GET || method == DELETE) {
+			contentLength = 0;
+		}
+	}
+
+	@Override
+	protected void onHeaderBuf(ByteBuf buf) {
+		request.addHeaderBuf(buf);
+	}
+
+	private static HttpMethod getHttpMethod(byte[] line) {
+		boolean get = line[0] == 'G' && line[1] == 'E' && line[2] == 'T' && line[3] == SP;
+		if (get) return GET;
+		boolean post = line[0] == 'P' && line[1] == 'O' && line[2] == 'S' && line[3] == 'T' && line[4] == SP;
+		if (post) return POST;
+		return getHttpMethodFromMap(line);
+	}
+
 	private static HttpMethod getHttpMethodFromMap(byte[] line) {
-		assert line.length >= 16;
 		int hashCode = 1;
 		for (int i = 0; i < 10; i++) {
 			byte b = line[i];
@@ -127,82 +186,20 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		return null;
 	}
 
-	private static HttpMethod getHttpMethod(byte[] line) {
-		if (line[0] == 'G' && line[1] == 'E' && line[2] == 'T' && line[3] == SP) {
-			return GET;
-		}
-		if (line[0] == 'P' && line[1] == 'O' && line[2] == 'S' && line[3] == 'T' && line[4] == SP) {
-			return POST;
-		}
-		return getHttpMethodFromMap(line);
-	}
-
-	/**
-	 * This method is called after received line of header.
-	 *
-	 * @param line received line of header.
-	 */
-	@Override
-	protected void onFirstLine(byte[] line, int size) throws ParseException {
-		assert line.length >= 16;
-		switchPool(server.poolReadWrite);
-
-		HttpMethod method = getHttpMethod(line);
-		if (method == null) {
-			String firstBytes = Arrays.toString(line);
-			throw new UnknownFormatException(HttpServerConnection.class, "Unknown HTTP method. First Bytes: " + firstBytes);
-		}
-
-		int readPosition = method.size + 1;
-
-		if (MAX_HEADER_LINE_SIZE_BYTES <= line.length - readPosition) {
-			throw FIRST_LINE_IS_TOO_BIG;
-		}
-
-		int i;
-		for (i = 0; i < line.length - readPosition; i++) {
-			byte b = line[readPosition + i];
-			if (b == SP)
-				break;
-		}
-
-		int p;
-		for (p = readPosition + i + 1; p < line.length; p++) {
-			if (line[p] != SP)
-				break;
-		}
-
-		if (p + 7 < line.length) {
-			if (line[p + 0] == 'H' && line[p + 1] == 'T' && line[p + 2] == 'T' && line[p + 3] == 'P'
-					&& line[p + 4] == '/' && line[p + 5] == '1' && line[p + 6] == '.' && line[p + 7] == '1') {
-				flags |= KEEP_ALIVE; // keep-alive for HTTP/1.1
-			}
-		}
-
-		UrlParser url = UrlParser.parse(decodeAscii(line, readPosition, i));
-		request = new HttpRequest(method, url);
-
-		if (method == GET || method == DELETE) {
-			contentLength = 0;
-		}
-	}
-
 	/**
 	 * This method is called after receiving header. It sets its value to request.
 	 *
 	 * @param header received header
-	 * @param value  value of received header
 	 */
 	@Override
-	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
-		super.onHeader(header, value);
+	protected void onHeader(HttpHeader header, byte[] array, int off, int len) throws ParseException {
 		if (header == HttpHeaders.EXPECT) {
-			if (equalsLowerCaseAscii(EXPECT_100_CONTINUE, value.array(), value.readPosition(), value.readRemaining())) {
+			if (equalsLowerCaseAscii(EXPECT_100_CONTINUE, array, off, len)) {
 				socket.write(ByteBuf.wrapForReading(EXPECT_RESPONSE_CONTINUE));
 			}
 		}
 		if (request.headers.size() >= MAX_HEADERS) throw TOO_MANY_HEADERS;
-		request.addParsedHeader(header, value);
+		request.addParsedHeader(header, array, off, len);
 	}
 
 	private void writeHttpResponse(HttpResponse httpResponse) {
@@ -215,7 +212,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		httpResponse.addHeader(CONNECTION, connectionHeader);
 		ByteBuf buf = renderHttpMessage(httpResponse);
 		if (buf != null) {
-			writeBuf(buf);
+			if ((flags & KEEP_ALIVE) != 0) {
+				eventloop.post(() -> writeBuf(buf));
+			} else {
+				writeBuf(buf);
+			}
 		} else {
 			writeHttpMessageAsChunkedStream(httpResponse);
 		}
@@ -289,7 +290,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		if ((flags & KEEP_ALIVE) != 0 && server.keepAliveTimeoutMillis != 0) {
 			switchPool(server.poolKeepAlive);
 			flags = 0;
-			readHttpMessage();
+			try {
+				readHttpMessage();
+			} catch (ParseException e) {
+				closeWithError(e);
+			}
 		} else {
 			close();
 		}

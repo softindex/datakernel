@@ -22,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ByteArraySlabPoolTest {
-	@SuppressWarnings("ConstantConditions")
 	private void checkAllocate(int size, int expectedSize, int[] poolSizes) {
 		ByteBufPool.clear();
 
@@ -48,23 +47,12 @@ public class ByteArraySlabPoolTest {
 	public void testAllocate() {
 		ByteBufPool.clear();
 
-		checkAllocate(0, 0, new int[]{0, 0, 0, 0, 0});
-		checkAllocate(1, 1, new int[]{0, 0, 0, 0, 0});
-		checkAllocate(2, 2, new int[]{0, 0, 0, 0, 0});
-		checkAllocate(8, 8, new int[]{0, 0, 0, 0, 0});
-		checkAllocate(9, 9, new int[]{0, 0, 0, 0, 0});
-		checkAllocate(15, 15, new int[]{0, 0, 0, 0, 0});
-/*
-		checkAllocate(16, 16, new int[]{0, 0, 0, 0, 16});
-		checkAllocate(17, 32, new int[]{0, 0, 0, 0, 0, 32});
-		checkAllocate(31, 32, new int[]{0, 0, 0, 0, 0, 32});
-		checkAllocate(32, 32, new int[]{0, 0, 0, 0, 0, 32});
-		checkAllocate(33, 64, new int[]{0, 0, 0, 0, 0, 0, 64});
-		checkAllocate(63, 64, new int[]{0, 0, 0, 0, 0, 0, 64});
-		checkAllocate(64, 64, new int[]{0, 0, 0, 0, 0, 0, 0, 0});
-		checkAllocate(65, 65, new int[]{0, 0, 0, 0, 0, 0, 0, 0});
-		checkAllocate(100, 100, new int[]{0, 0, 0, 0, 0, 0, 0, 0});
-*/
+		checkAllocate(0, 0, new int[]{});
+		checkAllocate(1, 1, new int[]{1, 0, 0, 0, 0});
+		checkAllocate(2, 2, new int[]{0, 2, 0, 0, 0});
+		checkAllocate(8, 8, new int[]{0, 0, 0, 8, 0});
+		checkAllocate(9, 16, new int[]{0, 0, 0, 0, 16});
+		checkAllocate(15, 16, new int[]{0, 0, 0, 0, 16});
 	}
 
 	private void checkReallocate(int size1, int size2, boolean equals) {
@@ -98,7 +86,7 @@ public class ByteArraySlabPoolTest {
 
 		checkReallocate(15, 14, true);
 		checkReallocate(15, 15, true);
-		checkReallocate(15, 16, false);
+		checkReallocate(15, 16, true);
 		checkReallocate(15, 17, false);
 
 		checkReallocate(16, 15, true);
@@ -109,39 +97,6 @@ public class ByteArraySlabPoolTest {
 
 		checkReallocate(31, 30, true);
 		checkReallocate(31, 31, true);
-/*
-		checkReallocate(31, 32, true);
-		checkReallocate(31, 33, false);
-
-		checkReallocate(32, 31, true);
-		checkReallocate(32, 32, true);
-		checkReallocate(32, 33, false);
-
-		checkReallocate(33, 31, true);
-		checkReallocate(33, 32, true);
-		checkReallocate(33, 33, true);
-		checkReallocate(33, 34, true);
-
-		checkReallocate(63, 62, true);
-		checkReallocate(63, 63, true);
-		checkReallocate(63, 64, true);
-		checkReallocate(63, 65, false);
-
-		checkReallocate(64, 63, true);
-		checkReallocate(64, 64, true);
-		checkReallocate(64, 65, false);
-		checkReallocate(64, 66, false);
-
-		checkReallocate(65, 63, true);
-		checkReallocate(65, 64, true);
-		checkReallocate(65, 65, true);
-		checkReallocate(65, 66, false);
-
-		checkReallocate(100, 50, true);
-		checkReallocate(100, 99, true);
-		checkReallocate(100, 100, true);
-		checkReallocate(100, 101, false);
-*/
 	}
 
 }

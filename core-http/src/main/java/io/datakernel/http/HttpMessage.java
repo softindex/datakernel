@@ -26,11 +26,11 @@ import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.exception.InvalidSizeException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.UncheckedException;
-import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfBuf;
 import io.datakernel.http.HttpHeaderValue.ParserIntoList;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.ParserFunction;
+import io.datakernel.util.Recyclable;
 
 import java.util.*;
 
@@ -44,6 +44,7 @@ import static java.util.Arrays.copyOf;
 public abstract class HttpMessage {
 	protected final HttpHeadersMultimap<HttpHeader, HttpHeaderValue> headers = new HttpHeadersMultimap<>();
 	protected ChannelSupplier<ByteBuf> bodySupplier;
+	private Recyclable bufs;
 
 	byte flags;
 	static final byte ACCESSED_BODY_STREAM = 1 << 0;
@@ -58,9 +59,22 @@ public abstract class HttpMessage {
 	protected HttpMessage() {
 	}
 
-	void addParsedHeader(HttpHeader header, ByteBuf buf) {
+	void addHeaderBuf(ByteBuf buf) {
+		buf.addRef();
+		if (bufs == null) {
+			bufs = buf;
+		} else {
+			Recyclable prev = this.bufs;
+			this.bufs = () -> {
+				prev.recycle();
+				buf.recycle();
+			};
+		}
+	}
+
+	void addParsedHeader(HttpHeader header, byte[] array, int off, int len) {
 		assert !isRecycled();
-		headers.add(header, new HttpHeaderValueOfBuf(buf));
+		headers.add(header, HttpHeaderValue.ofBytes(array, off, len));
 	}
 
 	public void addHeader(HttpHeader header, String string) {
@@ -217,11 +231,8 @@ public abstract class HttpMessage {
 	final void recycle() {
 		assert !isRecycled();
 		assert (this.flags |= RECYCLED) != 0;
-		for (int i = 0; i != headers.kvPairs.length; i += 2) {
-			HttpHeaderValue v = (HttpHeaderValue) headers.kvPairs[i + 1];
-			if (v != null) {
-				v.recycle();
-			}
+		if (bufs != null) {
+			bufs.recycle();
 		}
 	}
 

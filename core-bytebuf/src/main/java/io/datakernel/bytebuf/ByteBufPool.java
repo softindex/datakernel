@@ -30,8 +30,9 @@ import static java.lang.Math.max;
 
 public final class ByteBufPool {
 	private static final int NUMBER_OF_SLABS = 33;
-	private static final int minSize = ApplicationSettings.getInt(ByteBufPool.class, "minSize", 32);
-	private static final int maxSize = ApplicationSettings.getInt(ByteBufPool.class, "maxSize", 1 << 30);
+	private static final int MIN_SIZE = ApplicationSettings.getInt(ByteBufPool.class, "minSize", 0);
+	private static final int MAX_SIZE = ApplicationSettings.getInt(ByteBufPool.class, "maxSize", 0);
+	private static final boolean MIN_MAX_CHECKS = MIN_SIZE != 0 || MAX_SIZE != 0;
 
 	private static final ByteBufConcurrentStack[] slabs;
 	private static final AtomicInteger[] created;
@@ -57,9 +58,12 @@ public final class ByteBufPool {
 	 * @return byte buffer from this pool
 	 */
 	public static ByteBuf allocate(int size) {
-		if ((minSize != 0 && size < minSize) || (maxSize != 0 && size >= maxSize)) {
-			// not willing to register in pool
-			return ByteBuf.wrapForWriting(new byte[size]);
+		if (size == 0) return ByteBuf.empty();
+		if (MIN_MAX_CHECKS) {
+			if ((MIN_SIZE != 0 && size < MIN_SIZE) || (MAX_SIZE != 0 && size >= MAX_SIZE)) {
+				// not willing to register in pool
+				return ByteBuf.wrapForWriting(new byte[size]);
+			}
 		}
 		int index = 32 - numberOfLeadingZeros(size - 1); // index==32 for size==0
 		ByteBufConcurrentStack stack = slabs[index];

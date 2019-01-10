@@ -455,11 +455,15 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			if (sw != null && inspector != null) inspector.onUpdateSelectedKeyDuration(sw);
 		}
 
-		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		if (inspector != null)
-			inspector.onUpdateSelectedKeysStats(lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
+		int keys = acceptKeys + connectKeys + readKeys + writeKeys + invalidKeys;
 
-		return acceptKeys + connectKeys + readKeys + writeKeys + invalidKeys;
+		if (keys != 0) {
+			long loopTime = refreshTimestampAndGet() - startTimestamp;
+			if (inspector != null)
+				inspector.onUpdateSelectedKeysStats(lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
+		}
+
+		return keys;
 	}
 
 	/**
@@ -468,12 +472,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private int executeLocalTasks() {
 		long startTimestamp = timestamp;
 
-		int newLocalTasks = 0;
+		int localTasks = 0;
 
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		while (true) {
-			Runnable runnable = localTasks.poll();
+			Runnable runnable = this.localTasks.poll();
 			if (runnable == null) {
 				break;
 			}
@@ -490,12 +494,15 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			} catch (Throwable e) {
 				recordFatalError(e, runnable);
 			}
-			newLocalTasks++;
+			localTasks++;
 		}
-		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		if (inspector != null) inspector.onUpdateLocalTasksStats(newLocalTasks, loopTime);
 
-		return newLocalTasks;
+		if (localTasks != 0) {
+			long loopTime = refreshTimestampAndGet() - startTimestamp;
+			if (inspector != null) inspector.onUpdateLocalTasksStats(localTasks, loopTime);
+		}
+
+		return localTasks;
 	}
 
 	/**
@@ -504,12 +511,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private int executeConcurrentTasks() {
 		long startTimestamp = timestamp;
 
-		int newConcurrentTasks = 0;
+		int concurrentTasks = 0;
 
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		while (true) {
-			Runnable runnable = concurrentTasks.poll();
+			Runnable runnable = this.concurrentTasks.poll();
 			if (runnable == null) {
 				break;
 			}
@@ -525,12 +532,15 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			} catch (Throwable e) {
 				recordFatalError(e, runnable);
 			}
-			newConcurrentTasks++;
+			concurrentTasks++;
 		}
-		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		if (inspector != null) inspector.onUpdateConcurrentTasksStats(newConcurrentTasks, loopTime);
 
-		return newConcurrentTasks;
+		if (concurrentTasks != 0) {
+			long loopTime = refreshTimestampAndGet() - startTimestamp;
+			if (inspector != null) inspector.onUpdateConcurrentTasksStats(concurrentTasks, loopTime);
+		}
+
+		return concurrentTasks;
 	}
 
 	/**
@@ -548,7 +558,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		long startTimestamp = timestamp;
 		boolean background = taskQueue == backgroundTasks;
 
-		int newScheduledTasks = 0;
+		int scheduledTasks = 0;
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		for (; ; ) {
@@ -584,13 +594,15 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				recordFatalError(e, runnable);
 			}
 
-			newScheduledTasks++;
+			scheduledTasks++;
 		}
 
-		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		if (inspector != null) inspector.onUpdateScheduledTasksStats(newScheduledTasks, loopTime, background);
+		if (scheduledTasks != 0) {
+			long loopTime = refreshTimestampAndGet() - startTimestamp;
+			if (inspector != null) inspector.onUpdateScheduledTasksStats(scheduledTasks, loopTime, background);
+		}
 
-		return newScheduledTasks;
+		return scheduledTasks;
 	}
 
 	/**

@@ -107,26 +107,26 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onFirstLine(byte[] line, int size) throws ParseException {
-		assert line.length >= 16;
-		if (line[0] != 'H' || line[1] != 'T' || line[2] != 'T' || line[3] != 'P' || line[4] != '/' || line[5] != '1') {
-			throw INVALID_RESPONSE;
-		}
+	protected void onStartLine(byte[] line, int limit) throws ParseException {
+		boolean http1x = line[0] == 'H' && line[1] == 'T' && line[2] == 'T' && line[3] == 'P' && line[4] == '/' && line[5] == '1';
+		boolean http11 = line[6] == '.' && line[7] == '1' && line[8] == SP;
+
+		if (!http1x) throw INVALID_RESPONSE;
 
 		int sp1;
-		if (line[6] == SP) {
-			sp1 = 7;
-		} else if (line[6] == '.' && (line[7] == '1' || line[7] == '0') && line[8] == SP) {
-			if (line[7] == '1') {
-				flags |= KEEP_ALIVE;
-			}
+		if (http11) {
+			flags |= KEEP_ALIVE;
 			sp1 = 9;
+		} else if (line[6] == '.' && line[7] == '0' && line[8] == SP) {
+			sp1 = 9;
+		} else if (line[6] == SP) {
+			sp1 = 7;
 		} else {
-			throw new ParseException(HttpClientConnection.class, "Invalid response: " + new String(line, 0, size, ISO_8859_1));
+			throw new ParseException(HttpClientConnection.class, "Invalid response: " + new String(line, 0, limit, ISO_8859_1));
 		}
 
 		int sp2;
-		for (sp2 = sp1; sp2 < size; sp2++) {
+		for (sp2 = sp1; sp2 < limit; sp2++) {
 			if (line[sp2] == SP) {
 				break;
 			}
@@ -137,28 +137,28 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			throw new UnknownFormatException(HttpClientConnection.class, "Invalid HTTP Status Code " + statusCode);
 		}
 		response = HttpResponse.ofCode(statusCode);
-		if (isNoBodyMessage(response)) {
+		/*
+		  RFC 2616, section 4.4
+		  1.Any response message which "MUST NOT" include a message-body (such as the 1xx, 204, and 304 responses and any response to a HEAD request) is always
+		  terminated by the first empty line after the header fields, regardless of the entity-header fields present in the message.
+		 */
+		int messageCode = response.getCode();
+		if ((messageCode >= 100 && messageCode < 200) || messageCode == 204 || messageCode == 304) {
 			// Reset Content-Length for the case keep-alive connection
 			contentLength = 0;
 		}
 	}
 
-	/**
-	 * RFC 2616, section 4.4
-	 * 1.Any response message which "MUST NOT" include a message-body (such as the 1xx, 204, and 304 responses and any response to a HEAD request) is always
-	 * terminated by the first empty line after the header fields, regardless of the entity-header fields present in the message.
-	 */
-	private static boolean isNoBodyMessage(HttpResponse message) {
-		int messageCode = message.getCode();
-		return (messageCode >= 100 && messageCode < 200) || messageCode == 204 || messageCode == 304;
+	@Override
+	protected void onHeaderBuf(ByteBuf buf) {
+		response.addHeaderBuf(buf);
 	}
 
 	@Override
-	protected void onHeader(HttpHeader header, ByteBuf buf) throws ParseException {
-		super.onHeader(header, buf);
+	protected void onHeader(HttpHeader header, byte[] array, int off, int len) throws ParseException {
 		assert response != null;
 		if (response.headers.size() >= MAX_HEADERS) throw TOO_MANY_HEADERS;
-		response.addParsedHeader(header, buf);
+		response.addParsedHeader(header, array, off, len);
 	}
 
 	@Override
@@ -247,7 +247,11 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 		request.recycle();
 		if (!isClosed()) {
-			readHttpMessage();
+			try {
+				readHttpMessage();
+			} catch (ParseException e) {
+				closeWithError(e);
+			}
 		}
 		return callback;
 	}

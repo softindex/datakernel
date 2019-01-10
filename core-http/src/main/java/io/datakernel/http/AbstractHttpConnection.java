@@ -21,6 +21,7 @@ import io.datakernel.async.AsyncConsumer;
 import io.datakernel.async.AsyncProcess;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufConsumer;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelConsumer;
@@ -46,6 +47,7 @@ import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.trimAndDecodePositiveInt;
 import static java.lang.Math.max;
 
+@SuppressWarnings("WeakerAccess")
 public abstract class AbstractHttpConnection {
 	public static final AsyncTimeoutException READ_TIMEOUT_ERROR = new AsyncTimeoutException(AbstractHttpConnection.class, "Read timeout");
 	public static final AsyncTimeoutException WRITE_TIMEOUT_ERROR = new AsyncTimeoutException(AbstractHttpConnection.class, "Write timeout");
@@ -81,19 +83,35 @@ public abstract class AbstractHttpConnection {
 	protected static final byte CLOSED = (byte) (1 << 7);
 	protected byte flags = 0;
 
+	private final ByteBufConsumer onHeaderBuf = this::onHeaderBuf;
+
+	@Nullable
+	protected ConnectionsLinkedList pool;
+	@Nullable
+	protected AbstractHttpConnection prev;
+	@Nullable
+	protected AbstractHttpConnection next;
+	protected long poolTimestamp;
+
 	protected int numberOfKeepAliveRequests;
 
 	protected static final byte[] CONTENT_ENCODING_GZIP = encodeAscii("gzip");
 
 	protected int contentLength;
 
-	@Nullable
-	ConnectionsLinkedList pool;
-	@Nullable
-	AbstractHttpConnection prev;
-	@Nullable
-	AbstractHttpConnection next;
-	long poolTimestamp;
+	protected final ReadConsumer startLineConsumer = new ReadConsumer() {
+		@Override
+		public void thenRun() throws ParseException {
+			readStartLine();
+		}
+	};
+
+	protected final ReadConsumer headersConsumer = new ReadConsumer() {
+		@Override
+		public void thenRun() throws ParseException {
+			readHeaders();
+		}
+	};
 
 	/**
 	 * Creates a new instance of AbstractHttpConnection
@@ -105,7 +123,11 @@ public abstract class AbstractHttpConnection {
 		this.socket = socket;
 	}
 
-	protected abstract void onFirstLine(byte[] line, int size) throws ParseException;
+	protected abstract void onStartLine(byte[] line, int limit) throws ParseException;
+
+	protected abstract void onHeaderBuf(ByteBuf buf);
+
+	protected abstract void onHeader(HttpHeader header, byte[] array, int off, int len) throws ParseException;
 
 	protected abstract void onHeadersReceived(ChannelSupplier<ByteBuf> bodySupplier);
 
@@ -115,7 +137,7 @@ public abstract class AbstractHttpConnection {
 
 	protected abstract void onClosed();
 
-	public abstract void onClosedWithError(Throwable e);
+	protected abstract void onClosedWithError(Throwable e);
 
 	protected final boolean isClosed() {
 		return flags < 0;
@@ -136,6 +158,218 @@ public abstract class AbstractHttpConnection {
 		onClosed();
 		socket.close();
 		readQueue.recycle();
+	}
+
+	protected final void readHttpMessage() throws ParseException {
+		contentLength = 0;
+		readStartLine();
+	}
+
+	private void readStartLine() throws ParseException {
+		int size = 1;
+		for (int i = 0; i < readQueue.remainingBufs(); i++) {
+			ByteBuf buf = readQueue.peekBuf(i);
+			for (int p = buf.readPosition(); p < buf.writePosition(); p++) {
+				if (buf.at(p) == LF) {
+					size += p - buf.readPosition();
+					if (i == 0 && buf.readPosition() == 0 && size >= 10) {
+						onStartLine(buf.array(), size);
+						readQueue.skip(size);
+					} else {
+						ByteBuf line = ByteBufPool.allocate(max(10, size)); // allocate at least 16 bytes
+						readQueue.drainTo(line, size);
+						try {
+							onStartLine(line.array(), size);
+						} finally {
+							line.recycle();
+						}
+					}
+					readHeaders();
+					return;
+				}
+			}
+			size += buf.readRemaining();
+		}
+		if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
+		socket.read().whenComplete(startLineConsumer);
+	}
+
+	private void readHeaders() throws ParseException {
+		assert !isClosed();
+		NEXT_HEADER:
+		while (true) {
+			int size = 1;
+			for (int i = 0; i < readQueue.remainingBufs(); i++) {
+				ByteBuf buf = readQueue.peekBuf(i);
+				byte[] array = buf.array();
+				int readPosition = buf.readPosition();
+				int writePosition = buf.writePosition();
+				for (int p = readPosition; p < writePosition; p++) {
+					if (array[p] == LF) {
+
+						// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
+						if (isMultilineHeader(array, readPosition, writePosition, p)) {
+							preprocessMultiline(array, p);
+							continue;
+						}
+
+						if (i == 0) {
+							int limit = (p - 1 >= readPosition && array[p - 1] == CR) ? p - 1 : p;
+							if (limit != readPosition) {
+								processHeaderLine(array, readPosition, limit);
+								readQueue.skip(p - readPosition + 1, onHeaderBuf);
+								readPosition = buf.readPosition();
+							} else {
+								onHeaderBuf(buf);
+								readQueue.skip(p - readPosition + 1);
+								break NEXT_HEADER;
+							}
+							size = 1;
+						} else {
+							size += p - readPosition;
+							byte[] tmp = new byte[size];
+							readQueue.drainTo(tmp, 0, size, onHeaderBuf);
+							int limit = (tmp.length - 2 >= 0 && tmp[tmp.length - 2] == CR) ? tmp.length - 2 : tmp.length - 1;
+							if (limit != 0) {
+								processHeaderLine(tmp, 0, limit);
+							} else {
+								break NEXT_HEADER;
+							}
+							continue NEXT_HEADER;
+						}
+					}
+				}
+				size += buf.readRemaining();
+			}
+
+			if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
+			socket.read().whenComplete(headersConsumer);
+			return;
+		}
+
+		readBody();
+	}
+
+	private static boolean isMultilineHeader(byte[] array, int readPosition, int writePosition, int p) {
+		return p + 1 < writePosition && (array[p + 1] == SP || array[p + 1] == HT) &&
+				isDataBetweenStartAndLF(array, readPosition, p);
+	}
+
+	private static boolean isDataBetweenStartAndLF(byte[] array, int readPosition, int p) {
+		return !(p == readPosition || (p - readPosition == 1 && array[p - 1] == CR));
+	}
+
+	private static void preprocessMultiline(byte[] array, int p) {
+		array[p] = SP;
+		if (array[p - 1] == CR) {
+			array[p - 1] = SP;
+		}
+	}
+
+	private void processHeaderLine(byte[] array, int off, int limit) throws ParseException {
+		int pos = off;
+		int hashCode = 1;
+		while (pos < limit) {
+			byte b = array[pos];
+			if (b == ':')
+				break;
+			if (b >= 'A' && b <= 'Z')
+				b += 'a' - 'A';
+			hashCode = 31 * hashCode + b;
+			pos++;
+		}
+		if (pos == limit) throw HEADER_NAME_ABSENT;
+		HttpHeader header = HttpHeaders.of(array, off, pos - off, hashCode);
+		pos++;
+
+		// RFC 2616, section 19.3 Tolerant Applications
+		while (pos < limit && (array[pos] == SP || array[pos] == HT)) {
+			pos++;
+		}
+
+		int len = limit - pos;
+		if (header == CONTENT_LENGTH) {
+			contentLength = trimAndDecodePositiveInt(array, pos, len);
+		} else if (header == CONNECTION) {
+			flags = (byte) ((flags & ~KEEP_ALIVE) |
+					(equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, array, pos, len) ? KEEP_ALIVE : 0));
+		} else if (header == TRANSFER_ENCODING) {
+			flags |= equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, array, pos, len) ? CHUNKED : 0;
+		} else if (header == CONTENT_ENCODING) {
+			flags |= equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, array, pos, len) ? GZIPPED : 0;
+		}
+
+		onHeader(header, array, pos, len);
+	}
+
+	private void readBody() {
+		if ((flags & (CHUNKED | GZIPPED)) == 0 && readQueue.hasRemainingBytes(contentLength)) {
+			ByteBuf body = readQueue.takeExactSize(contentLength);
+			onHeadersReceived(new ChannelSuppliers.ChannelSupplierOfValue<>(body));
+			if (isClosed()) return;
+			flags |= BODY_RECEIVED;
+			onBodyReceived();
+			return;
+		}
+
+		BinaryChannelSupplier encodedStream = BinaryChannelSupplier.ofProvidedQueue(
+				readQueue,
+				() -> socket.read()
+						.thenComposeEx((buf, e) -> {
+							if (e == null) {
+								if (buf != null) {
+									readQueue.add(buf);
+									return Promise.complete();
+								} else {
+									return Promise.<Void>ofException(INCOMPLETE_MESSAGE);
+								}
+							} else {
+								closeWithError(e);
+								return Promise.<Void>ofException(e);
+							}
+						}),
+				Promise::complete,
+				this::closeWithError);
+
+		ChannelOutput<ByteBuf> bodyStream;
+		AsyncProcess process;
+
+		if ((flags & CHUNKED) == 0) {
+			BufsConsumerDelimiter decoder = BufsConsumerDelimiter.create(contentLength);
+			process = decoder;
+			encodedStream.bindTo(decoder.getInput());
+			bodyStream = decoder.getOutput();
+		} else {
+			BufsConsumerChunkedDecoder decoder = BufsConsumerChunkedDecoder.create();
+			process = decoder;
+			encodedStream.bindTo(decoder.getInput());
+			bodyStream = decoder.getOutput()
+					.transformWith(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
+		}
+
+		if ((flags & GZIPPED) != 0) {
+			BufsConsumerGzipInflater decoder = BufsConsumerGzipInflater.create();
+			process = decoder;
+			bodyStream.bindTo(decoder.getInput());
+			bodyStream = decoder.getOutput()
+					.transformWith(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
+		}
+
+		ChannelSupplier<ByteBuf> supplier = bodyStream.getSupplier(); // process gets started here and can cause connection closing
+
+		if (isClosed()) return;
+
+		onHeadersReceived(supplier);
+
+		process.getProcessResult()
+				.whenComplete(($, e) -> {
+					if (e == null) {
+						flags |= BODY_RECEIVED;
+						onBodyReceived();
+					} else {
+						closeWithError(e);
+					}
+				});
 	}
 
 	@Nullable
@@ -229,240 +463,33 @@ public abstract class AbstractHttpConnection {
 				});
 	}
 
-	@Nullable
-	private ByteBuf takeFirstLine() {
-		int offset = 0;
-		for (int i = 0; i < readQueue.remainingBufs(); i++) {
-			ByteBuf buf = readQueue.peekBuf(i);
-			for (int p = buf.readPosition(); p < buf.writePosition(); p++) {
-				if (buf.at(p) == LF) {
-					int size = offset + p - buf.readPosition() + 1;
-					ByteBuf line = ByteBufPool.allocate(max(16, size)); // allocate at least 16 bytes
-					readQueue.drainTo(line, size);
-					if (line.readRemaining() >= 2 && line.peek(line.readRemaining() - 2) == CR) {
-						line.moveWritePosition(-2);
-					} else {
-						line.moveWritePosition(-1);
-					}
-					return line;
-				}
-			}
-			offset += buf.readRemaining();
-		}
-		return null;
-	}
-
-	@Nullable
-	private ByteBuf takeHeader() {
-		int offset = 0;
-		for (int i = 0; i < readQueue.remainingBufs(); i++) {
-			ByteBuf buf = readQueue.peekBuf(i);
-			byte[] array = buf.array();
-			int readPosition = buf.readPosition();
-			int writePosition = buf.writePosition();
-			for (int p = readPosition; p < writePosition; p++) {
-				if (array[p] == LF) {
-
-					// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
-					if (isMultilineHeader(array, readPosition, writePosition, p)) {
-						preprocessMultiline(array, p);
-						continue;
-					}
-
-					ByteBuf line = readQueue.takeExactSize(offset + p - readPosition + 1);
-					if (line.readRemaining() >= 2 && line.peek(line.readRemaining() - 2) == CR) {
-						line.moveWritePosition(-2);
-					} else {
-						line.moveWritePosition(-1);
-					}
-					return line;
-				}
-			}
-			offset += buf.readRemaining();
-		}
-		return null;
-	}
-
-	private static boolean isMultilineHeader(byte[] array, int readPosition, int writePosition, int p) {
-		return p + 1 < writePosition && (array[p + 1] == SP || array[p + 1] == HT) &&
-				isDataBetweenStartAndLF(array, readPosition, p);
-	}
-
-	private static boolean isDataBetweenStartAndLF(byte[] array, int readPosition, int p) {
-		return !(p == readPosition || (p - readPosition == 1 && array[p - 1] == CR));
-	}
-
-	private static void preprocessMultiline(byte[] array, int p) {
-		array[p] = SP;
-		if (array[p - 1] == CR) {
-			array[p - 1] = SP;
-		}
-	}
-
-	private void onHeader(ByteBuf line) throws ParseException {
-		int pos = line.readPosition();
-		int hashCode = 1;
-		while (pos < line.writePosition()) {
-			byte b = line.at(pos);
-			if (b == ':')
-				break;
-			if (b >= 'A' && b <= 'Z')
-				b += 'a' - 'A';
-			hashCode = 31 * hashCode + b;
-			pos++;
-		}
-		if (pos == line.writePosition()) throw HEADER_NAME_ABSENT;
-		HttpHeader httpHeader = HttpHeaders.of(line.array(), line.readPosition(), pos - line.readPosition(), hashCode);
-		pos++;
-
-		// RFC 2616, section 19.3 Tolerant Applications
-		while (pos < line.writePosition() && (line.at(pos) == SP || line.at(pos) == HT)) {
-			pos++;
-		}
-		line.readPosition(pos);
-		onHeader(httpHeader, line);
-	}
-
-	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
-		assert !isClosed();
-		if (header == CONTENT_LENGTH) {
-			contentLength = trimAndDecodePositiveInt(value.array(), value.readPosition(), value.readRemaining());
-		} else if (header == CONNECTION) {
-			flags = (byte) ((flags & ~KEEP_ALIVE) |
-					(equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.readPosition(), value.readRemaining()) ? KEEP_ALIVE : 0));
-		} else if (header == TRANSFER_ENCODING) {
-			flags |= equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.readPosition(), value.readRemaining()) ? CHUNKED : 0;
-		} else if (header == CONTENT_ENCODING) {
-			flags |= equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, value.array(), value.readPosition(), value.readRemaining()) ? GZIPPED : 0;
-		}
-	}
-
-	protected final void readHttpMessage() {
-		contentLength = 0;
-		readFirstLine();
-	}
-
-	private void readFirstLine() {
-		assert !isClosed();
-		try {
-			ByteBuf buf = takeFirstLine();
-			if (buf == null) { // states that more bytes are being required
-				if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
-				socket.read().whenComplete(firstLineConsumer);
-				return;
-			}
-			try {
-				onFirstLine(buf.array(), buf.writePosition());
-			} finally {
-				buf.recycle();
-			}
-		} catch (ParseException e) {
-			closeWithError(e);
-			return;
-		}
-		readHeaders();
-	}
-
-	private void readHeaders() {
-		assert !isClosed();
-		try {
-			while (true) {
-				ByteBuf headerBuf = takeHeader();
-				if (headerBuf == null) { // states that more bytes are being required
-					if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
-					socket.read().whenComplete(headersConsumer);
-					return;
-				}
-
-				if (!headerBuf.canRead()) {
-					headerBuf.recycle();
-					break;
-				}
-
-				onHeader(headerBuf);
-			}
-		} catch (ParseException e) {
-			closeWithError(e);
-			return;
-		}
-
-		readBody();
-	}
-
-	private void readBody() {
-		if ((flags & (CHUNKED | GZIPPED)) == 0 && readQueue.hasRemainingBytes(contentLength)) {
-			ByteBuf body = readQueue.takeExactSize(contentLength);
-			onHeadersReceived(new ChannelSuppliers.ChannelSupplierOfValue<>(body));
-			if (isClosed()) return;
-			flags |= BODY_RECEIVED;
-			onBodyReceived();
-			return;
-		}
-
-		BinaryChannelSupplier encodedStream = BinaryChannelSupplier.ofProvidedQueue(
-				readQueue,
-				() -> socket.read()
-						.thenComposeEx((buf, e) -> {
-							if (e == null) {
-								if (buf != null) {
-									readQueue.add(buf);
-									return Promise.complete();
-								} else {
-									return Promise.<Void>ofException(INCOMPLETE_MESSAGE);
-								}
-							} else {
-								closeWithError(e);
-								return Promise.<Void>ofException(e);
-							}
-						}),
-				Promise::complete,
-				this::closeWithError);
-
-		ChannelOutput<ByteBuf> bodyStream;
-		AsyncProcess process;
-
-		if ((flags & CHUNKED) == 0) {
-			BufsConsumerDelimiter decoder = BufsConsumerDelimiter.create(contentLength);
-			process = decoder;
-			encodedStream.bindTo(decoder.getInput());
-			bodyStream = decoder.getOutput();
-		} else {
-			BufsConsumerChunkedDecoder decoder = BufsConsumerChunkedDecoder.create();
-			process = decoder;
-			encodedStream.bindTo(decoder.getInput());
-			bodyStream = decoder.getOutput()
-					.transformWith(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
-		}
-
-		if ((flags & GZIPPED) != 0) {
-			BufsConsumerGzipInflater decoder = BufsConsumerGzipInflater.create();
-			process = decoder;
-			bodyStream.bindTo(decoder.getInput());
-			bodyStream = decoder.getOutput()
-					.transformWith(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
-		}
-
-		ChannelSupplier<ByteBuf> supplier = bodyStream.getSupplier(); // process gets started here and can cause connection closing
-
-		if (isClosed()) return;
-
-		onHeadersReceived(supplier);
-
-		process.getProcessResult()
-				.whenComplete(($, e) -> {
-					if (e == null) {
-						flags |= BODY_RECEIVED;
-						onBodyReceived();
-					} else {
-						closeWithError(e);
-					}
-				});
-	}
-
 	protected void switchPool(ConnectionsLinkedList newPool) {
 		pool.removeNode(this);
 		(pool = newPool).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
+	}
+
+	private abstract class ReadConsumer implements BiConsumer<ByteBuf, Throwable> {
+		@Override
+		public void accept(ByteBuf buf, Throwable e) {
+			assert !isClosed() || e != null;
+			if (e == null) {
+				if (buf != null) {
+					readQueue.add(buf);
+					try {
+						thenRun();
+					} catch (ParseException e1) {
+						closeWithError(e1);
+					}
+				} else {
+					close();
+				}
+			} else {
+				closeWithError(e);
+			}
+		}
+
+		public abstract void thenRun() throws ParseException;
 	}
 
 	@Override
@@ -477,36 +504,4 @@ public abstract class AbstractHttpConnection {
 				", poolTimestamp=" + poolTimestamp;
 	}
 
-	private abstract class ReadConsumer implements BiConsumer<ByteBuf, Throwable> {
-		@Override
-		public void accept(ByteBuf buf, Throwable e) {
-			assert !isClosed() || e != null;
-			if (e == null) {
-				if (buf != null) {
-					readQueue.add(buf);
-					thenRun();
-				} else {
-					close();
-				}
-			} else {
-				closeWithError(e);
-			}
-		}
-
-		abstract void thenRun();
-	}
-
-	protected final ReadConsumer firstLineConsumer = new ReadConsumer() {
-		@Override
-		void thenRun() {
-			readFirstLine();
-		}
-	};
-
-	private final ReadConsumer headersConsumer = new ReadConsumer() {
-		@Override
-		void thenRun() {
-			readHeaders();
-		}
-	};
 }

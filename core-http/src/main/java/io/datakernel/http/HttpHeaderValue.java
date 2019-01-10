@@ -33,9 +33,6 @@ public abstract class HttpHeaderValue {
 
 	abstract void writeTo(ByteBuf buf);
 
-	void recycle() {
-	}
-
 	public static HttpHeaderValue of(String string) {
 		return new HttpHeaderValueOfString(string);
 	}
@@ -367,34 +364,4 @@ public abstract class HttpHeaderValue {
 		}
 	}
 
-	static final class HttpHeaderValueOfBuf extends HttpHeaderValue {
-		final ByteBuf buf;
-
-		HttpHeaderValueOfBuf(ByteBuf buf) {this.buf = buf;}
-
-		@Override
-		int estimateSize() {
-			return buf.readRemaining();
-		}
-
-		@Override
-		void writeTo(ByteBuf buf) {
-			buf.put(this.buf);
-		}
-
-		@Override
-		public ByteBuf getBuf() {
-			return buf;
-		}
-
-		@Override
-		void recycle() {
-			buf.recycle();
-		}
-
-		@Override
-		public String toString() {
-			return decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining());
-		}
-	}
 }

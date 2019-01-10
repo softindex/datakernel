@@ -41,6 +41,11 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		}
 
 		@Override
+		public void addRef() {
+			root.addRef();
+		}
+
+		@Override
 		public ByteBuf slice(int offset, int length) {
 			return root.slice(offset, length);
 		}
@@ -122,6 +127,10 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 			assert --refs == -1;
 			ByteBufPool.recycle(this);
 		}
+	}
+
+	public void addRef() {
+		refs++;
 	}
 
 	@Override

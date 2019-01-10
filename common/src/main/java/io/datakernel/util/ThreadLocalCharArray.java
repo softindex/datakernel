@@ -29,4 +29,9 @@ public final class ThreadLocalCharArray {
 		THREAD_LOCAL.set(chars);
 		return chars;
 	}
+
+	public static char[] ensure(char[] providedBuffer, int size) {
+		if (providedBuffer.length >= size) return providedBuffer;
+		return ensure(size);
+	}
 }
