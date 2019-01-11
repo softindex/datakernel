@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -175,14 +175,15 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 			}
 		}
 
+		int remaining = bufs.remainingBytes();
 		if (sawCrlf) {
-			if (bufs.remainingBytes() >= MAX_META_SIZE) {
+			if (remaining >= MAX_META_SIZE) {
 				sawCrlf = false;
 				return getFalseTermFrame(bufs.takeRemaining());
 			}
 			return null;
 		}
-		int toTake = bufs.remainingBytes() - (bufs.peekByte(bufs.remainingBytes() - 1) == CR ? 2 : 1);
+		int toTake = remaining == 0 ? 0 : remaining - (bufs.peekByte(remaining - 1) == CR ? 1 : 0);
 		if (toTake == 0) {
 			return null;
 		}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,10 +43,10 @@ public final class MultipartParserTest {
 
 	private static final String DATA = BOUNDARY + CRLF +
 			"Content-Disposition: form-data; name=\"file\"; filename=\"test.txt\"" + CRLF +
-			"Content-Type: text/plain\r\n" +
+			"Content-Type: text/plain" + CRLF +
 			CRLF +
-			"This is some bytes of data to be extracted from the multipart form\r\n" +
-			"Also here we had a wild CRLF sequence appear" +
+			"This is some bytes of data to be extracted from the multipart form" + CRLF +
+			"Also here we had a wild CRLF se\r\nquence appear" +
 			CRLF + BOUNDARY + CRLF +
 			"Content-Disposition: form-data; name=\"file\"; filename=\"test.txt\"" + CRLF +
 			"Content-Type: text/plain" + CRLF +
@@ -84,7 +84,7 @@ public final class MultipartParserTest {
 				}, joining())));
 
 		assertEquals("This is some bytes of data to be extracted from the multipart form\r\n" +
-				"Also here we had a wild CRLF sequence appear\n" +
+				"Also here we had a wild CRLF se\r\nquence appear\n" +
 				"And the second line, huh\n", res);
 		assertEquals(asList(
 				map("content-disposition", "form-data; name=\"file\"; filename=\"test.txt\"",

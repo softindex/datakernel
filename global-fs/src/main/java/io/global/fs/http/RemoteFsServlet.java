@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,27 +58,25 @@ public final class RemoteFsServlet implements WithMiddleware {
 						String path = request.getPathParameter("path");
 						long offset = HttpDataFormats.parseOffset(request);
 						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
-
 						String contentType = request.getHeader(HttpHeaders.CONTENT_TYPE);
-						if (path.isEmpty() && !contentType.startsWith("multipart/form-data; boundary=")) {
-							return Promise.ofException(HttpException.ofCode(400, "Path is empty and content type is not multipart/form-data"));
+						if (!contentType.startsWith("multipart/form-data; boundary=")) {
+							return Promise.ofException(HttpException.ofCode(400, "Content type is not multipart/form-data"));
 						}
 						String boundary = contentType.substring(30);
 						if (boundary.startsWith("\"") && boundary.endsWith("\"")) {
 							boundary = boundary.substring(1, boundary.length() - 1);
 						}
-
+						if (offset == -1 || offset == 0) {
+							return MultipartParser.create(boundary)
+									.splitByFiles(bodyStream, filename -> ChannelConsumer.ofPromise(client.upload(path + filename, offset)))
+									.thenApply($ -> HttpResponse.ok201());
+						}
 						String finalBoundary = boundary;
-
-						return (offset == -1 || offset == 0) && path.isEmpty() ?
-								MultipartParser.create(finalBoundary)
-										.splitByFiles(bodyStream, filename -> ChannelConsumer.ofPromise(client.upload(filename, offset)))
-										.thenApply($ -> HttpResponse.ok201()) :
-								client.getMetadata(path)
-										.thenCompose(meta ->
-												client.upload(path, offset)
-														.thenCompose(BinaryChannelSupplier.of(bodyStream).parseStream(MultipartParser.create(finalBoundary).ignoreHeaders())::streamTo)
-														.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
+						return client.getMetadata(path)
+								.thenCompose(meta ->
+										client.upload(path, offset)
+												.thenCompose(BinaryChannelSupplier.of(bodyStream).parseStream(MultipartParser.create(finalBoundary).ignoreHeaders())::streamTo)
+												.thenApply($ -> meta == null ? HttpResponse.ok201() : HttpResponse.ok200()));
 
 					} catch (ParseException e) {
 						return Promise.ofException(e);
