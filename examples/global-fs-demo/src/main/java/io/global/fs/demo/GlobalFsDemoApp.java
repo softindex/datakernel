@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,68 +20,56 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.google.inject.name.Named;
+import io.datakernel.async.Promise;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
-import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.IAsyncHttpClient;
+import io.datakernel.http.*;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.remotefs.FsClient;
-import io.datakernel.remotefs.LocalFsClient;
+import io.datakernel.loader.StaticLoader;
+import io.datakernel.loader.StaticLoaders;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.OptionalDependency;
-import io.global.common.*;
-import io.global.common.api.AnnounceData;
-import io.global.common.api.DiscoveryService;
-import io.global.common.discovery.HttpDiscoveryService;
+import io.global.common.PrivKey;
+import io.global.common.PrivateKeyStorage;
+import io.global.common.PubKey;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.http.HttpGlobalFsNode;
+import io.global.fs.http.RemoteFsServlet;
 import io.global.fs.local.GlobalFsDriver;
 
+import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.Config.ofProperties;
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.ConfigConverters.getExecutor;
+import static io.datakernel.config.ConfigConverters.ofLong;
+import static io.datakernel.exception.UncheckedException.unchecked;
+import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
-import static io.datakernel.util.CollectionUtils.map;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
-import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 import static java.lang.Boolean.parseBoolean;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toMap;
 
 public final class GlobalFsDemoApp extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "globalfs-app.properties";
 
 	@Inject
-	Eventloop eventloop;
-
-	@Inject
-	FsClient storage;
-
-	@Inject
-	@Named("alice")
-	FsClient alice;
-
-	@Inject
-	@Named("alice")
-	KeyPair aliceKeys;
-
-	@Inject
-	DiscoveryService discoveryService;
-
-	@Inject
-	SignedData<AnnounceData> announceData;
+	AsyncHttpServer server;
 
 	@Override
 	protected Collection<com.google.inject.Module> getModules() {
@@ -115,18 +103,6 @@ public final class GlobalFsDemoApp extends Launcher {
 
 					@Provides
 					@Singleton
-					DiscoveryService provideDiscovery(IAsyncHttpClient httpClient, Config config) {
-						return HttpDiscoveryService.create(config.get(ofInetSocketAddress(), "app.discoveryAddress"), httpClient);
-					}
-
-					@Provides
-					@Singleton
-					FsClient provide(Config config, Eventloop eventloop, ExecutorService executor) {
-						return LocalFsClient.create(eventloop, executor, config.get(ofPath(), "app.storage"));
-					}
-
-					@Provides
-					@Singleton
 					GlobalFsNode provide(IAsyncHttpClient httpClient, Config config) {
 						return HttpGlobalFsNode.create(config.get("app.globalFsId"), httpClient);
 					}
@@ -134,56 +110,84 @@ public final class GlobalFsDemoApp extends Launcher {
 					@Provides
 					@Singleton
 					PrivateKeyStorage providePKS(Config config) {
-						PrivKey alice = config.get(ofPrivKey(), "app.keys.alice");
-						return new PrivateKeyStorage(map(alice.computePubKey(), alice));
+						return new PrivateKeyStorage(config.getChild("app.keys")
+								.getChildren()
+								.values()
+								.stream()
+								.map(cfg -> cfg.get(ofPrivKey(), THIS))
+								.collect(toMap(PrivKey::computePubKey, identity())));
 					}
 
 					@Provides
 					@Singleton
 					GlobalFsDriver provide(GlobalFsNode node, PrivateKeyStorage pks, Config config) {
-						return GlobalFsDriver.create(node, pks, CheckpointPosStrategy.of(16 * 1024));
+						return GlobalFsDriver.create(node, pks, CheckpointPosStrategy.of(config.get(ofLong(), "app.checkpointOffset", 16384L)));
 					}
 
 					@Provides
 					@Singleton
-					@Named("alice")
-					KeyPair provideAlice(Config config) {
-						return config.get(ofPrivKey(), "app.keys.alice").computeKeys();
+					StaticLoader provide(ExecutorService executor) {
+						return StaticLoaders.ofPath(executor, Paths.get("src/main/resources/static"));
 					}
 
 					@Provides
 					@Singleton
-					@Named("alice")
-					FsClient provideAlice(GlobalFsDriver driver, @Named("alice") KeyPair keys) {
-						return driver.gatewayFor(keys.getPubKey());
+					AsyncHttpServer provide(Eventloop eventloop, Config config, AsyncServlet servlet) {
+						return AsyncHttpServer.create(eventloop, servlet)
+								.initialize(ofHttpServer(config.getChild("app.http")));
 					}
 
 					@Provides
 					@Singleton
-					SignedData<AnnounceData> provideAnnounceData(Config config) {
-						return SignedData.sign(BinaryDataFormats.REGISTRY.get(AnnounceData.class), AnnounceData.of(System.currentTimeMillis(),
-								set(config.get(ofRawServerId(), "app.globalFsId"))), aliceKeys.getPrivKey());
+					AsyncServlet provide(Eventloop eventloop, GlobalFsDriver driver, StaticLoader resourseLoader) {
+						Map<PubKey, PrivKey> keys = driver.getPrivateKeyStorage().getKeys();
+						Map<PubKey, RemoteFsServlet> servlets = new HashMap<>();
+						return MiddlewareServlet.create()
+								.with(GET, "/", request ->
+										resourseLoader.getResource("index.html")
+												.thenApply(buf1 -> {
+													String template = buf1.asString(UTF_8);
+													String replaced = template.replace("{}", keys.keySet()
+															.stream()
+															.map(PubKey::asString)
+															.map(s -> "<a class=\"box knownPK\" href=\"/" + s + "\">" + s + "</a>")
+															.collect(joining("\n")));
+													return HttpResponse.ok200()
+															.withBody(ByteBuf.wrapForReading(replaced.getBytes(UTF_8)));
+												}))
+								.with("/:owner", MiddlewareServlet.create()
+										.with(GET, "/", request ->
+												unchecked(() -> {
+													PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
+													if (!keys.containsKey(pubKey)) {
+														return Promise.ofException(HttpException.ofCode(404, "No private key stored for given public key"));
+													}
+													return resourseLoader.getResource("key-view.html")
+															.thenApply(buf -> {
+																String template = buf.asString(UTF_8);
+																String replaced = template.replaceAll("\\{key}", pubKey.asString());
+																return HttpResponse.ok200()
+																		.withBody(ByteBuf.wrapForReading(replaced.getBytes(UTF_8)));
+															});
+												}))
+										.with("/gateway", MiddlewareServlet.create()
+												.withFallback(request ->
+														unchecked(() -> {
+															PubKey pubKey = PubKey.fromString(request.getPathParameter("owner"));
+															if (!keys.containsKey(pubKey)) {
+																return Promise.ofException(HttpException.ofCode(404, "No private key stored for given public key"));
+															}
+															return servlets
+																	.computeIfAbsent(pubKey, $ -> RemoteFsServlet.create(driver.gatewayFor(pubKey)))
+																	.serve(request);
+														}))))
+								.withFallback(StaticServlet.create(eventloop, resourseLoader));
 					}
 				});
 	}
 
 	@Override
 	protected void run() throws Exception {
-		String testFile = "test.txt";
-
-		eventloop.post(() ->
-				discoveryService.announce(aliceKeys.getPubKey(), announceData)
-						.thenCompose($ -> storage.upload(testFile))
-						.thenCompose(ChannelSupplier.of(wrapUtf8("thats some test data right in that file!\n"))::streamTo)
-						.thenCompose($ -> ChannelSupplier.ofPromise(storage.download(testFile))
-								.streamTo(ChannelConsumer.ofPromise(alice.upload(testFile))))
-						.whenResult($ -> System.out.println("File has been uploaded\nDownloading back..."))
-						.thenCompose($ -> alice.download(testFile))
-						.thenCompose(supplier -> supplier
-								.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8)))))
-						.whenException(Throwable::printStackTrace)
-						.whenComplete(($, e) -> shutdown())
-		);
 		awaitShutdown();
 	}
 
