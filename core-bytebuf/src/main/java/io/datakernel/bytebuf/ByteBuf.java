@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2019 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package io.datakernel.bytebuf;
 
 import io.datakernel.util.Recyclable;
 import io.datakernel.util.Sliceable;
+import io.datakernel.util.Utils;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -338,6 +339,18 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 			return pos;
 		}
 		return -1;
+	}
+
+	public boolean isContentEqual(byte[] array, int offset, int length) {
+		return Utils.arraysEquals(this.array, readPosition, readRemaining(), array, offset, length);
+	}
+
+	public boolean isContentEqual(ByteBuf other) {
+		return isContentEqual(other.array, other.readPosition, other.readRemaining());
+	}
+
+	public boolean isContentEqual(byte[] array) {
+		return isContentEqual(array, 0, array.length);
 	}
 
 	public byte[] getArray() {

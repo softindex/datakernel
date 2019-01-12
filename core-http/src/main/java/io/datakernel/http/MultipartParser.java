@@ -52,10 +52,7 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 
 	private MultipartParser(String boundary) {
 		this.boundary = ("--" + boundary).getBytes(UTF_8);
-		lastBoundary = new byte[this.boundary.length + 2];
-		System.arraycopy(this.boundary, 0, lastBoundary, 0, this.boundary.length);
-		lastBoundary[this.boundary.length] = '-';
-		lastBoundary[this.boundary.length + 1] = '-';
+		this.lastBoundary = ("--" + boundary + "--").getBytes(UTF_8);
 	}
 
 	public static MultipartParser create(String boundary) {
@@ -135,12 +132,12 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 			if (sawCrlf) {
 				ByteBuf term = bufs.takeExactSize(i);
 				if (readingHeaders == null) {
-					if (term.equals(ByteBuf.wrapForReading(lastBoundary))) {
+					if (term.isContentEqual(lastBoundary)) {
 						bufs.skip(2);
 						finished = true;
 						term.recycle();
 						return null;
-					} else if (term.equals(ByteBuf.wrapForReading(boundary))) {
+					} else if (term.isContentEqual(boundary)) {
 						bufs.skip(2);
 						i = -1; // fix the index (so that it's 0 on next iteration) because we've taken bytes from queue
 						term.recycle();
