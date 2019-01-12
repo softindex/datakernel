@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.stream.processor.ByteBufRule.initByteBufPool;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.ot.server.GlobalOTNodeImplTest.createCommitEntry;
@@ -47,6 +48,10 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(DatakernelRunner.class)
 public class GlobalOTNodeHttpClientTest {
+	static {
+		initByteBufPool();
+	}
+
 	private final LinkedList<Object> params = new LinkedList<>();
 	private final RawServerServlet servlet = getServlet();
 	private final GlobalOTNodeHttpClient client = GlobalOTNodeHttpClient.create(servlet::serve, "http://localhost/");

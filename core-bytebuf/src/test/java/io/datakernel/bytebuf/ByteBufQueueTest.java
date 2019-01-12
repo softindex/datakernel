@@ -3,9 +3,14 @@ package io.datakernel.bytebuf;
 import org.junit.Before;
 import org.junit.Test;
 
+import static io.datakernel.bytebuf.ByteBufTest.initByteBufPool;
 import static org.junit.Assert.assertEquals;
 
 public class ByteBufQueueTest {
+	static {
+		initByteBufPool();
+	}
+
 	private final ByteBufQueue queue = new ByteBufQueue();
 
 	@Before

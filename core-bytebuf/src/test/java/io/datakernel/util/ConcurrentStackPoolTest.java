@@ -20,12 +20,15 @@ import org.junit.Test;
 
 import java.util.function.Supplier;
 
+import static io.datakernel.bytebuf.ByteBufTest.initByteBufPool;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public final class ConcurrentStackPoolTest {
+	static {
+		initByteBufPool();
+	}
 
-	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void testBase() {
 		ConcurrentStackPool<Supplier<String>> pool = new ConcurrentStackPool<>(new Supplier<Supplier<String>>() {

@@ -31,7 +31,6 @@ import javax.net.ssl.SSLException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.bytebuf.ByteBufPool.recycleIfEmpty;
 import static io.datakernel.util.Recyclable.tryRecycle;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
@@ -323,6 +322,13 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		}
 
 		doRead();
+	}
+
+	private static ByteBuf recycleIfEmpty(ByteBuf buf) {
+		if (buf.canRead())
+			return buf;
+		buf.recycle();
+		return ByteBuf.empty();
 	}
 
 	private void startHandShake() {

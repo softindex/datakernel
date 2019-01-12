@@ -35,7 +35,13 @@ import static org.junit.Assert.assertEquals;
  */
 public final class ByteBufRule implements TestRule {
 	static {
-		System.setProperty("ByteBufPool.minSize", "1");
+		initByteBufPool();
+	}
+
+	public static void initByteBufPool() {
+		System.setProperty("ByteBufPool.stats", "true");
+		System.setProperty("ByteBufPool.registry", "true");
+		System.setProperty("ByteBufPool.minSize", "0");
 		System.setProperty("ByteBufPool.maxSize", "0");
 	}
 

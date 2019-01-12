@@ -18,7 +18,6 @@ package io.datakernel.bytebuf;
 
 import io.datakernel.util.Recyclable;
 import io.datakernel.util.Sliceable;
-import io.datakernel.util.Utils;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -634,27 +633,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		write(bytes);
 	}
 	// endregion
-
-	@Override
-	public boolean equals(Object o) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		if (this == o) return true;
-		if (o == null || !(ByteBuf.class == o.getClass() || ByteBufSlice.class == o.getClass())) return false;
-		ByteBuf other = (ByteBuf) o;
-		return Utils.arraysEquals(
-				this.array, this.readPosition, this.readRemaining(),
-				other.array, other.readPosition, other.readRemaining());
-	}
-
-	@Override
-	public int hashCode() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
-		int result = 1;
-		for (int i = readPosition; i < writePosition; i++) {
-			result = 31 * result + array[i];
-		}
-		return result;
-	}
 
 	@Override
 	public String toString() {

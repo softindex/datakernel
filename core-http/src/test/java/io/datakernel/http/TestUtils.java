@@ -119,7 +119,7 @@ public class TestUtils {
 					assertEquals(expectedString, actualString);
 				}
 				if (expectedBuf != null) {
-					assertEquals(expectedBuf, actualBuf);
+					assertArrayEquals(expectedBuf.getArray(), actualBuf.getArray());
 					actualBuf.recycle();
 					expectedBuf.recycle();
 					expectedBuf = null;

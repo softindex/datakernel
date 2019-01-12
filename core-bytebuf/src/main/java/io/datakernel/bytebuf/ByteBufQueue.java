@@ -27,7 +27,7 @@ import java.util.stream.Collector;
 import static io.datakernel.util.CollectionUtils.emptyIterator;
 import static java.lang.System.arraycopy;
 
-public final class ByteBufQueue implements ByteDataAccess, Recyclable {
+public final class ByteBufQueue implements Recyclable {
 	private static final int DEFAULT_CAPACITY = 8;
 
 	private ByteBuf[] bufs;
@@ -299,7 +299,6 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 	 * @param remaining number of bytes for checking
 	 * @return true if, and only if, there are remaining bytes.
 	 */
-	@Override
 	public boolean hasRemainingBytes(int remaining) {
 		assert remaining >= 0;
 		if (remaining == 0) return true;
@@ -329,7 +328,6 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 	/**
 	 * Returns the first byte from this queue without its removing.
 	 */
-	@Override
 	public byte peekByte() {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
@@ -341,7 +339,6 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 	 *
 	 * @param index the index at which the bytes will be returned
 	 */
-	@Override
 	public byte peekByte(int index) {
 		assert hasRemainingBytes(index + 1);
 		for (int i = first; ; i = next(i)) {
@@ -358,7 +355,6 @@ public final class ByteBufQueue implements ByteDataAccess, Recyclable {
 	 * @param maxSize number of bytes for removing
 	 * @return number of removed bytes
 	 */
-	@Override
 	public int skip(int maxSize) {
 		int s = maxSize;
 		while (hasRemaining()) {

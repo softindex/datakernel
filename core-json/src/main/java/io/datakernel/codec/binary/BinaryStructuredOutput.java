@@ -124,7 +124,6 @@ public final class BinaryStructuredOutput implements StructuredOutput {
 		writeString(field);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public <T> void writeCustom(Type type, T value) {
 		throw new UnsupportedOperationException();

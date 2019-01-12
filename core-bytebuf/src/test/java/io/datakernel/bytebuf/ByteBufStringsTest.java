@@ -24,10 +24,15 @@ import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeLong;
+import static io.datakernel.bytebuf.ByteBufTest.initByteBufPool;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class ByteBufStringsTest {
+	static {
+		initByteBufPool();
+	}
+
 	private static final Random RANDOM = new Random();
 
 	@Test

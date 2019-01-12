@@ -18,10 +18,15 @@ package io.datakernel.bytebuf;
 
 import org.junit.Test;
 
+import static io.datakernel.bytebuf.ByteBufTest.initByteBufPool;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ByteArraySlabPoolTest {
+	static {
+		initByteBufPool();
+	}
+
 	private void checkAllocate(int size, int expectedSize, int[] poolSizes) {
 		ByteBufPool.clear();
 
@@ -47,7 +52,7 @@ public class ByteArraySlabPoolTest {
 	public void testAllocate() {
 		ByteBufPool.clear();
 
-		checkAllocate(0, 0, new int[]{});
+		checkAllocate(0, 1, new int[]{});
 		checkAllocate(1, 1, new int[]{1, 0, 0, 0, 0});
 		checkAllocate(2, 2, new int[]{0, 2, 0, 0, 0});
 		checkAllocate(8, 8, new int[]{0, 0, 0, 8, 0});
@@ -72,7 +77,7 @@ public class ByteArraySlabPoolTest {
 		ByteBufPool.clear();
 
 		checkReallocate(0, 0, true);
-		checkReallocate(0, 1, false);
+		checkReallocate(0, 1, true);
 		checkReallocate(0, 2, false);
 
 		checkReallocate(1, 0, true);

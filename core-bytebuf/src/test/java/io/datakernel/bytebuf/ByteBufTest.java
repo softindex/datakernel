@@ -28,6 +28,17 @@ import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.*;
 
 public class ByteBufTest {
+	static {
+		initByteBufPool();
+	}
+
+	public static void initByteBufPool() {
+		System.setProperty("ByteBufPool.stats", "true");
+		System.setProperty("ByteBufPool.registry", "true");
+		System.setProperty("ByteBufPool.minSize", "0");
+		System.setProperty("ByteBufPool.maxSize", "0");
+	}
+
 	private static final byte[] BYTES = {'T', 'e', 's', 't', ' ', 'm', 'e', 's', 's', 'a', 'g', 'e'};
 
 	@Before
@@ -251,17 +262,17 @@ public class ByteBufTest {
 	public void testClearPool() {
 		ByteBufPool.clear();
 		List<String> cleared = ByteBufPool.getStats().getPoolSlabs();
-		assertEquals("32768,0,0,0", cleared.get(16));
+		assertEquals("32768,0,0,0,0", cleared.get(17));
 		int size = 10;
 		ByteBuf[] bufs = new ByteBuf[size];
 		for (int i = 0; i < size; i++) {
 			bufs[i] = ByteBufPool.allocate(30_000);
 		}
-		assertNotEquals(cleared.get(16), ByteBufPool.getStats().getPoolSlabs().get(16));
+		assertNotEquals(cleared.get(17), ByteBufPool.getStats().getPoolSlabs().get(17));
 		for (int i = 0; i < size; i++) {
 			bufs[i].recycle();
 		}
-		ByteBufPool.getStats().clearPool();
+		ByteBufPool.getStats().clear();
 		assertEquals(cleared, ByteBufPool.getStats().getPoolSlabs());
 	}
 

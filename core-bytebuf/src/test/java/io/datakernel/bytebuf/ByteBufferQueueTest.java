@@ -20,10 +20,14 @@ import org.junit.Test;
 
 import java.util.Random;
 
+import static io.datakernel.bytebuf.ByteBufTest.initByteBufPool;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ByteBufferQueueTest {
+	static {
+		initByteBufPool();
+	}
 
 	private final Random random = new Random();
 

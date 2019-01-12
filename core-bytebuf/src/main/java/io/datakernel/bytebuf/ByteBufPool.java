@@ -20,13 +20,15 @@ import io.datakernel.bytebuf.ByteBuf.ByteBufSlice;
 import io.datakernel.util.ApplicationSettings;
 import io.datakernel.util.MemSize;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.Integer.numberOfLeadingZeros;
 import static java.lang.Math.max;
+import static java.lang.System.currentTimeMillis;
+import static java.lang.Thread.currentThread;
+import static java.util.Arrays.asList;
+import static java.util.Arrays.stream;
 
 public final class ByteBufPool {
 	private static final int NUMBER_OF_SLABS = 33;
@@ -34,16 +36,33 @@ public final class ByteBufPool {
 	private static final int MAX_SIZE = ApplicationSettings.getInt(ByteBufPool.class, "maxSize", 0);
 	private static final boolean MIN_MAX_CHECKS = MIN_SIZE != 0 || MAX_SIZE != 0;
 
+	private static final boolean REGISTRY = ApplicationSettings.getBoolean(ByteBufPool.class, "registry", false);
+	private static final boolean STATS = ApplicationSettings.getBoolean(ByteBufPool.class, "stats", false);
+
 	private static final ByteBufConcurrentStack[] slabs;
+	private static final AtomicInteger[] reused;
 	private static final AtomicInteger[] created;
 
+	private static class Entry {
+		long timestamp;
+		List<StackTraceElement> stackTrace;
+
+		Entry(long timestamp, List<StackTraceElement> stackTrace) {
+			this.timestamp = timestamp;
+			this.stackTrace = stackTrace;
+		}
+	}
+
+	private static final WeakHashMap<ByteBuf, Entry> registry = new WeakHashMap<>();
+
 	static {
-		//noinspection unchecked
 		slabs = new ByteBufConcurrentStack[NUMBER_OF_SLABS];
 		created = new AtomicInteger[NUMBER_OF_SLABS];
+		reused = new AtomicInteger[NUMBER_OF_SLABS];
 		for (int i = 0; i < NUMBER_OF_SLABS; i++) {
 			slabs[i] = new ByteBufConcurrentStack();
 			created[i] = new AtomicInteger();
+			reused[i] = new AtomicInteger();
 		}
 	}
 
@@ -58,7 +77,6 @@ public final class ByteBufPool {
 	 * @return byte buffer from this pool
 	 */
 	public static ByteBuf allocate(int size) {
-		if (size == 0) return ByteBuf.empty();
 		if (MIN_MAX_CHECKS) {
 			if ((MIN_SIZE != 0 && size < MIN_SIZE) || (MAX_SIZE != 0 && size >= MAX_SIZE)) {
 				// not willing to register in pool
@@ -70,12 +88,40 @@ public final class ByteBufPool {
 		ByteBuf buf = stack.pop();
 		if (buf != null) {
 			buf.reset();
+			if (STATS) recordReuse(index);
+			if (REGISTRY) registerReuse(buf);
 		} else {
 			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
 			buf.refs++;
-			assert created[index].incrementAndGet() != Integer.MAX_VALUE;
+			if (STATS) recordNew(index);
+			if (REGISTRY) registerNew(buf);
 		}
 		return buf;
+	}
+
+	private static void recordNew(int index) {
+		created[index].incrementAndGet();
+	}
+
+	private static void recordReuse(int index) {
+		reused[index].incrementAndGet();
+	}
+
+	private static void registerNew(ByteBuf buf) {
+		synchronized (registry) {
+			StackTraceElement[] stackTrace = currentThread().getStackTrace();
+			registry.put(buf, new Entry(currentTimeMillis(), asList(stackTrace).subList(3, stackTrace.length)));
+		}
+	}
+
+	private static void registerReuse(ByteBuf buf) {
+		synchronized (registry) {
+			synchronized (registry) {
+				Entry entry = registry.get(buf);
+				if (entry == null) return;
+				entry.timestamp = currentTimeMillis();
+			}
+		}
 	}
 
 	/**
@@ -110,13 +156,6 @@ public final class ByteBufPool {
 		stack.push(buf);
 	}
 
-	public static ByteBuf recycleIfEmpty(ByteBuf buf) {
-		if (buf.canRead())
-			return buf;
-		buf.recycle();
-		return ByteBuf.empty();
-	}
-
 	public static ByteBufConcurrentStack[] getSlabs() {
 		return slabs;
 	}
@@ -125,6 +164,14 @@ public final class ByteBufPool {
 		for (int i = 0; i < ByteBufPool.NUMBER_OF_SLABS; i++) {
 			slabs[i].clear();
 			created[i].set(0);
+			reused[i].set(0);
+		}
+		clearRegistry();
+	}
+
+	public static void clearRegistry() {
+		synchronized (registry) {
+			registry.clear();
 		}
 	}
 
@@ -173,34 +220,22 @@ public final class ByteBufPool {
 	}
 
 	public static int getCreatedItems() {
-		int items = 0;
-		for (AtomicInteger counter : created) {
-			items += counter.get();
-		}
-		return items;
+		return stream(created).mapToInt(AtomicInteger::get).sum();
 	}
 
-	public static int getCreatedItems(int slab) {
-		return created[slab].get();
-	}
-
-	public static int getPoolItems(int slab) {
-		return slabs[slab].size();
+	public static int getReusedItems() {
+		return stream(reused).mapToInt(AtomicInteger::get).sum();
 	}
 
 	public static int getPoolItems() {
-		int result = 0;
-		for (ByteBufConcurrentStack slab : slabs) {
-			result += slab.size();
-		}
-		return result;
+		return stream(slabs).mapToInt(ByteBufConcurrentStack::size).sum();
 	}
 
 	public static String getPoolItemsString() {
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < ByteBufPool.NUMBER_OF_SLABS; ++i) {
-			int createdItems = ByteBufPool.getCreatedItems(i);
-			int poolItems = ByteBufPool.getPoolItems(i);
+			int createdItems = created[i].get();
+			int poolItems = slabs[i].size();
 			if (createdItems != poolItems) {
 				sb.append(String.format("Slab %d (%d) ", i, (1 << i)))
 						.append(" created: ").append(createdItems)
@@ -220,8 +255,22 @@ public final class ByteBufPool {
 		return result;
 	}
 
+	public Map<ByteBuf, Entry> getExternalBufs() {
+		synchronized (registry) {
+			Map<ByteBuf, Entry> externalBufs = new IdentityHashMap<>(registry);
+			for (ByteBufConcurrentStack slab : slabs) {
+				for (ByteBuf buf = slab.peek(); buf != null; buf = buf.next) {
+					externalBufs.remove(buf);
+				}
+			}
+			return externalBufs;
+		}
+	}
+
 	public interface ByteBufPoolStatsMXBean {
 		int getCreatedItems();
+
+		int getReusedItems();
 
 		int getPoolItems();
 
@@ -229,12 +278,19 @@ public final class ByteBufPool {
 
 		List<String> getPoolSlabs();
 
-		void clearPool();
+		void clear();
+
+		void clearRegistry();
 	}
 
 	public static final class ByteBufPoolStats implements ByteBufPoolStatsMXBean {
 		@Override
 		public int getCreatedItems() {
+			return ByteBufPool.getCreatedItems();
+		}
+
+		@Override
+		public int getReusedItems() {
 			return ByteBufPool.getCreatedItems();
 		}
 
@@ -250,40 +306,33 @@ public final class ByteBufPool {
 
 		@Override
 		public List<String> getPoolSlabs() {
-			assert slabs.length == 33 : "Except slabs[32] that contains ByteBufs with size 0";
+			assert slabs.length == 33;
 			List<String> result = new ArrayList<>(slabs.length + 1);
-			result.add("SlotSize,Created,InPool,Total(Kb)");
+			result.add("SlotSize,Created,Reused,InPool,Total(Kb)");
 			for (int i = 0; i < slabs.length; i++) {
-				long slotSize = 1L << i;
-				int count = slabs[i].size();
-				result.add((slotSize & 0xffffffffL) + "," + created[i] + "," + count + "," + slotSize * count / 1024);
+				int idx = (i + 32) % slabs.length;
+				long slabSize = idx == 32 ? 0 : 1L << idx;
+				int count = slabs[idx].size();
+				result.add(slabSize + "," +
+						(STATS ? created[idx] : '-') + "," +
+						(STATS ? reused[idx] : '-') + "," +
+						count + "," +
+						slabSize * count / 1024);
 			}
 			return result;
 		}
 
 		@Override
-		public void clearPool() {
+		public void clear() {
 			ByteBufPool.clear();
+		}
+
+		@Override
+		public void clearRegistry() {
+			ByteBufPool.clearRegistry();
 		}
 	}
 
-	private static String formatHours(long period) {
-		long milliseconds = period % 1000;
-		long seconds = (period / 1000) % 60;
-		long minutes = (period / (60 * 1000)) % 60;
-		long hours = period / (60 * 60 * 1000);
-		return String.format("%02d", hours) + ":" + String.format("%02d", minutes) + ":" + String.format("%02d", seconds) + "." + String.format("%03d", milliseconds);
-	}
-
-	public static String formatDuration(long period) {
-		if (period == 0)
-			return "";
-		return formatHours(period);
-	}
-
-	private static String extractContent(ByteBuf buf, int maxSize) {
-		int to = buf.readPosition() + Math.min(maxSize, buf.readRemaining());
-		return new String(Arrays.copyOfRange(buf.array(), buf.readPosition(), to));
-	}
 	//endregion
+
 }

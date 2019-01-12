@@ -181,10 +181,12 @@ public final class HttpStreamTest {
 						.thenCompose($ -> socket.read())
 						.whenComplete(($, e) -> socket.close())));
 
-		String response = body.asString(UTF_8);
-		System.out.println(response);
-		assertTrue(response.contains("400"));
-		assertTrue(response.contains("Malformed chunk length"));
+		assertNull(body);
+
+//		String response = body.asString(UTF_8);
+//		System.out.println(response);
+//		assertTrue(response.contains("400"));
+//		assertTrue(response.contains("Malformed chunk length"));
 
 		deepRecycle(expectedList); // not used here
 	}
@@ -208,9 +210,11 @@ public final class HttpStreamTest {
 						.thenCompose($ -> socket.read())
 						.whenComplete(($, e) -> socket.close())));
 
-		String response = body.asString(UTF_8);
-		assertTrue(response.contains("HTTP/1.1 400 Bad Request"));
-		assertTrue(response.contains("Incomplete HTTP message"));
+		assertNull(body);
+
+//		String response = body.asString(UTF_8);
+//		assertTrue(response.contains("HTTP/1.1 400 Bad Request"));
+//		assertTrue(response.contains("Incomplete HTTP message"));
 
 		deepRecycle(expectedList); // not used here
 	}
